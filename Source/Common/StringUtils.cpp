@@ -313,27 +313,47 @@ auto _str::splitToInt(char divider) const -> vector<int>
     return result;
 }
 
-auto _str::isNumber() -> bool
+auto _str::isNumber() const -> bool
+{
+    return isInt() || isFloat();
+}
+
+auto _str::isInt() const -> bool
 {
     if (_s.empty()) {
         return false;
     }
 
-    trim();
+    char* str_end = nullptr;
+    const auto v = std::strtoul(_s.c_str(), &str_end, 10);
+    UNUSED_VARIABLE(v);
 
+    return str_end != _s.c_str();
+}
+
+auto _str::isFloat() const -> bool
+{
     if (_s.empty()) {
         return false;
     }
 
-    if (_s.empty() || (std::isdigit(_s[0]) == 0 && _s[0] != '-' && _s[0] != '+')) {
-        return false;
-    }
-
-    char* p = nullptr;
-    auto v = strtol(_s.c_str(), &p, 10);
+    char* str_end = nullptr;
+    const auto v = std::strtod(_s.c_str(), &str_end);
     UNUSED_VARIABLE(v);
 
-    return *p == 0;
+    return str_end != _s.c_str();
+}
+
+auto _str::isExplicitBool() const -> bool
+{
+    if (compareIgnoreCase("true")) {
+        return true;
+    }
+    if (compareIgnoreCase("false")) {
+        return true;
+    }
+
+    return false;
 }
 
 auto _str::toInt() -> int
@@ -485,6 +505,19 @@ auto _str::eraseFileExtension() -> _str&
     return *this;
 }
 
+auto _str::changeFileName(string_view new_name) -> _str&
+{
+    const auto ext = _str(_s).getFileExtension();
+    if (!ext.empty()) {
+        const auto new_name_with_ext = _str("{}.{}", new_name, ext);
+        _s = _str(_s).extractDir().combinePath(new_name_with_ext);
+    }
+    else {
+        _s = _str(_s).extractDir().combinePath(new_name);
+    }
+    return *this;
+}
+
 auto _str::combinePath(string_view path) -> _str&
 {
     if (!path.empty()) {
@@ -540,26 +573,6 @@ auto _str::toWideChar() const -> std::wstring
 #endif
 
 // ReSharper restore CppInconsistentNaming
-
-void Str::Copy(char* to, size_t size, string_view from)
-{
-    RUNTIME_ASSERT(to);
-    RUNTIME_ASSERT(size > 0);
-
-    if (from.length() == 0u) {
-        to[0] = 0;
-        return;
-    }
-
-    if (from.length() >= size) {
-        std::memcpy(to, from.data(), size - 1);
-        to[size - 1] = 0;
-    }
-    else {
-        std::memcpy(to, from.data(), from.length());
-        to[from.length()] = 0;
-    }
-}
 
 auto utf8::IsValid(uint ucs) -> bool
 {

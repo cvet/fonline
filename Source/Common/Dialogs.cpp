@@ -32,6 +32,7 @@
 //
 
 #include "Dialogs.h"
+#include "Application.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
 
@@ -91,11 +92,11 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
         }
     }
 
-    if (is_demand && !prop->IsReadable()) {
-        throw DialogParseException("DR property is not readable", str);
+    if (prop->IsDisabled()) {
+        throw DialogParseException("DR property is disabled", str);
     }
-    if (!is_demand && !prop->IsWritable()) {
-        throw DialogParseException("DR property is not writable", str);
+    if (!is_demand && prop->IsReadOnly()) {
+        throw DialogParseException("DR property is read only", str);
     }
 
     is_hash = prop->IsBaseTypeHash();
@@ -106,7 +107,7 @@ DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
 {
 }
 
-void DialogManager::LoadDialogs()
+void DialogManager::LoadFromResources()
 {
     auto errors = 0;
 
@@ -167,12 +168,10 @@ auto DialogManager::GetDialogs() -> vector<DialogPack*>
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
 {
-    auto fodlg = ConfigFile("", *_engine);
-    fodlg.CollectContent();
-    fodlg.AppendData(data);
+    auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 
-    auto* pack = new DialogPack();
-    auto dlg_buf = fodlg.GetAppContent("dialog");
+    auto&& pack = std::make_unique<DialogPack>();
+    auto dlg_buf = fodlg.GetSectionContent("dialog");
     istringstream input(dlg_buf);
     string lang_buf;
     pack->PackId = _engine->ToHashedString(pack_name);
@@ -180,7 +179,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     vector<string> lang_apps;
 
     // Comment
-    pack->Comment = fodlg.GetAppContent("comment");
+    pack->Comment = fodlg.GetSectionContent("comment");
 
     // Texts
     auto lang_key = fodlg.GetStr("data", "lang", "");
@@ -204,7 +203,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             throw DialogParseException("Language length not equal 4", pack_name);
         }
 
-        lang_buf = fodlg.GetAppContent(lang_app);
+        lang_buf = fodlg.GetSectionContent(lang_app);
         if (lang_buf.empty()) {
             throw DialogParseException("One of the lang section not found", pack_name);
         }
@@ -281,7 +280,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
         current_dialog.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
-        current_dialog.DlgScriptFunc = script;
+        current_dialog.DlgScriptFunc = _engine->ToHashedString(script);
         current_dialog.NoShuffle = ((flags & 1) == 1);
 
         // Read answers
@@ -371,7 +370,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         pack->Dialogs.push_back(current_dialog);
     }
 
-    return pack;
+    return pack.release();
 }
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
@@ -556,5 +555,5 @@ auto DialogManager::GetWho(char who) -> uchar
 
 auto DialogManager::CheckOper(char oper) -> bool
 {
-    return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '=' || oper == '!' || oper == '}' || oper == '{';
+    return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '!' || oper == '}' || oper == '{';
 }

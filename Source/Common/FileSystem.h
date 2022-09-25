@@ -56,6 +56,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> string_view;
     [[nodiscard]] auto GetPath() const -> string_view;
+    [[nodiscard]] auto GetFullPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
@@ -163,7 +164,6 @@ public:
     [[nodiscard]] auto ReadFile(string_view path) -> File;
     [[nodiscard]] auto ReadFileText(string_view path) -> string;
     [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
-    [[nodiscard]] auto ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile;
 
     void AddDataSource(string_view path, DataSourceType type = DataSourceType::Default);
 

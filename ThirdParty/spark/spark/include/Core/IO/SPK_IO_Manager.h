@@ -58,7 +58,7 @@ namespace IO
 
         Ref<System> load(const std::string& path) const;
 		Ref<System> load(const std::string& ext,std::istream& is) const;
-        Ref<System> loadFromBuffer(const std::string& ext, char * data, unsigned int size) const;
+        Ref<System> loadFromBuffer(const std::string& ext, const char* data, unsigned int size) const;
 
 		bool save(const std::string& path,const Ref<System>& system) const;
 		bool save(const std::string& ext,std::ostream& os,const Ref<System>& system) const;

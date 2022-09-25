@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SPK_GL_NO_EXT
-#include <GL/glew.h>
+#include "GL/glew.h"
 #endif
 
 #include <SPARK_Core.h>
@@ -30,6 +30,12 @@ namespace SPK
 {
 namespace GL
 {
+	static GLuint(*TextureLoader)(const std::string&);
+
+	void GLQuadRenderer::setTextureLoader(GLuint(*loader)(const std::string&))
+	{
+		TextureLoader = loader;
+	}
 
 #ifndef SPK_GL_NO_EXT
 	GLboolean* const GLQuadRenderer::SPK_GL_TEXTURE_3D_EXT = &__GLEW_EXT_texture3D;
@@ -88,6 +94,8 @@ namespace GL
 		switch(texturingMode)
 		{
 		case TEXTURE_MODE_2D :
+		case TEXTURE_MODE_2D_NO_ALPHA :
+		case TEXTURE_MODE_2D_ONLY_ALPHA :
 			// Creates and inits the 2D TexCoord buffer if necessary
 			if (buffer.getNbTexCoords() != 2)
 			{
@@ -190,7 +198,7 @@ namespace GL
 			}
 		}
 
-		buffer.render(GL_QUADS,group.getNbParticles() << 2);
+		buffer.render(GL_QUADS,group.getNbParticles() << 2, texturingMode != TEXTURE_MODE_2D_ONLY_ALPHA, texturingMode != TEXTURE_MODE_2D_NO_ALPHA);
 	}
 
 	void GLQuadRenderer::computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const
@@ -255,5 +263,171 @@ namespace GL
 		rotateAndScaleQuadVectors(particle,scaleX,scaleY);
 		GLCallColorAndVertex(particle,renderBuffer);
 		GLCallTexture2DAtlas(particle,renderBuffer);
+	}
+
+	void GLQuadRenderer::setTextureName(const std::string& textureName)
+	{
+		this->textureName = textureName;
+		this->textureIndex = TextureLoader(textureName);
+	}
+	
+	std::string GLQuadRenderer::getTextureName() const
+	{
+		return this->textureName;
+	}
+
+	void GLQuadRenderer::innerImport(const IO::Descriptor& descriptor)
+	{
+		GLRenderer::innerImport(descriptor);
+
+		textureName = "";
+
+		texturingMode = TEXTURE_MODE_NONE;
+		scaleX = 1.0f;
+		scaleY = 1.0f;
+		textureAtlasNbX = 1;
+		textureAtlasNbY = 1;
+		textureAtlasW = 1.0f;
+		textureAtlasH = 1.0f;
+
+		lookOrientation = LOOK_CAMERA_PLANE;
+		upOrientation = UP_CAMERA;
+		lockedAxis = LOCK_UP;
+		lookVector.set(0.0f, 0.0f, 1.0f);
+		upVector.set(0.0f, 1.0f, 0.0f);
+		
+		const IO::Attribute* attrib = nullptr;
+
+		if ((attrib = descriptor.getAttributeWithValue("texture")))
+			setTextureName(attrib->getValue<std::string>());
+
+		if ((attrib = descriptor.getAttributeWithValue("texturing mode")))
+		{
+			const auto texMode = attrib->getValue<std::string>();
+			if (texMode == "TEXTURE_MODE_NONE")
+				setTexturingMode(TEXTURE_MODE_NONE);
+			else if (texMode == "TEXTURE_MODE_2D")
+				setTexturingMode(TEXTURE_MODE_2D);
+			else if (texMode == "TEXTURE_MODE_2D_NO_ALPHA")
+				setTexturingMode(TEXTURE_MODE_2D_NO_ALPHA);
+			else if (texMode == "TEXTURE_MODE_2D_ONLY_ALPHA")
+				setTexturingMode(TEXTURE_MODE_2D_ONLY_ALPHA);
+			else if (texMode == "TEXTURE_MODE_3D")
+				setTexturingMode(TEXTURE_MODE_3D);
+		}
+
+		if ((attrib = descriptor.getAttributeWithValue("scale")))
+		{
+			const auto tmpScale = attrib->getValues<float>();
+			switch (tmpScale.size())
+			{
+			case 1: setScale(tmpScale[0], scaleY); break;
+			case 2: setScale(tmpScale[0], tmpScale[1]); break;
+			default: SPK_LOG_ERROR("Emitter::innerImport(const IO::Descriptor&) - Wrong number of scale : " << tmpScale.size());
+			}
+		}
+
+		if ((attrib = descriptor.getAttributeWithValue("atlas dimensions")))
+		{
+			const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
+			switch (tmpAtlasDimensions.size())
+			{
+			case 1: setAtlasDimensions(tmpAtlasDimensions[0], textureAtlasNbY); break;
+			case 2: setAtlasDimensions(tmpAtlasDimensions[0], tmpAtlasDimensions[1]); break;
+			default: SPK_LOG_ERROR("Emitter::innerImport(const IO::Descriptor&) - Wrong number of atlas dimensions : " << tmpAtlasDimensions.size());
+			}
+		}
+
+		if ((attrib = descriptor.getAttributeWithValue("look orientation")))
+		{
+			const auto lookOrient = attrib->getValue<std::string>();
+			if (lookOrient == "LOOK_CAMERA_PLANE")
+				lookOrientation = LOOK_CAMERA_PLANE;
+			else if (lookOrient == "LOOK_CAMERA_POINT")
+				lookOrientation = LOOK_CAMERA_POINT;
+			else if (lookOrient == "LOOK_AXIS")
+				lookOrientation = LOOK_AXIS;
+			else if (lookOrient == "LOOK_POINT")
+				lookOrientation = LOOK_POINT;
+		}
+
+		if ((attrib = descriptor.getAttributeWithValue("up orientation")))
+		{
+			const auto upOrient = attrib->getValue<std::string>();
+			if (upOrient == "UP_CAMERA")
+				upOrientation = UP_CAMERA;
+			else if (upOrient == "UP_DIRECTION")
+				upOrientation = UP_DIRECTION;
+			else if (upOrient == "UP_AXIS")
+				upOrientation = UP_AXIS;
+			else if (upOrient == "UP_POINT")
+				upOrientation = UP_POINT;
+		}
+
+		if ((attrib = descriptor.getAttributeWithValue("locked axis")))
+		{
+			const auto lockAx = attrib->getValue<std::string>();
+			if (lockAx == "LOCK_LOOK")
+				lockedAxis = LOCK_LOOK;
+			else if (lockAx == "LOCK_UP")
+				lockedAxis = LOCK_UP;
+		}
+
+		if ((attrib = descriptor.getAttributeWithValue("locked look vector")))
+			lookVector = attrib->getValue<Vector3D>();
+
+		if ((attrib = descriptor.getAttributeWithValue("locked up vector")))
+			upVector = attrib->getValue<Vector3D>();
+	}
+	
+	void GLQuadRenderer::innerExport(IO::Descriptor& descriptor) const
+	{
+		GLRenderer::innerExport(descriptor);
+
+		descriptor.getAttribute("texture")->setValue(textureName);
+
+		if (texturingMode == TEXTURE_MODE_NONE)
+			descriptor.getAttribute("texturing mode")->setValue(std::string("TEXTURE_MODE_NONE"));
+		else if (texturingMode == TEXTURE_MODE_2D)
+			descriptor.getAttribute("texturing mode")->setValue(std::string("TEXTURE_MODE_2D"));
+		else if (texturingMode == TEXTURE_MODE_2D_NO_ALPHA)
+			descriptor.getAttribute("texturing mode")->setValue(std::string("TEXTURE_MODE_2D_NO_ALPHA"));
+		else if (texturingMode == TEXTURE_MODE_2D_ONLY_ALPHA)
+			descriptor.getAttribute("texturing mode")->setValue(std::string("TEXTURE_MODE_2D_ONLY_ALPHA"));
+		else if (texturingMode == TEXTURE_MODE_3D)
+			descriptor.getAttribute("texturing mode")->setValue(std::string("TEXTURE_MODE_3D"));
+
+		std::vector<float> tmpScale = { scaleX, scaleY };
+		descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
+
+		std::vector<uint32_t> tmpAtlasDimensions = { (uint32_t)textureAtlasNbX, (uint32_t)textureAtlasNbY };
+		descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
+
+		if (lookOrientation == LOOK_CAMERA_PLANE)
+			descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_CAMERA_PLANE"));
+		else if (lookOrientation == LOOK_CAMERA_POINT)
+			descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_CAMERA_POINT"));
+		else if (lookOrientation == LOOK_AXIS)
+			descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_AXIS"));
+		else if (lookOrientation == LOOK_POINT)
+			descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_POINT"));
+
+		if (upOrientation == UP_CAMERA)
+			descriptor.getAttribute("up orientation")->setValue(std::string("UP_CAMERA"));
+		else if (upOrientation == UP_DIRECTION)
+			descriptor.getAttribute("up orientation")->setValue(std::string("UP_DIRECTION"));
+		else if (upOrientation == UP_AXIS)
+			descriptor.getAttribute("up orientation")->setValue(std::string("UP_AXIS"));
+		else if (upOrientation == UP_POINT)
+			descriptor.getAttribute("up orientation")->setValue(std::string("UP_POINT"));
+
+		if (lockedAxis == LOCK_LOOK)
+			descriptor.getAttribute("locked axis")->setValue(std::string("LOCK_LOOK"));
+		else if (lockedAxis == LOCK_UP)
+			descriptor.getAttribute("locked axis")->setValue(std::string("LOCK_UP"));
+
+		descriptor.getAttribute("locked look vector")->setValue(lookVector);
+
+		descriptor.getAttribute("locked up vector")->setValue(upVector);
 	}
 }}

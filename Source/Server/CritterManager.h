@@ -74,11 +74,10 @@ public:
     [[nodiscard]] auto NpcInGame() const -> uint;
     [[nodiscard]] auto CrittersInGame() const -> uint;
 
-    [[nodiscard]] auto CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
-
     void LinkCritters();
     void InitAfterLoad();
-    void DeleteNpc(Critter* cr);
+    auto CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
+    void DeleteCritter(Critter* cr);
     void DeleteInventory(Critter* cr);
     void AddItemToCritter(Critter* cr, Item*& item, bool send);
     void EraseItemFromCritter(Critter* cr, Item* item, bool send);

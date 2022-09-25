@@ -41,6 +41,11 @@ namespace GL
 	*/
 	class SPK_GL_PREFIX GLRenderer : public Renderer
 	{
+		SPK_START_DESCRIPTION
+		SPK_PARENT_ATTRIBUTES(Renderer)
+		SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
+		SPK_END_DESCRIPTION
+		
 	public :
 
 		////////////////
@@ -69,7 +74,7 @@ namespace GL
 		* @param dest : the destination blending function of this GLRenderer
 		*/
 		void setBlendingFunctions(GLuint src,GLuint dest);
-		virtual void setBlendMode(BlendMode blendMode);
+		void setBlendMode(BlendMode blendMode) override;
 
 		/////////////
 		// Getters //
@@ -139,6 +144,9 @@ namespace GL
 #ifndef SPK_GL_NO_EXT
 		static bool checkExtension(GLboolean* glExt);
 #endif
+
+		void innerImport(const IO::Descriptor& descriptor) override;
+		void innerExport(IO::Descriptor& descriptor) const override;
 
 	private :
 

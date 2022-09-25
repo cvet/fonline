@@ -41,12 +41,10 @@
 #include "CacheStorage.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
-#include "DiskFileSystem.h"
+#include "DeferredCalls.h"
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
-#include "FileSystem.h"
-#include "GeometryHelper.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
@@ -63,8 +61,10 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "TwoBitMask.h"
+
+DECLARE_EXCEPTION(EngineDataNotFoundException);
+DECLARE_EXCEPTION(ResourcesOutdatedException);
 
 // Screens
 constexpr auto SCREEN_NONE = 0;
@@ -73,7 +73,6 @@ constexpr auto SCREEN_GAME = 2;
 constexpr auto SCREEN_GLOBAL_MAP = 3;
 constexpr auto SCREEN_WAIT = 4;
 constexpr auto SCREEN_DIALOG = 6; // Secondary screens
-constexpr auto SCREEN_TOWN_VIEW = 9;
 
 // Connection reason
 constexpr auto INIT_NET_REASON_NONE = 0;
@@ -82,13 +81,12 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public FOEngineBase, public AnimationResolver
+class FOClient : virtual public FOEngineBase, public AnimationResolver
 {
     friend class ClientScriptSystem;
 
 public:
-    FOClient() = delete;
-    explicit FOClient(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
+    FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode);
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;
@@ -101,27 +99,30 @@ public:
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
+    [[nodiscard]] auto IsConnecting() const -> bool;
+    [[nodiscard]] auto IsConnected() const -> bool;
+    [[nodiscard]] auto GetConnection() -> ServerConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
 
+    void Shutdown();
     void MainLoop();
-    void AddMess(uchar mess_type, string_view msg);
-    void AddMess(uchar mess_type, string_view msg, bool script_call);
+    void AddMessage(uchar mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
     void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
     void ScreenQuake(int noise, uint time);
-    void ProcessInputEvent(const InputEvent& event);
-    void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
+    void ProcessInputEvent(const InputEvent& ev);
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
-    auto AnimGetCurSpr(uint anim_id) -> uint;
-    auto AnimGetCurSprCnt(uint anim_id) -> uint;
-    auto AnimGetSprCount(uint anim_id) -> uint;
+    void AnimFree(uint anim_id);
+    auto AnimGetCurSpr(uint anim_id) const -> uint;
+    auto AnimGetCurSprCnt(uint anim_id) const -> uint;
+    auto AnimGetSprCount(uint anim_id) const -> uint;
     auto AnimGetFrames(uint anim_id) -> AnyFrames*;
     void AnimRun(uint anim_id, uint flags);
 
@@ -135,92 +136,88 @@ public:
     void RunScreenScript(bool show, int screen, map<string, string> params);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Start);
+    ENTITY_EVENT(OnStart);
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(AutoLogin, string /*login*/, string /*password*/);
+    ENTITY_EVENT(OnAutoLogin, string /*login*/, string /*password*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Loop);
+    ENTITY_EVENT(OnRegistrationSuccess);
     ///@ ExportEvent
-    ENTITY_EVENT(GetActiveScreens, vector<int>& /*screens*/);
+    ENTITY_EVENT(OnLoginSuccess);
     ///@ ExportEvent
-    ENTITY_EVENT(ScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
+    ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(ScreenScroll, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnGetActiveScreens, vector<int>& /*screens*/);
     ///@ ExportEvent
-    ENTITY_EVENT(RenderIface);
+    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
     ///@ ExportEvent
-    ENTITY_EVENT(RenderMap);
+    ENTITY_EVENT(OnScreenScroll, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MouseDown, MouseButton /*button*/);
+    ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
-    ENTITY_EVENT(MouseUp, MouseButton /*button*/);
+    ENTITY_EVENT(OnRenderMap);
     ///@ ExportEvent
-    ENTITY_EVENT(MouseMove, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(KeyDown, KeyCode /*key*/, string /*text*/);
+    ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(KeyUp, KeyCode /*key*/);
+    ENTITY_EVENT(OnMouseMove, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
-    ENTITY_EVENT(InputLost);
+    ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterIn, CritterView* /*critter*/);
+    ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterOut, CritterView* /*critter*/);
+    ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMapIn, ItemView* /*item*/);
+    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
+    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMapOut, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvAllIn);
+    ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvIn, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
+    ENTITY_EVENT(OnItemInvAllIn);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvOut, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapLoad);
+    ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapUnload);
+    ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
+    ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
-    ENTITY_EVENT(MapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
-    ENTITY_EVENT(InMessage, string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/);
+    ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OutMessage, string& /*text*/, int& /*sayType*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MessageBox, string /*text*/, int /*type*/, bool /*scriptCall*/);
+    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, uint& /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CombatResult, vector<uint> /*result*/);
+    ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+    ENTITY_EVENT(OnMessageBox, int /*type*/, string /*text*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
+    ENTITY_EVENT(OnItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Animation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
+    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Animation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
+    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, uint /*anim1*/, uint /*anim2*/, AbstractItem* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
+    ENTITY_EVENT(OnCritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
-    ClientSettings& Settings;
-    GeometryHelper GeomHelper;
-    ScriptSystem* ScriptSys;
-    GameTimer GameTime;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
@@ -228,6 +225,7 @@ public:
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
+    DeferredCallManager ClientDeferredCalls;
 
     MapView* CurMap {};
     hstring CurMapPid {};
@@ -288,42 +286,35 @@ protected:
 
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
-    void RegisterData(const vector<uchar>& restore_info_bin);
-
     void ProcessAutoLogin();
     void ProcessGlobalMap();
     void ProcessInputEvents();
     void TryExit();
     void FlashGameWindow();
-    void DrawIface();
-    void GameDraw();
     void WaitDraw();
 
     void SetDayTime(bool refresh);
-    void LookBordersPrepare();
     void LmapPrepareMap();
     void GmapNullParams();
 
-    void Net_SendUpdate();
+    void Net_SendHandshake();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
-    void Net_SendGetGameInfo();
-    void Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash);
-    void Net_SendLoadMapOk();
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
-    void Net_SendMove(vector<uchar> steps);
+    void Net_SendMove();
+    void Net_SendStopMove();
     void Net_SendPing(uchar ping);
-    void Net_SendRefereshMe();
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();
     void Net_OnUpdateFilesResponse();
     void Net_OnWrongNetProto();
+    void Net_OnRegisterSuccess();
     void Net_OnLoginSuccess();
-    void Net_OnAddCritter(bool is_npc);
+    void Net_OnAddCritter();
     void Net_OnRemoveCritter();
     void Net_OnText();
     void Net_OnTextMsg(bool with_lexems);
@@ -333,52 +324,53 @@ protected:
     void Net_OnAddItemOnMap();
     void Net_OnEraseItemFromMap();
     void Net_OnAnimateItem();
-    void Net_OnCombatResult();
     void Net_OnEffect();
     void Net_OnFlyEffect();
     void Net_OnPlaySound();
-    void Net_OnEndParseToGame();
+    void Net_OnPlaceToGameComplete();
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
     void Net_OnCritterMove();
+    void Net_OnCritterStopMove();
     void Net_OnSomeItem();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
-    void Net_OnCustomCommand();
-    void Net_OnCritterCoords();
+    void Net_OnCritterTeleport();
+    void Net_OnCritterPos();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
     void Net_OnChosenEraseItem();
     void Net_OnAllItemsSend();
     void Net_OnChosenTalk();
-    void Net_OnGameInfo();
+    void Net_OnTimeSync();
     void Net_OnLoadMap();
-    void Net_OnMap();
     void Net_OnGlobalInfo();
     void Net_OnSomeItems();
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
+    void Net_OnRemoteCall();
 
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
 
-    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
 
     void AnimProcess();
 
@@ -386,7 +378,6 @@ protected:
     void ProcessScreenEffectQuake();
 
     ServerConnection _conn;
-    vector<uchar> _restoreInfoBin {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
     int _windowResolutionDiffX {};
@@ -400,16 +391,12 @@ protected:
     uint _fpsCounter {};
     int _screenModeMain {SCREEN_WAIT};
     ItemView* _someItem {};
-    bool _initNetBegin {};
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};
     vector<vector<uchar>> _globalsPropertiesData {};
     vector<vector<uchar>> _playerPropertiesData {};
     vector<vector<uchar>> _tempPropertiesData {};
     vector<vector<uchar>> _tempPropertiesDataExt {};
-    vector<uchar> _tempPropertyData {};
-    uint _pingTick {};
-    uint _pingCallTick {};
     LanguagePack _curLang {};
     vector<IfaceAnim*> _ifaceAnimations {};
     vector<ScreenEffect> _screenEffects {};
@@ -422,11 +409,6 @@ protected:
     uint _gameMouseStay {};
     uint _daySumRGB {};
     CritterView* _chosen {};
-    bool _rebuildLookBordersRequest {};
-    bool _drawLookBorders {true};
-    bool _drawShootBorders {};
-    PrimitivePoints _lookBorders {};
-    PrimitivePoints _shootBorders {};
     AnyFrames* _waitPic {};
     uchar _pupTransferType {};
     uint _pupContId {};
@@ -435,10 +417,10 @@ protected:
     vector<Automap> _automaps {};
     vector<CritterView*> _worldmapCritters {};
     TwoBitMask _worldmapFog {};
-    PrimitivePoints _worldmapFogPix {};
+    vector<PrimitivePoint> _worldmapFogPix {};
     vector<GmapLocation> _worldmapLoc {};
     GmapLocation _worldmapTownLoc {};
-    PrimitivePoints _lmapPrepPix {};
+    vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};

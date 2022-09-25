@@ -93,6 +93,8 @@ else
     exit 1
 fi
 
+BUILD_TARGET="$BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION=$FO_CMAKE_CONTRIBUTION"
+
 if [ "$TARGET" != "mac" ] && [ "$TARGET" != "ios" ]; then
     $CUR_DIR/prepare-workspace.sh $TARGET
 fi
@@ -100,6 +102,8 @@ fi
 BUILD_DIR=validate-$1
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
+
+CMAKE=cmake
 
 if [ "$TARGET" = "linux" ]; then
 	if [ "$USE_GCC" = "1" ]; then
@@ -110,14 +114,14 @@ if [ "$TARGET" = "linux" ]; then
 		export CXX=/usr/bin/clang++
 	fi
 
-    cmake -G "Unix Makefiles" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug
+    $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$FO_ROOT"
+    $CMAKE --build . --config Debug
 
 elif [ "$TARGET" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug
+    $CMAKE -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    $CMAKE --build . --config Debug
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
     export ANDROID_NDK=$FO_WORKSPACE/android-ndk
@@ -130,13 +134,11 @@ elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET"
         export ANDROID_ABI=x86
     fi
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug
+    $CMAKE -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    $CMAKE --build . --config Debug
 
 elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
-    if [ -x "$(command -v cmake)" ]; then
-        CMAKE=cmake
-    else
+    if [ ! -x "$(command -v cmake)" ]; then
         CMAKE=/Applications/CMake.app/Contents/bin/cmake
     fi
 
@@ -151,17 +153,17 @@ fi
 
 if [ "$1" = "unit-tests" ]; then
     echo "Run unit tests"
-    ./Tests/FOnlineUnitTests
+    $CMAKE --build . --config Debug --target RunUnitTests
 
 elif [ "$1" = "code-coverage" ]; then
     echo "Run code coverage"
-    ./Tests/FOnlineCodeCoverage
+    $CMAKE --build . --config Debug --target RunCodeCoverage
 
     if [[ ! -z "$CODECOV_TOKEN" ]]; then
         echo "Upload reports to codecov.io"
-        rm -f codecov.sh
-        curl -s https://codecov.io/bash > codecov.sh
-        chmod +x codecov.sh
-        ./codecov.sh -Z -s "$(cd .; pwd)"
+        rm -rf codecov
+        curl -Os https://uploader.codecov.io/latest/linux/codecov
+        chmod +x codecov
+        ./codecov -t $CODECOV_TOKEN --gcov
     fi
 fi

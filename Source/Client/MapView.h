@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "CacheStorage.h"
 #include "ClientEntity.h"
 #include "CritterHexView.h"
 #include "EffectManager.h"
@@ -51,6 +50,8 @@
 #include "SpriteManager.h"
 #include "Sprites.h"
 #include "Timer.h"
+
+DECLARE_EXCEPTION(MapViewLoadException);
 
 static constexpr auto MAX_FIND_PATH = 600;
 
@@ -82,6 +83,12 @@ struct LightSource
     short LastOffsY {};
 };
 
+struct FindPathResult
+{
+    vector<uchar> Steps {};
+    vector<ushort> ControlSteps {};
+};
+
 class Field final
 {
 public:
@@ -108,7 +115,7 @@ public:
 
     Field() = default;
     Field(const Field&) = delete;
-    Field(Field&&) noexcept = delete;
+    Field(Field&&) noexcept = default;
     auto operator=(const Field&) = delete;
     auto operator=(Field&&) noexcept = delete;
     ~Field();
@@ -141,7 +148,7 @@ public:
     CornerType Corner {};
 };
 
-class MapView final : public ClientEntity, public MapProperties
+class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {
 public:
     struct AutoScrollInfo
@@ -180,7 +187,7 @@ public:
 
     void MarkAsDestroyed() override;
     void EnableMapperMode();
-
+    void LoadStaticData();
     void Process();
     void DrawMap();
 
@@ -189,15 +196,13 @@ public:
     void AddMapText(string_view str, ushort hx, ushort hy, uint color, uint show_time, bool fade, int ox, int oy);
     auto GetRectForText(ushort hx, ushort hy) -> IRect;
 
-    auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
+    auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
+    auto TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<uchar>& steps, int quad_dir) -> bool;
     auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterHexView* find_cr, bool find_cr_safe, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
     void SwitchShowTrack();
-
-    void ReloadSprites();
-    void OnResolutionChanged();
 
     void ChangeZoom(int zoom); // < 0 in, > 0 out, 0 normalize
 
@@ -205,13 +210,11 @@ public:
     void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void ProcessHexBorders(ItemHexView* item);
-    void ResizeField(ushort w, ushort h);
+    void ProcessHexBorders(const ItemHexView* item);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
-
-    void SetFog(PrimitivePoints& look_points, PrimitivePoints& shoot_points, short* offs_x, short* offs_y);
+    void RebuildFog() { _rebuildFog = true; }
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -226,11 +229,11 @@ public:
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, ushort hx, ushort hy);
-    auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool animate, bool force) -> bool;
+    auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly) -> bool;
     void DestroyCritter(CritterHexView* cr);
 
-    void SetCritterContour(uint crid, int contour);
-    void SetCrittersContour(int contour);
+    void SetCritterContour(uint crid, ContourType contour);
+    void SetCrittersContour(ContourType contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
 
     // Items
@@ -246,9 +249,9 @@ public:
 
     void SkipItemsFade();
 
-    auto GetHexScreenPos(int x, int y, ushort& hx, ushort& hy) const -> bool;
+    auto GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_ox, int* hex_oy) const -> bool;
     auto GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -> CritterHexView*;
+    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, bool wide_rangle) -> CritterHexView*;
     auto GetEntityAtScreenPos(int x, int y) -> ClientEntity*;
 
     void ClearHexLight();
@@ -282,11 +285,12 @@ public:
     void ClearIgnorePids();
     void MarkPassedHexes();
 
+    auto GenerateEntityId() -> uint;
+
+    auto SaveToText() const -> string;
+
     AutoScrollInfo AutoScroll {};
     uchar SelectAlpha {100};
-    ProtoMap* CurProtoMap {};
-    vector<vector<MapTile>> TilesField {};
-    vector<vector<MapTile>> RoofsField {};
 
 private:
     struct MapText
@@ -295,7 +299,7 @@ private:
         ushort HexY {};
         uint StartTick {};
         uint Tick {};
-        string Text;
+        string Text {};
         uint Color {};
         bool Fade {};
         IRect Pos {};
@@ -308,13 +312,11 @@ private:
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) -> bool;
 
-    void ProcessItems();
-
-    void AddCritter(CritterHexView* cr);
+    void AddCritterInternal(CritterHexView* cr);
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
 
-    void AddItem(ItemHexView* item);
+    void AddItemInternal(ItemHexView* item);
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
 
@@ -324,7 +326,7 @@ private:
     void InitView(int cx, int cy);
     void ResizeView();
     auto ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
-    auto ProcessTileBorder(Field::Tile& tile, bool is_roof) -> bool;
+    auto ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool;
 
     // Lighting
     void PrepareLightToDraw();
@@ -337,38 +339,46 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
+    void OnWindowSizeChanged();
+
+    EventUnsubscriber _eventUnsubscriber {};
+
+    bool _mapperMode {};
+    ushort _maxHexX {};
+    ushort _maxHexY {};
+
     vector<CritterHexView*> _critters {};
     map<uint, CritterHexView*> _crittersMap {};
     vector<ItemHexView*> _items {};
     map<uint, ItemHexView*> _itemsMap {};
+
     vector<MapText> _mapTexts {};
 
-    SpriteVec _spritesPool {};
+    vector<Sprite*> _spritesPool {};
+    vector<Field> _hexField {};
+    vector<short> _findPathGrid {};
+
     Sprites _mainTree;
     Sprites _tilesTree;
     Sprites _roofTree;
-    ushort _maxHexX {};
-    ushort _maxHexY {};
-    Field* _hexField {};
-    char* _hexTrack {};
+
     AnyFrames* _picTrack1 {};
     AnyFrames* _picTrack2 {};
     AnyFrames* _picHexMask {};
+    AnyFrames* _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
-    AnyFrames* _picHex[3] {};
-    string _curDataPrefix {};
-    short* _findPathGrid {};
+
     int _curMapTime {-1};
     int _dayTime[4] {};
     uchar _dayColor[12] {};
-    bool _mapperMode {};
+
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
     RenderTarget* _rtFog {};
     uint _rtScreenOx {};
     uint _rtScreenOy {};
-    ViewField* _viewField {};
+
     int _screenHexX {};
     int _screenHexY {};
     int _hTop {};
@@ -377,23 +387,30 @@ private:
     int _wRight {};
     int _wVisible {};
     int _hVisible {};
+    vector<ViewField> _viewField {};
+
     short* _fogOffsX {};
     short* _fogOffsY {};
     short _fogLastOffsX {};
     short _fogLastOffsY {};
     bool _fogForceRerender {};
-    PrimitivePoints _fogLookPoints {};
-    PrimitivePoints _fogShootPoints {};
+    bool _rebuildFog {};
+    bool _drawLookBorders {true};
+    bool _drawShootBorders {};
+    vector<PrimitivePoint> _fogLookPoints {};
+    vector<PrimitivePoint> _fogShootPoints {};
+
     uint _critterContourCrId {};
-    int _critterContour {};
-    int _crittersContour {};
+    ContourType _critterContour {};
+    ContourType _crittersContour {};
 
     bool _requestRebuildLight {};
     bool _requestRenderLight {};
-    uchar* _hexLight {};
+    vector<uchar> _hexLight {};
+
     uint _lightPointsCount {};
-    vector<PrimitivePoints> _lightPoints {};
-    PrimitivePoints _lightSoftPoints {};
+    vector<vector<PrimitivePoint>> _lightPoints {};
+    vector<PrimitivePoint> _lightSoftPoints {};
     vector<LightSource> _lightSources {};
     vector<LightSource> _lightSourcesScen {};
     int _lightCapacity {};
@@ -404,13 +421,19 @@ private:
     int _lightProcentR {};
     int _lightProcentG {};
     int _lightProcentB {};
+
     int _roofSkip {};
+
     int _drawCursorX {};
     AnyFrames* _cursorPrePic {};
     AnyFrames* _cursorPostPic {};
     AnyFrames* _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
+
     set<hstring> _fastPids {};
     set<hstring> _ignorePids {};
+    vector<char> _hexTrack {};
+    vector<vector<MapTile>> _tilesField {};
+    vector<vector<MapTile>> _roofsField {};
 };

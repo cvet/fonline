@@ -44,7 +44,7 @@ class Item;
 class Critter;
 using StaticItem = Item;
 
-class Item final : public ServerEntity, public ItemProperties
+class Item final : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
     friend class ItemManager;
@@ -72,21 +72,19 @@ public:
     [[nodiscard]] auto ContIsItems() const -> bool;
 
     void EvaluateSortValue(const vector<Item*>& items);
-    void ChangeCount(int val);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(Walk, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnWalk, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+    ENTITY_EVENT(OnCheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
 
     bool ViewPlaceOnMap {};
-    ScriptFunc<bool, Critter*, StaticItem*, bool, int> SceneryScriptFunc {};
+    ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
 private:
     vector<Item*>* _childItems {};
-    bool _nonConstHelper {};
 };

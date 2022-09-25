@@ -41,25 +41,15 @@
 #include "Timer.h"
 #include "Version-Include.h"
 
+#if !FO_TESTING_APP
 #include "SDL_main.h"
+#endif
 
 struct MapperAppData
 {
     FOMapper* Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
-
-#if !FO_TESTING
-void ClientScriptSystem::InitNativeScripting()
-{
-}
-void ClientScriptSystem::InitAngelScriptScripting()
-{
-}
-void ClientScriptSystem::InitMonoScripting()
-{
-}
-#endif
 
 static void MapperEntry(void*)
 {
@@ -75,7 +65,7 @@ static void MapperEntry(void*)
 
         if (Data->Mapper == nullptr) {
             try {
-                Data->Mapper = new FOMapper(App->Settings);
+                Data->Mapper = new FOMapper(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -91,7 +81,7 @@ static void MapperEntry(void*)
     }
 }
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
@@ -101,6 +91,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         InitApp(argc, argv, "Mapper");
 
         WriteLog("Starting Mapper {}...", FO_GAME_VERSION);
+
+        if (App->Settings.HideNativeCursor) {
+            App->HideCursor();
+        }
 
 #if FO_IOS
         MapperEntry(nullptr);

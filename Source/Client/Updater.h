@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if !FO_SINGLEPLAYER
+
 #include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
@@ -46,7 +48,7 @@ class Updater final
 {
 public:
     Updater() = delete;
-    explicit Updater(GlobalSettings& settings);
+    explicit Updater(GlobalSettings& settings, AppWindow* window);
     Updater(const Updater&) = delete;
     Updater(Updater&&) noexcept = delete;
     auto operator=(const Updater&) = delete;
@@ -79,7 +81,6 @@ private:
     FileSystem _fileSys {};
     EffectManager _effectMngr;
     SpriteManager _sprMngr;
-    vector<vector<uchar>> _globalsPropertiesData {};
     double _startTick {};
     bool _aborted {};
     vector<string> _messages {};
@@ -88,4 +89,7 @@ private:
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     AnyFrames* _splashPic {};
+    vector<vector<uchar>> _globalsPropertiesData {};
 };
+
+#endif

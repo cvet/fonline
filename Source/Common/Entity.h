@@ -40,7 +40,7 @@
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView
-///@ ExportEntity Item Item ItemView HasProto HasStatics
+///@ ExportEntity Item Item ItemView HasProto HasStatics HasAbstract
 ///@ ExportEntity Critter Critter CritterView HasProto
 ///@ ExportEntity Map Map MapView HasProto
 ///@ ExportEntity Location Location LocationView HasProto
@@ -48,12 +48,12 @@
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline void Set##prop(prop_type value) { _propsRef.SetValue(GetProperty##prop(), value); } \
     inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; } \
     static ushort prop##_RegIndex
 
 #define ENTITY_EVENT(event_name, ...) \
-    EntityEvent<__VA_ARGS__> On##event_name { this, #event_name }
+    EntityEvent<__VA_ARGS__> event_name { this, #event_name }
 
 class EntityProperties
 {
@@ -93,6 +93,7 @@ public:
     {
         EventCallback Callback {};
         const void* SubscribtionPtr {};
+        std::function<void()> UnsubscribeCallback {};
         EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal}; // Todo: improve entity event Priority
         bool OneShot {}; // Todo: improve entity event OneShot
@@ -122,7 +123,7 @@ public:
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& properties_data);
     auto LoadFromText(const map<string, string>& key_values) -> bool;
-    void SetValueFromData(const Property* prop, const vector<uchar>& data);
+    void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
     void SetValueAsFloat(const Property* prop, float value);
@@ -132,8 +133,8 @@ public:
     void UnsubscribeAllEvent(const string& event_name);
     auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
 
-    void AddRef() const;
-    void Release() const;
+    void AddRef() const noexcept;
+    void Release() const noexcept;
 
     void MarkAsDestroying();
     virtual void MarkAsDestroyed();
@@ -164,9 +165,11 @@ class ProtoEntity : public Entity
 public:
     [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hstring;
-    [[nodiscard]] auto HaveComponent(hstring name) const -> bool;
-    [[nodiscard]] auto GetComponents() -> unordered_set<hstring>& { return _components; }
+    [[nodiscard]] auto HasComponent(hstring name) const -> bool;
+    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const -> bool;
     [[nodiscard]] auto GetComponents() const -> unordered_set<hstring> { return _components; }
+
+    void EnableComponent(hstring component);
 
     vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
@@ -177,9 +180,10 @@ protected:
 
     const hstring _protoId;
     unordered_set<hstring> _components {};
+    unordered_set<hstring::hash_t> _componentHashes {};
 };
 
-class EntityWithProto : public Entity
+class EntityWithProto
 {
 public:
     EntityWithProto() = delete;
@@ -188,13 +192,12 @@ public:
     auto operator=(const EntityWithProto&) = delete;
     auto operator=(EntityWithProto&&) noexcept = delete;
 
-    [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hstring;
     [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
 
 protected:
-    EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto);
-    ~EntityWithProto() override;
+    EntityWithProto(Entity* owner, const ProtoEntity* proto);
+    virtual ~EntityWithProto();
 
     const ProtoEntity* _proto;
 };
@@ -225,7 +228,7 @@ public:
     auto Fire(Args... args) -> bool
     {
         if (_callbacks == nullptr) {
-            return false;
+            return true;
         }
 
         const initializer_list<void*> args_list = {&args...};

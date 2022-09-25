@@ -32,220 +32,153 @@
 //
 
 #include "ScriptSystem.h"
+#include "Application.h"
 #include "EngineBase.h"
-#include "Log.h"
-#include "StringUtils.h"
-#include "Timer.h"
 
-ScriptSystem::ScriptSystem(GlobalSettings& settings) : _settings {settings}
+auto ScriptSystem::ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
 {
-}
-
-/*void ScriptSystem::UnloadScripts()
-{
-    for (asUINT i = 0, j = asEngine->GetModuleCount(); i < j; i++)
-    {
-        asIScriptModule* module = asEngine->GetModuleByIndex(i);
-        int result = module->ResetGlobalVars();
-        if (result < 0)
-            WriteLog("Reset global vars fail, module '{}', error {}", module->GetName(), result);
-        result = module->UnbindAllImportedFunctions();
-        if (result < 0)
-            WriteLog("Unbind fail, module '{}', error {}", module->GetName(), result);
-    }
-
-    while (asEngine->GetModuleCount() > 0)
-        asEngine->GetModuleByIndex(0)->Discard();
-}
-
-bool ScriptSystem::ReloadScripts(string_view target)
-{
-    WriteLog("Reload scripts...");
-
-    ScriptSystem::UnloadScripts();
-
-    // Combine scripts
-    FileCollection fos_files = fileMngr.FilterFiles("fos");
-    int file_index = 0;
-    int errors = 0;
-    ScriptEntryVec scripts;
-    while (fos_files.MoveNext())
-    {
-        File file = fos_files.GetCurFile();
-        if (!file)
-        {
-            WriteLog("Unable to open file '{}'", file.GetName());
-            errors++;
-            continue;
-        }
-
-        // Get first line
-        string line = file.GetNonEmptyLine();
-        if (line.empty())
-        {
-            WriteLog("Error in script '{}', file empty", file.GetName());
-            errors++;
-            continue;
-        }
-
-        // Check signature
-        if (line.find("FOS") == string::npos)
-        {
-            WriteLog("Error in script '{}', invalid header '{}'", file.GetName(), line);
-            errors++;
-            continue;
-        }
-
-        // Skip different targets
-        if (line.find(target) == string::npos && line.find("Common") == string::npos)
-            continue;
-
-        // Sort value
-        int sort_value = 0;
-        string sort_str = _str(line).substringAfter("Sort ");
-        if (!sort_str.empty())
-            sort_value = _str(sort_str).toInt();
-
-        // Append
-        ScriptEntry entry;
-        entry.Name = file.GetName();
-        entry.Path = file.GetPath();
-        entry.Content = _str("namespace {}{{{}\n}}\n", file.GetName(), file.GetStr());
-        entry.SortValue = sort_value;
-        entry.SortValueExt = ++file_index;
-        scripts.push_back(entry);
-    }
-    if (errors)
-        return false;
-
-    std::sort(scripts.begin(), scripts.end(), [](ScriptEntry& a, ScriptEntry& b) {
-        if (a.SortValue == b.SortValue)
-            return a.SortValueExt < b.SortValueExt;
-        return a.SortValue < b.SortValue;
-    });
-    if (scripts.empty())
-    {
-        WriteLog("No scripts found");
+    if (!gen_func.CallSupported) {
         return false;
     }
 
-    // Build
-    string result_code;
-    if (!LoadRootModule(scripts, result_code))
-    {
-        WriteLog("Load scripts from files fail");
+    if (gen_func.RetType != ret_type) {
+        return false;
+    }
+    if (gen_func.ArgsType.size() != args_type.size()) {
         return false;
     }
 
-    // Cache enums
-    CacheEnumValues();
+    size_t index = 0;
+    for (const auto* arg_type : args_type) {
+        if (arg_type != gen_func.ArgsType[index]) {
+            return false;
+        }
+        ++index;
+    }
 
-    // Done
-    WriteLog("Reload scripts complete");
     return true;
 }
 
-void ScriptSystem::RunModuleInitFunctions()
+void ScriptSystem::InitModules()
 {
-}
+    NON_CONST_METHOD_HINT();
 
-void ScriptSystem::CreateContext()
-{
-    asIScriptContext* ctx = asEngine->CreateContext();
-    RUNTIME_ASSERT(ctx);
-
-    int r = ctx->SetExceptionCallback(
-        asMETHODPR(ScriptSystem, CallbackException, (asIScriptContext*, void*), void), this, asCALL_THISCALL);
-    RUNTIME_ASSERT(r >= 0);
-
-    ContextData* ctx_data = new ContextData();
-    memzero(ctx_data, sizeof(ContextData));
-    ctx->SetUserData(ctx_data);
-
-    freeContexts.push_back(ctx);
-}
-
-void ScriptSystem::FinishContext(asIScriptContext* ctx)
-{
-    auto it = std::find(freeContexts.begin(), freeContexts.end(), ctx);
-    RUNTIME_ASSERT(it != freeContexts.end());
-    freeContexts.erase(it);
-
-    delete (ContextData*)ctx->GetUserData();
-    ctx->Release();
-    ctx = nullptr;
-}
-
-asIScriptContext* ScriptSystem::RequestContext()
-{
-    if (freeContexts.empty())
-        CreateContext();
-
-    asIScriptContext* ctx = freeContexts.back();
-    freeContexts.pop_back();
-    busyContexts.push_back(ctx);
-    return ctx;
-}
-
-void ScriptSystem::ReturnContext(asIScriptContext* ctx)
-{
-    auto it = std::find(busyContexts.begin(), busyContexts.end(), ctx);
-    RUNTIME_ASSERT(it != busyContexts.end());
-    busyContexts.erase(it);
-    freeContexts.push_back(ctx);
-
-    ContextData* ctx_data = (ContextData*)ctx->GetUserData();
-    for (uint i = 0; i < ctx_data->EntityArgsCount; i++)
-        ctx_data->EntityArgs[i]->Release();
-    memzero(ctx_data, sizeof(ContextData));
-}
-
-void ScriptSystem::SetExceptionCallback(ExceptionCallback callback)
-{
-    onException = callback;
-}
-
-void ScriptSystem::RaiseException(string_view message)
-{
-    asIScriptContext* ctx = asGetActiveContext();
-    if (ctx && ctx->GetState() == asEXECUTION_EXCEPTION)
-        return;
-
-    if (ctx)
-        ctx->SetException(message.c_str());
-    else
-        HandleException(nullptr, _str("{}", "Engine exception: {}\n", message));
-}
-
-void ScriptSystem::PassException()
-{
-    RaiseException("Pass");
-}
-
-void ScriptSystem::HandleException(asIScriptContext* ctx, string_view message)
-{
-    string buf = message;
-
-    if (ctx)
-    {
-        buf += "\n";
-
-        asIScriptContext* ctx_ = ctx;
-        while (ctx_)
-        {
-            buf += MakeContextTraceback(ctx_);
-            ContextData* ctx_data = (ContextData*)ctx_->GetUserData();
-            ctx_ = ctx_data->Parent;
+    for (const auto* func : _initFunc) {
+        if (!func->Call({}, nullptr)) {
+            throw ScriptSystemException("Module initialization failed");
         }
     }
-
-    WriteLog("{}", buf);
-
-    if (onException)
-        onException(buf);
 }
 
-string ScriptSystem::GetTraceback()
+void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
+{
+    const auto it = _rpcReceivers.find(rpc_num);
+    if (it == _rpcReceivers.end()) {
+        throw ScriptException("Invalid remote call", rpc_num);
+    }
+
+    it->second(entity);
+}
+
+void ScriptSystem::Process()
+{
+    NON_CONST_METHOD_HINT();
+
+    for (auto&& callback : _loopCallbacks) {
+        try {
+            callback();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+    }
+}
+
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
+{
+    const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
+    RUNTIME_ASSERT(prop_reg);
+    const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
+    if (prop == nullptr) {
+        throw ScriptException("Invalid property index", class_name, prop_index);
+    }
+    if (prop->IsDisabled()) {
+        throw ScriptException("Property is disabled", class_name, prop_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property is not plain data", class_name, prop_index);
+    }
+    return prop;
+}
+
+// Todo: remove commented code
+/*
+public:
+void RunModuleInitFunctions();
+
+string GetDeferredCallsStatistics();
+void ProcessDeferredCalls();
+/ *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    bool LoadDeferredCalls();
+#endif* /
+
+StrVec GetCustomEntityTypes();
+/ *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    bool RestoreCustomEntity(string_view type_name, uint id, const DataBase::Document& doc);
+#endif* /
+
+void RemoveEventsEntity(Entity* entity);
+
+void HandleRpc(void* context);
+
+string GetActiveFuncName();
+
+uint BindByFuncName(string_view func_name, string_view decl, bool is_temp, bool disable_log = false);
+// uint BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log = false);
+uint BindByFuncNum(hash func_num, bool is_temp, bool disable_log = false);
+// asIScriptFunction* GetBindFunc(uint bind_id);
+string GetBindFuncName(uint bind_id);
+
+// hash GetFuncNum(asIScriptFunction* func);
+// asIScriptFunction* FindFunc(hash func_num);
+hash BindScriptFuncNumByFuncName(string_view func_name, string_view decl);
+// hash BindScriptFuncNumByFunc(asIScriptFunction* func);
+uint GetScriptFuncBindId(hash func_num);
+void PrepareScriptFuncContext(hash func_num, string_view ctx_info);
+
+void CacheEnumValues();
+
+void PrepareContext(uint bind_id, string_view ctx_info);
+void SetArgUChar(uchar value);
+void SetArgUShort(ushort value);
+void SetArgUInt(uint value);
+void SetArgUInt64(uint64 value);
+void SetArgBool(bool value);
+void SetArgFloat(float value);
+void SetArgDouble(double value);
+void SetArgObject(void* value);
+void SetArgEntity(Entity* value);
+void SetArgAddress(void* value);
+bool RunPrepared();
+void RunPreparedSuspend();
+// asIScriptContext* SuspendCurrentContext(uint time);
+// void ResumeContext(asIScriptContext* ctx);
+void RunSuspended();
+void RunMandatorySuspended();
+// bool CheckContextEntities(asIScriptContext* ctx);
+uint GetReturnedUInt();
+bool GetReturnedBool();
+void* GetReturnedObject();
+float GetReturnedFloat();
+double GetReturnedDouble();
+void* GetReturnedRawAddress();
+
+private:
+HashIntMap scriptFuncBinds {}; // Func Num -> Bind Id
+StrIntMap cachedEnums {};
+map<string, IntStrMap> cachedEnumNames {};*/
+
+/*string ScriptSystem::GetTraceback()
 {
     string result = "";
     ContextVec contexts = busyContexts;
@@ -302,313 +235,6 @@ string ScriptSystem::MakeContextTraceback(asIScriptContext* ctx)
     }
 
     return result;
-}
-
-asIScriptEngine* ScriptSystem::GetEngine()
-{
-    return asEngine;
-}
-
-const Pragmas& ScriptSystem::GetProcessedPragmas()
-{
-    return pragmaCB->GetProcessedPragmas();
-}
-
-ScriptInvoker* ScriptSystem::GetInvoker()
-{
-    return invoker;
-}
-
-string ScriptSystem::GetDeferredCallsStatistics()
-{
-    return invoker->GetStatistics();
-}
-
-void ScriptSystem::ProcessDeferredCalls()
-{
-    invoker->Process();
-}
-
-/ *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-bool ScriptSystem::LoadDeferredCalls()
-{
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    return edata->Invoker->LoadDeferredCalls();
-}
-#endif* /
-
-StrVec ScriptSystem::GetCustomEntityTypes()
-{
-    return pragmaCB->GetCustomEntityTypes();
-}
-
-/ *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-bool ScriptSystem::RestoreCustomEntity(string_view type_name, uint id, const DataBase::Document& doc)
-{
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    return edata->PragmaCB->RestoreCustomEntity(type_name, id, doc);
-}
-#endif* /
-
-EventData* ScriptSystem::FindInternalEvent(string_view event_name)
-{
-    EventData* ev_data = new EventData;
-    memzero(ev_data, sizeof(EventData));
-
-    void* as_event = pragmaCB->FindInternalEvent(event_name);
-    RUNTIME_ASSERT(as_event);
-    ev_data->ASEvent = as_event;
-    return ev_data;
-}
-
-bool ScriptSystem::RaiseInternalEvent(EventData* ev_data, ...)
-{
-    va_list args;
-    va_start(args, ev_data);
-    bool result = pragmaCB->RaiseInternalEvent(ev_data->ASEvent, args);
-    va_end(args);
-    return result;
-}
-
-void ScriptSystem::RemoveEventsEntity(Entity* entity)
-{
-    pragmaCB->RemoveEventsEntity(entity);
-}
-
-void ScriptSystem::HandleRpc(void* context)
-{
-    pragmaCB->HandleRpc(context);
-}
-
-string ScriptSystem::GetActiveFuncName()
-{
-    asIScriptContext* ctx = asGetActiveContext();
-    if (!ctx)
-        return "";
-    asIScriptFunction* func = ctx->GetFunction(0);
-    if (!func)
-        return "";
-    return func->GetName();
-}
-
-void ScriptSystem::Define(string_view define)
-{
-    Preprocessor::Define(define);
-}
-
-void ScriptSystem::Undef(string_view define)
-{
-    if (!define.empty())
-        Preprocessor::Undef(define);
-    else
-        Preprocessor::UndefAll();
-}
-
-void ScriptSystem::CallPragmas(const Pragmas& pragmas)
-{
-    Preprocessor::SetPragmaCallback(pragmaCB);
-
-    for (size_t i = 0; i < pragmas.size(); i++)
-        Preprocessor::CallPragma(pragmas[i]);
-}
-
-bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
-{
-    RUNTIME_ASSERT(asEngine->GetModuleCount() == 0);
-
-    Preprocessor::SetPragmaCallback(pragmaCB);
-
-    class MemoryFileLoader : public Preprocessor::FileLoader
-    {
-        string* rootScript;
-        ScriptEntryVec includeScripts;
-        int includeDeep;
-
-    public:
-        MemoryFileLoader(string& root, const ScriptEntryVec& scripts) :
-            rootScript(&root), includeScripts(scripts), includeDeep(0)
-        {
-        }
-        virtual ~MemoryFileLoader() = default;
-
-        virtual bool LoadFile(string_view dir, string_view file_name, std::vector<char>& data,
-            std::string& file_path) override
-        {
-            if (rootScript)
-            {
-                data.resize(rootScript->length());
-                std::memcpy(&data[0], rootScript->c_str(), rootScript->length());
-                rootScript = nullptr;
-                file_path = "(Root)";
-                return true;
-            }
-
-            includeDeep++;
-            RUNTIME_ASSERT(includeDeep <= 1);
-
-            if (includeDeep == 1 && !includeScripts.empty())
-            {
-                data.resize(includeScripts.front().Content.length());
-                std::memcpy(&data[0], includeScripts.front().Content.c_str(), includeScripts.front().Content.length());
-                file_path = includeScripts.front().Name;
-                includeScripts.erase(includeScripts.begin());
-                return true;
-            }
-
-            bool loaded = Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
-            if (loaded)
-            {
-                file_path = includeScripts.front().Path;
-                DiskFileSystem::ResolvePath(file_path);
-            }
-            return loaded;
-        }
-
-        virtual void FileLoaded() override { includeDeep--; }
-    };
-
-    // Make Root scripts
-    string root;
-    for (auto& script : scripts)
-        root += _str("#include \"{}\"\n", script.Name);
-
-    // Set preprocessor defines from command line
-    StrMap config; // Todo: fill settings to scripts
-    // const StrMap& config = MainConfig->GetApp("");
-    for (auto& kv : config)
-    {
-        if (kv.first.length() > 2 && kv.first[0] == '-' && kv.first[1] == '-')
-            Preprocessor::Define(kv.first.substr(2));
-    }
-
-    // Preprocess
-    MemoryFileLoader loader(root, scripts);
-    Preprocessor::StringOutStream result, errors;
-    int errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
-
-    if (errors.String != "")
-    {
-        while (errors.String[errors.String.length() - 1] == '\n')
-            errors.String.pop_back();
-        WriteLog("Preprocessor message '{}'", errors.String);
-    }
-
-    if (errors_count)
-    {
-        WriteLog("Unable to preprocess");
-        return false;
-    }
-
-    // Set global properties from command line
-    for (auto& kv : config)
-    {
-        // Skip defines
-        if (kv.first.length() > 2 && kv.first[0] == '-' && kv.first[1] == '-')
-            continue;
-
-        // Find property, with prefix and without
-        int index = asEngine->GetGlobalPropertyIndexByName(("__" + kv.first).c_str());
-        if (index < 0)
-        {
-            index = asEngine->GetGlobalPropertyIndexByName(kv.first.c_str());
-            if (index < 0)
-                continue;
-        }
-
-        int type_id;
-        void* ptr;
-        int r = asEngine->GetGlobalPropertyByIndex(index, nullptr, nullptr, &type_id, nullptr, nullptr, &ptr, nullptr);
-        RUNTIME_ASSERT(r >= 0);
-
-        // Try set value
-        asITypeInfo* obj_type = (type_id & asTYPEID_MASK_OBJECT ? asEngine->GetTypeInfoById(type_id) : nullptr);
-        bool is_hashes[] = {false, false, false, false};
-        uchar pod_buf[8];
-        bool is_error = false;
-        void* value = ReadValue(kv.second.c_str(), type_id, obj_type, is_hashes, 0, pod_buf, is_error);
-        if (!is_error)
-        {
-            if (!obj_type)
-            {
-                std::memcpy(ptr, value, asEngine->GetSizeOfPrimitiveType(type_id));
-            }
-            else if (type_id & asTYPEID_OBJHANDLE)
-            {
-                if (*(void**)ptr)
-                    asEngine->ReleaseScriptObject(*(void**)ptr, obj_type);
-                *(void**)ptr = value;
-            }
-            else
-            {
-                asEngine->AssignScriptObject(ptr, value, obj_type);
-                asEngine->ReleaseScriptObject(value, obj_type);
-            }
-        }
-    }
-
-    // Add new
-    asIScriptModule* module = asEngine->GetModule("Root", asGM_ALWAYS_CREATE);
-    if (!module)
-    {
-        WriteLog("Create 'Root' module fail");
-        return false;
-    }
-
-    // Store line number translator
-    Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
-    UCharVec lnt_data;
-    Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
-    module->SetUserData(lnt);
-
-    // Add single script section
-    int as_result = module->AddScriptSection("Root", result.String.c_str());
-    if (as_result < 0)
-    {
-        WriteLog("Unable to add script section, result {}", as_result);
-        module->Discard();
-        return false;
-    }
-
-    // Build module
-    as_result = module->Build();
-    if (as_result < 0)
-    {
-        WriteLog("Unable to build module, result {}", as_result);
-        module->Discard();
-        return false;
-    }
-
-    result_code = result.String;
-    return true;
-}
-
-bool ScriptSystem::RestoreRootModule(const UCharVec& bytecode, const UCharVec& lnt_data)
-{
-    RUNTIME_ASSERT(asEngine->GetModuleCount() == 0);
-    RUNTIME_ASSERT(!bytecode.empty());
-    RUNTIME_ASSERT(!lnt_data.empty());
-
-    asIScriptModule* module = asEngine->GetModule("Root", asGM_ALWAYS_CREATE);
-    if (!module)
-    {
-        WriteLog("Create 'Root' module fail");
-        return false;
-    }
-
-    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
-    module->SetUserData(lnt);
-
-    CBytecodeStream binary;
-    binary.Write(&bytecode[0], (asUINT)bytecode.size());
-    int result = module->LoadByteCode(&binary);
-    if (result < 0)
-    {
-        WriteLog("Can't load binary, result {}", result);
-        module->Discard();
-        return false;
-    }
-
-    return true;
 }
 
 uint ScriptSystem::BindByFuncName(
@@ -1163,95 +789,4 @@ bool ScriptSystem::CheckContextEntities(asIScriptContext* ctx)
             return false;
     return true;
 }
-
-uint ScriptSystem::GetReturnedUInt()
-{
-    return *(uint*)retValue;
-}
-
-bool ScriptSystem::GetReturnedBool()
-{
-    return *(bool*)retValue;
-}
-
-void* ScriptSystem::GetReturnedObject()
-{
-    return *(void**)retValue;
-}
-
-float ScriptSystem::GetReturnedFloat()
-{
-    return *(float*)retValue;
-}
-
-double ScriptSystem::GetReturnedDouble()
-{
-    return *(double*)retValue;
-}
-
-void* ScriptSystem::GetReturnedRawAddress()
-{
-    return retValue;
-}
-
-void ScriptSystem::Log(string_view str)
-{
-    asIScriptContext* ctx = asGetActiveContext();
-    if (!ctx)
-    {
-        WriteLog("<unknown> : {}", str);
-        return;
-    }
-    asIScriptFunction* func = ctx->GetFunction(0);
-    if (!func)
-    {
-        WriteLog("<unknown> : {}", str);
-        return;
-    }
-
-    int line = ctx->GetLineNumber(0);
-    Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*)func->GetModule()->GetUserData();
-    WriteLog("{} : {}", Preprocessor::ResolveOriginalFile(line, lnt), str);
-}
-
-void ScriptSystem::CallbackMessage(const asSMessageInfo* msg, void* param)
-{
-    const char* type = "Error";
-    if (msg->type == asMSGTYPE_WARNING)
-        type = "Warning";
-    else if (msg->type == asMSGTYPE_INFORMATION)
-        type = "Info";
-
-    WriteLog("{} : {} : {} : Line {}", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message,
-        Preprocessor::ResolveOriginalLine(msg->row));
-}
-
-void ScriptSystem::CallbackException(asIScriptContext* ctx, void* param)
-{
-    string str = ctx->GetExceptionString();
-    if (str != "Pass")
-        HandleException(ctx, _str("Script exception: {}{}", str, !_str(str).endsWith('.') ? "." : ""));
-}
-
-CScriptArray* ScriptSystem::CreateArray(string_view type)
-{
-    return CScriptArray::Create(asEngine->GetTypeInfoById(asEngine->GetTypeIdByDecl(type.c_str())));
-}
 */
-
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
-{
-    const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
-    RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
-    if (prop == nullptr) {
-        throw ScriptException("Invalid property index", class_name, prop_index);
-    }
-    if (!prop->IsReadable()) {
-        throw ScriptException("Property is not readable", class_name, prop_index);
-    }
-    if (!prop->IsPlainData()) {
-        throw ScriptException("Property is not plain data", class_name, prop_index);
-    }
-    return prop;
-}

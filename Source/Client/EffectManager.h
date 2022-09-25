@@ -96,7 +96,7 @@ public:
     auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    [[nodiscard]] auto LoadEffect(EffectUsage usage, string_view name, string_view defines, string_view base_path) -> RenderEffect*;
+    [[nodiscard]] auto LoadEffect(EffectUsage usage, string_view name, string_view base_path) -> RenderEffect*;
 
     void LoadMinimalEffects();
     void LoadDefaultEffects();

@@ -32,6 +32,7 @@
 //
 
 #include "ImageBaker.h"
+#include "Application.h"
 #include "F2Palette-Include.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
@@ -45,7 +46,7 @@
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
 static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*;
 
-ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files) : _settings {settings}, _allFiles {all_files}
+ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
 {
     // Swap palette R&B
     // Todo: swap colors of fo palette once in header
@@ -57,42 +58,24 @@ ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files) : 
     });
 }
 
-void ImageBaker::AutoBakeImages()
+void ImageBaker::AutoBake()
 {
     _errors = 0;
 
-    using namespace std::placeholders;
-    ProcessImages("fofrm", std::bind(&ImageBaker::LoadFofrm, this, _1, _2, _3));
-    ProcessImages("frm", std::bind(&ImageBaker::LoadFrm, this, _1, _2, _3));
-    ProcessImages("fr0", std::bind(&ImageBaker::LoadFrX, this, _1, _2, _3));
-    ProcessImages("rix", std::bind(&ImageBaker::LoadRix, this, _1, _2, _3));
-    ProcessImages("art", std::bind(&ImageBaker::LoadArt, this, _1, _2, _3));
-    ProcessImages("zar", std::bind(&ImageBaker::LoadZar, this, _1, _2, _3));
-    ProcessImages("til", std::bind(&ImageBaker::LoadTil, this, _1, _2, _3));
-    ProcessImages("mos", std::bind(&ImageBaker::LoadMos, this, _1, _2, _3));
-    ProcessImages("bam", std::bind(&ImageBaker::LoadBam, this, _1, _2, _3));
-    ProcessImages("png", std::bind(&ImageBaker::LoadPng, this, _1, _2, _3));
-    ProcessImages("tga", std::bind(&ImageBaker::LoadTga, this, _1, _2, _3));
+    ProcessImages("fofrm", [this](string_view fname, string_view opt, File& file) { return LoadFofrm(fname, opt, file); });
+    ProcessImages("frm", [this](string_view fname, string_view opt, File& file) { return LoadFrm(fname, opt, file); });
+    ProcessImages("fr0", [this](string_view fname, string_view opt, File& file) { return LoadFrX(fname, opt, file); });
+    ProcessImages("rix", [this](string_view fname, string_view opt, File& file) { return LoadRix(fname, opt, file); });
+    ProcessImages("art", [this](string_view fname, string_view opt, File& file) { return LoadArt(fname, opt, file); });
+    ProcessImages("zar", [this](string_view fname, string_view opt, File& file) { return LoadZar(fname, opt, file); });
+    ProcessImages("til", [this](string_view fname, string_view opt, File& file) { return LoadTil(fname, opt, file); });
+    ProcessImages("mos", [this](string_view fname, string_view opt, File& file) { return LoadMos(fname, opt, file); });
+    ProcessImages("bam", [this](string_view fname, string_view opt, File& file) { return LoadBam(fname, opt, file); });
+    ProcessImages("png", [this](string_view fname, string_view opt, File& file) { return LoadPng(fname, opt, file); });
+    ProcessImages("tga", [this](string_view fname, string_view opt, File& file) { return LoadTga(fname, opt, file); });
 
     if (_errors > 0) {
         throw ImageBakerException("Errors during images bakering", _errors);
-    }
-}
-
-void ImageBaker::BakeImage(string_view fname_with_opt)
-{
-    if (_bakedFiles.count(string(fname_with_opt)) != 0u) {
-        return;
-    }
-
-    const auto collection = LoadAny(fname_with_opt);
-    BakeCollection(fname_with_opt, collection);
-}
-
-void ImageBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
-{
-    for (auto&& [name, data] : _bakedFiles) {
-        baked_files.emplace(name, data);
     }
 }
 
@@ -101,12 +84,13 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
-            continue;
-        }
 
         string ext = _str(file_header.GetPath()).getFileExtension();
         if (target_ext != ext) {
+            continue;
+        }
+
+        if (!_bakeChecker(file_header)) {
             continue;
         }
 
@@ -129,15 +113,13 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 
 void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection)
 {
-    RUNTIME_ASSERT(!_bakedFiles.count(string(fname)));
-
     vector<uchar> data;
     auto writer = DataWriter(data);
 
-    const auto check_number = static_cast<ushort>(42);
+    constexpr auto check_number = static_cast<uchar>(42);
     const auto dirs = static_cast<uchar>(collection.HaveDirs ? _settings.MapDirCount : 1);
 
-    writer.Write<ushort>(check_number);
+    writer.Write<uchar>(check_number);
     writer.Write<ushort>(collection.SequenceSize);
     writer.Write<ushort>(collection.AnimTicks);
     writer.Write<uchar>(dirs);
@@ -164,13 +146,13 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
         }
     }
 
-    writer.Write<ushort>(check_number);
+    writer.Write<uchar>(check_number);
 
     if (!collection.NewExtension.empty()) {
-        _bakedFiles.emplace(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), std::move(data));
+        _writeData(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), data);
     }
     else {
-        _bakedFiles.emplace(fname, std::move(data));
+        _writeData(fname, data);
     }
 }
 
@@ -251,7 +233,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
     FrameCollection collection;
 
     // Load ini parser
-    ConfigFile fofrm(file.GetStr(), nullptr);
+    ConfigFile fofrm(file.GetPath(), file.GetStr());
 
     auto frm_fps = fofrm.GetInt("", "fps", 0);
     if (frm_fps <= 0) {
@@ -273,7 +255,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         sub_collections.reserve(10);
 
         string dir_str = _str("dir_{}", dir);
-        if (!fofrm.IsApp(dir_str)) {
+        if (!fofrm.HasSection(dir_str)) {
             dir_str = "";
         }
 

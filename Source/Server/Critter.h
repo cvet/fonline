@@ -40,40 +40,18 @@
 #include "EntityProtos.h"
 #include "ServerEntity.h"
 
-struct PathStep
-{
-    ushort HexX {};
-    ushort HexY {};
-    uint MoveParams {};
-    uchar Dir {};
-};
-
 class Player;
 class MapManager;
 class Item;
 class Map;
 class Location;
 
-class Critter final : public ServerEntity, public CritterProperties
+class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
     friend class Player;
     friend class CritterManager;
 
 public:
-    struct MovingData
-    {
-        MovingState State {MovingState::Success};
-        uint TargId {};
-        ushort HexX {};
-        ushort HexY {};
-        uint Cut {};
-        bool IsRun {};
-        vector<PathStep> Steps {};
-        uint Iter {};
-        uint Trace {};
-        uint GagEntityId {};
-    };
-
     Critter() = delete;
     Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto);
     Critter(const Critter&) = delete;
@@ -82,12 +60,12 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
-    [[nodiscard]] auto IsPlayer() const -> bool { return _player != nullptr || _playerDetached; } // Todo: rename to IsOwnedByPlayer
-    [[nodiscard]] auto IsNpc() const -> bool { return _player == nullptr && !_playerDetached; } // Todo: replace to !IsOwnedByPlayer
+    [[nodiscard]] auto GetStorageName() const -> string_view override;
+    [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _player != nullptr || _playerDetached; }
+    [[nodiscard]] auto IsNpc() const -> bool { return !IsOwnedByPlayer(); }
     [[nodiscard]] auto GetOwner() const -> const Player* { return _player; }
     [[nodiscard]] auto GetOwner() -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> uint;
-    [[nodiscard]] auto GetAttackDist(Item* weap, uchar use) -> uint;
     [[nodiscard]] auto IsAlive() const -> bool;
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
@@ -112,6 +90,7 @@ public:
     [[nodiscard]] auto IsTalkedPlayers() const -> bool;
     [[nodiscard]] auto GetBarterPlayers() const -> uint;
     [[nodiscard]] auto IsFreeToTalk() const -> bool;
+    [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
 
     auto AddCrIntoVisVec(Critter* add_cr) -> bool;
     auto DelCrFromVisVec(Critter* del_cr) -> bool;
@@ -127,15 +106,18 @@ public:
 
     void DetachPlayer();
     void AttachPlayer(Player* owner);
+    void ClearMove();
     void ClearVisible();
     void SetItem(Item* item);
+    void ChangeDir(uchar dir);
+    void ChangeDirAngle(int dir_angle);
 
     void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
-    void Broadcast_Move(uint move_params);
+    void Broadcast_Move();
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
     void Broadcast_Dir();
-    void Broadcast_CustomCommand(ushort num_param, int val);
+    void Broadcast_Teleport(ushort to_hx, ushort to_hy);
 
     void SendAndBroadcast_Action(int action, int action_ext, Item* item);
     void SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot);
@@ -146,24 +128,24 @@ public:
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
     void Send_Property(NetProperty type, const Property* prop, ServerEntity* entity);
-    void Send_Move(Critter* from_cr, uint move_params);
+    void Send_Move(Critter* from_cr);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
     void Send_RemoveCritter(Critter* cr);
-    void Send_LoadMap(Map* map, MapManager& map_mngr);
+    void Send_LoadMap(Map* map);
     void Send_Position(Critter* cr);
     void Send_AddItemOnMap(Item* item);
     void Send_EraseItemFromMap(Item* item);
     void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void Send_AddItem(Item* item);
     void Send_EraseItem(Item* item);
-    void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
+    void Send_GlobalInfo(uchar flags);
     void Send_GlobalLocation(Location* loc, bool add);
     void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
-    void Send_CustomCommand(Critter* cr, ushort cmd, int val);
+    void Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy);
     void Send_AllProperties();
     void Send_Talk();
-    void Send_GameInfo(Map* map);
+    void Send_TimeSync();
     void Send_Text(Critter* from_cr, string_view text, uchar how_say);
     void Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text);
     void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
@@ -174,7 +156,6 @@ public:
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
-    void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
     void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
@@ -183,66 +164,69 @@ public:
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
     void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);
     void Send_ViewMap();
-    void Send_SomeItem(Item* item);
-    void Send_CustomMessage(uint msg);
+    void Send_PlaceToGameComplete();
     void Send_AddAllItems();
-    void Send_AllAutomapsInfo(MapManager& map_mngr);
+    void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(Idle);
+    ENTITY_EVENT(OnIdle);
     ///@ ExportEvent
-    ENTITY_EVENT(CheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMoved, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnItemMoved, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppeared, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppearedDist1, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppearedDist1, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppearedDist2, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppearedDist2, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppearedDist3, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppearedDist3, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappeared, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappeared, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappearedDist1, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappearedDist1, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappearedDist2, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappearedDist2, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappearedDist3, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
+    ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
+    ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapChanged, Item* /*item*/);
+    ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Talk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Barter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapIdle);
+    ENTITY_EVENT(OnGlobalMapIdle);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapIn);
+    ENTITY_EVENT(OnGlobalMapIn);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapOut);
+    ENTITY_EVENT(OnGlobalMapOut);
 
-    uint Flags {}; // Todo: move Flags to properties
-    string Name {};
-    bool IsRunning {};
     int LockMapTransfers {};
     uint AllowedToDownloadMap {};
     vector<Critter*> VisCr {};
     vector<Critter*> VisCrSelf {};
-    map<uint, Critter*> VisCrMap {};
-    map<uint, Critter*> VisCrSelfMap {};
-    set<uint> VisCr1 {};
-    set<uint> VisCr2 {};
-    set<uint> VisCr3 {};
-    set<uint> VisItem {};
+    unordered_map<uint, Critter*> VisCrMap {};
+    unordered_map<uint, Critter*> VisCrSelfMap {};
+    unordered_set<uint> VisCr1 {};
+    unordered_set<uint> VisCr2 {};
+    unordered_set<uint> VisCr3 {};
+    unordered_set<uint> VisItem {};
+
+    uint CacheValuesNextTick {};
+    uint LookCacheValue {};
+    vector<Critter*>* GlobalMapGroup {};
+    uint RadioMessageSended {};
+    TalkData Talk {}; // Todo: incapsulate Critter::Talk
+
     uint ViewMapId {};
     hstring ViewMapPid {};
     ushort ViewMapLook {};
@@ -251,12 +235,37 @@ public:
     uchar ViewMapDir {};
     uint ViewMapLocId {};
     uint ViewMapLocEnt {};
-    MovingData Moving {};
-    uint CacheValuesNextTick {};
-    uint LookCacheValue {};
-    vector<Critter*>* GlobalMapGroup {};
-    uint RadioMessageSended {};
-    TalkData Talk {}; // Todo: incapsulate Critter::Talk
+
+    struct
+    {
+        MovingState State {MovingState::Success};
+        uint TargId {};
+        ushort HexX {};
+        ushort HexY {};
+        uint Cut {};
+        bool IsRun {};
+        uint TraceDist {};
+        uint GagEntityId {};
+    } TargetMoving {};
+
+    struct
+    {
+        bool IsRunning {};
+        uint Uid {};
+        vector<uchar> Steps {};
+        vector<ushort> ControlSteps {};
+        uint StartTick {};
+        ushort StartHexX {};
+        ushort StartHexY {};
+        ushort EndHexX {};
+        ushort EndHexY {};
+        float WholeTime {};
+        float WholeDist {};
+        short StartOx {};
+        short StartOy {};
+        short EndOx {};
+        short EndOy {};
+    } Moving {};
 
 private:
     Player* _player {};

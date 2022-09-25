@@ -73,6 +73,16 @@ auto ClientConnection::IsGracefulDisconnected() const -> bool
     return _gracefulDisconnected;
 }
 
+auto ClientConnection::IsWebConnection() const -> bool
+{
+    return _netConnection->IsWebConnection();
+}
+
+auto ClientConnection::IsInterthreadConnection() const -> bool
+{
+    return _netConnection->IsInterthreadConnection();
+}
+
 void ClientConnection::DisableCompression()
 {
     NON_CONST_METHOD_HINT();
@@ -100,38 +110,5 @@ void ClientConnection::GracefulDisconnect()
 
     CONNECTION_OUTPUT_BEGIN(this);
     Bout << NETMSG_DISCONNECT;
-    CONNECTION_OUTPUT_END(this);
-}
-
-void ClientConnection::Send_CustomMessage(uint msg)
-{
-    CONNECTION_OUTPUT_BEGIN(this);
-    Bout << msg;
-    CONNECTION_OUTPUT_END(this);
-}
-
-void ClientConnection::Send_TextMsg(uint num_str)
-{
-    CONNECTION_OUTPUT_BEGIN(this);
-    Bout << NETMSG_MSG;
-    Bout << static_cast<uint>(0);
-    Bout << static_cast<uchar>(SAY_NETMSG);
-    Bout << static_cast<ushort>(TEXTMSG_GAME);
-    Bout << num_str;
-    CONNECTION_OUTPUT_END(this);
-}
-
-void ClientConnection::Send_TextMsgLex(uint num_str, string_view lexems)
-{
-    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
-
-    CONNECTION_OUTPUT_BEGIN(this);
-    Bout << NETMSG_MSG_LEX;
-    Bout << msg_len;
-    Bout << static_cast<uint>(0);
-    Bout << static_cast<uchar>(SAY_NETMSG);
-    Bout << static_cast<ushort>(TEXTMSG_GAME);
-    Bout << num_str;
-    Bout << lexems;
     CONNECTION_OUTPUT_END(this);
 }

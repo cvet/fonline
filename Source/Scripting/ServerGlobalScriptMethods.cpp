@@ -45,109 +45,87 @@
 // ReSharper disable CppInconsistentNaming
 
 ///@ ExportMethod
+[[maybe_unused]] uint Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
+{
+    const auto player_id = server->MakePlayerId(name);
+    if (!server->DbStorage.Get("Players", player_id).empty()) {
+        throw ScriptException("Player already registered", name);
+    }
+
+    server->DbStorage.Insert("Players", player_id, {{"_Name", string(name)}, {"Password", string(password)}});
+    return player_id;
+}
+
+///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, &value, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, &value, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, &values, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, nullptr, &values);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, &value, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, &value, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, &values, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, nullptr, &values);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Game_IsDeferredCallPending(FOServer* server, uint id)
 {
-    return server->DeferredCallMngr.IsDeferredCallPending(id);
+    return server->ServerDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Game_CancelDeferredCall(FOServer* server, uint id)
 {
-    return server->DeferredCallMngr.CancelDeferredCall(id);
-}
-
-///@ ExportMethod
-[[maybe_unused]] bool Server_Game_GetDeferredCallData(FOServer* server, uint id, uint& delay, vector<int>& values)
-{
-    /*ScriptInvoker* self = Script::GetInvoker();
-    DeferredCall call;
-    if (self->GetDeferredCallData(id, call)) {
-        delay = (call.FireFullSecond > GameOpt.FullSecond ? (call.FireFullSecond - GameOpt.FullSecond) * Globals->GetTimeMultiplier() / 1000 : 0);
-        if (values) {
-            if (call.IsValue) {
-                values->Resize(1);
-                *(int*)values->At(0) = call.Value;
-            }
-            else if (call.IsValues) {
-                values->Resize(0);
-                Script::AppendVectorToArray(call.Values, values);
-            }
-        }
-        return true;
-    }*/
-    return false;
-}
-
-///@ ExportMethod
-[[maybe_unused]] uint Server_Game_GetDeferredCallsList(FOServer* server, const vector<int>& ids)
-{
-    /*ScriptInvoker* self = Script::GetInvoker();
-    IntVec ids_;
-    self->GetDeferredCallsList(ids_);
-    if (ids)
-        Script::AppendVectorToArray(ids_, ids);
-    return ids_.size();*/
-    return 0;
+    return server->ServerDeferredCalls.CancelDeferredCall(id);
 }
 
 ///# ...
@@ -155,21 +133,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemProto* Server_Game_GetItemProto(FOServer* server, hstring pid)
+[[maybe_unused]] ProtoItem* Server_Game_GetProtoItem(FOServer* server, hstring pid)
 {
-    return server->ProtoMngr.GetProtoItem(pid);
-}
-
-///# ...
-///# param hx1 ...
-///# param hy1 ...
-///# param hx2 ...
-///# param hy2 ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] int Server_Game_GetDistance(FOServer* server, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
-{
-    return server->GeomHelper.DistGame(hx1, hy1, hx2, hy2);
+    return const_cast<ProtoItem*>(server->ProtoMngr.GetProtoItem(pid));
 }
 
 ///# ...
@@ -177,7 +143,7 @@
 ///# param cr2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
+[[maybe_unused]] uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
 {
     if (cr1 == nullptr) {
         throw ScriptException("Critter1 arg is null");
@@ -189,33 +155,8 @@
         throw ScriptException("Differernt maps");
     }
 
-    const auto dist = server->GeomHelper.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    const auto dist = server->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
     return static_cast<int>(dist);
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uchar Server_Game_GetDirection(FOServer* server, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
-{
-    return server->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy);
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param offset ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uchar Server_Game_GetDirection(FOServer* server, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
-{
-    return server->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
 
 ///# ...
@@ -237,8 +178,8 @@
     }
 
     auto* item = server->ItemMngr.GetItem(itemId);
-    if (!item || item->IsDestroyed()) {
-        return static_cast<Item*>(nullptr);
+    if (item == nullptr || item->IsDestroyed()) {
+        return nullptr;
     }
 
     return item;
@@ -625,7 +566,7 @@
 [[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, Critter* cr)
 {
     if (cr != nullptr && cr->IsNpc()) {
-        server->CrMngr.DeleteNpc(cr);
+        server->CrMngr.DeleteCritter(cr);
     }
 }
 
@@ -636,7 +577,7 @@
 {
     if (crId != 0u) {
         if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && cr->IsNpc()) {
-            server->CrMngr.DeleteNpc(cr);
+            server->CrMngr.DeleteCritter(cr);
         }
     }
 }
@@ -648,7 +589,7 @@
 {
     for (auto* cr : critters) {
         if (cr != nullptr && cr->IsNpc()) {
-            server->CrMngr.DeleteNpc(cr);
+            server->CrMngr.DeleteCritter(cr);
         }
     }
 }
@@ -661,7 +602,7 @@
     for (const auto id : critterIds) {
         if (id != 0u) {
             if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && cr->IsNpc()) {
-                server->CrMngr.DeleteNpc(cr);
+                server->CrMngr.DeleteCritter(cr);
             }
         }
     }
@@ -718,10 +659,10 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_EvaluateFullSecond(FOServer* server, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
-    if (year && year < server->Settings.StartYear) {
+    if (year != 0u && year < server->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
     }
-    if (year && year > server->Settings.StartYear + 100) {
+    if (year != 0u && year > server->Settings.StartYear + 100) {
         throw ScriptException("Invalid year", year);
     }
     if (month != 0u && month < 1) {
@@ -744,7 +685,7 @@
 
     if (day_ != 0u) {
         const auto month_day = server->GameTime.GameTimeMonthDay(year, month_);
-        if (day_ < month_day || day_ > month_day) {
+        if (day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
     }
@@ -754,7 +695,9 @@
     }
 
     if (hour > 23) {
-        throw ScriptException("Invalid hour", hour);
+        if (minute > 0 || second > 0) {
+            throw ScriptException("Invalid hour", hour);
+        }
     }
     if (minute > 59) {
         throw ScriptException("Invalid minute", minute);
@@ -793,6 +736,23 @@
 ///# param locPid ...
 ///# param wx ...
 ///# param wy ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ushort wx, ushort wy)
+{
+    // Create and generate location
+    auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
+    if (loc == nullptr) {
+        throw ScriptException("Unable to create location '{}'.", locPid);
+    }
+
+    return loc;
+}
+
+///# ...
+///# param locPid ...
+///# param wx ...
+///# param wy ...
 ///# param critters ...
 ///# return ...
 ///@ ExportMethod
@@ -800,8 +760,8 @@
 {
     // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
-    if (!loc) {
-        throw ScriptException("Unable to create location '{}'.", locPid);
+    if (loc == nullptr) {
+        throw ScriptException("Unable to create location {}", locPid);
     }
 
     // Add known locations to critters
@@ -842,7 +802,7 @@
 [[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, Location* loc)
 {
     if (loc != nullptr) {
-        server->MapMngr.DeleteLocation(loc, nullptr);
+        server->MapMngr.DeleteLocation(loc);
     }
 }
 
@@ -853,7 +813,7 @@
 {
     auto* loc = server->MapMngr.GetLocation(locId);
     if (loc) {
-        server->MapMngr.DeleteLocation(loc, nullptr);
+        server->MapMngr.DeleteLocation(loc);
     }
 }
 
@@ -873,14 +833,14 @@
 ///# ...
 ///# param name ...
 ///# return ...
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod ExcludeInSingleplayer PassOwnership
 [[maybe_unused]] Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 {
     // Check existence
     const auto id = server->MakePlayerId(name);
     const auto doc = server->DbStorage.Get("Players", id);
     if (doc.empty()) {
-        return static_cast<Player*>(nullptr);
+        return nullptr;
     }
 
     // Find online
@@ -891,13 +851,12 @@
     }
 
     // Load from db
-    const auto player_proto_id = server->ToHashedString("Player");
-    const auto* player_proto = server->ProtoMngr.GetProtoCritter(player_proto_id);
-    RUNTIME_ASSERT(player_proto);
-
-    player = new Player(server, id, name, nullptr, player_proto);
+    player = new Player(server, 0u, nullptr);
+    player->SetName(name);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
+        player->MarkAsDestroyed();
+        player->Release();
         throw ScriptException("Player data db read failed");
     }
 
@@ -992,8 +951,9 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, ushort wx, ushort wy, uint radius)
 {
     vector<Location*> locations;
+    locations.reserve(server->MapMngr.GetLocationsCount());
 
-    for (auto* loc : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius()) {
             locations.push_back(loc);
         }
@@ -1012,9 +972,10 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, ushort wx, ushort wy, uint radius, Critter* cr)
 {
     vector<Location*> locations;
+    locations.reserve(server->MapMngr.GetLocationsCount());
 
-    for (auto* loc : server->MapMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
     }
@@ -1044,7 +1005,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsPlayer()) {
+    if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
@@ -1075,7 +1036,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsPlayer()) {
+    if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
@@ -1107,7 +1068,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsPlayer()) {
+    if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (!server->DlgMngr.GetDialog(dlgPack)) {
@@ -1183,7 +1144,7 @@
 [[maybe_unused]] vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
     vector<Item*> items;
-    for (auto* item : server->ItemMngr.GetItems()) {
+    for (auto&& [id, item] : server->ItemMngr.GetItems()) {
         if (!item->IsDestroyed() && (!pid || pid == item->GetProtoId())) {
             items.push_back(item);
         }
@@ -1197,7 +1158,16 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
 {
-    return server->EntityMngr.GetPlayers();
+    const auto& players = server->EntityMngr.GetPlayers();
+
+    vector<Player*> result;
+    result.reserve(players.size());
+
+    for (auto&& [id, player] : players) {
+        result.push_back(player);
+    }
+
+    return result;
 }
 
 ///# ...
@@ -1206,6 +1176,22 @@
 [[maybe_unused]] vector<uint> Server_Game_GetRegisteredPlayerIds(FOServer* server)
 {
     return server->DbStorage.GetAllIds("Players");
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Game_GetAllNpc(FOServer* server)
+{
+    vector<Critter*> npcs;
+
+    for (auto* npc_ : server->CrMngr.GetAllNpc()) {
+        if (!npc_->IsDestroyed()) {
+            npcs.push_back(npc_);
+        }
+    }
+
+    return npcs;
 }
 
 ///# ...
@@ -1233,7 +1219,7 @@
 {
     vector<Map*> maps;
 
-    for (auto* map : server->MapMngr.GetMaps()) {
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
         if (!pid || pid == map->GetProtoId()) {
             maps.push_back(map);
         }
@@ -1250,7 +1236,7 @@
 {
     vector<Location*> locations;
 
-    for (auto* loc : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (!pid || pid == loc->GetProtoId()) {
             locations.push_back(loc);
         }
@@ -1299,14 +1285,15 @@
 ///# ...
 ///# param cr ...
 ///# param staticItem ...
+///# param usedItem ...
 ///# param param ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, int param)
+[[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, Item* usedItem, int param)
 {
     if (!staticItem->SceneryScriptFunc) {
         return false;
     }
 
-    return staticItem->SceneryScriptFunc(cr, staticItem, false, param) && staticItem->SceneryScriptFunc.GetResult();
+    return staticItem->SceneryScriptFunc(cr, staticItem, usedItem, param) && staticItem->SceneryScriptFunc.GetResult();
 }

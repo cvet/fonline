@@ -41,13 +41,9 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
-#include "DeferredCalls.h"
 #include "Dialogs.h"
-#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
-#include "FileSystem.h"
-#include "GeometryHelper.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -57,40 +53,30 @@
 #include "Player.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
+#include "ServerDeferredCalls.h"
 #include "Settings.h"
-#include "StringUtils.h"
-#include "Timer.h"
-#if FO_SINGLEPLAYER
-#include "Client.h"
-#endif
-
-#include "imgui.h"
 
 DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final : public FOEngineBase
+class FOServer : virtual public FOEngineBase
 {
     friend class ServerScriptSystem;
 
 public:
-    FOServer() = delete;
-    explicit FOServer(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
+    explicit FOServer(GlobalSettings& settings);
+
     FOServer(const FOServer&) = delete;
     FOServer(FOServer&&) noexcept = delete;
     auto operator=(const FOServer&) = delete;
     auto operator=(FOServer&&) noexcept = delete;
     ~FOServer() override;
 
-#if FO_SINGLEPLAYER
-    void ConnectClient(FOClient* client) { }
-#endif
-
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
-    [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;
+    [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
 
     void Shutdown();
@@ -101,90 +87,82 @@ public:
     auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
     void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
-    void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Init);
+    ENTITY_EVENT(OnInit);
     ///@ ExportEvent
-    ENTITY_EVENT(GenerateWorld);
+    ENTITY_EVENT(OnGenerateWorld);
     ///@ ExportEvent
-    ENTITY_EVENT(Start);
+    ENTITY_EVENT(OnStart);
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(Loop);
+    ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
+    ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
+    ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerLogout, Player* /*player*/);
+    ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapCritterIn, Critter* /*critter*/);
+    ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapCritterOut, Critter* /*critter*/);
+    ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(LocationInit, Location* /*location*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnLocationInit, Location* /*location*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(LocationFinish, Location* /*location*/);
+    ENTITY_EVENT(OnLocationFinish, Location* /*location*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapInit, Map* /*map*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnMapInit, Map* /*map*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapFinish, Map* /*map*/);
+    ENTITY_EVENT(OnMapFinish, Map* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapLoop, Map* /*map*/);
+    ENTITY_EVENT(OnMapLoop, Map* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapLoopEx, Map* /*map*/, uint /*loopIndex*/);
+    ENTITY_EVENT(OnMapLoopEx, Map* /*map*/, uint /*loopIndex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCritterIn, Map* /*map*/, Critter* /*critter*/);
+    ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCritterOut, Map* /*map*/, Critter* /*critter*/);
+    ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCheckLook, Map* /*map*/, Critter* /*critter*/, Critter* /*target*/);
+    ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCheckTrapLook, Map* /*map*/, Critter* /*critter*/, Item* /*item*/);
+    ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*cr*/, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterInit, Critter* /*critter*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterFinish, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterIdle, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGlobalMapIdle, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterGlobalMapIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterCheckMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInit, Item* /*item*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemFinish, Item* /*item*/);
+    ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+    ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(StaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
 
-    EventObserver<> OnWillFinish {};
-    EventObserver<> OnDidFinish {};
-
-    ServerSettings& Settings;
-    GeometryHelper GeomHelper;
-    ScriptSystem* ScriptSys;
-    GameTimer GameTime;
     ProtoManager ProtoMngr;
-    DeferredCallManager DeferredCallMngr;
+    ServerDeferredCallManager ServerDeferredCalls;
 
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -194,6 +172,9 @@ public:
 
     DataBase DbStorage {};
     DataBase DbHistory {}; // Todo: remove history DB system?
+
+    EventObserver<> OnWillFinish {};
+    EventObserver<> OnDidFinish {};
 
 private:
     struct ServerStats
@@ -224,50 +205,49 @@ private:
         uint64 Parameter {};
     };
 
-    void RegisterData();
-
     void OnNewConnection(NetConnection* net_connection);
-    void ProcessFreeConnection(ClientConnection* connection);
-    void ProcessPlayerConnection(Player* player);
+
+    void ProcessUnloginedPlayer(Player* unlogined_player);
+    void ProcessPlayer(Player* player);
     void ProcessConnection(ClientConnection* connection);
 
+    void Process_Handshake(ClientConnection* connection);
     void Process_Ping(ClientConnection* connection);
-    void Process_Update(ClientConnection* connection);
     void Process_UpdateFile(ClientConnection* connection);
     void Process_UpdateFileData(ClientConnection* connection);
-    void Process_Register(ClientConnection* connection);
-    void Process_LogIn(ClientConnection* connection);
-
-    void Process_PlaceToGame(Player* player);
+    void Process_Register(Player* unlogined_player);
+    void Process_Login(Player* unlogined_player);
     void Process_Move(Player* player);
+    void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
     void Process_Text(Player* player);
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
-    void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
+    void Process_RemoteCall(Player* player);
 
-    void OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSaveEntityValue(Entity* entity, const Property* prop);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
+    void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
 
-    void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
 
     void ProcessCritter(Critter* cr);
-    void ProcessCritterMoving(Critter* cr);
-    auto MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
+    void ProcessMove(Critter* cr);
+    void ProcessMoveBySteps(Critter* cr, Map* map);
+    void MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self);
 
     auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
@@ -279,7 +259,6 @@ private:
     void DispatchLogToClients();
 
     std::atomic_bool _started {};
-    vector<uchar> _restoreInfoBin {};
     ServerStats _stats {};
     map<uint, uint> _regIp {};
     uint _fpsTick {};
@@ -289,11 +268,10 @@ private:
     vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
-    // Todo: run network listeners dynamically, without restriction, based on server settings
-    NetServerBase* _tcpServer {};
-    NetServerBase* _webSocketsServer {};
-    vector<ClientConnection*> _freeConnections {};
-    mutable std::mutex _freeConnectionsLocker {};
+    vector<NetServerBase*> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<ClientConnection*> _newConnections {};
+    mutable std::mutex _newConnectionsLocker {};
+    vector<Player*> _unloginedPlayers {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };

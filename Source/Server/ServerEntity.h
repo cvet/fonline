@@ -41,7 +41,7 @@
 
 class FOServer;
 
-class ServerEntity : public EntityWithProto
+class ServerEntity : public Entity
 {
     friend class EntityManager;
 
@@ -55,9 +55,11 @@ public:
 
     [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetEngine() -> FOServer*;
+    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] virtual auto GetStorageName() const -> string_view;
 
 protected:
-    ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator);
 
     FOServer* _engine;
 

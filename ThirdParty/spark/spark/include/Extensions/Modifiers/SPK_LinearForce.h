@@ -2,7 +2,7 @@
 // SPARK particle engine
 //
 // Copyright (C) 2008-2011 - Julien Fryer - julienfryer@gmail.com
-// Copyright (C) 2017 - Frédéric Martin - fredakilla@gmail.com
+// Copyright (C) 2017 - Frederic Martin - fredakilla@gmail.com
 //
 // This software is provided 'as-is', without any express or implied
 // warranty.  In no event will the authors be held liable for any damages
@@ -248,12 +248,12 @@ namespace SPK
 		* <li>FACTOR_QUADRATIC : the surface of the particle is used and the squared speed is used (the best discrete approximation of the reality)</li>
 		* <li>FACTOR_CUBIC : the volume of the particle is used but it has no physical sense</li>
 		* </ul>
-		* The correct formula is : <i>f = 0.5 * volumetric density of the fluid * surface * speed²</i><br>
+		* The correct formula is : <i>f = 0.5 * volumetric density of the fluid * surface * speed</i><br>
 		* The coefficient can then be set to give realistic winds depending of the shape of the particle and on the fluid. <br>
 		* For instance for a sphere in the air we have :
 		* <ul>
 		* <li>volumetric density of the air : 1.293 kg.m^-3</li>
-		* <li>surface of sphere in contact with the wind : PI * r * r m²<li>
+		* <li>surface of sphere in contact with the wind : PI * r * r m<li>
 		* </ul>
 		* Therefore, the coefficient will be 0.5 * 1.293 * 3.14159 = 2.03
 		*

@@ -71,21 +71,20 @@ public:
     [[nodiscard]] auto GetPort() const -> ushort;
     [[nodiscard]] auto IsHardDisconnected() const -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
+    [[nodiscard]] auto IsWebConnection() const -> bool;
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool;
 
     void DisableCompression();
     void Dispatch();
     void HardDisconnect();
     void GracefulDisconnect();
 
-    void Send_CustomMessage(uint msg);
-    void Send_TextMsg(uint num_str);
-    void Send_TextMsgLex(uint num_str, string_view lexems);
-
     NetInBuffer& Bin;
     std::mutex& BinLocker;
     NetOutBuffer& Bout;
     std::mutex& BoutLocker;
 
+    bool WasHandshake {};
     uint PingNextTick {};
     bool PingOk {true};
     uint LastActivityTime {};

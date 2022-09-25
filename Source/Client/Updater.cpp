@@ -33,6 +33,8 @@
 
 #include "Updater.h"
 
+#if !FO_SINGLEPLAYER
+
 #include "ClientScripting.h"
 #include "Log.h"
 #include "NetCommand.h"
@@ -41,7 +43,7 @@
 
 static const string UPDATE_TEMP_FILE = "Update.fobin";
 
-Updater::Updater(GlobalSettings& settings) : _settings {settings}, _conn(settings), _effectMngr(_settings, _fileSys), _sprMngr(_settings, _fileSys, _effectMngr)
+Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _fileSys), _sprMngr(_settings, window, _fileSys, _effectMngr)
 {
     _startTick = Timer::RealtimeTick();
 
@@ -68,10 +70,10 @@ Updater::Updater(GlobalSettings& settings) : _settings {settings}, _conn(setting
     _sprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Network handlers
-    _conn.AddConnectHandler(std::bind(&Updater::Net_OnConnect, this, std::placeholders::_1));
-    _conn.AddDisconnectHandler(std::bind(&Updater::Net_OnDisconnect, this));
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, std::bind(&Updater::Net_OnUpdateFilesResponse, this));
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILE_DATA, std::bind(&Updater::Net_OnUpdateFileData, this));
+    _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.AddDisconnectHandler([this] { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NETMSG_UPDATE_FILE_DATA, [this] { Net_OnUpdateFileData(); });
 
     // Connect
     AddText(STR_CONNECT_TO_SERVER, "Connect to server...");
@@ -84,12 +86,16 @@ void Updater::Net_OnConnect(bool success)
         AddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
         AddText(STR_CHECK_UPDATES, "Check updates...");
 
-        _conn.OutBuf << NETMSG_UPDATE;
-        _conn.OutBuf << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
+        _conn.OutBuf << NETMSG_HANDSHAKE;
+        _conn.OutBuf << static_cast<uint>(FO_COMPATIBILITY_VERSION);
+
         const auto encrypt_key = NetBuffer::GenerateEncryptKey();
         _conn.OutBuf << encrypt_key;
         _conn.OutBuf.SetEncryptKey(encrypt_key);
         _conn.InBuf.SetEncryptKey(encrypt_key);
+
+        constexpr uchar padding[28] = {};
+        _conn.OutBuf.Push(padding, sizeof(padding));
     }
     else {
         Abort(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");
@@ -106,8 +112,8 @@ void Updater::Net_OnDisconnect()
 auto Updater::Process() -> bool
 {
     // Skip all events
-    InputEvent event;
-    while (App->Input.PollEvent(event)) {
+    InputEvent ev;
+    while (App->Input.PollEvent(ev)) {
     }
 
     // Update indication
@@ -292,3 +298,5 @@ void Updater::GetNextFile()
         }
     }
 }
+
+#endif

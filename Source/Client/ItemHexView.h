@@ -44,7 +44,6 @@ class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto);
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props);
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
@@ -60,7 +59,7 @@ public:
     [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
-    [[nodiscard]] auto GetEggType() const -> int;
+    [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
@@ -104,6 +103,8 @@ public:
     vector<pair<ushort, ushort>> EffSteps {};
 
 private:
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto);
+
     void AfterConstruction();
     void SetFade(bool fade_up);
 

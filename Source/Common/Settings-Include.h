@@ -39,6 +39,7 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
+FIXED_SETTING(string, ExternalConfig, "");
 FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
@@ -48,9 +49,11 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
-FIXED_SETTING(string, ResourcesDir, "Resources");
-FIXED_SETTING(vector<string>, ResourceEntries);
+FIXED_SETTING(string, ResourcesDir, "Data");
+FIXED_SETTING(vector<string>, ClientResourceEntries);
+FIXED_SETTING(vector<string>, ServerResourceEntries);
 FIXED_SETTING(string, EmbeddedResources, "$Embedded");
+FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -77,13 +80,12 @@ SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
 FIXED_SETTING(uint, MinimumOfflineTime, 180000);
 FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
-FIXED_SETTING(uint, DlgTalkMinTime, 0);
-FIXED_SETTING(uint, DlgBarterMinTime, 0);
+FIXED_SETTING(uint, DlgTalkMaxTime, 0);
+FIXED_SETTING(uint, DlgBarterMaxTime, 0);
 FIXED_SETTING(uint, WhisperDist, 2);
 FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(uint, SneakDivider, 6);
-FIXED_SETTING(int, DeadHitPoints, -6);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -97,6 +99,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
+FIXED_SETTING(uint, InactivityDisconnectTime, 0);
 FIXED_SETTING(string, WssPrivateKey, "");
 FIXED_SETTING(string, WssCertificate, "");
 SETTING_GROUP_END();
@@ -125,12 +128,14 @@ SETTING_GROUP_END();
 SETTING_GROUP(ViewSettings, virtual DummySettings);
 VARIABLE_SETTING(int, ScreenWidth, 1024);
 VARIABLE_SETTING(int, ScreenHeight, 768);
+VARIABLE_SETTING(int, ScreenHudHeight, 0);
 VARIABLE_SETTING(float, SpritesZoom, 1.0f);
 VARIABLE_SETTING(int, ScrOx, 0);
 VARIABLE_SETTING(int, ScrOy, 0);
 VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
+FIXED_SETTING(bool, HideNativeCursor, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -146,7 +151,8 @@ FIXED_SETTING(int, MapTileStep, 2);
 FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
 FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
 FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of roof tiles
-FIXED_SETTING(float, MapCameraAngle, 21.671f); // angle for 3d critters rendering
+FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
+FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
 FIXED_SETTING(string, MapDataPrefix, "art/geometry/fallout_"); // path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
@@ -154,22 +160,29 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(string, WindowName, "FOnline");
+FIXED_SETTING(uint, Animation3dSmoothTime, 150);
+FIXED_SETTING(uint, Animation3dFPS, 30);
+FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
+FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
 VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
 VARIABLE_SETTING(bool, ForceGNM, false);
+VARIABLE_SETTING(bool, ForceGlslEsProfile, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
-FIXED_SETTING(uint, Animation3dSmoothTime, 150);
-FIXED_SETTING(uint, Animation3dFPS, 30);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 VARIABLE_SETTING(bool, FullScreen, false);
-VARIABLE_SETTING(int, Brightness, 20);
+VARIABLE_SETTING(int, Brightness, 0);
 VARIABLE_SETTING(uint, FPS, 0);
 VARIABLE_SETTING(int, FixedFPS, 100);
+FIXED_SETTING(int, FogExtraLength, 0);
+FIXED_SETTING(float, CritterTurnAngle, 100.0f);
+FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
+FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -177,16 +190,13 @@ SETTING_GROUP(TimerSettings, virtual DummySettings);
 FIXED_SETTING(int, StartYear, 2000);
 SETTING_GROUP_END();
 
-SETTING_GROUP(ScriptSettings, virtual TimerSettings);
-FIXED_SETTING(string, ASServer);
-FIXED_SETTING(string, ASClient);
-FIXED_SETTING(string, ASMapper);
-SETTING_GROUP_END();
-
+///@ ExportSettings Common
 SETTING_GROUP(BakerSettings, virtual DummySettings);
+VARIABLE_SETTING(bool, ForceBakering, false);
+VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv");
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -259,13 +269,11 @@ SETTING_GROUP_END();
 SETTING_GROUP(InputSettings, virtual DummySettings);
 VARIABLE_SETTING(uint, DoubleClickTime, 500);
 VARIABLE_SETTING(uint, ConsoleHistorySize, 100);
-VARIABLE_SETTING(bool, DisableMouseEvents, false);
-VARIABLE_SETTING(bool, DisableKeyboardEvents, false);
 VARIABLE_SETTING(int, MouseX, 0);
 VARIABLE_SETTING(int, MouseY, 0);
 SETTING_GROUP_END();
 
-///@ ExportSettings Mapper
+///@ ExportSettings Client
 SETTING_GROUP(MapperSettings, virtual DummySettings);
 FIXED_SETTING(string, MapsDir, "");
 FIXED_SETTING(string, StartMap, "");
@@ -275,7 +283,7 @@ VARIABLE_SETTING(bool, SplitTilesCollection, true);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
 FIXED_SETTING(uint, TextDelay, 3000);
 VARIABLE_SETTING(string, Language, "engl");
@@ -285,12 +293,16 @@ VARIABLE_SETTING(bool, HelpInfo, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual FileSystemSettings, virtual ServerNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual FileSystemSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+FIXED_SETTING(vector<string>, AccessAdmin);
+FIXED_SETTING(vector<string>, AccessClient);
+FIXED_SETTING(vector<string>, AccessModer);
+FIXED_SETTING(vector<string>, AccessTester);
 FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(string, DbHistory, "None");
 FIXED_SETTING(bool, NoStart, false);
-FIXED_SETTING(int, GameSleep, 0);
+FIXED_SETTING(int, ServerSleep, 0);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING

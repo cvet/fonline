@@ -112,6 +112,8 @@ public:
     [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
     [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;
 
+    static auto GetWriteTime(string_view path) -> uint64;
+    static auto IsExists(string_view path) -> bool;
     static auto IsDir(string_view path) -> bool;
     static auto DeleteFile(string_view fname) -> bool;
     static auto CopyFile(string_view fname, string_view copy_fname) -> bool;
@@ -119,5 +121,5 @@ public:
     static void ResolvePath(string& path);
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
-    static void IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor);
+    static void IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor);
 };

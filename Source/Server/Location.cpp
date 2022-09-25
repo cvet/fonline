@@ -37,7 +37,7 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), LocationProperties(GetInitRef())
+Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), LocationProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
 }
@@ -48,6 +48,8 @@ void Location::BindScript()
 
     if (const auto func_name = GetEntranceScript()) {
         UNUSED_VARIABLE(func_name);
+        // Todo: EntranceScriptBindId
+        throw NotImplementedException(LINE_STR);
         /*EntranceScriptBindId =
             scriptSys.BindByFuncName(GetEntranceScript(), "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }
@@ -87,6 +89,8 @@ auto Location::GetMapsCount() const -> uint
 
 auto Location::GetMapByIndex(uint index) -> Map*
 {
+    NON_CONST_METHOD_HINT();
+
     if (index >= _locMaps.size()) {
         return nullptr;
     }
@@ -95,6 +99,8 @@ auto Location::GetMapByIndex(uint index) -> Map*
 
 auto Location::GetMapByPid(hstring map_pid) -> Map*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
             return map;
@@ -103,10 +109,10 @@ auto Location::GetMapByPid(hstring map_pid) -> Map*
     return nullptr;
 }
 
-auto Location::GetMapIndex(hstring map_pid) -> uint
+auto Location::GetMapIndex(hstring map_pid) const -> uint
 {
     uint index = 0;
-    for (auto* map : _locMaps) {
+    for (const auto* map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
             return index;
         }
@@ -115,14 +121,14 @@ auto Location::GetMapIndex(hstring map_pid) -> uint
     return static_cast<uint>(-1);
 }
 
-auto Location::IsCanEnter(uint players_count) -> bool
+auto Location::IsCanEnter(uint players_count) const -> bool
 {
     const auto max_palyers = GetMaxPlayers();
     if (max_palyers == 0u) {
         return true;
     }
 
-    for (auto* map : _locMaps) {
+    for (const auto* map : _locMaps) {
         players_count += map->GetPlayersCount();
         if (players_count >= max_palyers) {
             return false;
@@ -131,9 +137,9 @@ auto Location::IsCanEnter(uint players_count) -> bool
     return true;
 }
 
-auto Location::IsNoCrit() -> bool
+auto Location::IsNoCritter() const -> bool
 {
-    for (auto* map : _locMaps) {
+    for (const auto* map : _locMaps) {
         if (map->GetCrittersCount() != 0u) {
             return false;
         }
@@ -141,9 +147,9 @@ auto Location::IsNoCrit() -> bool
     return true;
 }
 
-auto Location::IsNoPlayer() -> bool
+auto Location::IsNoPlayer() const -> bool
 {
-    for (auto* map : _locMaps) {
+    for (const auto* map : _locMaps) {
         if (map->GetPlayersCount() != 0u) {
             return false;
         }
@@ -151,9 +157,9 @@ auto Location::IsNoPlayer() -> bool
     return true;
 }
 
-auto Location::IsNoNpc() -> bool
+auto Location::IsNoNpc() const -> bool
 {
-    for (auto* map : _locMaps) {
+    for (const auto* map : _locMaps) {
         if (map->GetNpcsCount() != 0u) {
             return false;
         }
@@ -161,23 +167,22 @@ auto Location::IsNoNpc() -> bool
     return true;
 }
 
-auto Location::IsCanDelete() -> bool
+auto Location::IsCanDelete() const -> bool
 {
     if (GeckCount > 0) {
         return false;
     }
 
     // Check for players
-    for (auto* map : _locMaps) {
+    for (const auto* map : _locMaps) {
         if (map->GetPlayersCount() != 0u) {
             return false;
         }
     }
 
     // Check for npc
-    auto maps = _locMaps;
-    for (auto* map : maps) {
-        for (auto* npc : map->GetNpcs()) {
+    for (auto* map : _locMaps) {
+        for (const auto* npc : map->GetNpcs()) {
             if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) || npc->IsHaveGeckItem()) {
                 return false;
             }

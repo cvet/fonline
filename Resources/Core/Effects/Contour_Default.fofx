@@ -1,7 +1,7 @@
 [Effect]
 
 [VertexShader]
-layout(location = 0) uniform mat4 ProjectionMatrix;
+uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -19,12 +19,12 @@ void main(void)
 }
 
 [FragmentShader]
-layout(location = 1) uniform sampler2D ColorMap;
-layout(location = 2) uniform vec4 ColorMapSize;
-layout(location = 3) uniform float ColorMapWidth;
-layout(location = 4) uniform float ColorMapHeight;
-layout(location = 5) uniform vec4 SpriteBorder;
-layout(location = 6) uniform float TimeGame;
+layout(binding = 0) uniform sampler2D ColorMap;
+uniform vec4 ColorMapSize;
+uniform float ColorMapWidth;
+uniform float ColorMapHeight;
+uniform vec4 SpriteBorder;
+uniform float TimeGame;
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;
@@ -68,6 +68,7 @@ void main(void)
     
     if (checkPixelResult) {
         FragColor = Color;
+        
         if (FragColor.a > 0.1) {
             float v = (TexCoord.y - border.y) / (border.w - border.y);
             v += 1.0 - mod(TimeGame, 2.0);

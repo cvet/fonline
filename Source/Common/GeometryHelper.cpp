@@ -53,6 +53,11 @@ GeometryHelper::~GeometryHelper()
     }
 }
 
+auto GeometryHelper::IsHexagonal() const -> bool
+{
+    return _settings.MapHexagonal;
+}
+
 void GeometryHelper::InitializeHexOffsets() const
 {
     const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * _settings.MapDirCount;
@@ -368,6 +373,103 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) con
         return 5;
     }
     return 6;
+}
+
+auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) const -> float
+{
+    const auto hx = static_cast<float>(x1);
+    const auto hy = static_cast<float>(y1);
+    const auto tx = static_cast<float>(x2);
+    const auto ty = static_cast<float>(y2);
+    const auto nx = 3 * (tx - hx);
+    const auto ny = (ty - hy) * SQRT3_X2_FLOAT - (static_cast<float>(x2 & 1) - static_cast<float>(x1 & 1)) * SQRT3_FLOAT;
+
+    float r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
+    RUNTIME_ASSERT(r >= 0.0f);
+    RUNTIME_ASSERT(r <= 360.0f);
+
+    r = -r + 60.0f;
+    if (r < 0.0f) {
+        r += 360.0f;
+    }
+    if (r >= 360.0f) {
+        r -= 360.0f;
+    }
+
+    RUNTIME_ASSERT(r >= 0.0f);
+    RUNTIME_ASSERT(r < 360.0f);
+    return r;
+}
+
+auto GeometryHelper::GetDirAngleDiff(float a1, float a2) const -> float
+{
+    const auto r = 180.0f - std::abs(std::abs(a1 - a2) - 180.0f);
+    RUNTIME_ASSERT(r >= 0.0f);
+    RUNTIME_ASSERT(r <= 180.0f);
+    return r;
+}
+
+auto GeometryHelper::GetDirAngleDiffSided(float a1, float a2) const -> float
+{
+    const auto a1_r = a1 * DEG_TO_RAD_FLOAT;
+    const auto a2_r = a2 * DEG_TO_RAD_FLOAT;
+    const auto r = std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT;
+    RUNTIME_ASSERT(r >= -180.0f);
+    RUNTIME_ASSERT(r <= 180.0f);
+    return r;
+}
+
+auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float
+{
+    const auto x1_f = static_cast<float>(x1);
+    const auto y1_f = static_cast<float>(y1) * GetYProj();
+    const auto x2_f = static_cast<float>(x2);
+    const auto y2_f = static_cast<float>(y2) * GetYProj();
+
+    auto angle = 90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f);
+    if (angle < 0.0f) {
+        angle += 360.0f;
+    }
+    if (angle >= 360.0f) {
+        angle -= 360.0f;
+    }
+
+    RUNTIME_ASSERT(angle >= 0.0f);
+    RUNTIME_ASSERT(angle < 360.0f);
+    return angle;
+}
+
+auto GeometryHelper::GetYProj() const -> float
+{
+    return 1.0f / std::sin(_settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+}
+
+auto GeometryHelper::DirToAngle(uchar dir) const -> short
+{
+    if (IsHexagonal()) {
+        return static_cast<short>(150 - dir * 60);
+    }
+    else {
+        return static_cast<short>(135 - dir * 45);
+    }
+}
+
+auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
+{
+    if (IsHexagonal()) {
+        return static_cast<uchar>(NormalizeAngle(dir_angle) / 60);
+    }
+    else {
+        return static_cast<uchar>(NormalizeAngle(dir_angle) / 45);
+    }
+}
+
+auto GeometryHelper::NormalizeAngle(short dir_angle) const -> short
+{
+    while (dir_angle < 0) {
+        dir_angle += 360;
+    }
+    return static_cast<short>(dir_angle % 360);
 }
 
 auto GeometryHelper::CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool

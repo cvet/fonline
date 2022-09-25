@@ -49,20 +49,16 @@ class Location;
 
 struct StaticMap
 {
-    vector<uchar> SceneryData {};
-    uint HashTiles {};
-    uint HashScen {};
-    vector<Critter*> CrittersVec {};
-    vector<Item*> AllItemsVec {};
-    vector<Item*> HexItemsVec {};
-    vector<Item*> ChildItemsVec {};
-    vector<StaticItem*> StaticItemsVec {};
-    vector<StaticItem*> TriggerItemsVec {};
-    uchar* HexFlags {};
-    vector<MapTile> Tiles {};
+    vector<pair<uint, const Critter*>> CritterBillets {};
+    vector<pair<uint, const Item*>> ItemBillets {};
+    vector<pair<uint, const Item*>> HexItemBillets {};
+    vector<pair<uint, const Item*>> ChildItemBillets {};
+    vector<StaticItem*> StaticItems {};
+    vector<StaticItem*> TriggerItems {};
+    vector<uchar> HexFlags {};
 };
 
-class Map final : public ServerEntity, public MapProperties
+class Map final : public ServerEntity, public EntityWithProto, public MapProperties
 {
     friend class MapManager;
 
@@ -94,10 +90,11 @@ public:
     [[nodiscard]] auto IsHexPassed(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexRaked(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool;
-    [[nodiscard]] auto IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> bool;
+    [[nodiscard]] auto IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool;
     [[nodiscard]] auto IsHexTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexCritter(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexBlockItem(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
@@ -143,19 +140,19 @@ public:
     void RecacheHexFlags(ushort hx, ushort hy);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(Loop);
+    ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(LoopEx, int /*loopIndex*/);
+    ENTITY_EVENT(OnLoopEx, int /*loopIndex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterIn, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterOut, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterOut, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CheckLook, Critter* /*critter*/, Critter* /*target*/);
+    ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CheckTrapLook, Critter* /*critter*/, Item* /*item*/);
+    ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
 
 private:
     const StaticMap* _staticMap {};

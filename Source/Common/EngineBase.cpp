@@ -36,12 +36,18 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(bool is_server) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server, *this)), GameProperties(GetInitRef()), _isServer {is_server}
+FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
+    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)), //
+    GameProperties(GetInitRef()),
+    Settings {settings},
+    Geometry(settings),
+    GameTime(settings),
+    _propsRelation {props_relation}
 {
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
 }
 
-auto FOEngineBase::CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
+auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
 {
     RUNTIME_ASSERT(!_registrationFinalized);
 
@@ -54,7 +60,7 @@ auto FOEngineBase::CreatePropertyRegistrator(string_view class_name) -> Property
         return const_cast<PropertyRegistrator*>(it->second);
     }
 
-    auto* registrator = new PropertyRegistrator(class_name, _isServer, *this);
+    auto* registrator = new PropertyRegistrator(class_name, _propsRelation, *this);
     _registrators.emplace(class_name, registrator);
     return registrator;
 }
@@ -95,6 +101,8 @@ void FOEngineBase::FinalizeDataRegistration()
     RUNTIME_ASSERT(!_registrationFinalized);
 
     _registrationFinalized = true;
+
+    GetPropertiesForEdit().AllocData();
 }
 
 auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
@@ -147,7 +155,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
         if (failed != nullptr) {
             WriteLog("Invalid enum {} for resolve value", enum_name);
             *failed = true;
-            return string();
+            return {};
         }
 
         throw EnumResolveException("Invalid enum for resolve value", enum_name, value);
@@ -158,7 +166,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
         if (failed != nullptr) {
             WriteLog("Can't resolve value {} for enum {}", value, enum_name);
             *failed = true;
-            return string();
+            return {};
         }
 
         throw EnumResolveException("Can't resolve value for enum", enum_name, value);
@@ -167,12 +175,12 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     return value_it->second;
 }
 
-auto FOEngineBase::ToHashedString(string_view s) const -> hstring
+auto FOEngineBase::ToHashedString(string_view s, bool mustExists) const -> hstring
 {
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
     if (s.empty()) {
-        return hstring();
+        return {};
     }
 
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
@@ -191,6 +199,10 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
         return hstring(&it->second);
     }
 
+    if (mustExists) {
+        throw HashInsertException("String value is not in hash storage", s);
+    }
+
     const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
     RUNTIME_ASSERT(inserted);
 
@@ -199,6 +211,10 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 
 auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
+    if (h == 0u) {
+        return {};
+    }
+
     if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
         return hstring(&it->second);
     }
@@ -206,7 +222,7 @@ auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
     if (failed != nullptr) {
         WriteLog("Can't resolve hash {}", h);
         *failed = true;
-        return hstring();
+        return {};
     }
 
     throw HashResolveException("Can't resolve hash", h);
@@ -215,6 +231,9 @@ auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
 {
     if (str.empty()) {
+        return 0;
+    }
+    if (str[0] == '"') {
         return 0;
     }
 

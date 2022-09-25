@@ -65,7 +65,7 @@ namespace GL
 			buffer.setNextColor(particle.getColor());
 		}
 
-		buffer.render(GL_LINES,group.getNbParticles() << 1);
+		buffer.render(GL_LINES,group.getNbParticles() << 1, false, false);
 	}
 
 	void GLLineRenderer::computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const

@@ -39,8 +39,15 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
-class LocationView final : public ClientEntity, public LocationProperties
+class LocationView final : public ClientEntity, public EntityWithProto, public LocationProperties
 {
 public:
     LocationView(FOClient* engine, uint id, const ProtoLocation* proto);
+    LocationView(const LocationView&) = delete;
+    LocationView(LocationView&&) noexcept = delete;
+    auto operator=(const LocationView&) = delete;
+    auto operator=(LocationView&&) noexcept = delete;
+    ~LocationView() override = default;
+
+    void MarkAsDestroyed() override;
 };

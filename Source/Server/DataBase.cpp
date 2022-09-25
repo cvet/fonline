@@ -464,7 +464,7 @@ auto DataBaseImpl::Get(string_view collection_name, uint id) -> AnyData::Documen
     const auto collection_name_str = string(collection_name);
 
     if (_deletedRecords[collection_name_str].count(id) != 0u) {
-        return AnyData::Document();
+        return {};
     }
 
     if (_newRecords[collection_name_str].count(id) != 0u) {
@@ -523,8 +523,13 @@ void DataBaseImpl::Delete(string_view collection_name, uint id)
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
-    _deletedRecords[collection_name_str].insert(id);
-    _newRecords[collection_name_str].erase(id);
+    if (_newRecords[collection_name_str].count(id) != 0u) {
+        _newRecords[collection_name_str].erase(id);
+    }
+    else {
+        _deletedRecords[collection_name_str].insert(id);
+    }
+
     _recordChanges[collection_name_str].erase(id);
 }
 
@@ -575,7 +580,7 @@ public:
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
         vector<uint> ids;
-        DiskFileSystem::IterateDir(_str("{}/{}/", _storageDir, collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(_str(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
 
@@ -605,7 +610,7 @@ protected:
             }
         }
         else {
-            return AnyData::Document();
+            return {};
         }
 
         bson_t bson;

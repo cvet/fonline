@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if !FO_SINGLEPLAYER
+
 #include "ScriptSystem.h"
 
 class FOClient;
@@ -42,17 +44,28 @@ class FOClient;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    ClientScriptSystem(FOClient* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    explicit ClientScriptSystem(FOClient* engine) : _engine {engine} { }
+
+    struct NativeImpl;
+    shared_ptr<NativeImpl> NativeData {};
+    struct AngelScriptImpl;
+    shared_ptr<AngelScriptImpl> AngelScriptData {};
+    struct MonoImpl;
+    shared_ptr<MonoImpl> MonoData {};
+
+private:
+    void InitSubsystems() override
     {
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
     }
 
-private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();
 
-    [[maybe_unused]] FOClient* _engine;
+    FOClient* _engine;
 };
+
+#endif

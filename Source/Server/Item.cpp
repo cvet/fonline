@@ -36,10 +36,8 @@
 #include "ItemManager.h"
 #include "Server.h"
 
-Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
+Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
 {
-    RUNTIME_ASSERT(proto);
-    RUNTIME_ASSERT(GetCount() > 0);
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)
@@ -51,16 +49,11 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
         }
 
         if (sort_value >= item->GetSortValue()) {
-            sort_value = item->GetSortValue() - 1;
+            sort_value = static_cast<short>(item->GetSortValue() - 1);
         }
     }
 
     SetSortValue(sort_value);
-}
-
-void Item::ChangeCount(int val)
-{
-    SetCount(GetCount() + val);
 }
 
 auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*

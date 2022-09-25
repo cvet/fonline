@@ -111,4 +111,7 @@ private:
     double _pingTick {};
     double _pingCallTick {};
     size_t _msgCount {};
+    bool _interthreadCommunication {};
+    InterthreadDataCallback _interthreadSend {};
+    vector<uchar> _interthreadReceived {};
 };

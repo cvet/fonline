@@ -46,239 +46,29 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed");
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9);
-    }
-}
-
-///# ...
-///# param condition ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9, ObjInfo<10> obj10)
-{
-    if (!condition) {
-        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10);
-    }
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message)
-{
-    throw ScriptException(message);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1)
-{
-    throw ScriptException(message, obj1);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2)
-{
-    throw ScriptException(message, obj1, obj2);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3)
-{
-    throw ScriptException(message, obj1, obj2, obj3);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9);
-}
-
-///# ...
-///# param message ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9, ObjInfo<10> obj10)
-{
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10);
-}
-
-///# ...
-///# param time ...
-///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Yield([[maybe_unused]] FOEngineBase* engine, uint time)
-{
-    // Todo: fix script system
-    UNUSED_VARIABLE(time);
-    // Script::SuspendCurrentContext(time);
-}
-
-///# ...
 ///# param text ...
-///# param result ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
+{
+    WriteLog("{}", text);
+}
+
+///# ...
+///# param resourcePath ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Game_StrToInt([[maybe_unused]] FOEngineBase* engine, string_view text, int& result)
+[[maybe_unused]] bool Common_Game_IsResourcePresent([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
 {
-    if (!_str(text).isNumber()) {
-        return false;
-    }
-    result = _str(text).toInt();
-    return true;
+    return !!engine->FileSys.ReadFile(resourcePath);
 }
 
 ///# ...
-///# param text ...
-///# param result ...
+///# param resourcePath ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Game_StrToFloat([[maybe_unused]] FOEngineBase* engine, string_view text, float& result)
+[[maybe_unused]] string Common_Game_ReadResource([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
 {
-    if (!_str(text).isNumber()) {
-        return false;
-    }
-    result = _str(text).toFloat();
-    return true;
+    return engine->FileSys.ReadFileText(resourcePath);
 }
 
 static void PrintLog(string& log, bool last_call, const std::function<void(string_view)>& log_callback)
@@ -334,18 +124,15 @@ static auto SystemCall(string_view command, const std::function<void(string_view
         return -1;
     }
 
-    STARTUPINFOW si;
-    std::memset(&si, 0, sizeof(STARTUPINFO));
+    STARTUPINFOW si = {};
     si.cb = sizeof(STARTUPINFO);
     si.hStdError = out_write;
     si.hStdOutput = out_write;
     si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
-    PROCESS_INFORMATION pi;
-    std::memset(&pi, 0, sizeof(PROCESS_INFORMATION));
-
-    auto* cmd_line = _wcsdup(_str(std::move(command)).toWideChar().c_str());
+    PROCESS_INFORMATION pi = {};
+    auto* cmd_line = _wcsdup(_str(command).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     ::free(cmd_line);
 
@@ -445,14 +232,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 
 ///# ...
 ///# param text ...
-///@ ExportMethod
-[[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
-{
-    WriteLog("{}", text);
-}
-
-///# ...
-///# param text ...
 ///# param length ...
 ///# return ...
 ///@ ExportMethod
@@ -500,7 +279,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
-    const uint digest_size = 32;
+    constexpr uint digest_size = 32;
     uchar digest[digest_size];
     sha256(reinterpret_cast<const uchar*>(text.data()), static_cast<uint>(text.length()), digest);
 
@@ -509,7 +288,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     for (uint i = 0; i < sizeof(hex_digest); i++) {
         hex_digest[i] = nums[(i % 2) != 0u ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
     }
-    return string(hex_digest, sizeof(hex_digest));
+    return {hex_digest, sizeof(hex_digest)};
 }
 
 ///# ...
@@ -530,7 +309,128 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_GetUnixTime([[maybe_unused]] FOEngineBase* engine)
+[[maybe_unused]] uint64 Common_Game_GetUnixTime([[maybe_unused]] FOEngineBase* engine)
 {
-    return static_cast<uint>(time(nullptr));
+    return static_cast<uint64>(::time(nullptr));
+}
+
+///# ...
+///# param hx1 ...
+///# param hy1 ...
+///# param hx2 ...
+///# param hy2 ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
+{
+    return engine->Geometry.DistGame(hx1, hy1, hx2, hy2);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uchar Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+{
+    return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# param offset ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uchar Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
+{
+    return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] short Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+{
+    return static_cast<short>(engine->Geometry.GetDirAngle(fromHx, fromHy, toHx, toHy));
+}
+
+///# ...
+///# param fromX ...
+///# param fromY ...
+///# param toX ...
+///# param toY ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] short Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
+{
+    return static_cast<short>(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY));
+}
+
+///# ...
+///# param dirAngle ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uchar Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, short dirAngle)
+{
+    // Todo: quad tiles fix
+    return static_cast<uchar>(dirAngle / 60);
+}
+
+///# ...
+///# param dir ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] short Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uchar dir)
+{
+    // Todo: quad tiles fix
+    return static_cast<short>(static_cast<int>(dir) * 60 + 30);
+}
+
+///# ...
+///# param dirAngle ...
+///# param clockwise ...
+///# param step ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] short Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, short dirAngle, bool clockwise, short step)
+{
+    auto rotated = static_cast<int>(dirAngle);
+
+    if (clockwise) {
+        rotated += step;
+    }
+    else {
+        rotated -= step;
+    }
+
+    while (rotated < 0) {
+        rotated += 360;
+    }
+    while (rotated >= 360) {
+        rotated -= 360;
+    }
+
+    return static_cast<short>(rotated);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# param ox ...
+///# param oy ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, int& ox, int& oy)
+{
+    std::tie(ox, oy) = engine->Geometry.GetHexInterval(fromHx, fromHy, toHx, toHy);
 }

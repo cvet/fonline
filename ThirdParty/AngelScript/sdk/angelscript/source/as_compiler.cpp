@@ -8946,7 +8946,7 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 			if( currScope != "" && currScope != "::" )
 			{
 				builder->GetNameSpaceByString(currScope, outFunc->objectType ? outFunc->objectType->nameSpace : outFunc->nameSpace, errNode, script, &scopeType, false);
-				if (scopeType->CastToEnumType() == 0)
+				if (scopeType && scopeType->CastToEnumType() == 0)
 					scopeType = 0;
 			}
 

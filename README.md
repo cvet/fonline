@@ -34,7 +34,7 @@
 * Multiplayer mode with authoritative server
 * Singleplayer mode (one binary, no network connections)
 * Supporting of hexagonal and square map tiling
-* Perendered sprites for environment but with possibility of using 3D models for characters
+* Prerendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (favored C++17 standard)
 * Flexible scripting system with varies supporting languages:
   + Mono C#
@@ -105,7 +105,7 @@ Reference project:
 Following Linux packages will help us build our game for target platforms.  
 These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
 * Common:  
-`clang` `clang-format` `build-essential` `git` `cmake` `python` `wget` `unzip`
+`clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
 * Building for Linux:  
 `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
 * Building for Web:  
@@ -147,7 +147,6 @@ They are located in ThirdParty directory.
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
@@ -287,7 +286,9 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
 * Common: remove special OTHER_* params
+* Common: optimize copy() to pass placement storage for value
 * Common: apply scripts strack trace
+* ServerApp: allow instantiate client in separate thread (rendering issues)
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
@@ -319,12 +320,10 @@ Please follow these instructions to understand how to use this engine by design:
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Dialogs: validate script entries, hashes
-* Entity: events array may be modified during call, need take it into account here
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
-* EntityProperties: implement Player InitScript
 * EntityProperties: implement Location InitScript
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
@@ -336,6 +335,7 @@ Please follow these instructions to understand how to use this engine by design:
 * MsgFiles: pass default to fomsg gets
 * Properties: SetValueFromData
 * Properties: convert to hstring
+* Properties: restore quest variables
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
@@ -344,12 +344,12 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: SetValue for array
 * Properties: GetValue for dict
 * Properties: SetValue for dict
-* ScriptSystem: fill settings to scripts
-* ScriptSystem: FindFunc
+* ProtoManager: rename ProtoManager to ProtoBaker and move to Baker stuff
+* ScriptSystem: remove commented code
 * Settings-Include: rework global Quit setting
 * Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
-* Application: recognize tablet mode for Windows 10
+* Application: move all these statics to App class fields
 * Application: fix workaround for strange behaviour of button focus
 * ApplicationHeadless: implement effect CanBatch
 * Rendering-Direct3D: pass additional defines to shaders (passed + internal)

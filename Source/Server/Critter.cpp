@@ -40,32 +40,28 @@
 #include "Server.h"
 #include "Settings.h"
 
-Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef()), _player {owner}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef()), _player {owner}
 {
     if (_player != nullptr) {
         _player->AddRef();
     }
-
-    SetBit(Flags, _player == nullptr ? FCRIT_NPC : FCRIT_PLAYER);
 }
 
 Critter::~Critter()
 {
-    if (_player) {
+    if (_player != nullptr) {
         _player->Release();
     }
+}
+
+auto Critter::GetStorageName() const -> string_view
+{
+    return IsOwnedByPlayer() ? "PlayerCritter" : GetClassName();
 }
 
 auto Critter::GetOfflineTime() const -> uint
 {
     return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;
-}
-
-auto Critter::GetAttackDist(Item* weap, uchar use) -> uint
-{
-    uint dist = 1;
-    _engine->OnCritterGetAttackDistantion.Fire(this, weap, use, dist);
-    return dist;
 }
 
 auto Critter::IsAlive() const -> bool
@@ -124,6 +120,24 @@ void Critter::AttachPlayer(Player* owner)
     _player->AddRef();
 }
 
+void Critter::ClearMove()
+{
+    Moving.Uid++;
+    Moving.Steps = {};
+    Moving.ControlSteps = {};
+    Moving.StartTick = {};
+    Moving.StartHexX = {};
+    Moving.StartHexY = {};
+    Moving.EndHexX = {};
+    Moving.EndHexY = {};
+    Moving.WholeTime = {};
+    Moving.WholeDist = {};
+    Moving.StartOx = {};
+    Moving.StartOy = {};
+    Moving.EndOx = {};
+    Moving.EndOy = {};
+}
+
 void Critter::ClearVisible()
 {
     for (auto* cr : VisCr) {
@@ -162,7 +176,9 @@ auto Critter::GetCrSelf(uint crid) -> Critter*
 
 auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>
 {
-    auto& vis_cr = (vis_cr_self ? VisCrSelf : VisCr);
+    NON_CONST_METHOD_HINT();
+
+    const auto& vis_cr = vis_cr_self ? VisCrSelf : VisCr;
 
     vector<Critter*> critters;
     for (auto* cr : vis_cr) {
@@ -257,6 +273,30 @@ auto Critter::CountIdVisItem(uint item_id) const -> bool
     return VisItem.count(item_id) != 0;
 }
 
+void Critter::ChangeDir(uchar dir)
+{
+    const auto normalized_dir = static_cast<uchar>(dir % _engine->Settings.MapDirCount);
+
+    if (normalized_dir == GetDir()) {
+        return;
+    }
+
+    SetDirAngle(_engine->Geometry.DirToAngle(normalized_dir));
+    SetDir(normalized_dir);
+}
+
+void Critter::ChangeDirAngle(int dir_angle)
+{
+    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
+
+    if (normalized_dir_angle == GetDirAngle()) {
+        return;
+    }
+
+    SetDirAngle(normalized_dir_angle);
+    SetDir(_engine->Geometry.AngleToDir(normalized_dir_angle));
+}
+
 void Critter::SetItem(Item* item)
 {
     RUNTIME_ASSERT(item);
@@ -264,11 +304,11 @@ void Critter::SetItem(Item* item)
     _invItems.push_back(item);
 
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
-        item->SetCritSlot(0);
+        item->SetCritterSlot(0);
     }
 
     item->SetOwnership(ItemOwnership::CritterInventory);
-    item->SetCritId(GetId());
+    item->SetCritterId(GetId());
 }
 
 auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
@@ -307,7 +347,7 @@ auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
-        if (item->GetProtoId() == item_pid && item->GetCritSlot() == slot) {
+        if (item->GetProtoId() == item_pid && item->GetCritterSlot() == slot) {
             return item;
         }
     }
@@ -319,7 +359,7 @@ auto Critter::GetItemSlot(int slot) -> Item*
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
-        if (item->GetCritSlot() == slot) {
+        if (item->GetCritterSlot() == slot) {
             return item;
         }
     }
@@ -334,7 +374,7 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     items.reserve(_invItems.size());
 
     for (auto* item : _invItems) {
-        if (slot < 0 || item->GetCritSlot() == slot) {
+        if (slot < 0 || item->GetCritterSlot() == slot) {
             items.push_back(item);
         }
     }
@@ -389,14 +429,14 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerE
     }
 }
 
-void Critter::Broadcast_Move(uint move_params)
+void Critter::Broadcast_Move()
 {
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Move(this, move_params);
+        cr->Send_Move(this);
     }
 }
 
@@ -433,14 +473,14 @@ void Critter::Broadcast_Dir()
     }
 }
 
-void Critter::Broadcast_CustomCommand(ushort num_param, int val)
+void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
 {
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_CustomCommand(this, num_param, val);
+        cr->Send_Teleport(this, to_hx, to_hy);
     }
 }
 
@@ -510,7 +550,8 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         return;
     }
 
-    auto dist = -1;
+    auto dist = static_cast<uint>(-1);
+
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
         dist = _engine->Settings.ShoutDist + GetMultihex();
     }
@@ -523,10 +564,10 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
             continue;
         }
 
-        if (dist == -1) {
+        if (dist == static_cast<uint>(-1)) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -540,7 +581,8 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         return;
     }
 
-    auto dist = -1;
+    auto dist = static_cast<uint>(-1);
+
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
         dist = _engine->Settings.ShoutDist + GetMultihex();
     }
@@ -553,10 +595,10 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
             continue;
         }
 
-        if (dist == -1) {
+        if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
-        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
     }
@@ -570,7 +612,8 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         return;
     }
 
-    auto dist = -1;
+    auto dist = static_cast<uint>(-1);
+
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
         dist = _engine->Settings.ShoutDist + GetMultihex();
     }
@@ -583,10 +626,10 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
             continue;
         }
 
-        if (dist == -1) {
+        if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
-        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
     }
@@ -665,12 +708,12 @@ void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity
     }
 }
 
-void Critter::Send_Move(Critter* from_cr, uint move_params)
+void Critter::Send_Move(Critter* from_cr)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Move(from_cr, move_params);
+        _player->Send_Move(from_cr);
     }
 }
 
@@ -701,12 +744,12 @@ void Critter::Send_RemoveCritter(Critter* cr)
     }
 }
 
-void Critter::Send_LoadMap(Map* map, MapManager& map_mngr)
+void Critter::Send_LoadMap(Map* map)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_LoadMap(map, map_mngr);
+        _player->Send_LoadMap(map);
     }
 }
 
@@ -764,12 +807,12 @@ void Critter::Send_EraseItem(Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo(uchar flags, MapManager& map_mngr)
+void Critter::Send_GlobalInfo(uchar flags)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_GlobalInfo(flags, map_mngr);
+        _player->Send_GlobalInfo(flags);
     }
 }
 
@@ -791,12 +834,12 @@ void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
     }
 }
 
-void Critter::Send_CustomCommand(Critter* cr, ushort cmd, int val)
+void Critter::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_CustomCommand(cr, cmd, val);
+        _player->Send_Teleport(cr, to_hx, to_hy);
     }
 }
 
@@ -818,12 +861,12 @@ void Critter::Send_Talk()
     }
 }
 
-void Critter::Send_GameInfo(Map* map)
+void Critter::Send_TimeSync()
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_GameInfo(map);
+        _player->Send_TimeSync();
     }
 }
 
@@ -917,15 +960,6 @@ void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1,
     }
 }
 
-void Critter::Send_CombatResult(uint* combat_res, uint len)
-{
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_CombatResult(combat_res, len);
-    }
-}
-
 void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
 {
     NON_CONST_METHOD_HINT();
@@ -998,21 +1032,12 @@ void Critter::Send_ViewMap()
     }
 }
 
-void Critter::Send_SomeItem(Item* item)
+void Critter::Send_PlaceToGameComplete()
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_SomeItem(item);
-    }
-}
-
-void Critter::Send_CustomMessage(uint msg)
-{
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_CustomMessage(msg);
+        _player->Send_PlaceToGameComplete();
     }
 }
 
@@ -1025,12 +1050,12 @@ void Critter::Send_AddAllItems()
     }
 }
 
-void Critter::Send_AllAutomapsInfo(MapManager& map_mngr)
+void Critter::Send_AllAutomapsInfo()
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_AllAutomapsInfo(map_mngr);
+        _player->Send_AllAutomapsInfo();
     }
 }
 

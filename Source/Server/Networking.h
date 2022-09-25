@@ -38,6 +38,8 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
+DECLARE_EXCEPTION(NetworkException);
+
 class NetConnection
 {
 public:
@@ -52,6 +54,8 @@ public:
     [[nodiscard]] virtual auto GetHost() const -> string_view = 0;
     [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
     [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
+    [[nodiscard]] virtual auto IsWebConnection() const -> bool = 0;
+    [[nodiscard]] virtual auto IsInterthreadConnection() const -> bool = 0;
 
     virtual void DisableCompression() = 0;
     virtual void Dispatch() = 0;
@@ -83,6 +87,7 @@ public:
 
     virtual void Shutdown() = 0;
 
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
 };

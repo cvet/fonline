@@ -73,9 +73,10 @@ public:
 
     explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
-    // Todo: implement Player InitScript
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, OwnedCritterIds);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, string, Password);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
     ///@ ExportProperty
@@ -89,90 +90,92 @@ public:
 
     explicit ItemProperties(Properties& props) : EntityProperties(props) { }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = ItemInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ///@ ExportProperty ScriptFuncType = ItemScenery
+    ENTITY_PROPERTY(PrivateServer, hstring, SceneryScript);
+    ///@ ExportProperty ScriptFuncType = ItemTrigger
+    ENTITY_PROPERTY(PrivateServer, hstring, TriggerScript);
+    ///@ ExportProperty ReadOnly Alias = Accessory
+    ENTITY_PROPERTY(PrivateCommon, ItemOwnership, Ownership);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ItemOwnership, Ownership);
+    ENTITY_PROPERTY(PrivateCommon, uint, MapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, MapId);
+    ENTITY_PROPERTY(PrivateCommon, ushort, HexX);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, HexX);
+    ENTITY_PROPERTY(PrivateCommon, ushort, HexY);
+    ///@ ExportProperty ReadOnly Alias = CritId
+    ENTITY_PROPERTY(PrivateCommon, uint, CritterId);
+    ///@ ExportProperty ReadOnly Alias = CritSlot Alias = Slot
+    ENTITY_PROPERTY(PrivateCommon, uchar, CritterSlot);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, HexY);
+    ENTITY_PROPERTY(PrivateCommon, uint, ContainerId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, CritId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, CritSlot);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, ContainerId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, ContainerStack);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, float, FlyEffectSpeed);
-    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
+    ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
-    ///@ ExportProperty
+    ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicInv);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, Opened);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, short, OffsetX);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, short, OffsetY);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, Stackable);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, GroundLevel);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, Opened);
+    ENTITY_PROPERTY(PrivateCommon, float, FlyEffectSpeed);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, CornerType, Corner);
+    ENTITY_PROPERTY(PrivateCommon, bool, Stackable);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, Slot);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Weight);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Volume);
+    ENTITY_PROPERTY(PrivateCommon, bool, GroundLevel);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, DisableEgg);
+    ENTITY_PROPERTY(PrivateCommon, CornerType, Corner);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitBase);
+    ENTITY_PROPERTY(PrivateCommon, uint, Weight);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMin);
+    ENTITY_PROPERTY(PrivateCommon, uint, Volume);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMax);
+    ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimStay0);
+    ENTITY_PROPERTY(PrivateCommon, ushort, AnimWaitBase);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimStay1);
+    ENTITY_PROPERTY(PrivateCommon, ushort, AnimWaitRndMin);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimShow0);
+    ENTITY_PROPERTY(PrivateCommon, ushort, AnimWaitRndMax);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimShow1);
+    ENTITY_PROPERTY(PrivateCommon, uchar, AnimStay0);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimHide0);
+    ENTITY_PROPERTY(PrivateCommon, uchar, AnimStay1);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimHide1);
+    ENTITY_PROPERTY(PrivateCommon, uchar, AnimShow0);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, char, DrawOrderOffsetHexY);
+    ENTITY_PROPERTY(PrivateCommon, uchar, AnimShow1);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, vector<uchar>, BlockLines);
+    ENTITY_PROPERTY(PrivateCommon, uchar, AnimHide0);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, IsStatic);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsScenery);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsWall);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsCanOpen);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsScrollBlock);
+    ENTITY_PROPERTY(PrivateCommon, uchar, AnimHide1);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, char, DrawOrderOffsetHexY);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, vector<uchar>, BlockLines);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsStatic);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsScenery);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsWall);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsCanOpen);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsScrollBlock);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsHidden);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHiddenPicture);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHiddenInStatic);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsFlat);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsHiddenPicture);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsHiddenInStatic);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsFlat);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoBlock);
     ///@ ExportProperty
@@ -246,14 +249,16 @@ public:
 
     explicit CritterProperties(Properties& props) : EntityProperties(props) { }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = CritterInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, string, NiceName);
+    ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, WalkTime);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, RunTime);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(VirtualPublic, uint, WalkSpeed);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(VirtualPublic, uint, RunSpeed);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly
@@ -271,9 +276,13 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexY);
     ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, short, HexOffsX);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, short, HexOffsY);
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uchar, Dir);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, string, Password);
+    ENTITY_PROPERTY(PrivateCommon, short, DirAngle);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
     ///@ ExportProperty ReadOnly
@@ -294,18 +303,20 @@ public:
     ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexX);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexY);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Alias = Anim1Life
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Alive);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead);
-    ///@ ExportProperty ReadOnly
+    ///@ ExportProperty ReadOnly Alias = Anim2Life
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Alive);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, short, NameOffset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog);
     ///@ ExportProperty
@@ -344,7 +355,7 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId);
-    ///@ ExportProperty
+    ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsHide);
@@ -355,11 +366,9 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, bool, IsNoWalk);
+    ENTITY_PROPERTY(VirtualProtected, bool, IsNoMove);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualProtected, bool, IsNoRun);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoRotate);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoTalk);
     ///@ ExportProperty
@@ -383,7 +392,7 @@ public:
 
     explicit MapProperties(Properties& props) : EntityProperties(props) { }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = MapInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime1);
@@ -396,27 +405,27 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime5);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateServer, string, FileDir);
+    ENTITY_PROPERTY(PrivateClient, string, FileDir);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, Width);
+    ENTITY_PROPERTY(PrivateCommon, ushort, Width);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, Height);
+    ENTITY_PROPERTY(PrivateCommon, ushort, Height);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexX);
+    ENTITY_PROPERTY(PrivateClient, ushort, WorkHexX);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexY);
+    ENTITY_PROPERTY(PrivateClient, ushort, WorkHexY);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LocId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uchar, RainCapacity);
+    ENTITY_PROPERTY(PrivateCommon, uchar, RainCapacity);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, int, CurDayTime);
+    ENTITY_PROPERTY(PrivateCommon, int, CurDayTime);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime);
+    ENTITY_PROPERTY(PrivateCommon, vector<int>, DayTime);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uchar>, DayColor);
+    ENTITY_PROPERTY(PrivateCommon, vector<uchar>, DayColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, IsNoLogOut);
 };
@@ -429,7 +438,7 @@ public:
     explicit LocationProperties(Properties& props) : EntityProperties(props) { }
 
     // Todo: implement Location InitScript
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = LocationInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
@@ -443,7 +452,7 @@ public:
     ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, GeckVisible);
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, ushort, WorldX);

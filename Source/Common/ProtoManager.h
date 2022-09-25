@@ -56,19 +56,19 @@ public:
     [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
     [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
     [[nodiscard]] auto GetProtoLocation(hstring proto_id) -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoItems() const -> const map<hstring, const ProtoItem*>&;
-    [[nodiscard]] auto GetProtoCritters() const -> const map<hstring, const ProtoCritter*>&;
-    [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
-    [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
+    [[nodiscard]] auto GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&;
+    [[nodiscard]] auto GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&;
+    [[nodiscard]] auto GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&;
+    [[nodiscard]] auto GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&;
+    [[nodiscard]] auto GetAllProtos() const -> vector<const ProtoEntity*>;
 
     void ParseProtos(FileSystem& file_sys);
-    void ValidateProtoResources(const unordered_set<string>& resource_names) const;
-    void Load(const vector<uchar>& data);
+    void LoadFromResources();
 
 private:
     FOEngineBase* _engine;
-    map<hstring, const ProtoItem*> _itemProtos {};
-    map<hstring, const ProtoCritter*> _crProtos {};
-    map<hstring, const ProtoMap*> _mapProtos {};
-    map<hstring, const ProtoLocation*> _locProtos {};
+    unordered_map<hstring, const ProtoItem*> _itemProtos {};
+    unordered_map<hstring, const ProtoCritter*> _crProtos {};
+    unordered_map<hstring, const ProtoMap*> _mapProtos {};
+    unordered_map<hstring, const ProtoLocation*> _locProtos {};
 };

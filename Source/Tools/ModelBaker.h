@@ -37,6 +37,7 @@
 
 #if FO_ENABLE_3D
 
+#include "BaseBaker.h"
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(ModelBakerException);
@@ -48,25 +49,22 @@ namespace fbxsdk
 } // namespace fbxsdk
 #endif
 
-class ModelBaker final
+class ModelBaker final : public BaseBaker
 {
 public:
     ModelBaker() = delete;
-    explicit ModelBaker(FileCollection& all_files);
+    ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ModelBaker(const ModelBaker&) = delete;
-    ModelBaker(ModelBaker&&) noexcept = delete;
+    ModelBaker(ModelBaker&&) noexcept = default;
     auto operator=(const ModelBaker&) = delete;
     auto operator=(ModelBaker&&) noexcept = delete;
-    ~ModelBaker();
+    ~ModelBaker() override;
 
-    void AutoBakeModels();
-    void FillBakedFiles(map<string, vector<uchar>>& baked_files);
+    void AutoBake() override;
 
 private:
     [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;
 
-    FileCollection& _allFiles;
-    map<string, vector<uchar>> _bakedFiles {};
     int _errors {};
 #if FO_HAVE_FBXSDK
     fbxsdk::FbxManager* _fbxManager {};

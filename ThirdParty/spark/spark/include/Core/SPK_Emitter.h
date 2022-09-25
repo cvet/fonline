@@ -356,9 +356,9 @@ namespace SPK
 			{
 				if (nbBorn > static_cast<size_t>(currentTank))
 					nbBorn = currentTank;
-				currentTank -= nbBorn;
+				currentTank -= static_cast<int>(nbBorn);
 			}
-			fraction -= nbBorn;
+			fraction -= static_cast<float>(nbBorn);
 		}
 		else 
 			nbBorn = 0;
@@ -372,7 +372,7 @@ namespace SPK
 
 		if (nb > static_cast<size_t>(currentTank))
 			nb = currentTank;
-		currentTank -= nb;
+		currentTank -= static_cast<int>(nb);
 		return nb;
 	}
 }

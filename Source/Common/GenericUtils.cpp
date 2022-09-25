@@ -222,8 +222,6 @@ auto GenericUtils::Percent(int full, int peace) -> int
 
 auto GenericUtils::Percent(uint full, uint peace) -> uint
 {
-    RUNTIME_ASSERT(full >= 0);
-
     if (full == 0u) {
         return 0u;
     }
@@ -314,7 +312,7 @@ auto GenericUtils::GetColorDay(const int* day_time, const uchar* colors, int gam
         *light = std::clamp(*light, 0, 100);
     }
 
-    return result[0] << 16 | result[1] << 8 | result[2];
+    return 0xFFu << 24 | static_cast<uint>(result[0]) << 16 | static_cast<uint>(result[1]) << 8 | static_cast<uint>(result[2]);
 }
 
 auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint

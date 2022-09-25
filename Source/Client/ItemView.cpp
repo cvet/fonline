@@ -34,15 +34,27 @@
 #include "ItemView.h"
 #include "Client.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-auto ItemView::Clone() const -> ItemView*
+void ItemView::MarkAsDestroyed()
 {
-    auto* clone = new ItemView(_engine, GetId(), static_cast<const ProtoItem*>(_proto));
+    for (auto* item : _innerItems) {
+        item->MarkAsDestroyed();
+        item->Release();
+    }
+    _innerItems.clear();
+
+    Entity::MarkAsDestroying();
+    Entity::MarkAsDestroyed();
+}
+
+auto ItemView::CreateRefClone() const -> ItemView*
+{
+    auto* clone = new ItemView(_engine, 0u, dynamic_cast<const ProtoItem*>(_proto));
     clone->SetProperties(GetProperties());
     return clone;
 }
@@ -90,4 +102,39 @@ auto ItemView::GetInvColor() const -> uint
 auto ItemView::LightGetHash() const -> uint
 {
     return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
+}
+
+auto ItemView::AddInnerItem(uint id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*
+{
+    auto* item = new ItemView(_engine, id, proto);
+    item->RestoreData(properties_data);
+
+    item->SetOwnership(ItemOwnership::ItemContainer);
+    item->SetContainerId(GetId());
+    item->SetContainerStack(stack_id);
+
+    _innerItems.push_back(item);
+
+    std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+
+    return item;
+}
+
+void ItemView::DeleteInnerItem(ItemView* item)
+{
+    const auto it = std::find(_innerItems.begin(), _innerItems.end(), item);
+    RUNTIME_ASSERT(it != _innerItems.end());
+    _innerItems.erase(it);
+
+    item->SetOwnership(ItemOwnership::Nowhere);
+    item->SetContainerId(0);
+    item->SetContainerStack(0);
+
+    item->MarkAsDestroyed();
+    item->Release();
+}
+
+auto ItemView::GetInnerItems() -> vector<ItemView*>
+{
+    return _innerItems;
 }

@@ -14,6 +14,14 @@ class Tween
         pps = pixelsPerSecond;
     }
 
+    void UpdatePos(int newX, int newY)
+    {
+        x2 = newX;
+        y2 = newY;
+        x3 = newX;
+        y3 = newY;
+    }
+
     void Move(bool toEnd)
     {
         if (end == toEnd)
@@ -22,7 +30,7 @@ class Tween
         x3 = CurX;
         y3 = CurY;
         end = toEnd;
-        startTick = GetTick();
+        startTick = Game.GetTick();
     }
 
     void ForceMove(bool toEnd)
@@ -44,13 +52,13 @@ class Tween
 
     int get_Dist()
     {
-        return int(sqrt(Math::Pow2((end ? x2 : x1) - x3) + Math::Pow2((end ? y2 : y1) - y3)));
+        return int(math::sqrt(Math::Pow2((end ? x2 : x1) - x3) + Math::Pow2((end ? y2 : y1) - y3)));
     }
 
     int get_Percent()
     {
         int dist = Dist;
-        return dist > 0 ? Math::Min((GetTick() - startTick) * pps / 1000 * 100 / Dist, 100) : 100;
+        return dist > 0 ? Math::Min((Game.GetTick() - startTick) * pps / 1000 * 100 / Dist, 100) : 100;
     }
 
     private

@@ -37,4 +37,37 @@ namespace SPK
 	{
 		SPK_LOG_INFO("VBO hint is not yet considered");
 	}
+
+	void Renderer::innerImport(const IO::Descriptor& descriptor)
+	{
+		SPKObject::innerImport(descriptor);
+
+		active = true;
+		renderingOptionsMask = RENDERING_OPTION_DEPTH_WRITE;
+		alphaThreshold = 1.0f;
+
+		const IO::Attribute* attrib = nullptr;
+
+		if ((attrib = descriptor.getAttributeWithValue("active")))
+			setActive(attrib->getValue<bool>());
+
+		if ((attrib = descriptor.getAttributeWithValue("alpha test")))
+			enableRenderingOption(RENDERING_OPTION_ALPHA_TEST, attrib->getValue<bool>());
+
+		if ((attrib = descriptor.getAttributeWithValue("depth write")))
+			enableRenderingOption(RENDERING_OPTION_DEPTH_WRITE, attrib->getValue<bool>());
+
+		if ((attrib = descriptor.getAttributeWithValue("alpha threshold")))
+			setAlphaTestThreshold(attrib->getValue<float>());
+	}
+	
+	void Renderer::innerExport(IO::Descriptor& descriptor) const
+	{
+		SPKObject::innerExport(descriptor);
+
+		descriptor.getAttribute("active")->setValue(isActive());
+		descriptor.getAttribute("alpha test")->setValue(isRenderingOptionEnabled(RENDERING_OPTION_ALPHA_TEST));
+		descriptor.getAttribute("depth write")->setValue(isRenderingOptionEnabled(RENDERING_OPTION_DEPTH_WRITE));
+		descriptor.getAttribute("alpha threshold")->setValue(getAlphaTestThreshold());
+	}
 }

@@ -33,10 +33,6 @@
 
 #include "EntityProtos.h"
 
-ProtoPlayer::ProtoPlayer(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), PlayerProperties(GetInitRef())
-{
-}
-
 ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), ItemProperties(GetInitRef())
 {
 }

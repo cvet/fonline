@@ -49,6 +49,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // LOGIN MESSAGES
 // ************************************************************************
 
+#define NETMSG_HANDSHAKE MAKE_NETMSG_HEADER(9)
+#define NETMSG_HANDSHAKE_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uint) + sizeof(uchar) * 28) // 40 bytes
+// ////////////////////////////////////////////////////////////////////////
+// Request to update
+// uint protocol_version
+// uint encrypt_key
+// uchar padding[28]
+// ////////////////////////////////////////////////////////////////////////
+
 #define NETMSG_DISCONNECT MAKE_NETMSG_HEADER(10)
 #define NETMSG_DISCONNECT_SIZE (sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
@@ -59,10 +68,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
 // uint msg_len
-// uint proto_ver
 // string name
 // string password
-// uint msg_language
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN_SUCCESS MAKE_NETMSG_HEADER(2)
@@ -84,7 +91,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Registration query
 // uint mag_len
-// uint proto_ver
 // string name
 // string password
 // ////////////////////////////////////////////////////////////////////////
@@ -102,8 +108,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uchar ping (see Ping in FOdefines.h)
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_END_PARSE_TO_GAME MAKE_NETMSG_HEADER(7)
-#define NETMSG_END_PARSE_TO_GAME_SIZE (sizeof(uint))
+#define NETMSG_PLACE_TO_GAME_COMPLETE MAKE_NETMSG_HEADER(7)
+#define NETMSG_PLACE_TO_GAME_COMPLETE_SIZE (sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
 // Message about successfully map loading
 // ////////////////////////////////////////////////////////////////////////
@@ -111,14 +117,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 // Update
 // ************************************************************************
-
-#define NETMSG_UPDATE MAKE_NETMSG_HEADER(14)
-#define NETMSG_UPDATE_SIZE (sizeof(uint) + sizeof(ushort) + sizeof(uint))
-// ////////////////////////////////////////////////////////////////////////
-// Request to update
-// ushort protocol_version
-// uint encrypt_key
-// ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_UPDATE_FILES_LIST MAKE_NETMSG_HEADER(15)
 // ////////////////////////////////////////////////////////////////////////
@@ -156,14 +154,9 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ADD/REMOVE CRITTER
 // ************************************************************************
 
-#define NETMSG_ADD_PLAYER MAKE_NETMSG_HEADER(11)
+#define NETMSG_ADD_CRITTER MAKE_NETMSG_HEADER(11)
 // ////////////////////////////////////////////////////////////////////////
-// Add player on map.
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_ADD_NPC MAKE_NETMSG_HEADER(12)
-// ////////////////////////////////////////////////////////////////////////
-// Add npc on map.
+// Add critter on map
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REMOVE_CRITTER MAKE_NETMSG_HEADER(13)
@@ -276,62 +269,95 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 
 #define NETMSG_DIR MAKE_NETMSG_HEADER(41)
-#define NETMSG_DIR_SIZE (sizeof(uint) + sizeof(uchar))
+#define NETMSG_DIR_SIZE (sizeof(uint) + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uchar dir
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_DIR MAKE_NETMSG_HEADER(42)
-#define NETMSG_CRITTER_DIR_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uchar))
+#define NETMSG_CRITTER_DIR_SIZE (sizeof(uint) + sizeof(uint) + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// CrID id
-// uchar dir
+// uint cr_id
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_MOVE_WALK MAKE_NETMSG_HEADER(43)
-#define NETMSG_SEND_MOVE_WALK_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2)
+#define NETMSG_SEND_MOVE MAKE_NETMSG_HEADER(45)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint move_params
+// uint msg_len
+// uint map_id
+// bool is_run
+// ushort start_hx
+// ushort start_hy
+// ushort steps_count
+// uchar steps[]
+// ushort control_steps_count
+// ushort control_steps[]
+// char end_hex_ox - -16..16
+// char end_hex_oy - -8..8
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_SEND_STOP_MOVE MAKE_NETMSG_HEADER(46)
+#define NETMSG_SEND_STOP_MOVE_SIZE (sizeof(uint) + sizeof(uint) * 2 + sizeof(ushort) * 2)
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// uint map_id
 // ushort hx
 // ushort hy
+// short hex_ox
+// short hex_oy
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_MOVE_RUN MAKE_NETMSG_HEADER(44)
-#define NETMSG_SEND_MOVE_RUN_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2)
+#define NETMSG_CRITTER_MOVE MAKE_NETMSG_HEADER(47)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint move_params
-// ushort hx
-// ushort hy
+// uint msg_len
+// uint cr_id
+// uint whole_time
+// uint offset_time
+// bool is_run
+// ushort start_hx
+// ushort start_hy
+// ushort steps_count
+// uchar steps[]
+// ushort control_steps_count
+// ushort control_steps[]
+// char end_hex_ox - -16..16
+// char end_hex_oy - -8..8
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_MOVE MAKE_NETMSG_HEADER(45)
-#define NETMSG_CRITTER_MOVE_SIZE (sizeof(uint) + sizeof(uint) * 2 + sizeof(ushort) * 2)
+#define NETMSG_CRITTER_STOP_MOVE MAKE_NETMSG_HEADER(48)
+#define NETMSG_CRITTER_STOP_MOVE_SIZE (sizeof(uint) + sizeof(ushort) * 2 + sizeof(short) * 2 + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint id
-// uint move_params
-// ushort hx
-// ushort hy
+// uint cr_id
+// ushort start_hx
+// ushort start_hy
+// short hex_ox
+// short hex_oy
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_XY MAKE_NETMSG_HEADER(46)
-#define NETMSG_CRITTER_XY_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(uchar))
+#define NETMSG_CRITTER_POS MAKE_NETMSG_HEADER(49)
+#define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(short) * 2 + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// CrID crid
+// uint cr_id
 // ushort hex_x
 // ushort hex_y
-// uchar dir
+// short hex_ox
+// short hex_oy
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -345,14 +371,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Properties
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CUSTOM_COMMAND MAKE_NETMSG_HEADER(52)
-#define NETMSG_CUSTOM_COMMAND_SIZE (sizeof(uint) + sizeof(ushort) + sizeof(int))
+#define NETMSG_CRITTER_TELEPORT MAKE_NETMSG_HEADER(52)
+#define NETMSG_CRITTER_TELEPORT_SIZE (sizeof(uint) + sizeof(ushort) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint crid
-// ushort cmd
-// int val
+// uint cr_id
+// ushort to_hx
+// ushort to_hy
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -497,11 +523,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint ind2
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_COMBAT_RESULTS MAKE_NETMSG_HEADER(97)
-// ////////////////////////////////////////////////////////////////////////
-//
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)
 #define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 3)
 // ////////////////////////////////////////////////////////////////////////
@@ -572,20 +593,17 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_GAME_INFO MAKE_NETMSG_HEADER(117)
-#define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) * 4 + sizeof(uchar) * 12)
+#define NETMSG_TIME_SYNC MAKE_NETMSG_HEADER(117)
+#define NETMSG_TIME_SYNC_SIZE (sizeof(uint) + sizeof(ushort) * 7)
 // ////////////////////////////////////////////////////////////////////////
-// Generic game info
-// ushort GameOpt.YearStart;
-// ushort GameOpt.Year;
-// ushort GameOpt.Month;
-// ushort GameOpt.Day;
-// ushort GameOpt.Hour;
-// ushort GameOpt.Minute;
-// ushort GameOpt.Second;
-// ushort GameOpt.TimeMultiplier;
-// int day_time[4]
-// uchar day_color[12]
+//
+// ushort year
+// ushort month
+// ushort day
+// ushort hour
+// ushort minute
+// ushort second
+// ushort time_multiplier
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -598,58 +616,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint mag_len
 // uint loc_id
 // uint map_id
-// hash loc_pid
-// hash map_pid
+// hstring loc_pid
+// hstring map_pid
 // uchar map_index_in_loc
-// uint ver_tiles
-// uint ver_walls
-// uint ver_scen
 // Properties map
 // Properties location
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_MAP MAKE_NETMSG_HEADER(122)
-// ////////////////////////////////////////////////////////////////////////
-// Map data
-// uint msg_len
-// hash pid_map
-// uchar send_info (see Sendmap info in FOdefines.h)
-// uint ver_tiles
-//	for TILESX*TILESY
-//		ushort roof
-//		ushort floor
-// uint count_walls
-//	for count_walls
-//		WallToSend
-// uint count_scen
-//	for count_scen
-//		ScenToSend (see ScenToSend in FOdefines.h)
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_GIVE_MAP MAKE_NETMSG_HEADER(123)
-#define NETMSG_SEND_GIVE_MAP_SIZE (sizeof(uint) + sizeof(bool) + sizeof(hstring::hash_t) + sizeof(uint) + sizeof(hstring::hash_t) * 2)
-// ////////////////////////////////////////////////////////////////////////
-// Request on map data, on map loading or for automap
-// bool automap
-// hash map_pid
-// uint loc_id
-// hash tiles_hash
-// hash scen_hash
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_LOAD_MAP_OK MAKE_NETMSG_HEADER(124)
-#define NETMSG_SEND_LOAD_MAP_OK_SIZE (sizeof(uint))
-// ////////////////////////////////////////////////////////////////////////
-// Message about successfully map loading
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_RPC MAKE_NETMSG_HEADER(128)
-// ////////////////////////////////////////////////////////////////////////
-//
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_REFRESH_ME MAKE_NETMSG_HEADER(130)
-#define NETMSG_SEND_REFRESH_ME_SIZE (sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
 //
 // ////////////////////////////////////////////////////////////////////////

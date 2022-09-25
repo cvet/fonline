@@ -36,6 +36,7 @@
 #include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 #include "GlslangToSpv.h"
@@ -152,7 +153,7 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
         /* .generalConstantMatrixVectorIndexing = */ true,
     }};
 
-EffectBaker::EffectBaker(FileCollection& all_files) : _allFiles {all_files}
+EffectBaker::EffectBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
 {
     glslang::InitializeProcess();
 }
@@ -162,7 +163,7 @@ EffectBaker::~EffectBaker()
     glslang::FinalizeProcess();
 }
 
-void EffectBaker::AutoBakeEffects()
+void EffectBaker::AutoBake()
 {
     _errors = 0;
 
@@ -174,18 +175,24 @@ void EffectBaker::AutoBakeEffects()
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
 
+        string ext = _str(file_header.GetPath()).getFileExtension();
+        if (ext != "fofx") {
+            continue;
+        }
+
+#if !FO_ENABLE_3D
+        if (file_header.GetPath().find("3D") != string::npos) {
+            continue;
+        }
+#endif
+
         {
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
+            if (!_bakeChecker(file_header)) {
                 continue;
             }
-        }
-
-        string ext = _str(file_header.GetPath()).getFileExtension();
-        if (ext != "fofx") {
-            continue;
         }
 
         auto file = _allFiles.GetCurFile();
@@ -221,17 +228,15 @@ void EffectBaker::AutoBakeEffects()
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 {
-    auto fofx = ConfigFile("", nullptr);
-    fofx.CollectContent();
-    fofx.AppendData(content);
-    if (!fofx || !fofx.IsApp("Effect")) {
+    auto fofx = ConfigFile(fname, string(content), nullptr, ConfigFileOption::CollectContent);
+    if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
     }
 
     constexpr bool old_code_profile = false;
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
-    const auto shader_common_content = fofx.GetAppContent("ShaderCommon");
+    const auto shader_common_content = fofx.GetSectionContent("ShaderCommon");
     const auto shader_version = fofx.GetInt("Effect", "Version", 310);
     const auto shader_version_str = _str("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
@@ -239,20 +244,20 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #else
     const auto shader_defines = _str("precision mediump float;\n").str();
 #endif
-    const auto shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+    const auto* shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
 
     for (auto pass = 1; pass <= passes; pass++) {
-        string vertex_pass_content = fofx.GetAppContent(_str("VertexShader Pass{}", pass));
+        string vertex_pass_content = fofx.GetSectionContent(_str("VertexShader Pass{}", pass));
         if (vertex_pass_content.empty()) {
-            vertex_pass_content = fofx.GetAppContent("VertexShader");
+            vertex_pass_content = fofx.GetSectionContent("VertexShader");
         }
         if (vertex_pass_content.empty()) {
             throw EffectBakerException("No content for vertex shader", fname, pass);
         }
 
-        string fragment_pass_content = fofx.GetAppContent(_str("FragmentShader Pass{}", pass));
+        string fragment_pass_content = fofx.GetSectionContent(_str("FragmentShader Pass{}", pass));
         if (fragment_pass_content.empty()) {
-            fragment_pass_content = fofx.GetAppContent("FragmentShader");
+            fragment_pass_content = fofx.GetSectionContent("FragmentShader");
         }
         if (fragment_pass_content.empty()) {
             throw EffectBakerException("No content for fragment shader", fname, pass);
@@ -293,7 +298,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            _bakedFiles.emplace(fname, vector<uchar>(content.begin(), content.end()));
+            _writeData(fname, vector<uchar>(content.begin(), content.end()));
         }
     }
 }
@@ -316,11 +321,11 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uchar> data(spirv.size() * sizeof(uint32_t));
-        std::memcpy(&data[0], &spirv[0], data.size());
+        std::memcpy(data.data(), spirv.data(), data.size());
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.spv", fname_wo_ext), std::move(data));
+        _writeData(_str("{}.spv", fname_wo_ext), data);
     };
 
     // SPIR-V to GLSL
@@ -328,13 +333,13 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         spirv_cross::CompilerGLSL compiler {spirv};
         auto options = compiler.get_common_options();
         options.es = false;
-        options.version = 150;
+        options.version = 330;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.glsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.glsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to GLSL ES
@@ -348,7 +353,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.glsl-es", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.glsl-es", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to HLSL
@@ -361,7 +366,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.hlsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.hlsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal macOS
@@ -374,7 +379,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.msl-mac", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.msl-mac", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal iOS
@@ -387,7 +392,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.msl-ios", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.msl-ios", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
 #if FO_ASYNC_BAKE
@@ -411,15 +416,4 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     make_msl_mac();
     make_msl_ios();
 #endif
-}
-
-void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
-{
-#if FO_ASYNC_BAKE
-    std::lock_guard locker(_bakedFilesLocker);
-#endif
-
-    for (auto&& [name, data] : _bakedFiles) {
-        baked_files.emplace(name, data);
-    }
 }

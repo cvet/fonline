@@ -42,10 +42,10 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     _animFileName.resize(len);
-    reader.ReadPtr(&_animFileName[0], len);
+    reader.ReadPtr(_animFileName.data(), len);
     reader.ReadPtr(&len, sizeof(len));
     _animName.resize(len);
-    reader.ReadPtr(&_animName[0], len);
+    reader.ReadPtr(_animName.data(), len);
     reader.ReadPtr(&_durationTicks, sizeof(_durationTicks));
     reader.ReadPtr(&_ticksPerSecond, sizeof(_ticksPerSecond));
     reader.ReadPtr(&len, sizeof(len));
@@ -68,22 +68,25 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
 
     for (uint i = 0, j = len; i < j; i++) {
         auto& o = _boneOutputs[i];
-        reader.ReadPtr(&o.BoneName, sizeof(o.BoneName));
+        reader.ReadPtr(&len, sizeof(len));
+        tmp.resize(len);
+        reader.ReadPtr(tmp.data(), len);
+        o.BoneName = name_resolver.ToHashedString(tmp);
         reader.ReadPtr(&len, sizeof(len));
         o.ScaleTime.resize(len);
         o.ScaleValue.resize(len);
-        reader.ReadPtr(&o.ScaleTime[0], len * sizeof(o.ScaleTime[0]));
-        reader.ReadPtr(&o.ScaleValue[0], len * sizeof(o.ScaleValue[0]));
+        reader.ReadPtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
+        reader.ReadPtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
         reader.ReadPtr(&len, sizeof(len));
         o.RotationTime.resize(len);
         o.RotationValue.resize(len);
-        reader.ReadPtr(&o.RotationTime[0], len * sizeof(o.RotationTime[0]));
-        reader.ReadPtr(&o.RotationValue[0], len * sizeof(o.RotationValue[0]));
+        reader.ReadPtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
+        reader.ReadPtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
         reader.ReadPtr(&len, sizeof(len));
         o.TranslationTime.resize(len);
         o.TranslationValue.resize(len);
-        reader.ReadPtr(&o.TranslationTime[0], len * sizeof(o.TranslationTime[0]));
-        reader.ReadPtr(&o.TranslationValue[0], len * sizeof(o.TranslationValue[0]));
+        reader.ReadPtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
+        reader.ReadPtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
     }
 }
 
@@ -201,6 +204,11 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> 
     return nullptr;
 }
 
+auto ModelAnimationController::GetTrackEnable(uint track) const -> bool
+{
+    return _tracks[track].Enabled;
+}
+
 auto ModelAnimationController::GetTrackPosition(uint track) const -> float
 {
     return _tracks[track].Position;
@@ -211,7 +219,7 @@ auto ModelAnimationController::GetNumAnimationSets() const -> uint
     return static_cast<uint>(_sets->size());
 }
 
-void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim)
+void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
 {
     _tracks[track].Anim = anim;
     const auto count = anim->GetBoneOutputCount();
@@ -219,10 +227,12 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
     for (uint i = 0; i < count; i++) {
         const auto link_name = anim->_boneOutputs[i].BoneName;
         Output* output = nullptr;
-        for (auto& o : *_outputs) {
-            if (o.BoneName == link_name) {
-                output = &o;
-                break;
+        if (allowed_bones == nullptr || allowed_bones->count(link_name) != 0) {
+            for (auto& o : *_outputs) {
+                if (o.BoneName == link_name) {
+                    output = &o;
+                    break;
+                }
             }
         }
         _tracks[track].AnimOutput[i] = output;

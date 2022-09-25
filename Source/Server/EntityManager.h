@@ -45,8 +45,6 @@
 
 DECLARE_EXCEPTION(EntitiesLoadException);
 
-class ProtoManager;
-
 class EntityManager final
 {
 public:
@@ -65,31 +63,49 @@ public:
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
-    [[nodiscard]] auto FindCritterItems(uint crid) -> vector<Item*>;
-    [[nodiscard]] auto GetEntity(uint id) -> ServerEntity*;
-    [[nodiscard]] auto GetEntities() -> vector<ServerEntity*>;
     [[nodiscard]] auto GetPlayer(uint id) -> Player*;
-    [[nodiscard]] auto GetPlayers() -> vector<Player*>;
-    [[nodiscard]] auto GetPlayers() const -> vector<const Player*>;
-    [[nodiscard]] auto GetItem(uint id) -> Item*;
-    [[nodiscard]] auto GetItems() -> vector<Item*>;
-    [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
-    [[nodiscard]] auto GetCritters() -> vector<Critter*>;
-    [[nodiscard]] auto GetMap(uint id) -> Map*;
-    [[nodiscard]] auto GetMapByPid(hstring pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetPlayers() -> const unordered_map<uint, Player*>&;
     [[nodiscard]] auto GetLocation(uint id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> vector<Location*>;
+    [[nodiscard]] auto GetLocations() -> const unordered_map<uint, Location*>&;
+    [[nodiscard]] auto GetMap(uint id) -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring pid, uint skip_count) -> Map*;
+    [[nodiscard]] auto GetMaps() -> const unordered_map<uint, Map*>&;
+    [[nodiscard]] auto GetCritter(uint id) -> Critter*;
+    [[nodiscard]] auto GetCritters() -> const unordered_map<uint, Critter*>&;
+    [[nodiscard]] auto GetItem(uint id) -> Item*;
+    [[nodiscard]] auto GetItems() -> const unordered_map<uint, Item*>&;
+    [[nodiscard]] auto GetCritterItems(uint cr_id) -> vector<Item*>;
 
     void LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric);
     void InitAfterLoad();
-    void RegisterEntity(ServerEntity* entity);
-    void UnregisterEntity(ServerEntity* entity);
     void FinalizeEntities();
 
+    void RegisterEntity(Player* entity, uint id);
+    void UnregisterEntity(Player* entity);
+    void RegisterEntity(Location* entity);
+    void UnregisterEntity(Location* entity);
+    void RegisterEntity(Map* entity);
+    void UnregisterEntity(Map* entity);
+    void RegisterEntity(Critter* entity);
+    void UnregisterEntity(Critter* entity);
+    void RegisterEntity(Item* entity);
+    void UnregisterEntity(Item* entity);
+
+    auto GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*;
+    auto CreateCustomEntity(string_view entity_class_name) -> ServerEntity*;
+    void DeleteCustomEntity(string_view entity_class_name, uint id);
+
 private:
+    void RegisterEntityEx(ServerEntity* entity);
+    void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
+
     FOServer* _engine;
-    map<uint, ServerEntity*> _allEntities {};
+    unordered_map<uint, Player*> _allPlayers {};
+    unordered_map<uint, Location*> _allLocations {};
+    unordered_map<uint, Map*> _allMaps {};
+    unordered_map<uint, Critter*> _allCritters {};
+    unordered_map<uint, Item*> _allItems {};
+    unordered_map<string, unordered_map<uint, ServerEntity*>> _allCustomEntities {};
     bool _nonConstHelper {};
 };

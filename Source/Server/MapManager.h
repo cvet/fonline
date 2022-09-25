@@ -87,41 +87,42 @@ struct FindPathInput
     uint MapId {};
     ushort MoveParams {};
     Critter* FromCritter {};
-    ushort FromX {};
-    ushort FromY {};
-    ushort ToX {};
-    ushort ToY {};
+    ushort FromHexX {};
+    ushort FromHexY {};
+    ushort ToHexX {};
+    ushort ToHexY {};
     ushort NewToX {};
     ushort NewToY {};
     uint Multihex {};
     uint Cut {};
-    uint Trace {};
+    uint TraceDist {};
     bool IsRun {};
-    bool CheckCrit {};
+    bool CheckCritter {};
     bool CheckGagItems {};
     Critter* TraceCr {};
 };
 
-enum class FindPathResult
-{
-    Unknown = -1,
-    Ok = 0,
-    AlreadyHere = 2,
-    MapNotFound = 5,
-    HexBusy = 6,
-    HexBusyRing = 7,
-    TooFar = 8,
-    Deadlock = 9,
-    InternalError = 10,
-    InvalidHexes = 11,
-    TraceFailed = 12,
-    TraceTargetNullptr = 13,
-};
-
 struct FindPathOutput
 {
-    FindPathResult Result {FindPathResult::Unknown};
-    vector<PathStep> Steps {};
+    enum class ResultType
+    {
+        Unknown = -1,
+        Ok = 0,
+        AlreadyHere = 2,
+        MapNotFound = 5,
+        HexBusy = 6,
+        HexBusyRing = 7,
+        TooFar = 8,
+        Deadlock = 9,
+        InternalError = 10,
+        InvalidHexes = 11,
+        TraceFailed = 12,
+        TraceTargetNullptr = 13,
+    };
+
+    ResultType Result {ResultType::Unknown};
+    vector<uchar> Steps {};
+    vector<ushort> ControlSteps {};
     ushort NewToX {};
     ushort NewToY {};
     Critter* GagCritter {};
@@ -137,33 +138,32 @@ public:
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;
     auto operator=(MapManager&&) noexcept = delete;
-    ~MapManager() = default;
+    ~MapManager();
 
-    [[nodiscard]] auto FindStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
     [[nodiscard]] auto GetLocation(uint loc_id) -> Location*;
     [[nodiscard]] auto GetLocation(uint loc_id) const -> const Location*;
     [[nodiscard]] auto GetLocationByMap(uint map_id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> vector<Location*>;
+    [[nodiscard]] auto GetLocations() -> const unordered_map<uint, Location*>&;
     [[nodiscard]] auto GetLocationsCount() const -> uint;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMap(uint map_id) -> Map*;
     [[nodiscard]] auto GetMap(uint map_id) const -> const Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetMaps() -> const unordered_map<uint, Map*>&;
     [[nodiscard]] auto GetMapsCount() const -> uint;
     [[nodiscard]] auto CheckKnownLoc(Critter* cr, uint loc_id) const -> bool;
     [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;
-    [[nodiscard]] auto FindPath(const FindPathInput& pfd) -> FindPathOutput;
+    [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
-    [[nodiscard]] auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
-    [[nodiscard]] auto CreateMap(hstring proto_id, Location* loc) -> Map*;
-
+    void LoadFromResources();
+    auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
+    auto CreateMap(hstring proto_id, Location* loc) -> Map*;
     void LinkMaps();
-    void LoadStaticMaps(FileSystem& file_sys);
-    void DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters);
+    void DeleteLocation(Location* loc);
     void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
@@ -172,7 +172,6 @@ public:
     auto TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool;
     auto Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool;
     void KickPlayersToGlobalMap(Map* map);
-    void PathSetMoveParams(vector<PathStep>& path, bool is_run);
     void ProcessVisibleCritters(Critter* view_cr);
     void ProcessVisibleItems(Critter* view_cr);
     void ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir);
@@ -180,15 +179,16 @@ public:
     void EraseKnownLoc(Critter* cr, uint loc_id);
 
 private:
-    [[nodiscard]] auto FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) const -> uchar;
+    [[nodiscard]] auto GridAt(int x, int y) -> short& { return _mapGrid[((FPATH_MAX_PATH + 1) + y - _mapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + x - _mapGridOffsX)]; }
 
-    void LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 
     FOServer* _engine;
     bool _runGarbager {true};
-    bool _smoothSwitcher {};
     map<const ProtoMap*, StaticMap> _staticMaps {};
+    int _mapGridOffsX {};
+    int _mapGridOffsY {};
+    short* _mapGrid {};
     bool _nonConstHelper {};
 };

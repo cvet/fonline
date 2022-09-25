@@ -53,7 +53,7 @@ namespace IO
 		registeredSavers.clear();
 	}
 
-    Ref<System> IOManager::loadFromBuffer(const std::string& ext, char * data, unsigned int size) const
+    Ref<System> IOManager::loadFromBuffer(const std::string& ext, const char* data, unsigned int size) const
     {
         std::string name = formatExtension(ext);
         Loader* loader = getLoader(name);

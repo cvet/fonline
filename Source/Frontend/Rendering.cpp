@@ -50,12 +50,12 @@ RenderDrawBuffer::RenderDrawBuffer(bool is_static) : IsStatic {is_static}
 {
 }
 
-RenderEffect::RenderEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
+RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
 {
-    auto fofx = ConfigFile("", nullptr);
-    fofx.CollectContent();
-    fofx.AppendData(loader(_str("{}.fofx", name)));
-    RUNTIME_ASSERT(fofx.IsApp("Effect"));
+    const auto fname = _str("{}.fofx", name);
+    const auto content = loader(fname);
+    const auto fofx = ConfigFile(fname, content, nullptr, ConfigFileOption::CollectContent);
+    RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
     RUNTIME_ASSERT(passes >= 1);

@@ -92,6 +92,7 @@ public:
     [[nodiscard]] auto Clone() const -> ModelAnimationController*;
     [[nodiscard]] auto GetAnimationSet(uint index) const -> const ModelAnimation*;
     [[nodiscard]] auto GetAnimationSetByName(string_view name) const -> const ModelAnimation*;
+    [[nodiscard]] auto GetTrackEnable(uint track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
     [[nodiscard]] auto GetNumAnimationSets() const -> uint;
     [[nodiscard]] auto GetTime() const -> float;
@@ -99,7 +100,7 @@ public:
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
     void RegisterAnimationSet(ModelAnimation* animation);
-    void SetTrackAnimationSet(uint track, const ModelAnimation* anim);
+    void SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones);
     void ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names);
     void AddEventEnable(uint track, bool enable, float start_time);
     void AddEventSpeed(uint track, float speed, float start_time, float smooth_time);

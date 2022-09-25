@@ -249,9 +249,8 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 // Engine exception handling
 extern auto GetStackTrace() -> string;
-extern bool BreakIntoDebugger(string_view error_message);
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
-extern void ReportExceptionAndContinue(const std::exception& ex);
+extern auto IsRunInDebugger() -> bool;
+extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
 
 // Todo: pass name to exceptions context args
@@ -278,7 +277,6 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
             } \
             _exceptionMessage.append("\n"); \
             _exceptionMessage.append(GetStackTrace()); \
-            BreakIntoDebugger(_exceptionMessage); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
 \
@@ -445,7 +443,7 @@ public:
     }
 
 private:
-    void ThrowException()
+    void ThrowException() const
     {
         if (std::uncaught_exceptions() == 0) {
             throw GenericException("Some of pointer still alive", _ptrCounter.load());
@@ -459,7 +457,7 @@ template<typename T>
 // ReSharper disable once CppInconsistentNaming
 class ptr final
 {
-    static_assert(std::is_base_of<RefCounter, T>::value, "T must inherit from RefCounter");
+    static_assert(std::is_base_of_v<RefCounter, T>, "T must inherit from RefCounter");
     using type = ptr<T>;
 
 public:
@@ -532,8 +530,18 @@ private:
 };
 
 // C-strings literal helpers
-// Todo: add _hash c-string literal helper
-auto constexpr operator"" _len(const char* str, size_t size) -> size_t
+// ReSharper disable once CppInconsistentNaming
+constexpr uint const_hash(char const* input)
+{
+    return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
+}
+
+auto constexpr operator""_hash(const char* str, size_t size) -> uint
+{
+    return const_hash(str);
+}
+
+auto constexpr operator""_len(const char* str, size_t size) -> size_t
 {
     (void)str;
     return size;
@@ -552,28 +560,31 @@ auto constexpr operator"" _len(const char* str, size_t size) -> size_t
 
 // Ref counted objects scope holder
 template<typename T>
-class RefCountHolder
+class [[nodiscard]] RefCountHolder
 {
 public:
-    [[nodiscard]] explicit RefCountHolder(const T& ref) : _ref {ref} { _ref.AddRef(); }
-    [[nodiscard]] RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref.AddRef(); }
-    [[nodiscard]] RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref.AddRef(); }
+    explicit RefCountHolder(T* ref) : _ref {ref} { _ref->AddRef(); }
+    RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref->AddRef(); }
+    RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref->AddRef(); }
     auto operator=(const RefCountHolder& other) = delete;
     auto operator=(RefCountHolder&& other) = delete;
-    ~RefCountHolder() { _ref.Release(); }
+    ~RefCountHolder() { _ref->Release(); }
+
+    // ReSharper disable once CppInconsistentNaming
+    [[nodiscard]] auto get() const -> T* { return _ref; }
 
 private:
-    const T& _ref;
+    T* _ref;
 };
 
 // Scope callback helpers
 template<typename T>
-class ScopeCallback
+class [[nodiscard]] ScopeCallback
 {
 public:
     static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
-    [[nodiscard]] explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
-    [[nodiscard]] ScopeCallback(ScopeCallback&& other) noexcept = default;
+    explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
+    ScopeCallback(ScopeCallback&& other) noexcept = default;
     ScopeCallback(const ScopeCallback& other) = delete;
     auto operator=(const ScopeCallback& other) = delete;
     auto operator=(ScopeCallback&& other) = delete;
@@ -584,14 +595,14 @@ private:
 };
 
 template<typename T, typename T2>
-class ScopeCallbackExt
+class [[nodiscard]] ScopeCallbackExt
 {
 public:
     static_assert(std::is_invocable_v<T>, "T must be invocable");
     static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
     static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
-    [[nodiscard]] ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
-    [[nodiscard]] ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
+    ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
+    ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
     ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
     auto operator=(const ScopeCallbackExt& other) = delete;
     auto operator=(ScopeCallbackExt&& other) = delete;
@@ -620,6 +631,7 @@ private:
 #define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
+#define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
 
 // Bits
 #define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
@@ -649,7 +661,7 @@ constexpr void UnsetBit(T& x, T y) noexcept
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
 constexpr bool IsEnumSet(T value, T check) noexcept
 {
-    return (static_cast<int>(value) & static_cast<int>(check)) != 0;
+    return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
 
 // Float constants
@@ -660,43 +672,56 @@ constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
 constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
 // Memory pool
-template<int StructSize, int PoolSize>
+template<typename T, int ChunkSize>
 class MemoryPool final
 {
 public:
-    MemoryPool() { Grow(); }
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) noexcept -> MemoryPool& = delete;
+
+    MemoryPool()
+    {
+        _freePtrs.reserve(ChunkSize);
+        Grow();
+    }
 
     ~MemoryPool()
     {
-        for (auto it = _allocatedData.begin(); it != _allocatedData.end(); ++it)
-            delete[] * it;
-        _allocatedData.clear();
+        for (const auto* chunk : _chunks) {
+            delete[] chunk;
+        }
     }
 
-    auto Get() -> void*
+    auto Get() -> T*
     {
-        if (_allocatedData.empty())
+        if (_freePtrs.empty()) {
             Grow();
-        void* result = _allocatedData.back();
-        _allocatedData.pop_back();
+        }
+
+        T* result = _freePtrs.back();
+        _freePtrs.pop_back();
         return result;
     }
 
-    void Put(void* t) { _allocatedData.push_back(static_cast<char*>(t)); }
+    void Put(T* ptr) //
+    {
+        _freePtrs.emplace_back(ptr);
+    }
 
 private:
     void Grow()
     {
-        _allocatedData.reserve(_allocatedData.size() + PoolSize);
-        for (auto i = 0; i < PoolSize; i++)
-            _allocatedData.push_back(new char[StructSize]);
+        auto* new_chunk = new T[ChunkSize]();
+        _chunks.emplace_back(new_chunk);
+        for (auto i = 0; i < ChunkSize; i++) {
+            _freePtrs.emplace_back(&new_chunk[i]);
+        }
     }
 
-    vector<char*> _allocatedData;
+    vector<T*> _chunks {};
+    vector<T*> _freePtrs {};
 };
 
 // Data serialization helpers
@@ -724,13 +749,20 @@ public:
     auto ReadPtr(size_t size) -> const T*
     {
         _readPos += size;
-        return size ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
+        return size != 0u ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
+    }
+
+    template<class T>
+    void ReadPtr(T* ptr)
+    {
+        _readPos += sizeof(T);
+        std::memcpy(ptr, &_dataBuf[_readPos - sizeof(T)], sizeof(T));
     }
 
     template<class T>
     void ReadPtr(T* ptr, size_t size)
     {
-        if (size > 0u) {
+        if (size != 0u) {
             _readPos += size;
             std::memcpy(ptr, &_dataBuf[_readPos - size], size);
         }
@@ -739,7 +771,7 @@ public:
     void VerifyEnd() const
     {
         if (_readPos != _dataBuf.size()) {
-            throw DataReadingException("Not all data readed");
+            throw DataReadingException("Not all data read");
         }
     }
 
@@ -766,6 +798,14 @@ public:
         const auto cur = _dataBuf.size();
         _dataBuf.resize(cur + sizeof(data));
         std::memcpy(&_dataBuf[cur], &data, sizeof(data));
+    }
+
+    template<class T>
+    void WritePtr(const T* data)
+    {
+        const auto cur = _dataBuf.size();
+        _dataBuf.resize(cur + sizeof(T));
+        std::memcpy(&_dataBuf[cur], data, sizeof(T));
     }
 
     template<class T>
@@ -942,7 +982,7 @@ struct hstring
     [[nodiscard]] auto as_hash() const -> hash_t { return _entry->Hash; }
     [[nodiscard]] auto as_int() const -> int { return static_cast<int>(_entry->Hash); }
     [[nodiscard]] auto as_uint() const -> uint { return _entry->Hash; }
-    [[nodiscard]] auto as_str() const -> string_view { return _entry->Str; }
+    [[nodiscard]] auto as_str() const -> const string& { return _entry->Str; }
 
 private:
     static entry _zeroEntry;
@@ -981,7 +1021,6 @@ struct fmt::formatter<hstring>
 // Todo: convert all defines to constants and enums
 // ReSharper disable CppInconsistentNaming
 static constexpr auto CONFIG_NAME = "FOnline.cfg";
-static constexpr auto CLIENT_MAP_FORMAT_VER = 10;
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr uint FADING_PERIOD = 1000;
@@ -1019,7 +1058,7 @@ enum class CritterFindType : uchar
 };
 
 // Ping
-static constexpr uchar PING_PING = 0;
+static constexpr uchar PING_SERVER = 0;
 static constexpr uchar PING_CLIENT = 2;
 
 // Say types
@@ -1085,13 +1124,6 @@ static constexpr ushort MAXHEX_MAX = 4000;
 #define ANSWER_END (0xF1)
 #define ANSWER_BARTER (0xF2)
 
-// Run-time critters flags
-// Todo: remove critter flags
-static constexpr uint FCRIT_PLAYER = 0x00010000;
-static constexpr uint FCRIT_NPC = 0x00020000;
-static constexpr uint FCRIT_DISCONNECT = 0x00080000;
-static constexpr uint FCRIT_CHOSEN = 0x00100000;
-
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.
 // Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.
@@ -1107,13 +1139,6 @@ static constexpr uint FCRIT_CHOSEN = 0x00100000;
 #define SHOW_SCREEN_FIXBOY (9) // Fix-boy.
 #define SHOW_SCREEN_PIPBOY (10) // Pip-boy.
 #define SHOW_SCREEN_MINIMAP (11) // Mini-map.
-
-// Special send params
-// Todo: remove special OTHER_* params
-#define OTHER_BREAK_TIME (0)
-#define OTHER_WAIT_TIME (1)
-#define OTHER_FLAGS (2)
-#define OTHER_TELEPORT (7)
 
 // Critter actions
 // Flags for chosen:
@@ -1139,28 +1164,23 @@ static constexpr uint LOOK_CHECK_SNEAK_DIR = 0x02;
 static constexpr uint LOOK_CHECK_TRACE = 0x08;
 static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
+static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
 
 // Anims
 #define ANIM1_UNARMED (1)
 #define ANIM2_IDLE (1)
 #define ANIM2_WALK (3)
+#define ANIM2_WALK_BACK (15)
 #define ANIM2_LIMP (4)
 #define ANIM2_RUN (5)
+#define ANIM2_RUN_BACK (16)
+#define ANIM2_TURN_RIGHT (17)
+#define ANIM2_TURN_LEFT (18)
 #define ANIM2_PANIC_RUN (6)
 #define ANIM2_SNEAK_WALK (7)
 #define ANIM2_SNEAK_RUN (8)
 #define ANIM2_IDLE_PRONE_FRONT (86)
 #define ANIM2_DEAD_FRONT (102)
-
-// Move params
-// 6 next steps (each 5 bit) + stop bit + run bit
-// Step bits: 012 - dir, 3 - allow, 4 - disallow
-static constexpr uint MOVE_PARAM_STEP_COUNT = 6;
-static constexpr uint MOVE_PARAM_STEP_BITS = 5;
-static constexpr uint MOVE_PARAM_STEP_DIR = 0x7;
-static constexpr uint MOVE_PARAM_STEP_ALLOW = 0x8;
-static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
-static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
 // Property type in network interaction
 enum class NetProperty : uchar
@@ -1180,6 +1200,7 @@ enum class NetProperty : uchar
 ///@ ExportEnum
 enum class EffectType : uint
 {
+    None = 0,
     GenericSprite = 0x00000001,
     CritterSprite = 0x00000002,
     TileSprite = 0x00000004,
@@ -1242,7 +1263,7 @@ enum class MovingState : uchar
     HexBusy = 8,
     HexBusyRing = 9,
     Deadlock = 10,
-    TraceFail = 11,
+    TraceFailed = 11,
 };
 
 // Uses
@@ -1353,8 +1374,9 @@ constexpr auto xrange(T value)
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
+// Todo: optimize copy() to pass placement storage for value
 template<typename T>
-constexpr auto copy(T&& value) -> T
+constexpr auto copy(const T& value) -> T
 {
     return T(value);
 }
@@ -1370,6 +1392,12 @@ constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
     return result;
 }
 
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+constexpr auto iround(T value) -> int
+{
+    return static_cast<int>(std::lround(value));
+}
+
 // ReSharper restore CppInconsistentNaming
 
 class NameResolver
@@ -1379,7 +1407,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
-    [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
+    [[nodiscard]] virtual auto ToHashedString(string_view s, bool mustExists = false) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };
@@ -1393,10 +1421,9 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
-class Application;
-extern Application* App;
-extern void InitApp(int argc, char** argv, string_view name_appendix);
-[[noreturn]] extern void ExitApp(bool success);
+// Interthread communication between server and client
+using InterthreadDataCallback = std::function<void(const_span<uchar>)>;
+extern map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

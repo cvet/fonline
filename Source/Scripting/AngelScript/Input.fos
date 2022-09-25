@@ -50,12 +50,12 @@ bool[] GetMousePressed()
 
 void ModuleInit()
 {
-    GameInstance.OnMouseDown.Subscribe(OnMouseDown);
-    GameInstance.OnMouseUp.Subscribe(OnMouseUp);
-    GameInstance.OnMouseMove.Subscribe(OnMouseMove);
-    GameInstance.OnKeyDown.Subscribe(OnKeyDown);
-    GameInstance.OnKeyUp.Subscribe(OnKeyUp);
-    GameInstance.OnInputLost.Subscribe(OnInputLost);
+    Game.OnMouseDown.Subscribe(OnMouseDown);
+    Game.OnMouseUp.Subscribe(OnMouseUp);
+    Game.OnMouseMove.Subscribe(OnMouseMove);
+    Game.OnKeyDown.Subscribe(OnKeyDown);
+    Game.OnKeyUp.Subscribe(OnKeyUp);
+    Game.OnInputLost.Subscribe(OnInputLost);
 
     KeyPressed.resize(0x100);
     MousePressed.resize(MouseButton::Ext4 + 1);
@@ -80,7 +80,7 @@ void ReleaseMouse()
 // Return true to disable engine events.
 void OnMouseDown(MouseButton button) // Engine callback
 {
-    if (Settings.IsConnecting || Settings.IsUpdating)
+    if (Game.IsConnecting())
         return;
 
     MousePressed[button] = true;

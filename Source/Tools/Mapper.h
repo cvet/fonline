@@ -61,20 +61,11 @@
 
 DECLARE_EXCEPTION(MapperException);
 
-class FOMapper final : public FOClient
+class FOMapper final : virtual public FOEngineBase, public FOClient
 {
     friend class MapperScriptSystem;
 
 public:
-    struct IfaceAnim
-    {
-        AnyFrames* Frames {};
-        AtlasType ResType {};
-        uint LastTick {};
-        ushort Flags {};
-        uint CurSpr {};
-    };
-
     struct SubTab
     {
         vector<const ProtoItem*> ItemProtos {};
@@ -134,7 +125,6 @@ public:
     static constexpr auto FONT_THIN = 6;
     static constexpr auto FONT_FAT = 7;
     static constexpr auto FONT_BIG = 8;
-    static constexpr auto DRAW_CR_INFO_MAX = 2;
     static constexpr auto CUR_MODE_DEFAULT = 0;
     static constexpr auto CUR_MODE_MOVE_SELECTION = 1;
     static constexpr auto CUR_MODE_PLACE_OBJECT = 2;
@@ -171,23 +161,21 @@ public:
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    FOMapper() = delete;
-    explicit FOMapper(GlobalSettings& settings);
+    FOMapper(GlobalSettings& settings, AppWindow* window);
+
     FOMapper(const FOMapper&) = delete;
     FOMapper(FOMapper&&) noexcept = delete;
     auto operator=(const FOMapper&) = delete;
     auto operator=(FOMapper&&) noexcept = delete;
     ~FOMapper() override = default;
 
-    void RegisterData();
-
-    auto InitIface() -> int;
-    auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
+    void InitIface();
+    auto IfaceLoadRect(IRect& comp, string_view name) const -> bool;
     void MapperMainLoop();
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
-    void ProcessInputEvent(const InputEvent& event);
+    void ProcessMapperInput();
 
     void CurDraw();
     void CurRMouseUp();
@@ -245,31 +233,33 @@ public:
     void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
     void ParseCommand(string_view command);
-    void LoadMap(string_view map_name, int start_hx, int start_hy);
-    void UnloadMap();
+    auto LoadMap(string_view map_name) -> MapView*;
+    void ShowMap(MapView* map);
+    void SaveMap(MapView* map, string_view custom_name);
+    void UnloadMap(MapView* map);
+    void ResizeMap(MapView* map, ushort width, ushort height);
 
-    void MessBoxGenerate();
     void AddMess(string_view message_text);
     void MessBoxDraw();
-    auto SaveLogFile() -> bool;
 
-    void RunStartScript();
-    void RunMapLoadScript(MapView* map);
-    void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
 
-    ///@ ExportEvent
-    ENTITY_EVENT(ConsoleMessage, string& /*text*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(EditMapLoad, MapView* /*map*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(EditMapSave, MapView* /*map*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
+    auto GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>;
 
+    ///@ ExportEvent
+    ENTITY_EVENT(OnConsoleMessage, string& /*text*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnEditMapLoad, MapView* /*map*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
+
+    FileSystem ContentFileSys {};
     vector<MapView*> LoadedMaps {};
-    ConfigFile IfaceIni;
+    unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};
+    bool PressedKeys[0x100] {};
     int CurMode {};
     AnyFrames* CurPDef {};
     AnyFrames* CurPHand {};
@@ -329,7 +319,7 @@ public:
     vector<const ProtoItem*>* CurItemProtos {};
     vector<hstring>* CurTileNames {};
     vector<const ProtoCritter*>* CurNpcProtos {};
-    int NpcDir {};
+    uchar NpcDir {};
     int* CurProtoScroll {};
     uint ProtoWidth {};
     uint ProtosOnScreen {};

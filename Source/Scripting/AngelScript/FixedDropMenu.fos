@@ -85,7 +85,7 @@ class FixedDropMenu : Gui::IDropMenu
         if (MouseBtn == button && Cursor == Settings.Cursor && SafeSelectedEntity != null) {
             Pressed = true;
             PressedOffsetY = 0;
-            MouseStayTick = GetTick();
+            MouseStayTick = Game.GetTick();
         }
     }
 
@@ -119,7 +119,7 @@ class FixedDropMenu : Gui::IDropMenu
         if (Pressed) {
             if (offsetX != 0 || offsetY != 0) {
                 PressedOffsetY += offsetY;
-                CustomCall("SetMousePos " + (Settings.MouseX - offsetX) + " " + (Settings.MouseY - offsetY) + " false");
+                Game.CustomCall("SetMousePos " + (Settings.MouseX - offsetX) + " " + (Settings.MouseY - offsetY) + " false");
             }
             return true;
         }
@@ -139,13 +139,13 @@ class FixedDropMenu : Gui::IDropMenu
                     SelectedEntity = cast<Gui::ItemView>(hoveredObj.Grid).GetItem(hoveredObj.CellIndex);
             }
             else if (screen == null || !screen.IsModal) {
-                Entity entity = GetEntityByMonitorPos(Settings.MouseX, Settings.MouseY);
+                Entity entity = Game.GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
                 if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null))
                     SelectedEntity = entity;
             }
 
             if (prevEntity !is SafeSelectedEntity || offsetX != 0 || offsetY != 0) {
-                MouseStayTick = GetTick();
+                MouseStayTick = Game.GetTick();
                 ShowButtons.clear();
             }
         }
@@ -166,7 +166,7 @@ class FixedDropMenu : Gui::IDropMenu
                 SelectedEntity = null;
                 ShowButtons.clear();
             }
-            else if (MouseStayTick != 0 && GetTick() - ShowTime >= MouseStayTick) {
+            else if (MouseStayTick != 0 && Game.GetTick() - ShowTime >= MouseStayTick) {
                 MouseStayTick = 0;
 
                 CollectShowButtons(!Pressed);

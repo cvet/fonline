@@ -148,12 +148,9 @@ CMake contributions included to main CMakeLists.txt scope.
 * AddRawResources dir(s)
 * AddNativeIncludeDir dir(s)
 * AddNativeSource pathPattern(s)
-* AddAngelScriptSource pathPattern(s)
 * AddMonoAssembly assembly
 * AddMonoReference assembly target ref(s)
 * AddMonoSource assembly target pathPattern(s)
-* CreateConfig config inheritenConfig
-* TweakConfig config option value
 * CreatePackage package config debug
 * AddToPackage package binary platform arch packType [customConfig]
 

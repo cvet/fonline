@@ -37,6 +37,8 @@ namespace SPK
 		static  Ref<RandomInterpolator<T> > create(const T& minBirthValue,const T& maxBirthValue,const T& minDeathValue,const T& maxDeathValue);
 
 		void setValues(const T& minBirthValue,const T& maxBirthValue,const T& minDeathValue,const T& maxDeathValue);
+		void setBirthValues(const T& minBirthValue, const T& maxBirthValue);
+		void setDeathValues(const T& minDeathValue, const T& maxDeathValue);
 
 		const T& getMinBirthValue() const;
 		const T& getMaxBirthValue() const;
@@ -113,6 +115,20 @@ namespace SPK
 	{
 		this->minBirthValue = minBirthValue;
 		this->maxBirthValue = maxBirthValue;
+		this->minDeathValue = minDeathValue;
+		this->maxDeathValue = maxDeathValue;
+	}
+
+	template<typename T>
+	void RandomInterpolator<T>::setBirthValues(const T& minBirthValue, const T& maxBirthValue)
+	{
+		this->minBirthValue = minBirthValue;
+		this->maxBirthValue = maxBirthValue;
+	}
+
+	template<typename T>
+	void RandomInterpolator<T>::setDeathValues(const T& minDeathValue, const T& maxDeathValue)
+	{
 		this->minDeathValue = minDeathValue;
 		this->maxDeathValue = maxDeathValue;
 	}

@@ -85,7 +85,7 @@ static auto StrToHex(const char* str) -> uchar
 
 auto FOMsg::operator+=(const FOMsg& other) -> FOMsg&
 {
-    for (const auto& [key, value] : other._strData) {
+    for (auto&& [key, value] : other._strData) {
         EraseStr(key);
         AddStr(key, value);
     }
@@ -108,7 +108,7 @@ void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
         str_cur += 2;
     }
 
-    AddStr(num, static_cast<char*>(&str[0]));
+    AddStr(num, static_cast<char*>(str.data()));
 }
 
 auto FOMsg::GetStr(uint num) const -> string
@@ -242,7 +242,7 @@ auto FOMsg::GetBinaryData() const -> vector<uchar>
 
     vector<uchar> data;
     data.resize(sizeof(count));
-    std::memcpy(&data[0], &count, sizeof(count));
+    std::memcpy(data.data(), &count, sizeof(count));
 
     for (auto&& [num, str] : _strData) {
         auto str_len = static_cast<uint>(str.length());
@@ -282,7 +282,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
 
         str.resize(str_len);
         if (str_len != 0u) {
-            std::memcpy(&str[0], buf, str_len);
+            std::memcpy(str.data(), buf, str_len);
         }
         buf += str_len;
 
@@ -344,7 +344,7 @@ auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
 
 void FOMsg::LoadFromMap(const map<string, string>& kv)
 {
-    for (const auto& [key, value] : kv) {
+    for (auto&& [key, value] : kv) {
         const auto num = _str(key).toUInt();
         if (num != 0u) {
             AddStr(num, value);

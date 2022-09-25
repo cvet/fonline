@@ -36,6 +36,7 @@
 #if FO_HAVE_OPENGL
 
 #include "Application.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
@@ -96,25 +97,50 @@
 #endif
 #endif
 
-#if !FO_DEBUG
-#define GL(expr) expr
-#else
+#if FO_DEBUG
 #define GL(expr) \
     do { \
         expr; \
         if (RenderDebug) { \
             GLenum err__ = glGetError(); \
-            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, _str(#expr " error {:#X}", err__)); \
+            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, _str(#expr " error {}", ErrCodeToString(err__))); \
         } \
     } while (0)
+
+static auto ErrCodeToString(GLenum err_code) -> string
+{
+#define ERR_CODE_CASE(err_code_variant) \
+    case err_code_variant: \
+        return #err_code_variant
+
+    switch (err_code) {
+        ERR_CODE_CASE(GL_INVALID_ENUM);
+        ERR_CODE_CASE(GL_INVALID_VALUE);
+        ERR_CODE_CASE(GL_INVALID_OPERATION);
+        ERR_CODE_CASE(GL_INVALID_FRAMEBUFFER_OPERATION);
+        ERR_CODE_CASE(GL_OUT_OF_MEMORY);
+#if !FO_OPENGL_ES
+        ERR_CODE_CASE(GL_STACK_OVERFLOW);
+        ERR_CODE_CASE(GL_STACK_UNDERFLOW);
+#endif
+    default:
+        return _str("{:#X}", err_code).str();
+    }
+
+#undef ERR_CODE_CASE
+}
+#else
+#define GL(expr) expr
 #endif
 
 #define GL_HAS(extension) (OGL_##extension)
 
 static bool RenderDebug {};
+static bool ForceGlslEsProfile {};
 static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
+static mat44 ProjectionMatrixColMaj {};
 
 // ReSharper disable CppInconsistentNaming
 static bool OGL_version_2_0 {};
@@ -165,7 +191,7 @@ public:
         GLint prev_fbo;
         GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-        GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, &result[0]));
+        GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
         return result;
@@ -186,8 +212,10 @@ public:
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    explicit OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
+    explicit OpenGL_DrawBuffer(bool is_static);
     ~OpenGL_DrawBuffer() override;
+
+    void Upload(EffectUsage usage, size_t custom_vertices_size) override;
 
     GLuint VertexArrObj {};
     GLuint VertexBufObj {};
@@ -199,35 +227,36 @@ class OpenGL_Effect final : public RenderEffect
     friend class OpenGL_Renderer;
 
 public:
-    OpenGL_Effect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : RenderEffect(usage, name, defines, loader) { }
+    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : RenderEffect(usage, name, loader) { }
     ~OpenGL_Effect() override;
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) override;
+
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
-    GLint Location_ZoomFactor;
-    GLint Location_ColorMap;
-    GLint Location_ColorMapSize;
-    GLint Location_ColorMapSamples;
-    GLint Location_EggMap;
-    GLint Location_EggMapSize;
-    GLint Location_SpriteBorder;
-    GLint Location_ProjectionMatrix;
-    GLint Location_GroundPosition;
-    GLint Location_LightColor;
-    GLint Location_WorldMatrices;
+    GLint Location_ZoomFactor[EFFECT_MAX_PASSES] {};
+    GLint Location_ColorMap[EFFECT_MAX_PASSES] {};
+    GLint Location_ColorMapSize[EFFECT_MAX_PASSES] {};
+    GLint Location_EggMap[EFFECT_MAX_PASSES] {};
+    GLint Location_EggMapSize[EFFECT_MAX_PASSES] {};
+    GLint Location_SpriteBorder[EFFECT_MAX_PASSES] {};
+    GLint Location_ProjectionMatrix[EFFECT_MAX_PASSES] {};
+    GLint Location_GroundPosition[EFFECT_MAX_PASSES] {};
+    GLint Location_LightColor[EFFECT_MAX_PASSES] {};
+    GLint Location_WorldMatrices[EFFECT_MAX_PASSES] {};
 };
 
-void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
+void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
     RenderDebug = settings.RenderDebug;
-    SdlWindow = window;
+    ForceGlslEsProfile = settings.ForceGlslEsProfile;
+    SdlWindow = static_cast<SDL_Window*>(window);
 
 #if !FO_WEB
-    GlContext = SDL_GL_CreateContext(window);
+    GlContext = SDL_GL_CreateContext(SdlWindow);
     RUNTIME_ASSERT_STR(GlContext, _str("OpenGL context not created, error '{}'", SDL_GetError()));
 
-    const auto make_current = SDL_GL_MakeCurrent(window, GlContext);
+    const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
     RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
 
     SDL_GL_SetSwapInterval(settings.VSync ? 1 : 0);
@@ -249,7 +278,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context(nullptr, &attr);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
     if (gl_context <= 0) {
         attr.majorVersion = 1;
         attr.minorVersion = 0;
@@ -327,6 +356,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
         // glBindFramebuffer = glBindFramebufferEXT;
         // glFramebufferTexture2D = glFramebufferTexture2DEXT;
         // Todo: map all framebuffer ext functions
+        throw NotImplementedException(LINE_STR);
     }
 
     // Render states
@@ -352,14 +382,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
     GLint max_viewport_size[2];
     GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-    auto atlas_w = std::min(static_cast<uint>(max_texture_size), Application::AppRender::MAX_ATLAS_SIZE);
+    auto atlas_w = std::min(static_cast<uint>(max_texture_size), AppRender::MAX_ATLAS_SIZE);
     auto atlas_h = atlas_w;
     atlas_w = std::min(static_cast<uint>(max_viewport_size[0]), atlas_w);
     atlas_h = std::min(static_cast<uint>(max_viewport_size[1]), atlas_h);
-    RUNTIME_ASSERT_STR(atlas_w >= Application::AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", Application::AppRender::MIN_ATLAS_SIZE));
-    RUNTIME_ASSERT_STR(atlas_h >= Application::AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", Application::AppRender::MIN_ATLAS_SIZE));
-    const_cast<uint&>(Application::AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<uint&>(Application::AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    const_cast<uint&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<uint&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -373,6 +403,9 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
 #endif
 
     GL(glViewport(0, 0, settings.ScreenWidth, settings.ScreenHeight));
+
+    MatrixHelper::MatrixOrtho(ProjectionMatrixColMaj[0], 0.0f, static_cast<float>(settings.ScreenWidth), static_cast<float>(settings.ScreenHeight), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 }
 
 void OpenGL_Renderer::Present()
@@ -428,26 +461,16 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return opengl_dbuf.release();
 }
 
-OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
+auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    if (VertexBufObj != 0u) {
-        glDeleteBuffers(1, &VertexBufObj);
-    }
-    if (IndexBufObj != 0u) {
-        glDeleteBuffers(1, &IndexBufObj);
-    }
-    if (VertexArrObj != 0u) {
-        glDeleteVertexArrays(1, &VertexArrObj);
-    }
-}
-
-auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
-{
-    auto&& opengl_effect = std::make_unique<OpenGL_Effect>(usage, name, defines, loader);
+    auto&& opengl_effect = std::make_unique<OpenGL_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
         if constexpr (FO_OPENGL_ES) {
+            ext = "glsl-es";
+        }
+        if (ForceGlslEsProfile) {
             ext = "glsl-es";
         }
 
@@ -457,10 +480,6 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_v
         const string frag_fname = _str("{}.{}.frag.{}", name, pass + 1, ext);
         string frag_content = loader(frag_fname);
         RUNTIME_ASSERT(!frag_content.empty());
-
-        // Todo: pass additional defines to shaders (passed + internal)
-        // defines
-        // string internal_defines = _str("#define PASS{}\n#define MAX_BONES {}\n", pass, MaxBones);
 
         // Create shaders
         GLuint vs;
@@ -546,17 +565,44 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_v
 
         opengl_effect->Program[pass] = program;
 
-        GL(opengl_effect->Location_ProjectionMatrix = glGetUniformLocation(program, "ProjectionMatrix"));
-        GL(opengl_effect->Location_ZoomFactor = glGetUniformLocation(program, "ZoomFactor"));
-        GL(opengl_effect->Location_ColorMap = glGetUniformLocation(program, "ColorMap"));
-        GL(opengl_effect->Location_ColorMapSize = glGetUniformLocation(program, "ColorMapSize"));
-        GL(opengl_effect->Location_ColorMapSamples = glGetUniformLocation(program, "ColorMapSamples"));
-        GL(opengl_effect->Location_EggMap = glGetUniformLocation(program, "EggMap"));
-        GL(opengl_effect->Location_EggMapSize = glGetUniformLocation(program, "EggMapSize"));
-        GL(opengl_effect->Location_SpriteBorder = glGetUniformLocation(program, "SpriteBorder"));
-        GL(opengl_effect->Location_GroundPosition = glGetUniformLocation(program, "GroundPosition"));
-        GL(opengl_effect->Location_LightColor = glGetUniformLocation(program, "LightColor"));
-        GL(opengl_effect->Location_WorldMatrices = glGetUniformLocation(program, "WorldMatrices"));
+        GL(opengl_effect->Location_ProjectionMatrix[pass] = glGetUniformLocation(program, "ProjectionMatrix"));
+        GL(opengl_effect->Location_ZoomFactor[pass] = glGetUniformLocation(program, "ZoomFactor"));
+        GL(opengl_effect->Location_ColorMap[pass] = glGetUniformLocation(program, "ColorMap"));
+        GL(opengl_effect->Location_ColorMapSize[pass] = glGetUniformLocation(program, "ColorMapSize"));
+        GL(opengl_effect->Location_EggMap[pass] = glGetUniformLocation(program, "EggMap"));
+        GL(opengl_effect->Location_EggMapSize[pass] = glGetUniformLocation(program, "EggMapSize"));
+        GL(opengl_effect->Location_SpriteBorder[pass] = glGetUniformLocation(program, "SpriteBorder"));
+        GL(opengl_effect->Location_GroundPosition[pass] = glGetUniformLocation(program, "GroundPosition"));
+        GL(opengl_effect->Location_LightColor[pass] = glGetUniformLocation(program, "LightColor"));
+        GL(opengl_effect->Location_WorldMatrices[pass] = glGetUniformLocation(program, "WorldMatrices"));
+
+#if FO_ENABLE_3D
+        if (!opengl_effect->ModelBuf) {
+            if (usage == EffectUsage::Model) {
+                opengl_effect->ModelBuf = RenderEffect::ModelBuffer();
+            }
+        }
+#endif
+
+        if (!opengl_effect->BorderBuf) {
+            if (usage == EffectUsage::Contour) {
+                opengl_effect->BorderBuf = RenderEffect::BorderBuffer();
+            }
+        }
+
+        if (!opengl_effect->MapSpriteBuf) {
+            if (usage == EffectUsage::MapSprite) {
+                if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
+                    opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
+                }
+            }
+        }
+
+        if (!opengl_effect->MainTexBuf) {
+            if (opengl_effect->Location_ColorMapSize[pass] != -1) {
+                opengl_effect->MainTexBuf = RenderEffect::MainTexBuffer();
+            }
+        }
 
         // Bind data
         /*
@@ -771,15 +817,25 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_v
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
+    uint w;
+    uint h;
+
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
-        GL(glViewport(0, 0, opengl_tex->Width, opengl_tex->Height));
+        w = opengl_tex->Width;
+        h = opengl_tex->Height;
     }
     else {
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
-        GL(glViewport(0, 0, App->Settings.ScreenWidth, App->Settings.ScreenHeight));
+        w = App->Settings.ScreenWidth;
+        h = App->Settings.ScreenHeight;
     }
+
+    GL(glViewport(0, 0, w, h));
+
+    MatrixHelper::MatrixOrtho(ProjectionMatrixColMaj[0], 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
     /*
      *int w, h;
@@ -808,10 +864,10 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     }
 
     if (screen_size) {
-        Application::AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)settings.ScreenWidth, (float)settings.ScreenHeight, 0.0f, -1.0f, 1.0f);
+        AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)settings.ScreenWidth, (float)settings.ScreenHeight, 0.0f, -1.0f, 1.0f);
     }
     else {
-        Application::AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f);
+        AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f);
     }
     projectionMatrixCM.Transpose(); // Convert to column major order
     */
@@ -856,113 +912,6 @@ void OpenGL_Renderer::DisableScissor()
 {
     GL(glDisable(GL_SCISSOR_TEST));
 }
-
-OpenGL_Effect::~OpenGL_Effect()
-{
-    for (size_t i = 0; i < _passCount; i++) {
-        if (Program[i] != 0u) {
-            glDeleteProgram(Program[i]);
-        }
-    }
-}
-
-/*void OpenGL_Effect::DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, size_t pos, size_t count, RenderTexture* tex)
-{
-    // EnableVertexArray(quadsVertexArray, 4 * curDrawQuad);
-
-    for (size_t pass = 0; pass < _passCount; pass++) {
-        GL(glUseProgram(Program[pass]));
-
-        / *
-        if (IS_EFFECT_VALUE(effect_pass.ZoomFactor))
-            GL(glUniform1f(effect_pass.ZoomFactor, settings.SpritesZoom));
-        if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
-            GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[0]));
-        if (IS_EFFECT_VALUE(effect_pass.ColorMap) && dip.SourceTexture)
-        {
-            if (dip.SourceTexture->Samples == 0.0f)
-            {
-                GL(glBindTexture(GL_TEXTURE_2D, dip.SourceTexture->Id));
-            }
-            else
-            {
-                GL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, dip.SourceTexture->Id));
-                if (IS_EFFECT_VALUE(effect_pass.ColorMapSamples))
-                    GL(glUniform1f(effect_pass.ColorMapSamples, dip.SourceTexture->Samples));
-            }
-            GL(glUniform1i(effect_pass.ColorMap, 0));
-            if (IS_EFFECT_VALUE(effect_pass.ColorMapSize))
-                GL(glUniform4fv(effect_pass.ColorMapSize, 1, dip.SourceTexture->SizeData));
-        }
-        if (IS_EFFECT_VALUE(effect_pass.EggMap) && sprEgg)
-        {
-            GL(glActiveTexture(GL_TEXTURE1));
-            GL(glBindTexture(GL_TEXTURE_2D, sprEgg->Atlas->TextureOwner->Id));
-            GL(glActiveTexture(GL_TEXTURE0));
-            GL(glUniform1i(effect_pass.EggMap, 1));
-            if (IS_EFFECT_VALUE(effect_pass.EggMapSize))
-                GL(glUniform4fv(effect_pass.EggMapSize, 1, sprEgg->Atlas->TextureOwner->SizeData));
-        }
-        if (IS_EFFECT_VALUE(effect_pass.SpriteBorder))
-            GL(glUniform4f(effect_pass.SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R,
-                dip.SpriteBorder.B));
-
-        if (effect_pass.IsNeedProcess)
-            effectMngr.EffectProcessVariables(effect_pass, true);
-        * /
-
-        GL(glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(count), GL_UNSIGNED_SHORT, reinterpret_cast<const GLvoid*>(pos * sizeof(ushort))));
-
-        // if (effect_pass.IsNeedProcess)
-        //     effectMngr.EffectProcessVariables(effect_pass, false);
-    }
-
-    GL(glUseProgram(0));
-
-    // DisableVertexArray(quadsVertexArray);
-}
-
-void OpenGL_Effect::DrawPrimitive(RenderPrimitiveType prim, const Vertex2DVec& vbuf, const vector<ushort>& ibuf)
-{
-    / // Enable smooth
-#if !FO_OPENGL_ES
-    if (zoom && *zoom != 1.0f) {
-        GL(glEnable(prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH));
-    }
-#endif
-
-    // Draw
-    EnableVertexArray(pointsVertexArray, count);
-    EnableScissor();
-
-    for (size_t pass = 0; pass < draw_effect->Passes.size(); pass++) {
-        EffectPass& effect_pass = draw_effect->Passes[pass];
-
-        GL(glUseProgram(effect_pass.Program));
-
-        if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
-            GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[0]));
-
-        if (effect_pass.IsNeedProcess)
-            effectMngr.EffectProcessVariables(effect_pass, true);
-
-        GL(glDrawElements(prim_type, count, GL_UNSIGNED_SHORT, (void*)0));
-
-        if (effect_pass.IsNeedProcess)
-            effectMngr.EffectProcessVariables(effect_pass, false);
-    }
-
-    GL(glUseProgram(0));
-    DisableVertexArray(pointsVertexArray);
-    DisableScissor();
-
-// Disable smooth
-#if !FO_OPENGL_ES
-    if (zoom && *zoom != 1.0f) {
-        GL(glDisable(prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH));
-    }
-#endif
-}*/
 
 static void EnableVertAtribs(EffectUsage usage)
 {
@@ -1010,97 +959,184 @@ static void DisableVertAtribs(EffectUsage usage)
     }
 }
 
-void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, RenderTexture* custom_tex)
+OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static)
 {
-    auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
+    GL(glGenBuffers(1, &VertexBufObj));
+    GL(glGenBuffers(1, &IndexBufObj));
+}
 
-    if (opengl_dbuf->VertexBufObj == 0u || dbuf->DataChanged) {
-        dbuf->DataChanged = false;
+OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
+{
+    if (VertexBufObj != 0u) {
+        glDeleteBuffers(1, &VertexBufObj);
+    }
+    if (IndexBufObj != 0u) {
+        glDeleteBuffers(1, &IndexBufObj);
+    }
+    if (VertexArrObj != 0u) {
+        glDeleteVertexArrays(1, &VertexArrObj);
+    }
+}
 
-        // Regenerate static buffers
-        if (dbuf->IsStatic) {
-            if (opengl_dbuf->VertexBufObj != 0u) {
-                GL(glDeleteBuffers(1, &opengl_dbuf->VertexBufObj));
-                opengl_dbuf->VertexBufObj = 0u;
-            }
-            if (opengl_dbuf->IndexBufObj != 0u) {
-                GL(glDeleteBuffers(1, &opengl_dbuf->IndexBufObj));
-                opengl_dbuf->IndexBufObj = 0u;
-            }
-        }
+void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
+{
+    if (IsStatic && !StaticDataChanged) {
+        return;
+    }
 
-        if (opengl_dbuf->VertexBufObj == 0u) {
-            GL(glGenBuffers(1, &opengl_dbuf->VertexBufObj));
-        }
-        if (opengl_dbuf->IndexBufObj == 0u) {
-            GL(glGenBuffers(1, &opengl_dbuf->IndexBufObj));
-        }
+    StaticDataChanged = false;
 
-        const auto buf_type = dbuf->IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
+    const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
-        // Fill vertex buffer
-        GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
+    // Fill vertex buffer
+    GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
+
+    size_t upload_vertices;
 
 #if FO_ENABLE_3D
-        if (Usage == EffectUsage::Model) {
-            RUNTIME_ASSERT(dbuf->Vertices2D.empty());
-            GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices3D.size() * sizeof(Vertex3D), dbuf->Vertices3D.data(), buf_type));
-        }
-        else {
-            RUNTIME_ASSERT(dbuf->Vertices3D.empty());
-            GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices2D.size() * sizeof(Vertex2D), dbuf->Vertices2D.data(), buf_type));
-        }
+    if (usage == EffectUsage::Model) {
+        RUNTIME_ASSERT(Vertices2D.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices3D.size() : custom_vertices_size;
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
+    }
+    else {
+        RUNTIME_ASSERT(Vertices3D.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
+    }
 #else
-        GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices2D.size() * sizeof(Vertex2D), dbuf->Vertices2D.data(), buf_type));
+    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+    GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
 #endif
 
-        // Auto generate indices
-        auto& indices = dbuf->Indices;
-        switch (Usage) {
+    GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+
+    // Auto generate indices
+    bool need_upload_indices = false;
+    if (!IsStatic) {
+        switch (usage) {
 #if FO_ENABLE_3D
         case EffectUsage::Model:
 #endif
         case EffectUsage::ImGui: {
             // Nothing, indices generated manually
+            need_upload_indices = true;
         } break;
         case EffectUsage::Font:
         case EffectUsage::MapSprite:
-        case EffectUsage::Interface: {
+        case EffectUsage::Interface:
+        case EffectUsage::Flush:
+        case EffectUsage::Contour: {
             // Sprite quad
-            RUNTIME_ASSERT(dbuf->Vertices2D.size() % 4 == 0);
-            indices.resize(dbuf->Vertices2D.size() / 4 * 6);
-            for (size_t i = 0; i < indices.size(); i += 6) {
-                indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
-                indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
-                indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);
-                indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 1);
-                indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 2);
-                indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 3);
+            RUNTIME_ASSERT(upload_vertices % 4 == 0);
+            auto& indices = Indices;
+            const auto need_size = upload_vertices / 4 * 6;
+            if (indices.size() < need_size) {
+                const auto prev_size = indices.size();
+                indices.resize(need_size);
+                for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
+                    indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
+                    indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
+                    indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);
+                    indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 1);
+                    indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 2);
+                    indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 3);
+                }
+
+                need_upload_indices = true;
             }
         } break;
-        case EffectUsage::Flush:
-        case EffectUsage::Contour:
         case EffectUsage::Primitive: {
             // One to one
-            indices.resize(dbuf->Vertices2D.size());
-            for (size_t i = 0; i < indices.size(); i++) {
-                indices[i] = static_cast<ushort>(i);
+            auto& indices = Indices;
+            if (indices.size() < upload_vertices) {
+                const auto prev_size = indices.size();
+                indices.resize(upload_vertices);
+                for (size_t i = prev_size; i < indices.size(); i++) {
+                    indices[i] = static_cast<ushort>(i);
+                }
+
+                need_upload_indices = true;
             }
         } break;
         }
+    }
+    else {
+        need_upload_indices = true;
+    }
 
-        // Fill index buffer
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
-        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, dbuf->Indices.size() * sizeof(ushort), dbuf->Indices.data(), buf_type));
+    // Fill index buffer
+    if (need_upload_indices) {
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
+        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, Indices.size() * sizeof(ushort), Indices.data(), buf_type));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    }
 
-        // Create vertex array object
-        if (opengl_dbuf->VertexArrObj == 0u && GL_HAS(vertex_array_object)) {
-            GL(glGenVertexArrays(1, &opengl_dbuf->VertexArrObj));
-            GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
-            EnableVertAtribs(Usage);
-            GL(glBindVertexArray(0));
+    // Vertex array
+    if (VertexArrObj == 0u && GL_HAS(vertex_array_object)) {
+        GL(glGenVertexArrays(1, &VertexArrObj));
+        GL(glBindVertexArray(VertexArrObj));
+        GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
+        EnableVertAtribs(usage);
+        GL(glBindVertexArray(0));
+        GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    }
+}
+
+static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
+{
+    switch (name) {
+#define CHECK_ENTRY(name, glname) \
+    case BlendFuncType::name: \
+        return glname
+        CHECK_ENTRY(Zero, GL_ZERO);
+        CHECK_ENTRY(One, GL_ONE);
+        CHECK_ENTRY(SrcColor, GL_SRC_COLOR);
+        CHECK_ENTRY(InvSrcColor, GL_ONE_MINUS_SRC_COLOR);
+        CHECK_ENTRY(DstColor, GL_DST_COLOR);
+        CHECK_ENTRY(InvDstColor, GL_ONE_MINUS_DST_COLOR);
+        CHECK_ENTRY(SrcAlpha, GL_SRC_ALPHA);
+        CHECK_ENTRY(InvSrcAlpha, GL_ONE_MINUS_SRC_ALPHA);
+        CHECK_ENTRY(DstAlpha, GL_DST_ALPHA);
+        CHECK_ENTRY(InvDstAlpha, GL_ONE_MINUS_DST_ALPHA);
+        CHECK_ENTRY(ConstantColor, GL_CONSTANT_COLOR);
+        CHECK_ENTRY(InvConstantColor, GL_ONE_MINUS_CONSTANT_COLOR);
+        CHECK_ENTRY(SrcAlphaSaturate, GL_SRC_ALPHA_SATURATE);
+#undef CHECK_ENTRY
+    }
+    throw UnreachablePlaceException(LINE_STR);
+}
+
+static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
+{
+    switch (name) {
+#define CHECK_ENTRY(name, glname) \
+    case BlendEquationType::name: \
+        return glname
+        CHECK_ENTRY(FuncAdd, GL_FUNC_ADD);
+        CHECK_ENTRY(FuncSubtract, GL_FUNC_SUBTRACT);
+        CHECK_ENTRY(FuncReverseSubtract, GL_FUNC_REVERSE_SUBTRACT);
+        CHECK_ENTRY(Max, GL_MAX);
+        CHECK_ENTRY(Min, GL_MIN);
+#undef CHECK_ENTRY
+    }
+    throw UnreachablePlaceException(LINE_STR);
+}
+
+OpenGL_Effect::~OpenGL_Effect()
+{
+    for (size_t i = 0; i < _passCount; i++) {
+        if (Program[i] != 0u) {
+            glDeleteProgram(Program[i]);
         }
     }
+}
+
+void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
+{
+    const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
     GLenum draw_mode = GL_TRIANGLES;
 
@@ -1127,21 +1163,26 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         }
 
 #if !FO_OPENGL_ES
-        // Todo: smooth only if( zoom && *zoom != 1.0f )
-        if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
-            GL(glEnable(GL_POINT_SMOOTH));
-        }
-        else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
-            GL(glEnable(GL_LINE_SMOOTH));
+        if (MapSpriteBuf && MapSpriteBuf->ZoomFactor != 1.0f) {
+            if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
+                GL(glEnable(GL_POINT_SMOOTH));
+            }
+            else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
+                GL(glEnable(GL_LINE_SMOOTH));
+            }
         }
 #endif
+    }
+
+    if (DisableBlending) {
+        GL(glDisable(GL_BLEND));
     }
 
 #if FO_ENABLE_3D
     if (Usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
 
-        if (!dbuf->DisableModelCulling) {
+        if (!DisableCulling) {
             GL(glEnable(GL_CULL_FACE));
         }
     }
@@ -1149,8 +1190,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 
     if (opengl_dbuf->VertexArrObj != 0u) {
         GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
-        GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
     }
     else {
         GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
@@ -1158,69 +1197,95 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         EnableVertAtribs(Usage);
     }
 
-    const auto* opnegl_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : MainTex);
-    const auto draw_count = static_cast<GLsizei>(indices_to_draw.value_or(dbuf->Indices.size()));
+    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (CustomTex[0] != nullptr ? CustomTex[0] : MainTex));
+    const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
-    // Effect* effect = (combined_mesh->DrawEffect ? combined_mesh->DrawEffect : modelMngr.effectMngr.Effects.Skinned3d);
-    // MeshTexture** textures = combined_mesh->Textures;
-
     for (size_t pass = 0; pass < _passCount; pass++) {
-        // if (shadow_disabled && effect_pass.IsShadow)
-        //     continue;
+#if FO_ENABLE_3D
+        if (DisableShadow && _isShadow[pass]) {
+            continue;
+        }
+#endif
 
         GL(glUseProgram(Program[pass]));
 
-        if (Location_ProjectionMatrix != -1) {
-            GL(glUniformMatrix4fv(Location_ProjectionMatrix, 1, GL_FALSE, ProjBuf.ProjMatrix));
+        if (Location_ProjectionMatrix[pass] != -1) {
+            if (ProjBuf) {
+                GL(glUniformMatrix4fv(Location_ProjectionMatrix[pass], 1, GL_FALSE, ProjBuf->ProjMatrix));
+            }
+            else {
+                GL(glUniformMatrix4fv(Location_ProjectionMatrix[pass], 1, GL_FALSE, ProjectionMatrixColMaj[0]));
+            }
         }
 
-        if (Location_ColorMap != -1) {
-            if (opnegl_tex == nullptr) {
+        if (Location_ColorMap[pass] != -1) {
+            if (main_tex == nullptr) {
                 throw RenderingException("Trying to draw effect that required texture", Name);
             }
 
-            GL(glBindTexture(GL_TEXTURE_2D, opnegl_tex->TexId));
-            GL(glUniform1i(Location_ColorMap, 0));
+            GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
+            GL(glUniform1i(Location_ColorMap[pass], 0));
 
-#ifdef GL_SAMPLER_BINDING
-            GL(glBindSampler(0, 0));
+            if (Location_ColorMapSize[pass] != -1) {
+                GL(glUniform4fv(Location_ColorMapSize[pass], 1, main_tex->SizeData));
+            }
+        }
+
+        if (Location_EggMap[pass] != -1) {
+            if (EggTex == nullptr) {
+                throw RenderingException("Trying to draw effect that required egg texture", Name);
+            }
+
+            GL(glActiveTexture(GL_TEXTURE1));
+            GL(glBindTexture(GL_TEXTURE_2D, static_cast<OpenGL_Texture*>(EggTex)->TexId));
+            GL(glUniform1i(Location_EggMap[pass], 1));
+            GL(glActiveTexture(GL_TEXTURE0));
+
+            if (Location_EggMapSize[pass] != -1) {
+                GL(glUniform4fv(Location_EggMapSize[pass], 1, EggTex->SizeData));
+            }
+        }
+
+        if (Location_ZoomFactor[pass] != -1) {
+            RUNTIME_ASSERT(MapSpriteBuf->ZoomFactor != 0.0f);
+            GL(glUniform1f(Location_ZoomFactor[pass], MapSpriteBuf->ZoomFactor));
+        }
+
+        if (Location_SpriteBorder[pass] != -1) {
+            GL(glUniform4fv(Location_SpriteBorder[pass], 1, BorderBuf->SpriteBorder));
+        }
+
+#if FO_ENABLE_3D
+        if (Location_GroundPosition[pass] != -1) {
+            GL(glUniform4fv(Location_GroundPosition[pass], 1, ModelBuf->GroundPosition));
+        }
+        if (Location_LightColor[pass] != -1) {
+            GL(glUniform4fv(Location_LightColor[pass], 1, ModelBuf->LightColor));
+        }
+        if (Location_WorldMatrices[pass] != -1) {
+            RUNTIME_ASSERT(MatrixCount != 0);
+            GL(glUniformMatrix4fv(Location_WorldMatrices[pass], static_cast<GLsizei>(MatrixCount), GL_FALSE, &ModelBuf->WorldMatrices[0]));
+        }
 #endif
+
+        if (_srcBlendFunc[pass] != BlendFuncType::SrcAlpha || _destBlendFunc[pass] != BlendFuncType::InvSrcAlpha) {
+            GL(glBlendFunc(ConvertBlendFunc(_srcBlendFunc[pass]), ConvertBlendFunc(_destBlendFunc[pass])));
+        }
+        if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
+            GL(glBlendEquation(ConvertBlendEquation(_blendEquation[pass])));
         }
 
-        if (Location_ColorMapSize != -1) {
-            GL(glUniform4fv(Location_ColorMapSize, 1, opnegl_tex->SizeData));
-        }
-
-        // GL(glActiveTexture(GL_TEXTURE0));
-
-        /*
-         if (IS_EFFECT_VALUE(effect_pass.ZoomFactor))
-            GL(glUniform1f(effect_pass.ZoomFactor, modelMngr.settings.SpritesZoom));
-        if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
-            GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, modelMngr.matrixProjCM[0]));
-        if (IS_EFFECT_VALUE(effect_pass.ColorMap) && textures[0]) {
-            GL(glBindTexture(GL_TEXTURE_2D, textures[0]->Id));
-            GL(glUniform1i(effect_pass.ColorMap, 0));
-            if (IS_EFFECT_VALUE(effect_pass.ColorMapSize))
-                GL(glUniform4fv(effect_pass.ColorMapSize, 1, textures[0]->SizeData));
-        }
-        if (IS_EFFECT_VALUE(effect_pass.LightColor))
-            GL(glUniform4fv(effect_pass.LightColor, 1, (float*)&modelMngr.lightColor));
-        if (IS_EFFECT_VALUE(effect_pass.WorldMatrices)) {
-            GL(glUniformMatrix4fv(effect_pass.WorldMatrices, (GLsizei)combined_mesh->CurBoneMatrix, GL_FALSE, (float*)&modelMngr.worldMatrices[0]));
-        }
-        if (IS_EFFECT_VALUE(effect_pass.GroundPosition))
-            GL(glUniform3fv(effect_pass.GroundPosition, 1, (float*)&groundPos));
-
-        if (effect_pass.IsNeedProcess)
-            modelMngr.effectMngr.EffectProcessVariables(effect_pass, true, animPosProc, animPosTime, textures);
-        */
+        // Todo: bind time, random, anim
 
         GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, start_pos));
 
-        // if (effect_pass.IsNeedProcess)
-        //     modelMngr.effectMngr.EffectProcessVariables(effect_pass, false, animPosProc, animPosTime, textures);
+        if (_srcBlendFunc[pass] != BlendFuncType::SrcAlpha || _destBlendFunc[pass] != BlendFuncType::InvSrcAlpha) {
+            GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+        }
+        if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
+            GL(glBlendEquation(GL_FUNC_ADD));
+        }
     }
 
     GL(glUseProgram(0));
@@ -1232,11 +1297,15 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         DisableVertAtribs(Usage);
     }
 
+    if (DisableBlending) {
+        GL(glEnable(GL_BLEND));
+    }
+
 #if FO_ENABLE_3D
     if (Usage == EffectUsage::Model) {
         GL(glDisable(GL_DEPTH_TEST));
 
-        if (!dbuf->DisableModelCulling) {
+        if (!DisableCulling) {
             GL(glDisable(GL_CULL_FACE));
         }
     }
@@ -1244,11 +1313,13 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 
     if (Usage == EffectUsage::Primitive) {
 #if !FO_OPENGL_ES
-        if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
-            GL(glDisable(GL_POINT_SMOOTH));
-        }
-        else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
-            GL(glDisable(GL_LINE_SMOOTH));
+        if (MapSpriteBuf && MapSpriteBuf->ZoomFactor != 1.0f) {
+            if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
+                GL(glDisable(GL_POINT_SMOOTH));
+            }
+            else if (opengl_dbuf->PrimType == RenderPrimitiveType::LineList || opengl_dbuf->PrimType == RenderPrimitiveType::LineStrip) {
+                GL(glDisable(GL_LINE_SMOOTH));
+            }
         }
 #endif
     }

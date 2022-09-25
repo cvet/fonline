@@ -36,13 +36,12 @@
 #include "Common.h"
 
 #include "GeometryHelper.h"
-#include "Settings.h"
 
 class LineTracer final
 {
 public:
     LineTracer() = delete;
-    LineTracer(GeometrySettings& settings, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle);
+    LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle);
     LineTracer(const LineTracer&) = delete;
     LineTracer(LineTracer&&) noexcept = default;
     auto operator=(const LineTracer&) -> LineTracer& = delete;
@@ -55,8 +54,7 @@ public:
 private:
     void NormalizeDir();
 
-    GeometrySettings& _settings;
-    GeometryHelper _geomHelper;
+    GeometryHelper& _geometry;
     ushort _maxHx {};
     ushort _maxHy {};
     float _x1 {};

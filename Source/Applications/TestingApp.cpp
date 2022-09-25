@@ -31,12 +31,12 @@
 // SOFTWARE.
 //
 
-#ifndef FO_TESTING
-#error FO_TESTING is not defined
+#ifndef FO_TESTING_APP
+#error FO_TESTING_APP is not defined
 #endif
 
-#if !FO_TESTING
-#error FO_TESTING is not enabled
+#if !FO_TESTING_APP
+#error FO_TESTING_APP is not enabled
 #endif
 
 #define CATCH_CONFIG_RUNNER
@@ -44,11 +44,10 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "GenericUtils.h"
 
-#include "SDL_main.h"
-
-extern "C" int main(int argc, char** argv) // Handled by SDL
+extern "C" int main(int argc, char** argv)
 {
     InitApp(argc, argv, "Testing");
     GenericUtils::SetRandomSeed(42);

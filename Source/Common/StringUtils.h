@@ -35,19 +35,6 @@
 
 #include "Common.h"
 
-class Str final
-{
-public:
-    Str() = delete;
-
-    template<int Size>
-    static void Copy(char (&to)[Size], string_view from)
-    {
-        return Copy(to, Size, from);
-    }
-    static void Copy(char* to, size_t size, string_view from);
-};
-
 // ReSharper disable once CppInconsistentNaming
 class _str final
 {
@@ -112,7 +99,10 @@ public:
     [[nodiscard]] auto split(char divider) const -> vector<string>;
     [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
 
-    [[nodiscard]] auto isNumber() -> bool; // Todo: make isNumber const
+    [[nodiscard]] auto isNumber() const -> bool;
+    [[nodiscard]] auto isInt() const -> bool;
+    [[nodiscard]] auto isFloat() const -> bool;
+    [[nodiscard]] auto isExplicitBool() const -> bool;
     [[nodiscard]] auto toInt() -> int;
     [[nodiscard]] auto toUInt() -> uint;
     [[nodiscard]] auto toInt64() -> int64;
@@ -126,6 +116,7 @@ public:
     auto extractFileName() -> _str&;
     auto getFileExtension() -> _str&; // Extension without dot
     auto eraseFileExtension() -> _str&; // Erase extension with dot
+    auto changeFileName(string_view new_name) -> _str&;
     auto combinePath(string_view path) -> _str&;
     auto normalizePathSlashes() -> _str&;
     auto normalizeLineEndings() -> _str&;

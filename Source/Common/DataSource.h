@@ -58,8 +58,8 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool;
     [[nodiscard]] auto GetPackName() const -> string_view;
-    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool;
-    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>;
 
 private:

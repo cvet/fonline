@@ -34,9 +34,6 @@
 // Todo: catch exceptions in network servers
 
 #include "Networking.h"
-
-#if !FO_SINGLEPLAYER
-
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -67,7 +64,9 @@ using ssl_context = asio::ssl::context;
 
 #include "zlib.h"
 
+#if FO_HAVE_ASIO
 #include "WinApi-Include.h" // After all because ASIO using WinAPI
+#endif
 
 void NetConnection::AddRef() const
 {
@@ -80,6 +79,156 @@ void NetConnection::Release() const
         delete this;
     }
 }
+
+class NetConnectionImpl : public NetConnection
+{
+public:
+    explicit NetConnectionImpl(ServerNetworkSettings& settings) : _settings {settings}
+    {
+        std::memset(_outBuf, 0, sizeof(_outBuf));
+
+        if (!settings.DisableZlibCompression) {
+            _zStream.zalloc = [](void*, unsigned int items, unsigned int size) { return std::calloc(items, size); };
+            _zStream.zfree = [](void*, void* address) { std::free(address); };
+            _zStream.opaque = nullptr;
+
+            const auto result = deflateInit(&_zStream, Z_BEST_SPEED);
+            RUNTIME_ASSERT(result == Z_OK);
+
+            _zStreamActive = true;
+        }
+    }
+
+    NetConnectionImpl() = delete;
+    NetConnectionImpl(const NetConnectionImpl&) = delete;
+    NetConnectionImpl(NetConnectionImpl&&) noexcept = delete;
+    auto operator=(const NetConnectionImpl&) = delete;
+    auto operator=(NetConnectionImpl&&) noexcept = delete;
+
+    ~NetConnectionImpl() override
+    {
+        if (_zStreamActive) {
+            deflateEnd(&_zStream);
+        }
+    }
+
+    [[nodiscard]] auto GetIp() const -> uint override { return _ip; }
+    [[nodiscard]] auto GetHost() const -> string_view override { return _host; }
+    [[nodiscard]] auto GetPort() const -> ushort override { return _port; }
+    [[nodiscard]] auto IsDisconnected() const -> bool override { return _isDisconnected; }
+
+    void DisableCompression() override
+    {
+        if (_zStreamActive) {
+            deflateEnd(&_zStream);
+            _zStreamActive = false;
+        }
+    }
+
+    void Dispatch() override
+    {
+        if (_isDisconnected) {
+            return;
+        }
+
+        // Nothing to send
+        {
+            std::lock_guard locker(BoutLocker);
+            if (Bout.IsEmpty()) {
+                return;
+            }
+        }
+
+        DispatchImpl();
+    }
+
+    void Disconnect() override
+    {
+        auto expected = false;
+        if (_isDisconnected.compare_exchange_strong(expected, true)) {
+            DisconnectImpl();
+        }
+    }
+
+protected:
+    virtual void DispatchImpl() = 0;
+    virtual void DisconnectImpl() = 0;
+
+    auto SendCallback(uint& out_len) -> const uchar*
+    {
+        std::lock_guard locker(BoutLocker);
+
+        if (Bout.IsEmpty()) {
+            return nullptr;
+        }
+
+        // Compress
+        if (_zStreamActive) {
+            auto to_compr = Bout.GetEndPos();
+            if (to_compr > sizeof(_outBuf) - 32) {
+                to_compr = sizeof(_outBuf) - 32;
+            }
+
+            _zStream.next_in = Bout.GetData();
+            _zStream.avail_in = to_compr;
+            _zStream.next_out = _outBuf;
+            _zStream.avail_out = sizeof(_outBuf);
+
+            const auto result = deflate(&_zStream, Z_SYNC_FLUSH);
+            RUNTIME_ASSERT(result == Z_OK);
+
+            const auto compr = static_cast<uint>(_zStream.next_out - _outBuf);
+            const auto real = static_cast<uint>(_zStream.next_in - Bout.GetData());
+            out_len = compr;
+
+            Bout.Cut(real);
+        }
+        // Without compressing
+        else {
+            auto len = Bout.GetEndPos();
+            if (len > sizeof(_outBuf)) {
+                len = sizeof(_outBuf);
+            }
+
+            std::memcpy(_outBuf, Bout.GetData(), len);
+            out_len = len;
+
+            Bout.Cut(len);
+        }
+
+        // Normalize buffer size
+        if (Bout.IsEmpty()) {
+            Bout.ResetBuf();
+        }
+
+        RUNTIME_ASSERT(out_len > 0);
+        return _outBuf;
+    }
+
+    void ReceiveCallback(const uchar* buf, uint len)
+    {
+        std::lock_guard locker(BinLocker);
+
+        if (Bin.GetReadPos() + len < _settings.FloodSize) {
+            Bin.AddData(buf, len);
+        }
+        else {
+            Bin.ResetBuf();
+            Disconnect();
+        }
+    }
+
+    ServerNetworkSettings& _settings;
+    uint _ip {};
+    string _host {};
+    ushort _port {};
+    std::atomic_bool _isDisconnected {};
+
+private:
+    bool _zStreamActive {};
+    z_stream _zStream {};
+    uchar _outBuf[NetBuffer::DEFAULT_BUF_SIZE] {};
+};
 
 #if FO_HAVE_ASIO
 class NetTcpServer : public NetServerBase
@@ -148,162 +297,12 @@ private:
     void Run();
     void OnOpen(websocketpp::connection_hdl hdl);
     auto OnValidate(websocketpp::connection_hdl hdl) -> bool;
-    auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> shared_ptr<ssl_context>;
+    auto OnTlsInit(websocketpp::connection_hdl hdl) const -> shared_ptr<ssl_context>;
 
     ServerNetworkSettings& _settings;
     ConnectionCallback _connectionCallback {};
     web_sockets_tls _server {};
     std::thread _runThread {};
-};
-
-class NetConnectionImpl : public NetConnection
-{
-public:
-    explicit NetConnectionImpl(ServerNetworkSettings& settings) : _settings {settings}
-    {
-        std::memset(_outBuf, 0, sizeof(_outBuf));
-
-        if (!settings.DisableZlibCompression) {
-            _zStream = new z_stream();
-            _zStream->zalloc = [](void*, unsigned int items, unsigned int size) { return calloc(items, size); };
-            _zStream->zfree = [](void*, void* address) { free(address); };
-            _zStream->opaque = nullptr;
-
-            const auto result = deflateInit(_zStream, Z_BEST_SPEED);
-            RUNTIME_ASSERT(result == Z_OK);
-        }
-    }
-
-    NetConnectionImpl() = delete;
-    NetConnectionImpl(const NetConnectionImpl&) = delete;
-    NetConnectionImpl(NetConnectionImpl&&) noexcept = delete;
-    auto operator=(const NetConnectionImpl&) = delete;
-    auto operator=(NetConnectionImpl&&) noexcept = delete;
-
-    ~NetConnectionImpl() override
-    {
-        if (_zStream != nullptr) {
-            deflateEnd(_zStream);
-            delete _zStream;
-        }
-    }
-
-    [[nodiscard]] auto GetIp() const -> uint override { return _ip; }
-    [[nodiscard]] auto GetHost() const -> string_view override { return _host; }
-    [[nodiscard]] auto GetPort() const -> ushort override { return _port; }
-    [[nodiscard]] auto IsDisconnected() const -> bool override { return _isDisconnected; }
-
-    void DisableCompression() override
-    {
-        if (_zStream != nullptr) {
-            deflateEnd(_zStream);
-            delete _zStream;
-        }
-    }
-
-    void Dispatch() override
-    {
-        if (_isDisconnected) {
-            return;
-        }
-
-        // Nothing to send
-        {
-            std::lock_guard locker(BoutLocker);
-            if (Bout.IsEmpty()) {
-                return;
-            }
-        }
-
-        DispatchImpl();
-    }
-
-    void Disconnect() override
-    {
-        auto expected = false;
-        const auto desired = true;
-        if (_isDisconnected.compare_exchange_strong(expected, desired)) {
-            DisconnectImpl();
-        }
-    }
-
-protected:
-    virtual void DispatchImpl() = 0;
-    virtual void DisconnectImpl() = 0;
-
-    auto SendCallback(uint& out_len) -> const uchar*
-    {
-        std::lock_guard locker(BoutLocker);
-
-        if (Bout.IsEmpty()) {
-            return nullptr;
-        }
-
-        // Compress
-        if (_zStream != nullptr) {
-            auto to_compr = Bout.GetEndPos();
-            if (to_compr > sizeof(_outBuf) - 32) {
-                to_compr = sizeof(_outBuf) - 32;
-            }
-
-            _zStream->next_in = Bout.GetData();
-            _zStream->avail_in = to_compr;
-            _zStream->next_out = _outBuf;
-            _zStream->avail_out = sizeof(_outBuf);
-
-            const auto result = deflate(_zStream, Z_SYNC_FLUSH);
-            RUNTIME_ASSERT(result == Z_OK);
-
-            const auto compr = static_cast<uint>(_zStream->next_out - _outBuf);
-            const auto real = static_cast<uint>(_zStream->next_in - Bout.GetData());
-            out_len = compr;
-
-            Bout.Cut(real);
-        }
-        // Without compressing
-        else {
-            auto len = Bout.GetEndPos();
-            if (len > sizeof(_outBuf)) {
-                len = sizeof(_outBuf);
-            }
-
-            std::memcpy(_outBuf, Bout.GetData(), len);
-            out_len = len;
-
-            Bout.Cut(len);
-        }
-
-        // Normalize buffer size
-        if (Bout.IsEmpty()) {
-            Bout.ResetBuf();
-        }
-
-        RUNTIME_ASSERT(out_len > 0);
-        return _outBuf;
-    }
-
-    void ReceiveCallback(const uchar* buf, uint len)
-    {
-        std::lock_guard locker(BinLocker);
-
-        if (Bin.GetReadPos() + len < _settings.FloodSize) {
-            Bin.AddData(buf, len);
-        }
-        else {
-            Bin.ResetBuf();
-            Disconnect();
-        }
-    }
-
-    ServerNetworkSettings& _settings;
-    uint _ip {};
-    string _host {};
-    ushort _port {};
-    std::atomic_bool _isDisconnected {};
-
-private:
-    z_stream* _zStream {};
-    uchar _outBuf[NetBuffer::DEFAULT_BUF_SIZE] {};
 };
 
 class NetConnectionAsio final : public NetConnectionImpl
@@ -330,24 +329,42 @@ public:
     NetConnectionAsio(NetConnectionAsio&&) noexcept = delete;
     auto operator=(const NetConnectionAsio&) = delete;
     auto operator=(NetConnectionAsio&&) noexcept = delete;
-    ~NetConnectionAsio() override { delete _socket; }
-
-private:
-    void NextAsyncRead() { async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), std::bind(&NetConnectionAsio::AsyncRead, this, std::placeholders::_1, std::placeholders::_2)); }
-
-    void AsyncRead(std::error_code error, size_t bytes)
+    ~NetConnectionAsio() override
     {
-        if (!error) {
-            ReceiveCallback(_inBuf, static_cast<uint>(bytes));
-            NextAsyncRead();
-        }
-        else {
-            Disconnect();
+        if (!_isDisconnected) {
+            _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
+            _socket->close(_dummyError);
         }
     }
 
-    void AsyncWrite(std::error_code error, size_t /*bytes*/)
+    [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return false; }
+
+private:
+    void NextAsyncRead()
     {
+        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this_ = this, socket = _socket](std::error_code error, size_t bytes) { AsyncRead(this_, socket, error, bytes); });
+    }
+
+    static void AsyncRead(NetConnectionAsio* this_, asio::ip::tcp::socket* socket, std::error_code error, size_t bytes)
+    {
+        if (!error) {
+            this_->ReceiveCallback(this_->_inBuf, static_cast<uint>(bytes));
+            this_->NextAsyncRead();
+        }
+        else {
+            if (socket->is_open()) {
+                this_->Disconnect();
+            }
+
+            delete socket;
+        }
+    }
+
+    void AsyncWrite(std::error_code error, size_t bytes)
+    {
+        UNUSED_VARIABLE(bytes);
+
         _writePending = false;
 
         if (!error) {
@@ -365,7 +382,7 @@ private:
             uint len = 0;
             const auto* buf = SendCallback(len);
             if (buf != nullptr) {
-                async_write(*_socket, asio::buffer(buf, len), std::bind(&NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2));
+                async_write(*_socket, asio::buffer(buf, len), [this](std::error_code error, size_t bytes) { AsyncWrite(error, bytes); });
             }
             else {
                 if (_isDisconnected) {
@@ -409,10 +426,10 @@ public:
             connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
         }
 
-        connection->set_message_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnMessage, this, websocketpp::lib::placeholders::_2));
-        connection->set_fail_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnFail, this));
-        connection->set_close_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnClose, this));
-        connection->set_http_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnHttp, this));
+        connection->set_message_handler([this](auto&&, message_ptr msg) { OnMessage(msg); });
+        connection->set_fail_handler([this](websocketpp::connection_hdl) { OnFail(); });
+        connection->set_close_handler([this](websocketpp::connection_hdl) { OnClose(); });
+        connection->set_http_handler([this](websocketpp::connection_hdl) { OnHttp(); });
     }
 
     NetConnectionWebSocket() = delete;
@@ -420,7 +437,17 @@ public:
     NetConnectionWebSocket(NetConnectionWebSocket&&) noexcept = delete;
     auto operator=(const NetConnectionWebSocket&) = delete;
     auto operator=(NetConnectionWebSocket&&) noexcept = delete;
-    ~NetConnectionWebSocket() override = default;
+
+    ~NetConnectionWebSocket() override
+    {
+        if (_isDisconnected) {
+            std::error_code error;
+            _connection->terminate(error);
+        }
+    }
+
+    [[nodiscard]] auto IsWebConnection() const -> bool override { return true; }
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return false; }
 
 private:
     void OnMessage(message_ptr msg)
@@ -447,7 +474,7 @@ private:
     void DispatchImpl() override
     {
         uint len = 0;
-        auto buf = SendCallback(len);
+        const auto* buf = SendCallback(len);
         if (buf != nullptr) {
             const std::error_code error = _connection->send(buf, len, websocketpp::frame::opcode::binary);
             if (!error) {
@@ -491,7 +518,7 @@ void NetTcpServer::Run()
 void NetTcpServer::AcceptNext()
 {
     auto* socket = new asio::ip::tcp::socket(_ioService);
-    _acceptor.async_accept(*socket, std::bind(&NetTcpServer::AcceptConnection, this, std::placeholders::_1, socket));
+    _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, socket); });
 }
 
 void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
@@ -512,8 +539,8 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler(websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
-    _server.set_validate_handler(websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
+    _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
     _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
@@ -557,9 +584,9 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
-    _server.set_validate_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
-    _server.set_tls_init_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnTlsInit, this, websocketpp::lib::placeholders::_1));
+    _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
+    _server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) { return OnTlsInit(hdl); });
     _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
@@ -585,14 +612,16 @@ void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 
 auto NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
-    auto connection = _server.get_con_from_hdl(std::move(hdl));
+    auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
     connection->select_subprotocol("binary", error);
     return !error;
 }
 
-auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& /*hdl*/) const -> shared_ptr<ssl_context>
+auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) const -> shared_ptr<ssl_context>
 {
+    UNUSED_VARIABLE(hdl);
+
     shared_ptr<ssl_context> ctx(new ssl_context(ssl_context::tlsv1));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
     ctx->use_certificate_chain_file(_settings.WssCertificate);
@@ -601,58 +630,109 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& /*hdl*
 }
 #endif // FO_HAVE_ASIO
 
-auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*
+auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
 #if FO_HAVE_ASIO
-    try {
-        return new NetTcpServer(settings, callback);
-    }
-    catch (const std::exception& ex) {
-        WriteLog("Can't start Tcp server: {}", ex.what());
-        return nullptr;
-    }
+    return new NetTcpServer(settings, std::move(callback));
 #else
     throw NotSupportedException("NetServerBase::StartTcpServer");
 #endif
 }
 
-auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*
+auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
 #if FO_HAVE_ASIO
-    try {
-        if (!settings.SecuredWebSockets) {
-            return new NetNoTlsWebSocketsServer(settings, callback);
-        }
-
-        return new NetTlsWebSocketsServer(settings, callback);
+    if (settings.SecuredWebSockets) {
+        return new NetTlsWebSocketsServer(settings, std::move(callback));
     }
-    catch (const std::exception& ex) {
-        WriteLog("Can't start Web sockets server: {}", ex.what());
-        return nullptr;
+    else {
+        return new NetNoTlsWebSocketsServer(settings, std::move(callback));
     }
 #else
     throw NotSupportedException("NetServerBase::StartWebSocketsServer");
 #endif
 }
 
-#else
-
-NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
+class InterthreadConnection : public NetConnectionImpl
 {
-    throw UnreachablePlaceException(LINE_STR);
-}
+public:
+    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) : NetConnectionImpl(settings), _send {std::move(send)} { }
 
-NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
+    InterthreadConnection(const InterthreadConnection&) = delete;
+    InterthreadConnection(InterthreadConnection&&) noexcept = delete;
+    auto operator=(const InterthreadConnection&) = delete;
+    auto operator=(InterthreadConnection&&) noexcept = delete;
+    ~InterthreadConnection() override = default;
+
+    [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return true; }
+
+    void Receive(const_span<uchar> buf)
+    {
+        if (!buf.empty()) {
+            ReceiveCallback(buf.data(), static_cast<uint>(buf.size()));
+        }
+        else {
+            _send = nullptr;
+            Disconnect();
+        }
+    }
+
+private:
+    void DispatchImpl() override
+    {
+        uint len = 0;
+        const auto* buf = SendCallback(len);
+        if (buf != nullptr) {
+            _send({buf, len});
+        }
+    }
+
+    void DisconnectImpl() override
+    {
+        if (_send) {
+            _send({});
+            _send = nullptr;
+        }
+    }
+
+    InterthreadDataCallback _send;
+};
+
+class InterthreadServer : public NetServerBase
 {
-    throw UnreachablePlaceException(LINE_STR);
-}
+public:
+    InterthreadServer() = delete;
+    InterthreadServer(const InterthreadServer&) = delete;
+    InterthreadServer(InterthreadServer&&) noexcept = delete;
+    auto operator=(const InterthreadServer&) = delete;
+    auto operator=(InterthreadServer&&) noexcept = delete;
+    ~InterthreadServer() override = default;
 
-void NetConnection::AddRef() const
+    InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _virtualPort {static_cast<ushort>(settings.ServerPort)}
+    {
+        if (InterthreadListeners.count(_virtualPort) != 0u) {
+            throw NetworkException("Port is busy", _virtualPort);
+        }
+
+        InterthreadListeners.emplace(_virtualPort, [&settings, callback = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
+            auto* conn = new InterthreadConnection(settings, std::move(client_send));
+            callback(conn);
+            return [conn](const_span<uchar> buf) { conn->Receive(buf); };
+        });
+    }
+
+    void Shutdown() override
+    {
+        RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0u);
+        InterthreadListeners.erase(_virtualPort);
+    }
+
+private:
+    ushort _virtualPort;
+};
+
+auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
+    return new InterthreadServer(settings, std::move(callback));
 }
-
-void NetConnection::Release() const
-{
-}
-
-#endif

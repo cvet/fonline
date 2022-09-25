@@ -41,19 +41,12 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
+ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
 {
-    {
-        auto allFiles = _fileSys.FilterFiles("", "", true);
-        while (allFiles.MoveNext()) {
-            auto file_header = allFiles.GetCurFileHeader();
-            const auto h1 = _nameResolver.ToHashedString(file_header.GetPath());
-            UNUSED_VARIABLE(h1);
-            const auto h2 = _nameResolver.ToHashedString(file_header.GetName());
-            UNUSED_VARIABLE(h2);
-        }
-    }
+}
 
+void ResourceManager::IndexFiles()
+{
     for (const auto* splash_ext : {"rix", "png", "jpg"}) {
         auto splashes = _fileSys.FilterFiles(splash_ext, "Splash/", true);
         while (splashes.MoveNext()) {
@@ -104,12 +97,15 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
 void ResourceManager::ReinitializeDynamicAtlas()
 {
     FreeResources(AtlasType::Dynamic);
-    _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    _sprMngr.InitializeEgg("TransparentEgg.png");
     _sprMngr.DestroyAnyFrames(CritterDefaultAnim);
     _sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
-    CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true, false);
-    ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true, false);
+
+    _sprMngr.PushAtlasType(AtlasType::Dynamic);
+    {
+        _sprMngr.InitializeEgg("TransparentEgg.png");
+        CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true);
+        ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true);
+    }
     _sprMngr.PopAtlasType();
 }
 
@@ -122,8 +118,12 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
     }
 
     _sprMngr.PushAtlasType(atlas_type);
-    auto* anim = _sprMngr.LoadAnimation(name, false, true);
+    auto* anim = _sprMngr.LoadAnimation(name, false);
     _sprMngr.PopAtlasType();
+
+    if (anim == nullptr) {
+        return nullptr;
+    }
 
     anim->Name = name;
 
@@ -133,7 +133,7 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 
 static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallout) -> uint
 {
-    uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
+    const uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
@@ -169,11 +169,11 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                 if (_animNameResolver.ResolveCritterAnimation(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
                     if (!str.empty()) {
                         _sprMngr.PushAtlasType(AtlasType::Dynamic);
-                        anim = _sprMngr.LoadAnimation(str, false, true);
+                        anim = _sprMngr.LoadAnimation(str, false);
                         _sprMngr.PopAtlasType();
 
                         // Fix by dirs
-                        for (auto d = 0; anim != nullptr && d < anim->DirCount; d++) {
+                        for (uint d = 0; anim != nullptr && d < anim->DirCount; d++) {
                             auto* dir_anim = anim->GetDir(d);
 
                             // Process flags
@@ -248,7 +248,7 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
 
     // Store resulted animation indices
     if (anim != nullptr) {
-        for (auto d = 0; d < anim->DirCount; d++) {
+        for (uint d = 0; d < anim->DirCount; d++) {
             anim->GetDir(d)->Anim1 = anim1;
             anim->GetDir(d)->Anim2 = anim2;
         }
@@ -280,7 +280,7 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
             }
 
             auto* anim_merge_base = _sprMngr.CreateAnyFrames(anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks);
-            for (auto d = 0; d < anim->DirCount; d++) {
+            for (uint d = 0; d < anim->DirCount; d++) {
                 if (d == 1) {
                     _sprMngr.CreateAnyFramesDirAnims(anim_merge_base, anim->DirCount);
                 }
@@ -312,7 +312,7 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
         // Clone
         if (anim != nullptr) {
             auto* anim_clone_base = _sprMngr.CreateAnyFrames(!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->Ticks);
-            for (auto d = 0; d < anim->DirCount; d++) {
+            for (uint d = 0; d < anim->DirCount; d++) {
                 if (d == 1) {
                     _sprMngr.CreateAnyFramesDirAnims(anim_clone_base, anim->DirCount);
                 }
@@ -354,7 +354,7 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
         return;
     }
 
-    for (auto d = 0; d < stay_frm_base->DirCount; d++) {
+    for (uint d = 0; d < stay_frm_base->DirCount; d++) {
         const auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
 
@@ -383,7 +383,7 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
         return;
     }
 
-    for (auto d = 0; d < stay_frm_base->DirCount; d++) {
+    for (uint d = 0; d < stay_frm_base->DirCount; d++) {
         auto* frames = frames_base->GetDir(d);
         auto* stay_frm = stay_frm_base->GetDir(d);
 
@@ -452,12 +452,12 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 
     // Try load fofrm
     string spr_name = _str("{}{}{}.fofrm", model_name, frm_ind[anim1], frm_ind[anim2]);
-    auto* frames = _sprMngr.LoadAnimation(spr_name, false, false);
+    auto* frames = _sprMngr.LoadAnimation(spr_name, false);
 
     // Try load fallout frames
     if (frames == nullptr) {
         spr_name = _str("{}{}{}.frm", model_name, frm_ind[anim1], frm_ind[anim2]);
-        frames = _sprMngr.LoadAnimation(spr_name, false, true);
+        frames = _sprMngr.LoadAnimation(spr_name, false);
     }
     _sprMngr.PopAtlasType();
 
@@ -541,10 +541,10 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = nullptr */) -> ModelInstance*
+auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*
 {
     if (_critterModels.count(model_name) != 0u) {
-        _critterModels[model_name]->SetDir(dir);
+        _critterModels[model_name]->SetDir(dir, false);
         _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
         return _critterModels[model_name];
     }
@@ -560,7 +560,7 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
     _critterModels[model_name] = model;
 
     model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
-    model->SetDir(dir);
+    model->SetDir(dir, false);
     model->StartMeshGeneration();
     return model;
 }

@@ -64,6 +64,8 @@ public:
     explicit Direct3D_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
     ~Direct3D_DrawBuffer() override;
 
+    void Upload(EffectUsage usage, size_t custom_vertices_size) override;
+
     int VertexBufferSize {};
     int IndexBufferSize {};
 };
@@ -73,9 +75,10 @@ class Direct3D_Effect : public RenderEffect
     friend class Direct3D_Renderer;
 
 public:
-    Direct3D_Effect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : RenderEffect(usage, name, defines, loader) { }
+    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : RenderEffect(usage, name, loader) { }
     ~Direct3D_Effect() override;
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) override;
+
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
 
     ID3D11Buffer* VertexBuf {};
     ID3D11Buffer* IndexBuf {};
@@ -151,14 +154,14 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
     throw UnreachablePlaceException(LINE_STR);
 }
 
-void Direct3D_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
+void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
     RenderDebug = settings.RenderDebug;
-    SdlWindow = window;
+    SdlWindow = static_cast<SDL_Window*>(window);
 
     SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version)
-    SDL_GetWindowWMInfo(window, &wminfo);
+    SDL_GetWindowWMInfo(SdlWindow, &wminfo);
 #if !FO_UWP
     auto* hwnd = wminfo.info.win.window;
 #else
@@ -285,9 +288,9 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return d3d_dbuf.release();
 }
 
-auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
+auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    auto&& d3d_effect = std::make_unique<Direct3D_Effect>(usage, name, defines, loader);
+    auto&& d3d_effect = std::make_unique<Direct3D_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
@@ -322,6 +325,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, string
             }
 
             // Create the input layout
+#if FO_ENABLE_3D
             if (usage == EffectUsage::Model) {
                 static_assert(BONES_PER_VERTEX == 4);
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
@@ -338,7 +342,9 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, string
                     throw EffectLoadException("Failed to create Vertex Shader 3D layout", vertex_shader_fname, vertex_shader_content);
                 }
             }
-            else {
+            else
+#endif
+            {
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD0", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, X)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD1", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex2D, Diffuse)), D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -534,6 +540,11 @@ Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
 }
 
+void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
+{
+    throw NotImplementedException(LINE_STR);
+}
+
 Direct3D_Effect::~Direct3D_Effect()
 {
     if (VertexBuf != nullptr) {
@@ -562,7 +573,7 @@ Direct3D_Effect::~Direct3D_Effect()
     }
 }
 
-void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, RenderTexture* custom_tex)
+void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
 {
     throw NotImplementedException(LINE_STR);
 }

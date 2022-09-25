@@ -42,7 +42,7 @@
 class Map;
 class Location;
 
-class Location final : public ServerEntity, public LocationProperties
+class Location final : public ServerEntity, public EntityWithProto, public LocationProperties
 {
 public:
     Location() = delete;
@@ -53,24 +53,25 @@ public:
     auto operator=(Location&&) noexcept = delete;
     ~Location() override = default;
 
+    [[nodiscard]] auto GetProtoLoc() const -> const ProtoLocation*;
+    [[nodiscard]] auto IsLocVisible() const -> bool;
+    [[nodiscard]] auto GetMapsRaw() -> vector<Map*>&;
+    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
+    [[nodiscard]] auto GetMapsCount() const -> uint;
+    [[nodiscard]] auto GetMapByIndex(uint index) -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid) -> Map*;
+    [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> uint;
+    [[nodiscard]] auto IsCanEnter(uint players_count) const -> bool;
+    [[nodiscard]] auto IsNoCritter() const -> bool;
+    [[nodiscard]] auto IsNoPlayer() const -> bool;
+    [[nodiscard]] auto IsNoNpc() const -> bool;
+    [[nodiscard]] auto IsCanDelete() const -> bool;
+
     void BindScript();
-    auto GetProtoLoc() const -> const ProtoLocation*;
-    auto IsLocVisible() const -> bool;
-    auto GetMapsRaw() -> vector<Map*>&;
-    auto GetMaps() -> vector<Map*>;
-    auto GetMaps() const -> vector<const Map*>;
-    auto GetMapsCount() const -> uint;
-    auto GetMapByIndex(uint index) -> Map*;
-    auto GetMapByPid(hstring map_pid) -> Map*;
-    auto GetMapIndex(hstring map_pid) -> uint;
-    auto IsCanEnter(uint players_count) -> bool;
-    auto IsNoCrit() -> bool;
-    auto IsNoPlayer() -> bool;
-    auto IsNoNpc() -> bool;
-    auto IsCanDelete() -> bool;
 
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};

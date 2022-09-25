@@ -40,7 +40,7 @@
 DECLARE_EXCEPTION(EffectLoadException);
 DECLARE_EXCEPTION(RenderingException);
 
-struct SDL_Window;
+using WindowInternalHandle = void;
 
 constexpr int EFFECT_TEXTURES = 8;
 constexpr int EFFECT_SCRIPT_VALUES = 16;
@@ -52,6 +52,26 @@ constexpr int BONES_PER_VERTEX = 4;
 #endif
 
 using RenderEffectLoader = std::function<string(string_view)>;
+
+enum class RenderType
+{
+    Null,
+#if FO_HAVE_OPENGL
+    OpenGL,
+#endif
+#if FO_HAVE_DIRECT_3D
+    Direct3D,
+#endif
+#if FO_HAVE_METAL
+    Metal,
+#endif
+#if FO_HAVE_VULKAN
+    Vulkan,
+#endif
+#if FO_HAVE_GNM
+    GNM,
+#endif
+};
 
 enum class EffectUsage
 {
@@ -160,15 +180,16 @@ public:
     auto operator=(const RenderDrawBuffer&) = delete;
     auto operator=(RenderDrawBuffer&&) noexcept = delete;
 
+    virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1)) = 0;
+
     const bool IsStatic;
 
     vector<Vertex2D> Vertices2D {};
     vector<ushort> Indices {};
-    bool DataChanged {};
+    bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
 #if FO_ENABLE_3D
     vector<Vertex3D> Vertices3D {};
-    bool DisableModelCulling {};
 #endif
 
 protected:
@@ -197,7 +218,6 @@ public:
 
     struct MapSpriteBuffer
     {
-        float EggTexSize[4] {}; // vec4
         float ZoomFactor {};
         float Padding[3] {};
     };
@@ -243,7 +263,7 @@ public:
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
     static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 16);
-    static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 32);
+    static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 16);
     static_assert(sizeof(BorderBuffer) % 16 == 0 && sizeof(BorderBuffer) == 16);
     static_assert(sizeof(CustomTexBuffer) % 16 == 0 && sizeof(CustomTexBuffer) == 256);
     static_assert(sizeof(AnimBuffer) % 16 == 0 && sizeof(AnimBuffer) == 16);
@@ -260,13 +280,12 @@ public:
     auto operator=(const RenderEffect&) = delete;
     auto operator=(RenderEffect&&) noexcept = delete;
 
-    [[nodiscard]] auto IsSame(string_view name, string_view defines) const -> bool;
     [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
 
     const string Name;
     const EffectUsage Usage;
 
-    ProjBuffer ProjBuf {};
+    optional<ProjBuffer> ProjBuf {};
     optional<MainTexBuffer> MainTexBuf {};
     optional<TimeBuffer> TimeBuf {};
     optional<MapSpriteBuffer> MapSpriteBuf {};
@@ -275,24 +294,25 @@ public:
     optional<AnimBuffer> AnimBuf {};
     optional<RandomValueBuffer> RandomValueBuf {};
     optional<ScriptValueBuffer> ScriptValueBuf {};
-#if FO_ENABLE_3D
-    optional<ModelBuffer> ModelBuf {};
-#endif
     RenderTexture* MainTex {};
     RenderTexture* EggTex {};
     RenderTexture* CustomTex[EFFECT_TEXTURES] {};
-    bool DisableShadow {};
     bool DisableBlending {};
+#if FO_ENABLE_3D
+    optional<ModelBuffer> ModelBuf {};
+    bool DisableShadow {};
+    bool DisableCulling {};
+    size_t MatrixCount {};
+#endif
 
-    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) = 0;
+    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), RenderTexture* custom_tex = nullptr) = 0;
 
 protected:
-    RenderEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader);
+    RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader);
 
     string _effectName {};
-    string _effectDefines {};
     hstring _name {};
-    uint _passCount {};
+    size_t _passCount {};
     BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
     BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
@@ -308,17 +328,14 @@ public:
 
     [[nodiscard]] virtual auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
 
-    virtual void Init(GlobalSettings& settings, SDL_Window* window) = 0;
+    virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
     virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(int x, int y, uint w, uint h) = 0;
     virtual void DisableScissor() = 0;
-
-protected:
-    void ParseEffect(RenderEffect* effect, string_view name, string_view defines, const RenderEffectLoader& loader);
 };
 
 class Null_Renderer final : public Renderer
@@ -326,9 +343,9 @@ class Null_Renderer final : public Renderer
 public:
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
 
-    void Init(GlobalSettings& settings, SDL_Window* window) override { }
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
     void Present() override { }
     void SetRenderTarget(RenderTexture* tex) override { }
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override { }
@@ -345,9 +362,9 @@ public:
 
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
 
-    void Init(GlobalSettings& settings, SDL_Window* window) override;
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
@@ -364,9 +381,9 @@ class Direct3D_Renderer final : public Renderer
 public:
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
 
-    void Init(GlobalSettings& settings, SDL_Window* window) override;
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;

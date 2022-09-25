@@ -32,20 +32,20 @@
 //
 
 #include "Entity.h"
+#include "Application.h"
 #include "Log.h"
-#include "StringUtils.h"
 
 Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
 {
     _props.SetEntity(this);
 }
 
-void Entity::AddRef() const
+void Entity::AddRef() const noexcept
 {
     ++_refCounter;
 }
 
-void Entity::Release() const
+void Entity::Release() const noexcept
 {
     if (--_refCounter == 0) {
         delete this;
@@ -127,9 +127,7 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
 {
     RUNTIME_ASSERT(callbacks);
 
-    // Todo: events array may be modified during call, need take it into account here
-    for (size_t i = 0; i < callbacks->size(); i++) {
-        const auto& cb = callbacks->at(i);
+    for (const auto& cb : copy(*callbacks)) {
         const auto ex_policy = cb.ExPolicy;
 
         try {
@@ -138,16 +136,17 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
             }
         }
         catch (const std::exception& ex) {
-            WriteLog("{}\n", ex.what());
+            if (ex_policy == EventExceptionPolicy::PropogateException) {
+                throw;
+            }
+
+            ReportExceptionAndContinue(ex);
 
             if (ex_policy == EventExceptionPolicy::StopChainAndReturnTrue) {
                 return true;
             }
             if (ex_policy == EventExceptionPolicy::StopChainAndReturnFalse) {
                 return false;
-            }
-            if (ex_policy == EventExceptionPolicy::PropogateException) {
-                throw;
             }
         }
     }
@@ -206,9 +205,9 @@ auto Entity::LoadFromText(const map<string, string>& key_values) -> bool
     return _props.LoadFromText(key_values);
 }
 
-void Entity::SetValueFromData(const Property* prop, const vector<uchar>& data)
+void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
-    _props.SetValueFromData(prop, data.data(), static_cast<uint>(data.size()));
+    _props.SetValueFromData(prop, prop_data);
 }
 
 auto Entity::GetValueAsInt(const Property* prop) const -> int
@@ -258,7 +257,7 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
 
 auto ProtoEntity::GetName() const -> string_view
 {
-    return _protoId;
+    return _protoId.as_str();
 }
 
 auto ProtoEntity::GetProtoId() const -> hstring
@@ -266,28 +265,33 @@ auto ProtoEntity::GetProtoId() const -> hstring
     return _protoId;
 }
 
-auto ProtoEntity::HaveComponent(hstring name) const -> bool
+void ProtoEntity::EnableComponent(hstring component)
 {
-    return _components.count(name) > 0u;
+    _components.emplace(component);
+    _componentHashes.emplace(component.as_hash());
 }
 
-EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), _proto {proto}
+auto ProtoEntity::HasComponent(hstring name) const -> bool
+{
+    return _components.count(name) != 0u;
+}
+
+auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
+{
+    return _componentHashes.count(hash) != 0u;
+}
+
+EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) : _proto {proto}
 {
     RUNTIME_ASSERT(_proto);
 
     _proto->AddRef();
-
-    SetProperties(_proto->GetProperties());
+    owner->SetProperties(_proto->GetProperties());
 }
 
 EntityWithProto::~EntityWithProto()
 {
     _proto->Release();
-}
-
-auto EntityWithProto::GetName() const -> string_view
-{
-    return _proto->GetName();
 }
 
 auto EntityWithProto::GetProtoId() const -> hstring
@@ -337,7 +341,7 @@ void EntityEventBase::UnsubscribeAll()
 auto EntityEventBase::FireEx(const initializer_list<void*>& args) -> bool
 {
     if (_callbacks == nullptr) {
-        return false;
+        return true;
     }
 
     return _entity->FireEvent(_callbacks, args);

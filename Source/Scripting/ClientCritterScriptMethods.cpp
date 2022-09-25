@@ -48,9 +48,9 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsPlayer(CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsOwnedByPlayer(CritterView* self)
 {
-    return self->IsPlayer();
+    return self->IsOwnedByPlayer();
 }
 
 ///# ...
@@ -66,7 +66,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsOffline(CritterView* self)
 {
-    return self->IsOffline();
+    return self->IsOwnedByPlayer() && self->IsPlayerOffline();
 }
 
 ///# ...
@@ -96,17 +96,14 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsFree(CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsMoving(CritterView* self)
 {
-    return self->IsFree();
-}
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
 
-///# ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsBusy(CritterView* self)
-{
-    return !self->IsFree();
+    return hex_cr->IsMoving();
 }
 
 ///# ...
@@ -190,6 +187,7 @@
 {
     // Todo: handle AbstractItem in Animate
     // self->Animate(anim1, anim2, actionItem);
+    throw NotImplementedException(LINE_STR);
 }
 
 ///# ...
@@ -205,20 +203,19 @@
 }
 
 ///# ...
-///# param ms ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Critter_Wait(CritterView* self, uint ms)
-{
-    self->TickStart(ms);
-}
-
-///# ...
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
-    return self->CountItemPid(protoId);
+    uint result = 0;
+    for (const auto* item : self->GetItems()) {
+        if (!protoId || item->GetProtoId() == protoId) {
+            result += item->GetCount();
+        }
+    }
+
+    return result;
 }
 
 ///# ...
@@ -242,7 +239,7 @@
     }
 
     if (proto_item->GetStackable()) {
-        for (auto* item : self->InvItems) {
+        for (auto* item : self->GetItems()) {
             if (item->GetProtoId() == protoId) {
                 return item;
             }
@@ -250,15 +247,30 @@
     }
     else {
         ItemView* another_slot = nullptr;
-        for (auto* item : self->InvItems) {
+        for (auto* item : self->GetItems()) {
             if (item->GetProtoId() == protoId) {
-                if (item->GetCritSlot() == 0) {
+                if (item->GetCritterSlot() == 0) {
                     return item;
                 }
                 another_slot = item;
             }
         }
         return another_slot;
+    }
+
+    return nullptr;
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
+{
+    for (auto* item : self->GetItems()) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            return item;
+        }
     }
 
     return nullptr;
@@ -273,7 +285,7 @@
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
-    for (auto* item : self->InvItems) {
+    for (auto* item : self->GetItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -287,7 +299,25 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
-    return self->InvItems;
+    return self->GetItems();
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
+{
+    vector<ItemView*> items;
+    items.reserve(self->GetItems().size());
+
+    for (auto* item : self->GetItems()) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
 }
 
 ///# ...
@@ -300,9 +330,9 @@
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
     vector<ItemView*> items;
-    items.reserve(self->InvItems.size());
+    items.reserve(self->GetItems().size());
 
-    for (auto* item : self->InvItems) {
+    for (auto* item : self->GetItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
@@ -357,12 +387,52 @@
 }
 
 ///# ...
+///# param x ...
+///# param y ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_GetTextPos(CritterView* self, int& x, int& y)
+{
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->GetNameTextPos(x, y);
+}
+
+///# ...
+///# param particlesName ...
+///# param boneName ...
+///# param moveX ...
+///# param moveY ...
+///# param moveZ ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_RunParticles(CritterView* self, string_view particlesName, hstring boneName, float moveX, float moveY, float moveZ)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+#if FO_ENABLE_3D
+    if (!hex_cr->IsModel()) {
+        throw ScriptException("Critter is not 3D model");
+    }
+
+    hex_cr->GetModel()->RunParticles(particlesName, boneName, vec3(moveX, moveY, moveZ));
+
+#else
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
+}
+
+///# ...
 ///# param anim1 ...
 ///# param anim2 ...
 ///# param normalizedTime ...
 ///# param animCallback ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, const std::function<void(CritterView*)>& animCallback)
+[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, CallbackFunc<CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -379,7 +449,9 @@
 
     hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [hex_cr, animCallback] {
                                                           if (!hex_cr->IsDestroyed()) {
-                                                              animCallback(hex_cr);
+                                                              // Todo: call animCallback
+                                                              UNUSED_VARIABLE(animCallback);
+                                                              // animCallback(hex_cr);
                                                           }
                                                       }});
 

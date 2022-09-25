@@ -35,26 +35,32 @@
 
 #include "Application.h"
 #include "Log.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 
-struct ServerScriptSystem
+#if !FO_SINGLEPLAYER
+struct ASCompiler_ServerScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
-
-struct ClientScriptSystem
+struct ASCompiler_ClientScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
-
-struct MapperScriptSystem
+#else
+struct ASCompiler_SingleScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
+};
+#endif
+struct ASCompiler_MapperScriptSystem : public ScriptSystem
+{
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
 
 unordered_set<string> CompilerPassedMessages;
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
@@ -64,69 +70,86 @@ int main(int argc, char** argv)
         InitApp(argc, argv, "ASCompiler");
         LogWithoutTimestamp();
 
+#if !FO_SINGLEPLAYER
         auto server_failed = false;
         auto client_failed = false;
+#else
+        auto single_failed = false;
+#endif
         auto mapper_failed = false;
 
-        if (!App->Settings.ASServer.empty()) {
-            WriteLog("Compile server scripts at {}", App->Settings.ASServer);
+        FileSystem file_sys;
+        for (const auto& dir : App->Settings.BakeContentEntries) {
+            file_sys.AddDataSource(dir, DataSourceType::DirRoot);
+        }
 
-            try {
-                ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
+#if !FO_SINGLEPLAYER
+        WriteLog("Compile server scripts");
+
+        try {
+            ASCompiler_ServerScriptSystem().InitAngelScriptScripting(file_sys);
+        }
+        catch (std::exception& ex) {
+            if (CompilerPassedMessages.empty()) {
+                ReportExceptionAndExit(ex);
             }
-            catch (std::exception& ex) {
-                if (CompilerPassedMessages.empty()) {
-                    ReportExceptionAndExit(ex);
-                }
 
-                server_failed = true;
+            server_failed = true;
+        }
+
+        WriteLog("Compile client scripts");
+
+        try {
+            ASCompiler_ClientScriptSystem().InitAngelScriptScripting(file_sys);
+        }
+        catch (std::exception& ex) {
+            if (CompilerPassedMessages.empty()) {
+                ReportExceptionAndExit(ex);
             }
+
+            client_failed = true;
         }
+#else
+        WriteLog("Compile game scripts");
 
-        if (!App->Settings.ASClient.empty()) {
-            WriteLog("Compile client scripts at {}", App->Settings.ASClient);
-
-            try {
-                ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
+        try {
+            ASCompiler_SingleScriptSystem().InitAngelScriptScripting(file_sys);
+        }
+        catch (std::exception& ex) {
+            if (CompilerPassedMessages.empty()) {
+                ReportExceptionAndExit(ex);
             }
-            catch (std::exception& ex) {
-                if (CompilerPassedMessages.empty()) {
-                    ReportExceptionAndExit(ex);
-                }
 
-                client_failed = true;
+            single_failed = true;
+        }
+#endif
+
+        WriteLog("Compile mapper scripts");
+
+        try {
+            ASCompiler_MapperScriptSystem().InitAngelScriptScripting(file_sys);
+        }
+        catch (std::exception& ex) {
+            if (CompilerPassedMessages.empty()) {
+                ReportExceptionAndExit(ex);
             }
+
+            mapper_failed = true;
         }
 
-        if (!App->Settings.ASMapper.empty()) {
-            WriteLog("Compile mapper scripts at {}", App->Settings.ASMapper);
+#if !FO_SINGLEPLAYER
+        WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
+        WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
+#else
+        WriteLog("Game scripts compilation {}!", single_failed ? "failed" : "succeeded");
+#endif
+        WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
 
-            try {
-                MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
-            }
-            catch (std::exception& ex) {
-                if (CompilerPassedMessages.empty()) {
-                    ReportExceptionAndExit(ex);
-                }
-
-                mapper_failed = true;
-            }
-        }
-
-        if (!App->Settings.ASServer.empty()) {
-            WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
-        }
-        if (!App->Settings.ASClient.empty()) {
-            WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
-        }
-        if (!App->Settings.ASMapper.empty()) {
-            WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
-        }
-        if (App->Settings.ASServer.empty() && App->Settings.ASClient.empty() && App->Settings.ASMapper.empty()) {
-            WriteLog("Nothing to compile!");
-        }
-
+#if !FO_SINGLEPLAYER
         if (server_failed || client_failed || mapper_failed) {
+#else
+        if (single_failed || mapper_failed) {
+#endif
             ExitApp(false);
         }
 

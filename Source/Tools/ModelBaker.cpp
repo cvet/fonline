@@ -56,18 +56,19 @@
 
 struct MeshData
 {
-    void Save(DataWriter& writer)
+    void Save(DataWriter& writer) const
     {
         auto len = static_cast<uint>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&Vertices[0], len * sizeof(Vertices[0]));
+        writer.WritePtr(Vertices.data(), len * sizeof(Vertices[0]));
         len = static_cast<uint>(Indices.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&Indices[0], len * sizeof(Indices[0]));
+        writer.WritePtr(Indices.data(), len * sizeof(Indices[0]));
         len = static_cast<uint>(DiffuseTexture.length());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&DiffuseTexture[0], len);
+        writer.WritePtr(DiffuseTexture.data(), len);
         len = static_cast<uint>(SkinBones.size());
+        writer.WritePtr(&len, sizeof(len));
         for (const auto& bone_name : SkinBones) {
             len = static_cast<uint>(bone_name.length());
             writer.WritePtr(&len, sizeof(len));
@@ -75,7 +76,7 @@ struct MeshData
         }
         len = static_cast<uint>(SkinBoneOffsets.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+        writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
     }
 
     vector<Vertex3D> Vertices {};
@@ -103,9 +104,9 @@ struct Bone
         return nullptr;
     }
 
-    void Save(DataWriter& writer)
+    void Save(DataWriter& writer) const
     {
-        writer.Write<ushort>(static_cast<ushort>(Name.length()));
+        writer.Write<uint>(static_cast<uint>(Name.length()));
         writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
@@ -113,8 +114,7 @@ struct Bone
         if (AttachedMesh) {
             AttachedMesh->Save(writer);
         }
-        auto len = static_cast<uint>(Children.size());
-        writer.WritePtr(&len, sizeof(len));
+        writer.Write<uint>(static_cast<uint>(Children.size()));
         for (auto&& child : Children) {
             child->Save(writer);
         }
@@ -141,14 +141,14 @@ struct AnimSet
         vector<vec3> TranslationValue {};
     };
 
-    void Save(DataWriter& writer)
+    void Save(DataWriter& writer) const
     {
         auto len = static_cast<uint>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&AnimFileName[0], len);
+        writer.WritePtr(AnimFileName.data(), len);
         len = static_cast<uint>(AnimName.length());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&AnimName[0], len);
+        writer.WritePtr(AnimName.data(), len);
         writer.WritePtr(&DurationTicks, sizeof(DurationTicks));
         writer.WritePtr(&TicksPerSecond, sizeof(TicksPerSecond));
         len = static_cast<uint>(BonesHierarchy.size());
@@ -170,16 +170,16 @@ struct AnimSet
             writer.WritePtr(o.Name.data(), len);
             len = static_cast<uint>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.ScaleTime[0], len * sizeof(o.ScaleTime[0]));
-            writer.WritePtr(&o.ScaleValue[0], len * sizeof(o.ScaleValue[0]));
+            writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
+            writer.WritePtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
             len = static_cast<uint>(o.RotationTime.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.RotationTime[0], len * sizeof(o.RotationTime[0]));
-            writer.WritePtr(&o.RotationValue[0], len * sizeof(o.RotationValue[0]));
+            writer.WritePtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
+            writer.WritePtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
             len = static_cast<uint>(o.TranslationTime.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.TranslationTime[0], len * sizeof(o.TranslationTime[0]));
-            writer.WritePtr(&o.TranslationValue[0], len * sizeof(o.TranslationValue[0]));
+            writer.WritePtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
+            writer.WritePtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
         }
     }
 
@@ -191,7 +191,7 @@ struct AnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
+ModelBaker::ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
 {
 #if FO_HAVE_FBXSDK
     _fbxManager = FbxManager::Create();
@@ -215,27 +215,33 @@ ModelBaker::~ModelBaker()
 #endif
 }
 
-void ModelBaker::AutoBakeModels()
+void ModelBaker::AutoBake()
 {
     _errors = 0;
 
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
+
+        string ext = _str(file_header.GetPath()).getFileExtension();
+        if (!(ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
 
-        string ext = _str(file_header.GetPath()).getFileExtension();
-        if (!(ext == "fbx" || ext == "dae" || ext == "obj")) {
+        if (!_bakeChecker(file_header)) {
             continue;
         }
 
         auto file = _allFiles.GetCurFile();
 
         try {
-            auto data = BakeFile(file_header.GetPath(), file);
-            _bakedFiles.emplace(file_header.GetPath(), std::move(data));
+            if (ext == "fo3d") {
+                _writeData(file_header.GetPath(), file.GetData());
+            }
+            else {
+                auto data = BakeFile(file_header.GetPath(), file);
+                _writeData(file_header.GetPath(), data);
+            }
         }
         catch (const ModelBakerException& ex) {
             ReportExceptionAndContinue(ex);
@@ -249,13 +255,6 @@ void ModelBaker::AutoBakeModels()
 
     if (_errors > 0) {
         throw ModelBakerException("Errors during effects bakering", _errors);
-    }
-}
-
-void ModelBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
-{
-    for (auto&& [name, data] : _bakedFiles) {
-        baked_files.emplace(name, data);
     }
 }
 
@@ -393,7 +392,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
         auto* fbx_anim_evaluator = fbx_scene->GetAnimationEvaluator();
         auto fbx_anim_stack_criteria = FbxCriteria::ObjectType(fbx_scene->GetCurrentAnimationStack()->GetClassId());
         for (auto i = 0, j = fbx_scene->GetSrcObjectCount(fbx_anim_stack_criteria); i < j; i++) {
-            auto* fbx_anim_stack = dynamic_cast<FbxAnimStack*>(fbx_scene->GetSrcObject(fbx_anim_stack_criteria, i));
+            auto* fbx_anim_stack = static_cast<FbxAnimStack*>(fbx_scene->GetSrcObject(fbx_anim_stack_criteria, i));
             fbx_scene->SetCurrentAnimationStack(fbx_anim_stack);
 
             auto* take_info = fbx_importer->GetTakeInfo(i);
@@ -632,7 +631,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         if (prop_diffuse.IsValid() && prop_diffuse.GetSrcObjectCount() > 0) {
             for (auto i = 0, j = prop_diffuse.GetSrcObjectCount(); i < j; i++) {
                 if (string(prop_diffuse.GetSrcObject(i)->GetClassId().GetName()) == "FbxFileTexture") {
-                    auto* fbx_file_texture = dynamic_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
+                    auto* fbx_file_texture = static_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
                     mesh->DiffuseTexture = _str(fbx_file_texture->GetFileName()).extractFileName();
                     break;
                 }
@@ -640,7 +639,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         }
 
         // Skinning
-        auto* fbx_skin = dynamic_cast<FbxSkin*>(fbx_mesh->GetDeformer(0, FbxDeformer::eSkin));
+        auto* fbx_skin = static_cast<FbxSkin*>(fbx_mesh->GetDeformer(0, FbxDeformer::eSkin));
         if (fbx_skin != nullptr) {
             // 3DS Max specific - Geometric transform
             mat44 ms;

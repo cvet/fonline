@@ -41,8 +41,12 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "GeometryHelper.h"
+#include "Particles.h"
 #include "Settings.h"
 #include "Timer.h"
+
+// Todo: remove unnecessary allocations from 3d
 
 constexpr uint ANIMATION_STAY = 0x01;
 constexpr uint ANIMATION_ONE_TIME = 0x02;
@@ -52,7 +56,7 @@ constexpr auto ANIMATION_PERIOD(uint proc) -> uint
 }
 constexpr uint ANIMATION_NO_SMOOTH = 0x08;
 constexpr uint ANIMATION_INIT = 0x10;
-constexpr uint ANIMATION_COMBAT = 0x20;
+constexpr uint ANIMATION_NO_ROTATE = 0x20;
 
 struct ModelBone;
 class ModelInstance;
@@ -92,7 +96,6 @@ struct MeshInstance
     RenderEffect* DefaultEffect {};
     RenderEffect* LastEffect {};
 };
-static_assert(std::is_standard_layout_v<MeshInstance>);
 
 struct ModelBone
 {
@@ -113,12 +116,16 @@ struct ModelCutData
     struct Shape
     {
         mat44 GlobalTransformationMatrix {};
+        bool IsSphere {};
         float SphereRadius {};
+        vec3 BBoxMin {};
+        vec3 BBoxMax {};
     };
 
     vector<Shape> Shapes {};
     vector<int> Layers {};
-    hstring UnskinBone {};
+    hstring UnskinBone1 {};
+    hstring UnskinBone2 {};
     Shape UnskinShape {};
     bool RevertUnskinShape {};
 };
@@ -130,6 +137,7 @@ struct ModelAnimationData
     int LayerValue {};
     hstring LinkBone {};
     string ChildName {};
+    bool IsParticles {};
     float RotX {};
     float RotY {};
     float RotZ {};
@@ -145,6 +153,15 @@ struct ModelAnimationData
     vector<tuple<string, hstring, int>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ModelCutData*> CutInfo {};
+};
+
+struct ModelParticleSystem
+{
+    uint Id {};
+    unique_ptr<ParticleSystem> Particles {};
+    const ModelBone* Bone {};
+    vec3 Move {};
+    float Rot {};
 };
 
 struct ModelAnimationCallback
@@ -173,24 +190,18 @@ public:
     ~ModelManager() = default;
 
     [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
-    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
 
-    [[nodiscard]] auto GetModel(string_view name, bool is_child) -> ModelInstance*;
+    [[nodiscard]] auto CreateModel(string_view name) -> ModelInstance*;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
     [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*;
 
     void DestroyTextures();
-    void SetScreenSize(int width, int height);
     void PreloadModel(string_view name);
 
 private:
-    [[nodiscard]] auto VecProject(const vec3& v) const -> vec3;
-    [[nodiscard]] auto VecUnproject(const vec3& v) const -> vec3;
-
     [[nodiscard]] auto LoadModel(string_view fname) -> ModelBone*;
     [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
-    [[nodiscard]] auto GetHierarchy(string_view xname) -> ModelHierarchy*;
+    [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
 
     RenderSettings& _settings;
     FileSystem& _fileSys;
@@ -198,25 +209,21 @@ private:
     GameTimer& _gameTime;
     NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
-    MeshTextureCreator _meshTexCreator {};
+    MeshTextureCreator _meshTexCreator;
+    GeometryHelper _geometry;
+    ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
-    vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
+    vector<unique_ptr<ModelBone>> _loadedModels {};
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
-    vector<unique_ptr<ModelHierarchy>> _xFiles {};
-    int _modeWidth {};
-    int _modeHeight {};
-    float _modeWidthF {};
-    float _modeHeightF {};
-    mat44 _matrixProjRMaj {}; // Row or column major order
-    mat44 _matrixEmptyRMaj {};
-    mat44 _matrixProjCMaj {};
-    mat44 _matrixEmptyCMaj {};
+    vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float _moveTransitionTime {0.25f};
     float _globalSpeedAdjust {1.0f};
     uint _animDelay {};
     color4 _lightColor {};
+    hstring _headBone {};
+    unordered_set<hstring> _legBones {};
 };
 
 class ModelInstance final
@@ -226,6 +233,8 @@ class ModelInstance final
     friend class ModelHierarchy;
 
 public:
+    constexpr static int FRAME_SCALE = 2;
+
     ModelInstance() = delete;
     explicit ModelInstance(ModelManager& model_mngr);
     ModelInstance(const ModelInstance&) = default;
@@ -234,26 +243,38 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
+    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
     [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
-    [[nodiscard]] auto GetAnim1() const -> int; // Todo: GetAnim1/GetAnim2 int to uint return type
-    [[nodiscard]] auto GetAnim2() const -> int;
-    [[nodiscard]] auto EvaluateAnimation() const -> optional<tuple<uint, uint>>;
+    [[nodiscard]] auto GetAnim1() const -> uint;
+    [[nodiscard]] auto GetAnim2() const -> uint;
+    [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
     [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
+    [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
+    [[nodiscard]] auto GetAnimDuration() const -> uint;
+    [[nodiscard]] auto IsCombatMode() const -> bool;
 
+    void SetupFrame();
     void StartMeshGeneration();
-    auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
-    void SetDir(uchar dir);
-    void SetDirAngle(int dir_angle);
+    auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
+    void SetDir(uchar dir, bool smooth_rotation);
+    void SetLookDirAngle(int dir_angle);
+    void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
     void SetRotation(float rx, float ry, float rz);
     void SetScale(float sx, float sy, float sz);
     void SetSpeed(float speed);
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
-    void Draw(int x, int y, float scale);
+    void Draw();
+    void MoveModel(int ox, int oy);
+    void SetMoving(bool enabled, bool is_run);
+    void SetMoveSpeed(float walk_factor, float run_factor);
+    void SetCombatMode(bool enabled);
+    void RunParticles(string_view particles_name, hstring bone_name, vec3 move);
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
@@ -263,8 +284,8 @@ private:
     struct CombinedMesh
     {
         RenderEffect* DrawEffect {};
-        RenderDrawBuffer* DrawMesh {};
-        int EncapsulatedMeshCount {};
+        RenderDrawBuffer* MeshBuf {};
+        size_t EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
         vector<uint> MeshVertices {};
         vector<uint> MeshIndices {};
@@ -275,24 +296,30 @@ private:
         MeshTexture* Textures[EFFECT_TEXTURES] {};
     };
 
-    [[nodiscard]] auto CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance) const -> bool;
+    [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float;
     [[nodiscard]] auto GetTick() const -> uint;
 
     void GenerateCombinedMeshes();
-    void FillCombinedMeshes(ModelInstance* base, ModelInstance* cur);
-    void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
-    void ClearCombinedMesh(CombinedMesh* combined_mesh);
-    void BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer);
-    void CutCombinedMeshes(ModelInstance* base, ModelInstance* cur);
-    void CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* cut);
+    void FillCombinedMeshes(const ModelInstance* cur);
+    void CombineMesh(const MeshInstance* mesh_instance, int anim_layer);
+    void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
+    void CutCombinedMeshes(const ModelInstance* cur);
+    void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
     void ProcessAnimation(float elapsed, int x, int y, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
-    void DrawCombinedMeshes();
-    void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
+    void DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled);
+    void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
+    void RefreshMoveAnimation();
 
     ModelManager& _modelMngr;
+    int _frameWidth {};
+    int _frameHeight {};
+    float _frameWidthF {};
+    float _frameHeightF {};
+    mat44 _frameProjRowMaj {};
+    mat44 _frameProjColMaj {};
     uint _curAnim1 {};
     uint _curAnim2 {};
     vector<CombinedMesh*> _combinedMeshes {};
@@ -301,7 +328,8 @@ private:
     vector<MeshInstance*> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
     ModelInformation* _modelInfo {};
-    ModelAnimationController* _animController {};
+    ModelAnimationController* _bodyAnimController {};
+    ModelAnimationController* _moveAnimController {};
     int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
     uint _lastDrawTick {};
@@ -315,7 +343,9 @@ private:
     float _speedAdjustCur {};
     float _speedAdjustLink {};
     bool _shadowDisabled {};
-    float _dirAngle {};
+    float _lookDirAngle {};
+    float _moveDirAngle {};
+    float _targetMoveDirAngle {};
     vec3 _groundPos {};
     bool _useGameTimer {};
     float _animPosProc {};
@@ -323,7 +353,20 @@ private:
     float _animPosPeriod {};
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
-    bool _nonConstHelper {};
+    bool _isMoving {};
+    bool _isRunning {};
+    bool _isMovingBack {};
+    int _curMovingAnim {-1};
+    bool _playTurnAnimation {};
+    bool _isCombatMode {};
+    uint _currentMoveTrack {};
+    float _walkSpeedFactor {1.0f};
+    float _runSpeedFactor {1.0f};
+    bool _noRotate {};
+    float _deferredLookDirAngle {};
+    vector<ModelParticleSystem> _particleSystems {};
+    vec3 _moveOffset {};
+    bool _forceRedraw {};
 
     // Derived animations
     vector<ModelInstance*> _children {};
@@ -334,6 +377,8 @@ private:
     vector<mat44> _linkMatricles {};
     ModelAnimationData _animLink {};
     bool _childChecker {};
+
+    bool _nonConstHelper {};
 };
 
 class ModelInformation final
@@ -380,6 +425,7 @@ private:
     bool _shadowDisabled {};
     uint _drawWidth {DEFAULT_3D_DRAW_WIDTH};
     uint _drawHeight {DEFAULT_3D_DRAW_HEIGHT};
+    hstring _rotationBone {};
 };
 
 class ModelHierarchy final
@@ -405,7 +451,7 @@ private:
 
     ModelManager& _modelMngr;
     string _fileName {};
-    unique_ptr<ModelBone> _rootBone {};
+    ModelBone* _rootBone {};
     vector<ModelBone*> _allBones {};
     vector<ModelBone*> _allDrawBones {};
     bool _nonConstHelper {};

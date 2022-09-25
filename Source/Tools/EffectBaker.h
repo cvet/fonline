@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "BaseBaker.h"
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(EffectBakerException);
@@ -44,26 +45,23 @@ namespace glslang
     class TIntermediate;
 } // namespace glslang
 
-class EffectBaker final
+class EffectBaker final : public BaseBaker
 {
 public:
     EffectBaker() = delete;
-    explicit EffectBaker(FileCollection& all_files);
+    EffectBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     EffectBaker(const EffectBaker&) = delete;
-    EffectBaker(EffectBaker&&) noexcept = delete;
+    EffectBaker(EffectBaker&&) noexcept = default;
     auto operator=(const EffectBaker&) = delete;
     auto operator=(EffectBaker&&) noexcept = delete;
-    ~EffectBaker();
+    ~EffectBaker() override;
 
-    void AutoBakeEffects();
-    void FillBakedFiles(map<string, vector<uchar>>& baked_files);
+    void AutoBake() override;
 
 private:
     void BakeShaderProgram(string_view fname, string_view content);
     void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
 
-    FileCollection& _allFiles;
-    map<string, vector<uchar>> _bakedFiles;
     int _errors {};
 #if FO_ASYNC_BAKE
     std::mutex _bakedFilesLocker;

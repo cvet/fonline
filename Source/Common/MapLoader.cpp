@@ -37,38 +37,43 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
-    // Find file
-    auto maps = file_sys.FilterFiles("fomap");
-    auto map_file = maps.FindFileByName(name);
-    if (!map_file) {
-        throw MapLoaderException("Map not found", name);
-    }
-
     // Load from file
-    const auto buf = map_file.GetStr();
     const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
     if (is_old_format) {
         throw MapLoaderException("Unable to load map from old map format", name);
     }
 
     // Header
-    ConfigFile map_data(buf, name_resolver);
-    if (!map_data.IsApp("ProtoMap")) {
+    ConfigFile map_data(_str("{}.fomap", name), buf, &name_resolver);
+    if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
 
+    // Automatic id fixier
+    unordered_set<uint> busy_ids;
+    const auto process_id = [&busy_ids](uint id) {
+        if (!busy_ids.insert(id).second) {
+            uint new_id = std::numeric_limits<uint>::max();
+            while (!busy_ids.insert(new_id).second) {
+                new_id--;
+            }
+            return new_id;
+        }
+        return id;
+    };
+
     // Critters
     vector<string> errors;
-    for (auto& pkv : map_data.GetApps("Critter")) {
+    for (const auto& pkv : map_data.GetSections("Critter")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto critter invalid data");
             continue;
         }
 
-        const auto id = _str(kv["$Id"]).toUInt();
+        const auto id = process_id(_str(kv["$Id"]).toUInt());
         const auto& proto_name = kv["$Proto"];
         const auto* proto = proto_mngr.GetProtoCritter(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
@@ -80,14 +85,14 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     }
 
     // Items
-    for (auto& pkv : map_data.GetApps("Item")) {
+    for (const auto& pkv : map_data.GetSections("Item")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto item invalid data");
             continue;
         }
 
-        const auto id = _str(kv["$Id"]).toUInt();
+        const auto id = process_id(_str(kv["$Id"]).toUInt());
         const auto& proto_name = kv["$Proto"];
         const auto* proto = proto_mngr.GetProtoItem(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
@@ -99,7 +104,7 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     }
 
     // Tiles
-    for (auto& pkv : map_data.GetApps("Tile")) {
+    for (const auto& pkv : map_data.GetSections("Tile")) {
         auto& kv = *pkv;
         if (kv.count("PicMap") == 0u || kv.count("HexX") == 0u || kv.count("HexY") == 0u) {
             errors.emplace_back("Tile invalid data");
@@ -131,6 +136,10 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     }
 
     if (!errors.empty()) {
-        throw MapLoaderException("Map load error"); // Todo: pass errors vector to MapLoaderException
+        string errors_cat;
+        for (const auto& error : errors) {
+            errors_cat += error + "\n";
+        }
+        throw MapLoaderException("Map load error", errors_cat);
     }
 }

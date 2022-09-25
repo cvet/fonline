@@ -165,6 +165,23 @@
 ///# ...
 ///# param hx ...
 ///# param hy ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, ushort hx, ushort hy, ItemComponent component)
+{
+    for (auto* item : self->GetItemsHex(hx, hy)) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            return item;
+        }
+    }
+
+    return nullptr;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
@@ -175,6 +192,24 @@
 
     for (auto* item : self->GetItemsHex(hx, hy)) {
         if (item->GetValueAsInt(prop) == propertyValue) {
+            return item;
+        }
+    }
+
+    return nullptr;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param radius ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, ushort hx, ushort hy, uint radius, ItemComponent component)
+{
+    for (auto* item : self->GetItemsHexEx(hx, hy, radius, hstring())) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
     }
@@ -266,6 +301,26 @@
 }
 
 ///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ItemComponent component)
+{
+    const auto map_items = self->GetItems();
+
+    vector<Item*> items;
+    items.reserve(map_items.size());
+
+    for (auto* item : map_items) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
+}
+
+///# ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
@@ -280,6 +335,31 @@
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, ItemComponent component)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    const auto map_items = self->GetItemsHex(hx, hy);
+    vector<Item*> items;
+    items.reserve(map_items.size());
+
+    for (auto* item : map_items) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
     }
@@ -308,6 +388,32 @@
 
     for (auto* item : map_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param radius ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, uint radius, ItemComponent component)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    const auto map_items = self->GetItemsHexEx(hx, hy, radius, hstring());
+    vector<Item*> items;
+    items.reserve(map_items.size());
+
+    for (auto* item : map_items) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
     }
@@ -399,6 +505,26 @@
 }
 
 ///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemComponent component)
+{
+    const auto& map_static_items = self->GetStaticMap()->StaticItems;
+
+    vector<StaticItem*> result;
+    result.reserve(map_static_items.size());
+
+    for (auto* item : map_static_items) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            result.push_back(item);
+        }
+    }
+
+    return result;
+}
+
+///# ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
@@ -406,7 +532,7 @@
 [[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto map_static_items = self->GetStaticMap()->StaticItemsVec;
+    const auto& map_static_items = self->GetStaticMap()->StaticItems;
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
@@ -425,7 +551,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self)
 {
-    return self->GetStaticMap()->StaticItemsVec;
+    return self->GetStaticMap()->StaticItems;
 }
 
 ///# ...
@@ -453,6 +579,22 @@
         cr = self->GetHexCritter(hx, hy, true);
     }
     return cr;
+}
+
+///# ...
+///# param component ...
+///# param findType ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, CritterComponent component, CritterFindType findType)
+{
+    for (auto* cr : self->GetCritters()) {
+        if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            return cr;
+        }
+    }
+
+    return nullptr;
 }
 
 ///# ...
@@ -488,7 +630,7 @@
     }
 
     auto critters = self->GetCrittersHex(hx, hy, radius, findType);
-    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
     return critters;
 }
 
@@ -535,6 +677,27 @@
             if (npc->GetProtoId() == pid && npc->CheckFind(findType)) {
                 critters.push_back(npc);
             }
+        }
+    }
+
+    return critters;
+}
+
+///# ...
+///# param component ...
+///# param findType ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterComponent component, CritterFindType findType)
+{
+    const auto map_critters = self->GetCritters();
+
+    vector<Critter*> critters;
+    critters.reserve(map_critters.size());
+
+    for (auto* cr : map_critters) {
+        if (cr->CheckFind(findType) && cr->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            critters.push_back(cr);
         }
     }
 
@@ -753,15 +916,15 @@
 
     FindPathInput input;
     input.MapId = self->GetId();
-    input.FromX = fromHx;
-    input.FromY = fromHy;
-    input.ToX = toHx;
-    input.ToY = toHy;
+    input.FromHexX = fromHx;
+    input.FromHexY = fromHy;
+    input.ToHexX = toHx;
+    input.ToHexY = toHy;
     input.Cut = cut;
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
-    if (output.Result != FindPathResult::Ok) {
+    if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
     }
 
@@ -788,16 +951,16 @@
     FindPathInput input;
     input.MapId = self->GetId();
     input.FromCritter = cr;
-    input.FromX = cr->GetHexX();
-    input.FromY = cr->GetHexY();
-    input.ToX = toHx;
-    input.ToY = toHy;
+    input.FromHexX = cr->GetHexX();
+    input.FromHexY = cr->GetHexY();
+    input.ToHexX = toHx;
+    input.ToHexY = toHy;
     input.Multihex = cr->GetMultihex();
     input.Cut = cut;
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
-    if (output.Result != FindPathResult::Ok) {
+    if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
     }
 
@@ -822,7 +985,7 @@
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateNpc(protoId, nullptr, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, nullptr, self, hx, hy, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }
@@ -854,7 +1017,7 @@
         props_.SetValueAsIntProps(static_cast<int>(key), value);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }
@@ -1066,7 +1229,7 @@
     }
 
     for (Critter* cr : self->GetPlayers()) {
-        if (self->GetEngine()->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
+        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
             cr->Send_PlaySound(0, soundName);
         }
     }
@@ -1104,11 +1267,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= self->GetEngine()->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+            result |= self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
         }
     }
     else {
-        result = self->GetEngine()->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+        result = self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
     }
 
     hx = hx_;
@@ -1133,7 +1296,7 @@
 
     auto from_hx = hx;
     auto from_hy = hy;
-    if (self->GetEngine()->GeomHelper.MoveHexByDir(from_hx, from_hy, self->GetEngine()->GeomHelper.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
+    if (self->GetEngine()->Geometry.MoveHexByDir(from_hx, from_hy, self->GetEngine()->Geometry.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
         self->GetEngine()->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
     }
 }

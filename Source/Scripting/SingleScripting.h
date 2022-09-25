@@ -35,20 +35,37 @@
 
 #include "Common.h"
 
+#if FO_SINGLEPLAYER
+
 #include "ScriptSystem.h"
+
+class FOSingle;
 
 class SingleScriptSystem : public ScriptSystem
 {
 public:
-    explicit SingleScriptSystem(GlobalSettings& settings) : ScriptSystem(settings)
+    explicit SingleScriptSystem(FOSingle* engine) : _engine {engine} { }
+
+    struct NativeImpl;
+    shared_ptr<NativeImpl> NativeData {};
+    struct AngelScriptImpl;
+    shared_ptr<AngelScriptImpl> AngelScriptData {};
+    struct MonoImpl;
+    shared_ptr<MonoImpl> MonoData {};
+
+private:
+    void InitSubsystems() override
     {
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
     }
 
-private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();
+
+    FOSingle* _engine;
 };
+
+#endif

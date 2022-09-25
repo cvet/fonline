@@ -19,6 +19,11 @@ class Sprite
         Assert(ok, name);
     }
 
+    ~Sprite()
+    {
+        Unload();
+    }
+
     bool Load(string name)
     {
         return Load(hstring(name));
@@ -29,14 +34,17 @@ class Sprite
         if (name == LoadedName)
             return true;
 
+        Unload();
         LoadedName = name;
-        Id = LoadedName != hstring() ? LoadSprite(LoadedName) : 0;
+        Id = LoadedName != hstring() ? Game.LoadSprite(LoadedName) : 0;
         RefreshData();
         return Id != 0;
     }
 
     void Unload()
     {
+        if (Id != 0)
+            Game.FreeSprite(Id);
         Id = 0;
         RefreshData();
     }
@@ -54,7 +62,7 @@ class Sprite
 
         if (AnimPlay) {
             uint ticksPerFrame = Ticks / FrmCount;
-            int framesPassed = (GetTick() - AnimStartTick) / ticksPerFrame;
+            int framesPassed = (Game.GetTick() - AnimStartTick) / ticksPerFrame;
             if (framesPassed > 0) {
                 AnimStartTick += framesPassed * ticksPerFrame;
                 Frame += (AnimReverse ? -framesPassed : framesPassed);
@@ -91,19 +99,19 @@ class Sprite
 
         switch (layout != -1 ? layout : Layout) {
         case IMAGE_LAYOUT_TILE:
-            DrawSpritePattern(Id, Frame, x, y, w, h, Width, Height, color);
+            Game.DrawSpritePattern(Id, Frame, x, y, w, h, Width, Height, color);
             break;
         case IMAGE_LAYOUT_CENTER:
-            DrawSprite(Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color, false);
+            Game.DrawSprite(Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color, false);
             break;
         case IMAGE_LAYOUT_STRETCH:
-            DrawSprite(Id, Frame, x, y, w, h, false, color, false);
+            Game.DrawSprite(Id, Frame, x, y, w, h, false, color, false);
             break;
         case IMAGE_LAYOUT_ZOOM:
-            DrawSprite(Id, Frame, x, y, w, h, true, color, false);
+            Game.DrawSprite(Id, Frame, x, y, w, h, true, color, false);
             break;
         default:
-            DrawSprite(Id, Frame, x, y, color, false);
+            Game.DrawSprite(Id, Frame, x, y, color, false);
             break;
         }
     }
@@ -134,17 +142,17 @@ class Sprite
         AnimPlay = true;
         AnimLoop = loop;
         AnimReverse = reverse;
-        AnimStartTick = GetTick();
+        AnimStartTick = Game.GetTick();
     }
 
     private
     void RefreshData()
     {
         if (Id != 0) {
-            Width = GetSpriteWidth(Id, 0);
-            Height = GetSpriteHeight(Id, 0);
-            FrmCount = GetSpriteCount(Id);
-            Ticks = GetSpriteTicks(Id);
+            Width = Game.GetSpriteWidth(Id, 0);
+            Height = Game.GetSpriteHeight(Id, 0);
+            FrmCount = Game.GetSpriteCount(Id);
+            Ticks = Game.GetSpriteTicks(Id);
         }
         else {
             Width = 0;

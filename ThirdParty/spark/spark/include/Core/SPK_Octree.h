@@ -2,7 +2,7 @@
 // SPARK particle engine
 //
 // Copyright (C) 2008-2011 - Julien Fryer - julienfryer@gmail.com
-// Copyright (C) 2017 - Frédéric Martin - fredakilla@gmail.com
+// Copyright (C) 2017 - Frederic Martin - fredakilla@gmail.com
 //
 // This software is provided 'as-is', without any express or implied
 // warranty.  In no event will the authors be held liable for any damages
@@ -35,7 +35,7 @@ namespace SPK
 	* When a octree is attached to a group, at each update, every individual particle is processed and put into cells.<br>
 	* Particles become therefore aware of their neighbors.<br>
 	* <br>
-	* Octrees allows optimization of algorithms that run in O(n²) by reducing their complexity to O(nlog(n)).<br>
+	* Octrees allows optimization of algorithms that run in O(n) by reducing their complexity to O(nlog(n)).<br>
 	* Typically algorithms where each particle is affected by every other particles in the group (particle vs particle collision, flocking, nbody simulations...).<br>
 	* <br>
 	* A Octree is automatically generated within a group if at least one of its modifiers needs it (by setting its NEEDS_OCTREE constant to true at init).<br>

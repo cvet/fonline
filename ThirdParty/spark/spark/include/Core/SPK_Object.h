@@ -232,7 +232,8 @@ namespace SPK
 
 	inline bool SPKObject::isShared() const
 	{
-		return shared;
+		//return shared;
+		return false;
 	}
 
 	inline void SPKObject::setName(const std::string& name)

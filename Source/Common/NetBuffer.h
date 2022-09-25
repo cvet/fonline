@@ -43,6 +43,7 @@ public:
     static constexpr uint DEFAULT_BUF_SIZE = 4096;
     static constexpr int CRYPT_KEYS_COUNT = 50;
     static constexpr uint STRING_LEN_SIZE = sizeof(ushort);
+    static constexpr uint ARRAY_LEN_SIZE = sizeof(ushort);
 
     NetBuffer();
     NetBuffer(const NetBuffer&) = delete;
@@ -51,11 +52,11 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto IsError() const -> bool { return _isError; }
+    [[nodiscard]] auto IsError() const -> bool;
     [[nodiscard]] auto GetData() -> uchar*;
-    [[nodiscard]] auto GetEndPos() const -> uint { return _bufEndPos; }
+    [[nodiscard]] auto GetEndPos() const -> uint;
 
-    void SetError(bool value) { _isError = value; }
+    void SetError(bool value);
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
     virtual void ResetBuf();
@@ -146,12 +147,12 @@ public:
         ushort len = 0;
         Pop(&len, sizeof(len));
         i.resize(len);
-        Pop(&i[0], len);
+        Pop(i.data(), len);
         return *this;
     }
 
     auto operator>>(hstring& i) -> NetBuffer& = delete;
-    [[nodiscard]] auto ReadHashedString(NameResolver& name_resolver) -> hstring;
+    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
 
 private:
     uint _bufReadPos {};

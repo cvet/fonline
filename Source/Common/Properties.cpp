@@ -36,33 +36,78 @@
 #include "PropertiesSerializator.h"
 #include "StringUtils.h"
 
+auto PropertyRawData::GetPtr() -> void*
+{
+    if (_passedPtr != nullptr) {
+        return _passedPtr;
+    }
+
+    return _useDynamic ? _dynamicBuf.data() : _localBuf;
+}
+
+auto PropertyRawData::GetSize() const -> uint
+{
+    return static_cast<uint>(_dataSize);
+}
+
+auto PropertyRawData::Alloc(size_t size) -> uchar*
+{
+    _dataSize = size;
+    _passedPtr = nullptr;
+
+    if (size > LOCAL_BUF_SIZE) {
+        _useDynamic = true;
+        _dynamicBuf.resize(size);
+    }
+    else {
+        _useDynamic = false;
+    }
+
+    return static_cast<uchar*>(GetPtr());
+}
+
+void PropertyRawData::Pass(const void* value, size_t size)
+{
+    _passedPtr = static_cast<uchar*>(const_cast<void*>(value));
+    _dataSize = size;
+    _useDynamic = false;
+}
+
+void PropertyRawData::StoreIfPassed()
+{
+    if (_passedPtr != nullptr) {
+        PropertyRawData tmp_data;
+        tmp_data.Set(_passedPtr, _dataSize);
+        *this = std::move(tmp_data);
+    }
+}
+
 Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
 }
 
-void Property::AddCallback(PropertyChangedCallback callback) const
+void Property::SetGetter(PropertyGetCallback getter) const
 {
-    _callbacks.emplace_back(std::move(callback));
+    _getter = std::move(getter);
+}
+
+void Property::AddSetter(PropertySetCallback setter) const
+{
+    _setters.emplace(_setters.begin(), std::move(setter));
+}
+
+void Property::AddPostSetter(PropertyPostSetCallback setter) const
+{
+    _postSetters.emplace(_postSetters.begin(), std::move(setter));
 }
 
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
     RUNTIME_ASSERT(_registrator);
 
-    // Allocate plain data
-    if (!_registrator->_podDataPool.empty()) {
-        _podData = _registrator->_podDataPool.back();
-        _registrator->_podDataPool.pop_back();
+    if (!_registrator->_registeredProperties.empty()) {
+        AllocData();
     }
-    else {
-        _podData = new uchar[_registrator->_wholePodDataSize];
-    }
-
-    std::memset(_podData, 0, _registrator->_wholePodDataSize);
-
-    // Complex data
-    _complexData.resize(_registrator->_complexPropertiesCount);
-    _complexDataSizes.resize(_registrator->_complexPropertiesCount);
 }
 
 Properties::Properties(const Properties& other) : Properties(other._registrator)
@@ -116,6 +161,133 @@ auto Properties::operator=(const Properties& other) -> Properties&
     return *this;
 }
 
+void Properties::AllocData()
+{
+    RUNTIME_ASSERT(_podData == nullptr);
+    RUNTIME_ASSERT(!_registrator->_registeredProperties.empty());
+
+    // Allocate plain data
+    if (!_registrator->_podDataPool.empty()) {
+        _podData = _registrator->_podDataPool.back();
+        _registrator->_podDataPool.pop_back();
+    }
+    else {
+        _podData = new uchar[_registrator->_wholePodDataSize];
+    }
+
+    std::memset(_podData, 0, _registrator->_wholePodDataSize);
+
+    // Complex data
+    _complexData.resize(_registrator->_complexProperties.size());
+    _complexDataSizes.resize(_registrator->_complexProperties.size());
+}
+
+void Properties::StoreAllData(vector<uchar>& all_data) const
+{
+    all_data.clear();
+    auto writer = DataWriter(all_data);
+
+    // Store plain properties data
+    writer.Write<uint>(_registrator->_wholePodDataSize);
+    writer.WritePtr(_podData, _registrator->_wholePodDataSize);
+
+    // Store complex properties
+    writer.Write<uint>(static_cast<uint>(_registrator->_complexProperties.size()));
+    for (const auto* prop : _registrator->_complexProperties) {
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        writer.Write<uint>(_complexDataSizes[prop->_complexDataIndex]);
+        writer.WritePtr(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
+    }
+
+    // Store hashes
+    vector<string> str_hashes;
+    str_hashes.reserve(64);
+    const auto add_hash = [&str_hashes](const string& str) {
+        if (!str.empty()) {
+            str_hashes.emplace_back(str);
+        }
+    };
+
+    for (const auto* prop : _registrator->_registeredProperties) {
+        if (!prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
+            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
+
+            if (value.index() == AnyData::STRING_VALUE) {
+                add_hash(std::get<AnyData::STRING_VALUE>(value));
+            }
+            else if (value.index() == AnyData::ARRAY_VALUE) {
+                const auto arr = std::get<AnyData::ARRAY_VALUE>(value);
+                for (auto&& arr_entry : arr) {
+                    add_hash(std::get<AnyData::STRING_VALUE>(arr_entry));
+                }
+            }
+            else if (value.index() == AnyData::DICT_VALUE) {
+                const auto dict = std::get<AnyData::DICT_VALUE>(value);
+
+                if (prop->IsDictKeyHash()) {
+                    for (auto&& dict_entry : dict) {
+                        add_hash(dict_entry.first);
+                    }
+                }
+
+                if (prop->IsBaseTypeHash()) {
+                    for (auto&& dict_entry : dict) {
+                        if (dict_entry.second.index() == AnyData::ARRAY_VALUE) {
+                            const auto dict_arr = std::get<AnyData::ARRAY_VALUE>(dict_entry.second);
+                            for (auto&& dict_arr_entry : dict_arr) {
+                                add_hash(std::get<AnyData::STRING_VALUE>(dict_arr_entry));
+                            }
+                        }
+                        else {
+                            add_hash(std::get<AnyData::STRING_VALUE>(dict_entry.second));
+                        }
+                    }
+                }
+            }
+            else {
+                throw UnreachablePlaceException(LINE_STR);
+            }
+        }
+    }
+
+    writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+    for (const auto& str : str_hashes) {
+        writer.Write<uint>(static_cast<uint>(str.length()));
+        writer.WritePtr(str.data(), str.size());
+    }
+}
+
+void Properties::RestoreAllData(const vector<uchar>& all_data)
+{
+    auto reader = DataReader(all_data);
+
+    // Read plain properties data
+    const auto pod_data_size = reader.Read<uint>();
+    RUNTIME_ASSERT(pod_data_size == _registrator->_wholePodDataSize);
+    std::memcpy(_podData, reader.ReadPtr<uchar>(pod_data_size), pod_data_size);
+
+    // Read complex properties
+    const auto complex_props_count = reader.Read<uint>();
+    RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
+    for (const auto* prop : _registrator->_complexProperties) {
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        const auto data_size = reader.Read<uint>();
+        SetRawData(prop, reader.ReadPtr<uchar>(data_size), data_size);
+    }
+
+    // Read hashes
+    const auto str_hashes_count = reader.Read<uint>();
+    for (const auto i : xrange(str_hashes_count)) {
+        UNUSED_VARIABLE(i);
+        const auto str_size = reader.Read<uint>();
+        const auto str = string(reader.ReadPtr<char>(str_size), str_size);
+        const auto hstr = _registrator->_nameResolver.ToHashedString(str);
+        UNUSED_VARIABLE(hstr);
+    }
+
+    reader.VerifyEnd();
+}
+
 auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
 {
     uint whole_size = 0u;
@@ -124,7 +296,9 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     _storeData.resize(0u);
     _storeDataSizes.resize(0u);
 
-    const auto preserve_size = 1u + (!_storeDataComplexIndicies.empty() ? 1u + _storeDataComplexIndicies.size() : 0u);
+    _storeDataComplexIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+
+    const auto preserve_size = 1u + (!_storeDataComplexIndices.empty() ? 1u + _storeDataComplexIndices.size() : 0u);
     _storeData.reserve(preserve_size);
     _storeDataSizes.reserve(preserve_size);
 
@@ -133,13 +307,12 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
     whole_size += _storeDataSizes.back();
 
-    // Calculate complex data to send
-    _storeDataComplexIndicies = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
-    for (size_t i = 0; i < _storeDataComplexIndicies.size();) {
-        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndicies[i]];
+    // Filter complex data to send
+    for (size_t i = 0; i < _storeDataComplexIndices.size();) {
+        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndices[i]];
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
-            _storeDataComplexIndicies.erase(_storeDataComplexIndicies.begin() + static_cast<int>(i));
+            _storeDataComplexIndices.erase(_storeDataComplexIndices.begin() + static_cast<int>(i));
         }
         else {
             i++;
@@ -147,12 +320,12 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     }
 
     // Store complex properties data
-    if (!_storeDataComplexIndicies.empty()) {
-        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndicies[0]));
-        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndicies.size()) * sizeof(short));
+    if (!_storeDataComplexIndices.empty()) {
+        _storeData.push_back(reinterpret_cast<uchar*>(_storeDataComplexIndices.data()));
+        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(ushort));
         whole_size += _storeDataSizes.back();
 
-        for (const auto index : _storeDataComplexIndicies) {
+        for (const auto index : _storeDataComplexIndices) {
             const auto* prop = _registrator->_registeredProperties[index];
             _storeData.push_back(_complexData[prop->_complexDataIndex]);
             _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
@@ -166,11 +339,12 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
 void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
     // Restore plain data
-    RUNTIME_ASSERT(all_data_sizes.size() > 0);
+    RUNTIME_ASSERT(!all_data_sizes.empty());
     RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
-    RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size);
+    const auto private_size = static_cast<uint>(_registrator->_privatePodDataSpace.size());
+    RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
     if (all_data_sizes[0] != 0u) {
         std::memcpy(_podData, all_data[0], all_data_sizes[0]);
     }
@@ -180,7 +354,7 @@ void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<
         const uint comlplex_data_count = all_data_sizes[1] / sizeof(ushort);
         RUNTIME_ASSERT(comlplex_data_count > 0);
         vector<ushort> complex_indicies(comlplex_data_count);
-        std::memcpy(&complex_indicies[0], all_data[1], all_data_sizes[1]);
+        std::memcpy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
 
         for (size_t i = 0; i < complex_indicies.size(); i++) {
             RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
@@ -198,7 +372,7 @@ void Properties::RestoreData(const vector<vector<uchar>>& all_data)
     vector<const uchar*> all_data_ext(all_data.size());
     vector<uint> all_data_sizes(all_data.size());
     for (size_t i = 0; i < all_data.size(); i++) {
-        all_data_ext[i] = !all_data[i].empty() ? &all_data[i][0] : nullptr;
+        all_data_ext[i] = !all_data[i].empty() ? all_data[i].data() : nullptr;
         all_data_sizes[i] = static_cast<uint>(all_data[i].size());
     }
     RestoreData(all_data_ext, all_data_sizes);
@@ -208,7 +382,7 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 {
     bool is_error = false;
 
-    for (const auto& [key, value] : key_values) {
+    for (auto&& [key, value] : key_values) {
         // Skip technical fields
         if (key.empty() || key[0] == '$' || key[0] == '_') {
             continue;
@@ -221,6 +395,13 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
                 WriteLog("Unknown property {}", key);
             }
             else {
+                if (_registrator->_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+                    continue;
+                }
+                if (_registrator->_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+                    continue;
+                }
+
                 WriteLog("Invalid property {} for reading", prop->GetName());
             }
 
@@ -237,19 +418,19 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
     return !is_error;
 }
 
-auto Properties::SaveToText(Properties* base) const -> map<string, string>
+auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 {
     RUNTIME_ASSERT(!base || _registrator == base->_registrator);
 
     map<string, string> key_values;
     for (auto* prop : _registrator->_registeredProperties) {
-        // Skip pure virtual properties
-        if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
+        if (prop->IsDisabled()) {
             continue;
         }
-
-        // Skip temporary properties
-        if (prop->_isTemporary) {
+        if (prop->IsVirtual()) {
+            continue;
+        }
+        if (prop->IsTemporary()) {
             continue;
         }
 
@@ -285,7 +466,7 @@ auto Properties::SaveToText(Properties* base) const -> map<string, string>
         }
 
         // Serialize to text and store in map
-        key_values.insert(std::make_pair(prop->_propName, SavePropertyToText(prop)));
+        key_values.emplace(prop->_propName, SavePropertyToText(prop));
     }
 
     return key_values;
@@ -301,7 +482,7 @@ auto Properties::LoadPropertyFromText(const Property* prop, string_view text) ->
     const auto is_array = prop->_dataType == Property::DataType::Array || prop->_isDictOfArray;
 
     int value_type;
-    if (prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfArrayOfString || prop->_isHash || prop->_isEnum) {
+    if (prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfArrayOfString || prop->_isHashBase || prop->_isEnumBase) {
         value_type = AnyData::STRING_VALUE;
     }
     else if (prop->_isInt64 || prop->_isUInt64) {
@@ -377,6 +558,9 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
             if (data_size != 0u) {
                 _complexData[prop->_complexDataIndex] = new uchar[data_size];
             }
+            else {
+                _complexData[prop->_complexDataIndex] = nullptr;
+            }
         }
 
         if (data_size != 0u) {
@@ -385,33 +569,32 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
     }
 }
 
-void Properties::SetValueFromData(const Property* prop, const uchar* data, uint data_size)
+void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
-    // Todo: SetValueFromData
-    UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(data);
-    UNUSED_VARIABLE(data_size);
-    /*if (dataType == Property::String)
-    {
-        string str;
-        if (data_size)
-            str.assign((char*)data, data_size);
-        GenericSet(entity, &str);
+    RUNTIME_ASSERT(!prop->IsDisabled());
+
+    if (prop->IsVirtual()) {
+        RUNTIME_ASSERT(_entity);
+        RUNTIME_ASSERT(!prop->_setters.empty());
+        for (const auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
     }
-    else if (dataType == Property::PlainData)
-    {
-        RUNTIME_ASSERT(data_size == baseSize);
-        GenericSet(entity, data);
+    else {
+        if (!prop->_setters.empty() && _entity != nullptr) {
+            for (const auto& setter : prop->_setters) {
+                setter(_entity, prop, prop_data);
+            }
+        }
+
+        SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+
+        if (_entity != nullptr) {
+            for (const auto& setter : prop->_postSetters) {
+                setter(_entity, prop);
+            }
+        }
     }
-    else if (dataType == Property::Array || dataType == Property::Dict)
-    {
-        auto value = CreateRefValue(data, data_size);
-        GenericSet(entity, value.get());
-    }
-    else
-    {
-        RUNTIME_ASSERT(!"Unexpected type");
-    }*/
 }
 
 auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
@@ -614,8 +797,8 @@ auto Properties::GetValueAsInt(int property_index) const -> int
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
     }
-    if (!prop->IsReadable()) {
-        throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
 
     return GetPlainDataValueAsInt(prop);
@@ -631,8 +814,8 @@ auto Properties::GetValueAsFloat(int property_index) const -> float
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
     }
-    if (!prop->IsReadable()) {
-        throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
 
     return GetPlainDataValueAsFloat(prop);
@@ -648,8 +831,8 @@ void Properties::SetValueAsInt(int property_index, int value)
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
 
     SetPlainDataValueAsInt(prop, value);
@@ -665,28 +848,11 @@ void Properties::SetValueAsFloat(int property_index, float value)
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
 
     SetPlainDataValueAsFloat(prop, value);
-}
-
-void Properties::SetValueAsIntByName(string_view property_name, int value)
-{
-    const auto* prop = _registrator->Find(property_name);
-
-    if (prop == nullptr) {
-        throw PropertiesException("Property not found", property_name);
-    }
-    if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't set by name integer value from non PlainData property", prop->GetName());
-    }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
-    }
-
-    SetPlainDataValueAsInt(prop, value);
 }
 
 void Properties::SetValueAsIntProps(int property_index, int value)
@@ -699,18 +865,17 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
-    if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+    if (prop->IsVirtual()) {
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
-    if (prop->_isHash) {
-        // Todo: convert to hstring
-        // SetValue<hstring>(prop, value);
+    if (prop->_isHashBase) {
+        SetValue<hstring>(prop, _registrator->_nameResolver.ResolveHash(value));
     }
-    else if (prop->_isEnum) {
+    else if (prop->_isEnumBase) {
         if (prop->_baseSize == 1) {
             SetValue<uchar>(prop, static_cast<uchar>(value));
         }
@@ -770,7 +935,7 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
     return _registrator->_nameResolver.ResolveHash(h);
 }
 
-PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver) : _className {class_name}, _isServer {is_server}, _nameResolver {name_resolver}
+PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) : _className {class_name}, _relation {relation}, _nameResolver {name_resolver}
 {
 }
 
@@ -784,10 +949,12 @@ PropertyRegistrator::~PropertyRegistrator()
     }
 }
 
-void PropertyRegistrator::RegisterComponent(hstring name)
+void PropertyRegistrator::RegisterComponent(string_view name)
 {
-    RUNTIME_ASSERT(!_registeredComponents.count(name));
-    _registeredComponents.insert(name);
+    const auto name_hash = _nameResolver.ToHashedString(name);
+
+    RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
+    _registeredComponents.insert(name_hash);
 }
 
 auto PropertyRegistrator::GetClassName() const -> const string&
@@ -837,34 +1004,73 @@ auto PropertyRegistrator::GetPropertyGroups() const -> const map<string, vector<
     return _propertyGroups;
 }
 
+auto PropertyRegistrator::GetComponents() const -> const unordered_set<hstring>&
+{
+    return _registeredComponents;
+}
+
 void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& flags)
 {
-    // string _propName {};
-    // string _componentName {};
-    prop->_propName = _str(prop->_propName).replace('.', '_');
+    // Todo: validate property name identifier
 
-    if (prop->_isEnum) {
+    if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
+        prop->_component = _nameResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
+        prop->_propName[dot_pos] = '_';
+        prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
+
+        if (!prop->_component) {
+            throw PropertyRegistrationException("Invalid property component part", prop->_propName, prop->_component);
+        }
+        if (prop->_propNameWithoutComponent.empty()) {
+            throw PropertyRegistrationException("Invalid property name part", prop->_propName, prop->_component);
+        }
+        if (_registeredComponents.count(_nameResolver.ToHashedString(prop->_component)) == 0) {
+            throw PropertyRegistrationException("Unknown property component", prop->_propName, prop->_component);
+        }
+    }
+    else {
+        prop->_propNameWithoutComponent = prop->_propName;
+    }
+
+    if (prop->_isEnumBase) {
         prop->_baseTypeName = "";
     }
     if (prop->_dataType == Property::DataType::Dict && prop->_isDictKeyEnum) {
         prop->_dictKeyTypeName = "";
     }
 
+    if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+        prop->_isVirtual = true;
+    }
+
     for (size_t i = 0; i < flags.size(); i++) {
+        const auto check_next_param = [&flags, i, prop] {
+            if (i + 2 >= flags.size() || flags[i + 1] != "=") {
+                throw PropertyRegistrationException("Expected property flag = value", prop->_propName, flags[i], i, flags.size());
+            }
+        };
+
         if (flags[i] == "Enum") {
-            RUNTIME_ASSERT(prop->_isEnum);
-            RUNTIME_ASSERT(flags[i + 1] == "=");
+            check_next_param();
+            if (!prop->_isEnumBase) {
+                throw PropertyRegistrationException("Expected hstring for Enum flag", prop->_propName);
+            }
+
             prop->_baseTypeName = flags[i + 2];
             i += 2;
         }
         else if (flags[i] == "KeyEnum") {
-            RUNTIME_ASSERT(prop->_dataType == Property::DataType::Dict);
-            RUNTIME_ASSERT(flags[i + 1] == "=");
+            check_next_param();
+            if (prop->_dataType != Property::DataType::Dict) {
+                throw PropertyRegistrationException("Expected dict for KeyEnum flag", prop->_propName);
+            }
+
             prop->_dictKeyTypeName = flags[i + 2];
             i += 2;
         }
         else if (flags[i] == "Group") {
-            RUNTIME_ASSERT(flags[i + 1] == "=");
+            check_next_param();
+
             const auto& group = flags[i + 2];
             if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
                 it->second.push_back(prop);
@@ -872,6 +1078,77 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             else {
                 _propertyGroups.emplace(group, vector<const Property*> {prop});
             }
+            i += 2;
+        }
+        else if (flags[i] == "ReadOnly") {
+            prop->_isReadOnly = true;
+        }
+        else if (flags[i] == "Temporary") {
+            prop->_isTemporary = true;
+        }
+        else if (flags[i] == "Historical") {
+            prop->_isHistorical = true;
+        }
+        else if (flags[i] == "Resource") {
+            if (!prop->_isHashBase) {
+                throw PropertyRegistrationException("Expected hstring for Resource flag", prop->_propName);
+            }
+
+            prop->_isResourceHash = true;
+        }
+        else if (flags[i] == "ScriptFuncType") {
+            check_next_param();
+            if (!prop->_isHashBase) {
+                throw PropertyRegistrationException("Expected hstring for ScriptFunc flag", prop->_propName);
+            }
+
+            prop->_scriptFuncType = flags[i + 2];
+            i += 2;
+        }
+        else if (flags[i] == "Max") {
+            check_next_param();
+            if (!prop->_isInt && !prop->_isFloat) {
+                throw PropertyRegistrationException("Expected numeric type for Max flag", prop->_propName);
+            }
+
+            if (prop->_isInt) {
+                prop->_maxValueI = _str(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_maxValueF = _str(flags[i + 2]).toDouble();
+            }
+
+            prop->_checkMaxValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Min") {
+            check_next_param();
+            if (!prop->_isInt && !prop->_isFloat) {
+                throw PropertyRegistrationException("Expected numeric type for Min flag", prop->_propName);
+            }
+
+            if (prop->_isInt) {
+                prop->_minValueI = _str(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_minValueF = _str(flags[i + 2]).toDouble();
+            }
+
+            prop->_checkMinValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Quest") {
+            // Todo: restore quest variables
+            check_next_param();
+            i += 2;
+        }
+        else if (flags[i] == "Alias") {
+            check_next_param();
+            prop->_propNameAliases.push_back(flags[i + 2]);
+            i += 2;
+        }
+        else {
+            throw PropertyRegistrationException("Invalid property flag", prop->_propName, flags[i]);
         }
     }
 
@@ -890,51 +1167,37 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         prop->_fullTypeName = prop->_baseTypeName;
     }
 
-    RUNTIME_ASSERT(prop->_baseTypeName != "");
+    RUNTIME_ASSERT(!prop->_baseTypeName.empty());
     if (prop->_dataType == Property::DataType::Dict) {
-        RUNTIME_ASSERT(prop->_dictKeyTypeName != "");
+        RUNTIME_ASSERT(!prop->_dictKeyTypeName.empty());
     }
-
-    // bool _isTemporary {};
-    // bool _isHistorical {};
-    // ushort _regIndex {};
-    // uint _getIndex {};
-    // uint _podDataOffset {};
-    // uint _complexDataIndex {};
-
-    //_isReadOnly
-    // prop->isTemporary = (defaultTemporary || is_temporary);
-    // prop->_isHistorical = (defaultNoHistory || is_no_history);
-    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->minValue = (min_value ? *min_value : 0);
-    // prop->maxValue = (max_value ? *max_value : 0);
 
     const auto reg_index = static_cast<ushort>(_registeredProperties.size());
 
     // Disallow set or get accessors
-    auto disable_get = false;
-    auto disable_set = false;
-    if (_isServer && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
-        disable_get = true;
-        disable_set = true;
+    auto disabled = false;
+
+    if (_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+        disabled = true;
     }
-    if (!_isServer && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
-        disable_get = true;
-        disable_set = true;
+    if (_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+        disabled = true;
     }
-    if (!_isServer && (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
-        disable_set = true;
-    }
-    if (prop->_accessType == Property::AccessType::PublicStatic) {
-        disable_set = true;
+
+    if (_relation == PropertiesRelationType::ClientRelative && //
+        (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && //
+        !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
+        RUNTIME_ASSERT(!disabled);
+        prop->_isReadOnly = true;
     }
 
     // PlainData property data offset
     const auto prev_public_space_size = _publicPodDataSpace.size();
     const auto prev_protected_space_size = _protectedPodDataSpace.size();
+
     auto data_base_offset = static_cast<uint>(-1);
-    if (prop->_dataType == Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+
+    if (prop->_dataType == Property::DataType::PlainData && !disabled && !prop->IsVirtual()) {
         const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
         auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
@@ -973,21 +1236,18 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
 
     // Complex property data index
     auto complex_data_index = static_cast<uint>(-1);
-    if (prop->_dataType != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
-        complex_data_index = _complexPropertiesCount++;
+
+    if (prop->_dataType != Property::DataType::PlainData && !disabled && !prop->IsVirtual()) {
+        complex_data_index = static_cast<uint>(_complexProperties.size());
+        _complexProperties.emplace_back(prop);
+
         if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
-            _publicComplexDataProps.push_back(reg_index);
-            _publicProtectedComplexDataProps.push_back(reg_index);
+            _publicComplexDataProps.emplace_back(reg_index);
+            _publicProtectedComplexDataProps.emplace_back(reg_index);
         }
         else if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-            _protectedComplexDataProps.push_back(reg_index);
-            _publicProtectedComplexDataProps.push_back(reg_index);
-        }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            _privateComplexDataProps.push_back(reg_index);
-        }
-        else {
-            throw UnreachablePlaceException(LINE_STR);
+            _protectedComplexDataProps.emplace_back(reg_index);
+            _publicProtectedComplexDataProps.emplace_back(reg_index);
         }
     }
 
@@ -995,18 +1255,26 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     prop->_regIndex = reg_index;
     prop->_complexDataIndex = complex_data_index;
     prop->_podDataOffset = data_base_offset;
-    prop->_isReadable = !disable_get;
-    prop->_isWritable = !disable_set;
+    prop->_isDisabled = disabled;
 
-    _registeredProperties.push_back(prop);
-    _registeredPropertiesLookup.emplace(prop->GetName(), prop);
+    _registeredProperties.emplace_back(prop);
+
+    RUNTIME_ASSERT(_registeredPropertiesLookup.count(prop->_propName) == 0);
+    _registeredPropertiesLookup.emplace(prop->_propName, prop);
+
+    for (const auto& alias : prop->_propNameAliases) {
+        RUNTIME_ASSERT(_registeredPropertiesLookup.count(alias) == 0);
+        _registeredPropertiesLookup.emplace(alias, prop);
+    }
 
     // Fix plain data data offsets
-    if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
-    }
-    else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+    if (prop->_podDataOffset != static_cast<uint>(-1)) {
+        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+        }
+        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+        }
     }
 
     for (auto* other_prop : _registeredProperties) {
@@ -1018,9 +1286,8 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
             other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
         }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
-            other_prop->_podDataOffset -= static_cast<uint>(prev_protected_space_size);
+        else if (IsEnumSet(other_prop->_accessType, Property::AccessType::PrivateMask)) {
+            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size) + static_cast<uint>(prev_protected_space_size);
             other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
         }
     }

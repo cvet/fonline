@@ -114,31 +114,31 @@ auto Sprite::GetIntersected(int ox, int oy) -> Sprite*
     return Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
 }
 
-void Sprite::SetEgg(int egg)
+void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
     if (!Valid) {
         return;
     }
 
     Valid = false;
-    EggType = egg;
+    EggAppearence = egg_appearence;
     if (Parent != nullptr) {
-        Parent->SetEgg(egg);
+        Parent->SetEggAppearence(egg_appearence);
     }
     if (Child != nullptr) {
-        Child->SetEgg(egg);
+        Child->SetEggAppearence(egg_appearence);
     }
     Valid = true;
 }
 
-void Sprite::SetContour(int contour)
+void Sprite::SetContour(ContourType contour)
 {
     if (!Valid) {
         return;
     }
 
     Valid = false;
-    ContourType = contour;
+    Contour = contour;
     if (Parent != nullptr) {
         Parent->SetContour(contour);
     }
@@ -148,14 +148,14 @@ void Sprite::SetContour(int contour)
     Valid = true;
 }
 
-void Sprite::SetContour(int contour, uint color)
+void Sprite::SetContour(ContourType contour, uint color)
 {
     if (!Valid) {
         return;
     }
 
     Valid = false;
-    ContourType = contour;
+    Contour = contour;
     ContourColor = color;
     if (Parent != nullptr) {
         Parent->SetContour(contour, color);
@@ -288,7 +288,7 @@ auto Sprites::RootSprite() -> Sprite*
     return _rootSprite;
 }
 
-auto Sprites::PutSprite(Sprite* child, int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     _spriteCount++;
 
@@ -372,41 +372,41 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, ushort hx, ushort hy, int
     if (callback != nullptr) {
         *callback = true;
     }
-    spr->EggType = 0;
-    spr->ContourType = 0;
-    spr->ContourColor = 0;
-    spr->Color = 0;
+    spr->EggAppearence = EggAppearenceType::None;
+    spr->Contour = ContourType::None;
+    spr->ContourColor = 0u;
+    spr->Color = 0u;
     spr->DrawEffect = effect;
     spr->Parent = nullptr;
     spr->Child = nullptr;
 
     // Draw order
-    spr->DrawOrderType = draw_order;
+    spr->DrawOrder = draw_order;
 
-    if (draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER) {
-        spr->DrawOrderPos = spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT);
+    if (draw_order < DrawOrderType::Normal) {
+        spr->DrawOrderPos = spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order);
     }
     else {
-        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + spr->HexY * DRAW_ORDER * MAXHEX_MAX + spr->HexX * DRAW_ORDER + (draw_order - DRAW_ORDER);
+        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::Normal) + spr->HexY * static_cast<int>(DrawOrderType::Normal) * MAXHEX_MAX + spr->HexX * static_cast<int>(DrawOrderType::Normal) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::Normal));
     }
 
     return *spr;
 }
 
-auto Sprites::AddSprite(int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-auto Sprites::InsertSprite(int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     // Find place
     uint pos;
-    if (draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER) {
-        pos = hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT);
+    if (draw_order < DrawOrderType::Normal) {
+        pos = hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order);
     }
     else {
-        pos = MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER + (draw_order - DRAW_ORDER);
+        pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::Normal) + hy * static_cast<int>(DrawOrderType::Normal) * MAXHEX_MAX + hx * static_cast<int>(DrawOrderType::Normal) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::Normal));
     }
 
     auto* parent = _rootSprite;
@@ -437,7 +437,7 @@ void Sprites::SortByMapPos()
         return;
     }
 
-    SpriteVec sprites;
+    vector<Sprite*> sprites;
     sprites.reserve(_spriteCount);
     auto* spr = _rootSprite;
     while (spr != nullptr) {
@@ -459,7 +459,7 @@ void Sprites::SortByMapPos()
         return spr1->DrawOrderPos < spr2->DrawOrderPos;
     });
 
-    for (auto& sprite : sprites) {
+    for (auto* sprite : sprites) {
         sprite->ChainParent = nullptr;
         sprite->ChainChild = nullptr;
         sprite->ChainRoot = nullptr;

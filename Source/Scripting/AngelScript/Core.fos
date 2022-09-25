@@ -27,10 +27,10 @@
 #define TEXTMSG_HOLO      (7)
 #define TEXTMSG_INTERNAL  (8)
 #define TEXTMSG_LOCATIONS (9)
-#define DLGSTR            #(dialogId, strNum)((uint(dialogId.hash) & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
-#define LOCSTR            #(locPid, strNum)((uint(locPid.hash) & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
-#define ITEMSTR           #(itemPid, strNum)((uint(itemPid.hash) & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
-#define CRSTR             #(crPid, strNum)((uint(crPid.hash) & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
+#define DLGSTR            #(dialogId, strNum)((dialogId.uhash & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
+#define LOCSTR            #(locPid, strNum)((locPid.uhash & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
+#define ITEMSTR           #(itemPid, strNum)((itemPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
+#define CRSTR             #(crPid, strNum)((crPid.uhash & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
 
 // Critter actions
 // Flags for chosen:
@@ -71,7 +71,7 @@
 
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
-#define IS_TIMEOUT      #(to)((to)> GetFullSecond())
+#define IS_TIMEOUT      #(to)((to)> Game.GetFullSecond())
 
 // Combat modes
 #define COMBAT_MODE_ANY        (0)
@@ -103,6 +103,7 @@
 #define LOOK_CHECK_TRACE        (0x08) // Tracing for wall aviablility
 #define LOOK_CHECK_SCRIPT       (0x10) // Allow bool check_look(...) in main.fos, all other defines ignored
 #define LOOK_CHECK_ITEM_SCRIPT  (0x20) // Allow bool check_trap_look(...) in main.fos, for items with ITEM_TRAP flag
+#define LOOK_CHECK_TRACE_CLIENT (0x40) // Tracing for wall aviablility (client side)
 
 // Radio
 // Flags, Item::RadioFlags

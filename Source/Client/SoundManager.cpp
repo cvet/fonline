@@ -84,7 +84,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& file_sys) : _set
 #endif
 
     _outputBuf.resize(App->Audio.GetStreamSize());
-    App->Audio.SetSource(std::bind(&SoundManager::ProcessSounds, this, std::placeholders::_1));
+    App->Audio.SetSource([this](uchar* output) { ProcessSounds(output); });
     _isActive = true;
 }
 
@@ -101,9 +101,9 @@ void SoundManager::ProcessSounds(uchar* output)
 {
     for (auto it = _soundsActive.begin(); it != _soundsActive.end();) {
         auto* sound = *it;
-        if (ProcessSound(sound, &_outputBuf[0])) {
+        if (ProcessSound(sound, _outputBuf.data())) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output, &_outputBuf[0], volume);
+            App->Audio.MixAudio(output, _outputBuf.data(), volume);
             ++it;
         }
         else {
@@ -300,7 +300,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     // Convert
-    file.CopyData(&sound->BaseBuf[0], sound->BaseBufLen);
+    file.CopyData(sound->BaseBuf.data(), sound->BaseBufLen);
 
     return ConvertData(sound);
 }
@@ -317,7 +317,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -326,7 +326,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    auto* buf = reinterpret_cast<unsigned short*>(&sound->BaseBuf[0]);
+    auto* buf = reinterpret_cast<unsigned short*>(sound->BaseBuf.data());
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");
@@ -420,7 +420,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     auto decoded = 0u;
 
     while (true) {
-        auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[0]);
+        auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
         result = static_cast<int>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr));
         if (result <= 0) {
             break;
@@ -534,6 +534,10 @@ auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 
 void SoundManager::StopSounds()
 {
+    if (!_isActive) {
+        return;
+    }
+
     App->Audio.LockDevice();
     _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto s) { return !s->IsMusic; }), _soundsActive.end());
     App->Audio.UnlockDevice();
@@ -541,6 +545,10 @@ void SoundManager::StopSounds()
 
 void SoundManager::StopMusic()
 {
+    if (!_isActive) {
+        return;
+    }
+
     App->Audio.LockDevice();
     _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto s) { return s->IsMusic; }), _soundsActive.end());
     App->Audio.UnlockDevice();
