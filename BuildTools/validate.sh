@@ -164,6 +164,6 @@ elif [ "$1" = "code-coverage" ]; then
         rm -rf codecov
         curl -Os https://uploader.codecov.io/latest/linux/codecov
         chmod +x codecov
-        ./codecov -t $CODECOV_TOKEN --verbose
+        ./codecov -t $CODECOV_TOKEN --gcov
     fi
 fi
