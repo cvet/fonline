@@ -383,6 +383,14 @@ public:
     ENTITY_PROPERTY(PrivateClient, uint, NameColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, uint, ContourColor);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_FireTime);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
 };
 
 class MapProperties : public EntityProperties

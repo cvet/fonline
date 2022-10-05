@@ -1067,3 +1067,108 @@ void Critter::Send_SomeItems(const vector<Item*>* items, int param)
         _player->Send_SomeItems(items, param);
     }
 }
+
+void Critter::AddTimeEvent(hstring func_name, uint rate, uint duration, int identifier)
+{
+    auto te_identifiers = GetTE_Identifier();
+    auto te_fire_times = GetTE_FireTime();
+    auto te_func_names = GetTE_FuncName();
+    auto te_rates = GetTE_Rate();
+    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
+
+    const auto fire_time = duration + _engine->GameTime.GetFullSecond();
+
+    size_t index = 0;
+
+    for ([[maybe_unused]] const auto te_identifier : te_identifiers) {
+        if (fire_time < te_fire_times[index]) {
+            break;
+        }
+
+        index++;
+    }
+
+    te_identifiers.insert(te_identifiers.begin() + static_cast<decltype(te_identifiers)::difference_type>(index), identifier);
+    te_fire_times.insert(te_fire_times.begin() + static_cast<decltype(te_fire_times)::difference_type>(index), fire_time);
+    te_func_names.insert(te_func_names.begin() + static_cast<decltype(te_func_names)::difference_type>(index), func_name);
+    te_rates.insert(te_rates.begin() + static_cast<decltype(te_rates)::difference_type>(index), rate);
+
+    SetTE_FireTime(te_fire_times);
+    SetTE_FuncName(te_func_names);
+    SetTE_Rate(te_rates);
+    SetTE_Identifier(te_identifiers);
+}
+
+void Critter::EraseTimeEvent(size_t index)
+{
+    auto te_identifiers = GetTE_Identifier();
+    auto te_fire_times = GetTE_FireTime();
+    auto te_func_names = GetTE_FuncName();
+    auto te_rates = GetTE_Rate();
+    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
+    RUNTIME_ASSERT(index < te_identifiers.size());
+
+    te_identifiers.erase(te_identifiers.begin() + static_cast<decltype(te_identifiers)::difference_type>(index));
+    te_fire_times.erase(te_fire_times.begin() + static_cast<decltype(te_fire_times)::difference_type>(index));
+    te_func_names.erase(te_func_names.begin() + static_cast<decltype(te_func_names)::difference_type>(index));
+    te_rates.erase(te_rates.begin() + static_cast<decltype(te_rates)::difference_type>(index));
+
+    SetTE_FireTime(te_fire_times);
+    SetTE_FuncName(te_func_names);
+    SetTE_Rate(te_rates);
+    SetTE_Identifier(te_identifiers);
+}
+
+void Critter::ProcessTimeEvents()
+{
+    // Fast checking
+    uint data_size = 0;
+    const auto* data = GetProperties().GetRawData(GetPropertyTE_FireTime(), data_size);
+    if (data_size == 0) {
+        return;
+    }
+
+    const auto& near_fire_time = *reinterpret_cast<const uint*>(data);
+    const auto full_second = _engine->GameTime.GetFullSecond();
+    if (full_second < near_fire_time) {
+        return;
+    }
+
+    // One event per cycle
+    auto te_identifiers = GetTE_Identifier();
+    auto te_fire_times = GetTE_FireTime();
+    auto te_func_names = GetTE_FuncName();
+    auto te_rates = GetTE_Rate();
+    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
+
+    const auto identifier = te_identifiers.front();
+    const auto func_name = te_func_names.front();
+    auto rate = te_rates.front();
+
+    te_identifiers.erase(te_identifiers.begin());
+    te_fire_times.erase(te_fire_times.begin());
+    te_func_names.erase(te_func_names.begin());
+    te_rates.erase(te_rates.begin());
+
+    SetTE_Identifier(te_identifiers);
+    SetTE_FireTime(te_fire_times);
+    SetTE_FuncName(te_func_names);
+    SetTE_Rate(te_rates);
+
+    if (auto func = _engine->ScriptSys->FindFunc<uint, Critter*, int, uint*>(func_name)) {
+        if (func(this, identifier, &rate)) {
+            if (const auto next_call_duration = func.GetResult(); next_call_duration > 0) {
+                AddTimeEvent(func_name, rate, next_call_duration, identifier);
+            }
+        }
+    }
+    else {
+        throw ScriptException("Time event func not found", func_name);
+    }
+}

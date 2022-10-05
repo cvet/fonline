@@ -93,7 +93,6 @@ public:
     {
         EventCallback Callback {};
         const void* SubscribtionPtr {};
-        std::function<void()> UnsubscribeCallback {};
         EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal}; // Todo: improve entity event Priority
         bool OneShot {}; // Todo: improve entity event OneShot
@@ -212,7 +211,7 @@ public:
 protected:
     EntityEventBase(Entity* entity, const char* callback_name);
 
-    auto FireEx(const initializer_list<void*>& args) -> bool;
+    [[nodiscard]] auto FireEx(const initializer_list<void*>& args_list) const -> bool { return _entity->FireEvent(_callbacks, args_list); }
 
     Entity* _entity;
     const char* _callbackName;

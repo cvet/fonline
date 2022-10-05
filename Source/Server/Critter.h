@@ -169,6 +169,10 @@ public:
     void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
 
+    void AddTimeEvent(hstring func_name, uint rate, uint duration, int identifier);
+    void EraseTimeEvent(size_t index);
+    void ProcessTimeEvents();
+
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
