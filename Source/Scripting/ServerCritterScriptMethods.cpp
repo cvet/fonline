@@ -1051,3 +1051,196 @@
 
     self->ClearMove();
 }
+
+///# ...
+///# param func ...
+///# param duration ...
+///# param identifier ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFuncName<uint, Critter, int, uint&> func, uint duration, int identifier)
+{
+    self->AddTimeEvent(func, 0, duration, identifier);
+}
+
+///# ...
+///# param func ...
+///# param duration ...
+///# param identifier ...
+///# param rate ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFuncName<uint, Critter, int, uint&> func, uint duration, int identifier, uint rate)
+{
+    self->AddTimeEvent(func, rate, duration, identifier);
+}
+
+///# ...
+///# param identifier ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, int identifier)
+{
+    auto&& te_identifiers = self->GetTE_Identifier();
+
+    uint count = 0;
+
+    for (const auto te_identifier : te_identifiers) {
+        if (te_identifier == identifier) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+///# ...
+///# param identifier ...
+///# param indexes ...
+///# param durations ...
+///# param rates ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, int identifier, vector<uint>& indexes, vector<uint>& durations, vector<uint>& rates)
+{
+    auto&& te_identifiers = self->GetTE_Identifier();
+    auto&& te_fire_times = self->GetTE_FireTime();
+    auto&& te_rates = self->GetTE_Rate();
+    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
+
+    const auto full_second = self->GetEngine()->GameTime.GetFullSecond();
+
+    uint count = 0;
+
+    for (size_t i = 0; i < te_identifiers.size(); i++) {
+        if (te_identifiers[i] == identifier) {
+            indexes.push_back(static_cast<uint>(i));
+            durations.push_back(te_fire_times[i] > full_second ? te_fire_times[i] - full_second : 0);
+            rates.push_back(te_rates[i]);
+            count++;
+        }
+    }
+
+    return count;
+}
+
+///# ...
+///# param findIdentifiers ...
+///# param identifiers ...
+///# param indexes ...
+///# param durations ...
+///# param rates ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, const vector<int>& findIdentifiers, vector<int>& identifiers, vector<uint>& indexes, vector<uint>& durations, vector<uint>& rates)
+{
+    auto&& te_identifiers = self->GetTE_Identifier();
+    auto&& te_fire_times = self->GetTE_FireTime();
+    auto&& te_rates = self->GetTE_Rate();
+    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
+
+    const auto full_second = self->GetEngine()->GameTime.GetFullSecond();
+
+    uint count = 0;
+
+    for (const auto identifier : findIdentifiers) {
+        for (size_t i = 0; i < te_identifiers.size(); i++) {
+            if (te_identifiers[i] == identifier) {
+                identifiers.push_back(te_identifiers[i]);
+                indexes.push_back(static_cast<uint>(i));
+                durations.push_back(te_fire_times[i] > full_second ? te_fire_times[i] - full_second : 0);
+                rates.push_back(te_rates[i]);
+                count++;
+            }
+        }
+    }
+
+    return count;
+}
+
+///# ...
+///# param index ...
+///# param newDuration ...
+///# param newRate ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_ChangeTimeEvent(Critter* self, uint index, uint newDuration, uint newRate)
+{
+    auto&& te_identifiers = self->GetTE_Identifier();
+    auto&& te_fire_times = self->GetTE_FireTime();
+    auto&& te_func_names = self->GetTE_FuncName();
+    auto&& te_rates = self->GetTE_Rate();
+    RUNTIME_ASSERT(te_identifiers.size() == te_fire_times.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
+    RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
+
+    if (index >= te_identifiers.size()) {
+        throw ScriptException("Index arg is greater than maximum time events");
+    }
+
+    self->EraseTimeEvent(index);
+    self->AddTimeEvent(te_func_names[index], newRate, newDuration, te_identifiers[index]);
+}
+
+///# ...
+///# param index ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_EraseTimeEvent(Critter* self, uint index)
+{
+    auto&& te_identifiers = self->GetTE_Identifier();
+
+    if (index >= te_identifiers.size()) {
+        throw ScriptException("Index arg is greater than maximum time events");
+    }
+
+    self->EraseTimeEvent(index);
+}
+
+///# ...
+///# param identifier ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, int identifier)
+{
+    auto&& te_identifiers = self->GetTE_Identifier();
+
+    uint count = 0;
+    size_t index = 0;
+
+    for (const auto te_identifier : te_identifiers) {
+        if (te_identifier == identifier) {
+            self->EraseTimeEvent(index);
+            count++;
+        }
+        else {
+            index++;
+        }
+    }
+
+    return count;
+}
+
+///# ...
+///# param identifiers ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, const vector<int>& identifiers)
+{
+    uint count = 0;
+
+    for (const auto identifier : identifiers) {
+        auto&& te_identifiers = self->GetTE_Identifier();
+        size_t index = 0;
+
+        for (const auto te_identifier : te_identifiers) {
+            if (te_identifier == identifier) {
+                self->EraseTimeEvent(index);
+                count++;
+            }
+            else {
+                index++;
+            }
+        }
+    }
+
+    return count;
+}

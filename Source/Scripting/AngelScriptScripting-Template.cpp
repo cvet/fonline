@@ -1822,6 +1822,17 @@ static auto ASGenericCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, GenericS
         {&typeid(uint64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
         {&typeid(float), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
         {&typeid(double), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
+        {&typeid(bool*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<bool*>(ptr)); }},
+        {&typeid(char*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<char*>(ptr)); }},
+        {&typeid(short*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<short*>(ptr)); }},
+        {&typeid(int*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int*>(ptr)); }},
+        {&typeid(int64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int64*>(ptr)); }},
+        {&typeid(uchar*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uchar*>(ptr)); }},
+        {&typeid(ushort*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ushort*>(ptr)); }},
+        {&typeid(uint*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint*>(ptr)); }},
+        {&typeid(uint64*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint64*>(ptr)); }},
+        {&typeid(float*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<float*>(ptr)); }},
+        {&typeid(double*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
 #if SERVER_SCRIPTING
         {&typeid(Player*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
         {&typeid(Item*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
@@ -1860,6 +1871,20 @@ static auto ASGenericCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, GenericS
         {&typeid(vector<double>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
     };
 
+    static unordered_map<const std::type_info*, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
+        {&typeid(bool), [](asIScriptContext* ctx, void* ptr) { *static_cast<bool*>(ptr) = ctx->GetReturnByte() != 0; }},
+        {&typeid(char), [](asIScriptContext* ctx, void* ptr) { *static_cast<char*>(ptr) = static_cast<char>(ctx->GetReturnByte()); }},
+        {&typeid(short), [](asIScriptContext* ctx, void* ptr) { *static_cast<short*>(ptr) = static_cast<short>(ctx->GetReturnWord()); }},
+        {&typeid(int), [](asIScriptContext* ctx, void* ptr) { *static_cast<int*>(ptr) = static_cast<int>(ctx->GetReturnDWord()); }},
+        {&typeid(int64), [](asIScriptContext* ctx, void* ptr) { *static_cast<int64*>(ptr) = static_cast<int64>(ctx->GetReturnQWord()); }},
+        {&typeid(uchar), [](asIScriptContext* ctx, void* ptr) { *static_cast<uchar*>(ptr) = static_cast<uchar>(ctx->GetReturnByte()); }},
+        {&typeid(ushort), [](asIScriptContext* ctx, void* ptr) { *static_cast<ushort*>(ptr) = static_cast<ushort>(ctx->GetReturnWord()); }},
+        {&typeid(uint), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint*>(ptr) = static_cast<uint>(ctx->GetReturnDWord()); }},
+        {&typeid(uint64), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
+        {&typeid(float), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
+        {&typeid(double), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
+    };
+
     RUNTIME_ASSERT(gen_func);
     RUNTIME_ASSERT(func);
     RUNTIME_ASSERT(gen_func->ArgsType.size() == args.size());
@@ -1885,8 +1910,7 @@ static auto ASGenericCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, GenericS
 
     if (script_sys->RunContext(ctx, ret == nullptr)) {
         if (ret != nullptr) {
-            // std::memcpy(ret, func->GetAddressOfReturnLocation(), )
-            throw NotImplementedException(LINE_STR);
+            CtxReturnValueMap[gen_func->RetType](ctx, ret);
         }
 
         script_sys->ReturnContext(ctx);
@@ -2970,14 +2994,45 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         RUNTIME_ASSERT(engine->GetModuleCount() == 1);
         auto* mod = engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags) -> const std::type_info* {
-            const auto is_ref = (flags & asTM_INOUTREF) != 0;
-            if (is_ref) {
+        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> const std::type_info* {
+            if (const auto is_ref = (flags & asTM_INOUTREF) != 0) {
+                if (is_ret) {
+                    return nullptr;
+                }
+
+                switch (type_id) {
+                case asTYPEID_BOOL:
+                    return &typeid(bool*);
+                case asTYPEID_INT8:
+                    return &typeid(char*);
+                case asTYPEID_INT16:
+                    return &typeid(short*);
+                case asTYPEID_INT32:
+                    return &typeid(int*);
+                case asTYPEID_INT64:
+                    return &typeid(int64*);
+                case asTYPEID_UINT8:
+                    return &typeid(uchar*);
+                case asTYPEID_UINT16:
+                    return &typeid(ushort*);
+                case asTYPEID_UINT32:
+                    return &typeid(uint*);
+                case asTYPEID_UINT64:
+                    return &typeid(uint64*);
+                case asTYPEID_FLOAT:
+                    return &typeid(float*);
+                case asTYPEID_DOUBLE:
+                    return &typeid(double*);
+                default:
+                    break;
+                }
+
                 return nullptr;
             }
 
             switch (type_id) {
             case asTYPEID_VOID:
+                RUNTIME_ASSERT(is_ret);
                 return &typeid(void);
             case asTYPEID_BOOL:
                 return &typeid(bool);
@@ -3003,6 +3058,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 return &typeid(double);
             default:
                 break;
+            }
+
+            if (is_ret) {
+                return nullptr;
             }
 
             if ((type_id & asTYPEID_OBJHANDLE) != 0) {
@@ -3073,12 +3132,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 asDWORD param_flags;
                 AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags));
 
-                gen_func.ArgsType.emplace_back(as_type_to_type_info(param_type_id, param_flags));
+                gen_func.ArgsType.emplace_back(as_type_to_type_info(param_type_id, param_flags, false));
             }
 
             asDWORD ret_flags = 0;
             int ret_type_id = func->GetReturnTypeId(&ret_flags);
-            gen_func.RetType = as_type_to_type_info(ret_type_id, ret_flags);
+            gen_func.RetType = as_type_to_type_info(ret_type_id, ret_flags, true);
 
             gen_func.CallSupported = (gen_func.RetType != nullptr && std::find(gen_func.ArgsType.begin(), gen_func.ArgsType.end(), nullptr) == gen_func.ArgsType.end());
 

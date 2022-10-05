@@ -1620,6 +1620,9 @@ void FOServer::ProcessCritter(Critter* cr)
         cr->CacheValuesNextTick = GameTime.GameTick() + 3000;
     }
 
+    // Time events
+    cr->ProcessTimeEvents();
+
     // Remove player critter from game
     if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
         if (cr->GetClientToDelete()) {
