@@ -112,22 +112,24 @@ void ExitApp(bool success)
 
 void ReportExceptionAndExit(const std::exception& ex)
 {
+    WriteLog(LogType::Error, "\n{}\n", ex.what());
+
     if (!BreakIntoDebugger(ex.what())) {
-        WriteLog(LogType::Error, "\n{}\n", ex.what());
         CreateDumpMessage("FatalException", ex.what());
         MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
     }
 
+    WriteLog(LogType::Error, "Shutdown!");
     ExitApp(false);
 }
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
+    WriteLog(LogType::Error, "\n{}\n", ex.what());
+
     if (BreakIntoDebugger(ex.what())) {
         return;
     }
-
-    WriteLog(LogType::Error, "\n{}\n", ex.what());
 
 #if FO_DEBUG
     MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());

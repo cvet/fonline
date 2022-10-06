@@ -40,7 +40,7 @@ DeferredCallManager::DeferredCallManager(FOEngineBase* engine) : _engine {engine
 
 auto DeferredCallManager::AddDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
 {
-    DeferredCall call = {};
+    DeferredCall call;
 
     if (value != nullptr) {
         call.SignedIntFunc = _engine->ScriptSys->FindFunc<void, int>(func_name);
@@ -71,7 +71,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, hstring func_name, const i
     const auto time_mul = _engine->GetTimeMultiplier();
     call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
 
-    _deferredCalls.push_back(call);
+    _deferredCalls.emplace_back(std::move(call));
 
     return call.Id;
 }
@@ -107,12 +107,18 @@ auto DeferredCallManager::GetNextId() -> uint
 
 void DeferredCallManager::Process()
 {
+    if (_deferredCalls.empty()) {
+        return;
+    }
+
+    const auto full_second = _engine->GameTime.GetFullSecond();
+
     bool done = false;
     while (!done) {
         done = true;
 
         for (auto it = _deferredCalls.begin(); it != _deferredCalls.end(); ++it) {
-            if (_engine->GameTime.GetFullSecond() >= it->FireFullSecond) {
+            if (full_second >= it->FireFullSecond) {
                 DeferredCall call = copy(*it);
                 it = _deferredCalls.erase(it);
                 OnDeferredCallRemoved(call);

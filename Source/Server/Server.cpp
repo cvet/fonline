@@ -580,16 +580,11 @@ void FOServer::MainLoop()
     DispatchLogToClients();
 
     // Fill statistics
-    const auto frame_time = Timer::RealtimeTick() - frame_begin;
-    const auto loop_tick = static_cast<uint>(frame_time);
+    const uint loop_tick = iround(Timer::RealtimeTick() - frame_begin);
     _stats.LoopTime += loop_tick;
     _stats.LoopCycles++;
-    if (loop_tick > _stats.LoopMax) {
-        _stats.LoopMax = loop_tick;
-    }
-    if (loop_tick < _stats.LoopMin) {
-        _stats.LoopMin = loop_tick;
-    }
+    _stats.LoopMax = std::max(loop_tick, _stats.LoopMax);
+    _stats.LoopMax = std::min(loop_tick, _stats.LoopMin);
     _stats.CycleTime = loop_tick;
     if (loop_tick > 100) {
         _stats.LagsCount++;
