@@ -1027,36 +1027,33 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     }
 
     if (!data.TextureInfo.empty()) {
-        for (auto& tex_info : data.TextureInfo) {
+        for (auto&& [tex_name, mesh_name, tex_num] : data.TextureInfo) {
             MeshTexture* texture = nullptr;
 
-            // Get texture
-            if (_str(std::get<0>(tex_info)).startsWith("Parent")) // Parent_MeshName
-            {
+            // Evaluate texture
+            if (_str(tex_name).startsWith("Parent")) { // Parent_MeshName
                 if (_parent != nullptr) {
-                    const auto* mesh_name = std::get<0>(tex_info).c_str() + 6;
-                    if (mesh_name[0] == '_') {
-                        mesh_name++;
+                    const auto* parent_mesh_name = tex_name.c_str() + 6;
+                    if (parent_mesh_name[0] == '_') {
+                        parent_mesh_name++;
                     }
-                    const auto mesh_name_hashed = (*mesh_name != 0 ? _modelMngr.GetBoneHashedString(mesh_name) : hstring());
+                    const auto parent_mesh_name_hashed = (*parent_mesh_name != 0 ? _modelMngr.GetBoneHashedString(parent_mesh_name) : hstring());
                     for (const auto* mesh : _parent->_allMeshes) {
-                        if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
-                            texture = mesh->CurTexures[std::get<2>(tex_info)];
+                        if (!parent_mesh_name_hashed || parent_mesh_name_hashed == mesh->Mesh->Owner->Name) {
+                            texture = mesh->CurTexures[tex_num];
                             break;
                         }
                     }
                 }
             }
             else {
-                texture = _modelInfo->_hierarchy->GetTexture(std::get<0>(tex_info));
+                texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
 
             // Assign it
-            const auto texture_num = std::get<2>(tex_info);
-            const auto mesh_name = std::get<1>(tex_info);
-            for (auto* mesh : _parent->_allMeshes) {
+            for (auto* mesh : _allMeshes) {
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
-                    mesh->CurTexures[texture_num] = texture;
+                    mesh->CurTexures[tex_num] = texture;
                 }
             }
         }
