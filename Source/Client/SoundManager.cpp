@@ -344,10 +344,13 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     }
 
     ov_callbacks callbacks;
-    callbacks.read_func = [](void* ptr, size_t size, size_t, void* datasource) -> size_t {
+    callbacks.read_func = [](void* ptr, size_t size, size_t count, void* datasource) -> size_t {
         auto* file2 = static_cast<File*>(datasource);
-        file2->CopyData(ptr, size);
-        return size;
+        const auto bytes_read = std::min(file2->GetSize() - file2->GetCurPos(), size * count);
+        if (bytes_read > 0) {
+            file2->CopyData(ptr, bytes_read);
+        }
+        return bytes_read;
     };
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
         auto* file2 = static_cast<File*>(datasource);
@@ -356,7 +359,12 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
             file2->SetCurPos(static_cast<uint>(offset));
             break;
         case SEEK_CUR:
-            file2->GoForward(static_cast<uint>(offset));
+            if (offset >= 0) {
+                file2->GoForward(static_cast<uint>(offset));
+            }
+            else {
+                file2->GoBack(static_cast<uint>(-offset));
+            }
             break;
         case SEEK_END:
             file2->SetCurPos(file2->GetSize() - static_cast<uint>(offset));

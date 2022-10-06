@@ -41,7 +41,7 @@ auto ScriptSystem::ValidateArgs(const GenericScriptFunc& gen_func, initializer_l
         return false;
     }
 
-    if (gen_func.RetType != ret_type) {
+    if (type_index(*gen_func.RetType) != type_index(*ret_type)) {
         return false;
     }
     if (gen_func.ArgsType.size() != args_type.size()) {
@@ -50,7 +50,7 @@ auto ScriptSystem::ValidateArgs(const GenericScriptFunc& gen_func, initializer_l
 
     size_t index = 0;
     for (const auto* arg_type : args_type) {
-        if (arg_type != gen_func.ArgsType[index]) {
+        if (type_index(*arg_type) != type_index(*gen_func.ArgsType[index])) {
             return false;
         }
         ++index;

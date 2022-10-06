@@ -438,6 +438,10 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 #endif
 
     const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
+
+#if FO_DEBUG
+    const_cast<bool&>(DebugBuild) = true;
+#endif
 }
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value)

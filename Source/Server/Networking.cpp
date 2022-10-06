@@ -34,6 +34,7 @@
 // Todo: catch exceptions in network servers
 
 #include "Networking.h"
+#include "Application.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -250,7 +251,7 @@ private:
     void AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket);
 
     ServerNetworkSettings& _settings;
-    asio::io_service _ioService {};
+    asio::io_context _ioService {};
     asio::ip::tcp::acceptor _acceptor;
     ConnectionCallback _connectionCallback {};
     std::thread _runThread {};
@@ -311,7 +312,7 @@ public:
     NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) : NetConnectionImpl(settings), _socket {socket}
     {
         const auto& address = socket->remote_endpoint().address();
-        _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
+        _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint>(-1);
         _host = address.to_string();
         _port = socket->remote_endpoint().port();
 
@@ -511,8 +512,12 @@ void NetTcpServer::Shutdown()
 
 void NetTcpServer::Run()
 {
-    asio::error_code error;
-    _ioService.run(error);
+    try {
+        _ioService.run();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 void NetTcpServer::AcceptNext()
@@ -555,7 +560,12 @@ void NetNoTlsWebSocketsServer::Shutdown()
 
 void NetNoTlsWebSocketsServer::Run()
 {
-    _server.run();
+    try {
+        _server.run();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 void NetNoTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
@@ -566,7 +576,7 @@ void NetNoTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 
 auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
-    auto connection = _server.get_con_from_hdl(std::move(hdl));
+    auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
     connection->select_subprotocol("binary", error);
     return !error;
@@ -601,7 +611,12 @@ void NetTlsWebSocketsServer::Shutdown()
 
 void NetTlsWebSocketsServer::Run()
 {
-    _server.run();
+    try {
+        _server.run();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 }
 
 void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
