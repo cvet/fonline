@@ -671,12 +671,12 @@ void asCBuilder::ParseScripts()
 				if( node->nodeType == snFunction )
 				{
 					node->DisconnectParent();
-					RegisterScriptFunctionFromNode(node, decl->script, decl->typeInfo->CastToObjectType(), true, false, 0, decl->isExistingShared);
+					RegisterScriptFunctionFromNode(node, decl->script, CastToObjectType(decl->typeInfo), true, false, 0, decl->isExistingShared);
 				}
 				else if( node->nodeType == snVirtualProperty )
 				{
 					node->DisconnectParent();
-					RegisterVirtualProperty(node, decl->script, decl->typeInfo->CastToObjectType(), true, false, 0, decl->isExistingShared);
+					RegisterVirtualProperty(node, decl->script, CastToObjectType(decl->typeInfo), true, false, 0, decl->isExistingShared);
 				}
 
 				node = next;
@@ -700,19 +700,19 @@ void asCBuilder::ParseScripts()
 				if( node->nodeType == snFunction )
 				{
 					node->DisconnectParent();
-					RegisterScriptFunctionFromNode(node, decl->script, decl->typeInfo->CastToObjectType(), false, false, 0, decl->isExistingShared);
+					RegisterScriptFunctionFromNode(node, decl->script, CastToObjectType(decl->typeInfo), false, false, 0, decl->isExistingShared);
 				}
 				else if( node->nodeType == snVirtualProperty )
 				{
 					node->DisconnectParent();
-					RegisterVirtualProperty(node, decl->script, decl->typeInfo->CastToObjectType(), false, false, 0, decl->isExistingShared);
+					RegisterVirtualProperty(node, decl->script, CastToObjectType(decl->typeInfo), false, false, 0, decl->isExistingShared);
 				}
 
 				node = next;
 			}
 
 			// Make sure the default factory & constructor exists for classes
-			asCObjectType *ot = decl->typeInfo->CastToObjectType();
+			asCObjectType *ot = CastToObjectType(decl->typeInfo);
 			if( ot->beh.construct == engine->scriptTypeBehaviours.beh.construct )
 			{
 				if( ot->beh.constructors.GetLength() == 1 || engine->ep.alwaysImplDefaultConstruct )
@@ -999,7 +999,7 @@ int asCBuilder::VerifyProperty(asCDataType *dt, const char *decl, asCString &nam
 	if( dt )
 	{
 		// Verify that the object type exist
-		if( dt->GetTypeInfo()->CastToObjectType() == 0 )
+		if( CastToObjectType(dt->GetTypeInfo()) == 0 )
 			return asINVALID_OBJECT;
 	}
 
@@ -1057,10 +1057,10 @@ int asCBuilder::VerifyProperty(asCDataType *dt, const char *decl, asCString &nam
 #ifndef AS_NO_COMPILER
 asCObjectProperty *asCBuilder::GetObjectProperty(asCDataType &obj, const char *prop)
 {
-	asASSERT(obj.GetTypeInfo()->CastToObjectType() != 0);
+	asASSERT(CastToObjectType(obj.GetTypeInfo()) != 0);
 
 	// TODO: optimize: Improve linear search
-	asCArray<asCObjectProperty *> &props = obj.GetTypeInfo()->CastToObjectType()->properties;
+	asCArray<asCObjectProperty *> &props = CastToObjectType(obj.GetTypeInfo())->properties;
 	for( asUINT n = 0; n < props.GetLength(); n++ )
 	{
 		if( props[n]->name == prop )
@@ -1364,7 +1364,7 @@ int asCBuilder::CheckNameConflictMember(asCTypeInfo *t, const char *name, asCScr
 {
 	// It's not necessary to check against object types
 
-	asCObjectType *ot = t->CastToObjectType();
+	asCObjectType *ot = CastToObjectType(t);
 	if (!ot)
 		return 0;
 
@@ -1887,7 +1887,7 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 	{
 		for( asUINT i = 0; i < engine->sharedScriptTypes.GetLength(); i++ )
 		{
-			st = engine->sharedScriptTypes[i]->CastToObjectType();
+			st = CastToObjectType(engine->sharedScriptTypes[i]);
 			if( st &&
 				st->IsShared() &&
 				st->name == name &&
@@ -2028,7 +2028,7 @@ int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSN
 	{
 		for( asUINT i = 0; i < engine->sharedScriptTypes.GetLength(); i++ )
 		{
-			asCObjectType *st = engine->sharedScriptTypes[i]->CastToObjectType();
+			asCObjectType *st = CastToObjectType(engine->sharedScriptTypes[i]);
 			if( st &&
 				st->IsShared() &&
 				st->name == name &&
@@ -2286,7 +2286,7 @@ void asCBuilder::CompileGlobalVariables()
 				// Convert enums to true enum values, so subsequent compilations can access it as an enum
 				if( gvar->isEnumValue )
 				{
-					asCEnumType *enumType = gvar->datatype.GetTypeInfo()->CastToEnumType();
+					asCEnumType *enumType = CastToEnumType(gvar->datatype.GetTypeInfo());
 					asASSERT(NULL != enumType);
 
 					asSEnumValue *e = asNEW(asSEnumValue);
@@ -2486,11 +2486,11 @@ void asCBuilder::AddInterfaceToClass(sClassDeclaration *decl, asCScriptNode *err
 			return;
 
 		// Add the interface to the class
-		decl->typeInfo->CastToObjectType()->interfaces.PushLast(intfType);
+		CastToObjectType(decl->typeInfo)->interfaces.PushLast(intfType);
 
 		// Add the inherited interfaces too
 		// For interfaces this will be done outside to handle out-of-order declarations
-		if( !decl->typeInfo->CastToObjectType()->IsInterface() )
+		if( !CastToObjectType(decl->typeInfo)->IsInterface() )
 		{
 			for( asUINT n = 0; n < intfType->interfaces.GetLength(); n++ )
 				AddInterfaceToClass(decl, errNode, intfType->interfaces[n]);
@@ -2507,7 +2507,7 @@ void asCBuilder::CompileInterfaces()
 	for( n = 0; n < interfaceDeclarations.GetLength(); n++ )
 	{
 		sClassDeclaration *intfDecl = interfaceDeclarations[n];
-		asCObjectType *intfType = intfDecl->typeInfo->CastToObjectType();
+		asCObjectType *intfType = CastToObjectType(intfDecl->typeInfo);
 
 		if( intfType->interfaces.GetLength() == 0 ) continue;
 
@@ -2530,7 +2530,7 @@ void asCBuilder::CompileInterfaces()
 	for( n = 0; n < interfaceDeclarations.GetLength(); n++ )
 	{
 		sClassDeclaration *intfDecl = interfaceDeclarations[n];
-		asCObjectType *intfType = intfDecl->typeInfo->CastToObjectType();
+		asCObjectType *intfType = CastToObjectType(intfDecl->typeInfo);
 
 		// TODO: Is this really at the correct place? Hasn't the vfTableIdx already been set here?
 		// Co-opt the vfTableIdx value in our own methods to indicate the
@@ -2587,7 +2587,7 @@ void asCBuilder::DetermineTypeRelations()
 	for (asUINT n = 0; n < interfaceDeclarations.GetLength(); n++)
 	{
 		sClassDeclaration *intfDecl = interfaceDeclarations[n];
-		asCObjectType *intfType = intfDecl->typeInfo->CastToObjectType();
+		asCObjectType *intfType = CastToObjectType(intfDecl->typeInfo);
 
 		asCScriptNode *node = intfDecl->node;
 		asASSERT(node && node->nodeType == snInterface);
@@ -2744,7 +2744,7 @@ void asCBuilder::DetermineTypeRelations()
 			else if (objType->size != 0)
 			{
 				// The class inherits from another script class
-				if (!decl->isExistingShared && decl->typeInfo->CastToObjectType()->derivedFrom != 0)
+				if (!decl->isExistingShared && CastToObjectType(decl->typeInfo)->derivedFrom != 0)
 				{
 					if (!multipleInheritance)
 					{
@@ -2786,7 +2786,7 @@ void asCBuilder::DetermineTypeRelations()
 						if (decl->isExistingShared)
 						{
 							// Verify that the base class is the same as the original shared type
-							if (decl->typeInfo->CastToObjectType()->derivedFrom != objType)
+							if (CastToObjectType(decl->typeInfo)->derivedFrom != objType)
 							{
 								asCString str;
 								str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL, decl->typeInfo->GetName());
@@ -2796,7 +2796,7 @@ void asCBuilder::DetermineTypeRelations()
 						else
 						{
 							// Set the base class
-							decl->typeInfo->CastToObjectType()->derivedFrom = objType;
+							CastToObjectType(decl->typeInfo)->derivedFrom = objType;
 							objType->AddRefInternal();
 						}
 					}
@@ -2825,7 +2825,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 	for( n = 0; n < classDeclarations.GetLength(); n++ )
 	{
 		sClassDeclaration *decl = classDeclarations[n];
-		asCObjectType *derived = decl->typeInfo->CastToObjectType();
+		asCObjectType *derived = CastToObjectType(decl->typeInfo);
 		asCObjectType *base = derived->derivedFrom;
 
 		if( base == 0 ) continue;
@@ -2850,7 +2850,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 	for( n = 0; n < classDeclarations.GetLength(); n++ )
 	{
 		sClassDeclaration *decl = classDeclarations[n];
-		asCObjectType *ot = decl->typeInfo->CastToObjectType();
+		asCObjectType *ot = CastToObjectType(decl->typeInfo);
 		if( decl->isExistingShared )
 		{
 			// Set the declaration as validated already, so that other
@@ -3143,7 +3143,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 		sClassDeclaration *decl = classDeclarations[n];
 		if( decl->isExistingShared ) continue;
 
-		asCObjectType *ot = decl->typeInfo->CastToObjectType();
+		asCObjectType *ot = CastToObjectType(decl->typeInfo);
 		asCArray<bool> overrideValidations(ot->GetMethodCount());
 		for( asUINT k = 0; k < ot->methods.GetLength(); k++ )
 			overrideValidations.PushLast( !static_cast<asCScriptFunction*>(ot->GetMethodByIndex(k, false))->IsOverride() );
@@ -3194,7 +3194,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 		while( toValidate.GetLength() > 0 )
 		{
 			sClassDeclaration *decl = toValidate[toValidate.GetLength()-1];
-			asCObjectType *ot = decl->typeInfo->CastToObjectType();
+			asCObjectType *ot = CastToObjectType(decl->typeInfo);
 			int validState = 1;
 			for( n = 0; n < ot->properties.GetLength(); n++ )
 			{
@@ -3296,7 +3296,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 		sClassDeclaration *decl = classDeclarations[n];
 		if( decl->isExistingShared ) continue;
 
-		asCObjectType *ot = decl->typeInfo->CastToObjectType();
+		asCObjectType *ot = CastToObjectType(decl->typeInfo);
 		if( ot->IsInterface() ) continue;
 
 		typesToValidate.PushLast(ot);
@@ -3364,7 +3364,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 			if( !dt.IsObject() )
 				continue;
 
-			if( typesToValidate.Exists(dt.GetTypeInfo()->CastToObjectType()) )
+			if( typesToValidate.Exists(CastToObjectType(dt.GetTypeInfo())) )
 				mustReevaluate = true;
 			else
 			{
@@ -3390,7 +3390,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 				{
 					// If it is known that the handle can't be involved in a circular reference
 					// then this object doesn't need to be marked as garbage collected.
-					asCObjectType *prop = dt.GetTypeInfo()->CastToObjectType();
+					asCObjectType *prop = CastToObjectType(dt.GetTypeInfo());
 
 					if( prop->flags & asOBJ_SCRIPT_OBJECT )
 					{
@@ -3533,7 +3533,7 @@ void asCBuilder::IncludeMethodsFromMixins(sClassDeclaration *decl)
 					asCScriptNode *copy = n->CreateCopy(engine);
 
 					// Register the method, but only if it doesn't already exist in the class
-					RegisterScriptFunctionFromNode(copy, mixin->script, decl->typeInfo->CastToObjectType(), false, false, mixin->ns, false, true);
+					RegisterScriptFunctionFromNode(copy, mixin->script, CastToObjectType(decl->typeInfo), false, false, mixin->ns, false, true);
 				}
 				else if( n->nodeType == snVirtualProperty )
 				{
@@ -3636,7 +3636,7 @@ void asCBuilder::IncludePropertiesFromMixins(sClassDeclaration *decl)
 
 						// Add the property only if it doesn't already exist in the class
 						bool exists = false;
-						asCObjectType *ot = decl->typeInfo->CastToObjectType();
+						asCObjectType *ot = CastToObjectType(decl->typeInfo);
 						for( asUINT p = 0; p < ot->properties.GetLength(); p++ )
 							if( ot->properties[p]->name == name )
 							{
@@ -3772,7 +3772,7 @@ asCObjectProperty *asCBuilder::AddPropertyToClass(sClassDeclaration *decl, const
 	}
 
 	// Add the property to the object type
-	return decl->typeInfo->CastToObjectType()->AddPropertyToClass(name, dt, isPrivate, isProtected, isInherited);
+	return CastToObjectType(decl->typeInfo)->AddPropertyToClass(name, dt, isPrivate, isProtected, isInherited);
 }
 
 bool asCBuilder::DoesMethodExist(asCObjectType *objType, int methodId, asUINT *methodIndex)
@@ -3886,7 +3886,7 @@ int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, asSNameSp
 				o->name == name &&
 				o->nameSpace == ns )
 			{
-				existingSharedType = o->CastToEnumType();
+				existingSharedType = CastToEnumType(o);
 				break;
 			}
 		}
@@ -5015,7 +5015,7 @@ void asCBuilder::WriteInfo(const asCString &scriptname, const asCString &message
 	// Need to store the pre message in a structure
 	if( pre )
 	{
-		// FOnline: remove pre messages to more clear log
+		// Patch remove pre messages to more clear log
 		//engine->preMessage.isSet      = true;
 		//engine->preMessage.c          = c;
 		//engine->preMessage.r          = r;
@@ -5175,7 +5175,7 @@ asSNameSpace *asCBuilder::GetNameSpaceFromNode(asCScriptNode *node, asCScriptCod
 	asCTypeInfo *ti = 0;
 	asSNameSpace *ns = GetNameSpaceByString(scope, implicitNs ? implicitNs : engine->nameSpaces[0], node, script, &ti);
 	if (ti && objType)
-		*objType = ti->CastToObjectType();
+		*objType = CastToObjectType(ti);
 	return ns;
 }
 
@@ -5329,14 +5329,14 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 					{
 						// TODO: typedef: A typedef should be considered different from the original type (though with implicit conversions between the two)
 						// Create primitive data type based on object flags
-						dt = ti->CastToTypedefType()->aliasForType;
+						dt = CastToTypedefType(ti)->aliasForType;
 						dt.MakeReadOnly(isConst);
 					}
 					else
 					{
 						if( ti->flags & asOBJ_TEMPLATE )
 						{
-							ti = GetTemplateInstanceFromNode(n, file, ti->CastToObjectType(), implicitNamespace, currentType, &n);
+							ti = GetTemplateInstanceFromNode(n, file, CastToObjectType(ti), implicitNamespace, currentType, &n);
 							if (ti == 0)
 							{
 								// Return a dummy
@@ -5607,7 +5607,7 @@ asCDataType asCBuilder::ModifyDataTypeFromNode(const asCDataType &type, asCScrip
 			inOutFlags && *inOutFlags == asTM_INOUTREF )
 		{
 			// Verify that the base type support &inout parameter types
-			if( !dt.IsObject() || dt.IsObjectHandle() || !((dt.GetTypeInfo()->flags & asOBJ_NOCOUNT) || (dt.GetTypeInfo()->CastToObjectType()->beh.addref && dt.GetTypeInfo()->CastToObjectType()->beh.release)) )
+			if( !dt.IsObject() || dt.IsObjectHandle() || !((dt.GetTypeInfo()->flags & asOBJ_NOCOUNT) || (CastToObjectType(dt.GetTypeInfo())->beh.addref && CastToObjectType(dt.GetTypeInfo())->beh.release)) )
 				WriteError(TXT_ONLY_OBJECTS_MAY_USE_REF_INOUT, file, node->firstChild);
 		}
 	}
@@ -5675,7 +5675,7 @@ asCTypeInfo *asCBuilder::GetType(const char *type, asSNameSpace *ns, asCObjectTy
 
 asCObjectType *asCBuilder::GetObjectType(const char *type, asSNameSpace *ns)
 {
-	return GetType(type, ns, 0)->CastToObjectType();
+	return CastToObjectType(GetType(type, ns, 0));
 }
 
 #ifndef AS_NO_COMPILER

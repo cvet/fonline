@@ -196,13 +196,13 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 			}
 			else if( dt.GetTypeInfo()->flags & asOBJ_REF )
 			{
-				asSTypeBehaviour *beh = &dt.GetTypeInfo()->CastToObjectType()->beh;
+				asSTypeBehaviour *beh = &CastToObjectType(dt.GetTypeInfo())->beh;
 				asASSERT( (dt.GetTypeInfo()->flags & asOBJ_NOCOUNT) || beh->release );
 				if( beh->release )
 				{
 					asSSystemFunctionInterface::SClean clean;
 					clean.op  = 0; // call release
-					clean.ot  = dt.GetTypeInfo()->CastToObjectType();
+					clean.ot  = CastToObjectType(dt.GetTypeInfo());
 					clean.off = short(offset);
 					internal->cleanArgs.PushLast(clean);
 				}
@@ -211,11 +211,11 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 			{
 				asSSystemFunctionInterface::SClean clean;
 				clean.op  = 1; // call free
-				clean.ot  = dt.GetTypeInfo()->CastToObjectType();
+				clean.ot  = CastToObjectType(dt.GetTypeInfo());
 				clean.off = short(offset);
 
 				// Call the destructor then free the memory
-				asSTypeBehaviour *beh = &dt.GetTypeInfo()->CastToObjectType()->beh;
+				asSTypeBehaviour *beh = &CastToObjectType(dt.GetTypeInfo())->beh;
 				if( beh->destruct )
 					clean.op = 2; // call destruct, then free
 
@@ -231,7 +231,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 			if (dt.IsFuncdef())
 				clean.ot = &engine->functionBehaviours;
 			else
-				clean.ot = dt.GetTypeInfo()->CastToObjectType();
+				clean.ot = CastToObjectType(dt.GetTypeInfo());
 			clean.off = short(offset);
 			internal->cleanArgs.PushLast(clean);
 		}
@@ -495,12 +495,12 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 		{
 			asSSystemFunctionInterface::SClean clean;
 			clean.op  = 1; // call free
-			clean.ot  = dt.GetTypeInfo()->CastToObjectType();
+			clean.ot  = CastToObjectType(dt.GetTypeInfo());
 			clean.off = short(offset);
 
 #ifndef AS_CALLEE_DESTROY_OBJ_BY_VAL
 			// If the called function doesn't destroy objects passed by value we must do so here
-			asSTypeBehaviour *beh = &dt.GetTypeInfo()->CastToObjectType()->beh;
+			asSTypeBehaviour *beh = &CastToObjectType(dt.GetTypeInfo())->beh;
 			if( beh->destruct )
 				clean.op = 2; // call destruct, then free
 #endif
@@ -516,7 +516,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 			if (dt.IsFuncdef())
 				clean.ot = &engine->functionBehaviours;
 			else
-				clean.ot  = dt.GetTypeInfo()->CastToObjectType();
+				clean.ot  = CastToObjectType(dt.GetTypeInfo());
 			clean.off = short(offset);
 			internal->cleanArgs.PushLast(clean);
 		}
@@ -752,7 +752,7 @@ int CallSystemFunction(int id, asCContext *context)
 			if( sysFunc->returnAutoHandle && context->m_regs.objectRegister )
 			{
 				asASSERT( !(descr->returnType.GetTypeInfo()->flags & asOBJ_NOCOUNT) );
-				engine->CallObjectMethod(context->m_regs.objectRegister, descr->returnType.GetTypeInfo()->CastToObjectType()->beh.addref);
+				engine->CallObjectMethod(context->m_regs.objectRegister, CastToObjectType(descr->returnType.GetTypeInfo())->beh.addref);
 			}
 		}
 		else
@@ -792,8 +792,8 @@ int CallSystemFunction(int id, asCContext *context)
 				// initialized the object. However, as it is a soft exception there is 
 				// no way for the application to not return a value, so instead we simply
 				// destroy it here, to pretend it was never created.
-				if( descr->returnType.GetTypeInfo()->CastToObjectType()->beh.destruct )
-					engine->CallObjectMethod(retPointer, descr->returnType.GetTypeInfo()->CastToObjectType()->beh.destruct);
+				if( CastToObjectType(descr->returnType.GetTypeInfo())->beh.destruct )
+					engine->CallObjectMethod(retPointer, CastToObjectType(descr->returnType.GetTypeInfo())->beh.destruct);
 			}
 		}
 	}

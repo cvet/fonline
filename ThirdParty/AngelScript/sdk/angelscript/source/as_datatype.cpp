@@ -110,7 +110,7 @@ asCDataType asCDataType::CreateObjectHandle(asCTypeInfo *ot, bool isConst)
 {
 	asCDataType dt;
 
-	asASSERT(ot->CastToObjectType());
+	asASSERT(CastToObjectType(ot));
 
 	dt.tokenType        = ttIdentifier;
 	dt.typeInfo         = ot;
@@ -173,7 +173,7 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 	{
 		// If funcDef->nameSpace is null it means the funcDef was declared as member of 
 		// another type, in which case the scope should be built with the name of that type
-		str += typeInfo->CastToFuncdefType()->parentClass->name + "::";
+		str += CastToFuncdefType(typeInfo)->parentClass->name + "::";
 	}
 
 	if( tokenType != ttIdentifier )
@@ -182,7 +182,7 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 	}
 	else if( IsArrayType() && typeInfo && !typeInfo->engine->ep.expandDefaultArrayToTemplate )
 	{
-		asCObjectType *ot = typeInfo->CastToObjectType();
+		asCObjectType *ot = CastToObjectType(typeInfo);
 		asASSERT( ot && ot->templateSubTypes.GetLength() == 1 );
 		str += ot->templateSubTypes[0].Format(currNs, includeNamespace);
 		str += "[]";
@@ -190,7 +190,7 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 	else if(typeInfo)
 	{
 		str += typeInfo->name;
-		asCObjectType *ot = typeInfo->CastToObjectType();
+		asCObjectType *ot = CastToObjectType(typeInfo);
 		if( ot && ot->templateSubTypes.GetLength() > 0 )
 		{
 			str += "<";
@@ -360,7 +360,7 @@ bool asCDataType::CanBeInstantiated() const
 	if (IsFuncdef())
 		return false;
 
-	asCObjectType *ot = typeInfo->CastToObjectType();
+	asCObjectType *ot = CastToObjectType(typeInfo);
 	if( ot && (ot->flags & asOBJ_REF) && ot->beh.factories.GetLength() == 0 ) // ref types without factories
 		return false;
 
@@ -380,7 +380,7 @@ bool asCDataType::IsInterface() const
 	if (typeInfo == 0)
 		return false;
 
-	asCObjectType *ot = typeInfo->CastToObjectType();
+	asCObjectType *ot = CastToObjectType(typeInfo);
 	return ot && ot->IsInterface();
 }
 
@@ -396,7 +396,7 @@ bool asCDataType::CanBeCopied() const
 	if( !CanBeInstantiated() ) return false;
 
 	// It must have a default constructor or factory
-	asCObjectType *ot = typeInfo->CastToObjectType();
+	asCObjectType *ot = CastToObjectType(typeInfo);
 	if( ot && ot->beh.construct == 0 &&
 		ot->beh.factory == 0 ) return false;
 
@@ -457,7 +457,7 @@ bool asCDataType::IsScriptObject() const
 asCDataType asCDataType::GetSubType(asUINT subtypeIndex) const
 {
 	asASSERT(typeInfo);
-	asCObjectType *ot = typeInfo->CastToObjectType();
+	asCObjectType *ot = CastToObjectType(typeInfo);
 	return ot->templateSubTypes[subtypeIndex];
 }
 
@@ -590,7 +590,7 @@ bool asCDataType::IsObject() const
 		return IsNullHandle();
 
 	// Template subtypes shouldn't be considered objects
-	return typeInfo->CastToObjectType() ? true : false;
+	return CastToObjectType(typeInfo) ? true : false;
 }
 
 bool asCDataType::IsFuncdef() const
@@ -672,7 +672,7 @@ int  asCDataType::GetAlignment() const
 asSTypeBehaviour *asCDataType::GetBehaviour() const
 {
 	if (!typeInfo) return 0;
-	asCObjectType *ot = typeInfo->CastToObjectType();
+	asCObjectType *ot = CastToObjectType(typeInfo);
 	return ot ? &ot->beh : 0; 
 }
 

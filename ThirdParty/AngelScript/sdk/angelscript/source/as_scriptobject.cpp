@@ -295,7 +295,7 @@ asCScriptObject::asCScriptObject(asCObjectType *ot, bool doInitialize)
 				if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
 				{
 					asPWORD *ptr = reinterpret_cast<asPWORD*>(reinterpret_cast<asBYTE*>(this) + prop->byteOffset);
-					*ptr = (asPWORD)AllocateUninitializedObject(prop->type.GetTypeInfo()->CastToObjectType(), engine);
+					*ptr = (asPWORD)AllocateUninitializedObject(CastToObjectType(prop->type.GetTypeInfo()), engine);
 				}
 			}
 		}
@@ -359,7 +359,7 @@ asCScriptObject::~asCScriptObject()
 		if( prop->type.IsObject() )
 		{
 			// Destroy the object
-			asCObjectType *propType = prop->type.GetTypeInfo()->CastToObjectType();
+			asCObjectType *propType = CastToObjectType(prop->type.GetTypeInfo());
 			if( prop->type.IsReference() || propType->flags & asOBJ_REF )
 			{
 				void **ptr = (void**)(((char*)this) + prop->byteOffset);
@@ -809,12 +809,12 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 					if( !prop->type.IsObjectHandle() )
 					{
 						if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
-							CopyObject(*src, *dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
+							CopyObject(*src, *dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
 						else
-							CopyObject(src, dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
+							CopyObject(src, dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
 					}
 					else
-						CopyHandle((asPWORD*)src, (asPWORD*)dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
+						CopyHandle((asPWORD*)src, (asPWORD*)dst, CastToObjectType(prop->type.GetTypeInfo()), engine);
 				}
 				else if (prop->type.IsFuncdef())
 				{

@@ -306,7 +306,7 @@ int asCScriptFunction::ParseListPattern(asSListPatternNode *&target, const char 
 			asCBuilder builder(engine, 0);
 			asCScriptCode code;
 			code.SetCode("", decl, 0, false);
-			dt = builder.CreateDataTypeFromNode(listNodes, &code, engine->defaultNamespace, false, returnType.GetTypeInfo()->CastToObjectType());
+			dt = builder.CreateDataTypeFromNode(listNodes, &code, engine->defaultNamespace, false, CastToObjectType(returnType.GetTypeInfo()));
 
 			node->next = asNEW(asSListPatternDataTypeNode)(dt);
 			node = node->next;
@@ -575,7 +575,7 @@ bool asCScriptFunction::IsCompatibleWithTypeId(int typeId) const
 	if (!dt.IsFuncdef())
 		return false;
 
-	asCScriptFunction *func = dt.GetTypeInfo()->CastToFuncdefType()->funcdef;
+	asCScriptFunction *func = CastToFuncdefType(dt.GetTypeInfo())->funcdef;
 	if( !IsSignatureExceptNameEqual(func) )
 		return false;
 
