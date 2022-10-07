@@ -5079,7 +5079,7 @@ int asCCompiler::GetVariableOffset(int varIndex)
 {
 	// Return offset to the last dword on the stack
 
-#if 0 // Patch
+#if 0 // (FOnline Patch)
 	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
 	int varOffset = 1;
 
@@ -5142,7 +5142,7 @@ int asCCompiler::GetVariableOffset(int varIndex)
 
 int asCCompiler::GetVariableSlot(int offset)
 {
-#if 0 // Patch
+#if 0 // (FOnline Patch)
 	int varOffset = 1;
 	for( asUINT n = 0; n < variableAllocations.GetLength(); n++ )
 	{
@@ -9889,7 +9889,7 @@ int asCCompiler::CompileConstructCall(asCScriptNode *node, asCExprContext *ctx)
 	}
 
 	// Don't accept syntax like object@(expr)
-	if( dt.IsObjectHandle() && !dt.IsFuncdef() ) // Patch '&& !dt.IsFuncdef()'
+	if( dt.IsObjectHandle() && !dt.IsFuncdef() ) // (FOnline Patch) '&& !dt.IsFuncdef()'
 	{
 		asCString str;
 		str.Format(TXT_CANT_CONSTRUCT_s_USE_REF_CAST, dt.Format(outFunc->nameSpace).AddressOf());

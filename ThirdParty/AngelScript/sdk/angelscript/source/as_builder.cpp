@@ -1932,7 +1932,7 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 		if (node->tokenType == ttHandle)
 			st->flags |= asOBJ_IMPLICIT_HANDLE;
 
-		st->flags |= asOBJ_IMPLICIT_HANDLE; // Patch
+		st->flags |= asOBJ_IMPLICIT_HANDLE; // (FOnline Patch)
 
 		st->size = sizeof(asCScriptObject);
 		st->name = name;
@@ -2055,7 +2055,7 @@ int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSN
 	if( isShared )
 		st->flags |= asOBJ_SHARED;
 
-	st->flags |= asOBJ_IMPLICIT_HANDLE; // Patch
+	st->flags |= asOBJ_IMPLICIT_HANDLE; // (FOnline Patch)
 
 	st->size = 0; // Cannot be instantiated
 	st->name = name;
@@ -5015,7 +5015,7 @@ void asCBuilder::WriteInfo(const asCString &scriptname, const asCString &message
 	// Need to store the pre message in a structure
 	if( pre )
 	{
-		// Patch remove pre messages to more clear log
+		// (FOnline Patch) remove pre messages to more clear log
 		//engine->preMessage.isSet      = true;
 		//engine->preMessage.c          = c;
 		//engine->preMessage.r          = r;
@@ -5319,7 +5319,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 
 				if( ti->flags & asOBJ_IMPLICIT_HANDLE )
 					isImplicitHandle = true;
-				if( ti->flags & asOBJ_FUNCDEF ) // Patch
+				if( ti->flags & asOBJ_FUNCDEF ) // (FOnline Patch)
 					isImplicitHandle = true;
 
 				// Make sure the module has access to the object type
@@ -5412,7 +5412,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 	{
 		if( n->tokenType == ttOpenBracket )
 		{
-			if (isImplicitHandle) // Patch
+			if (isImplicitHandle) // (FOnline Patch)
 			{
 				// Make the type a handle
 				if (dt.MakeHandle(true, acceptHandleForScope) < 0)
@@ -5441,7 +5441,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				break;
 			}
 
-			if( dt.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE ) // Patch
+			if( dt.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE ) // (FOnline Patch)
 				isImplicitHandle = true;
 		}
 		else

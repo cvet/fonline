@@ -88,7 +88,7 @@ void RegisterScriptDateTime(asIScriptEngine *engine)
 	// TODO: Add support for generic calling convention
 	int r = engine->RegisterObjectType("datetime", sizeof(CDateTime), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<CDateTime>()); assert(r >= 0);
 
-	// Patch
+	// (FOnline Patch)
 	if(strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
 	{
 		r = engine->RegisterObjectBehaviour("datetime", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(Construct), asCALL_CDECL_OBJLAST); assert(r >= 0);

@@ -665,7 +665,7 @@ int  asCDataType::GetAlignment() const
 		return 4; //Default alignment
 	}
 
-	return 4; // Patch typeInfo->alignment;
+	return 4; // (FOnline Patch) typeInfo->alignment;
 }
 #endif
 

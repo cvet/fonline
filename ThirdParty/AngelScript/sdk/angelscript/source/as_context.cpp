@@ -475,7 +475,7 @@ int asCContext::Prepare(asIScriptFunction *func)
 	m_regs.programPointer = 0;
 
 	// Reserve space for the arguments and return value
-#if 0 // Patch
+#if 0 // (FOnline Patch)
 	m_regs.stackFramePointer = m_regs.stackPointer - m_argumentsSize - m_returnValueSize;
 #else
 	int size = m_argumentsSize + m_returnValueSize;
@@ -1201,7 +1201,7 @@ int asCContext::Execute()
 		if( m_currentFunction->funcType == asFUNC_DELEGATE )
 		{
 			// Push the object pointer onto the stack
-#if 1 // Patch
+#if 1 // (FOnline Patch)
 			asASSERT( m_regs.stackPointer - AS_PTR_SIZE >= m_stackBlocks[m_stackIndex] );
 			m_regs.stackPointer -= AS_PTR_SIZE;
 			m_regs.stackFramePointer -= AS_PTR_SIZE;
@@ -5188,7 +5188,7 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	m_regs.objectRegister = gen.objectRegister;
 	m_regs.objectType = descr->returnType.GetTypeInfo();
 
-	// Patch
+	// (FOnline Patch)
 	if( (descr->returnType.IsObject() || descr->returnType.IsFuncdef()) && !descr->returnType.IsReference() )
 	{
 		if( descr->returnType.IsObjectHandle() )

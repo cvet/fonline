@@ -472,7 +472,7 @@ int asCGarbageCollector::ReportAndReleaseUndestroyedObjects()
 	// This function will only be called as the engine is shutting down
 
 	int items = 0;
-	// Patch
+	// (FOnline Patch)
 	/*for( asUINT n = 0; n < gcOldObjects.GetLength(); n++ )
 	{
 		asSObjTypePair gcObj = GetOldObjectAtIdx(n);

@@ -183,7 +183,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 	{
 		asCDataType &dt = func->parameterTypes[n];
 
-		// Patch
+		// (FOnline Patch)
 		/*if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
 		{
 			if (dt.IsFuncdef())
@@ -223,7 +223,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 			}
 		}*/
 
-		// Patch
+		// (FOnline Patch)
 		if (n < internal->paramAutoHandles.GetLength() && internal->paramAutoHandles[n])
 		{
 			asSSystemFunctionInterface::SClean clean;
@@ -867,7 +867,7 @@ int CallSystemFunction(int id, asCContext *context)
 
 		// Skip the object pointer on the stack
 		// TODO: runtime optimize: This check and increment should have been done in PrepareSystemFunction
-		if( callConv >= ICC_THISCALL && sysFunc->auxiliary == 0 ) // Patch && sysFunc->auxiliary == 0 )
+		if( callConv >= ICC_THISCALL && sysFunc->auxiliary == 0 ) // (FOnline Patch) && sysFunc->auxiliary == 0 )
 			args += AS_PTR_SIZE;
 
 		asSSystemFunctionInterface::SClean *clean = sysFunc->cleanArgs.AddressOf();

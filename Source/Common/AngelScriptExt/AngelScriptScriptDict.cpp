@@ -272,7 +272,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
 
     // The assignment operator
-    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)",
+    // r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)",
     // asMETHOD(CScriptDict, operator=), asCALL_THISCALL); assert(r >= 0);
 
     // Other methods
@@ -296,7 +296,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", asMETHOD(CScriptDict, Exists), asCALL_THISCALL);
     assert(r >= 0);
-    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const",
+    // r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const",
     // asMETHOD(CScriptDict, operator==), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", asMETHOD(CScriptDict, IsEmpty), asCALL_THISCALL);
     assert(r >= 0);
@@ -892,7 +892,7 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, Set), asCALL_GENERIC);
     assert(r >= 0);
-    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)",
+    // r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)",
     // WRAP_MFN(CScriptDict, operator=), asCALL_GENERIC); assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, Set), asCALL_GENERIC);
     assert(r >= 0);
@@ -916,7 +916,7 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine)
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", WRAP_MFN(CScriptDict, Exists), asCALL_GENERIC);
     assert(r >= 0);
-    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const",
+    // r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const",
     // WRAP_MFN(CScriptDict, operator==), asCALL_GENERIC); assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", WRAP_MFN(CScriptDict, IsEmpty), asCALL_GENERIC);
     assert(r >= 0);
