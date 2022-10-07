@@ -184,7 +184,18 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 		asCDataType &dt = func->parameterTypes[n];
 
 		// (FOnline Patch)
-		/*if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
+		if (n < internal->paramAutoHandles.GetLength() && internal->paramAutoHandles[n])
+		{
+			asSSystemFunctionInterface::SClean clean;
+			clean.op = 0; // call release
+			if (dt.IsFuncdef())
+				clean.ot = &engine->functionBehaviours;
+			else
+				clean.ot = CastToObjectType(dt.GetTypeInfo());
+			clean.off = short(offset);
+			internal->cleanArgs.PushLast(clean);
+		}
+		else if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
 		{
 			if (dt.IsFuncdef())
 			{
@@ -221,19 +232,6 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 
 				internal->cleanArgs.PushLast(clean);
 			}
-		}*/
-
-		// (FOnline Patch)
-		if (n < internal->paramAutoHandles.GetLength() && internal->paramAutoHandles[n])
-		{
-			asSSystemFunctionInterface::SClean clean;
-			clean.op = 0; // call release
-			if (dt.IsFuncdef())
-				clean.ot = &engine->functionBehaviours;
-			else
-				clean.ot = CastToObjectType(dt.GetTypeInfo());
-			clean.off = short(offset);
-			internal->cleanArgs.PushLast(clean);
 		}
 
 		if( dt.IsObject() && !dt.IsObjectHandle() && !dt.IsReference() )

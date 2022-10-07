@@ -575,10 +575,6 @@ macro( CreatePackage package config )
 endmacro()
 macro( AddToPackage package binary platform arch packType )
 	list( APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}" )
-	if( NOT "${ARGN}" STREQUAL "" )
-		list( APPEND FO_CONFIGS ${ARGN} )
-		list( REMOVE_DUPLICATES FO_CONFIGS )
-	endif()
 endmacro()
 
 # User contribution
