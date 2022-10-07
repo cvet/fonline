@@ -1067,6 +1067,7 @@ if( FO_ANGELSCRIPT_SCRIPTING )
 	# AngelScript
 	StatusMessage( "+ AngelScript" )
 	set( FO_ANGELSCRIPT_DIR "ThirdParty/AngelScript" )
+	# add_compile_definitions( $<$<CONFIG:Debug>:AS_DEBUG=1> )
 	add_subdirectory( "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/projects/cmake" )
 	include_directories( "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/include" "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/source" "${FO_ANGELSCRIPT_DIR}/sdk/add_on" )
 	list( APPEND FO_COMMON_LIBS "Angelscript" )
