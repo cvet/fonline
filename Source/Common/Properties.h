@@ -96,7 +96,7 @@ private:
     size_t _dataSize {};
     bool _useDynamic {};
     uchar _localBuf[LOCAL_BUF_SIZE] {};
-    vector<uchar> _dynamicBuf {};
+    unique_ptr<uchar[]> _dynamicBuf {};
     void* _passedPtr {};
 };
 
