@@ -38,6 +38,14 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///# param name ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_SetName(CritterView* self, string_view name)
+{
+    self->SetName(name);
+}
+
+///# ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsChosen(CritterView* self)

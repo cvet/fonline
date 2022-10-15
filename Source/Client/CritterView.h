@@ -52,7 +52,7 @@ public:
     auto operator=(CritterView&&) noexcept = delete;
     ~CritterView() override = default;
 
-    [[nodiscard]] auto GetName() const -> string_view override { return _nameOnHead; }
+    [[nodiscard]] auto GetName() const -> string_view override { return _name; }
     [[nodiscard]] auto IsNpc() const -> bool { return !_ownedByPlayer; }
     [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _ownedByPlayer; }
     [[nodiscard]] auto IsChosen() const -> bool { return _isChosen; }
@@ -71,11 +71,12 @@ public:
     virtual auto AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*;
     virtual void DeleteItem(ItemView* item, bool animate);
     void DeleteAllItems();
+    void SetName(string_view name);
     void SetPlayer(bool is_player, bool is_chosen);
     void SetPlayerOffline(bool is_offline);
 
 protected:
-    string _nameOnHead {};
+    string _name {};
     bool _ownedByPlayer {};
     bool _isPlayerOffline {};
     bool _isChosen {};
