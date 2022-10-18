@@ -575,10 +575,6 @@ macro( CreatePackage package config )
 endmacro()
 macro( AddToPackage package binary platform arch packType )
 	list( APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}" )
-	if( NOT "${ARGN}" STREQUAL "" )
-		list( APPEND FO_CONFIGS ${ARGN} )
-		list( REMOVE_DUPLICATES FO_CONFIGS )
-	endif()
 endmacro()
 
 # User contribution
@@ -1067,6 +1063,7 @@ if( FO_ANGELSCRIPT_SCRIPTING )
 	# AngelScript
 	StatusMessage( "+ AngelScript" )
 	set( FO_ANGELSCRIPT_DIR "ThirdParty/AngelScript" )
+	# add_compile_definitions( $<$<CONFIG:Debug>:AS_DEBUG=1> )
 	add_subdirectory( "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/projects/cmake" )
 	include_directories( "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/include" "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/source" "${FO_ANGELSCRIPT_DIR}/sdk/add_on" )
 	list( APPEND FO_COMMON_LIBS "Angelscript" )

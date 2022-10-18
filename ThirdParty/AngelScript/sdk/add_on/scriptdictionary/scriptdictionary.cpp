@@ -745,7 +745,7 @@ bool CScriptDictValue::Get(asIScriptEngine *engine, void *value, int typeId) con
 		}
 		else if (typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64)
 		{
-			if (m_typeId >= asTYPEID_INT8 && m_typeId <= asTYPEID_UINT64) // Patch
+			if (m_typeId >= asTYPEID_INT8 && m_typeId <= asTYPEID_UINT64) // (FOnline Patch)
 				*(asINT64*)value = asINT64(m_valueInt);
 			else if (m_typeId == asTYPEID_DOUBLE)
 				*(asINT64*)value = asINT64(m_valueFlt);

@@ -42,7 +42,7 @@ auto PropertyRawData::GetPtr() -> void*
         return _passedPtr;
     }
 
-    return _useDynamic ? _dynamicBuf.data() : _localBuf;
+    return _useDynamic ? _dynamicBuf.get() : _localBuf;
 }
 
 auto PropertyRawData::GetSize() const -> uint
@@ -57,7 +57,7 @@ auto PropertyRawData::Alloc(size_t size) -> uchar*
 
     if (size > LOCAL_BUF_SIZE) {
         _useDynamic = true;
-        _dynamicBuf.resize(size);
+        _dynamicBuf.reset(new uchar[size]);
     }
     else {
         _useDynamic = false;

@@ -35,7 +35,7 @@
 #include <math.h>       // pow()
 #include <stdint.h>     // UINT64_MAX
 
-#ifndef UINT64_MAX // Patch
+#ifndef UINT64_MAX // (FOnline Patch)
 # define UINT64_MAX       (18446744073709551615ULL)
 #endif
 

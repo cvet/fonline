@@ -150,10 +150,10 @@ public:
 	bool IsShared() const;
 
 	// These can be safely used on null pointers (which will return null)
-	asCObjectType  *CastToObjectType();
-	asCEnumType    *CastToEnumType();
-	asCTypedefType *CastToTypedefType();
-	asCFuncdefType *CastToFuncdefType();
+	friend asCObjectType* CastToObjectType(asCTypeInfo*);
+	friend asCEnumType* CastToEnumType(asCTypeInfo*);
+	friend asCTypedefType* CastToTypedefType(asCTypeInfo*);
+	friend asCFuncdefType* CastToFuncdefType(asCTypeInfo*);
 
 
 	asCString                    name;
