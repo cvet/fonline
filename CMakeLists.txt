@@ -87,6 +87,7 @@ set( FO_RENDER_SYSTEM_LIBS "" )
 set( FO_RENDER_LIBS "" )
 set( FO_BAKER_SYSTEM_LIBS "" )
 set( FO_BAKER_LIBS "" )
+set( FO_TESTING_LIBS "" )
 set( FO_USE_GLEW NO )
 set( FO_SDL_DIR "" )
 set( FO_ZLIB_DIR "" )
@@ -577,6 +578,14 @@ macro( AddToPackage package binary platform arch packType )
 	list( APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}" )
 endmacro()
 
+function( DisableLibWarnings )
+	foreach( lib ${ARGV} )
+		target_compile_options( ${lib} PRIVATE
+			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
+			$<$<CXX_COMPILER_ID:MSVC>:/W0> )
+	endforeach()
+endfunction()
+
 # User contribution
 if( NOT FONLINE_CMAKE_CONTRIBUTION STREQUAL "" )
 	StatusMessage( "Contributions:" )
@@ -665,14 +674,6 @@ include_directories( "${CMAKE_BINARY_DIR}/GeneratedSource" )
 
 # Third-party libs
 StatusMessage( "Third-party libs:" )
-
-function( DisableLibWarnings )
-	foreach( lib ${ARGV} )
-		target_compile_options( ${lib} PRIVATE
-			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
-			$<$<CXX_COMPILER_ID:MSVC>:/W0> )
-	endforeach()
-endfunction()
 
 # SDL2
 StatusMessage( "+ SDL2" )
@@ -951,7 +952,11 @@ DisableLibWarnings( ImGui )
 # Catch2
 StatusMessage( "+ Catch2" )
 set( FO_CATCH2_DIR "ThirdParty/Catch2" )
-include_directories( "${FO_CATCH2_DIR}/single_include/catch2" )
+add_library( Catch2 ${FO_CATCH2_DIR}/catch_amalgamated.cpp ${FO_CATCH2_DIR}/catch_amalgamated.hpp )
+target_compile_definitions( Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN" )
+list( APPEND FO_TESTING_LIBS "Catch2" )
+DisableLibWarnings( Catch2 )
+include_directories( "${FO_CATCH2_DIR}" )
 
 # Backward-cpp
 if( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" OR APPLE AND NOT PLATFORM )
@@ -1775,7 +1780,7 @@ if( FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 		set_target_properties( ${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_TESTS_OUTPUT} )
 		set_target_properties( ${target} PROPERTIES OUTPUT_NAME ${target} )
 		set_target_properties( ${target} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=1" )
-		target_link_libraries( ${target} "AppHeadless" "BakerLib" "MapperLib" )
+		target_link_libraries( ${target} "AppHeadless" "BakerLib" "MapperLib" "${FO_TESTING_LIBS}" )
 		if( NOT FO_SINGLEPLAYER )
 			target_sources( ${target} PRIVATE
 				"Source/Applications/ServerApp.cpp"
@@ -2012,7 +2017,7 @@ set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 set_property( TARGET ${FO_APPLICATIONS_GROUP} PROPERTY FOLDER "Applications" )
 set_property( TARGET ${FO_CORE_LIBS_GROUP} PROPERTY FOLDER "CoreLibs" )
 set_property( TARGET ${FO_COMMANDS_GROUP} PROPERTY FOLDER "Commands" )
-set_property( TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} PROPERTY FOLDER "ThirdParty" )
+set_property( TARGET ${FO_COMMON_LIBS} ${FO_BAKER_LIBS} ${FO_SERVER_LIBS} ${FO_CLIENT_LIBS} ${FO_RENDER_LIBS} ${FO_TESTING_LIBS} PROPERTY FOLDER "ThirdParty" )
 
 # Print cached variables
 if( FONLINE_VERBOSE_BUILD )
