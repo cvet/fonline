@@ -35,7 +35,7 @@ set (BSON_API_VERSION 1.0)
 set (CPACK_PACKAGE_VERSION_MAJOR ${BSON_MAJOR_VERSION})
 set (CPACK_PACKAGE_VERSION_MINOR ${BSON_MINOR_VERSION})
 
-include (CPack)
+#! include (CPack)
 TEST_BIG_ENDIAN (BSON_BIG_ENDIAN)
 
 #librt needed on linux for clock_gettime

@@ -144,7 +144,10 @@
 
 // Todo: improve named enums
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
-inline auto format_as(T v) { return fmt::underlying(v); }
+inline auto format_as(T v)
+{
+    return fmt::underlying(v);
+}
 
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
 #if FO_UWP

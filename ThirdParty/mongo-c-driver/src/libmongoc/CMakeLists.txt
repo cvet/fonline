@@ -1300,7 +1300,7 @@ install (
       Devel
 )
 
-include (../../build/cmake/MongoCPackage.cmake)
+#! include (../../build/cmake/MongoCPackage.cmake)
 
 if (ENABLE_MAN_PAGES STREQUAL ON OR ENABLE_HTML_DOCS STREQUAL ON)
    find_package (Sphinx REQUIRED)
