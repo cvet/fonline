@@ -4,27 +4,21 @@ set(TEST_MAIN_SRC test-main.cc gtest-extra.cc gtest-extra.h util.cc)
 add_library(test-main STATIC ${TEST_MAIN_SRC})
 target_include_directories(test-main PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
-target_link_libraries(test-main gtest)
-
-include(CheckCXXCompilerFlag)
-
-# Workaround GTest bug https://github.com/google/googletest/issues/705.
-check_cxx_compiler_flag(
-  -fno-delete-null-pointer-checks HAVE_FNO_DELETE_NULL_POINTER_CHECKS)
-if (HAVE_FNO_DELETE_NULL_POINTER_CHECKS)
-  target_compile_options(test-main PUBLIC -fno-delete-null-pointer-checks)
-endif ()
-
-# Use less strict pedantic flags for the tests because GMock doesn't compile
-# cleanly with -pedantic and -std=c++98.
-if (CMAKE_COMPILER_IS_GNUCXX OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
-    #set(PEDANTIC_COMPILE_FLAGS -Wall -Wextra -Wno-long-long -Wno-variadic-macros)
-endif ()
+target_link_libraries(test-main gtest fmt)
 
 function(add_fmt_executable name)
   add_executable(${name} ${ARGN})
-  if (MINGW)
-    target_link_libraries(${name} -static-libgcc -static-libstdc++)
+  # (Wstringop-overflow) - [meta-bug] bogus/missing -Wstringop-overflow warnings
+  #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88443
+  # Bogus -Wstringop-overflow warning
+  #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100395
+  # [10 Regression] spurious -Wstringop-overflow writing to a trailing array plus offset
+  #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95353
+  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND
+      NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
+    target_compile_options(${name} PRIVATE -Wno-stringop-overflow)
+    # The linker flag is needed for LTO.
+    target_link_libraries(${name} -Wno-stringop-overflow)
   endif ()
 endfunction()
 
@@ -41,7 +35,7 @@ function(add_fmt_test name)
       set(PEDANTIC_COMPILE_FLAGS ${PEDANTIC_COMPILE_FLAGS} -Wno-weak-vtables)
     endif ()
   elseif (ADD_FMT_TEST_MODULE)
-    set(libs test-main test-module)
+    set(libs gtest test-module)
     set_source_files_properties(${name}.cc PROPERTIES OBJECT_DEPENDS test-module)
   else ()
     set(libs test-main fmt)
@@ -74,9 +68,23 @@ if (NOT (MSVC AND BUILD_SHARED_LIBS))
 endif ()
 add_fmt_test(ostream-test)
 add_fmt_test(compile-test)
+add_fmt_test(compile-fp-test HEADER_ONLY)
+if (MSVC)
+  # Without this option, MSVC returns 199711L for the __cplusplus macro.
+  target_compile_options(compile-fp-test PRIVATE /Zc:__cplusplus)
+endif()
 add_fmt_test(printf-test)
-add_fmt_test(ranges-test)
+add_fmt_test(ranges-test ranges-odr-test.cc)
 add_fmt_test(scan-test)
+add_fmt_test(std-test)
+try_compile(compile_result_unused
+            ${CMAKE_CURRENT_BINARY_DIR}
+            SOURCES ${CMAKE_CURRENT_LIST_DIR}/detect-stdfs.cc
+            OUTPUT_VARIABLE RAWOUTPUT)
+string(REGEX REPLACE ".*libfound \"([^\"]*)\".*" "\\1" STDLIBFS "${RAWOUTPUT}")
+if (STDLIBFS)
+  target_link_libraries(std-test ${STDLIBFS})
+endif ()
 add_fmt_test(unicode-test HEADER_ONLY)
 if (MSVC)
   target_compile_options(unicode-test PRIVATE /utf-8)
@@ -97,7 +105,7 @@ if (FMT_CAN_MODULE)
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
   enable_module(test-module)
 
-  add_fmt_test(module-test MODULE)
+  add_fmt_test(module-test MODULE test-main.cc)
   if (MSVC)
     target_compile_options(test-module PRIVATE /utf-8 /Zc:__cplusplus
                            /Zc:externConstexpr /Zc:inline)
@@ -126,35 +134,24 @@ if (NOT MSVC_STATIC_RUNTIME)
   if (FMT_PEDANTIC)
     target_compile_options(posix-mock-test PRIVATE ${PEDANTIC_COMPILE_FLAGS})
   endif ()
-  if (HAVE_STRTOD_L)
-    target_compile_definitions(posix-mock-test PRIVATE FMT_LOCALE)
-  endif ()
   add_test(NAME posix-mock-test COMMAND posix-mock-test)
   add_fmt_test(os-test)
 endif ()
 
 message(STATUS "FMT_PEDANTIC: ${FMT_PEDANTIC}")
 
-if (FMT_PEDANTIC AND CXX_STANDARD LESS 20)
-  # MSVC fails to compile GMock when C++17 is enabled.
-  if (FMT_HAS_VARIANT AND NOT MSVC)
-    add_fmt_test(std-format-test)
-    set_property(TARGET std-format-test PROPERTY CXX_STANDARD 17)
-  endif ()
-
+if (FMT_PEDANTIC)
   # Test that the library can be compiled with exceptions disabled.
   # -fno-exception is broken in icc: https://github.com/fmtlib/fmt/issues/822.
   if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
     check_cxx_compiler_flag(-fno-exceptions HAVE_FNO_EXCEPTIONS_FLAG)
   endif ()
   if (HAVE_FNO_EXCEPTIONS_FLAG)
-    add_library(noexception-test ../src/format.cc)
+    add_library(noexception-test ../src/format.cc noexception-test.cc)
     target_include_directories(
       noexception-test PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_compile_options(noexception-test PRIVATE -fno-exceptions)
-    if (FMT_PEDANTIC)
-      target_compile_options(noexception-test PRIVATE ${PEDANTIC_COMPILE_FLAGS})
-    endif ()
+    target_compile_options(noexception-test PRIVATE ${PEDANTIC_COMPILE_FLAGS})
   endif ()
 
   # Test that the library compiles without locale.
@@ -163,7 +160,11 @@ if (FMT_PEDANTIC AND CXX_STANDARD LESS 20)
     nolocale-test PRIVATE ${PROJECT_SOURCE_DIR}/include)
   target_compile_definitions(
     nolocale-test PRIVATE FMT_STATIC_THOUSANDS_SEPARATOR=1)
+endif ()
 
+# These tests are disabled on Windows because they take too long.
+if (FMT_PEDANTIC AND NOT WIN32)
+  # Test if incorrect API usages produce compilation error.
   add_test(compile-error-test ${CMAKE_CTEST_COMMAND}
     --build-and-test
     "${CMAKE_CURRENT_SOURCE_DIR}/compile-error-test"
@@ -172,14 +173,11 @@ if (FMT_PEDANTIC AND CXX_STANDARD LESS 20)
     --build-makeprogram ${CMAKE_MAKE_PROGRAM}
     --build-options
     "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+    "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
     "-DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}"
     "-DCXX_STANDARD_FLAG=${CXX_STANDARD_FLAG}"
-    "-DPEDANTIC_COMPILE_FLAGS=${PEDANTIC_COMPILE_FLAGS}"
-    "-DSUPPORTS_USER_DEFINED_LITERALS=${SUPPORTS_USER_DEFINED_LITERALS}")
-endif ()
+    "-DFMT_DIR=${CMAKE_SOURCE_DIR}")
 
-# These tests are disabled on Windows because they take too long.
-if (FMT_PEDANTIC AND NOT WIN32)
   # Test if the targets are found from the build directory.
   add_test(find-package-test ${CMAKE_CTEST_COMMAND}
     -C ${CMAKE_BUILD_TYPE}

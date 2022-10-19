@@ -183,6 +183,12 @@ def update_site(env):
         with rewrite(index) as b:
             b.data = b.data.replace(
                 'doc/latest/index.html#format-string-syntax', 'syntax.html')
+        # Fix issues in syntax.rst.
+        index = os.path.join(target_doc_dir, 'syntax.rst')
+        with rewrite(index) as b:
+            b.data = b.data.replace(
+                '..productionlist:: sf\n', '.. productionlist:: sf\n ')
+            b.data = b.data.replace('Examples:\n', 'Examples::\n')
         # Build the docs.
         html_dir = os.path.join(env.build_dir, 'html')
         if os.path.exists(html_dir):
@@ -240,7 +246,7 @@ def release(args):
     # Update the version in the changelog.
     title_len = 0
     for line in fileinput.input(changelog_path, inplace=True):
-        if line.decode('utf-8').startswith(version + ' - TBD'):
+        if line.startswith(version + ' - TBD'):
             line = version + ' - ' + datetime.date.today().isoformat()
             title_len = len(line)
             line += '\n'
@@ -270,9 +276,9 @@ def release(args):
 
     # Create a release on GitHub.
     fmt_repo.push('origin', 'release')
-    params = {'access_token': os.getenv('FMT_TOKEN')}
+    auth_headers = {'Authorization': 'token ' + os.getenv('FMT_TOKEN')}
     r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',
-                      params=params,
+                      headers=auth_headers,
                       data=json.dumps({'tag_name': version,
                                        'target_commitish': 'release',
                                        'body': changes, 'draft': True}))
@@ -283,8 +289,8 @@ def release(args):
     package = 'fmt-{}.zip'.format(version)
     r = requests.post(
         '{}/{}/assets?name={}'.format(uploads_url, id, package),
-        headers={'Content-Type': 'application/zip'},
-        params=params, data=open('build/fmt/' + package, 'rb'))
+        headers={'Content-Type': 'application/zip'} | auth_headers,
+        data=open('build/fmt/' + package, 'rb'))
     if r.status_code != 201:
         raise Exception('Failed to upload an asset ' + str(r))
 

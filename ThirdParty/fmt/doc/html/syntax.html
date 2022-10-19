@@ -9,7 +9,7 @@
     
     <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Format String Syntax &mdash; fmt 8.0.1 documentation</title>
+    <title>Format String Syntax &mdash; fmt 9.1.0 documentation</title>
     
     <link rel="stylesheet" href="_static/basic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -18,17 +18,19 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '8.0.1',
+        VERSION:     '9.1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
+        LINK_SUFFIX: '.html',
+        SOURCELINK_SUFFIX: '.txt',
         HAS_SOURCE:  true,
         SOURCELINK_SUFFIX:  '.txt'
       };
     </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
 <meta name="description" content="Small, safe and fast formatting library">
@@ -68,15 +70,15 @@
           <ul class="nav navbar-nav">
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown"
-                 role="button" aria-expanded="false">8.0.1
+                 role="button" aria-expanded="false">9.1.0
                 <span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 
-                <li><a href="https://fmt.dev/8.0.1">8.0.1</a></li>
+                <li><a href="https://fmt.dev/9.1.0">9.1.0</a></li>
                 
-                <li><a href="https://fmt.dev/8.0.0">8.0.0</a></li>
+                <li><a href="https://fmt.dev/9.0.0">9.0.0</a></li>
                 
-                <li><a href="https://fmt.dev/7.1.3">7.1.3</a></li>
+                <li><a href="https://fmt.dev/8.1.1">8.1.1</a></li>
                 
               </ul>
             </li>
@@ -156,9 +158,9 @@ they can all be omitted (not just some) and the numbers 0, 1, 2, … will be
 automatically inserted in that order.</p>
 <p>Named arguments can be referred to by their names or indices.</p>
 <p>Some simple format string examples:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="s">&quot;First, thou shalt count to {0}&quot;</span> <span class="c1">// References the first argument</span>
-<span class="s">&quot;Bring me a {}&quot;</span>                  <span class="c1">// Implicitly references the first argument</span>
-<span class="s">&quot;From {} to {}&quot;</span>                  <span class="c1">// Same as &quot;From {0} to {1}&quot;</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="s">&quot;First, thou shalt count to {0}&quot;</span><span class="w"> </span><span class="c1">// References the first argument</span>
+<span class="s">&quot;Bring me a {}&quot;</span><span class="w">                  </span><span class="c1">// Implicitly references the first argument</span>
+<span class="s">&quot;From {} to {}&quot;</span><span class="w">                  </span><span class="c1">// Same as &quot;From {0} to {1}&quot;</span>
 </pre></div>
 </div>
 <p>The <em>format_spec</em> field contains a specification of how the value should be
@@ -240,7 +242,7 @@ following:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">'+'</span></code></p></td>
 <td><p>indicates that a sign should be used for both
-positive as well as negative numbers.</p></td>
+nonnegative as well as negative numbers.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">'-'</span></code></p></td>
 <td><p>indicates that a sign should be used only for negative
@@ -248,7 +250,7 @@ numbers (this is the default behavior).</p></td>
 </tr>
 <tr class="row-even"><td><p>space</p></td>
 <td><p>indicates that a leading space should be used on
-positive numbers, and a minus sign on negative numbers.</p></td>
+nonnegative numbers, and a minus sign on negative numbers.</p></td>
 </tr>
 </tbody>
 </table>
@@ -279,7 +281,8 @@ displayed after the decimal point for a floating-point value formatted with
 value formatted with <code class="docutils literal notranslate"><span class="pre">'g'</span></code> or <code class="docutils literal notranslate"><span class="pre">'G'</span></code>.  For non-number types the field
 indicates the maximum field size - in other words, how many characters will be
 used from the field content. The <em>precision</em> is not allowed for integer,
-character, Boolean, and pointer values.</p>
+character, Boolean, and pointer values. Note that a C string must be
+null-terminated even if precision is specified.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">'L'</span></code> option uses the current locale setting to insert the appropriate
 number separator characters. This option is only valid for numeric types.</p>
 <p>Finally, the <em>type</em> determines how the data should be presented.</p>
@@ -457,7 +460,8 @@ pointers and may be omitted.</p></td>
 </section>
 <section id="chrono-format-specifications">
 <span id="chrono-specs"></span><h2>Chrono Format Specifications<a class="headerlink" href="#chrono-format-specifications" title="Permalink to this headline">¶</a></h2>
-<p>Format specifications for chrono types have the following syntax:</p>
+<p>Format specifications for chrono types and <code class="docutils literal notranslate"><span class="pre">std::tm</span></code> have the following
+syntax:</p>
 <pre>
 <strong id="grammar-token-sf-chrono_format_spec"><span id="grammar-token-chrono-format-spec"></span>chrono_format_spec</strong> ::=  [[<a class="reference internal" href="#grammar-token-sf-fill"><code class="xref docutils literal notranslate"><span class="pre">fill</span></code></a>]<a class="reference internal" href="#grammar-token-sf-align"><code class="xref docutils literal notranslate"><span class="pre">align</span></code></a>][<a class="reference internal" href="#grammar-token-sf-width"><code class="xref docutils literal notranslate"><span class="pre">width</span></code></a>][&quot;.&quot; <a class="reference internal" href="#grammar-token-sf-precision"><code class="xref docutils literal notranslate"><span class="pre">precision</span></code></a>][<a class="reference internal" href="#grammar-token-sf-chrono_specs"><code class="xref docutils literal notranslate"><span class="pre">chrono_specs</span></code></a>]
 <strong id="grammar-token-sf-chrono_specs"><span id="grammar-token-chrono-specs"></span>chrono_specs      </strong> ::=  [<a class="reference internal" href="#grammar-token-sf-chrono_specs"><code class="xref docutils literal notranslate"><span class="pre">chrono_specs</span></code></a>] <a class="reference internal" href="#grammar-token-sf-conversion_spec"><code class="xref docutils literal notranslate"><span class="pre">conversion_spec</span></code></a> | <a class="reference internal" href="#grammar-token-sf-chrono_specs"><code class="xref docutils literal notranslate"><span class="pre">chrono_specs</span></code></a> <a class="reference internal" href="#grammar-token-sf-literal_char"><code class="xref docutils literal notranslate"><span class="pre">literal_char</span></code></a>
@@ -507,10 +511,33 @@ command <code class="docutils literal notranslate"><span class="pre">%OS</span><
 </tr>
 </tbody>
 </table>
-<p>Specifiers that have a calendaric component such as <code class="xref cpp cpp-any docutils literal notranslate"><span class="pre">'d'</span></code> (the day of month)
+<p>Specifiers that have a calendaric component such as <code class="docutils literal notranslate"><span class="pre">'d'</span></code> (the day of month)
 are valid only for <code class="docutils literal notranslate"><span class="pre">std::tm</span></code> and not durations or time points.</p>
-<p><code class="docutils literal notranslate"><span class="pre">std::tm</span></code> uses the system’s <a class="reference external" href="https://en.cppreference.com/w/cpp/chrono/c/strftime">strftime</a> so refer to its
-documentation for details on supported conversion specifiers.</p>
+</section>
+<section id="range-format-specifications">
+<h2>Range Format Specifications<a class="headerlink" href="#range-format-specifications" title="Permalink to this headline">¶</a></h2>
+<p>Format specifications for range types have the following syntax:</p>
+<pre>
+<strong id="grammar-token-sf-range_format_spec"><span id="grammar-token-range-format-spec"></span>range_format_spec</strong> ::=  [&quot;:&quot; [<code class="xref docutils literal notranslate"><span class="pre">underlying_spec</span></code>]]
+</pre>
+<p>The <code class="xref cpp cpp-any docutils literal notranslate"><span class="pre">underlying_spec</span></code> is parsed based on the formatter of the range’s
+reference type.</p>
+<p>By default, a range of characters or strings is printed escaped and quoted. But
+if any <code class="xref cpp cpp-any docutils literal notranslate"><span class="pre">underlying_spec</span></code> is provided (even if it is empty), then the characters
+or strings are printed according to the provided specification.</p>
+<p>Examples:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">});</span><span class="w"></span>
+<span class="c1">// Result: [10, 20, 30]</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{::#x}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">});</span><span class="w"></span>
+<span class="c1">// Result: [0xa, 0x14, 0x13]</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="p">{</span><span class="sc">&#39;h&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;e&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;l&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;l&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;o&#39;</span><span class="p">});</span><span class="w"></span>
+<span class="c1">// Result: [&#39;h&#39;, &#39;e&#39;, &#39;l&#39;, &#39;l&#39;, &#39;o&#39;]</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{::}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="p">{</span><span class="sc">&#39;h&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;e&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;l&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;l&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;o&#39;</span><span class="p">});</span><span class="w"></span>
+<span class="c1">// Result: [h, e, l, l, o]</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{::d}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="p">{</span><span class="sc">&#39;h&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;e&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;l&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;l&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;o&#39;</span><span class="p">});</span><span class="w"></span>
+<span class="c1">// Result: [104, 101, 108, 108, 111]</span>
+</pre></div>
+</div>
 </section>
 <section id="format-examples">
 <span id="formatexamples"></span><h2>Format Examples<a class="headerlink" href="#format-examples" title="Permalink to this headline">¶</a></h2>
@@ -522,64 +549,64 @@ For example, <code class="docutils literal notranslate"><span class="pre">&quot;
 <p>The new format syntax also supports new and different options, shown in the
 following examples.</p>
 <p>Accessing arguments by position:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{0}, {1}, {2}&quot;</span><span class="p">,</span> <span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="sc">&#39;c&#39;</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{0}, {1}, {2}&quot;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;a&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;b&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;c&#39;</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;a, b, c&quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{}, {}, {}&quot;</span><span class="p">,</span> <span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="sc">&#39;c&#39;</span><span class="p">);</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{}, {}, {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;a&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;b&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;c&#39;</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;a, b, c&quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{2}, {1}, {0}&quot;</span><span class="p">,</span> <span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="sc">&#39;c&#39;</span><span class="p">);</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{2}, {1}, {0}&quot;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;a&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;b&#39;</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;c&#39;</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;c, b, a&quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{0}{1}{0}&quot;</span><span class="p">,</span> <span class="s">&quot;abra&quot;</span><span class="p">,</span> <span class="s">&quot;cad&quot;</span><span class="p">);</span>  <span class="c1">// arguments&#39; indices can be repeated</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{0}{1}{0}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;abra&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cad&quot;</span><span class="p">);</span><span class="w">  </span><span class="c1">// arguments&#39; indices can be repeated</span>
 <span class="c1">// Result: &quot;abracadabra&quot;</span>
 </pre></div>
 </div>
 <p>Aligning the text and specifying a width:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:&lt;30}&quot;</span><span class="p">,</span> <span class="s">&quot;left aligned&quot;</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:&lt;30}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;left aligned&quot;</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;left aligned                  &quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:&gt;30}&quot;</span><span class="p">,</span> <span class="s">&quot;right aligned&quot;</span><span class="p">);</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:&gt;30}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;right aligned&quot;</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;                 right aligned&quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:^30}&quot;</span><span class="p">,</span> <span class="s">&quot;centered&quot;</span><span class="p">);</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:^30}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;centered&quot;</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;           centered           &quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:*^30}&quot;</span><span class="p">,</span> <span class="s">&quot;centered&quot;</span><span class="p">);</span>  <span class="c1">// use &#39;*&#39; as a fill char</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:*^30}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;centered&quot;</span><span class="p">);</span><span class="w">  </span><span class="c1">// use &#39;*&#39; as a fill char</span>
 <span class="c1">// Result: &quot;***********centered***********&quot;</span>
 </pre></div>
 </div>
 <p>Dynamic width:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:&lt;{}}&quot;</span><span class="p">,</span> <span class="s">&quot;left aligned&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:&lt;{}}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;left aligned&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;left aligned                  &quot;</span>
 </pre></div>
 </div>
 <p>Dynamic precision:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:.{}f}&quot;</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:.{}f}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">3.14</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;3.1&quot;</span>
 </pre></div>
 </div>
 <p>Replacing <code class="docutils literal notranslate"><span class="pre">%+f</span></code>, <code class="docutils literal notranslate"><span class="pre">%-f</span></code>, and <code class="docutils literal notranslate"><span class="pre">%</span> <span class="pre">f</span></code> and specifying a sign:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:+f}; {:+f}&quot;</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">,</span> <span class="mf">-3.14</span><span class="p">);</span>  <span class="c1">// show it always</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:+f}; {:+f}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">3.14</span><span class="p">,</span><span class="w"> </span><span class="mf">-3.14</span><span class="p">);</span><span class="w">  </span><span class="c1">// show it always</span>
 <span class="c1">// Result: &quot;+3.140000; -3.140000&quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{: f}; {: f}&quot;</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">,</span> <span class="mf">-3.14</span><span class="p">);</span>  <span class="c1">// show a space for positive numbers</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{: f}; {: f}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">3.14</span><span class="p">,</span><span class="w"> </span><span class="mf">-3.14</span><span class="p">);</span><span class="w">  </span><span class="c1">// show a space for positive numbers</span>
 <span class="c1">// Result: &quot; 3.140000; -3.140000&quot;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:-f}; {:-f}&quot;</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">,</span> <span class="mf">-3.14</span><span class="p">);</span>  <span class="c1">// show only the minus -- same as &#39;{:f}; {:f}&#39;</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:-f}; {:-f}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">3.14</span><span class="p">,</span><span class="w"> </span><span class="mf">-3.14</span><span class="p">);</span><span class="w">  </span><span class="c1">// show only the minus -- same as &#39;{:f}; {:f}&#39;</span>
 <span class="c1">// Result: &quot;3.140000; -3.140000&quot;</span>
 </pre></div>
 </div>
 <p>Replacing <code class="docutils literal notranslate"><span class="pre">%x</span></code> and <code class="docutils literal notranslate"><span class="pre">%o</span></code> and converting the value to different bases:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}&quot;</span><span class="p">,</span> <span class="mi">42</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">42</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;int: 42;  hex: 2a;  oct: 52; bin: 101010&quot;</span>
 <span class="c1">// with 0x or 0 or 0b as prefix:</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}&quot;</span><span class="p">,</span> <span class="mi">42</span><span class="p">);</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">42</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;int: 42;  hex: 0x2a;  oct: 052;  bin: 0b101010&quot;</span>
 </pre></div>
 </div>
 <p>Padded hex byte with prefix and always prints both hex characters:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:#04x}&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{:#04x}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Result: &quot;0x00&quot;</span>
 </pre></div>
 </div>
 <p>Box drawing using Unicode fill:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span>
-  <span class="s">&quot;┌{0:─^{2}}┐</span><span class="se">\n</span><span class="s">&quot;</span>
-  <span class="s">&quot;│{1: ^{2}}│</span><span class="se">\n</span><span class="s">&quot;</span>
-  <span class="s">&quot;└{0:─^{2}}┘</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;Hello, world!&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="w"></span>
+<span class="w">  </span><span class="s">&quot;┌{0:─^{2}}┐</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="s">&quot;│{1: ^{2}}│</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="s">&quot;└{0:─^{2}}┘</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>prints:</p>
@@ -589,23 +616,23 @@ following examples.</p>
 </pre></div>
 </div>
 <p>Using type-specific formatting:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;fmt/chrono.h&gt;</span><span class="cp"></span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;fmt/chrono.h&gt;</span><span class="cp"></span>
 
-<span class="k">auto</span> <span class="n">t</span> <span class="o">=</span> <span class="n">tm</span><span class="p">();</span>
-<span class="n">t</span><span class="p">.</span><span class="n">tm_year</span> <span class="o">=</span> <span class="mi">2010</span> <span class="o">-</span> <span class="mi">1900</span><span class="p">;</span>
-<span class="n">t</span><span class="p">.</span><span class="n">tm_mon</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
-<span class="n">t</span><span class="p">.</span><span class="n">tm_mday</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
-<span class="n">t</span><span class="p">.</span><span class="n">tm_hour</span> <span class="o">=</span> <span class="mi">12</span><span class="p">;</span>
-<span class="n">t</span><span class="p">.</span><span class="n">tm_min</span> <span class="o">=</span> <span class="mi">15</span><span class="p">;</span>
-<span class="n">t</span><span class="p">.</span><span class="n">tm_sec</span> <span class="o">=</span> <span class="mi">58</span><span class="p">;</span>
-<span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="s">&quot;{:%Y-%m-%d %H:%M:%S}&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tm</span><span class="p">();</span><span class="w"></span>
+<span class="n">t</span><span class="p">.</span><span class="n">tm_year</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2010</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1900</span><span class="p">;</span><span class="w"></span>
+<span class="n">t</span><span class="p">.</span><span class="n">tm_mon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">7</span><span class="p">;</span><span class="w"></span>
+<span class="n">t</span><span class="p">.</span><span class="n">tm_mday</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"></span>
+<span class="n">t</span><span class="p">.</span><span class="n">tm_hour</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12</span><span class="p">;</span><span class="w"></span>
+<span class="n">t</span><span class="p">.</span><span class="n">tm_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span><span class="p">;</span><span class="w"></span>
+<span class="n">t</span><span class="p">.</span><span class="n">tm_sec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">58</span><span class="p">;</span><span class="w"></span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="s">&quot;{:%Y-%m-%d %H:%M:%S}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// Prints: 2010-08-04 12:15:58</span>
 </pre></div>
 </div>
 <p>Using the comma as a thousands separator:</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;fmt/locale.h&gt;</span><span class="cp"></span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;fmt/format.h&gt;</span><span class="cp"></span>
 
-<span class="k">auto</span> <span class="n">s</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">locale</span><span class="p">(</span><span class="s">&quot;en_US.UTF-8&quot;</span><span class="p">),</span> <span class="s">&quot;{:L}&quot;</span><span class="p">,</span> <span class="mi">1234567890</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">locale</span><span class="p">(</span><span class="s">&quot;en_US.UTF-8&quot;</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;{:L}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">1234567890</span><span class="p">);</span><span class="w"></span>
 <span class="c1">// s == &quot;1,234,567,890&quot;</span>
 </pre></div>
 </div>
