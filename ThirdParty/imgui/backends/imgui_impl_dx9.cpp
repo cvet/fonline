@@ -293,7 +293,7 @@ bool ImGui_ImplDX9_Init(IDirect3DDevice9* device)
     return true;
 }
 
-void ImGui_ImplDX9_Shutdown()SDL_GetMouseState
+void ImGui_ImplDX9_Shutdown()
 {
     ImGui_ImplDX9_Data* bd = ImGui_ImplDX9_GetBackendData();
     IM_ASSERT(bd != NULL && "No renderer backend to shutdown, or already shutdown?");
