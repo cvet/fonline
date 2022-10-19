@@ -11,74 +11,76 @@ CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
+PACKAGE_MANAGER="sudo apt-get -qq -y -o DPkg::Lock::Timeout=300"
+
 function install_common_packages()
 {
     echo "Install common packages"
-    sudo apt-get -qq -y update
+    $PACKAGE_MANAGER update
 
     echo "Install clang"
-    sudo apt-get -qq -y install clang
+    $PACKAGE_MANAGER install clang
     echo "Install clang-format-12"
-    sudo apt-get -qq -y install clang-format-12
+    $PACKAGE_MANAGER install clang-format-12
     echo "Install build-essential"
-    sudo apt-get -qq -y install build-essential
+    $PACKAGE_MANAGER install build-essential
     echo "Install git"
-    sudo apt-get -qq -y install git
+    $PACKAGE_MANAGER install git
     echo "Install cmake"
-    sudo apt-get -qq -y install cmake
+    $PACKAGE_MANAGER install cmake
     echo "Install python3"
-    sudo apt-get -qq -y install python3
+    $PACKAGE_MANAGER install python3
     echo "Install wget"
-    sudo apt-get -qq -y install wget
+    $PACKAGE_MANAGER install wget
     echo "Install unzip"
-    sudo apt-get -qq -y install unzip
+    $PACKAGE_MANAGER install unzip
     echo "Install binutils-dev"
-    sudo apt-get -qq -y install binutils-dev
+    $PACKAGE_MANAGER install binutils-dev
 }
 
 function install_linux_packages()
 {
     echo "Install Linux packages"
-    sudo apt-get -qq -y update
+    $PACKAGE_MANAGER update
 
     echo "Install libc++-dev"
-    sudo apt-get -qq -y install libc++-dev
+    $PACKAGE_MANAGER install libc++-dev
     echo "Install libc++abi-dev"
-    sudo apt-get -qq -y install libc++abi-dev
+    $PACKAGE_MANAGER install libc++abi-dev
     echo "Install libx11-dev"
-    sudo apt-get -qq -y install libx11-dev
+    $PACKAGE_MANAGER install libx11-dev
     echo "Install freeglut3-dev"
-    sudo apt-get -qq -y install freeglut3-dev
+    $PACKAGE_MANAGER install freeglut3-dev
     echo "Install libssl-dev"
-    sudo apt-get -qq -y install libssl-dev
+    $PACKAGE_MANAGER install libssl-dev
     echo "Install libevent-dev"
-    sudo apt-get -qq -y install libevent-dev
+    $PACKAGE_MANAGER install libevent-dev
     echo "Install libxi-dev"
-    sudo apt-get -qq -y install libxi-dev
+    $PACKAGE_MANAGER install libxi-dev
 }
 
 function install_web_packages()
 {
     echo "Install Web packages"
-    sudo apt-get -qq -y update
+    $PACKAGE_MANAGER update
 
     echo "Install nodejs"
-    sudo apt-get -qq -y install nodejs
+    $PACKAGE_MANAGER install nodejs
     echo "Install default-jre"
-    sudo apt-get -qq -y install default-jre
+    $PACKAGE_MANAGER install default-jre
 }
 
 function install_android_packages()
 {
     echo "Install Android packages"
-    sudo apt-get -qq -y update
+    $PACKAGE_MANAGER update
 
     echo "Install android-sdk"
-    sudo apt-get -qq -y install android-sdk
+    $PACKAGE_MANAGER install android-sdk
     echo "Install openjdk-8-jdk"
-    sudo apt-get -qq -y install openjdk-8-jdk
+    $PACKAGE_MANAGER install openjdk-8-jdk
     echo "Install ant"
-    sudo apt-get -qq -y install ant
+    $PACKAGE_MANAGER install ant
 }
 
 function setup_emscripten()

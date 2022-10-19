@@ -335,7 +335,7 @@ private:
     void MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten);
     void MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten);
     void TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten);
-    void ParseLightTriangleFan(LightSource& ls);
+    void ParseLightTriangleFan(const LightSource& ls);
     void RealRebuildLight();
     void CollectLightSources();
 

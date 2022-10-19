@@ -1088,6 +1088,9 @@ for contentDir in args.content:
     except Exception as ex:
         showError('Can\'t process content dir ' + contentDir, ex)
 
+for key in content.keys():
+    content[key].sort()
+
 checkErrors()
 
 # Parse resources

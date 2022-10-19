@@ -359,37 +359,3 @@
 #define STR_LOC_ENTRANCE_NAME(loc_pid, ent) LOC_STR_ID(loc_pid, 2000 + (ent)*10 + 0)
 #define STR_LOC_ENTRANCE_PICX(loc_pid, ent) LOC_STR_ID(loc_pid, 2000 + (ent)*10 + 1)
 #define STR_LOC_ENTRANCE_PICY(loc_pid, ent) LOC_STR_ID(loc_pid, 2000 + (ent)*10 + 2)
-
-// ***************************************************************************************
-// ***  FODLG.MSG  ***********************************************************************
-// ***************************************************************************************
-
-#define STR_NPC_NAME(num) (((num)&DLGID_MASK) | 10)
-#define STR_NPC_PID_NAME(pid) (CR_STR_ID(pid, 1))
-#define STR_NPC_AVATAR(num) ((num) != 0 ? ((num)&DLGID_MASK) | 11 : 0)
-
-// ***************************************************************************************
-// ***  FOQUEST.MSG  *********************************************************************
-// ***************************************************************************************
-
-#define STR_QUEST_NUMBER (4)
-#define STR_QUEST_PROCESS (5)
-#define STR_QUEST_MAP(num) ((num)*1000 + 101)
-#define STR_QUEST_INFO(num) ((num)*1000 + 102)
-
-// ***************************************************************************************
-// ***  FOCOMBAT.MSG  ********************************************************************
-// ***************************************************************************************
-
-#define STR_COMBAT_NEED_AP (100)
-#define STR_COMBAT_NEED_OUT_OF_AMMO (101)
-#define STR_COMBAT_NEED_OUT_OF_RANGE (102)
-#define STR_COMBAT_NEED_CANNOT_END (103)
-#define STR_COMBAT_NEED_AIM_BLOCKED (104)
-#define STR_COMBAT_NEED_DMG_TWO_ARMS (105)
-#define STR_COMBAT_NEED_DMG_ARM (106)
-#define STR_COMBAT_NEED_LOW_STRENGTH (107)
-
-// ***************************************************************************************
-// ***************************************************************************************
-// ***************************************************************************************
