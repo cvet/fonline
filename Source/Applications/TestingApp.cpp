@@ -39,7 +39,8 @@
 #error FO_TESTING_APP is not enabled
 #endif
 
-#include "catch_amalgamated.hpp"
+#define CATCH_CONFIG_RUNNER
+#include "catch.hpp"
 
 #include "Common.h"
 

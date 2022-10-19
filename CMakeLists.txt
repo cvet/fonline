@@ -952,11 +952,7 @@ DisableLibWarnings( ImGui )
 # Catch2
 StatusMessage( "+ Catch2" )
 set( FO_CATCH2_DIR "ThirdParty/Catch2" )
-add_library( Catch2 ${FO_CATCH2_DIR}/catch_amalgamated.cpp ${FO_CATCH2_DIR}/catch_amalgamated.hpp )
-target_compile_definitions( Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN" )
-list( APPEND FO_TESTING_LIBS "Catch2" )
-DisableLibWarnings( Catch2 )
-include_directories( "${FO_CATCH2_DIR}" )
+include_directories( "${FO_CATCH2_DIR}/single_include/catch2" )
 
 # Backward-cpp
 if( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" OR APPLE AND NOT PLATFORM )
