@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CHANGE_STREAM_ERROR_DOCUMENT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_change_stream_error_document \- mongoc_change_stream_error_document()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CHANGE_STREAM_ERROR_DOCUMENT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_change_stream_error_document \- mongoc_change_stream_error_document()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,15 +47,15 @@ mongoc_change_stream_error_document (mongoc_change_stream_t *stream,
 .sp
 Checks if an error has occurred when creating or iterating over a change stream.
 .sp
-Similar to \fBmongoc_cursor_error_document\fP if the error has occurred
+Similar to \fI\%mongoc_cursor_error_document()\fP if the error has occurred
 client\-side then the \fBreply\fP will be set to an empty BSON document. If the
 error occurred server\-side, \fBreply\fP is set to the server\(aqs reply document.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBstream\fP: A \fBmongoc_change_stream_t\fP\&.
+\fBstream\fP: A \fI\%mongoc_change_stream_t\fP\&.
 .IP \(bu 2
-\fBerr\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerr\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .IP \(bu 2
 \fBreply\fP: A location for a \fI\%bson_t\fP\&.
 .UNINDENT

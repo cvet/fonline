@@ -141,7 +141,7 @@ static void
 start_thread (json_test_worker_thread_t *wt)
 {
    wt->shutdown_requested = false;
-   COMMON_PREFIX (thread_create) (&wt->thread, json_test_worker_thread_run, wt);
+   mcommon_thread_create (&wt->thread, json_test_worker_thread_run, wt);
 }
 
 static void
@@ -160,7 +160,7 @@ wait_for_thread (json_test_worker_thread_t *wt)
    wt->shutdown_requested = true;
    mongoc_cond_broadcast (&wt->cond);
    bson_mutex_unlock (&wt->mutex);
-   COMMON_PREFIX (thread_join) (wt->thread);
+   mcommon_thread_join (wt->thread);
 }
 
 void
@@ -907,6 +907,8 @@ single_write (mongoc_collection_t *collection,
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (wc);
+
    name = bson_lookup_utf8 (operation, "name");
    bson_lookup_doc (operation, "arguments", &args);
    append_session (session, &opts);
@@ -1124,6 +1126,8 @@ insert_many (mongoc_collection_t *collection,
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (wc);
+
    bson_lookup_doc (operation, "arguments", &args);
    bson_lookup_doc (&args, "documents", &docs_array);
    ASSERT (bson_iter_init (&iter, &docs_array));
@@ -1199,6 +1203,11 @@ rename_op (mongoc_collection_t *collection,
    bson_error_t error;
    bool res;
 
+   BSON_UNUSED (test);
+   BSON_UNUSED (session);
+   BSON_UNUSED (wc);
+
+
    bson_lookup_doc (operation, "arguments", &args);
    db = bson_lookup_utf8 (operation, "database");
    to = bson_lookup_utf8 (&args, "to");
@@ -1228,6 +1237,11 @@ drop (mongoc_collection_t *collection,
 {
    bson_error_t error;
    bool res;
+
+   BSON_UNUSED (test);
+   BSON_UNUSED (operation);
+   BSON_UNUSED (session);
+   BSON_UNUSED (wc);
 
    res = mongoc_collection_drop (collection, &error);
 
@@ -1481,6 +1495,8 @@ find_one (mongoc_collection_t *collection,
    mongoc_cursor_t *cursor;
    bson_value_t value;
    bson_error_t error;
+
+   BSON_UNUSED (session);
 
    bson_lookup_doc (operation, "arguments.filter", &filter);
 
@@ -1883,6 +1899,9 @@ gridfs_download (mongoc_database_t *db,
    mongoc_stream_t *stream;
    char buf[512];
 
+   BSON_UNUSED (test);
+   BSON_UNUSED (session);
+
    bson_lookup_value (operation, "arguments.id", &value);
 
    bucket = mongoc_gridfs_bucket_new (db, NULL, read_prefs, &error);
@@ -2107,20 +2126,18 @@ index_exists (mongoc_client_t *client, const bson_t *operation)
 static uint32_t
 _get_total_pool_cleared_event (json_test_ctx_t *ctx)
 {
-   mongoc_topology_description_t *td;
    uint32_t i;
    uint32_t total = 0;
+   mc_shared_tpld td = mc_tpld_take_ref (ctx->client->topology);
 
    /* Go get total generation counts. */
-   bson_mutex_lock (&ctx->client->topology->mutex);
-   td = &ctx->client->topology->description;
-   for (i = 0; i < td->servers->items_len; i++) {
-      mongoc_server_description_t *sd;
+   for (i = 0; i < mc_tpld_servers_const (td.ptr)->items_len; i++) {
+      const mongoc_server_description_t *sd;
 
-      sd = mongoc_set_get_item (td->servers, i);
-      total += mongoc_generation_map_get (sd->generation_map, &kZeroServiceId);
+      sd = mongoc_set_get_item_const (mc_tpld_servers_const (td.ptr), i);
+      total += mc_tpl_sd_get_generation (sd, &kZeroServiceId);
    }
-   bson_mutex_unlock (&ctx->client->topology->mutex);
+   mc_tpld_drop_ref (&td);
    return total;
 }
 
@@ -2156,14 +2173,8 @@ wait_for_event (json_test_ctx_t *ctx, const bson_t *operation)
          }
          bson_mutex_unlock (&ctx->mutex);
       } else if (0 == strcmp (event_name, "PoolClearedEvent")) {
-         /* Do *NOT* lock ctx->mutex while calling
-          * _get_total_pool_cleared_event, which locks the topology mutex.
-          * This could create a deadlock situation.
-          * A monitor may be updating the topology description, calling an APM
-          * callback: topology->mutex => ctx->mutex
-          */
-         total = _get_total_pool_cleared_event (ctx);
          bson_mutex_lock (&ctx->mutex);
+         total = _get_total_pool_cleared_event (ctx);
          measured = ctx->measured_PoolClearedEvent;
          diff = total - measured;
          if (diff >= count) {

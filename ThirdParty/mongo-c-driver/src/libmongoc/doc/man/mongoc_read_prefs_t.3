@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_PREFS_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_prefs_t \- mongoc_read_prefs_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,11 +27,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_PREFS_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_prefs_t \- mongoc_read_prefs_t
 .sp
 A read preference abstraction
 .SH SYNOPSIS
 .sp
-\fBmongoc_read_prefs_t\fP provides an abstraction on top of the MongoDB connection read preferences. It allows for hinting to the driver which nodes in a replica set should be accessed first and how.
+\fI\%mongoc_read_prefs_t\fP provides an abstraction on top of the MongoDB connection read preferences. It allows for hinting to the driver which nodes in a replica set should be accessed first and how.
 .sp
 You can specify a read preference mode on connection objects, database objects, collection objects, or per\-operation.  Generally, it makes the most sense to stick with the global default mode, \fBMONGOC_READ_PRIMARY\fP\&.  All of the other modes come with caveats that won\(aqt be covered in great detail here.
 .SH READ MODES
@@ -108,11 +108,11 @@ readPreferenceTags=dc:ny,rack:1;readPreferenceTags=dc:ny;readPreferenceTags=
 .UNINDENT
 .UNINDENT
 .sp
-Note the empty value for the last one, which means "match any secondary as a last resort".
+Note the empty value for the last one, which means \(dqmatch any secondary as a last resort\(dq.
 .sp
 Order matters when using multiple readPreferenceTags.
 .sp
-Tag Sets can also be configured using \fBmongoc_read_prefs_set_tags\fP\&.
+Tag Sets can also be configured using \fI\%mongoc_read_prefs_set_tags()\fP\&.
 .sp
 All interfaces use the same member selection logic to choose the member to which to direct read operations, basing the choice on read preference mode and tag sets.
 .SH MAX STALENESS
@@ -124,9 +124,9 @@ Max Staleness is the maximum replication lag in seconds (wall clock time) that a
 Max Staleness is also supported by sharded clusters of replica sets if all servers run MongoDB 3.4 or later.
 .SH HEDGED READS
 .sp
-When connecting to a sharded cluster running MongoDB 4.4 or later, reads can be sent in parallel to the two "best" hosts.  Once one result returns, any other outstanding operations that were part of the hedged read are cancelled.
+When connecting to a sharded cluster running MongoDB 4.4 or later, reads can be sent in parallel to the two \(dqbest\(dq hosts.  Once one result returns, any other outstanding operations that were part of the hedged read are cancelled.
 .sp
-When the read preference mode is \fBMONGOC_READ_NEAREST\fP and the sharded cluster is running MongoDB 4.4 or later, hedged reads are enabled by default.  Additionally, hedged reads may be explicitly enabled or disabled by calling \fBmongoc_read_prefs_set_hedge\fP with a BSON document, e.g.
+When the read preference mode is \fBMONGOC_READ_NEAREST\fP and the sharded cluster is running MongoDB 4.4 or later, hedged reads are enabled by default.  Additionally, hedged reads may be explicitly enabled or disabled by calling \fI\%mongoc_read_prefs_set_hedge()\fP with a BSON document, e.g.
 .INDENT 0.0
 .INDENT 3.5
 .sp

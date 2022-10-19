@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_FILE_WRITEV" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_file_writev \- mongoc_gridfs_file_writev()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_FILE_WRITEV" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_file_writev \- mongoc_gridfs_file_writev()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,9 +48,9 @@ mongoc_gridfs_file_writev (mongoc_gridfs_file_t *file,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBfile\fP: A \fBmongoc_gridfs_file_t\fP\&.
+\fBfile\fP: A \fI\%mongoc_gridfs_file_t\fP\&.
 .IP \(bu 2
-\fBiov\fP: An array of \fBmongoc_iovec_t\fP\&.
+\fBiov\fP: An array of \fI\%mongoc_iovec_t\fP\&.
 .IP \(bu 2
 \fBiovcnt\fP: The number of elements in \fBiov\fP\&.
 .IP \(bu 2
@@ -65,7 +65,7 @@ The \fBtimeout_msec\fP parameter is unused.
 Modifying GridFS files is NOT thread\-safe. Only one thread or process can access a GridFS file while it is being modified.
 .SH RETURNS
 .sp
-Returns the number of bytes written, or \-1 on failure. Use \fBmongoc_gridfs_file_error\fP to retrieve error details.
+Returns the number of bytes written, or \-1 on failure. Use \fI\%mongoc_gridfs_file_error()\fP to retrieve error details.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

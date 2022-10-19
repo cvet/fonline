@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_GET_OPTION_AS_INT64" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_get_option_as_int64 \- mongoc_uri_get_option_as_int64()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_GET_OPTION_AS_INT64" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_get_option_as_int64 \- mongoc_uri_get_option_as_int64()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,7 +47,7 @@ mongoc_uri_get_option_as_int64 (const mongoc_uri_t *uri,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .IP \(bu 2
 \fBoption\fP: The name of an option, case insensitive.
 .IP \(bu 2
@@ -57,13 +57,13 @@ mongoc_uri_get_option_as_int64 (const mongoc_uri_t *uri,
 .sp
 Returns the value of the URI option if it is set and of the correct type (integer). Returns \fBfallback\fP if the option is not set, set to an invalid type, or zero.
 .sp
-Zero is considered "unset", so URIs can be constructed like so, and still accept default values:
+Zero is considered \(dqunset\(dq, so URIs can be constructed like so, and still accept default values:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-bson_strdup_printf ("mongodb://localhost/?wTimeoutMS=%" PRId64, myvalue)
+bson_strdup_printf (\(dqmongodb://localhost/?wTimeoutMS=%\(dq PRId64, myvalue)
 .ft P
 .fi
 .UNINDENT
@@ -75,7 +75,7 @@ If \fBmyvalue\fP is non\-zero it is the write concern timeout; if it is zero the
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_uri_get_option_as_int32()\fP
+\fI\%mongoc_uri_get_option_as_int32()\fP
 .fi
 .sp
 .UNINDENT

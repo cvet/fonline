@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_PREFS_GET_MODE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_prefs_get_mode \- mongoc_read_prefs_get_mode()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_PREFS_GET_MODE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_prefs_get_mode \- mongoc_read_prefs_get_mode()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,11 +45,11 @@ mongoc_read_prefs_get_mode (const mongoc_read_prefs_t *read_prefs);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP\&.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Fetches the \fBmongoc_read_mode_t\fP for the read preference.
+Fetches the \fI\%mongoc_read_mode_t\fP for the read preference.
 .SH RETURNS
 .sp
 Returns the read preference mode.

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SOCKET_CLOSE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_socket_close \- mongoc_socket_close()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SOCKET_CLOSE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_socket_close \- mongoc_socket_close()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,14 +45,14 @@ mongoc_socket_close (mongoc_socket_t *socket);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsocket\fP: A \fBmongoc_socket_t\fP\&.
+\fBsocket\fP: A \fI\%mongoc_socket_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 This function is a wrapper around the BSD socket \fBshutdown()\fP and \fBclose()\fP functions, and their Windows equivalents. The socket is shut down only if the current process is the same as the process that opened the socket. Regardless, the socket is then closed.
 .SH RETURNS
 .sp
-0 on success, \-1 on failure to close the socket. On failure, the socket\(aqs errno is set; retrieve it with \fBmongoc_socket_errno()\fP\&.
+0 on success, \-1 on failure to close the socket. On failure, the socket\(aqs errno is set; retrieve it with \fI\%mongoc_socket_errno()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

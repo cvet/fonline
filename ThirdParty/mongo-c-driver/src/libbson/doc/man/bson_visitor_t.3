@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_VISITOR_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_visitor_t \- bson_visitor_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_VISITOR_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_visitor_t \- bson_visitor_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -68,7 +68,7 @@ typedef struct {
                          size_t v_binary_len,
                          const uint8_t *v_binary,
                          void *data);
-   /* normal field with deprecated "Undefined" BSON type */
+   /* normal field with deprecated \(dqUndefined\(dq BSON type */
    bool (*visit_undefined) (const bson_iter_t *iter,
                             const char *key,
                             void *data);
@@ -146,9 +146,9 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_visitor_t\fP structure provides a series of callbacks that can be called while iterating a BSON document. This may simplify the conversion of a \fBbson_t\fP to a higher level language structure.
+The \fI\%bson_visitor_t\fP structure provides a series of callbacks that can be called while iterating a BSON document. This may simplify the conversion of a \fI\%bson_t\fP to a higher level language structure.
 .sp
-If the optional callback \fBvisit_unsupported_type\fP is set, it is called instead of \fBvisit_corrupt\fP in the specific case of an unrecognized field type. (Parsing is aborted in either case.) Use this callback to report an error like "unrecognized type" instead of simply "corrupt BSON". This future\-proofs code that may use an older version of libbson to parse future BSON formats.
+If the optional callback \fBvisit_unsupported_type\fP is set, it is called instead of \fBvisit_corrupt\fP in the specific case of an unrecognized field type. (Parsing is aborted in either case.) Use this callback to report an error like \(dqunrecognized type\(dq instead of simply \(dqcorrupt BSON\(dq. This future\-proofs code that may use an older version of libbson to parse future BSON formats.
 .SH BASIC EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -183,7 +183,7 @@ count_fields (bson_t *doc)
       bson_iter_visit_all (&iter, &visitor, &count);
    }
 
-   printf ("Found %d fields.\en", count);
+   printf (\(dqFound %d fields.\en\(dq, count);
 }
 .ft P
 .fi
@@ -233,15 +233,15 @@ find_error_location (bson_t *doc)
    state.err_offset = &err_offset;
 
    if (!bson_iter_init (&iter, doc)) {
-      printf ("Could not initialize iterator!");
+      printf (\(dqCould not initialize iterator!\(dq);
       exit (1);
    }
 
    if (bson_iter_visit_all (&iter, &visitors, &state) ||
        err_offset != \-1) {
-      printf ("Found error at offset %d.\en", err_offset);
+      printf (\(dqFound error at offset %d.\en\(dq, err_offset);
    } else {
-      printf ("BSON document had no errors.\en");
+      printf (\(dqBSON document had no errors.\en\(dq);
    }
 }
 .ft P
@@ -297,8 +297,11 @@ _check_depth_document (const bson_iter_t *iter,
    check_depth_t *state = (check_depth_t *) data;
    bson_iter_t child;
 
+   BSON_UNUSED (iter);
+   BSON_UNUSED (key);
+
    if (!bson_iter_init (&child, v_document)) {
-      fprintf (stderr, "corrupt\en");
+      fprintf (stderr, \(dqcorrupt\en\(dq);
       return true; /* cancel */
    }
 
@@ -320,18 +323,18 @@ check_depth (const bson_t *bson, int max_depth)
    check_depth_t state = {0};
 
    if (!bson_iter_init (&iter, bson)) {
-      fprintf (stderr, "corrupt\en");
+      fprintf (stderr, \(dqcorrupt\en\(dq);
    }
 
    state.valid = true;
    state.max_depth = max_depth;
    _check_depth_document (&iter, NULL, bson, &state);
    if (!state.valid) {
-      printf ("document exceeds maximum depth of %d\en", state.max_depth);
+      printf (\(dqdocument exceeds maximum depth of %d\en\(dq, state.max_depth);
    } else {
       char *as_json = bson_as_canonical_extended_json (bson, NULL);
-      printf ("document %s ", as_json);
-      printf ("is valid\en");
+      printf (\(dqdocument %s \(dq, as_json);
+      printf (\(dqis valid\en\(dq);
       bson_free (as_json);
    }
 }
@@ -347,16 +350,16 @@ main (int argc, char **argv)
    int max_depth;
 
    if (argc != 3) {
-      fprintf (stderr, "usage: %s FILE MAX_DEPTH\en", argv[0]);
-      fprintf (stderr, "Checks that the depth of the BSON contained in FILE\en");
-      fprintf (stderr, "does not exceed MAX_DEPTH\en");
+      fprintf (stderr, \(dqusage: %s FILE MAX_DEPTH\en\(dq, argv[0]);
+      fprintf (stderr, \(dqChecks that the depth of the BSON contained in FILE\en\(dq);
+      fprintf (stderr, \(dqdoes not exceed MAX_DEPTH\en\(dq);
    }
 
    filename = argv[1];
    max_depth = atoi (argv[2]);
    bson_reader = bson_reader_new_from_file (filename, &error);
    if (!bson_reader) {
-      printf ("could not read %s: %s\en", filename, error.message);
+      printf (\(dqcould not read %s: %s\en\(dq, filename, error.message);
       return 1;
    }
 
@@ -365,7 +368,7 @@ main (int argc, char **argv)
    }
 
    if (!reached_eof) {
-      printf ("error reading BSON\en");
+      printf (\(dqerror reading BSON\en\(dq);
    }
 
    bson_reader_destroy (bson_reader);

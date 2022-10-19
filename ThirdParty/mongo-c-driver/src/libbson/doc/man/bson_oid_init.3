@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_OID_INIT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_oid_init \- bson_oid_init()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_OID_INIT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_oid_init \- bson_oid_init()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_oid_init (bson_oid_t *oid, bson_context_t *context);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBoid\fP: A \fBbson_oid_t\fP\&.
+\fBoid\fP: A \fI\%bson_oid_t\fP\&.
 .IP \(bu 2
-\fBcontext\fP: An \fIoptional\fP \fBbson_context_t\fP or NULL.
+\fBcontext\fP: An \fIoptional\fP \fI\%bson_context_t\fP or NULL.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Generates a new \fBbson_oid_t\fP using either \fBcontext\fP or the default \fBbson_context_t\fP\&.
+Generates a new \fI\%bson_oid_t\fP using either \fBcontext\fP or the default \fI\%bson_context_t\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

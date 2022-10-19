@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENCRYPTION_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_encryption_t \- mongoc_client_encryption_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENCRYPTION_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_encryption_t \- mongoc_client_encryption_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -42,27 +42,27 @@ typedef struct _mongoc_client_encryption_t mongoc_client_encryption_t;
 .UNINDENT
 .UNINDENT
 .sp
-\fBmongoc_client_encryption_t\fP provides utility functions for Client\-Side Field Level Encryption. See the guide for Using Client\-Side Field Level Encryption\&.
+\fBmongoc_client_encryption_t\fP provides utility functions for Client\-Side Field Level Encryption. See the guide for \fI\%Using Client\-Side Field Level Encryption\fP\&.
 .SH THREAD SAFETY
 .sp
-\fBmongoc_client_encryption_t\fP is NOT thread\-safe and should only be used in the same thread as the \fBmongoc_client_t\fP that is configured via \fBmongoc_client_encryption_opts_set_keyvault_client()\fP\&.
+\fI\%mongoc_client_encryption_t\fP is NOT thread\-safe and should only be used in the same thread as the \fI\%mongoc_client_t\fP that is configured via \fI\%mongoc_client_encryption_opts_set_keyvault_client()\fP\&.
 .SH LIFECYCLE
 .sp
-The key vault client, configured via \fBmongoc_client_encryption_opts_set_keyvault_client()\fP, must outlive the \fBmongoc_client_encryption_t\fP\&.
+The key vault client, configured via \fI\%mongoc_client_encryption_opts_set_keyvault_client()\fP, must outlive the \fI\%mongoc_client_encryption_t\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-\fBmongoc_client_pool_enable_auto_encryption()\fP
+\fI\%mongoc_client_pool_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption for libmongoc
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP for libmongoc
 .fi
 .sp
 .nf

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_COPY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_copy \- bson_copy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_COPY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_copy \- bson_copy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,16 +45,16 @@ bson_copy (const bson_t *bson);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_copy()\fP function shall copy the contents of a bson document into a new \fBbson_t\fP\&.
+The \fI\%bson_copy()\fP function shall copy the contents of a bson document into a new \fI\%bson_t\fP\&.
 .sp
-The resulting \fBbson_t\fP should be freed with \fBbson_destroy()\fP\&.
+The resulting \fI\%bson_t\fP should be freed with \fI\%bson_destroy()\fP\&.
 .SH RETURNS
 .sp
-A newly allocated \fBbson_t\fP that should be freed with \fBbson_destroy()\fP\&.
+A newly allocated \fI\%bson_t\fP that should be freed with \fI\%bson_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

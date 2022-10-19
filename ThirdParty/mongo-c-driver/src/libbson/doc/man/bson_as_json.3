@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_AS_JSON" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_as_json \- bson_as_json()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_AS_JSON" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_as_json \- bson_as_json()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,15 +45,15 @@ bson_as_json (const bson_t *bson, size_t *length);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBlength\fP: An optional location for the length of the resulting string.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_as_json()\fP function shall encode \fBbson\fP as a UTF\-8 string using libbson\(aqs legacy JSON format. This function is superseded by \fBbson_as_canonical_extended_json()\fP and \fBbson_as_relaxed_extended_json()\fP, which use the same \fI\%MongoDB Extended JSON format\fP as all other MongoDB drivers.
+The \fI\%bson_as_json()\fP function shall encode \fBbson\fP as a UTF\-8 string using libbson\(aqs legacy JSON format. This function is superseded by \fI\%bson_as_canonical_extended_json()\fP and \fI\%bson_as_relaxed_extended_json()\fP, which use the same \fI\%MongoDB Extended JSON format\fP as all other MongoDB drivers.
 .sp
-The caller is responsible for freeing the resulting UTF\-8 encoded string by calling \fBbson_free()\fP with the result.
+The caller is responsible for freeing the resulting UTF\-8 encoded string by calling \fI\%bson_free()\fP with the result.
 .sp
 If non\-NULL, \fBlength\fP will be set to the length of the result in bytes.
 .SH RETURNS
@@ -75,14 +75,14 @@ int main ()
    char *str;
 
    bson_init (&bson);
-   BSON_APPEND_UTF8 (&bson, "0", "foo");
-   BSON_APPEND_UTF8 (&bson, "1", "bar");
+   BSON_APPEND_UTF8 (&bson, \(dq0\(dq, \(dqfoo\(dq);
+   BSON_APPEND_UTF8 (&bson, \(dq1\(dq, \(dqbar\(dq);
 
    str = bson_as_json (&bson, NULL);
    /* Prints
-    * { "0" : "foo", "1" : "bar" }
+    * { \(dq0\(dq : \(dqfoo\(dq, \(dq1\(dq : \(dqbar\(dq }
     */
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    bson_destroy (&bson);

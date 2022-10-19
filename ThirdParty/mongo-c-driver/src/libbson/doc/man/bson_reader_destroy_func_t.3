@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_READER_DESTROY_FUNC_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reader_destroy_func_t \- bson_reader_destroy_func_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_READER_DESTROY_FUNC_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reader_destroy_func_t \- bson_reader_destroy_func_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,11 +44,11 @@ typedef void (*bson_reader_destroy_func_t) (void *handle);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBhandle\fP: The opaque handle provided to \fBbson_reader_new_from_handle\fP\&.
+\fBhandle\fP: The opaque handle provided to \fI\%bson_reader_new_from_handle()\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-An optional callback function that will be called when a \fBbson_reader_t\fP created with \fBbson_reader_new_from_handle\fP is destroyed with \fBbson_reader_destroy()\fP\&.
+An optional callback function that will be called when a \fI\%bson_reader_t\fP created with \fI\%bson_reader_new_from_handle()\fP is destroyed with \fI\%bson_reader_destroy()\fP\&.
 .sp
 The handle used when creating the reader is passed to this callback.
 .SH AUTHOR

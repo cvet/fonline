@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_ADVANCED_CONNECTIONS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_advanced_connections \- Advanced Connections
 .
 .nr rst2man-indent-level 0
 .
@@ -30,10 +27,13 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_ADVANCED_CONNECTIONS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_advanced_connections \- Advanced Connections
 .sp
 The following guide contains information specific to certain types of MongoDB configurations.
 .sp
-For an example of connecting to a simple standalone server, see the Tutorial\&. To establish a connection with authentication options enabled, see the Authentication page.
+For an example of connecting to a simple standalone server, see the \fI\%Tutorial\fP\&. To establish a connection with authentication options enabled, see the \fI\%Authentication\fP page.
 .SH CONNECTING TO A REPLICA SET
 .sp
 Connecting to a \fI\%replica set\fP is much like connecting to a standalone MongoDB server. Simply specify the replica set name using the \fB?replicaSet=myreplset\fP URI option.
@@ -54,7 +54,7 @@ main (int argc, char *argv[])
 
    /* Create our MongoDB Client */
    client = mongoc_client_new (
-      "mongodb://host01:27017,host02:27017,host03:27017/?replicaSet=myreplset");
+      \(dqmongodb://host01:27017,host02:27017,host03:27017/?replicaSet=myreplset\(dq);
 
    /* Do some work */
    /* TODO */
@@ -106,7 +106,7 @@ main (int argc, char *argv[])
    mongoc_init ();
 
    /* Create our MongoDB Client */
-   client = mongoc_client_new ("mongodb://myshard01:27017/");
+   client = mongoc_client_new (\(dqmongodb://myshard01:27017/\(dq);
 
    /* Do something with client ... */
 
@@ -129,7 +129,7 @@ The MongoDB C Driver will automatically resolve IPv6 addresses from host names. 
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://[::1]:27017");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://[::1]:27017\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -149,7 +149,7 @@ On UNIX\-like systems, the C Driver can connect directly to a MongoDB server usi
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://%2Ftmp%2Fmongodb\-27017.sock");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://%2Ftmp%2Fmongodb\-27017.sock\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -161,7 +161,7 @@ Include username and password like so:
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://user:pass@%2Ftmp%2Fmongodb\-27017.sock");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://user:pass@%2Ftmp%2Fmongodb\-27017.sock\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -189,7 +189,7 @@ Add \fB/?tls=true\fP to the end of a client URI.
 .nf
 .ft C
 mongoc_client_t *client = NULL;
-client = mongoc_client_new ("mongodb://localhost:27017/?tls=true");
+client = mongoc_client_new (\(dqmongodb://localhost:27017/?tls=true\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -202,8 +202,8 @@ MongoDB requires client certificates by default, unless the \fB\-\-tlsAllowConne
 .nf
 .ft C
 mongoc_client_t *client = NULL;
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost:27017/?tls=true");
-mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, "client.pem");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost:27017/?tls=true\(dq);
+mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, \(dqclient.pem\(dq);
 
 client = mongoc_client_new_from_uri (uri);
 .ft P
@@ -213,7 +213,7 @@ client = mongoc_client_new_from_uri (uri);
 .sp
 The client certificate provided by \fBtlsCertificateKeyFile\fP must be issued by one of the server trusted Certificate Authorities listed in \fB\-\-tlsCAFile\fP, or issued by a CA in the native certificate store on the server when omitted.
 .sp
-See configuring_tls for more information on the various TLS related options.
+See \fI\%Configuring TLS\fP for more information on the various TLS related options.
 .SH COMPRESSING DATA TO AND FROM MONGODB
 .sp
 MongoDB 3.4 added Snappy compression support, zlib compression in 3.6, and zstd compression in 4.2.
@@ -224,7 +224,7 @@ To enable compression support the client must be configured with which compresso
 .nf
 .ft C
 mongoc_client_t *client = NULL;
-client = mongoc_client_new ("mongodb://localhost:27017/?compressors=snappy,zlib,zstd");
+client = mongoc_client_new (\(dqmongodb://localhost:27017/?compressors=snappy,zlib,zstd\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -244,7 +244,7 @@ The driver must be built with zlib and/or snappy and/or zstd support to enable c
 support, any unknown (or not compiled in) compressor value will be ignored. Note: to build with zstd requires cmake 3.12 or higher.
 .SH ADDITIONAL CONNECTION OPTIONS
 .sp
-The full list of connection options can be found in the \fBmongoc_uri_t\fP docs.
+The full list of connection options can be found in the \fI\%mongoc_uri_t\fP docs.
 .sp
 Certain socket/connection related options are not configurable:
 .TS

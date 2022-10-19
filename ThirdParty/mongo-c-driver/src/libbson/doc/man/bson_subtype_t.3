@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_SUBTYPE_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_subtype_t \- bson_subtype_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_SUBTYPE_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_subtype_t \- bson_subtype_t
 .sp
 Binary Field Subtype
 .SH SYNOPSIS
@@ -48,6 +48,7 @@ typedef enum {
    BSON_SUBTYPE_UUID_DEPRECATED = 0x03,
    BSON_SUBTYPE_UUID = 0x04,
    BSON_SUBTYPE_MD5 = 0x05,
+   BSON_SUBTYPE_COLUMN = 0x07,
    BSON_SUBTYPE_USER = 0x80,
 } bson_subtype_t;
 .ft P
@@ -65,7 +66,7 @@ This enumeration contains the various subtypes that may be used in a binary fiel
 .ft C
 bson_t doc = BSON_INITIALIZER;
 
-BSON_APPEND_BINARY (&doc, "binary", BSON_SUBTYPE_BINARY, data, data_len);
+BSON_APPEND_BINARY (&doc, \(dqbinary\(dq, BSON_SUBTYPE_BINARY, data, data_len);
 .ft P
 .fi
 .UNINDENT

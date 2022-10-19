@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_DESTROY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_destroy \- mongoc_client_destroy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_DESTROY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_destroy \- mongoc_client_destroy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,18 +45,18 @@ mongoc_client_destroy (mongoc_client_t *client);
 .sp
 Release all resources associated with \fBclient\fP and free the structure. Does nothing if \fBclient\fP is NULL.
 .sp
-Only call \fBmongoc_client_destroy\fP on a single\-threaded client. Do not call on a \fBmongoc_client_t\fP obtained from a \fBmongoc_client_pool_t\fP, which should instead be pushed back with \fBmongoc_client_pool_push()\fP\&.
+Only call \fI\%mongoc_client_destroy()\fP on a single\-threaded client. Do not call on a \fI\%mongoc_client_t\fP obtained from a \fI\%mongoc_client_pool_t\fP, which should instead be pushed back with \fI\%mongoc_client_pool_push()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .UNINDENT
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_pool_push()\fP to push a multi\-threaded client back onto a pool.
+\fI\%mongoc_client_pool_push()\fP to push a multi\-threaded client back onto a pool.
 .fi
 .sp
 .UNINDENT

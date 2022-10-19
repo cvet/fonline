@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_RESET" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_reset \- mongoc_client_reset()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_RESET" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_reset \- mongoc_client_reset()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,16 +43,16 @@ mongoc_client_reset (mongoc_client_t *client);
 .UNINDENT
 .UNINDENT
 .sp
-Call this method in the child after forking to invalidate the \fBmongoc_client_t\fP\&.
+Call this method in the child after forking to invalidate the \fI\%mongoc_client_t\fP\&.
 .SH DESCRIPTION
 .sp
-Calling \fBmongoc_client_reset()\fP prevents resource cleanup in the child process from interfering with the parent process.
+Calling \fI\%mongoc_client_reset()\fP prevents resource cleanup in the child process from interfering with the parent process.
 .sp
 This method causes the client to clear its session pool without sending endSessions. It also increments an internal generation counter on the given client. After this method is called, cursors from previous generations will not issue a killCursors command when they are destroyed. Client sessions from previous generations cannot be used and should be destroyed.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .UNINDENT
 .SH AUTHOR
 MongoDB, Inc

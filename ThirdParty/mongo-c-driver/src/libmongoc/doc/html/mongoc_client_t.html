@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_t.html"/>
-    <title>mongoc_client_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_t.html"/>
+    <title>mongoc_client_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_client_command()" href="mongoc_client_command.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_client_session_with_transaction_cb_t.html" title="mongoc_client_session_with_transaction_cb_t"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,119 +45,119 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-client-t">
-<h1>mongoc_client_t<a class="headerlink" href="#mongoc-client-t" title="Permalink to this headline">¶</a></h1>
+  <section id="mongoc-client-t">
+<h1>mongoc_client_t<a class="headerlink" href="#mongoc-client-t" title="Permalink to this heading">¶</a></h1>
 <p>A single-threaded MongoDB connection. See <a class="reference internal" href="connection-pooling.html"><span class="doc">Connection Pooling</span></a>.</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_mongoc_client_t</span> <span class="n">mongoc_client_t</span><span class="p">;</span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_mongoc_client_t</span><span class="w"> </span><span class="n">mongoc_client_t</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">typedef</span> <span class="n">mongoc_stream_t</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">mongoc_stream_initiator_t</span><span class="p">)</span> <span class="p">(</span>
-   <span class="k">const</span> <span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span><span class="p">,</span>
-   <span class="k">const</span> <span class="n">mongoc_host_list_t</span> <span class="o">*</span><span class="n">host</span><span class="p">,</span>
-   <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span>
-   <span class="n">bson_error_t</span> <span class="o">*</span><span class="n">error</span><span class="p">);</span>
+<span class="k">typedef</span><span class="w"> </span><span class="n">mongoc_stream_t</span><span class="w"> </span><span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">mongoc_stream_initiator_t</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_host_list_t</span><span class="w"> </span><span class="o">*</span><span class="n">host</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">user_data</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">mongoc_client_t</span></code> is an opaque type that provides access to a MongoDB server,
 replica set, or sharded cluster. It maintains management of underlying sockets
 and routing to individual nodes based on <a class="symbol reference internal" href="mongoc_read_prefs_t.html"><span class="doc">mongoc_read_prefs_t</span></a> or <a class="symbol reference internal" href="mongoc_write_concern_t.html"><span class="doc">mongoc_write_concern_t</span></a>.</p>
-</div>
-<div class="section" id="streams">
-<h2>Streams<a class="headerlink" href="#streams" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="streams">
+<h2>Streams<a class="headerlink" href="#streams" title="Permalink to this heading">¶</a></h2>
 <p>The underlying transport for a given client can be customized, wrapped or replaced by any implementation that fulfills <a class="symbol reference internal" href="mongoc_stream_t.html"><span class="doc">mongoc_stream_t</span></a>. A custom transport can be set with <a class="symbol reference internal" href="mongoc_client_set_stream_initiator.html"><span class="doc">mongoc_client_set_stream_initiator()</span></a>.</p>
-</div>
-<div class="section" id="thread-safety">
-<h2>Thread Safety<a class="headerlink" href="#thread-safety" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="thread-safety">
+<h2>Thread Safety<a class="headerlink" href="#thread-safety" title="Permalink to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">mongoc_client_t</span></code> is <em>NOT</em> thread-safe and should only be used from one thread at a time. When used in multi-threaded scenarios, it is recommended that you use the thread-safe <a class="symbol reference internal" href="mongoc_client_pool_t.html"><span class="doc">mongoc_client_pool_t</span></a> to retrieve a <code class="docutils literal notranslate"><span class="pre">mongoc_client_t</span></code> for your thread.</p>
-</div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h2>
 <div class="literal-block-wrapper docutils container" id="id1">
 <div class="code-block-caption"><span class="caption-text">example-client.c</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* gcc example-client.c -o example-client $(pkg-config --cflags --libs</span>
-<span class="cm"> * libmongoc-1.0) */</span>
+<span class="cm"> * libmongoc-1.0) */</span><span class="w"></span>
 
-<span class="cm">/* ./example-client [CONNECTION_STRING [COLLECTION_NAME]] */</span>
+<span class="cm">/* ./example-client [CONNECTION_STRING [COLLECTION_NAME]] */</span><span class="w"></span>
 
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdlib.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span>
-<span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">;</span>
-   <span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span><span class="p">;</span>
-   <span class="n">mongoc_cursor_t</span> <span class="o">*</span><span class="n">cursor</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">doc</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">collection_name</span> <span class="o">=</span> <span class="s">&quot;test&quot;</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="n">query</span><span class="p">;</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri_string</span> <span class="o">=</span> <span class="s">&quot;mongodb://127.0.0.1/?appname=client-example&quot;</span><span class="p">;</span>
-   <span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_cursor_t</span><span class="w"> </span><span class="o">*</span><span class="n">cursor</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">doc</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">collection_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="n">query</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">str</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;mongodb://127.0.0.1/?appname=client-example&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
-   <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">uri_string</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">collection_name</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">collection_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new_with_error</span> <span class="p">(</span><span class="n">uri_string</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span>
-               <span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-               <span class="n">uri_string</span><span class="p">,</span>
-               <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new_with_error</span><span class="w"> </span><span class="p">(</span><span class="n">uri_string</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">uri_string</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new_from_uri</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new_from_uri</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_client_set_error_api</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+<span class="w">   </span><span class="n">mongoc_client_set_error_api</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">bson_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">query</span><span class="p">);</span>
-   <span class="n">collection</span> <span class="o">=</span> <span class="n">mongoc_client_get_collection</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s">&quot;test&quot;</span><span class="p">,</span> <span class="n">collection_name</span><span class="p">);</span>
-   <span class="n">cursor</span> <span class="o">=</span> <span class="n">mongoc_collection_find_with_opts</span> <span class="p">(</span>
-      <span class="n">collection</span><span class="p">,</span>
-      <span class="o">&amp;</span><span class="n">query</span><span class="p">,</span>
-      <span class="nb">NULL</span><span class="p">,</span>  <span class="cm">/* additional options */</span>
-      <span class="nb">NULL</span><span class="p">);</span> <span class="cm">/* read prefs, NULL for default */</span>
+<span class="w">   </span><span class="n">bson_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">query</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_get_collection</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">collection_name</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">cursor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_collection_find_with_opts</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">collection</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="o">&amp;</span><span class="n">query</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="nb">NULL</span><span class="p">,</span><span class="w">  </span><span class="cm">/* additional options */</span><span class="w"></span>
+<span class="w">      </span><span class="nb">NULL</span><span class="p">);</span><span class="w"> </span><span class="cm">/* read prefs, NULL for default */</span><span class="w"></span>
 
-   <span class="k">while</span> <span class="p">(</span><span class="n">mongoc_cursor_next</span> <span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">doc</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">str</span> <span class="o">=</span> <span class="n">bson_as_canonical_extended_json</span> <span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
-      <span class="n">bson_free</span> <span class="p">(</span><span class="n">str</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_cursor_next</span><span class="w"> </span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">doc</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_canonical_extended_json</span><span class="w"> </span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">str</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">str</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_cursor_error</span> <span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Cursor Failure: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_cursor_error</span><span class="w"> </span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Cursor Failure: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">query</span><span class="p">);</span>
-   <span class="n">mongoc_cursor_destroy</span> <span class="p">(</span><span class="n">cursor</span><span class="p">);</span>
-   <span class="n">mongoc_collection_destroy</span> <span class="p">(</span><span class="n">collection</span><span class="p">);</span>
-   <span class="n">mongoc_uri_destroy</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">query</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_cursor_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">cursor</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_SUCCESS</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_command.html">mongoc_client_command()</a></li>
@@ -163,6 +168,7 @@ and routing to individual nodes based on <a class="symbol reference internal" hr
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_enable_auto_encryption.html">mongoc_client_enable_auto_encryption()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_find_databases_with_opts.html">mongoc_client_find_databases_with_opts()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_get_collection.html">mongoc_client_get_collection()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_client_get_crypt_shared_version.html">mongoc_client_get_crypt_shared_version()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_get_database.html">mongoc_client_get_database()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_get_database_names.html">mongoc_client_get_database_names()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_get_database_names_with_opts.html">mongoc_client_get_database_names_with_opts()</a></li>
@@ -180,6 +186,7 @@ and routing to individual nodes based on <a class="symbol reference internal" hr
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_get_write_concern.html">mongoc_client_get_write_concern()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_new.html">mongoc_client_new()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_new_from_uri.html">mongoc_client_new_from_uri()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_client_new_from_uri_with_error.html">mongoc_client_new_from_uri_with_error()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_read_command_with_opts.html">mongoc_client_read_command_with_opts()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_read_write_command_with_opts.html">mongoc_client_read_write_command_with_opts()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_reset.html">mongoc_client_reset()</a></li>
@@ -196,10 +203,11 @@ and routing to individual nodes based on <a class="symbol reference internal" hr
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_start_session.html">mongoc_client_start_session()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_watch.html">mongoc_client_watch()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_client_write_command_with_opts.html">mongoc_client_write_command_with_opts()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_handshake_data_append.html">mongoc_handshake_data_append()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -235,6 +243,7 @@ and routing to individual nodes based on <a class="symbol reference internal" hr
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -310,7 +319,7 @@ and routing to individual nodes based on <a class="symbol reference internal" hr
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

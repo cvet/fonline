@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_GUIDES" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_guides \- Guides
 .
 .nr rst2man-indent-level 0
 .
@@ -30,12 +27,15 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_GUIDES" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_guides \- Guides
 .SH STREAMING BSON
 .sp
-\fBbson_reader_t\fP provides a streaming reader which can be initialized with a filedescriptor or memory region. \fBbson_writer_t\fP provides a streaming writer which can be initialized with a memory region. (Streaming BSON to a file descriptor is not yet supported.)
+\fI\%bson_reader_t\fP provides a streaming reader which can be initialized with a filedescriptor or memory region. \fI\%bson_writer_t\fP provides a streaming writer which can be initialized with a memory region. (Streaming BSON to a file descriptor is not yet supported.)
 .SS Reading from a BSON Stream
 .sp
-\fBbson_reader_t\fP provides a convenient API to read sequential BSON documents from a file\-descriptor or memory buffer. The \fBbson_reader_read()\fP function will read forward in the underlying stream and return a \fBbson_t\fP that can be inspected and iterated upon.
+\fI\%bson_reader_t\fP provides a convenient API to read sequential BSON documents from a file\-descriptor or memory buffer. The \fI\%bson_reader_read()\fP function will read forward in the underlying stream and return a \fI\%bson_t\fP that can be inspected and iterated upon.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -52,22 +52,22 @@ main (int argc, char *argv[])
    bson_error_t error;
    bool eof;
 
-   reader = bson_reader_new_from_file ("mycollection.bson", &error);
+   reader = bson_reader_new_from_file (\(dqmycollection.bson\(dq, &error);
 
    if (!reader) {
-      fprintf (stderr, "Failed to open file.\en");
+      fprintf (stderr, \(dqFailed to open file.\en\(dq);
       return 1;
    }
 
    while ((doc = bson_reader_read (reader, &eof))) {
       char *str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (!eof) {
       fprintf (stderr,
-               "corrupted bson document found at %u\en",
+               \(dqcorrupted bson document found at %u\en\(dq,
                (unsigned) bson_reader_tell (reader));
    }
 
@@ -80,10 +80,10 @@ main (int argc, char *argv[])
 .UNINDENT
 .UNINDENT
 .sp
-See \fBbson_reader_new_from_fd()\fP, \fBbson_reader_new_from_file()\fP, and \fBbson_reader_new_from_data()\fP for more information.
+See \fI\%bson_reader_new_from_fd()\fP, \fI\%bson_reader_new_from_file()\fP, and \fI\%bson_reader_new_from_data()\fP for more information.
 .SS Writing a sequence of BSON Documents
 .sp
-\fBbson_writer_t\fP provides a convenient API to write a sequence of BSON documents to a memory buffer that can grow with \fBrealloc()\fP\&. The \fBbson_writer_begin()\fP and \fBbson_writer_end()\fP functions will manage the underlying buffer while building the sequence of documents.
+\fI\%bson_writer_t\fP provides a convenient API to write a sequence of BSON documents to a memory buffer that can grow with \fBrealloc()\fP\&. The \fI\%bson_writer_begin()\fP and \fI\%bson_writer_end()\fP functions will manage the underlying buffer while building the sequence of documents.
 .sp
 This could also be useful if you want to write to a network packet while serializing the documents from a higher level language, (but do so just after the packets header).
 .INDENT 0.0
@@ -111,7 +111,7 @@ main (int argc, char *argv[])
       r = bson_writer_begin (writer, &doc);
       assert (r);
 
-      r = BSON_APPEND_INT32 (doc, "i", i);
+      r = BSON_APPEND_INT32 (doc, \(dqi\(dq, i);
       assert (r);
 
       bson_writer_end (writer);
@@ -126,13 +126,13 @@ main (int argc, char *argv[])
 .UNINDENT
 .UNINDENT
 .sp
-See \fBbson_writer_new()\fP for more information.
+See \fI\%bson_writer_new()\fP for more information.
 .SH JSON
 .sp
 Libbson provides routines for converting to and from the JSON format. In particular, it supports the \fI\%MongoDB extended JSON\fP format.
 .SS Converting BSON to JSON
 .sp
-There are often times where you might want to convert a BSON document to JSON. It is convenient for debugging as well as an interchange format. To help with this, Libbson contains the functions \fBbson_as_canonical_extended_json()\fP and \fBbson_as_relaxed_extended_json()\fP\&. The canonical format preserves BSON type information for values that may have ambiguous representations in JSON (e.g. numeric types).
+There are often times where you might want to convert a BSON document to JSON. It is convenient for debugging as well as an interchange format. To help with this, Libbson contains the functions \fI\%bson_as_canonical_extended_json()\fP and \fI\%bson_as_relaxed_extended_json()\fP\&. The canonical format preserves BSON type information for values that may have ambiguous representations in JSON (e.g. numeric types).
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -142,10 +142,10 @@ bson_t *b;
 size_t len;
 char *str;
 
-b = BCON_NEW ("a", BCON_INT32 (1));
+b = BCON_NEW (\(dqa\(dq, BCON_INT32 (1));
 
 str = bson_as_canonical_extended_json (b, &len);
-printf ("%s\en", str);
+printf (\(dq%s\en\(dq, str);
 bson_free (str);
 
 bson_destroy (b);
@@ -158,7 +158,7 @@ bson_destroy (b);
 .sp
 .nf
 .ft C
-{ "a" : { "$numberInt": "1" } }
+{ \(dqa\(dq : { \(dq$numberInt\(dq: \(dq1\(dq } }
 .ft P
 .fi
 .UNINDENT
@@ -174,10 +174,10 @@ bson_t *b;
 size_t len;
 char *str;
 
-b = BCON_NEW ("a", BCON_INT32 (1));
+b = BCON_NEW (\(dqa\(dq, BCON_INT32 (1));
 
 str = bson_as_relaxed_extended_json (b, &len);
-printf ("%s\en", str);
+printf (\(dq%s\en\(dq, str);
 bson_free (str);
 
 bson_destroy (b);
@@ -190,16 +190,16 @@ bson_destroy (b);
 .sp
 .nf
 .ft C
-{ "a" : 1 }
+{ \(dqa\(dq : 1 }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS Converting JSON to BSON
 .sp
-Converting back from JSON is also useful and common enough that we added \fBbson_init_from_json()\fP and \fBbson_new_from_json()\fP\&.
+Converting back from JSON is also useful and common enough that we added \fI\%bson_init_from_json()\fP and \fI\%bson_new_from_json()\fP\&.
 .sp
-The following example creates a new \fBbson_t\fP from the JSON string \fB{"a":1}\fP\&.
+The following example creates a new \fI\%bson_t\fP from the JSON string \fB{\(dqa\(dq:1}\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -208,10 +208,10 @@ The following example creates a new \fBbson_t\fP from the JSON string \fB{"a":1}
 bson_t *b;
 bson_error_t error;
 
-b = bson_new_from_json ("{\e"a\e":1}", \-1, &error);
+b = bson_new_from_json (\(dq{\e\(dqa\e\(dq:1}\(dq, \-1, &error);
 
 if (!b) {
-   printf ("Error: %s\en", error.message);
+   printf (\(dqError: %s\en\(dq, error.message);
 } else {
    bson_destroy (b);
 }
@@ -221,7 +221,7 @@ if (!b) {
 .UNINDENT
 .SS Streaming JSON Parsing
 .sp
-Libbson provides \fBbson_json_reader_t\fP to allow for parsing a sequence of JSON documents into BSON. The interface is similar to \fBbson_reader_t\fP but expects the input to be in the \fI\%MongoDB extended JSON\fP format.
+Libbson provides \fI\%bson_json_reader_t\fP to allow for parsing a sequence of JSON documents into BSON. The interface is similar to \fI\%bson_reader_t\fP but expects the input to be in the \fI\%MongoDB extended JSON\fP format.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -230,14 +230,14 @@ Libbson provides \fBbson_json_reader_t\fP to allow for parsing a sequence of JSO
 /*
  * Copyright 2013 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -269,7 +269,7 @@ main (int argc, char *argv[])
     * Print program usage if no arguments are provided.
     */
    if (argc == 1) {
-      fprintf (stderr, "usage: %s FILE...\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s FILE...\en\(dq, argv[0]);
       return 1;
    }
 
@@ -282,12 +282,12 @@ main (int argc, char *argv[])
       /*
        * Open the filename provided in command line arguments.
        */
-      if (0 == strcmp (filename, "\-")) {
+      if (0 == strcmp (filename, \(dq\-\(dq)) {
          reader = bson_json_reader_new_from_fd (STDIN_FILENO, false);
       } else {
          if (!(reader = bson_json_reader_new_from_file (filename, &error))) {
             fprintf (
-               stderr, "Failed to open \e"%s\e": %s\en", filename, error.message);
+               stderr, \(dqFailed to open \e\(dq%s\e\(dq: %s\en\(dq, filename, error.message);
             continue;
          }
       }
@@ -297,12 +297,12 @@ main (int argc, char *argv[])
        */
       while ((b = bson_json_reader_read (reader, &doc, &error))) {
          if (b < 0) {
-            fprintf (stderr, "Error in json parsing:\en%s\en", error.message);
+            fprintf (stderr, \(dqError in json parsing:\en%s\en\(dq, error.message);
             abort ();
          }
 
          if (fwrite (bson_get_data (&doc), 1, doc.len, stdout) != doc.len) {
-            fprintf (stderr, "Failed to write to stdout, exiting.\en");
+            fprintf (stderr, \(dqFailed to write to stdout, exiting.\en\(dq);
             exit (1);
          }
          bson_reinit (&doc);
@@ -329,14 +329,14 @@ The following example reads BSON documents from \fBstdin\fP and prints them to \
 /*
  * Copyright 2013 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -367,7 +367,7 @@ main (int argc, char *argv[])
     * Print program usage if no arguments are provided.
     */
    if (argc == 1) {
-      fprintf (stderr, "usage: %s [FILE | \-]...\enUse \- for STDIN.\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s [FILE | \-]...\enUse \- for STDIN.\en\(dq, argv[0]);
       return 1;
    }
 
@@ -377,12 +377,12 @@ main (int argc, char *argv[])
    for (i = 1; i < argc; i++) {
       filename = argv[i];
 
-      if (strcmp (filename, "\-") == 0) {
+      if (strcmp (filename, \(dq\-\(dq) == 0) {
          reader = bson_reader_new_from_fd (STDIN_FILENO, false);
       } else {
          if (!(reader = bson_reader_new_from_file (filename, &error))) {
             fprintf (
-               stderr, "Failed to open \e"%s\e": %s\en", filename, error.message);
+               stderr, \(dqFailed to open \e\(dq%s\e\(dq: %s\en\(dq, filename, error.message);
             continue;
          }
       }
@@ -392,7 +392,7 @@ main (int argc, char *argv[])
        */
       while ((b = bson_reader_read (reader, NULL))) {
          str = bson_as_canonical_extended_json (b, NULL);
-         fprintf (stdout, "%s\en", str);
+         fprintf (stdout, \(dq%s\en\(dq, str);
          bson_free (str);
       }
 
@@ -410,7 +410,7 @@ main (int argc, char *argv[])
 .UNINDENT
 .SH USE VALGRIND TO CHECK FOR BSON DATA LEAKS
 .sp
-A stack\-allocated \fBbson_t\fP contains a small internal buffer; it only heap\-allocates additional storage if necessary, depending on its data size. Therefore if you forget to call \fBbson_destroy\fP on a stack\-allocated \fBbson_t\fP, it might or might not cause a leak that can be detected by valgrind during testing.
+A stack\-allocated \fI\%bson_t\fP contains a small internal buffer; it only heap\-allocates additional storage if necessary, depending on its data size. Therefore if you forget to call \fI\%bson_destroy()\fP on a stack\-allocated \fI\%bson_t\fP, it might or might not cause a leak that can be detected by valgrind during testing.
 .sp
 To catch all potential BSON data leaks in your code, configure the BSON_MEMCHECK flag:
 .INDENT 0.0
@@ -418,13 +418,13 @@ To catch all potential BSON data leaks in your code, configure the BSON_MEMCHECK
 .sp
 .nf
 .ft C
-cmake \-DCMAKE_C_FLAGS="\-DBSON_MEMCHECK \-g" .
+cmake \-DCMAKE_C_FLAGS=\(dq\-DBSON_MEMCHECK \-g\(dq .
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-With this flag set, every \fBbson_t\fP mallocs at least one byte. Run your program\(aqs unittests with valgrind to verify all \fBbson_t\fP structs are destroyed.
+With this flag set, every \fI\%bson_t\fP mallocs at least one byte. Run your program\(aqs unittests with valgrind to verify all \fI\%bson_t\fP structs are destroyed.
 .sp
 Set the environment variable \fBMONGOC_TEST_VALGRIND\fP to \fBon\fP to skip timing\-dependent tests known to fail with valgrind.
 .SH AUTHOR

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SESSION_OPTS_GET_DEFAULT_TRANSACTION_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_session_opts_get_default_transaction_opts \- mongoc_session_opts_get_default_transaction_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SESSION_OPTS_GET_DEFAULT_TRANSACTION_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_session_opts_get_default_transaction_opts \- mongoc_session_opts_get_default_transaction_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,12 +43,15 @@ mongoc_session_opts_get_default_transaction_opts (const mongoc_session_opt_t *op
 .UNINDENT
 .UNINDENT
 .sp
-The default options for transactions started with this session. The returned value is valid only for the lifetime of \fBopts\fP\&.  See \fBmongoc_session_opts_set_default_transaction_opts()\fP\&.
+The default options for transactions started with this session. See \fI\%mongoc_session_opts_set_default_transaction_opts()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_session_opt_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_session_opt_t\fP\&.
 .UNINDENT
+.SH RETURNS
+.sp
+A \fI\%mongoc_transaction_opt_t\fP that is valid only for the lifetime of \fBopts\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

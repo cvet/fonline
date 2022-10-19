@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_WRITE_CONCERN_SET_FSYNC" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_write_concern_set_fsync \- mongoc_write_concern_set_fsync()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_WRITE_CONCERN_SET_FSYNC" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_write_concern_set_fsync \- mongoc_write_concern_set_fsync()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,7 +46,7 @@ mongoc_write_concern_set_fsync (mongoc_write_concern_t *write_concern,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBwrite_concern\fP: A \fBmongoc_write_concern_t\fP\&.
+\fBwrite_concern\fP: A \fI\%mongoc_write_concern_t\fP\&.
 .IP \(bu 2
 \fBfsync_\fP: A boolean.
 .UNINDENT
@@ -56,7 +56,7 @@ Sets if a fsync must be performed before indicating write success.
 .sp
 Beginning in version 1.9.0, this function can now alter the write concern after
 it has been used in an operation. Previously, using the struct with an operation
-would mark it as "frozen" and calling this function would log a warning instead
+would mark it as \(dqfrozen\(dq and calling this function would log a warning instead
 instead of altering the write concern.
 .SH DEPRECATED
 .sp
@@ -67,7 +67,7 @@ The \fBfsync\fP write concern is deprecated.
 .UNINDENT
 .UNINDENT
 .sp
-Please use \fBmongoc_write_concern_set_journal()\fP instead.
+Please use \fI\%mongoc_write_concern_set_journal()\fP instead.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

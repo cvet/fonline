@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_TOPOLOGY_DESCRIPTION_GET_SERVERS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_topology_description_get_servers \- mongoc_topology_description_get_servers()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_TOPOLOGY_DESCRIPTION_GET_SERVERS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_topology_description_get_servers \- mongoc_topology_description_get_servers()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -38,23 +38,24 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .ft C
 mongoc_server_description_t **
 mongoc_topology_description_get_servers (
-   const mongoc_topology_description_t *td, size_t *n);
+   const mongoc_topology_description_t *td,
+   size_t *n) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Fetches an array of \fBmongoc_server_description_t\fP structs for all known servers in the topology.
+Fetches an array of \fI\%mongoc_server_description_t\fP structs for all known servers in the topology.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBtd\fP: A \fBmongoc_topology_description_t\fP\&.
+\fBtd\fP: A \fI\%mongoc_topology_description_t\fP\&.
 .IP \(bu 2
 \fBn\fP: Receives the length of the descriptions array.
 .UNINDENT
 .SH RETURNS
 .sp
-A newly allocated array that must be freed with \fBmongoc_server_descriptions_destroy_all\fP\&.
+A newly allocated array that must be freed with \fI\%mongoc_server_descriptions_destroy_all()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

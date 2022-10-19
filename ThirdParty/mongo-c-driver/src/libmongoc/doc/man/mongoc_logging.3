@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_LOGGING" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_logging \- Logging
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_LOGGING" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_logging \- Logging
 .sp
 MongoDB C driver Logging Abstraction
 .SH SYNOPSIS
@@ -93,9 +93,9 @@ To make logging a little less painful, various helper macros are provided. See t
 .nf
 .ft C
 #undef MONGOC_LOG_DOMAIN
-#define MONGOC_LOG_DOMAIN "my\-custom\-domain"
+#define MONGOC_LOG_DOMAIN \(dqmy\-custom\-domain\(dq
 
-MONGOC_WARNING ("An error occurred: %s", strerror (errno));
+MONGOC_WARNING (\(dqAn error occurred: %s\(dq, strerror (errno));
 .ft P
 .fi
 .UNINDENT

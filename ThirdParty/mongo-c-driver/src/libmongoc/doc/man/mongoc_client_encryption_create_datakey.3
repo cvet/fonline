@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENCRYPTION_CREATE_DATAKEY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_encryption_create_datakey \- mongoc_client_encryption_create_datakey()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENCRYPTION_CREATE_DATAKEY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_encryption_create_datakey \- mongoc_client_encryption_create_datakey()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,24 +48,23 @@ mongoc_client_encryption_create_datakey (
 .UNINDENT
 .UNINDENT
 .sp
-Creates a new key document in the key vault collection and sets \fBkeyid\fP to the UUID of the
-newly created key if \fBkeyid\fP is not NULL. The new key can be used to configure automatic encryption (see \fBmongoc_client_enable_auto_encryption()\fP and \fBmongoc_client_pool_enable_auto_encryption()\fP) or for explicit encryption (see \fBmongoc_client_encryption_encrypt()\fP).
+Creates a new key document in the key vault collection and sets \fBkeyid\fP to the UUID of the newly created key if \fBkeyid\fP is not NULL. The new key can be used to configure automatic encryption (see \fI\%mongoc_client_enable_auto_encryption()\fP and \fI\%mongoc_client_pool_enable_auto_encryption()\fP) or for explicit encryption (see \fI\%mongoc_client_encryption_encrypt()\fP).
 .sp
-The created key document is inserted into the key vault collection (identified via \fBmongoc_client_encryption_opts_set_keyvault_namespace()\fP) with majority write concern.
+The created key document is inserted into the key vault collection (identified via \fI\%mongoc_client_encryption_opts_set_keyvault_namespace()\fP) with majority write concern.
 .sp
 \fBkeyid\fP is always initialized (even on error). Caller must call \fI\%bson_value_destroy()\fP on \fBkeyid\fP to free.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient_encryption\fP: A \fBmongoc_client_encryption_t\fP\&.
+\fBclient_encryption\fP: A \fI\%mongoc_client_encryption_t\fP\&.
 .IP \(bu 2
-\fBkms_provider\fP: A string identifying the Key Management Service (KMS) provider used to encrypt the datakey (e.g. "aws" or "local").
+\fBkms_provider\fP: A string identifying the Key Management Service (KMS) provider used to encrypt the datakey (e.g. \(dqaws\(dq or \(dqlocal\(dq).
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_client_encryption_datakey_opts_t\fP
+\fBopts\fP: A \fI\%mongoc_client_encryption_datakey_opts_t\fP
 .IP \(bu 2
-\fBkeyid\fP: The resulting UUID key ID of the newly created key.
+\fBkeyid\fP: Optional. An uninitialized \fI\%bson_value_t\fP set to the UUID (BSON binary subtype 0x04) of the newly created key. Must be freed by \fI\%bson_value_destroy()\fP\&.
 .IP \(bu 2
-\fBerror\fP: A \fI\%bson_error_t\fP
+\fBerror\fP: Optional. A \fI\%bson_error_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
@@ -75,7 +74,7 @@ Returns \fBtrue\fP if successful. Returns \fBfalse\fP and sets \fBerror\fP other
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_encryption_datakey_opts_t\fP
+\fI\%mongoc_client_encryption_datakey_opts_t\fP
 .fi
 .sp
 .UNINDENT

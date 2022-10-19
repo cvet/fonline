@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_VALGRIND" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_valgrind \- Use Valgrind to Check For BSON Data Leaks
 .
 .nr rst2man-indent-level 0
 .
@@ -30,8 +27,11 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_VALGRIND" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_valgrind \- Use Valgrind to Check For BSON Data Leaks
 .sp
-A stack\-allocated \fBbson_t\fP contains a small internal buffer; it only heap\-allocates additional storage if necessary, depending on its data size. Therefore if you forget to call \fBbson_destroy\fP on a stack\-allocated \fBbson_t\fP, it might or might not cause a leak that can be detected by valgrind during testing.
+A stack\-allocated \fI\%bson_t\fP contains a small internal buffer; it only heap\-allocates additional storage if necessary, depending on its data size. Therefore if you forget to call \fI\%bson_destroy()\fP on a stack\-allocated \fI\%bson_t\fP, it might or might not cause a leak that can be detected by valgrind during testing.
 .sp
 To catch all potential BSON data leaks in your code, configure the BSON_MEMCHECK flag:
 .INDENT 0.0
@@ -39,13 +39,13 @@ To catch all potential BSON data leaks in your code, configure the BSON_MEMCHECK
 .sp
 .nf
 .ft C
-cmake \-DCMAKE_C_FLAGS="\-DBSON_MEMCHECK \-g" .
+cmake \-DCMAKE_C_FLAGS=\(dq\-DBSON_MEMCHECK \-g\(dq .
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-With this flag set, every \fBbson_t\fP mallocs at least one byte. Run your program\(aqs unittests with valgrind to verify all \fBbson_t\fP structs are destroyed.
+With this flag set, every \fI\%bson_t\fP mallocs at least one byte. Run your program\(aqs unittests with valgrind to verify all \fI\%bson_t\fP structs are destroyed.
 .sp
 Set the environment variable \fBMONGOC_TEST_VALGRIND\fP to \fBon\fP to skip timing\-dependent tests known to fail with valgrind.
 .SH AUTHOR

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SESSION_WITH_TRANSACTION_CB_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_session_with_transaction_cb_t \- mongoc_client_session_with_transaction_cb_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SESSION_WITH_TRANSACTION_CB_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_session_with_transaction_cb_t \- mongoc_client_session_with_transaction_cb_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,13 +46,13 @@ typedef bool (*mongoc_client_session_with_transaction_cb_t) (
 .UNINDENT
 .UNINDENT
 .sp
-Provide this callback to \fBmongoc_client_session_with_transaction\fP\&. The callback should run a sequence of operations meant to be contained within a transaction.  The callback should not attempt to start or commit transactions.
+Provide this callback to \fI\%mongoc_client_session_with_transaction()\fP\&. The callback should run a sequence of operations meant to be contained within a transaction.  The callback should not attempt to start or commit transactions.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsession\fP: A \fBmongoc_client_session_t\fP\&.
+\fBsession\fP: A \fI\%mongoc_client_session_t\fP\&.
 .IP \(bu 2
-\fBctx\fP: A \fBvoid*\fP set to the the user\-provided \fBctx\fP passed to \fBmongoc_client_session_with_transaction\fP\&.
+\fBctx\fP: A \fBvoid*\fP set to the the user\-provided \fBctx\fP passed to \fI\%mongoc_client_session_with_transaction()\fP\&.
 .IP \(bu 2
 \fBreply\fP: An optional location for a \fI\%bson_t\fP or \fBNULL\fP\&. The callback should set this if it runs any operations against the server and receives replies.
 .IP \(bu 2
@@ -66,7 +66,7 @@ Returns \fBtrue\fP for success and \fBfalse\fP on failure. If \fBcb\fP returns \
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_session_with_transaction\fP
+\fI\%mongoc_client_session_with_transaction()\fP
 .fi
 .sp
 .UNINDENT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk \- Bulk Write Operations
 .
 .nr rst2man-indent-level 0
 .
@@ -30,11 +27,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk \- Bulk Write Operations
 .sp
 This tutorial explains how to take advantage of MongoDB C driver bulk write operation features. Executing write operations in batches reduces the number of network round trips, increasing write throughput.
 .SH BULK INSERT
 .sp
-First we need to fetch a bulk operation handle from the \fBmongoc_collection_t\fP\&.
+First we need to fetch a bulk operation handle from the \fI\%mongoc_collection_t\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -49,9 +49,9 @@ mongoc_bulk_operation_t *bulk =
 .sp
 We can now start inserting documents to the bulk operation. These will be buffered until we execute the operation.
 .sp
-The bulk operation will coalesce insertions as a single batch for each consecutive call to \fBmongoc_bulk_operation_insert()\fP\&. This creates a pipelined effect when possible.
+The bulk operation will coalesce insertions as a single batch for each consecutive call to \fI\%mongoc_bulk_operation_insert()\fP\&. This creates a pipelined effect when possible.
 .sp
-To execute the bulk operation and receive the result we call \fBmongoc_bulk_operation_execute()\fP\&.
+To execute the bulk operation and receive the result we call \fI\%mongoc_bulk_operation_execute()\fP\&.
 .sp
 bulk1.c
 .INDENT 0.0
@@ -77,7 +77,7 @@ bulk1 (mongoc_collection_t *collection)
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
    for (i = 0; i < 10000; i++) {
-      doc = BCON_NEW ("i", BCON_INT32 (i));
+      doc = BCON_NEW (\(dqi\(dq, BCON_INT32 (i));
       mongoc_bulk_operation_insert (bulk, doc);
       bson_destroy (doc);
    }
@@ -85,11 +85,11 @@ bulk1 (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      fprintf (stderr, "Error: %s\en", error.message);
+      fprintf (stderr, \(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -97,11 +97,11 @@ bulk1 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk1\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk1\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -110,8 +110,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -123,7 +123,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk1 (collection);
 
@@ -147,13 +147,13 @@ Example \fBreply\fP document:
 .sp
 .nf
 .ft C
-{"nInserted"   : 10000,
- "nMatched"    : 0,
- "nModified"   : 0,
- "nRemoved"    : 0,
- "nUpserted"   : 0,
- "writeErrors" : []
- "writeConcernErrors" : [] }
+{\(dqnInserted\(dq   : 10000,
+ \(dqnMatched\(dq    : 0,
+ \(dqnModified\(dq   : 0,
+ \(dqnRemoved\(dq    : 0,
+ \(dqnUpserted\(dq   : 0,
+ \(dqwriteErrors\(dq : []
+ \(dqwriteConcernErrors\(dq : [] }
 .ft P
 .fi
 .UNINDENT
@@ -197,30 +197,30 @@ bulk2 (mongoc_collection_t *collection)
 
    /* Add a few documents */
    for (i = 1; i < 4; i++) {
-      doc = BCON_NEW ("_id", BCON_INT32 (i));
+      doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (i));
       mongoc_bulk_operation_insert (bulk, doc);
       bson_destroy (doc);
    }
 
-   /* {_id: 1} => {$set: {foo: "bar"}} */
-   query = BCON_NEW ("_id", BCON_INT32 (1));
-   doc = BCON_NEW ("$set", "{", "foo", BCON_UTF8 ("bar"), "}");
+   /* {_id: 1} => {$set: {foo: \(dqbar\(dq}} */
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (1));
+   doc = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqfoo\(dq, BCON_UTF8 (\(dqbar\(dq), \(dq}\(dq);
    mongoc_bulk_operation_update_many_with_opts (bulk, query, doc, NULL, &error);
    bson_destroy (query);
    bson_destroy (doc);
 
    /* {_id: 4} => {\(aq$inc\(aq: {\(aqj\(aq: 1}} (upsert) */
-   opts = BCON_NEW ("upsert", BCON_BOOL (true));
-   query = BCON_NEW ("_id", BCON_INT32 (4));
-   doc = BCON_NEW ("$inc", "{", "j", BCON_INT32 (1), "}");
+   opts = BCON_NEW (\(dqupsert\(dq, BCON_BOOL (true));
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (4));
+   doc = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqj\(dq, BCON_INT32 (1), \(dq}\(dq);
    mongoc_bulk_operation_update_many_with_opts (bulk, query, doc, opts, &error);
    bson_destroy (query);
    bson_destroy (doc);
    bson_destroy (opts);
 
    /* replace {j:1} with {j:2} */
-   query = BCON_NEW ("j", BCON_INT32 (1));
-   doc = BCON_NEW ("j", BCON_INT32 (2));
+   query = BCON_NEW (\(dqj\(dq, BCON_INT32 (1));
+   doc = BCON_NEW (\(dqj\(dq, BCON_INT32 (2));
    mongoc_bulk_operation_replace_one_with_opts (bulk, query, doc, NULL, &error);
    bson_destroy (query);
    bson_destroy (doc);
@@ -228,11 +228,11 @@ bulk2 (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -240,11 +240,11 @@ bulk2 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk2\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk2\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -253,8 +253,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -266,7 +266,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk2 (collection);
 
@@ -290,14 +290,14 @@ Example \fBreply\fP document:
 .sp
 .nf
 .ft C
-{ "nInserted"   : 3,
-  "nMatched"    : 2,
-  "nModified"   : 2,
-  "nRemoved"    : 10000,
-  "nUpserted"   : 1,
-  "upserted"    : [{"index" : 5, "_id" : 4}],
-  "writeErrors" : []
-  "writeConcernErrors" : [] }
+{ \(dqnInserted\(dq   : 3,
+  \(dqnMatched\(dq    : 2,
+  \(dqnModified\(dq   : 2,
+  \(dqnRemoved\(dq    : 10000,
+  \(dqnUpserted\(dq   : 1,
+  \(dqupserted\(dq    : [{\(dqindex\(dq : 5, \(dq_id\(dq : 4}],
+  \(dqwriteErrors\(dq : []
+  \(dqwriteConcernErrors\(dq : [] }
 .ft P
 .fi
 .UNINDENT
@@ -333,28 +333,28 @@ bulk3 (mongoc_collection_t *collection)
    bool ret;
 
    /* false indicates unordered */
-   BSON_APPEND_BOOL (&opts, "ordered", false);
+   BSON_APPEND_BOOL (&opts, \(dqordered\(dq, false);
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, &opts);
    bson_destroy (&opts);
 
    /* Add a document */
-   doc = BCON_NEW ("_id", BCON_INT32 (1));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (1));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    /* remove {_id: 2} */
-   query = BCON_NEW ("_id", BCON_INT32 (2));
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (2));
    mongoc_bulk_operation_remove_one (bulk, query);
    bson_destroy (query);
 
    /* insert {_id: 3} */
-   doc = BCON_NEW ("_id", BCON_INT32 (3));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (3));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    /* replace {_id:4} {\(aqi\(aq: 1} */
-   query = BCON_NEW ("_id", BCON_INT32 (4));
-   doc = BCON_NEW ("i", BCON_INT32 (1));
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (4));
+   doc = BCON_NEW (\(dqi\(dq, BCON_INT32 (1));
    mongoc_bulk_operation_replace_one (bulk, query, doc, false);
    bson_destroy (query);
    bson_destroy (doc);
@@ -362,11 +362,11 @@ bulk3 (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -375,11 +375,11 @@ bulk3 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk3\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk3\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -388,8 +388,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -401,7 +401,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk3 (collection);
 
@@ -425,19 +425,19 @@ Example \fBreply\fP document:
 .sp
 .nf
 .ft C
-{ "nInserted"    : 0,
-  "nMatched"     : 1,
-  "nModified"    : 1,
-  "nRemoved"     : 1,
-  "nUpserted"    : 0,
-  "writeErrors"  : [
-    { "index"  : 0,
-      "code"   : 11000,
-      "errmsg" : "E11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }" },
-    { "index"  : 2,
-      "code"   : 11000,
-      "errmsg" : "E11000 duplicate key error index: test.test.$_id_ dup key: { : 3 }" } ],
-  "writeConcernErrors" : [] }
+{ \(dqnInserted\(dq    : 0,
+  \(dqnMatched\(dq     : 1,
+  \(dqnModified\(dq    : 1,
+  \(dqnRemoved\(dq     : 1,
+  \(dqnUpserted\(dq    : 0,
+  \(dqwriteErrors\(dq  : [
+    { \(dqindex\(dq  : 0,
+      \(dqcode\(dq   : 11000,
+      \(dqerrmsg\(dq : \(dqE11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }\(dq },
+    { \(dqindex\(dq  : 2,
+      \(dqcode\(dq   : 11000,
+      \(dqerrmsg\(dq : \(dqE11000 duplicate key error index: test.test.$_id_ dup key: { : 3 }\(dq } ],
+  \(dqwriteConcernErrors\(dq : [] }
 
 Error: E11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }
 .ft P
@@ -445,7 +445,7 @@ Error: E11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }
 .UNINDENT
 .UNINDENT
 .sp
-The \fBbson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP and its code is 11000.
+The \fI\%bson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP and its code is 11000.
 .SH BULK OPERATION BYPASSING DOCUMENT VALIDATION
 .sp
 This feature is only available when using MongoDB 3.2 and later.
@@ -475,11 +475,11 @@ bulk5_fail (mongoc_collection_t *collection)
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
    /* Two inserts */
-   doc = BCON_NEW ("_id", BCON_INT32 (31));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (31));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (32));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (32));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
@@ -488,11 +488,11 @@ bulk5_fail (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -513,26 +513,26 @@ bulk5_success (mongoc_collection_t *collection)
 
    /* Allow this document to bypass document validation.
     * NOTE: When authentication is enabled, the authenticated user must have
-    * either the "dbadmin" or "restore" roles to bypass document validation */
+    * either the \(dqdbadmin\(dq or \(dqrestore\(dq roles to bypass document validation */
    mongoc_bulk_operation_set_bypass_document_validation (bulk, true);
 
    /* Two inserts */
-   doc = BCON_NEW ("_id", BCON_INT32 (31));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (31));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (32));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (32));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -540,14 +540,14 @@ bulk5_success (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    bson_t *options;
    bson_error_t error;
    mongoc_client_t *client;
    mongoc_collection_t *collection;
    mongoc_database_t *database;
-   const char *uri_string = "mongodb://localhost/?appname=bulk5\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk5\-example\(dq;
    mongoc_uri_t *uri;
 
    mongoc_init ();
@@ -555,8 +555,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -568,20 +568,20 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "testasdf");
+   database = mongoc_client_get_database (client, \(dqtestasdf\(dq);
 
    /* Create schema validator */
    options = BCON_NEW (
-      "validator", "{", "number", "{", "$gte", BCON_INT32 (5), "}", "}");
+      \(dqvalidator\(dq, \(dq{\(dq, \(dqnumber\(dq, \(dq{\(dq, \(dq$gte\(dq, BCON_INT32 (5), \(dq}\(dq, \(dq}\(dq);
    collection =
-      mongoc_database_create_collection (database, "collname", options, &error);
+      mongoc_database_create_collection (database, \(dqcollname\(dq, options, &error);
 
    if (collection) {
       bulk5_fail (collection);
       bulk5_success (collection);
       mongoc_collection_destroy (collection);
    } else {
-      fprintf (stderr, "Couldn\(aqt create collection: \(aq%s\(aq\en", error.message);
+      fprintf (stderr, \(dqCouldn\(aqt create collection: \(aq%s\(aq\en\(dq, error.message);
    }
 
    bson_free (options);
@@ -605,33 +605,33 @@ Running the above example will result in:
 .sp
 .nf
 .ft C
-{ "nInserted" : 0,
-  "nMatched" : 0,
-  "nModified" : 0,
-  "nRemoved" : 0,
-  "nUpserted" : 0,
-  "writeErrors" : [
-    { "index" : 0,
-      "code" : 121,
-      "errmsg" : "Document failed validation" } ] }
+{ \(dqnInserted\(dq : 0,
+  \(dqnMatched\(dq : 0,
+  \(dqnModified\(dq : 0,
+  \(dqnRemoved\(dq : 0,
+  \(dqnUpserted\(dq : 0,
+  \(dqwriteErrors\(dq : [
+    { \(dqindex\(dq : 0,
+      \(dqcode\(dq : 121,
+      \(dqerrmsg\(dq : \(dqDocument failed validation\(dq } ] }
 
 Error: Document failed validation
 
-{ "nInserted" : 2,
-  "nMatched" : 0,
-  "nModified" : 0,
-  "nRemoved" : 0,
-  "nUpserted" : 0,
-  "writeErrors" : [] }
+{ \(dqnInserted\(dq : 2,
+  \(dqnMatched\(dq : 0,
+  \(dqnModified\(dq : 0,
+  \(dqnRemoved\(dq : 0,
+  \(dqnUpserted\(dq : 0,
+  \(dqwriteErrors\(dq : [] }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-The \fBbson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP\&.
+The \fI\%bson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP\&.
 .SH BULK OPERATION WRITE CONCERNS
 .sp
-By default bulk operations are executed with the \fBwrite_concern\fP of the collection they are executed against. A custom write concern can be passed to the \fBmongoc_collection_create_bulk_operation_with_opts()\fP method. Write concern errors (e.g. wtimeout) will be reported after all operations are attempted, regardless of execution order.
+By default bulk operations are executed with the \fI\%write_concern\fP of the collection they are executed against. A custom write concern can be passed to the \fI\%mongoc_collection_create_bulk_operation_with_opts()\fP method. Write concern errors (e.g. wtimeout) will be reported after all operations are attempted, regardless of execution order.
 .sp
 bulk4.c
 .INDENT 0.0
@@ -663,22 +663,22 @@ bulk4 (mongoc_collection_t *collection)
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, &opts);
 
    /* Two inserts */
-   doc = BCON_NEW ("_id", BCON_INT32 (10));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (10));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (11));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (11));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -688,11 +688,11 @@ bulk4 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk4\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk4\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -701,8 +701,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -714,7 +714,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk4 (collection);
 
@@ -738,15 +738,15 @@ Example \fBreply\fP document and error message:
 .sp
 .nf
 .ft C
-{ "nInserted"    : 2,
-  "nMatched"     : 0,
-  "nModified"    : 0,
-  "nRemoved"     : 0,
-  "nUpserted"    : 0,
-  "writeErrors"  : [],
-  "writeConcernErrors" : [
-    { "code"   : 64,
-      "errmsg" : "waiting for replication timed out" }
+{ \(dqnInserted\(dq    : 2,
+  \(dqnMatched\(dq     : 0,
+  \(dqnModified\(dq    : 0,
+  \(dqnRemoved\(dq     : 0,
+  \(dqnUpserted\(dq    : 0,
+  \(dqwriteErrors\(dq  : [],
+  \(dqwriteConcernErrors\(dq : [
+    { \(dqcode\(dq   : 64,
+      \(dqerrmsg\(dq : \(dqwaiting for replication timed out\(dq }
 ] }
 
 Error: waiting for replication timed out
@@ -755,7 +755,7 @@ Error: waiting for replication timed out
 .UNINDENT
 .UNINDENT
 .sp
-The \fBbson_error_t\fP domain is \fBMONGOC_ERROR_WRITE_CONCERN\fP if there are write concern errors and no write errors. Write errors indicate failed operations, so they take precedence over write concern errors, which mean merely that the write concern is not satisfied \fIyet\fP\&.
+The \fI\%bson_error_t\fP domain is \fBMONGOC_ERROR_WRITE_CONCERN\fP if there are write concern errors and no write errors. Write errors indicate failed operations, so they take precedence over write concern errors, which mean merely that the write concern is not satisfied \fIyet\fP\&.
 .SH SETTING COLLATION ORDER
 .sp
 This feature is only available when using MongoDB 3.4 and later.
@@ -782,40 +782,39 @@ bulk_collation (mongoc_collection_t *collection)
    char *str;
    uint32_t ret;
 
-   /* insert {_id: "one"} and {_id: "One"} */
-   bulk = mongoc_collection_create_bulk_operation_with_opts (
-      collection, NULL);
-   doc = BCON_NEW ("_id", BCON_UTF8 ("one"));
+   /* insert {_id: \(dqone\(dq} and {_id: \(dqOne\(dq} */
+   bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
+   doc = BCON_NEW (\(dq_id\(dq, BCON_UTF8 (\(dqone\(dq));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_UTF8 ("One"));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_UTF8 (\(dqOne\(dq));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   /* "One" normally sorts before "one"; make "one" come first */
-   opts = BCON_NEW ("collation",
-                    "{",
-                    "locale",
-                    BCON_UTF8 ("en_US"),
-                    "caseFirst",
-                    BCON_UTF8 ("lower"),
-                    "}");
+   /* \(dqOne\(dq normally sorts before \(dqone\(dq; make \(dqone\(dq come first */
+   opts = BCON_NEW (\(dqcollation\(dq,
+                    \(dq{\(dq,
+                    \(dqlocale\(dq,
+                    BCON_UTF8 (\(dqen_US\(dq),
+                    \(dqcaseFirst\(dq,
+                    BCON_UTF8 (\(dqlower\(dq),
+                    \(dq}\(dq);
 
-   /* set x=1 on the document with _id "One", which now sorts after "one" */
-   update = BCON_NEW ("$set", "{", "x", BCON_INT64 (1), "}");
-   selector = BCON_NEW ("_id", "{", "$gt", BCON_UTF8 ("one"), "}");
+   /* set x=1 on the document with _id \(dqOne\(dq, which now sorts after \(dqone\(dq */
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqx\(dq, BCON_INT64 (1), \(dq}\(dq);
+   selector = BCON_NEW (\(dq_id\(dq, \(dq{\(dq, \(dq$gt\(dq, BCON_UTF8 (\(dqone\(dq), \(dq}\(dq);
    mongoc_bulk_operation_update_one_with_opts (
       bulk, selector, update, opts, &error);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -826,11 +825,11 @@ bulk_collation (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk\-collation";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk\-collation\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -839,8 +838,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -852,7 +851,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "db", "collection");
+   collection = mongoc_client_get_collection (client, \(dqdb\(dq, \(dqcollection\(dq);
    bulk_collation (collection);
 
    mongoc_uri_destroy (uri);
@@ -875,12 +874,12 @@ Running the above example will result in:
 .sp
 .nf
 .ft C
-{ "nInserted" : 2,
-   "nMatched" : 1,
-   "nModified" : 1,
-   "nRemoved" : 0,
-   "nUpserted" : 0,
-   "writeErrors" : [  ]
+{ \(dqnInserted\(dq : 2,
+   \(dqnMatched\(dq : 1,
+   \(dqnModified\(dq : 1,
+   \(dqnRemoved\(dq : 0,
+   \(dqnUpserted\(dq : 0,
+   \(dqwriteErrors\(dq : [  ]
 }
 .ft P
 .fi
@@ -888,7 +887,7 @@ Running the above example will result in:
 .UNINDENT
 .SH UNACKNOWLEDGED BULK WRITES
 .sp
-Set "w" to zero for an unacknowledged write. The driver sends unacknowledged writes using the legacy opcodes \fBOP_INSERT\fP, \fBOP_UPDATE\fP, and \fBOP_DELETE\fP\&.
+Set \(dqw\(dq to zero for an unacknowledged write. The driver sends unacknowledged writes using the legacy opcodes \fBOP_INSERT\fP, \fBOP_UPDATE\fP, and \fBOP_DELETE\fP\&.
 .sp
 bulk6.c
 .INDENT 0.0
@@ -918,22 +917,22 @@ bulk6 (mongoc_collection_t *collection)
 
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, &opts);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (10));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (10));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   selector = BCON_NEW ("_id", BCON_INT32 (11));
+   selector = BCON_NEW (\(dq_id\(dq, BCON_INT32 (11));
    mongoc_bulk_operation_remove_one (bulk, selector);
    bson_destroy (selector);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -943,11 +942,11 @@ bulk6 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk6\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk6\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -956,8 +955,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -969,7 +968,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk6 (collection);
 

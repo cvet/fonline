@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_gridfs_find_with_opts.html"/>
-    <title>mongoc_gridfs_find_with_opts() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_gridfs_find_with_opts.html"/>
+    <title>mongoc_gridfs_find_with_opts() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_gridfs_get_chunks()" href="mongoc_gridfs_get_chunks.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_gridfs_find_one_with_opts.html" title="mongoc_gridfs_find_one_with_opts()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_gridfs_t.html" accesskey="U">mongoc_gridfs_t</a> &#187;</li> 
       </ul>
@@ -41,38 +46,38 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-gridfs-find-with-opts">
-<h1>mongoc_gridfs_find_with_opts()<a class="headerlink" href="#mongoc-gridfs-find-with-opts" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_gridfs_file_list_t</span> <span class="o">*</span>
-<span class="nf">mongoc_gridfs_find_with_opts</span> <span class="p">(</span><span class="n">mongoc_gridfs_t</span> <span class="o">*</span><span class="n">gridfs</span><span class="p">,</span>
-                              <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">filter</span><span class="p">,</span>
-                              <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">)</span> <span class="n">BSON_GNUC_WARN_UNUSED_RESULT</span><span class="p">;</span>
+  <section id="mongoc-gridfs-find-with-opts">
+<h1>mongoc_gridfs_find_with_opts()<a class="headerlink" href="#mongoc-gridfs-find-with-opts" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_gridfs_file_list_t</span><span class="w"> </span><span class="o">*</span><span class="w"></span>
+<span class="nf">mongoc_gridfs_find_with_opts</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_gridfs_t</span><span class="w"> </span><span class="o">*</span><span class="n">gridfs</span><span class="p">,</span><span class="w"></span>
+<span class="w">                              </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">filter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                              </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">)</span><span class="w"> </span><span class="n">BSON_GNUC_WARN_UNUSED_RESULT</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">gridfs</span></code>: A <a class="symbol reference internal" href="mongoc_gridfs_t.html"><span class="doc">mongoc_gridfs_t</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">filter</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the query to execute.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> query options, including sort order and which fields to return. Can be <code class="docutils literal notranslate"><span class="pre">NULL</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">filter</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the query to execute.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> query options, including sort order and which fields to return. Can be <code class="docutils literal notranslate"><span class="pre">NULL</span></code>.</p></li>
 </ul>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>Finds all gridfs files matching <code class="docutils literal notranslate"><span class="pre">filter</span></code>. You can iterate the matched gridfs files with the resulting file list.</p>
 <p>See <a class="symbol reference internal" href="mongoc_collection_find_with_opts.html"><span class="doc">mongoc_collection_find_with_opts()</span></a> for a description of the <code class="docutils literal notranslate"><span class="pre">filter</span></code> and <code class="docutils literal notranslate"><span class="pre">opts</span></code> parameters.</p>
 <p>This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
 If <code class="docutils literal notranslate"><span class="pre">retryreads</span></code> is false in the URI (see <a class="symbol reference internal" href="mongoc_uri_t.html"><span class="doc">mongoc_uri_t</span></a>) the retry behavior does not apply.</p>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>A newly allocated <a class="symbol reference internal" href="mongoc_gridfs_file_list_t.html"><span class="doc">mongoc_gridfs_file_list_t</span></a> that should be freed with <a class="symbol reference internal" href="mongoc_gridfs_file_list_destroy.html"><span class="doc">mongoc_gridfs_file_list_destroy()</span></a> when no longer in use.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -108,6 +113,7 @@ If <code class="docutils literal notranslate"><span class="pre">retryreads</span
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -183,7 +189,7 @@ If <code class="docutils literal notranslate"><span class="pre">retryreads</span
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

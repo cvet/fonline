@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_t \- bson_iter_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_t \- bson_iter_t
 .sp
 BSON Document Iterator
 .SH SYNOPSIS
@@ -100,9 +100,9 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-\fBbson_iter_t\fP is a structure used to iterate through the elements of a \fBbson_t\fP\&. It is meant to be used on the stack and can be discarded at any time as it contains no external allocation. The contents of the structure should be considered private and may change between releases, however the structure size will not change.
+\fI\%bson_iter_t\fP is a structure used to iterate through the elements of a \fI\%bson_t\fP\&. It is meant to be used on the stack and can be discarded at any time as it contains no external allocation. The contents of the structure should be considered private and may change between releases, however the structure size will not change.
 .sp
-The \fBbson_t\fP \fIMUST\fP be valid for the lifetime of the iter and it is an error to modify the \fBbson_t\fP while using the iter.
+The \fI\%bson_t\fP \fIMUST\fP be valid for the lifetime of the iter and it is an error to modify the \fI\%bson_t\fP while using the iter.
 .SH EXAMPLES
 .INDENT 0.0
 .INDENT 3.5
@@ -113,7 +113,7 @@ bson_iter_t iter;
 
 if (bson_iter_init (&iter, my_bson_doc)) {
    while (bson_iter_next (&iter)) {
-      printf ("Found a field named: %s\en", bson_iter_key (&iter));
+      printf (\(dqFound a field named: %s\en\(dq, bson_iter_key (&iter));
    }
 }
 .ft P
@@ -127,8 +127,8 @@ if (bson_iter_init (&iter, my_bson_doc)) {
 .ft C
 bson_iter_t iter;
 
-if (bson_iter_init (&iter, my_bson_doc) && bson_iter_find (&iter, "my_field")) {
-   printf ("Found the field named: %s\en", bson_iter_key (&iter));
+if (bson_iter_init (&iter, my_bson_doc) && bson_iter_find (&iter, \(dqmy_field\(dq)) {
+   printf (\(dqFound the field named: %s\en\(dq, bson_iter_key (&iter));
 }
 .ft P
 .fi
@@ -142,11 +142,11 @@ if (bson_iter_init (&iter, my_bson_doc) && bson_iter_find (&iter, "my_field")) {
 bson_iter_t iter;
 bson_iter_t sub_iter;
 
-if (bson_iter_init_find (&iter, my_bson_doc, "mysubdoc") &&
+if (bson_iter_init_find (&iter, my_bson_doc, \(dqmysubdoc\(dq) &&
     (BSON_ITER_HOLDS_DOCUMENT (&iter) || BSON_ITER_HOLDS_ARRAY (&iter)) &&
     bson_iter_recurse (&iter, &sub_iter)) {
    while (bson_iter_next (&sub_iter)) {
-      printf ("Found key \e"%s\e" in sub document.\en", bson_iter_key (&sub_iter));
+      printf (\(dqFound key \e\(dq%s\e\(dq in sub document.\en\(dq, bson_iter_key (&sub_iter));
    }
 }
 .ft P
@@ -161,8 +161,8 @@ if (bson_iter_init_find (&iter, my_bson_doc, "mysubdoc") &&
 bson_iter_t iter;
 
 if (bson_iter_init (&iter, my_doc) &&
-    bson_iter_find_descendant (&iter, "a.b.c.d", &sub_iter)) {
-   printf ("The type of a.b.c.d is: %d\en", (int) bson_iter_type (&sub_iter));
+    bson_iter_find_descendant (&iter, \(dqa.b.c.d\(dq, &sub_iter)) {
+   printf (\(dqThe type of a.b.c.d is: %d\en\(dq, (int) bson_iter_type (&sub_iter));
 }
 .ft P
 .fi

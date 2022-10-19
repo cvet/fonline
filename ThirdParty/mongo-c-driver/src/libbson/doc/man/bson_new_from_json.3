@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_NEW_FROM_JSON" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_new_from_json \- bson_new_from_json()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_NEW_FROM_JSON" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_new_from_json \- bson_new_from_json()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,17 +49,17 @@ bson_new_from_json (const uint8_t *data, ssize_t len, bson_error_t *error);
 .IP \(bu 2
 \fBlen\fP: The length of \fBdata\fP in bytes excluding a trailing \fB\e0\fP or \-1 to determine the length with \fBstrlen()\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_new_from_json()\fP function allocates and initialize a new \fBbson_t\fP by parsing the JSON found in \fBdata\fP\&. Only a single JSON object may exist in \fBdata\fP or an error will be set and NULL returned.
+The \fBbson_new_from_json()\fP function allocates and initialize a new \fI\%bson_t\fP by parsing the JSON found in \fBdata\fP\&. Only a single JSON object may exist in \fBdata\fP or an error will be set and NULL returned.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
 .SH RETURNS
 .sp
-A newly allocated \fBbson_t\fP if successful, otherwise NULL and \fBerror\fP is set.
+A newly allocated \fI\%bson_t\fP if successful, otherwise NULL and \fBerror\fP is set.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

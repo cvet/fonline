@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_TRY_POP" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_try_pop \- mongoc_client_pool_try_pop()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_TRY_POP" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_try_pop \- mongoc_client_pool_try_pop()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,21 +37,22 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_client_t *
-mongoc_client_pool_try_pop (mongoc_client_pool_t *pool);
+mongoc_client_pool_try_pop (mongoc_client_pool_t *pool)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-This function is identical to \fBmongoc_client_pool_pop()\fP except it will return \fBNULL\fP instead of blocking for a client to become available.
+This function is identical to \fI\%mongoc_client_pool_pop()\fP except it will return \fBNULL\fP instead of blocking for a client to become available.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_client_t\fP if one is immediately available, otherwise \fBNULL\fP\&.
+A \fI\%mongoc_client_t\fP if one is immediately available, otherwise \fBNULL\fP\&.
 .SH THREAD SAFETY
 .sp
 This function is safe to call from multiple threads.

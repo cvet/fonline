@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_BUCKET_UPLOAD_FROM_STREAM" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_bucket_upload_from_stream \- mongoc_gridfs_bucket_upload_from_stream()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_BUCKET_UPLOAD_FROM_STREAM" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_bucket_upload_from_stream \- mongoc_gridfs_bucket_upload_from_stream()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,11 +50,11 @@ mongoc_gridfs_bucket_upload_from_stream (mongoc_gridfs_bucket_t *bucket,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbucket\fP: A \fBmongoc_gridfs_bucket_t\fP\&.
+\fBbucket\fP: A \fI\%mongoc_gridfs_bucket_t\fP\&.
 .IP \(bu 2
 \fBfilename\fP: The name of the file to create.
 .IP \(bu 2
-\fBsource\fP: A \fBmongoc_stream_t\fP used as the source of the data to upload.
+\fBsource\fP: A \fI\%mongoc_stream_t\fP used as the source of the data to upload.
 .IP \(bu 2
 \fBopts\fP: A \fI\%bson_t\fP or \fBNULL\fP\&.
 .IP \(bu 2
@@ -73,10 +73,10 @@ mongoc_gridfs_bucket_upload_from_stream (mongoc_gridfs_bucket_t *bucket,
 .SH DESCRIPTION
 .sp
 Reads from the \fBsource\fP stream and writes to a new file in GridFS. The file id is generated automatically.
-To specify an explicit file id, use \fBmongoc_gridfs_bucket_upload_from_stream_with_id()\fP\&.
+To specify an explicit file id, use \fI\%mongoc_gridfs_bucket_upload_from_stream_with_id()\fP\&.
 .sp
-Reads from the \fBsource\fP stream using \fBmongoc_stream_read()\fP until the return value indicates end\-of\-file.
-The \fBsource\fP stream is not closed after calling \fBmongoc_gridfs_bucket_upload_from_stream()\fP; call \fBmongoc_stream_close()\fP after.
+Reads from the \fBsource\fP stream using \fI\%mongoc_stream_read()\fP until the return value indicates end\-of\-file.
+The \fBsource\fP stream is not closed after calling \fI\%mongoc_gridfs_bucket_upload_from_stream()\fP; call \fI\%mongoc_stream_close()\fP after.
 .SH RETURNS
 .sp
 True if the operation succeeded. False otherwise and sets \fBerror\fP\&.
@@ -85,7 +85,7 @@ True if the operation succeeded. False otherwise and sets \fBerror\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_stream_file_new\fP and \fBmongoc_stream_file_new_for_path\fP, which can be used to create a source stream from a file.
+\fI\%mongoc_stream_file_new()\fP and \fI\%mongoc_stream_file_new_for_path()\fP, which can be used to create a source stream from a file.
 .fi
 .sp
 .UNINDENT

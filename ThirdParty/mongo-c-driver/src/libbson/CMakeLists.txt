@@ -10,6 +10,8 @@ if (ENABLE_TESTS AND NOT MONGOC_ENABLE_STATIC_BUILD)
    )
 endif ()
 
+include (MongoC-Warnings)
+
 set (BSON_OUTPUT_BASENAME "bson" CACHE STRING "Output bson library base name")
 
 include (CheckFunctionExists)
@@ -33,7 +35,7 @@ set (BSON_API_VERSION 1.0)
 set (CPACK_PACKAGE_VERSION_MAJOR ${BSON_MAJOR_VERSION})
 set (CPACK_PACKAGE_VERSION_MINOR ${BSON_MINOR_VERSION})
 
-#! include (CPack)
+include (CPack)
 TEST_BIG_ENDIAN (BSON_BIG_ENDIAN)
 
 #librt needed on linux for clock_gettime
@@ -50,11 +52,6 @@ if (NOT BSON_HAVE_SNPRINTF)
    set (BSON_HAVE_SNPRINTF 0)
 else ()
    set (BSON_HAVE_SNPRINTF 1)
-endif ()
-
-CHECK_FUNCTION_EXISTS (reallocf BSON_HAVE_REALLOCF)
-if (NOT BSON_HAVE_REALLOCF)
-   set (BSON_HAVE_REALLOCF 0)
 endif ()
 
 CHECK_STRUCT_HAS_MEMBER ("struct timespec" tv_sec time.h BSON_HAVE_TIMESPEC)
@@ -100,11 +97,11 @@ else ()
    set (BSON_HAVE_STRLCPY 1)
 endif ()
 
+CHECK_INCLUDE_FILE (stdbool.h BSON_HAVE_STDBOOL_H)
+
 if (MSVC)
    set (BSON_HAVE_CLOCK_GETTIME 0)
-   set (BSON_HAVE_STDBOOL_H 0)
    set (BSON_HAVE_STRNLEN 0)
-   set (BSON_HAVE_SYSCALL_TID 0)
 else ()
    check_symbol_exists (clock_gettime time.h BSON_HAVE_CLOCK_GETTIME)
    if (NOT BSON_HAVE_CLOCK_GETTIME)
@@ -114,15 +111,6 @@ else ()
    if (NOT BSON_HAVE_STRNLEN)
       set (BSON_HAVE_STRNLEN 0)
    endif ()
-   CHECK_INCLUDE_FILE (stdbool.h BSON_HAVE_STDBOOL_H)
-   if (NOT BSON_HAVE_STDBOOL_H)
-      set (BSON_HAVE_STDBOOL_H 0)
-   endif ()
-   CHECK_SYMBOL_EXISTS (SYS_gettid sys/syscall.h BSON_HAVE_SYSCALL_TID)
-   check_symbol_exists (syscall unistd.h _TMP_HAVE_SYSCALL)
-   if (NOT BSON_HAVE_SYSCALL_TID OR NOT _TMP_HAVE_SYSCALL OR APPLE OR ANDROID)
-      set (BSON_HAVE_SYSCALL_TID 0)
-   endif ()
 endif ()
 
 if (BSON_BIG_ENDIAN)
@@ -130,8 +118,6 @@ if (BSON_BIG_ENDIAN)
 else ()
    set (BSON_BYTE_ORDER 1234)
 endif ()
-
-include (CheckAtomics)
 
 configure_file (
    "${PROJECT_SOURCE_DIR}/src/bson/bson-config.h.in"
@@ -195,6 +181,7 @@ set (HEADERS
    ${PROJECT_SOURCE_DIR}/src/bson/bcon.h
    ${PROJECT_SOURCE_DIR}/src/bson/bson-atomic.h
    ${PROJECT_SOURCE_DIR}/src/bson/bson-clock.h
+   ${PROJECT_SOURCE_DIR}/src/bson/bson-cmp.h
    ${PROJECT_SOURCE_DIR}/src/bson/bson-compat.h
    ${PROJECT_SOURCE_DIR}/src/bson/bson-context.h
    ${PROJECT_SOURCE_DIR}/src/bson/bson-decimal128.h
@@ -229,7 +216,7 @@ target_compile_definitions (bson_shared
    PRIVATE
       BSON_COMPILATION
       JSONSL_PARSE_NAN
-      COMMON_PREFIX_=_bson_common
+      MCOMMON_NAME_PREFIX=_bson_mcommon
 )
 # Several directories in the source and build trees contain headers we would like
 # include via relative reference, but they all end up in the same install path
@@ -299,7 +286,7 @@ if (MONGOC_ENABLE_STATIC_BUILD)
       PRIVATE
          BSON_COMPILATION
          JSONSL_PARSE_NAN
-         COMMON_PREFIX_=_bson_common
+         MCOMMON_NAME_PREFIX=_bson_mcommon
    )
    if (NOT WIN32 AND ENABLE_PIC)
       target_compile_options (bson_static PUBLIC -fPIC)
@@ -442,11 +429,13 @@ include (CMakePackageConfigHelpers)
 set (INCLUDE_INSTALL_DIRS "${BSON_HEADER_INSTALL_DIR}")
 set (LIBRARY_INSTALL_DIRS ${CMAKE_INSTALL_LIBDIR})
 
+if(FALSE) #!
 write_basic_package_version_file (
    "${CMAKE_CURRENT_BINARY_DIR}/bson/bson-${BSON_API_VERSION}-config-version.cmake"
    VERSION ${BSON_VERSION}
    COMPATIBILITY AnyNewerVersion
 )
+endif() #!
 
 if(FALSE) #!
 export (EXPORT bson-targets

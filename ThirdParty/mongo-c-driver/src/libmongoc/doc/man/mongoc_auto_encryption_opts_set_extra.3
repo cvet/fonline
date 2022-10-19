@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_EXTRA" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_auto_encryption_opts_set_extra \- mongoc_auto_encryption_opts_set_extra()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_EXTRA" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_auto_encryption_opts_set_extra \- mongoc_auto_encryption_opts_set_extra()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,7 +46,7 @@ mongoc_auto_encryption_opts_set_extra (mongoc_auto_encryption_opts_t *opts,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: The \fBmongoc_auto_encryption_opts_t\fP
+\fBopts\fP: The \fI\%mongoc_auto_encryption_opts_t\fP
 .IP \(bu 2
 \fBextra\fP: A \fI\%bson_t\fP of additional options.
 .UNINDENT
@@ -54,13 +54,52 @@ mongoc_auto_encryption_opts_set_extra (mongoc_auto_encryption_opts_t *opts,
 \fBextra\fP is a \fI\%bson_t\fP containing any of the following optional fields:
 .INDENT 0.0
 .IP \(bu 2
-\fBmongocryptdURI\fP set to a URI to connect to the mongocryptd process (default is "mongodb://localhost:27027").
+\fBmongocryptdURI\fP set to a URI to connect to the mongocryptd process (default is \(dqmongodb://localhost:27020\(dq).
 .IP \(bu 2
 \fBmongocryptdBypassSpawn\fP set to true to prevent the driver from spawning the mongocryptd process (default behavior is to spawn).
 .IP \(bu 2
 \fBmongocryptdSpawnPath\fP set to a path (with trailing slash) to search for mongocryptd (defaults to empty string and uses default system paths).
 .IP \(bu 2
-\fBmongocryptdSpawnArgs\fP set to an array of string arguments to pass to \fBmongocryptd\fP when spawning (defaults to \fB[ "\-\-idleShutdownTimeoutSecs=60" ]\fP).
+\fBmongocryptdSpawnArgs\fP set to an array of string arguments to pass to \fBmongocryptd\fP when spawning (defaults to \fB[ \(dq\-\-idleShutdownTimeoutSecs=60\(dq ]\fP).
+.IP \(bu 2
+\fBcryptSharedLibPath\fP \- Set a filepath string referring to a \fBcrypt_shared\fP
+library file. Unset by default.
+.INDENT 2.0
+.IP \(bu 2
+If not set (the default), \fBlibmongocrypt\fP will attempt to load
+\fBcrypt_shared\fP using the host system\(aqs default dynamic\-library\-search
+system.
+.IP \(bu 2
+If set, the given path should identify the \fBcrypt_shared\fP dynamic library
+file itself, not the directory that contains it.
+.IP \(bu 2
+If the given path is a relative path and the first path component is
+\fB$ORIGIN\fP, the \fB$ORIGIN\fP component will be replaced with the absolute
+path to the directory containing the \fBlibmongocrypt\fP library in use by the
+application.
+.sp
+\fBNOTE:\fP
+.INDENT 2.0
+.INDENT 3.5
+No other \fBRPATH\fP/\fBRUNPATH\fP\-style substitutions are available.
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+If the given path is a relative path, the path will be resolved relative to
+the working directory of the operating system process.
+.IP \(bu 2
+If this option is set and \fBlibmongocrypt\fP fails to load \fBcrypt_shared\fP from the
+given filepath, \fBlibmongocrypt\fP will fail to initialize and will not
+attempt to search for \fBcrypt_shared\fP in any other locations.
+.UNINDENT
+.IP \(bu 2
+\fBcryptSharedLibRequired\fP \- If set to \fBtrue\fP, and \fBlibmongocrypt\fP fails
+to load a \fBcrypt_shared\fP library, initialization of auto\-encryption will
+fail immediately and will not attempt to spawn \fBmongocryptd\fP\&.
+.sp
+If set to \fBfalse\fP (the default), \fBcryptSharedLibPath\fP is not set, \fIand\fP
+\fBlibmongocrypt\fP fails to load \fBcrypt_shared\fP, then \fBlibmongocrypt\fP will
+proceed without \fBcrypt_shared\fP and fall back to using \fBmongocryptd\fP\&.
 .UNINDENT
 .sp
 For more information, see the \fI\%Client\-Side Encryption specification\fP\&.
@@ -69,11 +108,11 @@ For more information, see the \fI\%Client\-Side Encryption specification\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP
 .fi
 .sp
 .UNINDENT

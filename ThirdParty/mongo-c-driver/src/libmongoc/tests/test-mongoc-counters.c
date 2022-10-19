@@ -26,31 +26,36 @@
  * those were superseded by write commands in 2.6. */
 #ifdef MONGOC_ENABLE_SHM_COUNTERS
 /* define a count function for each counter. */
-#define COUNTER(id, category, name, description)                \
-   uint32_t prev_##id;                                          \
-   uint32_t count_##id (void)                                   \
-   {                                                            \
-      uint32_t _sum = 0;                                        \
-      uint32_t _i;                                              \
-      for (_i = 0; _i < _mongoc_get_cpu_count (); _i++) {       \
-         _sum += __mongoc_counter_##id.cpus[_i]                 \
-                    .slots[COUNTER_##id % SLOTS_PER_CACHELINE]; \
-      }                                                         \
-      return _sum;                                              \
+#define COUNTER(id, category, name, description)                               \
+   int32_t prev_##id;                                                          \
+   int32_t count_##id (void)                                                   \
+   {                                                                           \
+      int32_t _sum = 0;                                                        \
+      uint32_t _i;                                                             \
+      for (_i = 0; _i < _mongoc_get_cpu_count (); _i++) {                      \
+         const int64_t *counter =                                              \
+            &BSON_CONCAT (__mongoc_counter_, id)                               \
+                .cpus[_i]                                                      \
+                .slots[BSON_CONCAT (COUNTER_, id) % SLOTS_PER_CACHELINE];      \
+         _sum += bson_atomic_int64_fetch (counter, bson_memory_order_seq_cst); \
+      }                                                                        \
+      return _sum;                                                             \
    }
 #include "mongoc/mongoc-counters.defs"
 #undef COUNTER
 
-#define RESET(id) prev_##id = count_##id ();
+#define RESET(id)               \
+   bson_atomic_int32_exchange ( \
+      &prev_##id, count_##id (), bson_memory_order_seq_cst)
 
 #define DIFF_AND_RESET(id, cmp, expected)     \
    do {                                       \
-      uint32_t old_count = prev_##id;         \
-      uint32_t new_count = count_##id ();     \
-      uint32_t _diff = new_count - old_count; \
+      int32_t old_count = prev_##id;          \
+      int32_t new_count = count_##id ();      \
+      int32_t _diff = new_count - old_count;  \
       ASSERT_CMPINT32 (_diff, cmp, expected); \
-      RESET (id)                              \
-   } while (0);
+      RESET (id);                             \
+   } while (0)
 
 static void
 reset_all_counters ()
@@ -124,9 +129,11 @@ static void
 test_counters_op_msg (void *ctx)
 {
    mongoc_collection_t *coll;
-   mongoc_cursor_t *exhaust_cursor;
+   mongoc_cursor_t *cursor;
    const bson_t *bson;
    mongoc_client_t *client;
+
+   BSON_UNUSED (ctx);
 
    client = _client_new_disable_ss (false);
    _ping (client);
@@ -139,22 +146,15 @@ test_counters_op_msg (void *ctx)
    DIFF_AND_RESET (op_egress_total, ==, 4);
    DIFF_AND_RESET (op_ingress_msg, ==, 4);
    DIFF_AND_RESET (op_ingress_total, ==, 4);
-   /* an exhaust cursor still must use an OP_QUERY find. */
-   exhaust_cursor = mongoc_collection_find (coll,
-                                            MONGOC_QUERY_EXHAUST,
-                                            0 /* skip */,
-                                            0 /* limit */,
-                                            1 /* batch size */,
-                                            tmp_bson ("{}"),
-                                            NULL /* fields */,
-                                            NULL /* read prefs */);
-   while (mongoc_cursor_next (exhaust_cursor, &bson))
+   cursor =
+      mongoc_collection_find_with_opts (coll, tmp_bson ("{}"), NULL, NULL);
+   while (mongoc_cursor_next (cursor, &bson))
       ;
-   mongoc_cursor_destroy (exhaust_cursor);
-   DIFF_AND_RESET (op_egress_msg, ==, 0);
-   DIFF_AND_RESET (op_ingress_msg, ==, 0);
-   DIFF_AND_RESET (op_egress_query, ==, 1);
-   DIFF_AND_RESET (op_ingress_reply, >, 0);
+   mongoc_cursor_destroy (cursor);
+   DIFF_AND_RESET (op_egress_msg, >, 0);
+   DIFF_AND_RESET (op_ingress_msg, >, 0);
+   DIFF_AND_RESET (op_egress_query, ==, 0);
+   DIFF_AND_RESET (op_ingress_reply, ==, 0);
    DIFF_AND_RESET (op_egress_total, >, 0);
    DIFF_AND_RESET (op_ingress_total, >, 0);
    mongoc_collection_destroy (coll);
@@ -167,6 +167,8 @@ test_counters_op_compressed (void *ctx)
 {
    mongoc_collection_t *coll;
    mongoc_client_t *client;
+
+   BSON_UNUSED (ctx);
 
    client = _client_new_disable_ss (true);
    _ping (client);
@@ -184,83 +186,6 @@ test_counters_op_compressed (void *ctx)
    DIFF_AND_RESET (op_ingress_msg, ==, 4);
    DIFF_AND_RESET (op_ingress_compressed, ==, 4);
    DIFF_AND_RESET (op_ingress_total, ==, 8);
-   mongoc_collection_destroy (coll);
-   mongoc_client_destroy (client);
-}
-
-
-static void
-test_counters_op_query (void *ctx)
-{
-   mongoc_collection_t *coll;
-   mongoc_cursor_t *cursor;
-   const bson_t *bson;
-   mongoc_client_t *client;
-
-   client = _client_new_disable_ss (false);
-   /* with WIRE_VERSION < 6, commands are sent over OP_QUERY with db.$cmd. */
-   _ping (client);
-   DIFF_AND_RESET (op_egress_query, ==, 1);
-   DIFF_AND_RESET (op_egress_total, ==, 1);
-   DIFF_AND_RESET (op_ingress_reply, ==, 1);
-   DIFF_AND_RESET (op_ingress_total, ==, 1);
-   coll = _drop_and_populate_coll (client);
-   DIFF_AND_RESET (op_egress_query, ==, 4);
-   DIFF_AND_RESET (op_egress_total, ==, 4);
-   DIFF_AND_RESET (op_ingress_reply, ==, 4);
-   DIFF_AND_RESET (op_ingress_total, ==, 4);
-   cursor = mongoc_collection_find_with_opts (
-      coll, tmp_bson ("{}"), tmp_bson ("{'batchSize': 1}"), NULL);
-   while (mongoc_cursor_next (cursor, &bson))
-      ;
-   mongoc_cursor_destroy (cursor);
-   DIFF_AND_RESET (op_egress_query, >, 0);
-   DIFF_AND_RESET (op_ingress_reply, >, 0);
-   DIFF_AND_RESET (op_egress_total, >, 0);
-   DIFF_AND_RESET (op_ingress_total, >, 0);
-   mongoc_collection_destroy (coll);
-   mongoc_client_destroy (client);
-}
-
-
-static void
-test_counters_op_getmore_killcursors (void *ctx)
-{
-   mongoc_collection_t *coll;
-   mongoc_cursor_t *cursor;
-   const bson_t *bson;
-   mongoc_client_t *client;
-
-   client = _client_new_disable_ss (false);
-   coll = _drop_and_populate_coll (client);
-   DIFF_AND_RESET (op_egress_query, ==, 4);
-   DIFF_AND_RESET (op_egress_total, ==, 4);
-   DIFF_AND_RESET (op_ingress_reply, ==, 4);
-   DIFF_AND_RESET (op_ingress_total, ==, 4);
-   /* do *not* use batchSize 1 here. that returns one doc and closes. */
-   cursor = mongoc_collection_find_with_opts (
-      coll, tmp_bson ("{}"), tmp_bson ("{'batchSize': 2}"), NULL);
-   while (mongoc_cursor_next (cursor, &bson))
-      ;
-   mongoc_cursor_destroy (cursor);
-   DIFF_AND_RESET (op_egress_query, ==, 1);
-   DIFF_AND_RESET (op_ingress_reply, ==, 2);
-   DIFF_AND_RESET (op_egress_total, ==, 2);
-   DIFF_AND_RESET (op_ingress_total, ==, 2);
-   DIFF_AND_RESET (op_egress_getmore, ==, 1);
-   DIFF_AND_RESET (op_egress_killcursors, ==, 0);
-   cursor = mongoc_collection_find_with_opts (
-      coll, tmp_bson ("{}"), tmp_bson ("{'batchSize': 2}"), NULL);
-   /* only iterate once so the server keeps the cursor alive and cursor_destroy
-    * sends a killCursors cmd. */
-   BSON_ASSERT (mongoc_cursor_next (cursor, &bson));
-   mongoc_cursor_destroy (cursor);
-   DIFF_AND_RESET (op_egress_query, ==, 1);
-   DIFF_AND_RESET (op_ingress_reply, ==, 1);
-   DIFF_AND_RESET (op_egress_total, ==, 2);
-   DIFF_AND_RESET (op_ingress_total, ==, 1);
-   DIFF_AND_RESET (op_egress_getmore, ==, 0);
-   DIFF_AND_RESET (op_egress_killcursors, ==, 1);
    mongoc_collection_destroy (coll);
    mongoc_client_destroy (client);
 }
@@ -355,6 +280,8 @@ test_counters_streams (void *ctx)
    const int TIMEOUT = 500;
    mongoc_gridfs_file_opt_t gridfs_opts = {0};
    bool ret;
+
+   BSON_UNUSED (ctx);
 
    /* test ingress and egress of a stream to a server. */
    _ping (client);
@@ -472,6 +399,8 @@ test_counters_auth (void *ctx)
    bool ret;
    bson_error_t err;
 
+   BSON_UNUSED (ctx);
+
    uri = mongoc_uri_new (uri_str);
    mongoc_uri_set_option_as_int32 (uri, MONGOC_URI_HEARTBEATFREQUENCYMS, 99999);
    mongoc_uri_set_option_as_int32 (
@@ -563,7 +492,6 @@ test_counters_install (TestSuite *suite)
                       test_counters_op_msg,
                       NULL,
                       NULL,
-                      test_framework_skip_if_max_wire_version_less_than_6,
                       test_framework_skip_if_auth,
                       test_framework_skip_if_compressors);
    TestSuite_AddFull (suite,
@@ -571,27 +499,7 @@ test_counters_install (TestSuite *suite)
                       test_counters_op_compressed,
                       NULL,
                       NULL,
-                      test_framework_skip_if_max_wire_version_less_than_6,
                       test_framework_skip_if_no_compressors,
-                      test_framework_skip_if_auth);
-   /* test before OP_MSG. */
-   TestSuite_AddFull (suite,
-                      "/counters/op_query",
-                      test_counters_op_query,
-                      NULL,
-                      NULL,
-                      test_framework_skip_if_max_wire_version_less_than_4,
-                      test_framework_skip_if_max_wire_version_more_than_5,
-                      test_framework_skip_if_compressors,
-                      test_framework_skip_if_auth);
-   /* test before the getMore and killCursors commands were introduced. */
-   TestSuite_AddFull (suite,
-                      "/counters/op_getmore_killcursors",
-                      test_counters_op_getmore_killcursors,
-                      NULL,
-                      NULL,
-                      test_framework_skip_if_max_wire_version_more_than_3,
-                      test_framework_skip_if_compressors,
                       test_framework_skip_if_auth);
    TestSuite_AddLive (suite, "/counters/cursors", test_counters_cursors);
    TestSuite_AddLive (suite, "/counters/clients", test_counters_clients);

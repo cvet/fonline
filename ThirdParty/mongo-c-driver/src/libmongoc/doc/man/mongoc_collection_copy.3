@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_COPY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_copy \- mongoc_collection_copy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_COPY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_copy \- mongoc_collection_copy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_collection_t *
-mongoc_collection_copy (mongoc_collection_t *collection);
+mongoc_collection_copy (mongoc_collection_t *collection)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,16 +46,16 @@ mongoc_collection_copy (mongoc_collection_t *collection);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Performs a deep copy of the \fBcollection\fP struct and its configuration. Useful if you intend to call \fBmongoc_collection_set_write_concern\fP, \fBmongoc_collection_set_read_prefs\fP, or \fBmongoc_collection_set_read_concern\fP, and want to preserve an unaltered copy of the struct.
+Performs a deep copy of the \fBcollection\fP struct and its configuration. Useful if you intend to call \fI\%mongoc_collection_set_write_concern()\fP, \fI\%mongoc_collection_set_read_prefs()\fP, or \fI\%mongoc_collection_set_read_concern()\fP, and want to preserve an unaltered copy of the struct.
 .sp
 This function does \fInot\fP copy the contents of the collection on the MongoDB server.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_collection_t\fP that should be freed with \fBmongoc_collection_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_collection_t\fP that should be freed with \fI\%mongoc_collection_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

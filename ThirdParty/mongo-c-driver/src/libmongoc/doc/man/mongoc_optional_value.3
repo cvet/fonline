@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_OPTIONAL_VALUE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_optional_value \- mongoc_optional_value()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_OPTIONAL_VALUE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_optional_value \- mongoc_optional_value()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,15 +43,15 @@ mongoc_optional_value (const mongoc_optional_t *opt);
 .UNINDENT
 .UNINDENT
 .sp
-Returns the value for a \fBmongoc_optional_t\fP\&.
+Returns the value for a \fI\%mongoc_optional_t\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopt\fP: A \fBmongoc_optional_t\fP\&.
+\fBopt\fP: A \fI\%mongoc_optional_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-Returns the value that was set on the \fBmongoc_optional_t\fP\&. If no value was set, \fBfalse\fP is returned.
+Returns the value that was set on the \fI\%mongoc_optional_t\fP\&. If no value was set, \fBfalse\fP is returned.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -3,17 +3,22 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_mem_restore_vtable.html"/>
-    <title>bson_mem_restore_vtable() &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_mem_restore_vtable.html"/>
+    <title>bson_mem_restore_vtable() &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_mem_set_vtable()" href="bson_mem_set_vtable.html" />
-    <link rel="prev" title="bson_malloc0()" href="bson_malloc0.html" />
+    <link rel="prev" title="bson_aligned_alloc0()" href="bson_aligned_alloc0.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
 
@@ -28,9 +33,9 @@
           <a href="bson_mem_set_vtable.html" title="bson_mem_set_vtable()"
              accesskey="N">next</a></li>
         <li class="right" >
-          <a href="bson_malloc0.html" title="bson_malloc0()"
+          <a href="bson_aligned_alloc0.html" title="bson_aligned_alloc0()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="bson_memory.html" accesskey="U">Memory Management</a> &#187;</li> 
       </ul>
@@ -41,24 +46,24 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="bson-mem-restore-vtable">
-<h1>bson_mem_restore_vtable()<a class="headerlink" href="#bson-mem-restore-vtable" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span>
-<span class="nf">bson_mem_restore_vtable</span> <span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+  <section id="bson-mem-restore-vtable">
+<h1>bson_mem_restore_vtable()<a class="headerlink" href="#bson-mem-restore-vtable" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"></span>
+<span class="nf">bson_mem_restore_vtable</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>This function shall restore the default memory allocator to be used by Libbson.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>This function <em>MUST</em> be called at the end of the process. Failure to do so will result in memory being freed by the wrong allocator.</p>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -121,7 +126,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

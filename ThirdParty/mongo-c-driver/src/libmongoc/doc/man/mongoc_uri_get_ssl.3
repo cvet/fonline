@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_GET_SSL" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_get_ssl \- mongoc_uri_get_ssl()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_GET_SSL" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_get_ssl \- mongoc_uri_get_ssl()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,18 +52,18 @@ This function is deprecated and should not be used in new code.
 .UNINDENT
 .UNINDENT
 .sp
-Please use mongoc_uri_get_tls() instead.
+Please use \fI\%mongoc_uri_get_tls()\fP instead.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Fetches a boolean indicating if TLS was specified for use in the URI.
 .SH RETURNS
 .sp
-Returns a boolean, true indicating that TLS should be used. This returns true if \fIany\fP TLS option is specified.
+Returns a boolean, true indicating that TLS should be used. This returns true if \fIany\fP \fI\%TLS option\fP is specified.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

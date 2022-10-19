@@ -41,9 +41,11 @@
 
 BSON_BEGIN_DECLS
 
-/* protocol versions this driver can speak */
-#define WIRE_VERSION_MIN 3
-#define WIRE_VERSION_MAX 13
+/* Range of wire protocol versions this driver supports. Bumping
+ * WIRE_VERSION_MAX must be accompanied by an update to
+ * `_mongoc_wire_version_to_server_version`. */
+#define WIRE_VERSION_MIN 6  /* a.k.a. minWireVersion */
+#define WIRE_VERSION_MAX 17 /* a.k.a. maxWireVersion */
 
 /* first version that supported "find" and "getMore" commands */
 #define WIRE_VERSION_FIND_CMD 4
@@ -96,6 +98,8 @@ BSON_BEGIN_DECLS
 #define WIRE_VERSION_5_0 13
 /* first version to support snapshot reads */
 #define WIRE_VERSION_SNAPSHOT_READS 13
+/* version corresponding to server 5.1 release */
+#define WIRE_VERSION_5_1 14
 
 struct _mongoc_collection_t;
 
@@ -154,14 +158,14 @@ BSON_STATIC_ASSERT2 (mongoc_cmd_rw,
  * There is no reason these should be in mongoc-client. */
 #define MONGOC_RR_DEFAULT_BUFFER_SIZE 1024
 bool
-_mongoc_client_get_rr (const char *service,
+_mongoc_client_get_rr (const char *hostname,
                        mongoc_rr_type_t rr_type,
                        mongoc_rr_data_t *rr_data,
                        size_t initial_buffer_size,
                        bson_error_t *error);
 
 mongoc_client_t *
-_mongoc_client_new_from_uri (mongoc_topology_t *topology);
+_mongoc_client_new_from_topology (mongoc_topology_t *topology);
 
 bool
 _mongoc_client_set_apm_callbacks_private (mongoc_client_t *client,
@@ -240,6 +244,13 @@ mongoc_client_connect (bool buffered,
                        const mongoc_uri_t *uri,
                        const mongoc_host_list_t *host,
                        bson_error_t *error);
+
+
+/* Returns true if a versioned server API has been selected,
+ * otherwise returns false. */
+bool
+mongoc_client_uses_server_api (const mongoc_client_t *client);
+
 BSON_END_DECLS
 
 #endif /* MONGOC_CLIENT_PRIVATE_H */

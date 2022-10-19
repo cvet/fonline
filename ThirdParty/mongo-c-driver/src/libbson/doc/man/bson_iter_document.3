@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_DOCUMENT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_document \- bson_iter_document()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_DOCUMENT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_document \- bson_iter_document()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,7 +50,7 @@ bson_iter_document (const bson_iter_t *iter,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
 \fBdocument_len\fP: A location for the length of the document in bytes.
 .IP \(bu 2
@@ -58,7 +58,7 @@ bson_iter_document (const bson_iter_t *iter,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_iter_document()\fP function shall retrieve the raw buffer of a sub\-document from \fBiter\fP\&. \fBiter\fP \fIMUST\fP be on an element that is of type BSON_TYPE_DOCUMENT. This can be verified with \fBbson_iter_type()\fP or the \fBBSON_ITER_HOLDS_DOCUMENT()\fP macro.
+The \fBbson_iter_document()\fP function shall retrieve the raw buffer of a sub\-document from \fBiter\fP\&. \fBiter\fP \fIMUST\fP be on an element that is of type BSON_TYPE_DOCUMENT. This can be verified with \fI\%bson_iter_type()\fP or the \fBBSON_ITER_HOLDS_DOCUMENT()\fP macro.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

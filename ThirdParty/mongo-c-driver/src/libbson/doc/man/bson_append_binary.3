@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_BINARY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_binary \- bson_append_binary()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_BINARY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_binary \- bson_append_binary()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -53,7 +53,7 @@ bson_append_binary (bson_t *bson,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: The key name.
 .IP \(bu 2
@@ -67,7 +67,7 @@ bson_append_binary (bson_t *bson,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_binary()\fP function shall append a new element to \fBbson\fP containing the binary data provided.
+The \fI\%bson_append_binary()\fP function shall append a new element to \fBbson\fP containing the binary data provided.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending \fBbinary\fP grows \fBbson\fP larger than INT32_MAX.

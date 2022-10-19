@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_string_t.html"/>
-    <title>bson_string_t &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_string_t.html"/>
+    <title>bson_string_t &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_string_append()" href="bson_string_append.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_vsnprintf.html" title="bson_vsnprintf()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,28 +45,28 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="bson-string-t">
-<h1>bson_string_t<a class="headerlink" href="#bson-string-t" title="Permalink to this headline">¶</a></h1>
+  <section id="bson-string-t">
+<h1>bson_string_t<a class="headerlink" href="#bson-string-t" title="Permalink to this heading">¶</a></h1>
 <p>String Building Abstraction</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">;</span>
-   <span class="kt">uint32_t</span> <span class="n">len</span><span class="p">;</span>
-   <span class="kt">uint32_t</span> <span class="n">alloc</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">bson_string_t</span><span class="p">;</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">str</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">len</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">alloc</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">bson_string_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p><a class="symbol reference internal" href="#"><span class="doc">bson_string_t</span></a> is an abstraction for building strings. As chunks are added to the string, allocations are performed in powers of two.</p>
 <p>This API is useful if you need to build UTF-8 encoded strings.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="bson_string_append.html">bson_string_append()</a></li>
@@ -73,24 +78,24 @@
 <li class="toctree-l1"><a class="reference internal" href="bson_string_truncate.html">bson_string_truncate()</a></li>
 </ul>
 </div>
-</div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_string_t</span> <span class="o">*</span><span class="n">str</span><span class="p">;</span>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_string_t</span><span class="w"> </span><span class="o">*</span><span class="n">str</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">str</span> <span class="o">=</span> <span class="n">bson_string_new</span> <span class="p">(</span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">bson_string_append_printf</span> <span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="s">&quot;%d %s %f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&quot;some string&quot;</span><span class="p">,</span> <span class="mf">0.123</span><span class="p">);</span>
-<span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">str</span><span class="o">-&gt;</span><span class="n">str</span><span class="p">);</span>
+<span class="n">str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_string_new</span><span class="w"> </span><span class="p">(</span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<span class="n">bson_string_append_printf</span><span class="w"> </span><span class="p">(</span><span class="n">str</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;%d %s %f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;some string&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.123</span><span class="p">);</span><span class="w"></span>
+<span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">str</span><span class="o">-&gt;</span><span class="n">str</span><span class="p">);</span><span class="w"></span>
 
-<span class="n">bson_string_free</span> <span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+<span class="n">bson_string_free</span><span class="w"> </span><span class="p">(</span><span class="n">str</span><span class="p">,</span><span class="w"> </span><span class="nb">true</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>You can call <a class="symbol reference internal" href="bson_string_free.html"><span class="doc">bson_string_free()</span></a> with <code class="docutils literal notranslate"><span class="pre">false</span></code> if you would like to take ownership of <code class="docutils literal notranslate"><span class="pre">str-&gt;str</span></code>. Some APIs that do this might call <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">bson_string_free</span> <span class="pre">(str,</span> <span class="pre">false);</span></code> after building the string.</p>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -153,7 +158,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

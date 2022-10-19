@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_WRITE_CONCERN_APPEND" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_write_concern_append \- mongoc_write_concern_append()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_WRITE_CONCERN_APPEND" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_write_concern_append \- mongoc_write_concern_append()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,19 +46,19 @@ mongoc_write_concern_append (mongoc_write_concern_t *write_concern,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBwrite_concern\fP: A pointer to a \fBmongoc_write_concern_t\fP\&.
+\fBwrite_concern\fP: A pointer to a \fI\%mongoc_write_concern_t\fP\&.
 .IP \(bu 2
 \fBcommand\fP: A pointer to a \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function appends a write concern to command options. It is useful for appending a write concern to command options before passing them to \fBmongoc_client_write_command_with_opts\fP or a related function that takes an options document.
+This function appends a write concern to command options. It is useful for appending a write concern to command options before passing them to \fI\%mongoc_client_write_command_with_opts()\fP or a related function that takes an options document.
 .SH RETURNS
 .sp
 Returns true on success. If any arguments are invalid, returns false and logs an error.
 .SH EXAMPLE
 .sp
-See the example code for \fBmongoc_client_write_command_with_opts\fP\&.
+See the example code for \fI\%mongoc_client_write_command_with_opts()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

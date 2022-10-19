@@ -44,7 +44,8 @@ BSON_BEGIN_DECLS
 typedef struct _mongoc_cluster_node_t {
    mongoc_stream_t *stream;
    char *connection_address;
-   /* handshake_sd is a server description created from the handshake on the stream. */
+   /* handshake_sd is a server description created from the handshake on the
+    * stream. */
    mongoc_server_description_t *handshake_sd;
 } mongoc_cluster_node_t;
 
@@ -105,19 +106,58 @@ mongoc_cluster_try_recv (mongoc_cluster_t *cluster,
                          mongoc_server_stream_t *server_stream,
                          bson_error_t *error);
 
+/**
+ * @brief Obtain a server stream appropriate for read operations on the
+ * cluster.
+ *
+ * Returns a new stream (that must be freed) or NULL and sets an error via
+ * `error`.
+ *
+ * @note The returned stream must be released via
+ * `mongoc_server_stream_cleanup`.
+ *
+ * @note May add nodes and/or update the cluster's topology.
+ */
 mongoc_server_stream_t *
 mongoc_cluster_stream_for_reads (mongoc_cluster_t *cluster,
                                  const mongoc_read_prefs_t *read_prefs,
                                  mongoc_client_session_t *cs,
                                  bson_t *reply,
+                                 bool is_aggr_with_write,
                                  bson_error_t *error);
 
+/**
+ * @brief Obtain a server stream appropriate for write operations on the
+ * cluster.
+ *
+ * Returns a new stream (that must be freed) or NULL and sets an error via
+ * `error`.
+ *
+ * @note The returned stream must be released via `mongoc_server_stream_cleanup`
+ *
+ * @note May add nodes and/or update the cluster's topology.
+ */
 mongoc_server_stream_t *
 mongoc_cluster_stream_for_writes (mongoc_cluster_t *cluster,
                                   mongoc_client_session_t *cs,
                                   bson_t *reply,
                                   bson_error_t *error);
 
+/**
+ * @brief Obtain a server stream associated with the cluster node associated
+ * with the given server ID.
+ *
+ * Returns a new server stream (that must be freed) or NULL and sets `error`.
+ *
+ * @param server_id The ID of a server in the cluster topology.
+ * @param reconnect_ok If `true`, the server exists in the topology but is not
+ * connected, then attempt to reconnect with the server. If `false`, then only
+ * create a stream if the server is connected and ready.
+ *
+ * @note The returned stream must be released via `mongoc_server_stream_cleanup`
+ *
+ * @note May update the cluster's topology.
+ */
 mongoc_server_stream_t *
 mongoc_cluster_stream_for_server (mongoc_cluster_t *cluster,
                                   uint32_t server_id,
@@ -165,16 +205,20 @@ int
 _mongoc_cluster_get_conversation_id (const bson_t *reply);
 
 mongoc_server_stream_t *
-_mongoc_cluster_create_server_stream (mongoc_topology_t *topology,
+_mongoc_cluster_create_server_stream (const mongoc_topology_description_t *td,
                                       const mongoc_server_description_t *sd,
-                                      mongoc_stream_t *stream,
-                                      bson_error_t *error /* OUT */);
+                                      mongoc_stream_t *stream);
 
 bool
 _mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri,
                                    const mongoc_ssl_opt_t *ssl_opts,
                                    bson_t *cmd /* OUT */,
                                    bson_error_t *error /* OUT */);
+
+/* Returns true if a versioned server API has been selected,
+ * otherwise returns false. */
+bool
+mongoc_cluster_uses_server_api (const mongoc_cluster_t *cluster);
 
 #ifdef MONGOC_ENABLE_CRYPTO
 void

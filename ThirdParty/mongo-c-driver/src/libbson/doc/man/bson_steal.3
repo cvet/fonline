@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_STEAL" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_steal \- bson_steal()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_STEAL" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_steal \- bson_steal()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,17 +45,17 @@ bson_steal (bson_t *dst, bson_t *src);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdst\fP: An uninitialized \fBbson_t\fP\&.
+\fBdst\fP: An uninitialized \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBsrc\fP: A \fBbson_t\fP\&.
+\fBsrc\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Efficiently transfer the contents of \fBsrc\fP to \fBdst\fP and destroy \fBsrc\fP\&.
 .sp
-Before calling this function, \fBsrc\fP must be initialized and \fBdst\fP must be uninitialized. After this function returns successfully, \fBsrc\fP is destroyed, and \fBdst\fP is initialized and must be freed with \fBbson_destroy\fP\&.
+Before calling this function, \fBsrc\fP must be initialized and \fBdst\fP must be uninitialized. After this function returns successfully, \fBsrc\fP is destroyed, and \fBdst\fP is initialized and must be freed with \fI\%bson_destroy()\fP\&.
 .sp
-For example, if you have a higher\-level structure that wraps a \fBbson_t\fP, use \fBbson_steal\fP to transfer BSON data into it:
+For example, if you have a higher\-level structure that wraps a \fI\%bson_t\fP, use \fBbson_steal\fP to transfer BSON data into it:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -94,9 +94,9 @@ main (int argc, char *argv[])
    bson_t bson = BSON_INITIALIZER;
    bson_wrapper_t *wrapper;
 
-   BSON_APPEND_UTF8 (&bson, "key", "value");
+   BSON_APPEND_UTF8 (&bson, \(dqkey\(dq, \(dqvalue\(dq);
 
-   /* now "bson" is destroyed */
+   /* now \(dqbson\(dq is destroyed */
    wrapper = wrap_bson (&bson);
 
    /* clean up */
@@ -114,7 +114,7 @@ Returns \fBtrue\fP if \fBsrc\fP was successfully moved to \fBdst\fP, \fBfalse\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBbson_destroy_with_steal\fP, a lower\-level function that returns the raw contents of a \fBbson_t\fP\&.
+\fI\%bson_destroy_with_steal()\fP, a lower\-level function that returns the raw contents of a \fI\%bson_t\fP\&.
 .fi
 .sp
 .UNINDENT

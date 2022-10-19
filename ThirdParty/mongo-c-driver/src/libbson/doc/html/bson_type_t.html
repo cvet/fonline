@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_type_t.html"/>
-    <title>bson_type_t &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_type_t.html"/>
+    <title>bson_type_t &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_unichar_t" href="bson_unichar_t.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_subtype_t.html" title="bson_subtype_t"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,61 +45,61 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="bson-type-t">
-<h1>bson_type_t<a class="headerlink" href="#bson-type-t" title="Permalink to this headline">¶</a></h1>
+  <section id="bson-type-t">
+<h1>bson_type_t<a class="headerlink" href="#bson-type-t" title="Permalink to this heading">¶</a></h1>
 <p>BSON Type Enumeration</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
 
-<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
-   <span class="n">BSON_TYPE_EOD</span> <span class="o">=</span> <span class="mh">0x00</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_DOUBLE</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_UTF8</span> <span class="o">=</span> <span class="mh">0x02</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_DOCUMENT</span> <span class="o">=</span> <span class="mh">0x03</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_ARRAY</span> <span class="o">=</span> <span class="mh">0x04</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_BINARY</span> <span class="o">=</span> <span class="mh">0x05</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_UNDEFINED</span> <span class="o">=</span> <span class="mh">0x06</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_OID</span> <span class="o">=</span> <span class="mh">0x07</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_BOOL</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_DATE_TIME</span> <span class="o">=</span> <span class="mh">0x09</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_NULL</span> <span class="o">=</span> <span class="mh">0x0A</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_REGEX</span> <span class="o">=</span> <span class="mh">0x0B</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_DBPOINTER</span> <span class="o">=</span> <span class="mh">0x0C</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_CODE</span> <span class="o">=</span> <span class="mh">0x0D</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_SYMBOL</span> <span class="o">=</span> <span class="mh">0x0E</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_CODEWSCOPE</span> <span class="o">=</span> <span class="mh">0x0F</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_INT32</span> <span class="o">=</span> <span class="mh">0x10</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_TIMESTAMP</span> <span class="o">=</span> <span class="mh">0x11</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_INT64</span> <span class="o">=</span> <span class="mh">0x12</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_DECIMAL128</span> <span class="o">=</span> <span class="mh">0x13</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_MAXKEY</span> <span class="o">=</span> <span class="mh">0x7F</span><span class="p">,</span>
-   <span class="n">BSON_TYPE_MINKEY</span> <span class="o">=</span> <span class="mh">0xFF</span><span class="p">,</span>
-<span class="p">}</span> <span class="n">bson_type_t</span><span class="p">;</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_EOD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x00</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_DOUBLE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x01</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_UTF8</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x02</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_DOCUMENT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x03</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_ARRAY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x04</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_BINARY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x05</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_UNDEFINED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x06</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_OID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x07</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_BOOL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x08</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_DATE_TIME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x09</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_NULL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0A</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_REGEX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0B</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_DBPOINTER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0C</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_CODE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0D</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_SYMBOL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0E</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_CODEWSCOPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x0F</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_INT32</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x10</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_TIMESTAMP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x11</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_INT64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x12</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_DECIMAL128</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x13</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_MAXKEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x7F</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_TYPE_MINKEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0xFF</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">bson_type_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>The <a class="symbol reference internal" href="#"><span class="doc">bson_type_t</span></a> enumeration contains all of the types from the <a class="reference external" href="http://bsonspec.org">BSON Specification</a>. It can be used to determine the type of a field at runtime.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 </div>
-</div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_init_find</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="s">&quot;foo&quot;</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
-    <span class="p">(</span><span class="n">BSON_TYPE_INT32</span> <span class="o">==</span> <span class="n">bson_iter_type</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">)))</span> <span class="p">{</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;&#39;foo&#39; is an int32.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_init_find</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">doc</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;foo&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"></span>
+<span class="w">    </span><span class="p">(</span><span class="n">BSON_TYPE_INT32</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">bson_iter_type</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;&#39;foo&#39; is an int32.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -157,7 +162,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

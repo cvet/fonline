@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_COPY_TO" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_copy_to \- bson_copy_to()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_COPY_TO" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_copy_to \- bson_copy_to()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,15 +45,15 @@ bson_copy_to (const bson_t *src, bson_t *dst);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsrc\fP: A \fBbson_t\fP\&.
+\fBsrc\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBdst\fP: A \fBbson_t\fP\&.
+\fBdst\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_copy_to()\fP function shall initialize \fBdst\fP with a copy of the contents of \fBsrc\fP\&.
+The \fI\%bson_copy_to()\fP function shall initialize \fBdst\fP with a copy of the contents of \fBsrc\fP\&.
 .sp
-\fBdst\fP \fIMUST\fP be an uninitialized \fBbson_t\fP to avoid leaking memory.
+\fBdst\fP \fIMUST\fP be an uninitialized \fI\%bson_t\fP to avoid leaking memory.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

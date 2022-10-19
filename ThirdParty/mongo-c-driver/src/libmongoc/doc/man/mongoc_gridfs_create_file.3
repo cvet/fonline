@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_CREATE_FILE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_create_file \- mongoc_gridfs_create_file()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_CREATE_FILE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_create_file \- mongoc_gridfs_create_file()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -38,7 +38,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .ft C
 mongoc_gridfs_file_t *
 mongoc_gridfs_create_file (mongoc_gridfs_t *gridfs,
-                           mongoc_gridfs_file_opt_t *opt);
+                           mongoc_gridfs_file_opt_t *opt)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -46,18 +47,18 @@ mongoc_gridfs_create_file (mongoc_gridfs_t *gridfs,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBgridfs\fP: A \fBmongoc_gridfs_t\fP\&.
+\fBgridfs\fP: A \fI\%mongoc_gridfs_t\fP\&.
 .IP \(bu 2
-\fBopt\fP: A \fBmongoc_gridfs_file_opt_t\fP to specify file options.
+\fBopt\fP: A \fI\%mongoc_gridfs_file_opt_t\fP to specify file options.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function shall create a new \fBmongoc_gridfs_file_t\fP\&.
+This function shall create a new \fI\%mongoc_gridfs_file_t\fP\&.
 .sp
-Use \fBmongoc_gridfs_file_writev()\fP to write to the file.
+Use \fI\%mongoc_gridfs_file_writev()\fP to write to the file.
 .SH RETURNS
 .sp
-Returns a newly allocated \fBmongoc_gridfs_file_t\fP that should be freed with \fBmongoc_gridfs_file_destroy()\fP\&.
+Returns a newly allocated \fI\%mongoc_gridfs_file_t\fP that should be freed with \fI\%mongoc_gridfs_file_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

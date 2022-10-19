@@ -20,7 +20,7 @@
 * fmt - [fmt-9.1.0](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-1.88](https://github.com/ocornut/imgui)
 * LibreSSL - [3.4.1](https://www.libressl.org/)
-* mongo-c-driver - [mongo-c-driver-1.9.2](https://github.com/mongodb/mongo-c-driver)
+* mongo-c-driver - [mongo-c-driver-1.23.0](https://github.com/mongodb/mongo-c-driver)
 * mono - [mono-5.16.0.209](https://www.mono-project.com/)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)

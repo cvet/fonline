@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_SET_APPNAME" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_set_appname \- mongoc_client_pool_set_appname()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_SET_APPNAME" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_set_appname \- mongoc_client_pool_set_appname()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,13 +43,13 @@ mongoc_client_pool_set_appname (mongoc_client_pool_t *pool, const char *appname)
 .UNINDENT
 .UNINDENT
 .sp
-This function is identical to \fBmongoc_client_set_appname()\fP except for client pools.
+This function is identical to \fI\%mongoc_client_set_appname()\fP except for client pools.
 .sp
-Also note that \fBmongoc_client_set_appname()\fP cannot be called on a client retrieved from a client pool.
+Also note that \fI\%mongoc_client_set_appname()\fP cannot be called on a client retrieved from a client pool.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .IP \(bu 2
 \fBappname\fP: The application name, of length at most \fBMONGOC_HANDSHAKE_APPNAME_MAX\fP\&.
 .UNINDENT
@@ -58,7 +58,7 @@ Also note that \fBmongoc_client_set_appname()\fP cannot be called on a client re
 Returns true if appname was set. If appname is too long, returns false and logs an error.
 .SH THREAD SAFETY
 .sp
-This function can only be called once on a pool, and must be called before the first call to \fBmongoc_client_pool_pop\fP\&.
+This function can only be called once on a pool, and must be called before the first call to \fI\%mongoc_client_pool_pop()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

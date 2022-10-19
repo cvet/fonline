@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_CODEWSCOPE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_codewscope \- bson_iter_codewscope()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_CODEWSCOPE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_codewscope \- bson_iter_codewscope()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,7 +51,7 @@ bson_iter_codewscope (const bson_iter_t *iter,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
 \fBlength\fP: An optional location for the length of the resulting UTF\-8 encoded string.
 .IP \(bu 2
@@ -61,7 +61,7 @@ bson_iter_codewscope (const bson_iter_t *iter,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_iter_codewscope()\fP function acts similar to \fBbson_iter_code()\fP except for BSON_TYPE_CODEWSCOPE elements. It also will provide a pointer to the buffer for scope, which can be loaded into a \fBbson_t\fP using \fBbson_init_static()\fP\&.
+The \fBbson_iter_codewscope()\fP function acts similar to \fI\%bson_iter_code()\fP except for BSON_TYPE_CODEWSCOPE elements. It also will provide a pointer to the buffer for scope, which can be loaded into a \fI\%bson_t\fP using \fI\%bson_init_static()\fP\&.
 .SH RETURNS
 .sp
 An UTF\-8 encoded string containing the JavaScript code which should not be modified or freed.

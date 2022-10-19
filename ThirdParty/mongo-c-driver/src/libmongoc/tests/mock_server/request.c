@@ -22,7 +22,6 @@
 #include "../test-conveniences.h"
 #include "../TestSuite.h"
 
-
 static bool
 is_command_ns (const char *ns);
 
@@ -541,6 +540,7 @@ request_matches_msg (const request_t *request,
 {
    const bson_t *doc;
    const bson_t *pattern;
+   bson_error_t bson_error;
    bool is_command_doc;
    int i;
 
@@ -556,8 +556,17 @@ request_matches_msg (const request_t *request,
 
       /* make sure the pattern is reasonable, e.g. that we didn't pass a string
        * instead of a bson_t* by mistake */
-      BSON_ASSERT (bson_validate (
-         pattern, BSON_VALIDATE_EMPTY_KEYS | BSON_VALIDATE_UTF8, NULL));
+      ASSERT_WITH_MSG (bson_validate_with_error (pattern,
+                                                 BSON_VALIDATE_EMPTY_KEYS |
+                                                    BSON_VALIDATE_UTF8,
+                                                 &bson_error),
+                       "invalid argument at position %d (note: must be "
+                       "bson_t*, not char*):\ndomain: %" PRIu32
+                       ", code: %" PRIu32 ", message: %s\n",
+                       i,
+                       bson_error.domain,
+                       bson_error.code,
+                       bson_error.message);
 
       if (i > request->docs.len) {
          fprintf (stderr,
@@ -613,14 +622,14 @@ request_matches_msg (const request_t *request,
 bool
 request_matches_msgv (const request_t *request, uint32_t flags, va_list *args)
 {
-   const bson_t **docs;
+   bson_t **docs;
    size_t n_docs, allocated;
    bool r;
 
    n_docs = 0;
    allocated = 1;
    docs = bson_malloc (allocated * sizeof (bson_t *));
-   while ((docs[n_docs] = va_arg (*args, const bson_t *))) {
+   while ((docs[n_docs] = va_arg (*args, bson_t *))) {
       n_docs++;
       if (n_docs == allocated) {
          allocated = bson_next_power_of_two (allocated + 1);
@@ -628,11 +637,12 @@ request_matches_msgv (const request_t *request, uint32_t flags, va_list *args)
       }
    }
 
-   r = request_matches_msg (request, flags, docs, n_docs);
+   r = request_matches_msg (request, flags, (const bson_t **) docs, n_docs);
+
    bson_free (docs);
+
    return r;
 }
-
 
 /*--------------------------------------------------------------------------
  *

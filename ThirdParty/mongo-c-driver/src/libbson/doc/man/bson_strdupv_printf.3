@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_STRDUPV_PRINTF" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_strdupv_printf \- bson_strdupv_printf()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_STRDUPV_PRINTF" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_strdupv_printf \- bson_strdupv_printf()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,7 +51,7 @@ bson_strdupv_printf (const char *format, va_list args) BSON_GNUC_PRINTF (1, 0);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function is like \fBbson_strdup_printf()\fP except takes a va_list of parameters.
+This function is like \fI\%bson_strdup_printf()\fP except takes a va_list of parameters.
 .SH RETURNS
 .sp
 A newly allocated string that should be freed with bson_free().

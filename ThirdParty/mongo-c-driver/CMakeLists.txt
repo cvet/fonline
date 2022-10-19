@@ -41,12 +41,12 @@ option (ENABLE_RDTSCP
    "Fast performance counters on Intel using the RDTSCP instruction"
    OFF
 )
-option (ENABLE_APPLE_FRAMEWORK "Build libraries as frameworks on darwin platforms" OFF) 
+option (ENABLE_APPLE_FRAMEWORK "Build libraries as frameworks on darwin platforms" OFF)
 set (ENABLE_ICU AUTO CACHE STRING "Enable ICU support, necessary to use non-ASCII usernames or passwords, default AUTO.")
 option (ENABLE_UNINSTALL "Enable creation of uninstall script and associated uninstall build target." ON)
 set (ENABLE_CLIENT_SIDE_ENCRYPTION AUTO CACHE STRING "Enable Client-Side Field Level Encryption support. Requires libmongocrypt. Set to ON/AUTO/OFF, default AUTO.")
 set (ENABLE_MONGODB_AWS_AUTH AUTO CACHE STRING "Enable support for MONGODB-AWS authentication mechanism. Set to ON/AUTO/OFF, default AUTO. (also requires ENABLE_SSL not set to OFF)")
-option (ENABLE_PIC 
+option (ENABLE_PIC
    "Enables building of position independent code for static library components."
    ON
 )
@@ -54,7 +54,16 @@ option (ENABLE_DEBUG_ASSERTIONS "Turn on runtime debug assertions" OFF)
 
 project (mongo-c-driver C)
 
-if (NOT CMAKE_BUILD_TYPE)
+# Optionally enable C++ to do some C++-specific tests
+include (CheckLanguage)
+check_language (CXX)
+if (CMAKE_CXX_COMPILER)
+   enable_language (CXX)
+else ()
+   message (STATUS "No CXX support")
+endif ()
+
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set (CMAKE_BUILD_TYPE "RelWithDebInfo")
    message (
       STATUS "No CMAKE_BUILD_TYPE selected, defaulting to ${CMAKE_BUILD_TYPE}"
@@ -69,6 +78,19 @@ set (CMAKE_MODULE_PATH
 
 include (InstallRequiredSystemLibraries)
 include (GNUInstallDirs)
+include (CMakeDependentOption)
+
+include(MongoC-Warnings)
+
+# Enable CCache, if possible
+include (CCache)
+
+# Link with LLD, if possible
+if (NOT MSVC)
+   include (LLDLinker)
+endif ()
+# Enable sanitizers
+include (Sanitizers)
 
 set (BUILD_VERSION "0.0.0" CACHE STRING "Library version (for both libbson and libmongoc)")
 
@@ -116,6 +138,8 @@ endif ()
 include (LoadVersion)
 LoadVersion (${PROJECT_SOURCE_DIR}/VERSION_CURRENT MONGOC)
 
+# Enable "maintainer flags," which are supplementary but not mandatory.
+# (As opposed to MongoC-Warnings.cmake, which are required warnings)
 include (MaintainerFlags)
 
 if ( (ENABLE_BUILD_DEPENDECIES STREQUAL OFF) AND (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR) )
@@ -197,6 +221,9 @@ set (BUILD_SOURCE_DIR ${CMAKE_BINARY_DIR})
 
 include (MakeDistFiles)
 
+# Enable CTest
+include (CTest)
+
 # Ensure the default behavior: don't ignore RPATH settings.
 set (CMAKE_SKIP_BUILD_RPATH OFF)
 
@@ -216,6 +243,22 @@ set (CMAKE_MACOSX_RPATH ON)
 # silence a CMake 3.11 warning that the old behavior is deprecated.
 cmake_policy (SET CMP0042 NEW)
 
+# https://man7.org/linux/man-pages/man7/feature_test_macros.7.html
+# https://pubs.opengroup.org/onlinepubs/7908799/xsh/compilation.html
+# Enable POSIX features up to POSIX.1-2008 plus the XSI extension and BSD-derived definitions.
+# Both _BSD_SOURCE and _DEFAULT_SOURCE are defined for backwards-compatibility with glibc 2.19 and earlier.
+# _BSD_SOURCE and _DEFAULT_SOURCE are required by `getpagesize`, `h_errno`, etc.
+# _XOPEN_SOURCE=700 is required by `strnlen`, etc.
+add_definitions (-D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_DEFAULT_SOURCE)
+list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_DEFAULT_SOURCE)
+
+# https://opensource.apple.com/source/Libc/Libc-1439.40.11/gen/compat.5.auto.html
+# Non-POSIX extensions are required by `_SC_NPROCESSORS_ONLN`.
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+   add_definitions (-D_DARWIN_C_SOURCE)
+   list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_DARWIN_C_SOURCE)
+endif ()
+
 add_subdirectory (src/common)
 
 if (NOT USING_SYSTEM_BSON)
@@ -234,10 +277,6 @@ if (MSVC)
    add_definitions (-D_CRT_SECURE_NO_WARNINGS)
 endif ()
 
-add_definitions (-D_GNU_SOURCE)
-add_definitions (-D_BSD_SOURCE)
-add_definitions (-D_DEFAULT_SOURCE)
-
 if (ENABLE_MONGOC)
 
    if (ENABLE_TESTS AND NOT MONGOC_ENABLE_STATIC_BUILD)
@@ -252,28 +291,28 @@ if (ENABLE_MONGOC)
    set (SOURCE_DIR "${PROJECT_SOURCE_DIR}/")
 
    set (ZLIB_SOURCES
-      ${SOURCE_DIR}/src/zlib-1.2.11/adler32.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/crc32.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/deflate.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/infback.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/inffast.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/inflate.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/inftrees.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/trees.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/zutil.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/compress.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/uncompr.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/gzclose.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/gzlib.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/gzread.c
-      ${SOURCE_DIR}/src/zlib-1.2.11/gzwrite.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/adler32.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/crc32.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/deflate.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/infback.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/inffast.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/inflate.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/inftrees.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/trees.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/zutil.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/compress.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/uncompr.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/gzclose.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/gzlib.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/gzread.c
+      ${SOURCE_DIR}/src/zlib-1.2.12/gzwrite.c
    )
 
    set (MONGOC_ENABLE_ICU 0)
 
    set (CPACK_RESOURCE_FILE_LICENSE "${SOURCE_DIR}/COPYING")
 
-   #! include (CPack)
+   include (CPack)
 
    # Ensure the default behavior: don't ignore RPATH settings.
    set (CMAKE_SKIP_BUILD_RPATH OFF)
@@ -420,7 +459,6 @@ if (ENABLE_MONGOC)
             -P ${PROJECT_SOURCE_DIR}/build/cmake/make_dist/MakeDistCheck.cmake
       )
    else ()
-if(FALSE) #!
       string (CONCAT DISTERRMSG
          "The dist and distcheck targets are disabled. Set ENABLE_BSON=ON, "
          "ENABLE_MAN_PAGES=ON, ENABLE_HTML_DOCS=ON, and generate VERSION_CURRENT "
@@ -434,7 +472,6 @@ if(FALSE) #!
       add_custom_target (distcheck
          COMMAND ${CMAKE_COMMAND} -E echo "${DISTERRMSG}"
       )
-endif() #!
    endif ()
 
 endif ()
@@ -479,3 +516,43 @@ if (CMAKE_GENERATOR_TOOLSET)
    message (STATUS "\tinstance: ${CMAKE_GENERATOR_TOOLSET}")
 endif ()
 
+if (TARGET test-libmongoc)
+   # Generate a file that can be included by CTest to load and enumerate all of the
+   # tests defined by the test-libmongoc executable. Generate one for each
+   # configuration in case of multiconf generators.
+   string (CONFIGURE [=[
+      set (TEST_LIBMONGOC_EXE [[$<TARGET_FILE:test-libmongoc>]])
+      set (SRC_ROOT [[@PROJECT_SOURCE_DIR@]])
+      set (IS_MULTICONF $<BOOL:@CMAKE_CONFIGURATION_TYPES@>)
+      if (NOT IS_MULTICONF OR CTEST_CONFIGURATION_TYPE STREQUAL "$<CONFIG>")
+         # We are not in multi-conf, or the current config matches our config.
+         include ("${SRC_ROOT}/build/cmake/LoadTests.cmake")
+      elseif (NOT CTEST_CONFIGURATION_TYPE)
+         # We are in multi-conf, but no '-C' config was specified
+         message (WARNING "Specify a --build-config when using CTest with a multi-config build")
+      else ()
+         # Do nothing. Not our config.
+      endif ()
+   ]=] code @ONLY)
+   file (GENERATE
+         OUTPUT "${PROJECT_BINARY_DIR}/LoadTests-$<CONFIG>.cmake"
+         CONTENT "${code}")
+   if (CMAKE_CONFIGURATION_TYPES)
+      foreach (conf IN LISTS CMAKE_CONFIGURATION_TYPES)
+         # Direct the generated CTest code to include() the file that loads the tests:
+         set_property (
+            DIRECTORY
+            APPEND PROPERTY
+            TEST_INCLUDE_FILES "${PROJECT_BINARY_DIR}/LoadTests-${conf}.cmake")
+      endforeach ()
+   else ()
+      set_property (
+         DIRECTORY
+         APPEND PROPERTY
+         TEST_INCLUDE_FILES "${PROJECT_BINARY_DIR}/LoadTests-${CMAKE_BUILD_TYPE}.cmake")
+   endif ()
+endif ()
+
+if (CMAKE_GENERATOR STREQUAL "Ninja Multi-Config" AND PROJECT_IS_TOP_LEVEL)
+   set (CMAKE_CROSS_CONFIGS "all")
+endif ()

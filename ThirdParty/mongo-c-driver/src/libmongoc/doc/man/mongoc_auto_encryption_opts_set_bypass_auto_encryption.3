@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_BYPASS_AUTO_ENCRYPTION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_auto_encryption_opts_set_bypass_auto_encryption \- mongoc_auto_encryption_opts_set_bypass_auto_encryption()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_BYPASS_AUTO_ENCRYPTION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_auto_encryption_opts_set_bypass_auto_encryption \- mongoc_auto_encryption_opts_set_bypass_auto_encryption()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,20 +46,20 @@ mongoc_auto_encryption_opts_set_bypass_auto_encryption (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: The \fBmongoc_auto_encryption_opts_t\fP
+\fBopts\fP: The \fI\%mongoc_auto_encryption_opts_t\fP
 .IP \(bu 2
-\fBbypass_auto_encryption\fP: A boolean. If true, a \fBmongoc_client_t\fP configured with \fBmongoc_client_enable_auto_encryption()\fP will only perform automatic decryption (not encryption).
+\fBbypass_auto_encryption\fP: A boolean. If true, a \fI\%mongoc_client_t\fP configured with \fI\%mongoc_client_enable_auto_encryption()\fP will only perform automatic decryption (not encryption).
 .UNINDENT
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP
 .fi
 .sp
 .UNINDENT

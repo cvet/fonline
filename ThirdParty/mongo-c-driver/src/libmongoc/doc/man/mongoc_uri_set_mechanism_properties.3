@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_SET_MECHANISM_PROPERTIES" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_set_mechanism_properties \- mongoc_uri_set_mechanism_properties()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_SET_MECHANISM_PROPERTIES" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_set_mechanism_properties \- mongoc_uri_set_mechanism_properties()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,13 +46,13 @@ mongoc_uri_set_mechanism_properties (mongoc_uri_t *uri,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .IP \(bu 2
 \fBproperties\fP: A \fI\%bson_t\fP .
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Replaces all the options in URI\(aqs "authMechanismProperties" after the URI has been parsed from a string.
+Replaces all the options in URI\(aqs \(dqauthMechanismProperties\(dq after the URI has been parsed from a string.
 .SH RETURNS
 .sp
 Returns false if the option cannot be set, for example if \fBproperties\fP is not valid BSON data.
@@ -66,13 +66,13 @@ mongoc_uri_t *uri;
 bson_t props = BSON_INITIALIZER;
 
 uri = mongoc_uri_new (
-   "mongodb://user%40DOMAIN.COM:password@localhost/?authMechanism=GSSAPI"
-   "&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true");
+   \(dqmongodb://user%40DOMAIN.COM:password@localhost/?authMechanism=GSSAPI\(dq
+   \(dq&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true\(dq);
 
-/* replace all options: replace service name "other" with "my_service", unset
- * "CANONICALIZE_HOST_NAME" and accept its default.
+/* replace all options: replace service name \(dqother\(dq with \(dqmy_service\(dq, unset
+ * \(dqCANONICALIZE_HOST_NAME\(dq and accept its default.
  */
-BSON_APPEND_UTF8 (&props, "SERVICE_NAME", "my_service");
+BSON_APPEND_UTF8 (&props, \(dqSERVICE_NAME\(dq, \(dqmy_service\(dq);
 mongoc_uri_set_mechanism_properties (uri, &props);
 
 bson_destroy (&props);

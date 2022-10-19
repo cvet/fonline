@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_visitor_t.html"/>
-    <title>bson_visitor_t &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_visitor_t.html"/>
+    <title>bson_visitor_t &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_writer_t" href="bson_writer_t.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_value_destroy.html" title="bson_value_destroy()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,218 +45,218 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="bson-visitor-t">
-<h1>bson_visitor_t<a class="headerlink" href="#bson-visitor-t" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+  <section id="bson-visitor-t">
+<h1>bson_visitor_t<a class="headerlink" href="#bson-visitor-t" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="cm">/* run before / after descending into a document */</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_before</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_after</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="cm">/* corrupt BSON, or unsupported type and visit_unsupported_type not set */</span>
-   <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_corrupt</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="cm">/* normal bson field callbacks */</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_double</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                         <span class="kt">double</span> <span class="n">v_double</span><span class="p">,</span>
-                         <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_utf8</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                       <span class="kt">size_t</span> <span class="n">v_utf8_len</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_utf8</span><span class="p">,</span>
-                       <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_document</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">v_document</span><span class="p">,</span>
-                           <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_array</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">v_array</span><span class="p">,</span>
-                        <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_binary</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                         <span class="n">bson_subtype_t</span> <span class="n">v_subtype</span><span class="p">,</span>
-                         <span class="kt">size_t</span> <span class="n">v_binary_len</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">v_binary</span><span class="p">,</span>
-                         <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="cm">/* normal field with deprecated &quot;Undefined&quot; BSON type */</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_undefined</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_oid</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                      <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                      <span class="k">const</span> <span class="n">bson_oid_t</span> <span class="o">*</span><span class="n">v_oid</span><span class="p">,</span>
-                      <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_bool</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                       <span class="kt">bool</span> <span class="n">v_bool</span><span class="p">,</span>
-                       <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_date_time</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                            <span class="kt">int64_t</span> <span class="n">msec_since_epoch</span><span class="p">,</span>
-                            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_null</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_regex</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_regex</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_options</span><span class="p">,</span>
-                        <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_dbpointer</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                            <span class="kt">size_t</span> <span class="n">v_collection_len</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_collection</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="n">bson_oid_t</span> <span class="o">*</span><span class="n">v_oid</span><span class="p">,</span>
-                            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_code</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                       <span class="kt">size_t</span> <span class="n">v_code_len</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_code</span><span class="p">,</span>
-                       <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_symbol</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                         <span class="kt">size_t</span> <span class="n">v_symbol_len</span><span class="p">,</span>
-                         <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_symbol</span><span class="p">,</span>
-                         <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_codewscope</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                             <span class="kt">size_t</span> <span class="n">v_code_len</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">v_code</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">v_scope</span><span class="p">,</span>
-                             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_int32</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                        <span class="kt">int32_t</span> <span class="n">v_int32</span><span class="p">,</span>
-                        <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_timestamp</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                            <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                            <span class="kt">uint32_t</span> <span class="n">v_timestamp</span><span class="p">,</span>
-                            <span class="kt">uint32_t</span> <span class="n">v_increment</span><span class="p">,</span>
-                            <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_int64</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                        <span class="kt">int64_t</span> <span class="n">v_int64</span><span class="p">,</span>
-                        <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_maxkey</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_minkey</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="cm">/* if set, called instead of visit_corrupt when an apparently valid BSON</span>
-<span class="cm">    * includes an unrecognized field type (reading future version of BSON) */</span>
-   <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_unsupported_type</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                                   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                                   <span class="kt">uint32_t</span> <span class="n">type_code</span><span class="p">,</span>
-                                   <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
-   <span class="kt">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">visit_decimal128</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                             <span class="k">const</span> <span class="n">bson_decimal128_t</span> <span class="o">*</span><span class="n">v_decimal128</span><span class="p">,</span>
-                             <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">);</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* run before / after descending into a document */</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_before</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_after</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* corrupt BSON, or unsupported type and visit_unsupported_type not set */</span><span class="w"></span>
+<span class="w">   </span><span class="kt">void</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_corrupt</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* normal bson field callbacks */</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_double</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="kt">double</span><span class="w"> </span><span class="n">v_double</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_utf8</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">size_t</span><span class="w"> </span><span class="n">v_utf8_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_utf8</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_document</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                           </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                           </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_document</span><span class="p">,</span><span class="w"></span>
+<span class="w">                           </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_array</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_array</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_binary</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="n">bson_subtype_t</span><span class="w"> </span><span class="n">v_subtype</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="kt">size_t</span><span class="w"> </span><span class="n">v_binary_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_binary</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* normal field with deprecated &quot;Undefined&quot; BSON type */</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_undefined</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_oid</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                      </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                      </span><span class="k">const</span><span class="w"> </span><span class="n">bson_oid_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_oid</span><span class="p">,</span><span class="w"></span>
+<span class="w">                      </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_bool</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">bool</span><span class="w"> </span><span class="n">v_bool</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_date_time</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">msec_since_epoch</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_null</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_regex</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_regex</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_options</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_dbpointer</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">size_t</span><span class="w"> </span><span class="n">v_collection_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_collection</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="k">const</span><span class="w"> </span><span class="n">bson_oid_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_oid</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_code</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">size_t</span><span class="w"> </span><span class="n">v_code_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_code</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_symbol</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="kt">size_t</span><span class="w"> </span><span class="n">v_symbol_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_symbol</span><span class="p">,</span><span class="w"></span>
+<span class="w">                         </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_codewscope</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="kt">size_t</span><span class="w"> </span><span class="n">v_code_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">v_code</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_scope</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_int32</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="kt">int32_t</span><span class="w"> </span><span class="n">v_int32</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_timestamp</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">v_timestamp</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">v_increment</span><span class="p">,</span><span class="w"></span>
+<span class="w">                            </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_int64</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">v_int64</span><span class="p">,</span><span class="w"></span>
+<span class="w">                        </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_maxkey</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_minkey</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* if set, called instead of visit_corrupt when an apparently valid BSON</span>
+<span class="cm">    * includes an unrecognized field type (reading future version of BSON) */</span><span class="w"></span>
+<span class="w">   </span><span class="kt">void</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_unsupported_type</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                   </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">type_code</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                   </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">visit_decimal128</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="k">const</span><span class="w"> </span><span class="n">bson_decimal128_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_decimal128</span><span class="p">,</span><span class="w"></span>
+<span class="w">                             </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">);</span><span class="w"></span>
 
-   <span class="kt">void</span> <span class="o">*</span><span class="n">padding</span><span class="p">[</span><span class="mi">7</span><span class="p">];</span>
-<span class="p">}</span> <span class="n">bson_visitor_t</span> <span class="n">bson_visitor_t</span><span class="p">;</span>
+<span class="w">   </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">padding</span><span class="p">[</span><span class="mi">7</span><span class="p">];</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">bson_visitor_t</span><span class="w"> </span><span class="n">bson_visitor_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>The <a class="symbol reference internal" href="#"><span class="doc">bson_visitor_t</span></a> structure provides a series of callbacks that can be called while iterating a BSON document. This may simplify the conversion of a <a class="symbol reference internal" href="bson_t.html"><span class="doc">bson_t</span></a> to a higher level language structure.</p>
 <p>If the optional callback <code class="docutils literal notranslate"><span class="pre">visit_unsupported_type</span></code> is set, it is called instead of <code class="docutils literal notranslate"><span class="pre">visit_corrupt</span></code> in the specific case of an unrecognized field type. (Parsing is aborted in either case.) Use this callback to report an error like “unrecognized type” instead of simply “corrupt BSON”. This future-proofs code that may use an older version of libbson to parse future BSON formats.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 </div>
-</div>
-<div class="section" id="basic-example">
-<h2>Basic Example<a class="headerlink" href="#basic-example" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+</section>
+<section id="basic-example">
+<h2>Basic Example<a class="headerlink" href="#basic-example" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 
-<span class="k">static</span> <span class="kt">bool</span>
-<span class="n">my_visit_before</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="kt">int</span> <span class="o">*</span><span class="n">count</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="p">)</span> <span class="n">data</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">bool</span><span class="w"></span>
+<span class="nf">my_visit_before</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">data</span><span class="p">;</span><span class="w"></span>
 
-   <span class="p">(</span><span class="o">*</span><span class="n">count</span><span class="p">)</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="p">(</span><span class="o">*</span><span class="n">count</span><span class="p">)</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="cm">/* returning true stops further iteration of the document */</span>
+<span class="w">   </span><span class="cm">/* returning true stops further iteration of the document */</span><span class="w"></span>
 
-   <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">count_fields</span> <span class="p">(</span><span class="n">bson_t</span> <span class="o">*</span><span class="n">doc</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">bson_visitor_t</span> <span class="n">visitor</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-   <span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">count_fields</span><span class="w"> </span><span class="p">(</span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">doc</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_visitor_t</span><span class="w"> </span><span class="n">visitor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">0</span><span class="p">};</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">visitor</span><span class="p">.</span><span class="n">visit_before</span> <span class="o">=</span> <span class="n">my_visit_before</span><span class="p">;</span>
+<span class="w">   </span><span class="n">visitor</span><span class="p">.</span><span class="n">visit_before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">my_visit_before</span><span class="p">;</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">doc</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">bson_iter_visit_all</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">visitor</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">count</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">doc</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_iter_visit_all</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">visitor</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">count</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Found %d fields.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">count</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Found %d fields.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">count</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <p>The example below demonstrates how to set your own callbacks to provide information about the location of corrupt or unsupported BSON document entries.</p>
-</div>
-<div class="section" id="example-corruption-check">
-<h2>Example Corruption Check<a class="headerlink" href="#example-corruption-check" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+</section>
+<section id="example-corruption-check">
+<h2>Example Corruption Check<a class="headerlink" href="#example-corruption-check" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="kt">ssize_t</span> <span class="o">*</span><span class="n">err_offset</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">my_state_t</span><span class="p">;</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">ssize_t</span><span class="w"> </span><span class="o">*</span><span class="n">err_offset</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">my_state_t</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">my_visit_corrupt</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="o">*</span><span class="p">(((</span><span class="n">my_state_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">data</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">err_offset</span><span class="p">)</span> <span class="o">=</span> <span class="n">iter</span><span class="o">-&gt;</span><span class="n">off</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">my_visit_corrupt</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="o">*</span><span class="p">(((</span><span class="n">my_state_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">data</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">err_offset</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iter</span><span class="o">-&gt;</span><span class="n">off</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">my_visit_unsupported_type</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_iter_t</span> <span class="o">*</span><span class="n">iter</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">,</span>
-                           <span class="kt">uint32_t</span> <span class="n">type_code</span><span class="p">,</span>
-                           <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="o">*</span><span class="p">(((</span><span class="n">my_state_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">data</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">err_offset</span><span class="p">)</span> <span class="o">=</span> <span class="n">iter</span><span class="o">-&gt;</span><span class="n">off</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">my_visit_unsupported_type</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="o">*</span><span class="n">iter</span><span class="p">,</span><span class="w"></span>
+<span class="w">                           </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">key</span><span class="p">,</span><span class="w"></span>
+<span class="w">                           </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">type_code</span><span class="p">,</span><span class="w"></span>
+<span class="w">                           </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="o">*</span><span class="p">(((</span><span class="n">my_state_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">data</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">err_offset</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iter</span><span class="o">-&gt;</span><span class="n">off</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">find_error_location</span> <span class="p">(</span><span class="n">bson_t</span> <span class="o">*</span><span class="n">doc</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">bson_visitor_t</span> <span class="n">visitors</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-   <span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
-   <span class="n">my_state_t</span> <span class="n">state</span><span class="p">;</span>
-   <span class="kt">ssize_t</span> <span class="n">err_offset</span> <span class="o">=</span> <span class="mi">-1</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">find_error_location</span><span class="w"> </span><span class="p">(</span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">doc</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_visitor_t</span><span class="w"> </span><span class="n">visitors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">0</span><span class="p">};</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">my_state_t</span><span class="w"> </span><span class="n">state</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">ssize_t</span><span class="w"> </span><span class="n">err_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">visitors</span><span class="p">.</span><span class="n">visit_corrupt</span> <span class="o">=</span> <span class="n">my_visit_corrupt</span><span class="p">;</span>
-   <span class="n">visitors</span><span class="p">.</span><span class="n">visit_unsupported_type</span> <span class="o">=</span> <span class="n">my_visit_unsupported_type</span><span class="p">;</span>
-   <span class="cm">/* provide additional visitors as needed based on your requirements */</span>
-   <span class="n">state</span><span class="p">.</span><span class="n">err_offset</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">err_offset</span><span class="p">;</span>
+<span class="w">   </span><span class="n">visitors</span><span class="p">.</span><span class="n">visit_corrupt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">my_visit_corrupt</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">visitors</span><span class="p">.</span><span class="n">visit_unsupported_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">my_visit_unsupported_type</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* provide additional visitors as needed based on your requirements */</span><span class="w"></span>
+<span class="w">   </span><span class="n">state</span><span class="p">.</span><span class="n">err_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">err_offset</span><span class="p">;</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">bson_iter_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">doc</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Could not initialize iterator!&quot;</span><span class="p">);</span>
-      <span class="n">exit</span> <span class="p">(</span><span class="mi">1</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">bson_iter_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">doc</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Could not initialize iterator!&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">exit</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_visit_all</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">visitors</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">state</span><span class="p">)</span> <span class="o">||</span>
-       <span class="n">err_offset</span> <span class="o">!=</span> <span class="mi">-1</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Found error at offset %d.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">err_offset</span><span class="p">);</span>
-   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;BSON document had no errors.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="p">}</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_visit_all</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">visitors</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">state</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"></span>
+<span class="w">       </span><span class="n">err_offset</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">-1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Found error at offset %d.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">err_offset</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;BSON document had no errors.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <p>The example below demonstrates how to use a visitor to validate a BSON document’s maximum depth.</p>
-</div>
-<div class="section" id="example-custom-validation">
-<span id="id1"></span><h2>Example Custom Validation<a class="headerlink" href="#example-custom-validation" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="example-custom-validation">
+<span id="id1"></span><h2>Example Custom Validation<a class="headerlink" href="#example-custom-validation" title="Permalink to this heading">¶</a></h2>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">bson-check-depth.c</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>/* Reports the maximum nested depth of a BSON document. */
@@ -292,6 +297,9 @@ _check_depth_document (const bson_iter_t *iter,
 {
    check_depth_t *state = (check_depth_t *) data;
    bson_iter_t child;
+
+   BSON_UNUSED (iter);
+   BSON_UNUSED (key);
 
    if (!bson_iter_init (&amp;child, v_document)) {
       fprintf (stderr, &quot;corrupt\n&quot;);
@@ -370,8 +378,8 @@ main (int argc, char **argv)
 </pre></div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -434,7 +442,7 @@ main (int argc, char **argv)
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

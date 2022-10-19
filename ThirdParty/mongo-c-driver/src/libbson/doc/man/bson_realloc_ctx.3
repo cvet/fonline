@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_REALLOC_CTX" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_realloc_ctx \- bson_realloc_ctx()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_REALLOC_CTX" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_realloc_ctx \- bson_realloc_ctx()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -53,7 +53,7 @@ bson_realloc_ctx (void *mem, size_t num_bytes, void *ctx);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function is identical to \fBbson_realloc()\fP except it takes a context parameter. This is useful when working with pooled or specific memory allocators.
+This function is identical to \fI\%bson_realloc()\fP except it takes a context parameter. This is useful when working with pooled or specific memory allocators.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CHANGE_STREAM_GET_RESUME_TOKEN" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_change_stream_get_resume_token \- mongoc_change_stream_get_resume_token()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CHANGE_STREAM_GET_RESUME_TOKEN" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_change_stream_get_resume_token \- mongoc_change_stream_get_resume_token()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,7 +49,7 @@ change stream from the same point.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBstream\fP: A \fBmongoc_change_stream_t\fP\&.
+\fBstream\fP: A \fI\%mongoc_change_stream_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
@@ -61,7 +61,7 @@ options were specified in the \fBwatch\fP function.
 .SH LIFECYCLE
 .sp
 The returned \fI\%bson_t\fP is valid for the lifetime of \fBstream\fP and
-its data may be updated if \fBmongoc_change_stream_next\fP is called after
+its data may be updated if \fI\%mongoc_change_stream_next()\fP is called after
 this function. The value may be copied to extend its lifetime or preserve the
 current resume token.
 .SH AUTHOR

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_JSON_OPTS_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_json_opts_t \- bson_json_opts_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_JSON_OPTS_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_json_opts_t \- bson_json_opts_t
 .sp
 BSON to JSON encoding options
 .SH SYNOPSIS
@@ -53,9 +53,9 @@ bson_json_opts_destroy (bson_json_opts_t *opts);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_json_opts_t\fP structure contains options for encoding BSON into \fI\%MongoDB Extended JSON\fP\&.
+The \fI\%bson_json_opts_t\fP structure contains options for encoding BSON into \fI\%MongoDB Extended JSON\fP\&.
 .sp
-The \fBmode\fP member is a \fBbson_json_mode_t\fP defining the encoding mode.
+The \fBmode\fP member is a \fI\%bson_json_mode_t\fP defining the encoding mode.
 .sp
 The \fBmax_len\fP member holds a maximum length for the resulting JSON string. Encoding will stop once the serialised string has reached this length. To encode the full BSON document, \fBBSON_MAX_LEN_UNLIMITED\fP can be used.
 .sp
@@ -63,7 +63,7 @@ The \fBmax_len\fP member holds a maximum length for the resulting JSON string. E
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBbson_as_json_with_opts()\fP
+\fI\%bson_as_json_with_opts()\fP
 .fi
 .sp
 .UNINDENT

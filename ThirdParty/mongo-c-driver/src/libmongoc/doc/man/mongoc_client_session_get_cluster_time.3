@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SESSION_GET_CLUSTER_TIME" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_session_get_cluster_time \- mongoc_client_session_get_cluster_time()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SESSION_GET_CLUSTER_TIME" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_session_get_cluster_time \- mongoc_client_session_get_cluster_time()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,15 +43,15 @@ mongoc_client_session_get_cluster_time (const mongoc_client_session_t *session);
 .UNINDENT
 .UNINDENT
 .sp
-Get the session\(aqs clusterTime, as a BSON document.
+Get the session\(aqs clusterTime as a BSON document.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsession\fP: A \fBmongoc_client_session_t\fP\&.
+\fBsession\fP: A \fI\%mongoc_client_session_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fI\%bson_t\fP you must not modify or free. If the session has not been used for any operation and you have not called \fBmongoc_client_session_advance_cluster_time\fP, then the returned value is NULL.
+If the session has not been used for any operation and \fI\%mongoc_client_session_advance_cluster_time()\fP has not been called, a \fI\%bson_t\fP that is valid only for the lifetime of \fBsession\fP\&. Otherwise, \fBNULL\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

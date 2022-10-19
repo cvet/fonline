@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_FIND_ONE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_find_one \- mongoc_gridfs_find_one()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,9 +27,12 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_FIND_ONE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_find_one \- mongoc_gridfs_find_one()
 .SH DEPRECATED
 .sp
-This function is deprecated, use \fBmongoc_gridfs_find_one_with_opts\fP instead.
+This function is deprecated, use \fI\%mongoc_gridfs_find_one_with_opts()\fP instead.
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -42,7 +42,7 @@ This function is deprecated, use \fBmongoc_gridfs_find_one_with_opts\fP instead.
 mongoc_gridfs_file_t *
 mongoc_gridfs_find_one (mongoc_gridfs_t *gridfs,
                         const bson_t *query,
-                        bson_error_t *error)
+                        bson_error_t *error) BSON_GNUC_WARN_UNUSED_RESULT
    BSON_GNUC_DEPRECATED_FOR (mongoc_gridfs_find_one_with_opts);
 .ft P
 .fi
@@ -51,11 +51,11 @@ mongoc_gridfs_find_one (mongoc_gridfs_t *gridfs,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBgridfs\fP: A \fBmongoc_gridfs_t\fP\&.
+\fBgridfs\fP: A \fI\%mongoc_gridfs_t\fP\&.
 .IP \(bu 2
 \fBquery\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -63,13 +63,13 @@ This function shall execute a query on the underlying gridfs implementation. The
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_gridfs_file_t\fP or \fBNULL\fP if no file could be found. You must free the resulting file with \fBmongoc_gridfs_file_destroy()\fP if non\-NULL.
+A newly allocated \fI\%mongoc_gridfs_file_t\fP or \fBNULL\fP if no file could be found. You must free the resulting file with \fI\%mongoc_gridfs_file_destroy()\fP if non\-NULL.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

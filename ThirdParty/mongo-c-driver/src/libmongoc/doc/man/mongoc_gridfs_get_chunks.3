@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_GET_CHUNKS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_get_chunks \- mongoc_gridfs_get_chunks()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_GET_CHUNKS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_get_chunks \- mongoc_gridfs_get_chunks()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,14 +45,14 @@ mongoc_gridfs_get_chunks (mongoc_gridfs_t *gridfs);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBgridfs\fP: A \fBmongoc_gridfs_t\fP\&.
+\fBgridfs\fP: A \fI\%mongoc_gridfs_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Returns a \fBmongoc_collection_t\fP that contains the chunks for files. This instance is owned by the \fBmongoc_gridfs_t\fP instance and should not be modified or freed.
+Returns a \fI\%mongoc_collection_t\fP that contains the chunks for files. This instance is owned by the \fI\%mongoc_gridfs_t\fP instance and should not be modified or freed.
 .SH RETURNS
 .sp
-Returns a \fBmongoc_collection_t\fP that should not be modified or freed.
+Returns a \fI\%mongoc_collection_t\fP that should not be modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_MINKEY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_minkey \- bson_append_minkey()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_MINKEY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_minkey \- bson_append_minkey()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,7 +48,7 @@ bson_append_minkey (bson_t *bson, const char *key, int key_length);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
@@ -56,7 +56,7 @@ bson_append_minkey (bson_t *bson, const char *key, int key_length);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_minkey()\fP function shall append an element of type BSON_TYPE_MINKEY to a bson document. This is primarily used in queries and unlikely to be used when storing a document to MongoDB.
+The \fI\%bson_append_minkey()\fP function shall append an element of type BSON_TYPE_MINKEY to a bson document. This is primarily used in queries and unlikely to be used when storing a document to MongoDB.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending the value grows \fBbson\fP larger than INT32_MAX.

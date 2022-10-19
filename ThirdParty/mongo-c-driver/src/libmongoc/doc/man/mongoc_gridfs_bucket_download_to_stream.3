@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_BUCKET_DOWNLOAD_TO_STREAM" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_bucket_download_to_stream \- mongoc_gridfs_bucket_download_to_stream()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_BUCKET_DOWNLOAD_TO_STREAM" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_bucket_download_to_stream \- mongoc_gridfs_bucket_download_to_stream()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,11 +48,11 @@ mongoc_gridfs_bucket_download_to_stream (mongoc_gridfs_bucket_t *bucket,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbucket\fP: A \fBmongoc_gridfs_bucket_t\fP\&.
+\fBbucket\fP: A \fI\%mongoc_gridfs_bucket_t\fP\&.
 .IP \(bu 2
 \fBfile_id\fP: A \fI\%bson_value_t\fP of the id of the file to download.
 .IP \(bu 2
-\fBdestination\fP: A \fBmongoc_stream_t\fP which receives data from the downloaded file.
+\fBdestination\fP: A \fI\%mongoc_stream_t\fP which receives data from the downloaded file.
 .IP \(bu 2
 \fBerror\fP: A \fI\%bson_error_t\fP to receive any error or \fBNULL\fP\&.
 .UNINDENT
@@ -61,11 +61,11 @@ mongoc_gridfs_bucket_download_to_stream (mongoc_gridfs_bucket_t *bucket,
 Reads from the GridFS file and writes to the \fBdestination\fP stream.
 .sp
 Writes the full contents of the file to the \fBdestination\fP stream.
-The \fBdestination\fP stream is not closed after calling \fBmongoc_gridfs_bucket_download_to_stream()\fP; call \fBmongoc_stream_close()\fP after.
+The \fBdestination\fP stream is not closed after calling \fI\%mongoc_gridfs_bucket_download_to_stream()\fP; call \fI\%mongoc_stream_close()\fP after.
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH RETURNS
 .sp
 True if the operation succeeded. False otherwise, and sets \fBerror\fP\&.
@@ -74,7 +74,7 @@ True if the operation succeeded. False otherwise, and sets \fBerror\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_stream_file_new\fP and \fBmongoc_stream_file_new_for_path\fP, which can be used to create a destination stream from a file.
+\fI\%mongoc_stream_file_new()\fP and \fI\%mongoc_stream_file_new_for_path()\fP, which can be used to create a destination stream from a file.
 .fi
 .sp
 .UNINDENT

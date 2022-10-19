@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_t \- mongoc_uri_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_t \- mongoc_uri_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -65,11 +65,11 @@ mongodb[+srv]://                             <1>
 .UNINDENT
 .INDENT 0.0
 .IP 1. 3
-"mongodb" is the specifier of the MongoDB protocol. Use "mongodb+srv" with a single service name in place of "host1" to specify the initial list of servers with an SRV record.
+\(dqmongodb\(dq is the specifier of the MongoDB protocol. Use \(dqmongodb+srv\(dq with a single service name in place of \(dqhost1\(dq to specify the initial list of servers with an SRV record.
 .IP 2. 3
 An optional username and password.
 .IP 3. 3
-The only required part of the uri.  This specifies either a hostname, IPv4 address, IPv6 address enclosed in "[" and "]", or UNIX domain socket.
+The only required part of the uri.  This specifies either a hostname, IPv4 address, IPv6 address enclosed in \(dq[\(dq and \(dq]\(dq, or UNIX domain socket.
 .IP 4. 3
 An optional port number.  Defaults to :27017.
 .IP 5. 3
@@ -83,7 +83,7 @@ Connection specific options.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-Option names are case\-insensitive. Do not repeat the same option (e.g. "mongodb://localhost/db?opt=value1&OPT=value2") since this may have unexpected results.
+Option names are case\-insensitive. Do not repeat the same option (e.g. \(dqmongodb://localhost/db?opt=value1&OPT=value2\(dq) since this may have unexpected results.
 .UNINDENT
 .UNINDENT
 .sp
@@ -95,9 +95,9 @@ For example, the following calls are equal.
 .sp
 .nf
 .ft C
-uri = mongoc_uri_new ("mongodb://localhost/?" MONGOC_URI_APPNAME "=applicationName");
-uri = mongoc_uri_new ("mongodb://localhost/?appname=applicationName");
-uri = mongoc_uri_new ("mongodb://localhost/?appName=applicationName");
+uri = mongoc_uri_new (\(dqmongodb://localhost/?\(dq MONGOC_URI_APPNAME \(dq=applicationName\(dq);
+uri = mongoc_uri_new (\(dqmongodb://localhost/?appname=applicationName\(dq);
+uri = mongoc_uri_new (\(dqmongodb://localhost/?appName=applicationName\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -125,21 +125,21 @@ mongodb://db1.example.com,db2.example.com:2500/?replicaSet=test
 .UNINDENT
 .SH SRV EXAMPLE
 .sp
-If you have configured an \fI\%SRV record\fP with a name like "_mongodb._tcp.server.example.com" whose records are a list of one or more MongoDB server hostnames, use a connection string like this:
+If you have configured an \fI\%SRV record\fP with a name like \(dq_mongodb._tcp.server.example.com\(dq whose records are a list of one or more MongoDB server hostnames, use a connection string like this:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-uri = mongoc_uri_new ("mongodb+srv://server.example.com/?replicaSet=rs&appName=applicationName");
+uri = mongoc_uri_new (\(dqmongodb+srv://server.example.com/?replicaSet=rs&appName=applicationName\(dq);
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-The driver prefixes the service name with "_mongodb._tcp.", then performs a DNS SRV query to resolve the service name to one or more hostnames. If this query succeeds, the driver performs a DNS TXT query on the service name (without the "_mongodb._tcp" prefix) for additional URI options configured as TXT records.
+The driver prefixes the service name with \(dq_mongodb._tcp.\(dq, then performs a DNS SRV query to resolve the service name to one or more hostnames. If this query succeeds, the driver performs a DNS TXT query on the service name (without the \(dq_mongodb._tcp\(dq prefix) for additional URI options configured as TXT records.
 .sp
-On Unix, the MongoDB C Driver relies on libresolv to look up SRV and TXT records. If libresolv is unavailable, then using a "mongodb+srv" URI will cause an error. If your libresolv lacks \fBres_nsearch\fP then the driver will fall back to \fBres_search\fP, which is not thread\-safe.
+On Unix, the MongoDB C Driver relies on libresolv to look up SRV and TXT records. If libresolv is unavailable, then using a \(dqmongodb+srv\(dq URI will cause an error. If your libresolv lacks \fBres_nsearch\fP then the driver will fall back to \fBres_search\fP, which is not thread\-safe.
 .SH IPV4 AND IPV6
 .sp
 If connecting to a hostname that has both IPv4 and IPv6 DNS records, the behavior follows \fI\%RFC\-6555\fP\&. A connection to the IPv6 address is attempted first. If IPv6 fails, then a connection is attempted to the IPv4 address. If the connection attempt to IPv6 does not complete within 250ms, then IPv4 is tried in parallel. Whichever succeeds connection first cancels the other. The successful DNS result is cached for 10 minutes.
@@ -169,7 +169,7 @@ retryreads
 T}	T{
 true
 T}	T{
-If "true" and the server is a MongoDB 3.6+ standalone, replica set, or sharded cluster, the driver safely retries a read that failed due to a network error or replica set failover.
+If \(dqtrue\(dq and the server is a MongoDB 3.6+ standalone, replica set, or sharded cluster, the driver safely retries a read that failed due to a network error or replica set failover.
 T}
 _
 T{
@@ -179,7 +179,7 @@ retrywrites
 T}	T{
 true if driver built w/ TLS
 T}	T{
-If "true" and the server is a MongoDB 3.6+ replica set or sharded cluster, the driver safely retries a write that failed due to a network error or replica set failover. Only inserts, updates of single documents, or deletes of single
+If \(dqtrue\(dq and the server is a MongoDB 3.6+ replica set or sharded cluster, the driver safely retries a write that failed due to a network error or replica set failover. Only inserts, updates of single documents, or deletes of single
 documents are retried.
 T}
 _
@@ -200,7 +200,7 @@ tls
 T}	T{
 Empty (not set, same as false)
 T}	T{
-{true|false}, indicating if TLS must be used. (See also \fBmongoc_client_set_ssl_opts\fP and \fBmongoc_client_pool_set_ssl_opts\fP\&.)
+{true|false}, indicating if TLS must be used. (See also \fI\%mongoc_client_set_ssl_opts()\fP and \fI\%mongoc_client_pool_set_ssl_opts()\fP\&.)
 T}
 _
 T{
@@ -210,7 +210,7 @@ compressors
 T}	T{
 Empty (no compressors)
 T}	T{
-Comma separated list of compressors, if any, to use to compress the wire protocol messages. Snappy, zlib, and zstd are optional build time dependencies, and enable the "snappy", "zlib", and "zstd" values respectively.
+Comma separated list of compressors, if any, to use to compress the wire protocol messages. Snappy, zlib, and zstd are optional build time dependencies, and enable the \(dqsnappy\(dq, \(dqzlib\(dq, and \(dqzstd\(dq values respectively.
 T}
 _
 T{
@@ -250,7 +250,7 @@ zlibcompressionlevel
 T}	T{
 \-1
 T}	T{
-When the MONGOC_URI_COMPRESSORS includes "zlib" this options configures the zlib compression level, when the zlib compressor is used to compress client data.
+When the MONGOC_URI_COMPRESSORS includes \(dqzlib\(dq this options configures the zlib compression level, when the zlib compressor is used to compress client data.
 T}
 _
 T{
@@ -263,9 +263,19 @@ T}	T{
 If true, this indicates the driver is connecting to a MongoDB cluster behind a load balancer.
 T}
 _
+T{
+MONGOC_URI_SRVMAXHOSTS
+T}	T{
+srvmaxhosts
+T}	T{
+0
+T}	T{
+If zero, the number of hosts in DNS results is unlimited. If greater than zero, the number of hosts in DNS results is limited to being less than or equal to the given value.
+T}
+_
 .TE
 .sp
-Setting any of the *timeoutMS options above to \fB0\fP will be interpreted as "use the default value".
+Setting any of the *timeoutMS options above to \fB0\fP will be interpreted as \(dquse the default value\(dq.
 .SH AUTHENTICATION OPTIONS
 .TS
 center;
@@ -284,7 +294,7 @@ MONGOC_URI_AUTHMECHANISM
 T}	T{
 authmechanism
 T}	T{
-Specifies the mechanism to use when authenticating as the provided user. See Authentication for supported values.
+Specifies the mechanism to use when authenticating as the provided user. See \fI\%Authentication\fP for supported values.
 T}
 _
 T{
@@ -292,7 +302,7 @@ MONGOC_URI_AUTHMECHANISMPROPERTIES
 T}	T{
 authmechanismproperties
 T}	T{
-Certain authentication mechanisms have additional options that can be configured. These options should be provided as comma separated option_key:option_value pair and provided as authMechanismProperties.
+Certain authentication mechanisms have additional options that can be configured. These options should be provided as comma separated option_key:option_value pair and provided as authMechanismProperties. Specifying the same option_key multiple times has undefined behavior.
 T}
 _
 T{
@@ -364,7 +374,7 @@ Path to PEM formatted Private Key, with its Public Certificate concatenated at t
 T}
 _
 T{
-MONGOC_URI_TLSCERTIFICATEKEYPASSWORD
+MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD
 T}	T{
 tlscertificatekeypassword
 T}	T{
@@ -421,7 +431,7 @@ T}
 _
 .TE
 .sp
-See configuring_tls for details about these options and about building libmongoc with TLS support.
+See \fI\%Configuring TLS\fP for details about these options and about building libmongoc with TLS support.
 .SH DEPRECATED SSL OPTIONS
 .sp
 The following options have been deprecated and may be removed from future releases of libmongoc.
@@ -464,7 +474,7 @@ MONGOC_URI_SSLCLIENTCERTIFICATEKEYPASSWORD
 T}	T{
 sslclientcertificatekeypassword
 T}	T{
-MONGOC_URI_TLSCERTIFICATEKEYPASSWORD
+MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD
 T}	T{
 tlscertificatekeypassword
 T}
@@ -502,15 +512,15 @@ _
 .TE
 .SH SERVER DISCOVERY, MONITORING, AND SELECTION OPTIONS
 .sp
-Clients in a \fBmongoc_client_pool_t\fP share a topology scanner that runs on a background thread. The thread wakes every \fBheartbeatFrequencyMS\fP (default 10 seconds) to scan all MongoDB servers in parallel. Whenever an application operation requires a server that is not known\-\-for example, if there is no known primary and your application attempts an insert\-\-the thread rescans all servers every half\-second. In this situation the pooled client waits up to \fBserverSelectionTimeoutMS\fP (default 30 seconds) for the thread to find a server suitable for the operation, then returns an error with domain \fBMONGOC_ERROR_SERVER_SELECTION\fP\&.
+Clients in a \fI\%mongoc_client_pool_t\fP share a topology scanner that runs on a background thread. The thread wakes every \fBheartbeatFrequencyMS\fP (default 10 seconds) to scan all MongoDB servers in parallel. Whenever an application operation requires a server that is not known\-\-for example, if there is no known primary and your application attempts an insert\-\-the thread rescans all servers every half\-second. In this situation the pooled client waits up to \fBserverSelectionTimeoutMS\fP (default 30 seconds) for the thread to find a server suitable for the operation, then returns an error with domain \fBMONGOC_ERROR_SERVER_SELECTION\fP\&.
 .sp
 Technically, the total time an operation may wait while a pooled client scans the topology is controlled both by \fBserverSelectionTimeoutMS\fP and \fBconnectTimeoutMS\fP\&. The longest wait occurs if the last scan begins just at the end of the selection timeout, and a slow or down server requires the full connection timeout before the client gives up.
 .sp
 A non\-pooled client is single\-threaded. Every \fBheartbeatFrequencyMS\fP, it blocks the next application operation while it does a parallel scan. This scan takes as long as needed to check the slowest server: roughly \fBconnectTimeoutMS\fP\&. Therefore the default \fBheartbeatFrequencyMS\fP for single\-threaded clients is greater than for pooled clients: 60 seconds.
 .sp
-By default, single\-threaded (non\-pooled) clients scan only once when an operation requires a server that is not known. If you attempt an insert and there is no known primary, the client checks all servers once trying to find it, then succeeds or returns an error with domain \fBMONGOC_ERROR_SERVER_SELECTION\fP\&. But if you set \fBserverSelectionTryOnce\fP to "false", the single\-threaded client loops, checking all servers every half\-second, until \fBserverSelectionTimeoutMS\fP\&.
+By default, single\-threaded (non\-pooled) clients scan only once when an operation requires a server that is not known. If you attempt an insert and there is no known primary, the client checks all servers once trying to find it, then succeeds or returns an error with domain \fBMONGOC_ERROR_SERVER_SELECTION\fP\&. But if you set \fBserverSelectionTryOnce\fP to \(dqfalse\(dq, the single\-threaded client loops, checking all servers every half\-second, until \fBserverSelectionTimeoutMS\fP\&.
 .sp
-The total time an operation may wait for a single\-threaded client to scan the topology is determined by \fBconnectTimeoutMS\fP in the try\-once case, or \fBserverSelectionTimeoutMS\fP and \fBconnectTimeoutMS\fP if \fBserverSelectionTryOnce\fP is set "false".
+The total time an operation may wait for a single\-threaded client to scan the topology is determined by \fBconnectTimeoutMS\fP in the try\-once case, or \fBserverSelectionTimeoutMS\fP and \fBconnectTimeoutMS\fP if \fBserverSelectionTryOnce\fP is set \(dqfalse\(dq.
 .TS
 center;
 |l|l|l|.
@@ -544,7 +554,7 @@ MONGOC_URI_SERVERSELECTIONTRYONCE
 T}	T{
 serverselectiontryonce
 T}	T{
-If "true", the driver scans the topology exactly once after server selection fails, then either selects a server or returns an error. If it is false, then the driver repeatedly searches for a suitable server for up to \fBserverSelectionTimeoutMS\fP milliseconds (pausing a half second between attempts). The default for \fBserverSelectionTryOnce\fP is "false" for pooled clients, otherwise "true". Pooled clients ignore serverSelectionTryOnce; they signal the thread to rescan the topology every half\-second until serverSelectionTimeoutMS expires.
+If \(dqtrue\(dq, the driver scans the topology exactly once after server selection fails, then either selects a server or returns an error. If it is false, then the driver repeatedly searches for a suitable server for up to \fBserverSelectionTimeoutMS\fP milliseconds (pausing a half second between attempts). The default for \fBserverSelectionTryOnce\fP is \(dqfalse\(dq for pooled clients, otherwise \(dqtrue\(dq. Pooled clients ignore serverSelectionTryOnce; they signal the thread to rescan the topology every half\-second until serverSelectionTimeoutMS expires.
 T}
 _
 T{
@@ -552,7 +562,7 @@ MONGOC_URI_SOCKETCHECKINTERVALMS
 T}	T{
 socketcheckintervalms
 T}	T{
-Only applies to single threaded clients. If a socket has not been used within this time, its connection is checked with a quick "hello" call before it is used again. Defaults to 5,000ms (5 seconds).
+Only applies to single threaded clients. If a socket has not been used within this time, its connection is checked with a quick \(dqhello\(dq call before it is used again. Defaults to 5,000ms (5 seconds).
 T}
 _
 T{
@@ -560,15 +570,15 @@ MONGOC_URI_DIRECTCONNECTION
 T}	T{
 directconnection
 T}	T{
-If "true", the driver connects to a single server directly and will not monitor additional servers.  If "false", the driver connects based on the presence and value of the \fBreplicaSet\fP option.
+If \(dqtrue\(dq, the driver connects to a single server directly and will not monitor additional servers.  If \(dqfalse\(dq, the driver connects based on the presence and value of the \fBreplicaSet\fP option.
 T}
 _
 .TE
 .sp
-Setting any of the *TimeoutMS options above to \fB0\fP will be interpreted as "use the default value".
+Setting any of the *TimeoutMS options above to \fB0\fP will be interpreted as \(dquse the default value\(dq.
 .SH CONNECTION POOL OPTIONS
 .sp
-These options govern the behavior of a \fBmongoc_client_pool_t\fP\&. They are ignored by a non\-pooled \fBmongoc_client_t\fP\&.
+These options govern the behavior of a \fI\%mongoc_client_pool_t\fP\&. They are ignored by a non\-pooled \fI\%mongoc_client_t\fP\&.
 .TS
 center;
 |l|l|l|.
@@ -586,7 +596,7 @@ MONGOC_URI_MAXPOOLSIZE
 T}	T{
 maxpoolsize
 T}	T{
-The maximum number of clients created by a \fBmongoc_client_pool_t\fP total (both in the pool and checked out). The default value is 100. Once it is reached, \fBmongoc_client_pool_pop\fP blocks until another thread pushes a client.
+The maximum number of clients created by a \fI\%mongoc_client_pool_t\fP total (both in the pool and checked out). The default value is 100. Once it is reached, \fI\%mongoc_client_pool_pop()\fP blocks until another thread pushes a client.
 T}
 _
 T{
@@ -705,11 +715,11 @@ _
 When connected to a replica set, the driver chooses which member to query using the read preference:
 .INDENT 0.0
 .IP 1. 3
-Choose members whose type matches "readPreference".
+Choose members whose type matches \(dqreadPreference\(dq.
 .IP 2. 3
 From these, if there are any tags sets configured, choose members matching the first tag set. If there are none, fall back to the next tag set and so on, until some members are chosen or the tag sets are exhausted.
 .IP 3. 3
-From the chosen servers, distribute queries randomly among the server with the fastest round\-trip times. These include the server with the fastest time and any whose round\-trip time is no more than "localThresholdMS" slower.
+From the chosen servers, distribute queries randomly among the server with the fastest round\-trip times. These include the server with the fastest time and any whose round\-trip time is no more than \(dqlocalThresholdMS\(dq slower.
 .UNINDENT
 .TS
 center;
@@ -748,7 +758,7 @@ MONGOC_URI_READPREFERENCETAGS
 T}	T{
 readpreferencetags
 T}	T{
-A representation of a tag set. See also mongoc\-read\-prefs\-tag\-sets\&.
+A representation of a tag set. See also \fI\%Tag Sets\fP\&.
 T}
 _
 T{

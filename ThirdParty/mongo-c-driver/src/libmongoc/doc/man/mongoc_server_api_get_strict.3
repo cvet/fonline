@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SERVER_API_GET_STRICT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_server_api_get_strict \- mongoc_server_api_get_strict()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SERVER_API_GET_STRICT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_server_api_get_strict \- mongoc_server_api_get_strict()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,15 +43,15 @@ mongoc_server_api_get_strict (const mongoc_server_api_t *api);
 .UNINDENT
 .UNINDENT
 .sp
-Returns the value of the strict flag for the \fBmongoc_server_api_t\fP\&.
+Returns the value of the strict flag for the \fI\%mongoc_server_api_t\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBapi\fP: A \fBmongoc_server_api_t\fP\&.
+\fBapi\fP: A \fI\%mongoc_server_api_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-Returns a \fBmongoc_optional_t\fP indicating whether the strict flag was set.
+Returns a \fI\%mongoc_optional_t\fP indicating whether the strict flag was set.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

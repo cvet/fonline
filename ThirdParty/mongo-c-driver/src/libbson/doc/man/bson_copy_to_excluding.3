@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_COPY_TO_EXCLUDING" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_copy_to_excluding \- bson_copy_to_excluding()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_COPY_TO_EXCLUDING" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_copy_to_excluding \- bson_copy_to_excluding()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,29 +49,29 @@ bson_copy_to_excluding (const bson_t *src,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsrc\fP: A \fBbson_t\fP\&.
+\fBsrc\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBdst\fP: A \fBbson_t\fP\&.
+\fBdst\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBfirst_exclude\fP: The first field name to exclude.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_copy_to_excluding()\fP function shall copy all fields from
+The \fI\%bson_copy_to_excluding()\fP function shall copy all fields from
 \fBsrc\fP to \fBdst\fP except those specified by the variadic, NULL terminated list
 of keys starting from \fBfirst_exclude\fP\&.
 .SH DEPRECATED
 .INDENT 0.0
 .INDENT 3.5
 This function is deprecated. Please use
-\fBbson_copy_to_excluding_noinit\fP in new code.
+\fI\%bson_copy_to_excluding_noinit()\fP in new code.
 .UNINDENT
 .UNINDENT
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-\fBbson_init\fP is called on \fBdst\fP\&.
+\fI\%bson_init()\fP is called on \fBdst\fP\&.
 .UNINDENT
 .UNINDENT
 .SH AUTHOR

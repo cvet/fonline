@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SOCKET_ACCEPT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_socket_accept \- mongoc_socket_accept()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SOCKET_ACCEPT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_socket_accept \- mongoc_socket_accept()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_socket_t *
-mongoc_socket_accept (mongoc_socket_t *sock, int64_t expire_at);
+mongoc_socket_accept (mongoc_socket_t *sock,
+                      int64_t expire_at) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,7 +46,7 @@ mongoc_socket_accept (mongoc_socket_t *sock, int64_t expire_at);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsock\fP: A \fBmongoc_socket_t\fP\&.
+\fBsock\fP: A \fI\%mongoc_socket_t\fP\&.
 .IP \(bu 2
 \fBexpire_at\fP: An int64_t containing a timeout in milliseconds.
 .UNINDENT
@@ -54,7 +55,7 @@ mongoc_socket_accept (mongoc_socket_t *sock, int64_t expire_at);
 This function is a wrapper around the BSD socket \fBaccept()\fP interface. It allows for more portability between UNIX\-like and Microsoft Windows platforms.
 .SH RETURNS
 .sp
-NULL upon failure to accept or timeout. A newly allocated \fBmongoc_socket_t\fP that should be released with \fBmongoc_socket_destroy()\fP on success.
+NULL upon failure to accept or timeout. A newly allocated \fBmongoc_socket_t\fP that should be released with \fI\%mongoc_socket_destroy()\fP on success.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

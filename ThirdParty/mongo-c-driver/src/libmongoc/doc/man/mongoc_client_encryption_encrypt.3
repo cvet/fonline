@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_encryption_encrypt \- mongoc_client_encryption_encrypt()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_encryption_encrypt \- mongoc_client_encryption_encrypt()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,14 +51,26 @@ mongoc_client_encryption_encrypt (
 Performs explicit encryption.
 .sp
 \fBciphertext\fP is always initialized (even on failure). Caller must call \fI\%bson_value_destroy()\fP to free.
+.sp
+To insert or query with an \(dqIndexed\(dq encrypted payload, use a
+\fI\%mongoc_client_t\fP configured with
+\fI\%mongoc_auto_encryption_opts_t\fP\&. The
+\fI\%mongoc_auto_encryption_opts_t\fP may be configured to bypass query
+analysis with \fI\%mongoc_auto_encryption_opts_set_bypass_query_analysis()\fP\&.
+The \fI\%mongoc_auto_encryption_opts_t\fP must not be configured to bypass
+automatic encryption with
+\fI\%mongoc_auto_encryption_opts_set_bypass_auto_encryption()\fP\&. \fBNote\fP that
+the \fB\(dqIndexed\(dq\fP payload type is part of the experimental
+\fI\%Queryable Encryption\fP API and may be subject
+to breaking changes in future releases.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient_encryption\fP: A \fBmongoc_client_encryption_t\fP
+\fBclient_encryption\fP: A \fI\%mongoc_client_encryption_t\fP
 .IP \(bu 2
 \fBvalue\fP: The value to encrypt.
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_client_encryption_encrypt_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_client_encryption_encrypt_opts_t\fP\&.
 .IP \(bu 2
 \fBciphertext\fP: A \fI\%bson_value_t\fP for the resulting ciphertext (a BSON binary with subtype 6).
 .IP \(bu 2
@@ -72,15 +84,15 @@ Returns \fBtrue\fP if successful. Returns \fBfalse\fP and sets \fBerror\fP other
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_encryption_encrypt_opts_t\fP
+\fI\%mongoc_client_encryption_encrypt_opts_t\fP
 .fi
 .sp
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-\fBmongoc_client_encryption_decrypt()\fP
+\fI\%mongoc_client_decryption_decrypt()\fP
 .fi
 .sp
 .UNINDENT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_PREFS_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_prefs_new \- mongoc_read_prefs_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_PREFS_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_prefs_new \- mongoc_read_prefs_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_read_prefs_t *
-mongoc_read_prefs_new (mongoc_read_mode_t read_mode);
+mongoc_read_prefs_new (mongoc_read_mode_t read_mode)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,14 +46,14 @@ mongoc_read_prefs_new (mongoc_read_mode_t read_mode);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBread_mode\fP: A \fBmongoc_read_mode_t\fP\&.
+\fBread_mode\fP: A \fI\%mongoc_read_mode_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Creates a new \fBmongoc_read_prefs_t\fP using the mode specified.
+Creates a new \fI\%mongoc_read_prefs_t\fP using the mode specified.
 .SH RETURNS
 .sp
-Returns a newly allocated \fBmongoc_read_prefs_t\fP that should be freed with \fBmongoc_read_prefs_destroy()\fP\&.
+Returns a newly allocated \fI\%mongoc_read_prefs_t\fP that should be freed with \fI\%mongoc_read_prefs_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

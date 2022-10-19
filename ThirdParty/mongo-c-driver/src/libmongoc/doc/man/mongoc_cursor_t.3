@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_t \- mongoc_cursor_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_t \- mongoc_cursor_t
 .sp
 Client\-side cursor abstraction
 .SH SYNOPSIS
@@ -50,16 +50,16 @@ It wraps up the wire protocol negotiation required to initiate a query and retri
 Common cursor operations include:
 .INDENT 0.0
 .IP \(bu 2
-Determine which host we\(aqve connected to with \fBmongoc_cursor_get_host()\fP\&.
+Determine which host we\(aqve connected to with \fI\%mongoc_cursor_get_host()\fP\&.
 .IP \(bu 2
-Retrieve more records with repeated calls to \fBmongoc_cursor_next()\fP\&.
+Retrieve more records with repeated calls to \fI\%mongoc_cursor_next()\fP\&.
 .IP \(bu 2
-Clone a query to repeat execution at a later point with \fBmongoc_cursor_clone()\fP\&.
+Clone a query to repeat execution at a later point with \fI\%mongoc_cursor_clone()\fP\&.
 .IP \(bu 2
-Test for errors with \fBmongoc_cursor_error()\fP\&.
+Test for errors with \fI\%mongoc_cursor_error()\fP\&.
 .UNINDENT
 .sp
-Cursors are lazy, meaning that no connection is established and no network traffic occurs until the first call to \fBmongoc_cursor_next()\fP\&.
+Cursors are lazy, meaning that no connection is established and no network traffic occurs until the first call to \fI\%mongoc_cursor_next()\fP\&.
 .SH THREAD SAFETY
 .sp
 \fBmongoc_cursor_t\fP is \fINOT\fP thread safe. It may only be used from within the thread in which it was created.
@@ -88,10 +88,10 @@ main (int argc, char *argv[])
    mongoc_cursor_t *cursor;
    bson_error_t error;
    const bson_t *doc;
-   const char *collection_name = "test";
+   const char *collection_name = \(dqtest\(dq;
    bson_t query;
    char *str;
-   const char *uri_string = "mongodb://127.0.0.1/?appname=client\-example";
+   const char *uri_string = \(dqmongodb://127.0.0.1/?appname=client\-example\(dq;
    mongoc_uri_t *uri;
 
    mongoc_init ();
@@ -106,8 +106,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -121,7 +121,7 @@ main (int argc, char *argv[])
    mongoc_client_set_error_api (client, 2);
 
    bson_init (&query);
-   collection = mongoc_client_get_collection (client, "test", collection_name);
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, collection_name);
    cursor = mongoc_collection_find_with_opts (
       collection,
       &query,
@@ -130,12 +130,12 @@ main (int argc, char *argv[])
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      fprintf (stdout, "%s\en", str);
+      fprintf (stdout, \(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Cursor Failure: %s\en", error.message);
+      fprintf (stderr, \(dqCursor Failure: %s\en\(dq, error.message);
       return EXIT_FAILURE;
    }
 

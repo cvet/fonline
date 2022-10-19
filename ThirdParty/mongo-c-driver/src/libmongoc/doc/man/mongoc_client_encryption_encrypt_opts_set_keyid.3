@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT_OPTS_SET_KEYID" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_encryption_encrypt_opts_set_keyid \- mongoc_client_encryption_encrypt_opts_set_keyid()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT_OPTS_SET_KEYID" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_encryption_encrypt_opts_set_keyid \- mongoc_client_encryption_encrypt_opts_set_keyid()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,20 +44,20 @@ mongoc_client_encryption_encrypt_opts_set_keyid (
 .UNINDENT
 .UNINDENT
 .sp
-Identifies the data key to use for encryption. This option is mutually exclusive with \fBmongoc_client_encryption_encrypt_opts_set_keyaltname()\fP\&.
+Identifies the data key to use for encryption. This option is mutually exclusive with \fI\%mongoc_client_encryption_encrypt_opts_set_keyaltname()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_client_encryption_encrypt_opts_t\fP
+\fBopts\fP: A \fI\%mongoc_client_encryption_encrypt_opts_t\fP
 .IP \(bu 2
-\fBkeyid\fP: A UUID (BSON binary with subtype 4) corresponding to the \fB_id\fP of the data key.
+\fBkeyid\fP: The UUID (BSON binary subtype 0x04) corresponding to the \fB_id\fP of the data key.
 .UNINDENT
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_encryption_encrypt_opts_set_keyaltname\fP
+\fI\%mongoc_client_encryption_encrypt_opts_set_keyaltname()\fP
 .fi
 .sp
 .UNINDENT

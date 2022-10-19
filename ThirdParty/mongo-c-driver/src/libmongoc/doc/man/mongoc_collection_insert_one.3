@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_INSERT_ONE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_insert_one \- mongoc_collection_insert_one()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_INSERT_ONE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_insert_one \- mongoc_collection_insert_one()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,23 +49,25 @@ mongoc_collection_insert_one (mongoc_collection_t *collection,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBdocument\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBreply\fP: Optional. An uninitialized \fI\%bson_t\fP populated with the insert result, or \fBNULL\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
 \fBopts\fP may be NULL or a BSON document with additional command options:
 .INDENT 0.0
 .IP \(bu 2
-\fBwriteConcern\fP: Construct a \fBmongoc_write_concern_t\fP and use \fBmongoc_write_concern_append\fP to add the write concern to \fBopts\fP\&. See the example code for \fBmongoc_client_write_command_with_opts\fP\&.
+\fBwriteConcern\fP: Construct a \fI\%mongoc_write_concern_t\fP and use \fI\%mongoc_write_concern_append()\fP to add the write concern to \fBopts\fP\&. See the example code for \fI\%mongoc_client_write_command_with_opts()\fP\&.
 .IP \(bu 2
-\fBsessionId\fP: First, construct a \fBmongoc_client_session_t\fP with \fBmongoc_client_start_session\fP\&. You can begin a transaction with \fBmongoc_client_session_start_transaction\fP, optionally with a \fBmongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fBmongoc_client_session_append\fP to add the session to \fBopts\fP\&. See the example code for \fBmongoc_client_session_t\fP\&.
+\fBsessionId\fP: First, construct a \fI\%mongoc_client_session_t\fP with \fI\%mongoc_client_start_session()\fP\&. You can begin a transaction with \fI\%mongoc_client_session_start_transaction()\fP, optionally with a \fI\%mongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fI\%mongoc_client_session_append()\fP to add the session to \fBopts\fP\&. See the example code for \fI\%mongoc_client_session_t\fP\&.
 .IP \(bu 2
 \fBvalidate\fP: Construct a bitwise\-or of all desired \fI\%bson_validate_flags_t\fP\&. Set to \fBfalse\fP to skip client\-side validation of the provided BSON documents.
+.IP \(bu 2
+\fBcomment\fP: A \fI\%bson_value_t\fP specifying the comment to attach to this command. The comment will appear in log messages, profiler output, and currentOp output. Requires MongoDB 4.4 or later.
 .IP \(bu 2
 \fBbypassDocumentValidation\fP: Set to \fBtrue\fP to skip server\-side schema validation of the provided BSON documents.
 .UNINDENT
@@ -73,11 +75,11 @@ mongoc_collection_insert_one (mongoc_collection_t *collection,
 .sp
 This function shall insert \fBdocument\fP into \fBcollection\fP\&.
 .sp
-To insert an array of documents, see \fBmongoc_collection_insert_many\fP\&.
+To insert an array of documents, see \fI\%mongoc_collection_insert_many()\fP\&.
 .sp
 If no \fB_id\fP element is found in \fBdocument\fP, then a \fI\%bson_oid_t\fP will be generated locally and added to the document. If you must know the inserted document\(aqs \fB_id\fP, generate it in your code and include it in the \fBdocument\fP\&. The \fB_id\fP you generate can be a \fI\%bson_oid_t\fP or any other non\-array BSON type.
 .sp
-If you pass a non\-NULL \fBreply\fP, it is filled out with an "insertedCount" field. If there is a server error then \fBreply\fP contains either a "writeErrors" array with one subdocument or a "writeConcernErrors" array. The reply must be freed with \fI\%bson_destroy()\fP\&.
+If you pass a non\-NULL \fBreply\fP, it is filled out with an \(dqinsertedCount\(dq field. If there is a server error then \fBreply\fP contains either a \(dqwriteErrors\(dq array with one subdocument or a \(dqwriteConcernErrors\(dq array. The reply must be freed with \fI\%bson_destroy()\fP\&.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.

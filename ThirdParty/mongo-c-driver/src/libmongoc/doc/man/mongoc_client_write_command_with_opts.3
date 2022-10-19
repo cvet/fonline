@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_WRITE_COMMAND_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_write_command_with_opts \- mongoc_client_write_command_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_WRITE_COMMAND_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_write_command_with_opts \- mongoc_client_write_command_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,9 +48,9 @@ mongoc_client_write_command_with_opts (mongoc_client_t *client,
 .UNINDENT
 .UNINDENT
 .sp
-Execute a command on the server, applying logic that is specific to commands that write, and taking the MongoDB server version into account. To send a raw command to the server without any of this logic, use \fBmongoc_client_command_simple\fP\&.
+Execute a command on the server, applying logic that is specific to commands that write, and taking the MongoDB server version into account. To send a raw command to the server without any of this logic, use \fI\%mongoc_client_command_simple()\fP\&.
 .sp
-Use this function for commands that write such as "drop" or "createRole" (but not for "insert", "update", or "delete", see \fI\%Basic Write Operations\fP). Write concern and collation can be overridden by various sources. In a transaction, read concern and write concern are prohibited in \fBopts\fP\&. The highest\-priority sources for these options are listed first in the following table. The write concern is omitted for MongoDB before 3.4.
+Use this function for commands that write such as \(dqdrop\(dq or \(dqcreateRole\(dq (but not for \(dqinsert\(dq, \(dqupdate\(dq, or \(dqdelete\(dq, see \fI\%Basic Write Operations\fP). Write concern and collation can be overridden by various sources. In a transaction, read concern and write concern are prohibited in \fBopts\fP\&. The highest\-priority sources for these options are listed first in the following table. The write concern is omitted for MongoDB before 3.4.
 .TS
 center;
 |l|l|.
@@ -79,13 +79,13 @@ T}
 _
 .TE
 .sp
-See the example for transactions and for the "distinct" command with opts\&.
+\fI\%See the example for transactions\fP and for \fI\%the \(dqdistinct\(dq command with opts\fP\&.
 .sp
 \fBreply\fP is always initialized, and must be freed with \fI\%bson_destroy()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
 \fBdb_name\fP: The name of the database to run the command on.
 .IP \(bu 2
@@ -95,19 +95,19 @@ See the example for transactions and for the "distinct" command with opts\&.
 .IP \(bu 2
 \fBreply\fP: A location for the resulting document.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
 \fBopts\fP may be NULL or a BSON document with additional command options:
 .INDENT 0.0
 .IP \(bu 2
-\fBwriteConcern\fP: Construct a \fBmongoc_write_concern_t\fP and use \fBmongoc_write_concern_append\fP to add the write concern to \fBopts\fP\&. See the example code for \fBmongoc_client_write_command_with_opts\fP\&.
+\fBwriteConcern\fP: Construct a \fI\%mongoc_write_concern_t\fP and use \fI\%mongoc_write_concern_append()\fP to add the write concern to \fBopts\fP\&. See the example code for \fI\%mongoc_client_write_command_with_opts()\fP\&.
 .IP \(bu 2
-\fBsessionId\fP: First, construct a \fBmongoc_client_session_t\fP with \fBmongoc_client_start_session\fP\&. You can begin a transaction with \fBmongoc_client_session_start_transaction\fP, optionally with a \fBmongoc_transaction_opt_t\fP that overrides the options inherited from \fBclient\fP, and use \fBmongoc_client_session_append\fP to add the session to \fBopts\fP\&. See the example code for \fBmongoc_client_session_t\fP\&.
+\fBsessionId\fP: First, construct a \fI\%mongoc_client_session_t\fP with \fI\%mongoc_client_start_session()\fP\&. You can begin a transaction with \fI\%mongoc_client_session_start_transaction()\fP, optionally with a \fI\%mongoc_transaction_opt_t\fP that overrides the options inherited from \fBclient\fP, and use \fI\%mongoc_client_session_append()\fP to add the session to \fBopts\fP\&. See the example code for \fI\%mongoc_client_session_t\fP\&.
 .IP \(bu 2
-\fBcollation\fP: Configure textual comparisons. See Setting Collation Order, and \fI\%the MongoDB Manual entry on Collation\fP\&. Collation requires MongoDB 3.2 or later, otherwise an error is returned.
+\fBcollation\fP: Configure textual comparisons. See \fI\%Setting Collation Order\fP, and \fI\%the MongoDB Manual entry on Collation\fP\&. Collation requires MongoDB 3.2 or later, otherwise an error is returned.
 .IP \(bu 2
-\fBserverId\fP: To target a specific server, include an int32 "serverId" field. Obtain the id by calling \fBmongoc_client_select_server\fP, then \fBmongoc_server_description_id\fP on its return value.
+\fBserverId\fP: To target a specific server, include an int32 \(dqserverId\(dq field. Obtain the id by calling \fI\%mongoc_client_select_server()\fP, then \fI\%mongoc_server_description_id()\fP on its return value.
 .UNINDENT
 .sp
 Consult \fI\%the MongoDB Manual entry on Database Commands\fP for each command\(aqs arguments.
@@ -121,7 +121,7 @@ Returns \fBtrue\fP if successful. Returns \fBfalse\fP and sets \fBerror\fP if th
 A write concern timeout or write concern error is considered a failure.
 .SH BASIC WRITE OPERATIONS
 .sp
-Do not use this function to call the basic write commands "insert", "update", and "delete". Those commands require special logic not implemented in \fBmongoc_client_write_command_with_opts\fP\&. For basic write operations use CRUD functions such as \fBmongoc_collection_insert_one\fP and the others described in the CRUD tutorial, or use the Bulk API\&.
+Do not use this function to call the basic write commands \(dqinsert\(dq, \(dqupdate\(dq, and \(dqdelete\(dq. Those commands require special logic not implemented in \fBmongoc_client_write_command_with_opts\fP\&. For basic write operations use CRUD functions such as \fI\%mongoc_collection_insert_one()\fP and the others described in \fI\%the CRUD tutorial\fP, or use the \fI\%Bulk API\fP\&.
 .SH EXAMPLE
 .sp
 example\-command\-with\-opts.c
@@ -133,26 +133,26 @@ example\-command\-with\-opts.c
 /*
 
 Demonstrates how to prepare options for mongoc_client_read_command_with_opts and
-mongoc_client_write_command_with_opts. First it calls "cloneCollectionAsCapped"
-command with "writeConcern" option, then "distinct" command with "collation" and
-"readConcern" options,
+mongoc_client_write_command_with_opts. First it calls \(dqcloneCollectionAsCapped\(dq
+command with \(dqwriteConcern\(dq option, then \(dqdistinct\(dq command with \(dqcollation\(dq and
+\(dqreadConcern\(dq options,
 
 Start a MongoDB 3.4 replica set with \-\-enableMajorityReadConcern and insert two
 documents:
 
 $ mongo
-MongoDB Enterprise replset:PRIMARY> db.my_collection.insert({x: 1, y: "One"})
-WriteResult({ "nInserted" : 1 })
-MongoDB Enterprise replset:PRIMARY> db.my_collection.insert({x: 2, y: "Two"})
-WriteResult({ "nInserted" : 1 })
+MongoDB Enterprise replset:PRIMARY> db.my_collection.insert({x: 1, y: \(dqOne\(dq})
+WriteResult({ \(dqnInserted\(dq : 1 })
+MongoDB Enterprise replset:PRIMARY> db.my_collection.insert({x: 2, y: \(dqTwo\(dq})
+WriteResult({ \(dqnInserted\(dq : 1 })
 
 Build and run the example:
 
 gcc example\-command\-with\-opts.c \-o example\-command\-with\-opts $(pkg\-config
 \-\-cflags \-\-libs libmongoc\-1.0)
 \&./example\-command\-with\-opts [CONNECTION_STRING]
-cloneCollectionAsCapped: { "ok" : 1 }
-distinct: { "values" : [ 1, 2 ], "ok" : 1 }
+cloneCollectionAsCapped: { \(dqok\(dq : 1 }
+distinct: { \(dqvalues\(dq : [ 1, 2 ], \(dqok\(dq : 1 }
 
 */
 
@@ -164,7 +164,7 @@ int
 main (int argc, char *argv[])
 {
    mongoc_client_t *client;
-   const char *uri_string = "mongodb://127.0.0.1/?appname=client\-example";
+   const char *uri_string = \(dqmongodb://127.0.0.1/?appname=client\-example\(dq;
    mongoc_uri_t *uri;
    bson_t *cmd;
    bson_t *opts;
@@ -184,8 +184,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -198,57 +198,57 @@ main (int argc, char *argv[])
 
    mongoc_client_set_error_api (client, 2);
 
-   cmd = BCON_NEW ("cloneCollectionAsCapped",
-                   BCON_UTF8 ("my_collection"),
-                   "toCollection",
-                   BCON_UTF8 ("my_capped_collection"),
-                   "size",
+   cmd = BCON_NEW (\(dqcloneCollectionAsCapped\(dq,
+                   BCON_UTF8 (\(dqmy_collection\(dq),
+                   \(dqtoCollection\(dq,
+                   BCON_UTF8 (\(dqmy_capped_collection\(dq),
+                   \(dqsize\(dq,
                    BCON_INT64 (1024 * 1024));
 
-   /* include write concern "majority" in command options */
+   /* include write concern \(dqmajority\(dq in command options */
    write_concern = mongoc_write_concern_new ();
    mongoc_write_concern_set_wmajority (write_concern, 10000 /* wtimeoutMS */);
    opts = bson_new ();
    mongoc_write_concern_append (write_concern, opts);
 
    if (mongoc_client_write_command_with_opts (
-          client, "test", cmd, opts, &reply, &error)) {
+          client, \(dqtest\(dq, cmd, opts, &reply, &error)) {
       json = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("cloneCollectionAsCapped: %s\en", json);
+      printf (\(dqcloneCollectionAsCapped: %s\en\(dq, json);
       bson_free (json);
    } else {
-      fprintf (stderr, "cloneCollectionAsCapped: %s\en", error.message);
+      fprintf (stderr, \(dqcloneCollectionAsCapped: %s\en\(dq, error.message);
    }
 
    bson_free (cmd);
    bson_free (opts);
 
-   /* distinct values of "x" in "my_collection" where "y" sorts after "one" */
-   cmd = BCON_NEW ("distinct",
-                   BCON_UTF8 ("my_collection"),
-                   "key",
-                   BCON_UTF8 ("x"),
-                   "query",
-                   "{",
-                   "y",
-                   "{",
-                   "$gt",
-                   BCON_UTF8 ("one"),
-                   "}",
-                   "}");
+   /* distinct values of \(dqx\(dq in \(dqmy_collection\(dq where \(dqy\(dq sorts after \(dqone\(dq */
+   cmd = BCON_NEW (\(dqdistinct\(dq,
+                   BCON_UTF8 (\(dqmy_collection\(dq),
+                   \(dqkey\(dq,
+                   BCON_UTF8 (\(dqx\(dq),
+                   \(dqquery\(dq,
+                   \(dq{\(dq,
+                   \(dqy\(dq,
+                   \(dq{\(dq,
+                   \(dq$gt\(dq,
+                   BCON_UTF8 (\(dqone\(dq),
+                   \(dq}\(dq,
+                   \(dq}\(dq);
 
    read_prefs = mongoc_read_prefs_new (MONGOC_READ_SECONDARY);
 
-   /* "One" normally sorts before "one"; make "One" sort after "one" */
-   opts = BCON_NEW ("collation",
-                    "{",
-                    "locale",
-                    BCON_UTF8 ("en_US"),
-                    "caseFirst",
-                    BCON_UTF8 ("lower"),
-                    "}");
+   /* \(dqOne\(dq normally sorts before \(dqone\(dq; make \(dqOne\(dq sort after \(dqone\(dq */
+   opts = BCON_NEW (\(dqcollation\(dq,
+                    \(dq{\(dq,
+                    \(dqlocale\(dq,
+                    BCON_UTF8 (\(dqen_US\(dq),
+                    \(dqcaseFirst\(dq,
+                    BCON_UTF8 (\(dqlower\(dq),
+                    \(dq}\(dq);
 
-   /* add a read concern to "opts" */
+   /* add a read concern to \(dqopts\(dq */
    read_concern = mongoc_read_concern_new ();
    mongoc_read_concern_set_level (read_concern,
                                   MONGOC_READ_CONCERN_LEVEL_MAJORITY);
@@ -256,12 +256,12 @@ main (int argc, char *argv[])
    mongoc_read_concern_append (read_concern, opts);
 
    if (mongoc_client_read_command_with_opts (
-          client, "test", cmd, read_prefs, opts, &reply, &error)) {
+          client, \(dqtest\(dq, cmd, read_prefs, opts, &reply, &error)) {
       json = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("distinct: %s\en", json);
+      printf (\(dqdistinct: %s\en\(dq, json);
       bson_free (json);
    } else {
-      fprintf (stderr, "distinct: %s\en", error.message);
+      fprintf (stderr, \(dqdistinct: %s\en\(dq, error.message);
    }
 
    bson_destroy (cmd);

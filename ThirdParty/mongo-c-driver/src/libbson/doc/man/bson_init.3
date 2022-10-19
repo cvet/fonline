@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_INIT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_init \- bson_init()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_INIT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_init \- bson_init()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,11 +45,11 @@ bson_init (bson_t *b);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBb\fP: A \fBbson_t\fP\&.
+\fBb\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_init()\fP function shall initialize a \fBbson_t\fP that is placed on the stack. This is equivalent to initializing a \fBbson_t\fP to \fBBSON_INITIALIZER\fP\&.
+The \fI\%bson_init()\fP function shall initialize a \fI\%bson_t\fP that is placed on the stack. This is equivalent to initializing a \fI\%bson_t\fP to \fBBSON_INITIALIZER\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

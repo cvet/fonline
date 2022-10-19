@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_FIND" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_find \- mongoc_collection_find()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,11 +27,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_FIND" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_find \- mongoc_collection_find()
 .SH DEPRECATED
 .sp
 This function is deprecated and should not be used in new code.
 .sp
-Use the more convenient \fBmongoc_collection_find_with_opts\fP instead.
+Use the more convenient \fI\%mongoc_collection_find_with_opts()\fP instead.
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -59,9 +59,9 @@ mongoc_collection_find (mongoc_collection_t *collection,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
-\fBflags\fP: A \fBmongoc_query_flags_t\fP\&.
+\fBflags\fP: A \fI\%mongoc_query_flags_t\fP\&.
 .IP \(bu 2
 \fBskip\fP: A uint32_t of number of documents to skip or 0.
 .IP \(bu 2
@@ -73,22 +73,22 @@ mongoc_collection_find (mongoc_collection_t *collection,
 .IP \(bu 2
 \fBfields\fP: A \fI\%bson_t\fP containing fields to return or \fBNULL\fP\&.
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP or \fBNULL\fP for default read preferences.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP or \fBNULL\fP for default read preferences.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 This function shall execute a query on the underlying \fBcollection\fP\&.
 .sp
-If no options are necessary, \fBquery\fP can simply contain a query such as \fB{a:1}\fP\&. If you would like to specify options such as a sort order, the query must be placed inside of \fB{"$query": {}}\fP\&. See the example below for how to properly specify additional options to \fBquery\fP\&.
+If no options are necessary, \fBquery\fP can simply contain a query such as \fB{a:1}\fP\&. If you would like to specify options such as a sort order, the query must be placed inside of \fB{\(dq$query\(dq: {}}\fP\&. See the example below for how to properly specify additional options to \fBquery\fP\&.
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH RETURNS
 .sp
-This function returns a newly allocated \fBmongoc_cursor_t\fP that should be freed with \fBmongoc_cursor_destroy()\fP when no longer in use. The returned \fBmongoc_cursor_t\fP is never \fBNULL\fP, even on error. The user must call \fBmongoc_cursor_next()\fP on the returned \fBmongoc_cursor_t\fP to execute the initial command.
+This function returns a newly allocated \fI\%mongoc_cursor_t\fP that should be freed with \fI\%mongoc_cursor_destroy()\fP when no longer in use. The returned \fI\%mongoc_cursor_t\fP is never \fBNULL\fP, even on error. The user must call \fI\%mongoc_cursor_next()\fP on the returned \fI\%mongoc_cursor_t\fP to execute the initial command.
 .sp
-Cursor errors can be checked with \fBmongoc_cursor_error_document\fP\&. It always fills out the \fI\%bson_error_t\fP if an error occurred, and optionally includes a server reply document if the error occurred server\-side.
+Cursor errors can be checked with \fI\%mongoc_cursor_error_document()\fP\&. It always fills out the \fI\%bson_error_t\fP if an error occurred, and optionally includes a server reply document if the error occurred server\-side.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -117,27 +117,27 @@ print_all_documents (mongoc_collection_t *collection)
    char *str;
    bson_t *query;
 
-   query = BCON_NEW ("$query",
-                     "{",
-                     "foo",
+   query = BCON_NEW (\(dq$query\(dq,
+                     \(dq{\(dq,
+                     \(dqfoo\(dq,
                      BCON_INT32 (1),
-                     "}",
-                     "$orderby",
-                     "{",
-                     "bar",
+                     \(dq}\(dq,
+                     \(dq$orderby\(dq,
+                     \(dq{\(dq,
+                     \(dqbar\(dq,
                      BCON_INT32 (\-1),
-                     "}");
+                     \(dq}\(dq);
    cursor = mongoc_collection_find (
       collection, MONGOC_QUERY_NONE, 0, 0, 0, query, NULL, NULL);
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "An error occurred: %s\en", error.message);
+      fprintf (stderr, \(dqAn error occurred: %s\en\(dq, error.message);
    }
 
    mongoc_cursor_destroy (cursor);
@@ -149,25 +149,25 @@ print_all_documents (mongoc_collection_t *collection)
 .UNINDENT
 .SH THE "FIND" COMMAND
 .sp
-Queries have historically been sent as OP_QUERY wire protocol messages, but beginning in MongoDB 3.2 queries use \fI\%the "find" command\fP instead.
+Queries have historically been sent as OP_QUERY wire protocol messages, but beginning in MongoDB 3.2 queries use \fI\%the \(dqfind\(dq command\fP instead.
 .sp
-The driver automatically converts queries to the new "find" command syntax if needed, so this change is typically invisible to C Driver users. However, an application written exclusively for MongoDB 3.2 and later can choose to use the new syntax directly instead of relying on the driver to convert from the old syntax:
+The driver automatically converts queries to the new \(dqfind\(dq command syntax if needed, so this change is typically invisible to C Driver users. However, an application written exclusively for MongoDB 3.2 and later can choose to use the new syntax directly instead of relying on the driver to convert from the old syntax:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-/* MongoDB 3.2+ "find" command syntax */
-query = BCON_NEW ("filter",
-                  "{",
-                  "foo",
+/* MongoDB 3.2+ \(dqfind\(dq command syntax */
+query = BCON_NEW (\(dqfilter\(dq,
+                  \(dq{\(dq,
+                  \(dqfoo\(dq,
                   BCON_INT32 (1),
-                  "}",
-                  "sort",
-                  "{",
-                  "bar",
+                  \(dq}\(dq,
+                  \(dqsort\(dq,
+                  \(dq{\(dq,
+                  \(dqbar\(dq,
                   BCON_INT32 (\-1),
-                  "}");
+                  \(dq}\(dq);
 cursor = mongoc_collection_find (
    collection, MONGOC_QUERY_NONE, 0, 0, 0, query, NULL, NULL);
 .ft P
@@ -175,7 +175,7 @@ cursor = mongoc_collection_find (
 .UNINDENT
 .UNINDENT
 .sp
-The "find" command takes different options from the traditional OP_QUERY message.
+The \(dqfind\(dq command takes different options from the traditional OP_QUERY message.
 .TS
 center;
 |l|l|l|.
@@ -214,36 +214,36 @@ T}
 _
 .TE
 .sp
-Most applications should use the OP_QUERY syntax, with "$query", "$orderby", and so on, and rely on the driver to convert to the new syntax if needed.
+Most applications should use the OP_QUERY syntax, with \(dq$query\(dq, \(dq$orderby\(dq, and so on, and rely on the driver to convert to the new syntax if needed.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fI\%The "find" command\fP in the MongoDB Manual.
+\fI\%The \(dqfind\(dq command\fP in the MongoDB Manual.
 .fi
 .sp
 .UNINDENT
 .UNINDENT
 .SH THE "EXPLAIN" COMMAND
 .sp
-With MongoDB before 3.2, a query with option \fB$explain: true\fP returns information about the query plan, instead of the query results. Beginning in MongoDB 3.2, there is a separate "explain" command. The driver will not convert "$explain" queries to "explain" commands, you must call the "explain" command explicitly:
+With MongoDB before 3.2, a query with option \fB$explain: true\fP returns information about the query plan, instead of the query results. Beginning in MongoDB 3.2, there is a separate \(dqexplain\(dq command. The driver will not convert \(dq$explain\(dq queries to \(dqexplain\(dq commands, you must call the \(dqexplain\(dq command explicitly:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-/* MongoDB 3.2+, "explain" command syntax */
-command = BCON_NEW ("explain",
-                    "{",
-                    "find",
-                    BCON_UTF8 ("collection_name"),
-                    "filter",
-                    "{",
-                    "foo",
+/* MongoDB 3.2+, \(dqexplain\(dq command syntax */
+command = BCON_NEW (\(dqexplain\(dq,
+                    \(dq{\(dq,
+                    \(dqfind\(dq,
+                    BCON_UTF8 (\(dqcollection_name\(dq),
+                    \(dqfilter\(dq,
+                    \(dq{\(dq,
+                    \(dqfoo\(dq,
                     BCON_INT32 (1),
-                    "}",
-                    "}");
+                    \(dq}\(dq,
+                    \(dq}\(dq);
 mongoc_collection_command_simple (collection, command, NULL, &reply, &error);
 .ft P
 .fi
@@ -254,7 +254,7 @@ mongoc_collection_command_simple (collection, command, NULL, &reply, &error);
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fI\%The "explain" command\fP in the MongoDB Manual.
+\fI\%The \(dqexplain\(dq command\fP in the MongoDB Manual.
 .fi
 .sp
 .UNINDENT

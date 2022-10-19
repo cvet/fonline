@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_APPLICATION_PERFORMANCE_MONITORING" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_application_performance_monitoring \- Application Performance Monitoring (APM)
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_APPLICATION_PERFORMANCE_MONITORING" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_application_performance_monitoring \- Application Performance Monitoring (APM)
 .sp
 The MongoDB C Driver allows you to monitor all the MongoDB operations the driver executes. This event\-notification system conforms to two MongoDB driver specs:
 .INDENT 0.0
@@ -39,7 +39,7 @@ The MongoDB C Driver allows you to monitor all the MongoDB operations the driver
 \fI\%SDAM Monitoring\fP: events related to the driver\(aqs Server Discovery And Monitoring logic.
 .UNINDENT
 .sp
-To receive notifications, create a \fBmongoc_apm_callbacks_t\fP with \fBmongoc_apm_callbacks_new\fP, set callbacks on it, then pass it to \fBmongoc_client_set_apm_callbacks\fP or \fBmongoc_client_pool_set_apm_callbacks\fP\&.
+To receive notifications, create a \fBmongoc_apm_callbacks_t\fP with \fI\%mongoc_apm_callbacks_new()\fP, set callbacks on it, then pass it to \fI\%mongoc_client_set_apm_callbacks()\fP or \fI\%mongoc_client_pool_set_apm_callbacks()\fP\&.
 .SH COMMAND-MONITORING EXAMPLE
 .sp
 example\-command\-monitoring.c
@@ -71,7 +71,7 @@ command_started (const mongoc_apm_command_started_t *event)
 
    s = bson_as_relaxed_extended_json (
       mongoc_apm_command_started_get_command (event), NULL);
-   printf ("Command %s started on %s:\en%s\en\en",
+   printf (\(dqCommand %s started on %s:\en%s\en\en\(dq,
            mongoc_apm_command_started_get_command_name (event),
            mongoc_apm_command_started_get_host (event)\->host,
            s);
@@ -89,7 +89,7 @@ command_succeeded (const mongoc_apm_command_succeeded_t *event)
 
    s = bson_as_relaxed_extended_json (
       mongoc_apm_command_succeeded_get_reply (event), NULL);
-   printf ("Command %s succeeded:\en%s\en\en",
+   printf (\(dqCommand %s succeeded:\en%s\en\en\(dq,
            mongoc_apm_command_succeeded_get_command_name (event),
            s);
 
@@ -105,7 +105,7 @@ command_failed (const mongoc_apm_command_failed_t *event)
    bson_error_t error;
 
    mongoc_apm_command_failed_get_error (event, &error);
-   printf ("Command %s failed:\en\e"%s\e"\en\en",
+   printf (\(dqCommand %s failed:\en\e\(dq%s\e\(dq\en\en\(dq,
            mongoc_apm_command_failed_get_command_name (event),
            error.message);
 
@@ -122,9 +122,9 @@ main (int argc, char *argv[])
    mongoc_collection_t *collection;
    bson_error_t error;
    const char *uri_string =
-      "mongodb://127.0.0.1/?appname=cmd\-monitoring\-example";
+      \(dqmongodb://127.0.0.1/?appname=cmd\-monitoring\-example\(dq;
    mongoc_uri_t *uri;
-   const char *collection_name = "test";
+   const char *collection_name = \(dqtest\(dq;
    bson_t *docs[2];
 
    mongoc_init ();
@@ -136,8 +136,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -156,11 +156,11 @@ main (int argc, char *argv[])
    mongoc_client_set_apm_callbacks (
       client, callbacks, (void *) &stats /* context pointer */);
 
-   collection = mongoc_client_get_collection (client, "test", collection_name);
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, collection_name);
    mongoc_collection_drop (collection, NULL);
 
-   docs[0] = BCON_NEW ("_id", BCON_INT32 (0));
-   docs[1] = BCON_NEW ("_id", BCON_INT32 (1));
+   docs[0] = BCON_NEW (\(dq_id\(dq, BCON_INT32 (0));
+   docs[1] = BCON_NEW (\(dq_id\(dq, BCON_INT32 (1));
    mongoc_collection_insert_many (
       collection, (const bson_t **) docs, 2, NULL, NULL, NULL);
 
@@ -172,7 +172,7 @@ main (int argc, char *argv[])
    mongoc_uri_destroy (uri);
    mongoc_client_destroy (client);
 
-   printf ("started: %d\ensucceeded: %d\enfailed: %d\en",
+   printf (\(dqstarted: %d\ensucceeded: %d\enfailed: %d\en\(dq,
            stats.started,
            stats.succeeded,
            stats.failed);
@@ -197,39 +197,39 @@ This example program prints:
 .nf
 .ft C
 Command drop started on 127.0.0.1:
-{ "drop" : "test" }
+{ \(dqdrop\(dq : \(dqtest\(dq }
 
 Command drop succeeded:
-{ "ns" : "test.test", "nIndexesWas" : 1, "ok" : 1.0 }
+{ \(dqns\(dq : \(dqtest.test\(dq, \(dqnIndexesWas\(dq : 1, \(dqok\(dq : 1.0 }
 
 Command insert started on 127.0.0.1:
 {
-  "insert" : "test",
-  "ordered" : true,
-  "documents" : [
-    { "_id" : 0 }, { "_id" : 1 }
+  \(dqinsert\(dq : \(dqtest\(dq,
+  \(dqordered\(dq : true,
+  \(dqdocuments\(dq : [
+    { \(dq_id\(dq : 0 }, { \(dq_id\(dq : 1 }
   ]
 }
 
 Command insert succeeded:
-{ "n" : 2, "ok" : 1.0 }
+{ \(dqn\(dq : 2, \(dqok\(dq : 1.0 }
 
 Command insert started on 127.0.0.1:
 {
-  "insert" : "test",
-  "ordered" : true,
-  "documents" : [
-    { "_id" : 0 }
+  \(dqinsert\(dq : \(dqtest\(dq,
+  \(dqordered\(dq : true,
+  \(dqdocuments\(dq : [
+    { \(dq_id\(dq : 0 }
   ]
 }
 
 Command insert succeeded:
 {
-  "n" : 0,
-  "writeErrors" : [
-    { "index" : 0, "code" : 11000, "errmsg" : "duplicate key" }
+  \(dqn\(dq : 0,
+  \(dqwriteErrors\(dq : [
+    { \(dqindex\(dq : 0, \(dqcode\(dq : 11000, \(dqerrmsg\(dq : \(dqduplicate key\(dq }
   ],
-  "ok" : 1.0
+  \(dqok\(dq : 1.0
 }
 
 started: 3
@@ -242,7 +242,7 @@ failed: 0
 .sp
 The output has been edited and formatted for clarity. Depending on your server configuration, messages may include metadata like database name, logical session ids, or cluster times that are not shown here.
 .sp
-The final "insert" command is considered successful, despite the writeError, because the server replied to the overall command with \fB"ok": 1\fP\&.
+The final \(dqinsert\(dq command is considered successful, despite the writeError, because the server replied to the overall command with \fB\(dqok\(dq: 1\fP\&.
 .SH SDAM MONITORING EXAMPLE
 .sp
 example\-sdam\-monitoring.c
@@ -285,7 +285,7 @@ server_changed (const mongoc_apm_server_changed_t *event)
    prev_sd = mongoc_apm_server_changed_get_previous_description (event);
    new_sd = mongoc_apm_server_changed_get_new_description (event);
 
-   printf ("server changed: %s %s \-> %s\en",
+   printf (\(dqserver changed: %s %s \-> %s\en\(dq,
            mongoc_apm_server_changed_get_host (event)\->host_and_port,
            mongoc_server_description_type (prev_sd),
            mongoc_server_description_type (new_sd));
@@ -300,7 +300,7 @@ server_opening (const mongoc_apm_server_opening_t *event)
    context = (stats_t *) mongoc_apm_server_opening_get_context (event);
    context\->server_opening_events++;
 
-   printf ("server opening: %s\en",
+   printf (\(dqserver opening: %s\en\(dq,
            mongoc_apm_server_opening_get_host (event)\->host_and_port);
 }
 
@@ -313,7 +313,7 @@ server_closed (const mongoc_apm_server_closed_t *event)
    context = (stats_t *) mongoc_apm_server_closed_get_context (event);
    context\->server_closed_events++;
 
-   printf ("server closed: %s\en",
+   printf (\(dqserver closed: %s\en\(dq,
            mongoc_apm_server_closed_get_host (event)\->host_and_port);
 }
 
@@ -339,23 +339,23 @@ topology_changed (const mongoc_apm_topology_changed_t *event)
    new_td = mongoc_apm_topology_changed_get_new_description (event);
    new_sds = mongoc_topology_description_get_servers (new_td, &n_new_sds);
 
-   printf ("topology changed: %s \-> %s\en",
+   printf (\(dqtopology changed: %s \-> %s\en\(dq,
            mongoc_topology_description_type (prev_td),
            mongoc_topology_description_type (new_td));
 
    if (n_prev_sds) {
-      printf ("  previous servers:\en");
+      printf (\(dq  previous servers:\en\(dq);
       for (i = 0; i < n_prev_sds; i++) {
-         printf ("      %s %s\en",
+         printf (\(dq      %s %s\en\(dq,
                  mongoc_server_description_type (prev_sds[i]),
                  mongoc_server_description_host (prev_sds[i])\->host_and_port);
       }
    }
 
    if (n_new_sds) {
-      printf ("  new servers:\en");
+      printf (\(dq  new servers:\en\(dq);
       for (i = 0; i < n_new_sds; i++) {
-         printf ("      %s %s\en",
+         printf (\(dq      %s %s\en\(dq,
                  mongoc_server_description_type (new_sds[i]),
                  mongoc_server_description_host (new_sds[i])\->host_and_port);
       }
@@ -366,16 +366,16 @@ topology_changed (const mongoc_apm_topology_changed_t *event)
    /* it is safe, and unfortunately necessary, to cast away const here */
    if (mongoc_topology_description_has_readable_server (
           (mongoc_topology_description_t *) new_td, prefs)) {
-      printf ("  secondary AVAILABLE\en");
+      printf (\(dq  secondary AVAILABLE\en\(dq);
    } else {
-      printf ("  secondary UNAVAILABLE\en");
+      printf (\(dq  secondary UNAVAILABLE\en\(dq);
    }
 
    if (mongoc_topology_description_has_writable_server (
           (mongoc_topology_description_t *) new_td)) {
-      printf ("  primary AVAILABLE\en");
+      printf (\(dq  primary AVAILABLE\en\(dq);
    } else {
-      printf ("  primary UNAVAILABLE\en");
+      printf (\(dq  primary UNAVAILABLE\en\(dq);
    }
 
    mongoc_read_prefs_destroy (prefs);
@@ -392,7 +392,7 @@ topology_opening (const mongoc_apm_topology_opening_t *event)
    context = (stats_t *) mongoc_apm_topology_opening_get_context (event);
    context\->topology_opening_events++;
 
-   printf ("topology opening\en");
+   printf (\(dqtopology opening\en\(dq);
 }
 
 
@@ -404,7 +404,7 @@ topology_closed (const mongoc_apm_topology_closed_t *event)
    context = (stats_t *) mongoc_apm_topology_closed_get_context (event);
    context\->topology_closed_events++;
 
-   printf ("topology closed\en");
+   printf (\(dqtopology closed\en\(dq);
 }
 
 
@@ -417,7 +417,7 @@ server_heartbeat_started (const mongoc_apm_server_heartbeat_started_t *event)
       (stats_t *) mongoc_apm_server_heartbeat_started_get_context (event);
    context\->heartbeat_started_events++;
 
-   printf ("%s heartbeat started\en",
+   printf (\(dq%s heartbeat started\en\(dq,
            mongoc_apm_server_heartbeat_started_get_host (event)\->host_and_port);
 }
 
@@ -437,7 +437,7 @@ server_heartbeat_succeeded (
       mongoc_apm_server_heartbeat_succeeded_get_reply (event), NULL);
 
    printf (
-      "%s heartbeat succeeded: %s\en",
+      \(dq%s heartbeat succeeded: %s\en\(dq,
       mongoc_apm_server_heartbeat_succeeded_get_host (event)\->host_and_port,
       reply);
 
@@ -455,7 +455,7 @@ server_heartbeat_failed (const mongoc_apm_server_heartbeat_failed_t *event)
    context\->heartbeat_failed_events++;
    mongoc_apm_server_heartbeat_failed_get_error (event, &error);
 
-   printf ("%s heartbeat failed: %s\en",
+   printf (\(dq%s heartbeat failed: %s\en\(dq,
            mongoc_apm_server_heartbeat_failed_get_host (event)\->host_and_port,
            error.message);
 }
@@ -468,7 +468,7 @@ main (int argc, char *argv[])
    mongoc_apm_callbacks_t *cbs;
    stats_t stats = {0};
    const char *uri_string =
-      "mongodb://127.0.0.1/?appname=sdam\-monitoring\-example";
+      \(dqmongodb://127.0.0.1/?appname=sdam\-monitoring\-example\(dq;
    mongoc_uri_t *uri;
    bson_t cmd = BSON_INITIALIZER;
    bson_t reply;
@@ -483,8 +483,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -511,21 +511,21 @@ main (int argc, char *argv[])
       client, cbs, (void *) &stats /* context pointer */);
 
    /* the driver connects on demand to perform first operation */
-   BSON_APPEND_INT32 (&cmd, "buildinfo", 1);
-   mongoc_client_command_simple (client, "admin", &cmd, NULL, &reply, &error);
+   BSON_APPEND_INT32 (&cmd, \(dqbuildinfo\(dq, 1);
+   mongoc_client_command_simple (client, \(dqadmin\(dq, &cmd, NULL, &reply, &error);
    mongoc_uri_destroy (uri);
    mongoc_client_destroy (client);
 
-   printf ("Events:\en"
-           "   server changed: %d\en"
-           "   server opening: %d\en"
-           "   server closed: %d\en"
-           "   topology changed: %d\en"
-           "   topology opening: %d\en"
-           "   topology closed: %d\en"
-           "   heartbeat started: %d\en"
-           "   heartbeat succeeded: %d\en"
-           "   heartbeat failed: %d\en",
+   printf (\(dqEvents:\en\(dq
+           \(dq   server changed: %d\en\(dq
+           \(dq   server opening: %d\en\(dq
+           \(dq   server closed: %d\en\(dq
+           \(dq   topology changed: %d\en\(dq
+           \(dq   topology opening: %d\en\(dq
+           \(dq   topology closed: %d\en\(dq
+           \(dq   heartbeat started: %d\en\(dq
+           \(dq   heartbeat succeeded: %d\en\(dq
+           \(dq   heartbeat failed: %d\en\(dq,
            stats.server_changed_events,
            stats.server_opening_events,
            stats.server_closed_events,
@@ -550,13 +550,13 @@ main (int argc, char *argv[])
 .UNINDENT
 .UNINDENT
 .sp
-Start a 3\-node replica set on localhost with set name "rs" and start the program:
+Start a 3\-node replica set on localhost with set name \(dqrs\(dq and start the program:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-\&./example\-sdam\-monitoring "mongodb://localhost:27017,localhost:27018/?replicaSet=rs"
+\&./example\-sdam\-monitoring \(dqmongodb://localhost:27017,localhost:27018/?replicaSet=rs\(dq
 .ft P
 .fi
 .UNINDENT
@@ -624,7 +624,7 @@ Events:
 .UNINDENT
 .UNINDENT
 .sp
-The driver connects to the mongods on ports 27017 and 27018, which were specified in the URI, and determines which is primary. It also discovers the third member, "localhost:27019", and adds it to the topology.
+The driver connects to the mongods on ports 27017 and 27018, which were specified in the URI, and determines which is primary. It also discovers the third member, \(dqlocalhost:27019\(dq, and adds it to the topology.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

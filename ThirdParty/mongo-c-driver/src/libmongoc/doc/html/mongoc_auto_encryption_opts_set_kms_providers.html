@@ -3,16 +3,21 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_set_kms_providers.html"/>
-    <title>mongoc_auto_encryption_opts_set_kms_providers() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_set_kms_providers.html"/>
+    <title>mongoc_auto_encryption_opts_set_kms_providers() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="mongoc_auto_encryption_opts_set_schema_map()" href="mongoc_auto_encryption_opts_set_schema_map.html" />
+    <link rel="next" title="mongoc_auto_encryption_opts_set_kms_credential_provider_callback()" href="mongoc_auto_encryption_opts_set_kms_credential_provider_callback.html" />
     <link rel="prev" title="mongoc_auto_encryption_opts_set_keyvault_namespace()" href="mongoc_auto_encryption_opts_set_keyvault_namespace.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -25,12 +30,12 @@
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="mongoc_auto_encryption_opts_set_schema_map.html" title="mongoc_auto_encryption_opts_set_schema_map()"
+          <a href="mongoc_auto_encryption_opts_set_kms_credential_provider_callback.html" title="mongoc_auto_encryption_opts_set_kms_credential_provider_callback()"
              accesskey="N">next</a></li>
         <li class="right" >
           <a href="mongoc_auto_encryption_opts_set_keyvault_namespace.html" title="mongoc_auto_encryption_opts_set_keyvault_namespace()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_auto_encryption_opts_t.html" accesskey="U">mongoc_auto_encryption_opts_t</a> &#187;</li> 
       </ul>
@@ -41,34 +46,57 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-auto-encryption-opts-set-kms-providers">
-<h1>mongoc_auto_encryption_opts_set_kms_providers()<a class="headerlink" href="#mongoc-auto-encryption-opts-set-kms-providers" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span>
-<span class="nf">mongoc_auto_encryption_opts_set_kms_providers</span> <span class="p">(</span>
-   <span class="n">mongoc_auto_encryption_opts_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">,</span> <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">kms_providers</span><span class="p">);</span>
+  <section id="mongoc-auto-encryption-opts-set-kms-providers">
+<h1>mongoc_auto_encryption_opts_set_kms_providers()<a class="headerlink" href="#mongoc-auto-encryption-opts-set-kms-providers" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"></span>
+<span class="nf">mongoc_auto_encryption_opts_set_kms_providers</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_auto_encryption_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">kms_providers</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: The <a class="symbol reference internal" href="mongoc_auto_encryption_opts_t.html"><span class="doc">mongoc_auto_encryption_opts_t</span></a></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">kms_providers</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing configuration for an external Key Management Service (KMS).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kms_providers</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing configuration for an external Key Management Service (KMS).</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">kms_providers</span></code> is a BSON document containing configuration for each KMS provider. Currently <code class="docutils literal notranslate"><span class="pre">aws</span></code> or <code class="docutils literal notranslate"><span class="pre">local</span></code> are supported. At least one must be specified.</p>
+<p><code class="docutils literal notranslate"><span class="pre">kms_providers</span></code> is a BSON document containing configuration for each KMS provider. Currently <code class="docutils literal notranslate"><span class="pre">aws</span></code>, <code class="docutils literal notranslate"><span class="pre">local</span></code>, <code class="docutils literal notranslate"><span class="pre">azure</span></code>, <code class="docutils literal notranslate"><span class="pre">gcp</span></code>, and <code class="docutils literal notranslate"><span class="pre">kmip</span></code> are supported. At least one must be specified.</p>
 <p>The format for “aws” is as follows:</p>
-<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">aws</span><span class="o">:</span> <span class="p">{</span>
-   <span class="nx">accessKeyId</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">string</span><span class="o">&gt;</span><span class="p">,</span>
-   <span class="nx">secretAccessKey</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">string</span><span class="o">&gt;</span>
-<span class="p">}</span>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">aws</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">accessKeyId</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">secretAccessKey</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <p>The format for “local” is as follows:</p>
-<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">local</span><span class="o">:</span> <span class="p">{</span>
-   <span class="nx">key</span><span class="o">:</span> <span class="o">&lt;</span><span class="mf">96</span> <span class="kr">byte</span> <span class="nx">BSON</span> <span class="nx">binary</span> <span class="k">of</span> <span class="nx">subtype</span> <span class="mf">0</span><span class="o">&gt;</span> <span class="c1">// The master key used to encrypt/decrypt data keys.</span>
-<span class="p">}</span>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">local</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="o">&lt;</span><span class="mf">96</span><span class="w"> </span><span class="kr">byte</span><span class="w"> </span><span class="nx">BSON</span><span class="w"> </span><span class="nx">binary</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">subtype</span><span class="w"> </span><span class="mf">0</span><span class="o">&gt;</span><span class="w"> </span><span class="nx">or</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="cm">/* The master key used to encrypt/decrypt data keys. May be passed as a base64 encoded string. */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The format for “azure” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">azure</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">tenantId</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">clientId</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">clientSecret</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">identityPlatformEndpoint</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="w"> </span><span class="cm">/* Defaults to login.microsoftonline.com */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The format for “gcp” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">gcp</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">email</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">privateKey</span><span class="o">:</span><span class="w"> </span><span class="kr">byte</span><span class="p">[]</span><span class="w"> </span><span class="nx">or</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="cm">/* May be passed as a base64 encoded string. */</span><span class="w"></span>
+<span class="w">   </span><span class="nx">endpoint</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="w"> </span><span class="cm">/* Defaults to oauth2.googleapis.com */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The format for “kmip” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">kmip</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">endpoint</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition seealso">
@@ -80,8 +108,8 @@
 <div class="line">The guide for <a class="reference internal" href="using_client_side_encryption.html"><span class="doc">Using Client-Side Field Level Encryption</span></a></div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -117,6 +145,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -192,7 +221,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

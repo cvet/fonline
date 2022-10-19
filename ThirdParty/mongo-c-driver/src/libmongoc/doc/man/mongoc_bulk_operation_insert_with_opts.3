@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_INSERT_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_insert_with_opts \- mongoc_bulk_operation_insert_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_INSERT_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_insert_with_opts \- mongoc_bulk_operation_insert_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,15 +46,15 @@ mongoc_bulk_operation_insert_with_opts (mongoc_bulk_operation_t *bulk,
 .UNINDENT
 .UNINDENT
 .sp
-Queue an insert of a single document into a bulk operation. The insert is not performed until \fBmongoc_bulk_operation_execute()\fP is called.
+Queue an insert of a single document into a bulk operation. The insert is not performed until \fI\%mongoc_bulk_operation_execute()\fP is called.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbulk\fP: A \fBmongoc_bulk_operation_t\fP\&.
+\fBbulk\fP: A \fI\%mongoc_bulk_operation_t\fP\&.
 .IP \(bu 2
 \fBdocument\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
 \fBopts\fP may be NULL or a BSON document with additional command options:
@@ -64,7 +64,7 @@ Queue an insert of a single document into a bulk operation. The insert is not pe
 .UNINDENT
 .SH ERRORS
 .sp
-Operation errors are propagated via \fBmongoc_bulk_operation_execute()\fP, while argument validation errors are reported by the \fBerror\fP argument.
+Operation errors are propagated via \fI\%mongoc_bulk_operation_execute()\fP, while argument validation errors are reported by the \fBerror\fP argument.
 .SH RETURNS
 .sp
 Returns true on success, and false if passed invalid arguments.

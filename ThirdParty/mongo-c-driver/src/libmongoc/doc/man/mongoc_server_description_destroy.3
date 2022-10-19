@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SERVER_DESCRIPTION_DESTROY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_server_description_destroy \- mongoc_server_description_destroy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SERVER_DESCRIPTION_DESTROY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_server_description_destroy \- mongoc_server_description_destroy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,11 +45,11 @@ mongoc_server_description_destroy (mongoc_server_description_t *description);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdescription\fP: A \fBmongoc_server_description_t\fP\&.
+\fBdescription\fP: A \fI\%mongoc_server_description_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Clean up all memory associated with the server description. Does nothing if \fBdescription\fP is NULL.
+Frees all resources associated with the server description. Does nothing if \fBdescription\fP is NULL.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_memory.html"/>
-    <title>Memory Management &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_memory.html"/>
+    <title>Memory Management &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_free()" href="bson_free.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_get_monotonic_time.html" title="System Clock"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,21 +45,23 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="memory-management">
-<h1>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this headline">¶</a></h1>
+  <section id="memory-management">
+<h1>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this heading">¶</a></h1>
 <p>BSON Memory Abstraction.</p>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>Libbson contains a lightweight memory abstraction to make portability to new platforms easier. Additionally, it helps us integrate with interesting higher-level languages. One caveat, however, is that Libbson is not designed to deal with Out of Memory (OOM) situations. Doing so requires extreme diligence throughout the application stack that has rarely been implemented correctly. This may change in the future. As it stands now, Libbson will <code class="docutils literal notranslate"><span class="pre">abort()</span></code> under OOM situations.</p>
 <p>To aid in language binding integration, Libbson allows for setting a custom memory allocator via <a class="symbol reference internal" href="bson_mem_set_vtable.html"><span class="doc">bson_mem_set_vtable()</span></a>.  This allocation may be reversed via <a class="symbol reference internal" href="bson_mem_restore_vtable.html"><span class="doc">bson_mem_restore_vtable()</span></a>.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="bson_free.html">bson_free()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="bson_malloc.html">bson_malloc()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="bson_malloc0.html">bson_malloc0()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bson_aligned_alloc.html">bson_aligned_alloc()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bson_aligned_alloc0.html">bson_aligned_alloc0()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="bson_mem_restore_vtable.html">bson_mem_restore_vtable()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="bson_mem_set_vtable.html">bson_mem_set_vtable()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="bson_realloc.html">bson_realloc()</a></li>
@@ -63,8 +70,8 @@
 <li class="toctree-l1"><a class="reference internal" href="bson_zero_free.html">bson_zero_free()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -127,7 +134,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

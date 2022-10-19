@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_STREAM_WRITE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_stream_write \- mongoc_stream_write()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_STREAM_WRITE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_stream_write \- mongoc_stream_write()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,7 +48,7 @@ mongoc_stream_write (mongoc_stream_t *stream,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBstream\fP: A \fBmongoc_stream_t\fP\&.
+\fBstream\fP: A \fI\%mongoc_stream_t\fP\&.
 .IP \(bu 2
 \fBbuf\fP: The buffer to write.
 .IP \(bu 2
@@ -57,24 +57,24 @@ mongoc_stream_write (mongoc_stream_t *stream,
 \fBtimeout_msec\fP: The number of milliseconds to wait before failure, a timeout of 0 will not block. If negative, use the default timeout.
 .UNINDENT
 .sp
-The \fBmongoc_stream_write()\fP function shall perform a write to a \fBmongoc_stream_t\fP\&. It\(aqs modeled on the API and semantics of \fBwrite()\fP, though the parameters map only loosely.
+The \fI\%mongoc_stream_write()\fP function shall perform a write to a \fI\%mongoc_stream_t\fP\&. It\(aqs modeled on the API and semantics of \fBwrite()\fP, though the parameters map only loosely.
 .SH RETURNS
 .sp
-The \fBmongoc_stream_write\fP function returns the number of bytes written on success. It returns \fB\-1\fP and sets \fBerrno\fP upon failure.
+The \fI\%mongoc_stream_write()\fP function returns the number of bytes written on success. It returns \fB\-1\fP and sets \fBerrno\fP upon failure.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_stream_read()\fP
+\fI\%mongoc_stream_read()\fP
 .fi
 .sp
 .nf
-\fBmongoc_stream_readv()\fP
+\fI\%mongoc_stream_readv()\fP
 .fi
 .sp
 .nf
-\fBmongoc_stream_writev()\fP
+\fI\%mongoc_stream_writev()\fP
 .fi
 .sp
 .UNINDENT

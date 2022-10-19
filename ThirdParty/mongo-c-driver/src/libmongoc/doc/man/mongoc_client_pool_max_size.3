@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_MAX_SIZE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_max_size \- mongoc_client_pool_max_size()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_MAX_SIZE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_max_size \- mongoc_client_pool_max_size()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,11 +44,11 @@ mongoc_client_pool_max_size (mongoc_client_pool_t *pool,
 .UNINDENT
 .UNINDENT
 .sp
-This function sets the maximum number of pooled connections available from a \fBmongoc_client_pool_t\fP\&.
+This function sets the maximum number of pooled connections available from a \fI\%mongoc_client_pool_t\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .IP \(bu 2
 \fBmax_pool_size\fP: The maximum number of connections which shall be available from the pool.
 .UNINDENT

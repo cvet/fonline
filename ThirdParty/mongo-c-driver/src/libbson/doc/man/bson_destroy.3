@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_DESTROY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_destroy \- bson_destroy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_DESTROY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_destroy \- bson_destroy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_destroy (bson_t *bson);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_destroy()\fP function shall free an allocated \fBbson_t\fP structure. Does nothing if \fBbson\fP is NULL.
+The \fI\%bson_destroy()\fP function shall free an allocated \fI\%bson_t\fP structure. Does nothing if \fBbson\fP is NULL.
 .sp
-This function should always be called when you are done with a \fBbson_t\fP unless otherwise specified.
+This function should always be called when you are done with a \fI\%bson_t\fP unless otherwise specified.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

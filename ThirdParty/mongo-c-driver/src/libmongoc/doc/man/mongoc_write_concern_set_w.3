@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_WRITE_CONCERN_SET_W" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_write_concern_set_w \- mongoc_write_concern_set_w()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_WRITE_CONCERN_SET_W" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_write_concern_set_w \- mongoc_write_concern_set_w()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,19 +45,19 @@ mongoc_write_concern_set_w (mongoc_write_concern_t *write_concern, int32_t w);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBwrite_concern\fP: A \fBmongoc_write_concern_t\fP\&.
+\fBwrite_concern\fP: A \fI\%mongoc_write_concern_t\fP\&.
 .IP \(bu 2
 \fBw\fP: A positive \fBint32_t\fP or zero.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Sets the \fBw\fP value for the write concern. See \fBmongoc_write_concern_t\fP for more information on this setting.
+Sets the \fBw\fP value for the write concern. See \fI\%mongoc_write_concern_t\fP for more information on this setting.
 .sp
-Unacknowledged writes are not causally consistent. If you execute a write operation with a \fBmongoc_write_concern_t\fP on which you have called \fBmongoc_write_concern_set_w\fP with a value of 0, the write does not participate in causal consistency, even when executed with a \fBmongoc_client_session_t\fP\&.
+Unacknowledged writes are not causally consistent. If you execute a write operation with a \fI\%mongoc_write_concern_t\fP on which you have called \fI\%mongoc_write_concern_set_w()\fP with a value of 0, the write does not participate in causal consistency, even when executed with a \fI\%mongoc_client_session_t\fP\&.
 .sp
 Beginning in version 1.9.0, this function can now alter the write concern after
 it has been used in an operation. Previously, using the struct with an operation
-would mark it as "frozen" and calling this function would log a warning instead
+would mark it as \(dqfrozen\(dq and calling this function would log a warning instead
 instead of altering the write concern.
 .SH AUTHOR
 MongoDB, Inc

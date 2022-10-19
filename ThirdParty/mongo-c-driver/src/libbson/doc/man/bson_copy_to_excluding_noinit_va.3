@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_COPY_TO_EXCLUDING_NOINIT_VA" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_copy_to_excluding_noinit_va \- bson_copy_to_excluding_noinit_va()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_COPY_TO_EXCLUDING_NOINIT_VA" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_copy_to_excluding_noinit_va \- bson_copy_to_excluding_noinit_va()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,9 +48,9 @@ bson_copy_to_excluding_noinit_va (const bson_t *src,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsrc\fP: A \fBbson_t\fP\&.
+\fBsrc\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBdst\fP: A \fBbson_t\fP\&.
+\fBdst\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBfirst_exclude\fP: The first field name to exclude.
 .IP \(bu 2
@@ -58,15 +58,15 @@ bson_copy_to_excluding_noinit_va (const bson_t *src,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_copy_to_excluding_noinit_va()\fP function shall copy all fields from \fBsrc\fP to \fBdst\fP except those specified by \fBfirst_exclude\fP and \fBargs\fP\&.
+The \fI\%bson_copy_to_excluding_noinit_va()\fP function shall copy all fields from \fBsrc\fP to \fBdst\fP except those specified by \fBfirst_exclude\fP and \fBargs\fP\&.
 .sp
-This method works the same way as \fBbson_copy_to_excluding_noinit\fP, except it takes a va_list. This method does not call \fBbson_init\fP on \fBdst\fP\&.
+This method works the same way as \fI\%bson_copy_to_excluding_noinit()\fP, except it takes a va_list. This method does not call \fI\%bson_init()\fP on \fBdst\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBbson_copy_to_excluding_noinit\fP
+\fI\%bson_copy_to_excluding_noinit()\fP
 .fi
 .sp
 .UNINDENT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_READER_NEW_FROM_FD" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reader_new_from_fd \- bson_reader_new_from_fd()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_READER_NEW_FROM_FD" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reader_new_from_fd \- bson_reader_new_from_fd()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,14 +51,14 @@ bson_reader_new_from_fd (int fd, bool close_on_destroy);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_reader_new_from_fd()\fP function shall create a new \fBbson_reader_t\fP that will read from the provided file\-descriptor.
+The \fI\%bson_reader_new_from_fd()\fP function shall create a new \fI\%bson_reader_t\fP that will read from the provided file\-descriptor.
 .sp
 fd \fIMUST\fP be in blocking mode.
 .sp
-If \fBclose_fd\fP is true, then \fBfd\fP will be closed when the \fBbson_reader_t\fP is destroyed with \fBbson_reader_destroy()\fP\&.
+If \fBclose_fd\fP is true, then \fBfd\fP will be closed when the \fI\%bson_reader_t\fP is destroyed with \fI\%bson_reader_destroy()\fP\&.
 .SH RETURNS
 .sp
-A newly allocated \fBbson_reader_t\fP that should be freed with \fBbson_reader_destroy\fP\&.
+A newly allocated \fI\%bson_reader_t\fP that should be freed with \fI\%bson_reader_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

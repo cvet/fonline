@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_REINIT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reinit \- bson_reinit()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_REINIT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reinit \- bson_reinit()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_reinit (bson_t *b);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBb\fP: A \fBbson_t\fP\&.
+\fBb\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Reinitializes a \fBbson_t\fP\&.
+Reinitializes a \fI\%bson_t\fP\&.
 .sp
-If the \fBbson_t\fP structure contains a malloc()\(aqd buffer, it may be reused. To be certain that any buffer is freed, always call \fBbson_destroy\fP on any \fBbson_t\fP structure, whether initialized or reinitialized, after its final use.
+If the \fI\%bson_t\fP structure contains a malloc()\(aqd buffer, it may be reused. To be certain that any buffer is freed, always call \fI\%bson_destroy()\fP on any \fI\%bson_t\fP structure, whether initialized or reinitialized, after its final use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

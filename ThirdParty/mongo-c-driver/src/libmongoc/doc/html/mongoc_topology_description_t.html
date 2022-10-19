@@ -3,16 +3,21 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_topology_description_t.html"/>
-    <title>mongoc_topology_description_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_topology_description_t.html"/>
+    <title>mongoc_topology_description_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="mongoc_topology_description_get_servers()" href="mongoc_topology_description_get_servers.html" />
+    <link rel="next" title="mongoc_topology_description_destroy()" href="mongoc_topology_description_destroy.html" />
     <link rel="prev" title="mongoc_stream_tls_t" href="mongoc_stream_tls_t.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -25,12 +30,12 @@
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="mongoc_topology_description_get_servers.html" title="mongoc_topology_description_get_servers()"
+          <a href="mongoc_topology_description_destroy.html" title="mongoc_topology_description_destroy()"
              accesskey="N">next</a></li>
         <li class="right" >
           <a href="mongoc_stream_tls_t.html" title="mongoc_stream_tls_t"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,30 +45,32 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-topology-description-t">
-<h1>mongoc_topology_description_t<a class="headerlink" href="#mongoc-topology-description-t" title="Permalink to this headline">¶</a></h1>
+  <section id="mongoc-topology-description-t">
+<h1>mongoc_topology_description_t<a class="headerlink" href="#mongoc-topology-description-t" title="Permalink to this heading">¶</a></h1>
 <p>Status of MongoDB Servers</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_mongoc_topology_description_t</span> <span class="n">mongoc_topology_description_t</span><span class="p">;</span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_mongoc_topology_description_t</span><span class="w"> </span><span class="n">mongoc_topology_description_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">mongoc_topology_description_t</span></code> is an opaque type representing the driver’s knowledge of the MongoDB server or servers it is connected to.
 Its API conforms to the <a class="reference external" href="https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring-monitoring.rst">SDAM Monitoring Specification</a>.</p>
-<p>Applications receive a temporary reference to a <code class="docutils literal notranslate"><span class="pre">mongoc_topology_description_t</span></code> as a parameter to an SDAM Monitoring callback. See <a class="reference internal" href="application-performance-monitoring.html"><span class="doc">Introduction to Application Performance Monitoring</span></a>.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+<p>Applications receive a temporary reference to a <code class="docutils literal notranslate"><span class="pre">mongoc_topology_description_t</span></code> as a parameter to an SDAM Monitoring callback that must not be destroyed. See <a class="reference internal" href="application-performance-monitoring.html"><span class="doc">Introduction to Application Performance Monitoring</span></a>.</p>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_topology_description_destroy.html">mongoc_topology_description_destroy()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_topology_description_get_servers.html">mongoc_topology_description_get_servers()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_topology_description_has_readable_server.html">mongoc_topology_description_has_readable_server()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_topology_description_has_writable_server.html">mongoc_topology_description_has_writable_server()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_topology_description_new_copy.html">mongoc_topology_description_new_copy()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_topology_description_type.html">mongoc_topology_description_type()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -99,6 +106,7 @@ Its API conforms to the <a class="reference external" href="https://github.com/m
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -174,7 +182,7 @@ Its API conforms to the <a class="reference external" href="https://github.com/m
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_PREFS_SET_TAGS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_prefs_set_tags \- mongoc_read_prefs_set_tags()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_PREFS_SET_TAGS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_prefs_set_tags \- mongoc_read_prefs_set_tags()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,7 +46,7 @@ mongoc_read_prefs_set_tags (mongoc_read_prefs_t *read_prefs,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP\&.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP\&.
 .IP \(bu 2
 \fBtags\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
@@ -72,17 +72,17 @@ run_query_with_read_prefs_tags (mongoc_collection_t *collection)
    mongoc_read_prefs_t *read_prefs;
    /*  Create a tagset representing
     *  [
-    *    {"dc": "ny", "rack": "1" }, // Any node in rack1 in the ny datacenter
-    *    {"dc": "ny", "rack": "2" }, // Any node in rack2 in the ny datacenter
-    *    {"dc": "ny" },              // Any node in the ny datacenter
+    *    {\(dqdc\(dq: \(dqny\(dq, \(dqrack\(dq: \(dq1\(dq }, // Any node in rack1 in the ny datacenter
+    *    {\(dqdc\(dq: \(dqny\(dq, \(dqrack\(dq: \(dq2\(dq }, // Any node in rack2 in the ny datacenter
+    *    {\(dqdc\(dq: \(dqny\(dq },              // Any node in the ny datacenter
     *    {}                          // If all else fails, just any available node
     * ]
     */
    bson_t *tags = BCON_NEW (
-      "0", "{", "dc", BCON_UTF8("ny"), "rack", BCON_UTF8("1"), "}",
-      "1", "{", "dc", BCON_UTF8("ny"), "rack", BCON_UTF8("2"), "}",
-      "2", "{", "dc", BCON_UTF8("ny"), "}",
-      "3", "{", "}"
+      \(dq0\(dq, \(dq{\(dq, \(dqdc\(dq, BCON_UTF8(\(dqny\(dq), \(dqrack\(dq, BCON_UTF8(\(dq1\(dq), \(dq}\(dq,
+      \(dq1\(dq, \(dq{\(dq, \(dqdc\(dq, BCON_UTF8(\(dqny\(dq), \(dqrack\(dq, BCON_UTF8(\(dq2\(dq), \(dq}\(dq,
+      \(dq2\(dq, \(dq{\(dq, \(dqdc\(dq, BCON_UTF8(\(dqny\(dq), \(dq}\(dq,
+      \(dq3\(dq, \(dq{\(dq, \(dq}\(dq
    );
 
    read_prefs = mongoc_read_prefs_new (MONGOC_READ_SECONDARY);
@@ -94,11 +94,11 @@ run_query_with_read_prefs_tags (mongoc_collection_t *collection)
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Cursor error: %s\en", error.message);
+      fprintf (stderr, \(dqCursor error: %s\en\(dq, error.message);
    }
 
    mongoc_cursor_destroy (cursor);
@@ -114,9 +114,9 @@ int main (void)
    mongoc_init ();
 
    client =
-      mongoc_client_new ("mongodb://localhost/?appname=rp_tags&replicaSet=foo");
+      mongoc_client_new (\(dqmongodb://localhost/?appname=rp_tags&replicaSet=foo\(dq);
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "dbname", "collname");
+   collection = mongoc_client_get_collection (client, \(dqdbname\(dq, \(dqcollname\(dq);
    run_query_with_read_prefs_tags (collection);
 
    mongoc_collection_destroy (collection);

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_WRITER_NEW" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_writer_new \- bson_writer_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_WRITER_NEW" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_writer_new \- bson_writer_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -61,9 +61,9 @@ bson_writer_new (uint8_t **buf,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Creates a new instance of \fBbson_writer_t\fP using the \fBbuffer\fP, \fBlength\fP, \fBoffset\fP, and _realloc()_ function supplied.
+Creates a new instance of \fI\%bson_writer_t\fP using the \fBbuffer\fP, \fBlength\fP, \fBoffset\fP, and _realloc()_ function supplied.
 .sp
-The caller is expected to clean up the structure when finished using \fBbson_writer_destroy()\fP\&.
+The caller is expected to clean up the structure when finished using \fI\%bson_writer_destroy()\fP\&.
 .SH RETURNS
 .sp
 A newly allocated bson_writer_t.

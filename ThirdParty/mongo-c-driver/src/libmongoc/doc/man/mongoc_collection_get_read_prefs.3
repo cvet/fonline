@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_GET_READ_PREFS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_get_read_prefs \- mongoc_collection_get_read_prefs()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_GET_READ_PREFS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_get_read_prefs \- mongoc_collection_get_read_prefs()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,14 +45,14 @@ mongoc_collection_get_read_prefs (const mongoc_collection_t *collection);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Fetches the default read preferences to use for \fBcollection\fP\&. Operations without specified read\-preferences will default to this.
 .SH RETURNS
 .sp
-A \fBmongoc_read_prefs_t\fP that should not be modified or freed.
+A \fI\%mongoc_read_prefs_t\fP that should not be modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

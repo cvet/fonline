@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_TRANSACTION_OPTS_SET_WRITE_CONCERN" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_transaction_opts_set_write_concern \- mongoc_transaction_opts_set_write_concern()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_TRANSACTION_OPTS_SET_WRITE_CONCERN" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_transaction_opts_set_write_concern \- mongoc_transaction_opts_set_write_concern()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,9 +48,9 @@ Configure the transaction\(aqs write concern. The argument is copied into the st
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_transaction_opt_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_transaction_opt_t\fP\&.
 .IP \(bu 2
-\fBwrite_concern\fP: A \fBmongoc_write_concern_t\fP\&.
+\fBwrite_concern\fP: A \fI\%mongoc_write_concern_t\fP\&.
 .UNINDENT
 .SH AUTHOR
 MongoDB, Inc

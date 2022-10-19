@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_APM_CALLBACKS_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_apm_callbacks_new \- mongoc_apm_callbacks_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_APM_CALLBACKS_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_apm_callbacks_new \- mongoc_apm_callbacks_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_apm_callbacks_t *
-mongoc_apm_callbacks_new (void);
+mongoc_apm_callbacks_new (void) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -46,13 +46,13 @@ mongoc_apm_callbacks_new (void);
 Create a struct to hold event\-notification callbacks.
 .SH RETURNS
 .sp
-A new \fBmongoc_apm_callbacks_t\fP you must free with \fBmongoc_apm_callbacks_destroy\fP\&.
+A new \fBmongoc_apm_callbacks_t\fP you must free with \fI\%mongoc_apm_callbacks_destroy()\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

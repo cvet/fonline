@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_NEW" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_new \- bson_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_NEW" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_new \- bson_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,10 +44,10 @@ bson_new (void);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_new()\fP function shall create a new \fBbson_t\fP structure on the heap. It should be freed with \fBbson_destroy()\fP when it is no longer in use.
+The \fI\%bson_new()\fP function shall create a new \fI\%bson_t\fP structure on the heap. It should be freed with \fI\%bson_destroy()\fP when it is no longer in use.
 .SH RETURNS
 .sp
-A newly allocated \fBbson_t\fP that should be freed with \fBbson_destroy()\fP\&.
+A newly allocated \fI\%bson_t\fP that should be freed with \fI\%bson_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

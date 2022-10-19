@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_CODE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_code \- bson_append_code()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_CODE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_code \- bson_append_code()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,7 +51,7 @@ bson_append_code (bson_t *bson,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: The key name.
 .IP \(bu 2
@@ -61,7 +61,7 @@ bson_append_code (bson_t *bson,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_code()\fP function shall append a new element to \fBbson\fP using the UTF\-8 encoded \fBjavascript\fP provided. \fBjavascript\fP must be a NULL terminated C string.
+The \fI\%bson_append_code()\fP function shall append a new element to \fBbson\fP using the UTF\-8 encoded \fBjavascript\fP provided. \fBjavascript\fP must be a NULL terminated C string.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending \fBjavascript\fP grows \fBbson\fP larger than INT32_MAX.

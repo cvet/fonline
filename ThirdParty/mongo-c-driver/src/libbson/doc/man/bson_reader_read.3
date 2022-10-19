@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_READER_READ" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reader_read \- bson_reader_read()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_READER_READ" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reader_read \- bson_reader_read()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_reader_read (bson_reader_t *reader, bool *reached_eof);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBreader\fP: A \fBbson_reader_t\fP\&.
+\fBreader\fP: A \fI\%bson_reader_t\fP\&.
 .IP \(bu 2
 \fBreached_eof\fP: A UNKNOWN.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_reader_read()\fP function shall read the next document from the underlying file\-descriptor or buffer.
+The \fI\%bson_reader_read()\fP function shall read the next document from the underlying file\-descriptor or buffer.
 .sp
 If there are no further documents or a failure was detected, then NULL is returned.
 .sp
@@ -60,7 +60,7 @@ If we reached the end of the sequence, \fBreached_eof\fP is set to true.
 To detect an error, check for NULL and \fBreached_of\fP is false.
 .SH RETURNS
 .sp
-A \fBbson_t\fP that should not be modified or freed.
+A \fI\%bson_t\fP that should not be modified or freed.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -75,7 +75,7 @@ while ((doc = bson_reader_read (reader, &reached_eof))) {
 }
 
 if (!reached_eof) {
-   fprintf (stderr, "Failed to read all documents.\en");
+   fprintf (stderr, \(dqFailed to read all documents.\en\(dq);
 }
 .ft P
 .fi

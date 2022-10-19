@@ -3,17 +3,22 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_set_schema_map.html"/>
-    <title>mongoc_auto_encryption_opts_set_schema_map() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_set_schema_map.html"/>
+    <title>mongoc_auto_encryption_opts_set_schema_map() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_auto_encryption_opts_set_bypass_auto_encryption()" href="mongoc_auto_encryption_opts_set_bypass_auto_encryption.html" />
-    <link rel="prev" title="mongoc_auto_encryption_opts_set_kms_providers()" href="mongoc_auto_encryption_opts_set_kms_providers.html" />
+    <link rel="prev" title="mongoc_auto_encryption_opts_set_kms_credential_provider_callback()" href="mongoc_auto_encryption_opts_set_kms_credential_provider_callback.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
 
@@ -28,9 +33,9 @@
           <a href="mongoc_auto_encryption_opts_set_bypass_auto_encryption.html" title="mongoc_auto_encryption_opts_set_bypass_auto_encryption()"
              accesskey="N">next</a></li>
         <li class="right" >
-          <a href="mongoc_auto_encryption_opts_set_kms_providers.html" title="mongoc_auto_encryption_opts_set_kms_providers()"
+          <a href="mongoc_auto_encryption_opts_set_kms_credential_provider_callback.html" title="mongoc_auto_encryption_opts_set_kms_credential_provider_callback()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_auto_encryption_opts_t.html" accesskey="U">mongoc_auto_encryption_opts_t</a> &#187;</li> 
       </ul>
@@ -41,46 +46,46 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-auto-encryption-opts-set-schema-map">
-<h1>mongoc_auto_encryption_opts_set_schema_map()<a class="headerlink" href="#mongoc-auto-encryption-opts-set-schema-map" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span>
-<span class="nf">mongoc_auto_encryption_opts_set_schema_map</span> <span class="p">(</span><span class="n">mongoc_auto_encryption_opts_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">,</span>
-                                            <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">schema_map</span><span class="p">);</span>
+  <section id="mongoc-auto-encryption-opts-set-schema-map">
+<h1>mongoc_auto_encryption_opts_set_schema_map()<a class="headerlink" href="#mongoc-auto-encryption-opts-set-schema-map" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"></span>
+<span class="nf">mongoc_auto_encryption_opts_set_schema_map</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_auto_encryption_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                            </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">schema_map</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: The <a class="symbol reference internal" href="mongoc_auto_encryption_opts_t.html"><span class="doc">mongoc_auto_encryption_opts_t</span></a></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">schema_map</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> where keys are collection namespaces and values are JSON schemas.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">schema_map</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> where keys are collection namespaces and values are JSON schemas.</p></li>
 </ul>
 <p>Supplying a schema map provides more security than relying on JSON Schemas obtained from the server. It protects against a malicious server advertising a false JSON Schema, which could trick the client into sending unencrypted data that should be encrypted.</p>
 <p>Schemas supplied in the schema map only apply to configuring automatic encryption for client side encryption. Other validation rules in the JSON schema will not be enforced by the driver and will result in an error.</p>
 <p>The following is an example of a schema map which configures automatic encryption for the collection <code class="docutils literal notranslate"><span class="pre">db.coll</span></code>:</p>
-<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-     <span class="s2">&quot;db.coll&quot;</span><span class="o">:</span> <span class="p">{</span>
-         <span class="s2">&quot;properties&quot;</span><span class="o">:</span> <span class="p">{</span>
-         <span class="s2">&quot;encrypted_string&quot;</span><span class="o">:</span> <span class="p">{</span>
-             <span class="s2">&quot;encrypt&quot;</span><span class="o">:</span> <span class="p">{</span>
-             <span class="s2">&quot;keyId&quot;</span><span class="o">:</span> <span class="p">[</span>
-                 <span class="p">{</span>
-                 <span class="s2">&quot;$binary&quot;</span><span class="o">:</span> <span class="p">{</span>
-                     <span class="s2">&quot;base64&quot;</span><span class="o">:</span> <span class="s2">&quot;AAAAAAAAAAAAAAAAAAAAAA==&quot;</span><span class="p">,</span>
-                     <span class="s2">&quot;subType&quot;</span><span class="o">:</span> <span class="s2">&quot;04&quot;</span>
-                 <span class="p">}</span>
-                 <span class="p">}</span>
-             <span class="p">],</span>
-             <span class="s2">&quot;bsonType&quot;</span><span class="o">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
-             <span class="s2">&quot;algorithm&quot;</span><span class="o">:</span> <span class="s2">&quot;AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic&quot;</span>
-             <span class="p">}</span>
-         <span class="p">}</span>
-         <span class="p">},</span>
-         <span class="s2">&quot;bsonType&quot;</span><span class="o">:</span> <span class="s2">&quot;object&quot;</span>
-     <span class="p">}</span>
- <span class="p">}</span>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">     </span><span class="s2">&quot;db.coll&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="s2">&quot;properties&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="s2">&quot;encrypted_string&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">             </span><span class="s2">&quot;encrypt&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">             </span><span class="s2">&quot;keyId&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="w">                 </span><span class="p">{</span><span class="w"></span>
+<span class="w">                 </span><span class="s2">&quot;$binary&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                     </span><span class="s2">&quot;base64&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;AAAAAAAAAAAAAAAAAAAAAA==&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                     </span><span class="s2">&quot;subType&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;04&quot;</span><span class="w"></span>
+<span class="w">                 </span><span class="p">}</span><span class="w"></span>
+<span class="w">                 </span><span class="p">}</span><span class="w"></span>
+<span class="w">             </span><span class="p">],</span><span class="w"></span>
+<span class="w">             </span><span class="s2">&quot;bsonType&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">             </span><span class="s2">&quot;algorithm&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic&quot;</span><span class="w"></span>
+<span class="w">             </span><span class="p">}</span><span class="w"></span>
+<span class="w">         </span><span class="p">}</span><span class="w"></span>
+<span class="w">         </span><span class="p">},</span><span class="w"></span>
+<span class="w">         </span><span class="s2">&quot;bsonType&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span><span class="w"></span>
+<span class="w">     </span><span class="p">}</span><span class="w"></span>
+<span class="w"> </span><span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition seealso">
@@ -92,8 +97,8 @@
 <div class="line">The guide for <a class="reference internal" href="using_client_side_encryption.html"><span class="doc">Using Client-Side Field Level Encryption</span></a></div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -129,6 +134,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -204,7 +210,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

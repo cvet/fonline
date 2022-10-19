@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_SET_READ_CONCERN" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_set_read_concern \- mongoc_database_set_read_concern()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_SET_READ_CONCERN" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_set_read_concern \- mongoc_database_set_read_concern()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,15 +44,15 @@ mongoc_database_set_read_concern (mongoc_database_t *database,
 .UNINDENT
 .UNINDENT
 .sp
-This function sets the read concern to use on operations performed with \fBdatabase\fP\&. Collections created with \fBmongoc_database_get_collection()\fP after this call will inherit this read concern.
+This function sets the read concern to use on operations performed with \fBdatabase\fP\&. Collections created with \fI\%mongoc_database_get_collection()\fP after this call will inherit this read concern.
 .sp
 The default read concern is empty: No readConcern is sent to the server unless explicitly configured.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdatabase\fP: A \fBmongoc_database_t\fP\&.
+\fBdatabase\fP: A \fI\%mongoc_database_t\fP\&.
 .IP \(bu 2
-\fBread_concern\fP: A \fBmongoc_read_concern_t\fP\&.
+\fBread_concern\fP: A \fI\%mongoc_read_concern_t\fP\&.
 .UNINDENT
 .SH AUTHOR
 MongoDB, Inc

@@ -33,22 +33,19 @@ test_crud_cb (bson_t *scenario)
 static void
 test_all_spec_tests (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
-
-   test_framework_resolve_path (JSON_DIR "/crud/legacy", resolved);
-
    install_json_test_suite_with_check (suite,
-                                       resolved,
+                                       JSON_DIR,
+                                       "crud/legacy",
                                        &test_crud_cb,
                                        test_framework_skip_if_no_crypto,
                                        TestSuite_CheckLive);
 
    /* Read/write concern spec tests use the same format. */
-   test_framework_resolve_path (JSON_DIR "/read_write_concern/operation",
-                                resolved);
-
-   install_json_test_suite_with_check (
-      suite, resolved, &test_crud_cb, TestSuite_CheckLive);
+   install_json_test_suite_with_check (suite,
+                                       JSON_DIR,
+                                       "read_write_concern/operation",
+                                       &test_crud_cb,
+                                       TestSuite_CheckLive);
 }
 
 static void
@@ -59,6 +56,8 @@ prose_test_1 (void *ctx)
    bool ret;
    bson_t reply;
    bson_error_t error;
+
+   BSON_UNUSED (ctx);
 
    client = test_framework_new_default_client ();
    coll = get_test_collection (client, "coll");
@@ -122,6 +121,8 @@ prose_test_2 (void *ctx)
    bool ret;
    bson_t reply, reply_errInfo, observed_errInfo;
    bson_error_t error = {0};
+
+   BSON_UNUSED (ctx);
 
    client = test_framework_new_default_client ();
    db = get_test_database (client);

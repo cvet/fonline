@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_FIND_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_find_with_opts \- mongoc_gridfs_find_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_FIND_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_find_with_opts \- mongoc_gridfs_find_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,7 +47,7 @@ mongoc_gridfs_find_with_opts (mongoc_gridfs_t *gridfs,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBgridfs\fP: A \fBmongoc_gridfs_t\fP\&.
+\fBgridfs\fP: A \fI\%mongoc_gridfs_t\fP\&.
 .IP \(bu 2
 \fBfilter\fP: A \fI\%bson_t\fP containing the query to execute.
 .IP \(bu 2
@@ -57,14 +57,14 @@ mongoc_gridfs_find_with_opts (mongoc_gridfs_t *gridfs,
 .sp
 Finds all gridfs files matching \fBfilter\fP\&. You can iterate the matched gridfs files with the resulting file list.
 .sp
-See \fBmongoc_collection_find_with_opts\fP for a description of the \fBfilter\fP and \fBopts\fP parameters.
+See \fI\%mongoc_collection_find_with_opts()\fP for a description of the \fBfilter\fP and \fBopts\fP parameters.
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_gridfs_file_list_t\fP that should be freed with \fBmongoc_gridfs_file_list_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_gridfs_file_list_t\fP that should be freed with \fI\%mongoc_gridfs_file_list_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_CONTEXT_GET_DEFAULT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_context_get_default \- bson_context_get_default()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_CONTEXT_GET_DEFAULT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_context_get_default \- bson_context_get_default()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,7 +44,7 @@ bson_context_get_default (void);
 .UNINDENT
 .SH RETURNS
 .sp
-The \fBbson_context_get_default()\fP function shall return the default \fBbson_context_t\fP for the process.
+The \fBbson_context_get_default()\fP function shall return the default \fI\%bson_context_t\fP for the process.
 This context is created with the flags \fBBSON_CONTEXT_THREAD_SAFE\fP and \fBBSON_CONTEXT_DISABLE_PID_CACHE\fP\&.
 .SH AUTHOR
 MongoDB, Inc

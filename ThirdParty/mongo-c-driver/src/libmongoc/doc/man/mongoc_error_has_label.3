@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_ERROR_HAS_LABEL" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_error_has_label \- mongoc_error_has_label()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_ERROR_HAS_LABEL" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_error_has_label \- mongoc_error_has_label()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,13 +43,13 @@ mongoc_error_has_label (const bson_t *reply, const char *label);
 .UNINDENT
 .UNINDENT
 .sp
-Test whether a reply from a failed operation includes a specific error label. See Error Labels for details, and see \fBmongoc_client_session_start_transaction\fP for example code that demonstrates their use.
+Test whether a reply from a failed operation includes a specific error label. See \fI\%Error Labels\fP for details, and see \fI\%mongoc_client_session_start_transaction()\fP for example code that demonstrates their use.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
 \fBreply\fP: A \fI\%bson_t\fP, the reply to a failed operation.
 .IP \(bu 2
-\fBlabel\fP: The label to test for, such as "TransientTransactionError" or "UnknownTransactionCommitResult".
+\fBlabel\fP: The label to test for, such as \(dqTransientTransactionError\(dq or \(dqUnknownTransactionCommitResult\(dq.
 .UNINDENT
 .SH RETURNS
 .sp

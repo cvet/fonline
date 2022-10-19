@@ -155,6 +155,8 @@ with_transaction_callback_runner (mongoc_client_session_t *session,
    bool res = false;
    bson_t local_reply;
 
+   BSON_UNUSED (error);
+
    test = &(cb_ctx->callback);
 
    if (bson_has_field (test, "operation")) {
@@ -280,6 +282,8 @@ test_transactions_supported (void *ctx)
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (ctx);
+
    if (test_framework_is_mongos ()) {
       bson_destroy (&opts);
       return;
@@ -338,6 +342,8 @@ test_in_transaction (void *ctx)
    bson_t opts = BSON_INITIALIZER;
    bson_error_t error;
    bool r;
+
+   BSON_UNUSED (ctx);
 
    client = test_framework_new_default_client ();
    mongoc_client_set_error_api (client, 2);
@@ -429,6 +435,8 @@ test_in_transaction (void *ctx)
 static bool
 hangup_except_hello (request_t *request, void *data)
 {
+   BSON_UNUSED (data);
+
    if (!bson_strcasecmp (request->command_name, HANDSHAKE_CMD_LEGACY_HELLO) ||
        !bson_strcasecmp (request->command_name, "hello")) {
       /* allow default response */
@@ -462,8 +470,12 @@ _test_transient_txn_err (bool hangup)
 
    server = mock_server_new ();
    mock_server_run (server);
-   rs_response_to_hello (
-      server, 7, true /* primary */, false /* tags */, server, NULL);
+   rs_response_to_hello (server,
+                         WIRE_VERSION_4_0,
+                         true /* primary */,
+                         false /* tags */,
+                         server,
+                         NULL);
 
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
@@ -629,8 +641,12 @@ test_unknown_commit_result (void)
 
    server = mock_server_new ();
    mock_server_run (server);
-   rs_response_to_hello (
-      server, 7, true /* primary */, false /* tags */, server, NULL);
+   rs_response_to_hello (server,
+                         WIRE_VERSION_4_0,
+                         true /* primary */,
+                         false /* tags */,
+                         server,
+                         NULL);
 
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
@@ -690,6 +706,8 @@ test_cursor_primary_read_pref (void *ctx)
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (ctx);
+
    client = test_framework_new_default_client ();
    collection = get_test_collection (client, "test_cursor_primary_read_pref");
 
@@ -738,6 +756,8 @@ test_inherit_from_client (void *ctx)
    const mongoc_session_opt_t *returned_sopt;
    mongoc_transaction_opt_t *topt;
    const mongoc_transaction_opt_t *returned_topt;
+
+   BSON_UNUSED (ctx);
 
    uri = test_framework_get_uri ();
 
@@ -808,6 +828,8 @@ test_transaction_fails_on_unsupported_version_or_sharded_cluster (void *ctx)
    mongoc_client_t *client;
    bool r;
 
+   BSON_UNUSED (ctx);
+
    client = test_framework_new_default_client ();
    session = mongoc_client_start_session (client, NULL, &error);
    ASSERT_OR_PRINT (session, error);
@@ -838,6 +860,8 @@ test_transaction_recovery_token_cleared (void *ctx)
    mongoc_collection_t *coll;
    mongoc_uri_t *uri;
    bson_t txn_opts;
+
+   BSON_UNUSED (ctx);
 
    uri = test_framework_get_uri ();
    ASSERT_OR_PRINT (
@@ -909,7 +933,7 @@ test_selected_server_is_pinned_to_mongos (void *ctx)
 {
    mongoc_uri_t *uri = NULL;
    mongoc_client_t *client = NULL;
-   mongoc_set_t *servers = NULL;
+   const mongoc_set_t *servers = NULL;
    mongoc_transaction_opt_t *txn_opts = NULL;
    mongoc_session_opt_t *session_opts = NULL;
    mongoc_client_session_t *session = NULL;
@@ -922,8 +946,10 @@ test_selected_server_is_pinned_to_mongos (void *ctx)
    bool r;
    uint32_t expected_id;
    uint32_t actual_id;
-   mongoc_server_description_t *sd = NULL;
+   const mongoc_server_description_t *sd = NULL;
    int i;
+
+   BSON_UNUSED (ctx);
 
    uri = test_framework_get_uri ();
    ASSERT_OR_PRINT (
@@ -949,7 +975,7 @@ test_selected_server_is_pinned_to_mongos (void *ctx)
    BSON_ASSERT (0 == mongoc_client_session_get_server_id (session));
 
    expected_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL, &error);
+      client->topology, MONGOC_SS_WRITE, NULL, NULL, &error);
    ASSERT_OR_PRINT (expected_id, error);
 
    /* session should still be unpinned */
@@ -978,9 +1004,10 @@ test_selected_server_is_pinned_to_mongos (void *ctx)
    ASSERT_CMPINT32 (actual_id, ==, expected_id);
 
    /* get a valid server id that's different from the pinned server id */
-   servers = client->topology->description.servers;
+   servers =
+      mc_tpld_servers_const (mc_tpld_unsafe_get_const (client->topology));
    for (i = 0; i < servers->items_len; i++) {
-      sd = (mongoc_server_description_t *) mongoc_set_get_item (servers, i);
+      sd = mongoc_set_get_item_const (servers, i);
       if (sd && sd->id != actual_id) {
          break;
       }
@@ -1040,8 +1067,12 @@ test_get_transaction_opts (void)
 
    server = mock_server_new ();
    mock_server_run (server);
-   rs_response_to_hello (
-      server, 7, true /* primary */, false /* tags */, server, NULL);
+   rs_response_to_hello (server,
+                         WIRE_VERSION_4_0,
+                         true /* primary */,
+                         false /* tags */,
+                         server,
+                         NULL);
 
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
@@ -1119,6 +1150,8 @@ test_max_commit_time_ms_is_reset (void *ctx)
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (ctx);
+
    rs = mock_rs_with_auto_hello (WIRE_VERSION_4_2,
                                  true /* has primary */,
                                  2 /* secondaries */,
@@ -1169,18 +1202,16 @@ test_max_commit_time_ms_is_reset (void *ctx)
 void
 test_transactions_install (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
-
-   ASSERT (realpath (JSON_DIR "/transactions/legacy", resolved));
    install_json_test_suite_with_check (suite,
-                                       resolved,
+                                       JSON_DIR,
+                                       "transactions/legacy",
                                        test_transactions_cb,
                                        test_framework_skip_if_no_txns,
                                        test_framework_skip_if_slow);
 
-   test_framework_resolve_path (JSON_DIR "/with_transaction", resolved);
    install_json_test_suite_with_check (suite,
-                                       resolved,
+                                       JSON_DIR,
+                                       "with_transaction",
                                        test_transactions_cb,
                                        test_framework_skip_if_no_txns,
                                        test_framework_skip_if_slow);

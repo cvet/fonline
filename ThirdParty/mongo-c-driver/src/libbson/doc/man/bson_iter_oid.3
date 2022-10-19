@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_OID" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_oid \- bson_iter_oid()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_OID" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_oid \- bson_iter_oid()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,14 +47,14 @@ bson_iter_oid (const bson_iter_t *iter);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Fetches the \fBbson_oid_t\fP for a BSON_TYPE_OID element. You should verify it is an element of type BSON_TYPE_OID before calling this function.
+Fetches the \fI\%bson_oid_t\fP for a BSON_TYPE_OID element. You should verify it is an element of type BSON_TYPE_OID before calling this function.
 .SH RETURNS
 .sp
-A \fBbson_oid_t\fP that should not be modified or freed.
+A \fI\%bson_oid_t\fP that should not be modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

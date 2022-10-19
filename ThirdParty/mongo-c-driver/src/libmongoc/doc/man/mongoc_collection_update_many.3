@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_UPDATE_MANY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_update_many \- mongoc_collection_update_many()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_UPDATE_MANY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_update_many \- mongoc_collection_update_many()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,7 +50,7 @@ mongoc_collection_update_many (mongoc_collection_t *collection,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBselector\fP: A \fI\%bson_t\fP containing the query to match documents for updating.
 .IP \(bu 2
@@ -58,25 +58,29 @@ mongoc_collection_update_many (mongoc_collection_t *collection,
 .IP \(bu 2
 \fBreply\fP: Optional. An uninitialized \fI\%bson_t\fP populated with the update result, or \fBNULL\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
 \fBopts\fP may be NULL or a BSON document with additional command options:
 .INDENT 0.0
 .IP \(bu 2
-\fBwriteConcern\fP: Construct a \fBmongoc_write_concern_t\fP and use \fBmongoc_write_concern_append\fP to add the write concern to \fBopts\fP\&. See the example code for \fBmongoc_client_write_command_with_opts\fP\&.
+\fBwriteConcern\fP: Construct a \fI\%mongoc_write_concern_t\fP and use \fI\%mongoc_write_concern_append()\fP to add the write concern to \fBopts\fP\&. See the example code for \fI\%mongoc_client_write_command_with_opts()\fP\&.
 .IP \(bu 2
-\fBsessionId\fP: First, construct a \fBmongoc_client_session_t\fP with \fBmongoc_client_start_session\fP\&. You can begin a transaction with \fBmongoc_client_session_start_transaction\fP, optionally with a \fBmongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fBmongoc_client_session_append\fP to add the session to \fBopts\fP\&. See the example code for \fBmongoc_client_session_t\fP\&.
+\fBsessionId\fP: First, construct a \fI\%mongoc_client_session_t\fP with \fI\%mongoc_client_start_session()\fP\&. You can begin a transaction with \fI\%mongoc_client_session_start_transaction()\fP, optionally with a \fI\%mongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fI\%mongoc_client_session_append()\fP to add the session to \fBopts\fP\&. See the example code for \fI\%mongoc_client_session_t\fP\&.
 .IP \(bu 2
 \fBvalidate\fP: Construct a bitwise\-or of all desired \fI\%bson_validate_flags_t\fP\&. Set to \fBfalse\fP to skip client\-side validation of the provided BSON documents.
 .IP \(bu 2
+\fBcomment\fP: A \fI\%bson_value_t\fP specifying the comment to attach to this command. The comment will appear in log messages, profiler output, and currentOp output. Requires MongoDB 4.4 or later.
+.IP \(bu 2
 \fBbypassDocumentValidation\fP: Set to \fBtrue\fP to skip server\-side schema validation of the provided BSON documents.
 .IP \(bu 2
-\fBcollation\fP: Configure textual comparisons. See Setting Collation Order, and \fI\%the MongoDB Manual entry on Collation\fP\&. Collation requires MongoDB 3.2 or later, otherwise an error is returned.
+\fBcollation\fP: Configure textual comparisons. See \fI\%Setting Collation Order\fP, and \fI\%the MongoDB Manual entry on Collation\fP\&. Collation requires MongoDB 3.2 or later, otherwise an error is returned.
 .IP \(bu 2
 \fBhint\fP: A document or string that specifies the index to use to support the query predicate.
 .IP \(bu 2
 \fBupsert\fP: When true, creates a new document if no document matches the query.
+.IP \(bu 2
+\fBlet\fP: A BSON document consisting of any number of parameter names, each followed by definitions of constants in the MQL Aggregate Expression language.
 .IP \(bu 2
 \fBarrayFilters\fP: An array of filters specifying to which array elements an update should apply.
 .UNINDENT
@@ -84,9 +88,9 @@ mongoc_collection_update_many (mongoc_collection_t *collection,
 .sp
 This function updates all documents in \fBcollection\fP that match \fBselector\fP\&.
 .sp
-To update at most one document see \fBmongoc_collection_update_one\fP\&.
+To update at most one document see \fI\%mongoc_collection_update_one()\fP\&.
 .sp
-If you pass a non\-NULL \fBreply\fP, it is filled out with fields  \fBmatchedCount\fP, \fBmodifiedCount\fP, and optionally \fBupsertedId\fP if applicable. If there is a server error then \fBreply\fP contains either a "writeErrors" array with one subdocument or a "writeConcernErrors" array. The reply must be freed with \fI\%bson_destroy()\fP\&.
+If you pass a non\-NULL \fBreply\fP, it is filled out with fields  \fBmatchedCount\fP, \fBmodifiedCount\fP, and optionally \fBupsertedId\fP if applicable. If there is a server error then \fBreply\fP contains either a \(dqwriteErrors\(dq array with one subdocument or a \(dqwriteConcernErrors\(dq array. The reply must be freed with \fI\%bson_destroy()\fP\&.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
@@ -104,7 +108,7 @@ A write concern timeout or write concern error is considered a failure.
 .fi
 .sp
 .nf
-\fBmongoc_collection_update_one\fP
+\fI\%mongoc_collection_update_one()\fP
 .fi
 .sp
 .UNINDENT

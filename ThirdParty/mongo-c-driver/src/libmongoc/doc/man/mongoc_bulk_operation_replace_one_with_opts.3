@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_REPLACE_ONE_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_replace_one_with_opts \- mongoc_bulk_operation_replace_one_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_REPLACE_ONE_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_replace_one_with_opts \- mongoc_bulk_operation_replace_one_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,11 +47,11 @@ mongoc_bulk_operation_replace_one_with_opts (mongoc_bulk_operation_t *bulk,
 .UNINDENT
 .UNINDENT
 .sp
-Replace a single document as part of a bulk operation. This only queues the operation. To execute it, call \fBmongoc_bulk_operation_execute()\fP\&.
+Replace a single document as part of a bulk operation. This only queues the operation. To execute it, call \fI\%mongoc_bulk_operation_execute()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbulk\fP: A \fBmongoc_bulk_operation_t\fP\&.
+\fBbulk\fP: A \fI\%mongoc_bulk_operation_t\fP\&.
 .IP \(bu 2
 \fBselector\fP: A \fI\%bson_t\fP that selects which document to remove.
 .IP \(bu 2
@@ -65,7 +65,7 @@ Replace a single document as part of a bulk operation. This only queues the oper
 .IP \(bu 2
 \fBvalidate\fP: Construct a bitwise\-or of all desired \fI\%bson_validate_flags_t\fP\&. Set to \fBfalse\fP to skip client\-side validation of the provided BSON documents.
 .IP \(bu 2
-\fBcollation\fP: Configure textual comparisons. See Setting Collation Order, and \fI\%the MongoDB Manual entry on Collation\fP\&. Collation requires MongoDB 3.2 or later, otherwise an error is returned.
+\fBcollation\fP: Configure textual comparisons. See \fI\%Setting Collation Order\fP, and \fI\%the MongoDB Manual entry on Collation\fP\&. Collation requires MongoDB 3.2 or later, otherwise an error is returned.
 .IP \(bu 2
 \fBhint\fP: A document or string that specifies the index to use to support the query predicate.
 .IP \(bu 2
@@ -80,7 +80,7 @@ Replace a single document as part of a bulk operation. This only queues the oper
 .UNINDENT
 .SH ERRORS
 .sp
-Operation errors are propagated via \fBmongoc_bulk_operation_execute()\fP, while argument validation errors are reported by the \fBerror\fP argument.
+Operation errors are propagated via \fI\%mongoc_bulk_operation_execute()\fP, while argument validation errors are reported by the \fBerror\fP argument.
 .SH RETURNS
 .sp
 Returns true on success, and false if passed invalid arguments.
@@ -89,11 +89,11 @@ Returns true on success, and false if passed invalid arguments.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_bulk_operation_remove_many_with_opts()\fP
+\fI\%mongoc_bulk_operation_remove_many_with_opts()\fP
 .fi
 .sp
 .nf
-\fBmongoc_bulk_operation_insert()\fP
+\fI\%mongoc_bulk_operation_insert()\fP
 .fi
 .sp
 .UNINDENT

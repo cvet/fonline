@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_READER_NEW_FROM_HANDLE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reader_new_from_handle \- bson_reader_new_from_handle()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_READER_NEW_FROM_HANDLE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reader_new_from_handle \- bson_reader_new_from_handle()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,9 +49,9 @@ bson_reader_new_from_handle (void *handle,
 .IP \(bu 2
 \fBhandle\fP: A user\-provided pointer or NULL.
 .IP \(bu 2
-\fBrf\fP: A \fBbson_reader_read_func_t\fP\&.
+\fBrf\fP: A \fI\%bson_reader_read_func_t\fP\&.
 .IP \(bu 2
-\fBdf\fP: A \fBbson_reader_destroy_func_t\fP\&.
+\fBdf\fP: A \fI\%bson_reader_destroy_func_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp

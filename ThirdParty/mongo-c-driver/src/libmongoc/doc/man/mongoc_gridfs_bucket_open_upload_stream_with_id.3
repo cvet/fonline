@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_BUCKET_OPEN_UPLOAD_STREAM_WITH_ID" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_bucket_open_upload_stream_with_id \- mongoc_gridfs_bucket_open_upload_stream_with_id()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_BUCKET_OPEN_UPLOAD_STREAM_WITH_ID" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_bucket_open_upload_stream_with_id \- mongoc_gridfs_bucket_open_upload_stream_with_id()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -41,7 +41,8 @@ mongoc_gridfs_bucket_open_upload_stream_with_id (mongoc_gridfs_bucket_t *bucket,
                                                  const bson_value_t *file_id,
                                                  const char *filename,
                                                  const bson_t *opts,
-                                                 bson_error_t *error);
+                                                 bson_error_t *error)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -49,7 +50,7 @@ mongoc_gridfs_bucket_open_upload_stream_with_id (mongoc_gridfs_bucket_t *bucket,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbucket\fP: A \fBmongoc_gridfs_bucket_t\fP\&.
+\fBbucket\fP: A \fI\%mongoc_gridfs_bucket_t\fP\&.
 .IP \(bu 2
 \fBfile_id\fP: A \fI\%bson_value_t\fP specifying the id of the created file.
 .IP \(bu 2
@@ -70,20 +71,20 @@ mongoc_gridfs_bucket_open_upload_stream_with_id (mongoc_gridfs_bucket_t *bucket,
 .SH DESCRIPTION
 .sp
 Opens a stream for writing to a new file in GridFS for a specified file id.
-To have libmongoc generate an id, use \fBmongoc_gridfs_bucket_open_upload_stream()\fP\&.
+To have libmongoc generate an id, use \fI\%mongoc_gridfs_bucket_open_upload_stream()\fP\&.
 .SH RETURNS
 .sp
-A \fBmongoc_stream_t\fP that can be written to or \fBNULL\fP on failure. Errors on this stream can be retrieved with \fBmongoc_gridfs_bucket_stream_error\fP\&. After calling \fBmongoc_stream_close\fP the file is completely written in GridFS.
+A \fI\%mongoc_stream_t\fP that can be written to or \fBNULL\fP on failure. Errors on this stream can be retrieved with \fI\%mongoc_gridfs_bucket_stream_error()\fP\&. After calling \fI\%mongoc_stream_close()\fP the file is completely written in GridFS.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_gridfs_bucket_open_upload_stream()\fP
+\fI\%mongoc_gridfs_bucket_open_upload_stream()\fP
 .fi
 .sp
 .nf
-\fBmongoc_gridfs_bucket_stream_error()\fP
+\fI\%mongoc_gridfs_bucket_stream_error()\fP
 .fi
 .sp
 .UNINDENT

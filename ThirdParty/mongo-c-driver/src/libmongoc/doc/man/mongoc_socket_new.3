@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SOCKET_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_socket_new \- mongoc_socket_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SOCKET_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_socket_new \- mongoc_socket_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_socket_t *
-mongoc_socket_new (int domain, int type, int protocol);
+mongoc_socket_new (int domain,
+                   int type,
+                   int protocol) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -56,7 +58,7 @@ mongoc_socket_new (int domain, int type, int protocol);
 Creates a new \fBmongoc_socket_t\fP structure. This calls \fBsocket()\fP underneath to create a network socket.
 .SH RETURNS
 .sp
-A new socket if successful, otherwise \fBNULL\fP and errno is set. The result should be freed with \fBmongoc_socket_destroy()\fP when no longer in use.
+A new socket if successful, otherwise \fBNULL\fP and errno is set. The result should be freed with \fI\%mongoc_socket_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

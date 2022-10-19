@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_NEW_WITH_ERROR" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_new_with_error \- mongoc_uri_new_with_error()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_NEW_WITH_ERROR" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_new_with_error \- mongoc_uri_new_with_error()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,14 +48,14 @@ mongoc_uri_new_with_error (const char *uri_string,
 .IP \(bu 2
 \fBuri_string\fP: A string containing a URI.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Parses a string containing a MongoDB style URI connection string.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_uri_t\fP if successful. Otherwise \fBNULL\fP
+A newly allocated \fI\%mongoc_uri_t\fP if successful. Otherwise \fBNULL\fP
 populating \fBerror\fP with the error description.
 .sp
 \fBWARNING:\fP
@@ -68,23 +68,23 @@ Failure to handle the result of this function is a programming error.
 .sp
 Examples of some valid MongoDB connection strings can be seen below.
 .sp
-\fB"mongodb://localhost/"\fP
+\fB\(dqmongodb://localhost/\(dq\fP
 .sp
-\fB"mongodb://localhost/?replicaSet=myreplset"\fP
+\fB\(dqmongodb://localhost/?replicaSet=myreplset\(dq\fP
 .sp
-\fB"mongodb://myuser:mypass@localhost/"\fP
+\fB\(dqmongodb://myuser:mypass@localhost/\(dq\fP
 .sp
-\fB"mongodb://kerberosuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI"\fP
+\fB\(dqmongodb://kerberosuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI\(dq\fP
 .sp
-\fB"mongodb://[::1]:27017/"\fP
+\fB\(dqmongodb://[::1]:27017/\(dq\fP
 .sp
-\fB"mongodb://10.0.0.1:27017,10.0.0.1:27018,[::1]:27019/?tls=true"\fP
+\fB\(dqmongodb://10.0.0.1:27017,10.0.0.1:27018,[::1]:27019/?tls=true\(dq\fP
 .sp
-\fB"mongodb://%2Ftmp%2Fmongodb\-27017.sock"\fP
+\fB\(dqmongodb://%2Ftmp%2Fmongodb\-27017.sock\(dq\fP
 .sp
-\fB"mongodb://user:pass@%2Ftmp%2Fmongodb\-27017.sock"\fP
+\fB\(dqmongodb://user:pass@%2Ftmp%2Fmongodb\-27017.sock\(dq\fP
 .sp
-\fB"mongodb://localhost,[::1]/mydb?authSource=mydb"\fP
+\fB\(dqmongodb://localhost,[::1]/mydb?authSource=mydb\(dq\fP
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -33,17 +33,17 @@ get_generation (mongoc_client_t *client, mongoc_cursor_t *cursor)
 {
    uint32_t server_id;
    uint32_t generation;
-   mongoc_server_description_t *sd;
+   mongoc_server_description_t const *sd;
    bson_error_t error;
+   mc_shared_tpld td = mc_tpld_take_ref (client->topology);
 
    server_id = mongoc_cursor_get_hint (cursor);
 
-   bson_mutex_lock (&client->topology->mutex);
-   sd = mongoc_topology_description_server_by_id (
-      &client->topology->description, server_id, &error);
+   sd = mongoc_topology_description_server_by_id_const (
+      td.ptr, server_id, &error);
    ASSERT_OR_PRINT (sd, error);
-   generation = mongoc_generation_map_get (sd->generation_map, &kZeroServiceId);
-   bson_mutex_unlock (&client->topology->mutex);
+   generation = mc_tpl_sd_get_generation (sd, &kZeroServiceId);
+   mc_tpld_drop_ref (&td);
 
    return generation;
 }
@@ -90,9 +90,7 @@ test_exhaust_cursor (bool pooled)
    int64_t generation1;
    uint32_t connection_count1;
    mongoc_client_t *audit_client;
-   bool can_check_connection_count;
 
-   can_check_connection_count = test_framework_max_wire_version_at_least (5);
    if (pooled) {
       pool = test_framework_new_default_client_pool ();
       client = mongoc_client_pool_pop (pool);
@@ -162,9 +160,7 @@ test_exhaust_cursor (bool pooled)
       /* destroy the cursor, make sure the connection pool was not cleared */
       generation1 = get_generation (client, cursor);
       /* Getting the connection count requires a new enough server. */
-      if (can_check_connection_count) {
-         connection_count1 = get_connection_count (audit_client);
-      }
+      connection_count1 = get_connection_count (audit_client);
       mongoc_cursor_destroy (cursor);
       BSON_ASSERT (!client->in_exhaust);
    }
@@ -186,10 +182,8 @@ test_exhaust_cursor (bool pooled)
       /* The pool was not cleared. */
       ASSERT_CMPINT64 (generation1, ==, get_generation (client, cursor2));
       /* But a new connection was made. */
-      if (can_check_connection_count) {
-         ASSERT_CMPINT32 (
-            connection_count1 + 1, ==, get_connection_count (audit_client));
-      }
+      ASSERT_CMPINT32 (
+         connection_count1 + 1, ==, get_connection_count (audit_client));
 
       for (i = 0; i < 5; i++) {
          r = mongoc_cursor_next (cursor2, &doc);
@@ -291,13 +285,68 @@ test_exhaust_cursor (bool pooled)
 static void
 test_exhaust_cursor_single (void *context)
 {
+   BSON_UNUSED (context);
+
    test_exhaust_cursor (false);
 }
 
 static void
 test_exhaust_cursor_pool (void *context)
 {
+   BSON_UNUSED (context);
+
    test_exhaust_cursor (true);
+}
+
+static void
+test_exhaust_cursor_fallback (void *unused)
+{
+   mongoc_client_t *client;
+   mongoc_collection_t *collection;
+   bson_error_t error;
+   mongoc_cursor_t *cursor;
+   const bson_t *doc;
+
+   BSON_UNUSED (unused);
+
+   client = test_framework_new_default_client ();
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_exhaust_cursor_fallback");
+   ASSERT (collection);
+
+   (void) mongoc_collection_drop (collection, &error);
+   ASSERT_OR_PRINT (mongoc_collection_insert_one (
+                       collection, tmp_bson ("{'a': 1}"), NULL, NULL, &error),
+                    error);
+
+
+   cursor = mongoc_collection_find_with_opts (
+      collection, tmp_bson ("{}"), tmp_bson ("{'exhaust': true}"), NULL);
+   ASSERT (cursor);
+
+   /* Cursor should be a normal cursor despite exhaust option. */
+   ASSERT (!cursor->in_exhaust);
+   ASSERT (!cursor->client->in_exhaust);
+
+   /* Warning message is generated on call to mongoc_cursor_next() during which
+    * server wire version is discovered, not on call to
+    * mongoc_collection_find_with_opts(). */
+   capture_logs (true);
+   ASSERT_OR_PRINT (mongoc_cursor_next (cursor, &doc),
+                    (mongoc_cursor_error (cursor, &error), error));
+   ASSERT_CAPTURED_LOG (
+      "cursor",
+      MONGOC_LOG_LEVEL_WARNING,
+      "exhaust cursors not supported with OP_MSG, using normal cursor instead");
+   capture_logs (false);
+
+   ASSERT_MATCH (doc, "{'a': 1}");
+   ASSERT (!mongoc_cursor_next (cursor, &doc));
+
+   mongoc_cursor_destroy (cursor);
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
 }
 
 static void
@@ -312,6 +361,8 @@ test_exhaust_cursor_multi_batch (void *context)
    uint32_t server_id;
    mongoc_cursor_t *cursor;
    const bson_t *cursor_doc;
+
+   BSON_UNUSED (context);
 
    client = test_framework_new_default_client ();
    collection = get_test_collection (client, "test_exhaust_cursor_multi_batch");
@@ -482,20 +533,20 @@ _mock_test_exhaust (bool pooled,
       collection, MONGOC_QUERY_EXHAUST, 0, 0, 0, tmp_bson ("{}"), NULL, NULL);
 
    future = future_cursor_next (cursor, &doc);
-   request =
-      mock_server_receives_query (server,
-                                  "db.test",
-                                  MONGOC_QUERY_SECONDARY_OK | MONGOC_QUERY_EXHAUST,
-                                  0,
-                                  0,
-                                  "{}",
-                                  NULL);
+   request = mock_server_receives_query (server,
+                                         "db.test",
+                                         MONGOC_QUERY_SECONDARY_OK |
+                                            MONGOC_QUERY_EXHAUST,
+                                         0,
+                                         0,
+                                         "{}",
+                                         NULL);
 
    if (error_when == SECOND_BATCH) {
       /* initial query succeeds, gets a doc and cursor id of 123 */
       mock_server_replies (request, MONGOC_REPLY_NONE, 123, 1, 1, "{'a': 1}");
       ASSERT (future_get_bool (future));
-      ASSERT (match_bson (doc, tmp_bson ("{'a': 1}"), false));
+      assert_match_bson (doc, tmp_bson ("{'a': 1}"), false);
       ASSERT_CMPINT64 ((int64_t) 123, ==, mongoc_cursor_get_id (cursor));
 
       future_destroy (future);
@@ -682,6 +733,13 @@ test_exhaust_install (TestSuite *suite)
                       NULL,
                       skip_if_mongos,
                       test_framework_skip_if_no_legacy_opcodes);
+   TestSuite_AddFull (suite,
+                      "/Client/exhaust_cursor/fallback",
+                      test_exhaust_cursor_fallback,
+                      NULL,
+                      NULL,
+                      skip_if_mongos,
+                      test_framework_skip_if_max_wire_version_less_than_14);
    TestSuite_AddLive (suite,
                       "/Client/set_max_await_time_ms",
                       test_cursor_set_max_await_time_ms);

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_COMMAND_SIMPLE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_command_simple \- mongoc_database_command_simple()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_COMMAND_SIMPLE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_command_simple \- mongoc_database_command_simple()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,18 +49,18 @@ mongoc_database_command_simple (mongoc_database_t *database,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdatabase\fP: A \fBmongoc_database_t\fP\&.
+\fBdatabase\fP: A \fI\%mongoc_database_t\fP\&.
 .IP \(bu 2
 \fBcommand\fP: A \fI\%bson_t\fP containing the command.
 .IP \(bu 2
-\fBread_prefs\fP: An optional \fBmongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
+\fBread_prefs\fP: An optional \fI\%mongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
 .IP \(bu 2
 \fBreply\fP: A location to store the commands first result document.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
-This is a simplified interface to \fBmongoc_database_command()\fP that returns the first result document. The database\(aqs read preference, read concern, and write concern are not applied to the command.  The parameter \fBreply\fP is initialized even upon failure to simplify memory management.
+This is a simplified interface to \fI\%mongoc_database_command()\fP that returns the first result document. The database\(aqs read preference, read concern, and write concern are not applied to the command.  The parameter \fBreply\fP is initialized even upon failure to simplify memory management.
 .sp
 This function is not considered a retryable read operation.
 .SH ERRORS

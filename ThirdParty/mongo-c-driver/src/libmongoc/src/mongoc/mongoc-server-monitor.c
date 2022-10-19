@@ -111,12 +111,12 @@ static BSON_GNUC_PRINTF (3, 4) void _server_monitor_log (
    bson_free (msg);
 }
 
-#ifdef MONGOC_TRACE
-#define MONITOR_LOG(sm, ...) \
-   _server_monitor_log (sm, MONGOC_LOG_LEVEL_TRACE, __VA_ARGS__)
-#else
-#define MONITOR_LOG(sm, ...) (void) 0
-#endif
+#define MONITOR_LOG(sm, ...)                                            \
+   do {                                                                 \
+      if (MONGOC_TRACE_ENABLED) {                                       \
+         _server_monitor_log (sm, MONGOC_LOG_LEVEL_TRACE, __VA_ARGS__); \
+      }                                                                 \
+   } while (0)
 
 /* TODO CDRIVER-3710 use MONGOC_LOG_LEVEL_ERROR */
 #define MONITOR_LOG_ERROR(sm, ...) \
@@ -125,19 +125,13 @@ static BSON_GNUC_PRINTF (3, 4) void _server_monitor_log (
 #define MONITOR_LOG_WARNING(sm, ...) \
    _server_monitor_log (sm, MONGOC_LOG_LEVEL_DEBUG, __VA_ARGS__)
 
-/* Called only from server monitor thread.
- * Caller must hold no locks (user's callback may lock topology mutex).
- * Locks APM mutex.
- */
 static void
 _server_monitor_heartbeat_started (mongoc_server_monitor_t *server_monitor,
                                    bool awaited)
 {
    mongoc_apm_server_heartbeat_started_t event;
    MONGOC_DEBUG_ASSERT (
-      !COMMON_PREFIX (mutex_is_locked) (&server_monitor->topology->apm_mutex));
-   MONGOC_DEBUG_ASSERT (
-      !COMMON_PREFIX (mutex_is_locked) (&server_monitor->topology->mutex));
+      !mcommon_mutex_is_locked (&server_monitor->topology->apm_mutex));
 
    if (!server_monitor->apm_callbacks.server_heartbeat_started) {
       return;
@@ -154,10 +148,6 @@ _server_monitor_heartbeat_started (mongoc_server_monitor_t *server_monitor,
    bson_mutex_unlock (&server_monitor->topology->apm_mutex);
 }
 
-/* Called only from server monitor thread.
- * Caller must hold no locks (user's callback may lock topology mutex).
- * Locks APM mutex.
- */
 static void
 _server_monitor_heartbeat_succeeded (mongoc_server_monitor_t *server_monitor,
                                      const bson_t *reply,
@@ -183,10 +173,6 @@ _server_monitor_heartbeat_succeeded (mongoc_server_monitor_t *server_monitor,
    bson_mutex_unlock (&server_monitor->topology->apm_mutex);
 }
 
-/* Called only from server monitor thread.
- * Caller must hold no locks (user's callback may lock topology mutex).
- * Locks APM mutex.
- */
 static void
 _server_monitor_heartbeat_failed (mongoc_server_monitor_t *server_monitor,
                                   const bson_error_t *error,
@@ -215,16 +201,118 @@ static void
 _server_monitor_append_cluster_time (mongoc_server_monitor_t *server_monitor,
                                      bson_t *cmd)
 {
-   mongoc_topology_t *topology;
+   mc_shared_tpld td =
+      mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (server_monitor)->topology);
 
-   topology = server_monitor->topology;
    /* Cluster time is updated on every reply. */
-   bson_mutex_lock (&topology->mutex);
-   if (!bson_empty (&topology->description.cluster_time)) {
-      bson_append_document (
-         cmd, "$clusterTime", 12, &topology->description.cluster_time);
+   if (!bson_empty (&td.ptr->cluster_time)) {
+      bson_append_document (cmd, "$clusterTime", 12, &td.ptr->cluster_time);
    }
-   bson_mutex_unlock (&topology->mutex);
+   mc_tpld_drop_ref (&td);
+}
+static bool
+_server_monitor_send_and_recv_hello_opmsg (
+   mongoc_server_monitor_t *server_monitor,
+   bson_t *cmd,
+   bson_t *reply,
+   bson_error_t *error)
+{
+   mongoc_rpc_t rpc = {0};
+   mongoc_array_t array_to_write;
+   mongoc_iovec_t *iovec;
+   int niovec;
+
+   mongoc_buffer_t buffer;
+   uint32_t reply_len;
+   bson_t temp_reply;
+   bool ret = false;
+
+   /* First, let's construct and send our OPCODE_MSG: */
+   rpc.header.msg_len = 0;
+   rpc.header.request_id = server_monitor->request_id++;
+   rpc.header.response_to = 0;
+   rpc.header.opcode = MONGOC_OPCODE_MSG;
+   rpc.msg.flags = 0;
+   rpc.msg.n_sections = 1;
+   rpc.msg.sections[0].payload_type = 0;
+   rpc.msg.sections[0].payload.bson_document = bson_get_data (cmd);
+
+   _mongoc_array_init (&array_to_write, sizeof (mongoc_iovec_t));
+   _mongoc_rpc_gather (&rpc, &array_to_write);
+
+   iovec = (mongoc_iovec_t *) array_to_write.data;
+   niovec = array_to_write.len;
+   _mongoc_rpc_swab_to_le (&rpc);
+
+   MONITOR_LOG (server_monitor,
+                "sending with timeout %" PRId64,
+                server_monitor->connect_timeout_ms);
+
+   if (!_mongoc_stream_writev_full (server_monitor->stream,
+                                    iovec,
+                                    niovec,
+                                    server_monitor->connect_timeout_ms,
+                                    error)) {
+      MONITOR_LOG_ERROR (
+         server_monitor, "failed to write polling hello: %s", error->message);
+      _mongoc_array_destroy (&array_to_write);
+      return false;
+   }
+
+   /* Done sending! Now, receive the reply: */
+
+   _mongoc_buffer_init (&buffer, NULL, 0, NULL, NULL);
+
+   if (!_mongoc_buffer_append_from_stream (&buffer,
+                                           server_monitor->stream,
+                                           4,
+                                           server_monitor->connect_timeout_ms,
+                                           error)) {
+      goto fail;
+   }
+
+   memcpy (&reply_len, buffer.data, 4);
+   reply_len = BSON_UINT32_FROM_LE (reply_len);
+
+   if (!_mongoc_buffer_append_from_stream (&buffer,
+                                           server_monitor->stream,
+                                           reply_len - buffer.len,
+                                           server_monitor->connect_timeout_ms,
+                                           error)) {
+      goto fail;
+   }
+
+   if (!_mongoc_rpc_scatter (&rpc, buffer.data, buffer.len)) {
+      bson_set_error (error,
+                      MONGOC_ERROR_PROTOCOL,
+                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
+                      "Invalid reply from server.");
+
+      goto fail;
+   }
+
+   if (!_mongoc_rpc_decompress_if_necessary (&rpc, &buffer, error)) {
+      goto fail;
+   }
+   _mongoc_rpc_swab_from_le (&rpc);
+
+   if (!_mongoc_rpc_get_first_document (&rpc, &temp_reply)) {
+      bson_set_error (error,
+                      MONGOC_ERROR_PROTOCOL,
+                      MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
+                      "Invalid reply from server");
+      goto fail;
+   }
+   bson_copy_to (&temp_reply, reply);
+
+   ret = true;
+fail:
+   if (!ret) {
+      bson_init (reply);
+   }
+   _mongoc_array_destroy (&array_to_write);
+   _mongoc_buffer_destroy (&buffer);
+   return ret;
 }
 
 static bool
@@ -265,7 +353,7 @@ _server_monitor_send_and_recv_opquery (mongoc_server_monitor_t *server_monitor,
                                     niovec,
                                     server_monitor->connect_timeout_ms,
                                     error)) {
-      GOTO (fail);
+      goto fail;
    }
 
    if (!_mongoc_buffer_append_from_stream (&buffer,
@@ -273,7 +361,7 @@ _server_monitor_send_and_recv_opquery (mongoc_server_monitor_t *server_monitor,
                                            4,
                                            server_monitor->connect_timeout_ms,
                                            error)) {
-      GOTO (fail);
+      goto fail;
    }
 
    memcpy (&reply_len, buffer.data, 4);
@@ -284,7 +372,7 @@ _server_monitor_send_and_recv_opquery (mongoc_server_monitor_t *server_monitor,
                                            reply_len - buffer.len,
                                            server_monitor->connect_timeout_ms,
                                            error)) {
-      GOTO (fail);
+      goto fail;
    }
 
    if (!_mongoc_rpc_scatter (&rpc, buffer.data, buffer.len)) {
@@ -293,11 +381,11 @@ _server_monitor_send_and_recv_opquery (mongoc_server_monitor_t *server_monitor,
                       MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
                       "Invalid reply from server.");
 
-      GOTO (fail);
+      goto fail;
    }
 
    if (!_mongoc_rpc_decompress_if_necessary (&rpc, &buffer, error)) {
-      GOTO (fail);
+      goto fail;
    }
    _mongoc_rpc_swab_from_le (&rpc);
 
@@ -306,7 +394,7 @@ _server_monitor_send_and_recv_opquery (mongoc_server_monitor_t *server_monitor,
                       MONGOC_ERROR_PROTOCOL,
                       MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
                       "Invalid reply from server");
-      GOTO (fail);
+      goto fail;
    }
    bson_copy_to (&temp_reply, reply);
 
@@ -615,7 +703,8 @@ _server_monitor_awaitable_hello (mongoc_server_monitor_t *server_monitor,
    bson_copy_to (hello, &cmd);
 
    _server_monitor_append_cluster_time (server_monitor, &cmd);
-   bson_append_document (&cmd, "topologyVersion", 15, &description->topology_version);
+   bson_append_document (
+      &cmd, "topologyVersion", 15, &description->topology_version);
    bson_append_int32 (
       &cmd, "maxAwaitTimeMS", 14, server_monitor->heartbeat_frequency_ms);
    bson_append_utf8 (&cmd, "$db", 3, "admin", 5);
@@ -643,15 +732,15 @@ fail:
  *
  * Called only from server monitor thread.
  * Caller must hold no locks.
- * Locks topology mutex and server monitor mutex.
+ * Locks server monitor mutex.
  */
 static void
-_server_monitor_update_topology_description (
-   mongoc_server_monitor_t *server_monitor,
-   mongoc_server_description_t *description)
+_update_topology_description (mongoc_server_monitor_t *server_monitor,
+                              mongoc_server_description_t *description)
 {
    mongoc_topology_t *topology;
    bson_t *hello_response = NULL;
+   mc_tpld_modification tdmod;
 
    topology = server_monitor->topology;
    if (description->has_hello_response) {
@@ -662,26 +751,26 @@ _server_monitor_update_topology_description (
       _mongoc_topology_update_cluster_time (topology, hello_response);
    }
 
-   bson_mutex_lock (&topology->mutex);
-   if (topology->scanner_state != MONGOC_TOPOLOGY_SCANNER_SHUTTING_DOWN) {
-      /* This is the another case of holding both locks. topology->mutex is
-       * always locked first, then server monitor mutex after. */
-      bson_mutex_lock (&server_monitor->shared.mutex);
-      server_monitor->shared.scan_requested = false;
-      bson_mutex_unlock (&server_monitor->shared.mutex);
-
-      mongoc_topology_description_handle_hello (
-         &server_monitor->topology->description,
-         server_monitor->server_id,
-         hello_response,
-         description->round_trip_time_msec,
-         &description->error);
-      /* Reconcile server monitors. */
-      _mongoc_topology_background_monitoring_reconcile (topology);
+   if (bson_atomic_int_fetch (&topology->scanner_state,
+                              bson_memory_order_relaxed) ==
+       MONGOC_TOPOLOGY_SCANNER_SHUTTING_DOWN) {
+      return;
    }
+
+   tdmod = mc_tpld_modify_begin (topology);
+   bson_mutex_lock (&server_monitor->shared.mutex);
+   server_monitor->shared.scan_requested = false;
+   bson_mutex_unlock (&server_monitor->shared.mutex);
+   mongoc_topology_description_handle_hello (tdmod.new_td,
+                                             server_monitor->server_id,
+                                             hello_response,
+                                             description->round_trip_time_msec,
+                                             &description->error);
+   /* Reconcile server monitors. */
+   _mongoc_topology_background_monitoring_reconcile (topology, tdmod.new_td);
    /* Wake threads performing server selection. */
    mongoc_cond_broadcast (&server_monitor->topology->cond_client);
-   bson_mutex_unlock (&server_monitor->topology->mutex);
+   mc_tpld_modify_commit (tdmod);
 }
 
 /* Create a new server monitor.
@@ -691,18 +780,16 @@ _server_monitor_update_topology_description (
  */
 mongoc_server_monitor_t *
 mongoc_server_monitor_new (mongoc_topology_t *topology,
+                           mongoc_topology_description_t *td,
                            mongoc_server_description_t *init_description)
 {
-   mongoc_server_monitor_t *server_monitor;
-   MONGOC_DEBUG_ASSERT (COMMON_PREFIX (mutex_is_locked (&topology->mutex)));
-
-   server_monitor = bson_malloc0 (sizeof (*server_monitor));
+   mongoc_server_monitor_t *server_monitor =
+      bson_malloc0 (sizeof (*server_monitor));
    server_monitor->description =
       mongoc_server_description_new_copy (init_description);
    server_monitor->server_id = init_description->id;
    server_monitor->topology = topology;
-   server_monitor->heartbeat_frequency_ms =
-      topology->description.heartbeat_msec;
+   server_monitor->heartbeat_frequency_ms = td->heartbeat_msec;
    server_monitor->min_heartbeat_frequency_ms =
       topology->min_heartbeat_frequency_msec;
    server_monitor->connect_timeout_ms = topology->connect_timeout_msec;
@@ -718,9 +805,9 @@ mongoc_server_monitor_new (mongoc_topology_t *topology,
    }
 #endif
    memcpy (&server_monitor->apm_callbacks,
-           &topology->description.apm_callbacks,
+           &td->apm_callbacks,
            sizeof (mongoc_apm_callbacks_t));
-   server_monitor->apm_context = topology->description.apm_context;
+   server_monitor->apm_context = td->apm_context;
    server_monitor->initiator = topology->scanner->initiator;
    server_monitor->initiator_context = topology->scanner->initiator_context;
    mongoc_cond_init (&server_monitor->shared.cond);
@@ -742,7 +829,6 @@ _server_monitor_setup_connection (mongoc_server_monitor_t *server_monitor,
                                   bson_error_t *error)
 {
    bson_t cmd = BSON_INITIALIZER;
-   const bson_t *handshake;
    bool ret = false;
 
    ENTRY;
@@ -782,14 +868,26 @@ _server_monitor_setup_connection (mongoc_server_monitor_t *server_monitor,
    /* Update the start time just before the handshake. */
    *start_us = _now_us ();
    /* Perform handshake. */
-   handshake = _mongoc_topology_get_handshake_cmd (server_monitor->topology);
    bson_destroy (&cmd);
-   bson_copy_to (handshake, &cmd);
+   _mongoc_topology_dup_handshake_cmd (server_monitor->topology, &cmd);
    _server_monitor_append_cluster_time (server_monitor, &cmd);
    bson_destroy (hello_response);
-   if (!_server_monitor_send_and_recv_opquery (
-          server_monitor, &cmd, hello_response, error)) {
-      GOTO (fail);
+
+   /* If the user has select a versioned API, we'll assume OPCODE_MSG;
+   otherwise, we'll use the legacy OPCODE_QUERY: */
+   if (mongoc_topology_uses_server_api (server_monitor->topology)) {
+      /* OPCODE_MSG requires a "db" parameter: */
+      bson_append_utf8 (&cmd, "$db", 3, "admin", 5);
+
+      if (!_server_monitor_send_and_recv_hello_opmsg (
+             server_monitor, &cmd, hello_response, error)) {
+         GOTO (fail);
+      }
+   } else {
+      if (!_server_monitor_send_and_recv_opquery (
+             server_monitor, &cmd, hello_response, error)) {
+         GOTO (fail);
+      }
    }
 
    ret = true;
@@ -798,21 +896,23 @@ fail:
    RETURN (ret);
 }
 
-/* Perform a hello check of a server.
+/**
+ * @brief Perform a hello check on a server
  *
- * Called only by server monitor thread.
- * Caller must not hold any locks.
- * May lock server monitor mutex. May lock topology mutex.
- * Upon network error, the returned server description will contain the error,
- * but no hello reply.
- * Upon hello cancellation, cancelled will be true, and the returned server
- * description will not contain an error or hello reply.
- * Upon command error ("ok":0 reply), the returned server description have the
- * hello reply and error set.
- * Returns a new server description that the caller must destroy.
+ * @param server_monitor The server monitor for this server.
+ * @param previous_description The most recent view of the description of this
+ * server.
+ * @param cancelled Output parameter: Whether the monitor check is cancelled.
+ * @return mongoc_server_description_t* The newly created updated server
+ * description.
+ *
+ * @note May update the topology description associated with the server monitor.
+ *
+ * @note In case of error, returns a new server description with the error
+ * information, but with no hello reply.
  */
-mongoc_server_description_t *
-mongoc_server_monitor_check_server (
+static mongoc_server_description_t *
+_server_monitor_check_server (
    mongoc_server_monitor_t *server_monitor,
    const mongoc_server_description_t *previous_description,
    bool *cancelled)
@@ -825,12 +925,13 @@ mongoc_server_monitor_check_server (
    bool command_or_network_error = false;
    bool awaited = false;
    mongoc_server_description_t *description;
+   mc_tpld_modification tdmod;
 
    ENTRY;
 
    *cancelled = false;
    memset (&error, 0, sizeof (bson_error_t));
-   description = bson_malloc0 (sizeof (mongoc_server_description_t));
+   description = BSON_ALIGNED_ALLOC0 (mongoc_server_description_t);
    mongoc_server_description_init (
       description,
       server_monitor->description->connection_address,
@@ -860,20 +961,19 @@ mongoc_server_monitor_check_server (
       awaited = true;
       _server_monitor_heartbeat_started (server_monitor, awaited);
       MONITOR_LOG (server_monitor, "awaitable hello");
-      ret = _server_monitor_awaitable_hello (
-         server_monitor,
-         previous_description,
-         &hello_response,
-         cancelled,
-         &error);
+      ret = _server_monitor_awaitable_hello (server_monitor,
+                                             previous_description,
+                                             &hello_response,
+                                             cancelled,
+                                             &error);
       GOTO (exit);
    }
 
    MONITOR_LOG (server_monitor, "polling hello");
    awaited = false;
    _server_monitor_heartbeat_started (server_monitor, awaited);
-   ret =
-      _server_monitor_polling_hello (server_monitor, previous_description->hello_ok, &hello_response, &error);
+   ret = _server_monitor_polling_hello (
+      server_monitor, previous_description->hello_ok, &hello_response, &error);
 
 exit:
    duration_us = _now_us () - start_us;
@@ -932,12 +1032,14 @@ exit:
       }
       server_monitor->stream = NULL;
       server_monitor->more_to_come = false;
-      bson_mutex_lock (&server_monitor->topology->mutex);
-      _mongoc_topology_clear_connection_pool (
-         server_monitor->topology,
+      tdmod = mc_tpld_modify_begin (server_monitor->topology);
+      /* clear_connection_pool() is a no-op if 'description->id' was already
+       * removed. */
+      _mongoc_topology_description_clear_connection_pool (
+         tdmod.new_td,
          server_monitor->description->id,
          &server_monitor->description->service_id);
-      bson_mutex_unlock (&server_monitor->topology->mutex);
+      mc_tpld_modify_commit (tdmod);
    }
 
    bson_destroy (&hello_response);
@@ -946,7 +1048,6 @@ exit:
 
 /* Request scan of a single server.
  *
- * Caller does not need to have topology mutex locked.
  * Locks server monitor mutex to deliver scan_requested.
  */
 void
@@ -1047,7 +1148,7 @@ static BSON_THREAD_FUN (_server_monitor_thread, server_monitor_void)
       mongoc_server_description_destroy (previous_description);
       previous_description = mongoc_server_description_new_copy (description);
       mongoc_server_description_destroy (description);
-      description = mongoc_server_monitor_check_server (
+      description = _server_monitor_check_server (
          server_monitor, previous_description, &cancelled);
 
       if (cancelled) {
@@ -1055,7 +1156,7 @@ static BSON_THREAD_FUN (_server_monitor_thread, server_monitor_void)
          continue;
       }
 
-      _server_monitor_update_topology_description (server_monitor, description);
+      _update_topology_description (server_monitor, description);
 
       /* Immediately proceed to the next check if the previous response was
        * successful and included the topologyVersion field. */
@@ -1130,10 +1231,7 @@ _server_monitor_ping_server (mongoc_server_monitor_t *server_monitor,
  */
 static BSON_THREAD_FUN (_server_monitor_rtt_thread, server_monitor_void)
 {
-   mongoc_server_monitor_t *server_monitor;
-   mongoc_server_description_t *sd;
-
-   server_monitor = (mongoc_server_monitor_t *) server_monitor_void;
+   mongoc_server_monitor_t *server_monitor = server_monitor_void;
 
    while (true) {
       int64_t rtt_ms;
@@ -1147,27 +1245,31 @@ static BSON_THREAD_FUN (_server_monitor_rtt_thread, server_monitor_void)
       }
       bson_mutex_unlock (&server_monitor->shared.mutex);
 
-      bson_mutex_lock (&server_monitor->topology->mutex);
-      sd = mongoc_topology_description_server_by_id (
-         &server_monitor->topology->description,
-         server_monitor->description->id,
-         &error);
-      hello_ok = sd ? sd->hello_ok : false;
-      bson_mutex_unlock (&server_monitor->topology->mutex);
+      {
+         mc_shared_tpld td = mc_tpld_take_ref (server_monitor->topology);
+         const mongoc_server_description_t *sd =
+            mongoc_topology_description_server_by_id_const (
+               td.ptr, server_monitor->description->id, &error);
+         hello_ok = sd ? sd->hello_ok : false;
+         mc_tpld_drop_ref (&td);
+      }
 
       _server_monitor_ping_server (server_monitor, hello_ok, &rtt_ms);
       if (rtt_ms != MONGOC_RTT_UNSET) {
-         bson_mutex_lock (&server_monitor->topology->mutex);
-         sd = mongoc_topology_description_server_by_id (
-            &server_monitor->topology->description,
-            server_monitor->description->id,
-            &error);
-         if (sd) {
+         mc_tpld_modification tdmod =
+            mc_tpld_modify_begin (server_monitor->topology);
+         mongoc_server_description_t *const mut_sd =
+            mongoc_topology_description_server_by_id (
+               tdmod.new_td, server_monitor->description->id, &error);
+         if (mut_sd) {
+            mongoc_server_description_update_rtt (mut_sd, rtt_ms);
+            mc_tpld_modify_commit (tdmod);
+         } else {
             /* If the server description has been removed, the RTT thread will
-             * be terminated by background monitoring soon. */
-            mongoc_server_description_update_rtt (sd, rtt_ms);
+             * be terminated by background monitoring soon, so we have nothing
+             * to do but wait until we are about to be stopped. */
+            mc_tpld_modify_drop (tdmod);
          }
-         bson_mutex_unlock (&server_monitor->topology->mutex);
       }
       mongoc_server_monitor_wait (server_monitor);
    }
@@ -1185,8 +1287,8 @@ mongoc_server_monitor_run (mongoc_server_monitor_t *server_monitor)
    if (server_monitor->shared.state == MONGOC_THREAD_OFF) {
       server_monitor->is_rtt = false;
       server_monitor->shared.state = MONGOC_THREAD_RUNNING;
-      COMMON_PREFIX (thread_create)
-      (&server_monitor->thread, _server_monitor_thread, server_monitor);
+      mcommon_thread_create (
+         &server_monitor->thread, _server_monitor_thread, server_monitor);
    }
    bson_mutex_unlock (&server_monitor->shared.mutex);
 }
@@ -1198,8 +1300,8 @@ mongoc_server_monitor_run_as_rtt (mongoc_server_monitor_t *server_monitor)
    if (server_monitor->shared.state == MONGOC_THREAD_OFF) {
       server_monitor->is_rtt = true;
       server_monitor->shared.state = MONGOC_THREAD_RUNNING;
-      COMMON_PREFIX (thread_create)
-      (&server_monitor->thread, _server_monitor_rtt_thread, server_monitor);
+      mcommon_thread_create (
+         &server_monitor->thread, _server_monitor_rtt_thread, server_monitor);
    }
    bson_mutex_unlock (&server_monitor->shared.mutex);
 }
@@ -1209,7 +1311,6 @@ mongoc_server_monitor_run_as_rtt (mongoc_server_monitor_t *server_monitor)
  * Returns true if in state MONGOC_THREAD_OFF and the server monitor can be
  * safely destroyed.
  * Called during topology description reconcile.
- * Caller may hold topology mutex.
  * Locks server monitor mutex.
  */
 bool
@@ -1222,7 +1323,7 @@ mongoc_server_monitor_request_shutdown (mongoc_server_monitor_t *server_monitor)
       server_monitor->shared.state = MONGOC_THREAD_SHUTTING_DOWN;
    }
    if (server_monitor->shared.state == MONGOC_THREAD_JOINABLE) {
-      COMMON_PREFIX (thread_join) (server_monitor->thread);
+      mcommon_thread_join (server_monitor->thread);
       server_monitor->shared.state = MONGOC_THREAD_OFF;
    }
    if (server_monitor->shared.state == MONGOC_THREAD_OFF) {
@@ -1240,8 +1341,6 @@ mongoc_server_monitor_request_shutdown (mongoc_server_monitor_t *server_monitor)
 /* Request thread shutdown and block until the server monitor thread terminates.
  *
  * Called by one thread.
- * Caller must not hold topology mutex. Server monitor thread may need to lock
- * it again in the process of shutting down.
  * Locks the server monitor mutex.
  */
 void
@@ -1253,7 +1352,7 @@ mongoc_server_monitor_wait_for_shutdown (
    }
 
    /* Shutdown requested, but thread is not yet off. Wait. */
-   COMMON_PREFIX (thread_join) (server_monitor->thread);
+   mcommon_thread_join (server_monitor->thread);
    bson_mutex_lock (&server_monitor->shared.mutex);
    server_monitor->shared.state = MONGOC_THREAD_OFF;
    bson_mutex_unlock (&server_monitor->shared.mutex);

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SESSION_GET_CLIENT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_session_get_client \- mongoc_client_session_get_client()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SESSION_GET_CLIENT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_session_get_client \- mongoc_client_session_get_client()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,12 +43,15 @@ mongoc_client_session_get_client (const mongoc_client_session_t *session);
 .UNINDENT
 .UNINDENT
 .sp
-Returns the \fBmongoc_client_t\fP from which this session was created with \fBmongoc_client_start_session()\fP\&.
+Returns the \fI\%mongoc_client_t\fP from which this session was created. See \fI\%mongoc_client_start_session()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsession\fP: A \fBmongoc_client_session_t\fP\&.
+\fBsession\fP: A \fI\%mongoc_client_session_t\fP\&.
 .UNINDENT
+.SH RETURNS
+.sp
+A \fI\%mongoc_client_t\fP that should not be freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

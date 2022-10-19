@@ -100,6 +100,23 @@ bson_open (const char *filename, int flags, ...)
 #define CERT_PASSWORD_PROTECTED CERT_TEST_DIR "/password_protected.pem"
 
 
+#ifdef ASSERT
+#undef ASSERT
+#endif
+#define ASSERT(Cond)                                              \
+   do {                                                           \
+      if (!(Cond)) {                                              \
+         fprintf (stderr,                                         \
+                  "FAIL:%s:%d  %s()\n  Condition '%s' failed.\n", \
+                  __FILE__,                                       \
+                  __LINE__,                                       \
+                  BSON_FUNC,                                      \
+                  BSON_STR (Cond));                               \
+         abort ();                                                \
+      }                                                           \
+   } while (0)
+
+
 void
 _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
 
@@ -141,24 +158,17 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
             int fd1 = bson_open ("failure.bad.bson", O_RDWR | O_CREAT, 0640); \
             int fd2 =                                                         \
                bson_open ("failure.expected.bson", O_RDWR | O_CREAT, 0640);   \
-            BSON_ASSERT (fd1 != -1);                                          \
-            BSON_ASSERT (fd2 != -1);                                          \
-            BSON_ASSERT ((bson)->len ==                                       \
-                         bson_write (fd1, bson_data, (bson)->len));           \
-            BSON_ASSERT ((expected)->len ==                                   \
-                         bson_write (fd2, expected_data, (expected)->len));   \
+            ASSERT (fd1 != -1);                                               \
+            ASSERT (fd2 != -1);                                               \
+            ASSERT ((bson)->len == bson_write (fd1, bson_data, (bson)->len)); \
+            ASSERT ((expected)->len ==                                        \
+                    bson_write (fd2, expected_data, (expected)->len));        \
             bson_close (fd1);                                                 \
             bson_close (fd2);                                                 \
          }                                                                    \
-         BSON_ASSERT (0);                                                     \
+         abort ();                                                            \
       }                                                                       \
    } while (0)
-
-
-#ifdef ASSERT
-#undef ASSERT
-#endif
-#define ASSERT BSON_ASSERT
 
 
 #ifdef ASSERT_OR_PRINT
@@ -173,9 +183,8 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
                   __FILE__,                           \
                   __LINE__,                           \
                   BSON_FUNC,                          \
-                  #_statement,                        \
+                  BSON_STR (_statement),              \
                   _err.message);                      \
-         fflush (stderr);                             \
          abort ();                                    \
       }                                               \
    } while (0)
@@ -199,7 +208,6 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
                      BSON_FUNC,                        \
                      "empty cursor");                  \
          }                                             \
-         fflush (stderr);                              \
          abort ();                                     \
       }                                                \
    } while (0)
@@ -216,7 +224,6 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
                   __LINE__,                         \
                   BSON_FUNC,                        \
                   "non-empty cursor");              \
-         fflush (stderr);                           \
          abort ();                                  \
       }                                             \
       if (mongoc_cursor_error ((_cursor), &_err)) { \
@@ -226,7 +233,6 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
                   __LINE__,                         \
                   BSON_FUNC,                        \
                   _err.message);                    \
-         fflush (stderr);                           \
          abort ();                                  \
       }                                             \
    } while (0)
@@ -242,7 +248,7 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
                   "FAIL\n\nAssert Failure: %" fmt " %s %" fmt "\n" \
                   "%s:%d  %s()\n",                                 \
                   _a,                                              \
-                  #eq,                                             \
+                  BSON_STR (eq),                                   \
                   _b,                                              \
                   __FILE__,                                        \
                   __LINE__,                                        \
@@ -268,9 +274,9 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
    ASSERT_CMPINT_HELPER (a, eq, b, PRIu32, uint32_t)
 #define ASSERT_CMPUINT64(a, eq, b) \
    ASSERT_CMPINT_HELPER (a, eq, b, PRIu64, uint64_t)
-#define ASSERT_CMPSIZE_T(a, eq, b) ASSERT_CMPINT_HELPER (a, eq, b, "zd", size_t)
+#define ASSERT_CMPSIZE_T(a, eq, b) ASSERT_CMPINT_HELPER (a, eq, b, "zu", size_t)
 #define ASSERT_CMPSSIZE_T(a, eq, b) \
-   ASSERT_CMPINT_HELPER (a, eq, b, "zx", ssize_t)
+   ASSERT_CMPINT_HELPER (a, eq, b, "zd", ssize_t)
 #define ASSERT_CMPDOUBLE(a, eq, b) ASSERT_CMPINT_HELPER (a, eq, b, "f", double)
 #define ASSERT_CMPVOID(a, eq, b) ASSERT_CMPINT_HELPER (a, eq, b, "p", void *)
 
@@ -554,10 +560,9 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
             __FILE__,                                                        \
             __LINE__,                                                        \
             BSON_FUNC,                                                       \
-            #_statement,                                                     \
+            BSON_STR (_statement),                                           \
             _errcode,                                                        \
             strerror (_errcode));                                            \
-         fflush (stderr);                                                    \
          abort ();                                                           \
       }                                                                      \
    } while (0)
@@ -608,7 +613,7 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
             fprintf (stderr,                                           \
                      "Predicate \"%s\" timed out\n"                    \
                      "   %s:%d  %s()\n",                               \
-                     #_pred,                                           \
+                     BSON_STR (_pred),                                 \
                      __FILE__,                                         \
                      __LINE__,                                         \
                      BSON_FUNC);                                       \
@@ -626,9 +631,8 @@ _test_error (const char *format, ...) BSON_GNUC_PRINTF (1, 2);
                   __FILE__,                     \
                   __LINE__,                     \
                   BSON_FUNC,                    \
-                  #_statement);                 \
+                  BSON_STR (_statement));       \
          fprintf (stderr, __VA_ARGS__);         \
-         fflush (stderr);                       \
          abort ();                              \
       }                                         \
    } while (0)
@@ -643,6 +647,8 @@ typedef void (*TestFuncDtor) (void *);
 typedef int (*CheckFunc) (void);
 typedef struct _Test Test;
 typedef struct _TestSuite TestSuite;
+typedef struct _TestFnCtx TestFnCtx;
+typedef struct _TestSkip TestSkip;
 
 
 struct _Test {
@@ -662,12 +668,27 @@ struct _TestSuite {
    char *prgname;
    char *name;
    mongoc_array_t match_patterns;
+   char *ctest_run;
    Test *tests;
    FILE *outfile;
    int flags;
    int silent;
    bson_string_t *mock_server_log_buf;
    FILE *mock_server_log;
+   mongoc_array_t failing_flaky_skips;
+};
+
+
+struct _TestFnCtx {
+   TestFunc test_fn;
+   TestFuncDtor dtor;
+};
+
+
+struct _TestSkip {
+   char *test_name;
+   char *subtest_desc;
+   char *reason;
 };
 
 
@@ -708,8 +729,24 @@ _TestSuite_AddFull (TestSuite *suite,
                     TestFuncDtor dtor,
                     void *ctx,
                     ...);
+void
+_TestSuite_TestFnCtxDtor (void *ctx);
 #define TestSuite_AddFull(_suite, _name, _func, _dtor, _ctx, ...) \
    _TestSuite_AddFull (_suite, _name, _func, _dtor, _ctx, __VA_ARGS__, NULL)
+#define TestSuite_AddFullWithTestFn(                \
+   _suite, _name, _func, _dtor, _test_fn, ...)      \
+   do {                                             \
+      TestFnCtx *ctx = malloc (sizeof (TestFnCtx)); \
+      ctx->test_fn = (TestFunc) (_test_fn);         \
+      ctx->dtor = _dtor;                            \
+      _TestSuite_AddFull (_suite,                   \
+                          _name,                    \
+                          _func,                    \
+                          _TestSuite_TestFnCtxDtor, \
+                          ctx,                      \
+                          __VA_ARGS__,              \
+                          NULL);                    \
+   } while (0)
 int
 TestSuite_Run (TestSuite *suite);
 void
@@ -721,6 +758,8 @@ int
 test_suite_valgrind (void);
 void
 test_suite_mock_server_log (const char *msg, ...);
+void
+_process_skip_file (const char *, mongoc_array_t *);
 
 bool
 TestSuite_NoFork (TestSuite *suite);

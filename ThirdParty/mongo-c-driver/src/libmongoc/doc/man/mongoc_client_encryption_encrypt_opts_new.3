@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT_OPTS_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_encryption_encrypt_opts_new \- mongoc_client_encryption_encrypt_opts_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT_OPTS_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_encryption_encrypt_opts_new \- mongoc_client_encryption_encrypt_opts_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,14 +37,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_client_encryption_encrypt_opts_t *
-mongoc_client_encryption_encrypt_opts_new ();
+mongoc_client_encryption_encrypt_opts_new (void) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SH RETURNS
 .sp
-A new \fBmongoc_client_encryption_encrypt_opts_t\fP that must be freed with \fBmongoc_client_encryption_encrypt_opts_destroy()\fP\&.
+A new \fI\%mongoc_client_encryption_encrypt_opts_t\fP that must be freed with \fI\%mongoc_client_encryption_encrypt_opts_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

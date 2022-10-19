@@ -141,6 +141,8 @@ test_command_with_opts (void *ctx)
    bson_t reply_result;
    bson_error_t error;
 
+   BSON_UNUSED (ctx);
+
    uri = test_framework_get_uri ();
    mongoc_uri_set_option_as_bool (uri, "retryWrites", true);
 
@@ -150,7 +152,7 @@ test_command_with_opts (void *ctx)
 
    /* clean up in case a previous test aborted */
    server_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL, &error);
+      client->topology, MONGOC_SS_WRITE, NULL, NULL, &error);
    ASSERT_OR_PRINT (server_id, error);
    deactivate_fail_points (client, server_id);
 
@@ -185,7 +187,7 @@ test_command_with_opts (void *ctx)
                     error);
 
    bson_lookup_doc (&reply, "value", &reply_result);
-   ASSERT (match_bson (&reply_result, tmp_bson ("{'_id': 1, 'x': 2}"), false));
+   assert_match_bson (&reply_result, tmp_bson ("{'_id': 1, 'x': 2}"), false);
 
    deactivate_fail_points (client, server_id);
 
@@ -447,6 +449,8 @@ test_retry_no_crypto (void *ctx)
    mongoc_client_t *client;
    mongoc_client_pool_t *pool;
 
+   BSON_UNUSED (ctx);
+
    capture_logs (true);
 
    /* Test that no warning is logged if retryWrites is disabled. Warning logic
@@ -574,11 +578,9 @@ test_unsupported_storage_engine_error (void)
 static void
 test_all_spec_tests (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
-
-   test_framework_resolve_path (JSON_DIR "/retryable_writes", resolved);
    install_json_test_suite_with_check (suite,
-                                       resolved,
+                                       JSON_DIR,
+                                       "retryable_writes",
                                        test_retryable_writes_cb,
                                        test_framework_skip_if_no_crypto,
                                        test_framework_skip_if_slow);
@@ -625,6 +627,8 @@ test_bulk_retry_tracks_new_server (void *unused)
    mongoc_server_description_t *sd;
    mongoc_apm_callbacks_t *callbacks;
    _tracks_new_server_counters_t counters = {0};
+
+   BSON_UNUSED (unused);
 
    callbacks = mongoc_apm_callbacks_new ();
    mongoc_apm_set_command_started_cb (callbacks, _tracks_new_server_cb);
