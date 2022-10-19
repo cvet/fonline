@@ -1,4 +1,4 @@
-AC_INIT(asio, [1.20.0])
+AC_INIT(asio, [1.24.0])
 AC_CONFIG_SRCDIR(include/asio.hpp)
 AM_MAINTAINER_MODE
 AM_INIT_AUTOMAKE([tar-ustar])
@@ -8,6 +8,7 @@ AM_PROG_CC_C_O
 AC_PROG_CXX
 AC_LANG(C++)
 AC_PROG_RANLIB
+PKG_INSTALLDIR
 
 AC_DEFINE(_REENTRANT, [1], [Define this])
 
@@ -231,6 +232,8 @@ AM_CONDITIONAL(HAVE_CXX20,test x$HAVE_CXX20 = xyes)
 
 AM_CONDITIONAL(HAVE_COROUTINES,test x$HAVE_COROUTINES = xyes)
 
+AC_CONFIG_FILES([asio.pc])
+
 AC_OUTPUT([
   Makefile
   include/Makefile
@@ -240,4 +243,5 @@ AC_OUTPUT([
   src/examples/cpp03/Makefile
   src/examples/cpp11/Makefile
   src/examples/cpp14/Makefile
-  src/examples/cpp17/Makefile])
+  src/examples/cpp17/Makefile
+  src/examples/cpp20/Makefile])
