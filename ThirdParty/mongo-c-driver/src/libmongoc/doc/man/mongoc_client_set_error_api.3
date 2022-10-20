@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SET_ERROR_API" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_set_error_api \- mongoc_client_set_error_api()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SET_ERROR_API" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_set_error_api \- mongoc_client_set_error_api()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,13 +43,13 @@ mongoc_client_set_error_api (mongoc_client_t *client, int32_t version);
 .UNINDENT
 .UNINDENT
 .sp
-Configure how the C Driver reports errors. See Setting the Error API Version\&.
+Configure how the C Driver reports errors. See \fI\%Setting the Error API Version\fP\&.
 .sp
-Do not use this function with pooled clients, see \fBmongoc_client_pool_set_error_api\fP\&.
+Do not use this function with pooled clients, see \fI\%mongoc_client_pool_set_error_api()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
 \fBversion\fP: The version of the error API, either \fBMONGOC_ERROR_API_VERSION_LEGACY\fP or \fBMONGOC_ERROR_API_VERSION_2\fP\&.
 .UNINDENT

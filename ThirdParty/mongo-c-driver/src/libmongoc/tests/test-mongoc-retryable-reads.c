@@ -90,6 +90,8 @@ test_cmd_helpers (void *ctx)
    mongoc_database_t *database;
    const bson_t *doc;
 
+   BSON_UNUSED (ctx);
+
    uri = test_framework_get_uri ();
    mongoc_uri_set_option_as_bool (uri, "retryReads", true);
 
@@ -100,7 +102,7 @@ test_cmd_helpers (void *ctx)
 
    /* clean up in case a previous test aborted */
    server_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL, &error);
+      client->topology, MONGOC_SS_WRITE, NULL, NULL, &error);
    ASSERT_OR_PRINT (server_id, error);
    deactivate_fail_points (client, server_id);
 
@@ -185,7 +187,7 @@ test_cmd_helpers (void *ctx)
    /* read/write agnostic command_simple_with_server_id helper must not retry.
     */
    server_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL, &error);
+      client->topology, MONGOC_SS_WRITE, NULL, NULL, &error);
    ASSERT_OR_PRINT (server_id, error);
    _set_failpoint (client);
    ASSERT (!mongoc_client_command_simple_with_server_id (
@@ -238,6 +240,8 @@ test_retry_reads_off (void *ctx)
    bson_error_t error;
    bool res;
 
+   BSON_UNUSED (ctx);
+
    uri = test_framework_get_uri ();
    mongoc_uri_set_option_as_bool (uri, "retryreads", false);
    client = test_framework_client_new_from_uri (uri, NULL);
@@ -245,7 +249,7 @@ test_retry_reads_off (void *ctx)
 
    /* clean up in case a previous test aborted */
    server_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL, &error);
+      client->topology, MONGOC_SS_WRITE, NULL, NULL, &error);
    ASSERT_OR_PRINT (server_id, error);
    deactivate_fail_points (client, server_id);
 
@@ -282,11 +286,9 @@ test_retry_reads_off (void *ctx)
 static void
 test_all_spec_tests (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
-
-   test_framework_resolve_path (JSON_DIR "/retryable_reads", resolved);
    install_json_test_suite_with_check (suite,
-                                       resolved,
+                                       JSON_DIR,
+                                       "retryable_reads",
                                        test_retryable_reads_cb,
                                        TestSuite_CheckLive,
                                        test_framework_skip_if_no_failpoint,

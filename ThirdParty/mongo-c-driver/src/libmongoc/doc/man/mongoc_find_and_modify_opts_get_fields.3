@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_FIND_AND_MODIFY_OPTS_GET_FIELDS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_find_and_modify_opts_get_fields \- mongoc_find_and_modify_opts_get_fields()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_FIND_AND_MODIFY_OPTS_GET_FIELDS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_find_and_modify_opts_get_fields \- mongoc_find_and_modify_opts_get_fields()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,13 +46,13 @@ mongoc_find_and_modify_opts_get_fields (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_find_and_modify_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_find_and_modify_opts_t\fP\&.
 .IP \(bu 2
 \fBfields\fP: An uninitialized \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Copy to \fBfields\fP the BSON document that was set with \fBmongoc_find_and_modify_opts_set_fields\fP, or initializes \fBfields\fP with an empty BSON document.
+Copy to \fBfields\fP the BSON document that was set with \fI\%mongoc_find_and_modify_opts_set_fields()\fP, or initializes \fBfields\fP with an empty BSON document.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

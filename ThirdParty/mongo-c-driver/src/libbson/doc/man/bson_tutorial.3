@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_TUTORIAL" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_tutorial \- Tutorial
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_TUTORIAL" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_tutorial \- Tutorial
 .SH USING LIBBSON IN YOUR C PROGRAM
 .SS Include bson.h
 .sp
@@ -50,9 +50,9 @@ main (int argc, const char **argv)
    bson_t *b;
    char *j;
 
-   b = BCON_NEW ("hello", BCON_UTF8 ("bson!"));
+   b = BCON_NEW (\(dqhello\(dq, BCON_UTF8 (\(dqbson!\(dq));
    j = bson_as_canonical_extended_json (b, NULL);
-   printf ("%s\en", j);
+   printf (\(dq%s\en\(dq, j);
 
    bson_free (j);
    bson_destroy (b);
@@ -77,7 +77,7 @@ CMakeLists.txt
 # Specify the minimum version you require.
 find_package (bson\-1.0 1.7 REQUIRED)
 
-# The "hello_bson.c" sample program is shared among four tests.
+# The \(dqhello_bson.c\(dq sample program is shared among four tests.
 add_executable (hello_bson ../../hello_bson.c)
 target_link_libraries (hello_bson PRIVATE mongo::bson_shared)
 
@@ -95,7 +95,7 @@ You can also use libbson as a static library instead: Use the \fBmongo::bson_sta
 # Specify the minimum version you require.
 find_package (bson\-1.0 1.7 REQUIRED)
 
-# The "hello_bson.c" sample program is shared among four tests.
+# The \(dqhello_bson.c\(dq sample program is shared among four tests.
 add_executable (hello_bson ../../hello_bson.c)
 target_link_libraries (hello_bson PRIVATE mongo::bson_static)
 
@@ -133,7 +133,7 @@ gcc \-o hello_bson hello_bson.c $(pkg\-config \-\-libs \-\-cflags libbson\-stati
 .SH CREATING A BSON DOCUMENT
 .SS The bson_t structure
 .sp
-BSON documents are created using the \fBbson_t\fP structure. This structure encapsulates the necessary logic for encoding using the \fI\%BSON Specification\fP\&. At the core, \fBbson_t\fP is a buffer manager and set of encoding routines.
+BSON documents are created using the \fI\%bson_t\fP structure. This structure encapsulates the necessary logic for encoding using the \fI\%BSON Specification\fP\&. At the core, \fI\%bson_t\fP is a buffer manager and set of encoding routines.
 .sp
 \fBTIP:\fP
 .INDENT 0.0
@@ -164,7 +164,7 @@ We can now proceed to adding items to the BSON document. A variety of functions 
 .sp
 .nf
 .ft C
-bson_append_utf8 (&b, "key", \-1, "value", \-1);
+bson_append_utf8 (&b, \(dqkey\(dq, \-1, \(dqvalue\(dq, \-1);
 .ft P
 .fi
 .UNINDENT
@@ -178,8 +178,8 @@ Libbson provides macros to make this less tedious when using string literals. Th
 .sp
 .nf
 .ft C
-bson_append_utf8 (&b, "key", \-1, "value", \-1);
-BSON_APPEND_UTF8 (&b, "key", "value");
+bson_append_utf8 (&b, \(dqkey\(dq, \-1, \(dqvalue\(dq, \-1);
+BSON_APPEND_UTF8 (&b, \(dqkey\(dq, \(dqvalue\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -193,18 +193,18 @@ Now let\(aqs take a look at an example that adds a few different field types to 
 .ft C
 bson_t b = BSON_INITIALIZER;
 
-BSON_APPEND_INT32 (&b, "a", 1);
-BSON_APPEND_UTF8 (&b, "hello", "world");
-BSON_APPEND_BOOL (&b, "bool", true);
+BSON_APPEND_INT32 (&b, \(dqa\(dq, 1);
+BSON_APPEND_UTF8 (&b, \(dqhello\(dq, \(dqworld\(dq);
+BSON_APPEND_BOOL (&b, \(dqbool\(dq, true);
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Notice that we omitted the call to \fBbson_init()\fP\&. By specifying \fBBSON_INITIALIZER\fP we can remove the need to initialize the structure to a base state.
+Notice that we omitted the call to \fI\%bson_init()\fP\&. By specifying \fBBSON_INITIALIZER\fP we can remove the need to initialize the structure to a base state.
 .SS Sub\-Documents and Sub\-Arrays
 .sp
-To simplify the creation of sub\-documents and arrays, \fBbson_append_document_begin()\fP and \fBbson_append_array_begin()\fP exist. These can be used to build a sub\-document using the parent documents memory region as the destination buffer.
+To simplify the creation of sub\-documents and arrays, \fI\%bson_append_document_begin()\fP and \fI\%bson_append_array_begin()\fP exist. These can be used to build a sub\-document using the parent documents memory region as the destination buffer.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -215,12 +215,12 @@ bson_t child;
 char *str;
 
 bson_init (&parent);
-bson_append_document_begin (&parent, "foo", 3, &child);
-bson_append_int32 (&child, "baz", 3, 1);
+bson_append_document_begin (&parent, \(dqfoo\(dq, 3, &child);
+bson_append_int32 (&child, \(dqbaz\(dq, 3, 1);
 bson_append_document_end (&parent, &child);
 
 str = bson_as_canonical_extended_json (&parent, NULL);
-printf ("%s\en", str);
+printf (\(dq%s\en\(dq, str);
 bson_free (str);
 
 bson_destroy (&parent);
@@ -233,7 +233,7 @@ bson_destroy (&parent);
 .sp
 .nf
 .ft C
-{ "foo" : { "baz" : 1 } }
+{ \(dqfoo\(dq : { \(dqbaz\(dq : 1 } }
 .ft P
 .fi
 .UNINDENT
@@ -250,19 +250,19 @@ The following example shows the use of BCON. Notice that values for fields are w
 .ft C
 bson_t *doc;
 
-doc = BCON_NEW ("foo",
-                "{",
-                "int",
+doc = BCON_NEW (\(dqfoo\(dq,
+                \(dq{\(dq,
+                \(dqint\(dq,
                 BCON_INT32 (1),
-                "array",
-                "[",
+                \(dqarray\(dq,
+                \(dq[\(dq,
                 BCON_INT32 (100),
-                "{",
-                "sub",
-                BCON_UTF8 ("value"),
-                "}",
-                "]",
-                "}");
+                \(dq{\(dq,
+                \(dqsub\(dq,
+                BCON_UTF8 (\(dqvalue\(dq),
+                \(dq}\(dq,
+                \(dq]\(dq,
+                \(dq}\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -274,7 +274,7 @@ Creates the following document
 .sp
 .nf
 .ft C
-{ "foo" : { "int" : 1, "array" : [ 100, { "sub" : "value" } ] } }
+{ \(dqfoo\(dq : { \(dqint\(dq : 1, \(dqarray\(dq : [ 100, { \(dqsub\(dq : \(dqvalue\(dq } ] } }
 .ft P
 .fi
 .UNINDENT
@@ -282,7 +282,7 @@ Creates the following document
 .SH HANDLING ERRORS
 .SS Description
 .sp
-Many libbson functions report errors by returning \fBNULL\fP or \-1 and filling out a \fBbson_error_t\fP structure with an error domain, error code, and message.
+Many libbson functions report errors by returning \fBNULL\fP or \-1 and filling out a \fI\%bson_error_t\fP structure with an error domain, error code, and message.
 .INDENT 0.0
 .IP \(bu 2
 \fBerror.domain\fP names the subsystem that generated the error.
@@ -304,7 +304,7 @@ T}	T{
 \fBBSON_JSON_ERROR_READ_INVALID_PARAM\fP
 \fBBSON_JSON_ERROR_READ_CB_FAILURE\fP
 T}	T{
-\fBbson_json_reader_t\fP tried to parse invalid MongoDB Extended JSON.
+\fI\%bson_json_reader_t\fP tried to parse invalid MongoDB Extended JSON.
 Tried to parse a valid JSON document that is invalid as MongoDBExtended JSON.
 An internal callback failure during JSON parsing.
 T}
@@ -314,7 +314,7 @@ T{
 T}	T{
 \fBBSON_ERROR_READER_BADFD\fP
 T}	T{
-\fBbson_json_reader_new_from_file\fP could not open the file.
+\fI\%bson_json_reader_new_from_file()\fP could not open the file.
 T}
 _
 .TE
@@ -322,7 +322,7 @@ _
 .sp
 Libbson provides a simple way to generate ObjectIDs. It can be used in a single\-threaded or multi\-threaded manner depending on your requirements.
 .sp
-The \fBbson_oid_t\fP structure represents an \fBObjectID\fP in MongoDB. It is a 96\-bit identifier.
+The \fI\%bson_oid_t\fP structure represents an \fBObjectID\fP in MongoDB. It is a 96\-bit identifier.
 .SS Composition
 .INDENT 0.0
 .IP \(bu 2
@@ -334,13 +334,13 @@ The \fBbson_oid_t\fP structure represents an \fBObjectID\fP in MongoDB. It is a 
 .UNINDENT
 .SS Sorting ObjectIDs
 .sp
-The typical way to sort in C is using \fBqsort()\fP\&. Therefore, Libbson provides a \fBqsort()\fP compatible callback function named \fBbson_oid_compare()\fP\&. It returns \fBless than 1\fP, \fBgreater than 1\fP, or \fB0\fP depending on the equality of two \fBbson_oid_t\fP structures.
+The typical way to sort in C is using \fBqsort()\fP\&. Therefore, Libbson provides a \fBqsort()\fP compatible callback function named \fI\%bson_oid_compare()\fP\&. It returns \fBless than 1\fP, \fBgreater than 1\fP, or \fB0\fP depending on the equality of two \fI\%bson_oid_t\fP structures.
 .SS Comparing Object IDs
 .sp
-If you simply want to compare two \fBbson_oid_t\fP structures for equality, use \fBbson_oid_equal()\fP\&.
+If you simply want to compare two \fI\%bson_oid_t\fP structures for equality, use \fI\%bson_oid_equal()\fP\&.
 .SS Generating
 .sp
-To generate a \fBbson_oid_t\fP, you may use the following.
+To generate a \fI\%bson_oid_t\fP, you may use the following.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -355,7 +355,7 @@ bson_oid_init (&oid, NULL);
 .UNINDENT
 .SS Parsing ObjectID Strings
 .sp
-You can also parse a string containing a \fBbson_oid_t\fP\&. The input string \fIMUST\fP be 24 characters or more in length.
+You can also parse a string containing a \fI\%bson_oid_t\fP\&. The input string \fIMUST\fP be 24 characters or more in length.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -363,7 +363,7 @@ You can also parse a string containing a \fBbson_oid_t\fP\&. The input string \f
 .ft C
 bson_oid_t oid;
 
-bson_oid_init_from_string (&oid, "123456789012345678901234");
+bson_oid_init_from_string (&oid, \(dq123456789012345678901234\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -375,14 +375,14 @@ bson_oid_init_from_string (&oid, "123456789012345678901234");
 .ft C
 bson_oid_t oid;
 
-bson_oid_init_from_string_unsafe (&oid, "123456789012345678901234");
+bson_oid_init_from_string_unsafe (&oid, \(dq123456789012345678901234\(dq);
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS Hashing ObjectIDs
 .sp
-If you need to store items in a hashtable, you may want to use the \fBbson_oid_t\fP as the key. Libbson provides a hash function for just this purpose. It is based on DJB hash.
+If you need to store items in a hashtable, you may want to use the \fI\%bson_oid_t\fP as the key. Libbson provides a hash function for just this purpose. It is based on DJB hash.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -397,7 +397,7 @@ hash = bson_oid_hash (oid);
 .UNINDENT
 .SS Fetching ObjectID Creation Time
 .sp
-You can easily fetch the time that a \fBbson_oid_t\fP was generated using \fBbson_oid_get_time_t()\fP\&.
+You can easily fetch the time that a \fI\%bson_oid_t\fP was generated using \fI\%bson_oid_get_time_t()\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -406,7 +406,7 @@ You can easily fetch the time that a \fBbson_oid_t\fP was generated using \fBbso
 time_t t;
 
 t = bson_oid_get_time_t (oid);
-printf ("The OID was generated at %u\en", (unsigned) t);
+printf (\(dqThe OID was generated at %u\en\(dq, (unsigned) t);
 .ft P
 .fi
 .UNINDENT
@@ -414,12 +414,12 @@ printf ("The OID was generated at %u\en", (unsigned) t);
 .SH PARSING AND ITERATING BSON DOCUMENTS
 .SS Parsing
 .sp
-BSON documents are lazily parsed as necessary. To begin parsing a BSON document, use one of the provided Libbson functions to create a new \fBbson_t\fP from existing data such as \fBbson_new_from_data()\fP\&. This will make a copy of the data so that additional mutations may occur to the BSON document.
+BSON documents are lazily parsed as necessary. To begin parsing a BSON document, use one of the provided Libbson functions to create a new \fI\%bson_t\fP from existing data such as \fI\%bson_new_from_data()\fP\&. This will make a copy of the data so that additional mutations may occur to the BSON document.
 .sp
 \fBTIP:\fP
 .INDENT 0.0
 .INDENT 3.5
-If you only want to parse a BSON document and have no need to mutate it, you may use \fBbson_init_static()\fP to avoid making a copy of the data.
+If you only want to parse a BSON document and have no need to mutate it, you may use \fI\%bson_init_static()\fP to avoid making a copy of the data.
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
@@ -431,8 +431,8 @@ bson_t *b;
 
 b = bson_new_from_data (my_data, my_data_len);
 if (!b) {
-   fprintf (stderr, "The specified length embedded in <my_data> did not match "
-                    "<my_data_len>\en");
+   fprintf (stderr, \(dqThe specified length embedded in <my_data> did not match \(dq
+                    \(dq<my_data_len>\en\(dq);
    return;
 }
 
@@ -442,9 +442,9 @@ bson_destroy (b);
 .UNINDENT
 .UNINDENT
 .sp
-Only two checks are performed when creating a new \fBbson_t\fP from an existing buffer. First, the document must begin with the buffer length, matching what was expected by the caller. Second, the document must end with the expected trailing \fB\e0\fP byte.
+Only two checks are performed when creating a new \fI\%bson_t\fP from an existing buffer. First, the document must begin with the buffer length, matching what was expected by the caller. Second, the document must end with the expected trailing \fB\e0\fP byte.
 .sp
-To parse the document further we use a \fBbson_iter_t\fP to iterate the elements within the document. Let\(aqs print all of the field names in the document.
+To parse the document further we use a \fI\%bson_iter_t\fP to iterate the elements within the document. Let\(aqs print all of the field names in the document.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -456,7 +456,7 @@ bson_iter_t iter;
 if ((b = bson_new_from_data (my_data, my_data_len))) {
    if (bson_iter_init (&iter, b)) {
       while (bson_iter_next (&iter)) {
-         printf ("Found element key: \e"%s\e"\en", bson_iter_key (&iter));
+         printf (\(dqFound element key: \e\(dq%s\e\(dq\en\(dq, bson_iter_key (&iter));
       }
    }
    bson_destroy (b);
@@ -466,7 +466,7 @@ if ((b = bson_new_from_data (my_data, my_data_len))) {
 .UNINDENT
 .UNINDENT
 .sp
-Converting a document to JSON uses a \fBbson_iter_t\fP and \fBbson_visitor_t\fP to iterate all fields of a BSON document recursively and generate a UTF\-8 encoded JSON string.
+Converting a document to JSON uses a \fI\%bson_iter_t\fP and \fI\%bson_visitor_t\fP to iterate all fields of a BSON document recursively and generate a UTF\-8 encoded JSON string.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -477,7 +477,7 @@ char *json;
 
 if ((b = bson_new_from_data (my_data, my_data_len))) {
    if ((json = bson_as_canonical_extended_json (b, NULL))) {
-      printf ("%s\en", json);
+      printf (\(dq%s\en\(dq, json);
       bson_free (json);
    }
    bson_destroy (b);
@@ -488,7 +488,7 @@ if ((b = bson_new_from_data (my_data, my_data_len))) {
 .UNINDENT
 .SS Recursing into Sub\-Documents
 .sp
-Libbson provides convenient sub\-iterators to dive down into a sub\-document or sub\-array. Below is an example that will dive into a sub\-document named "foo" and print it\(aqs field names.
+Libbson provides convenient sub\-iterators to dive down into a sub\-document or sub\-array. Below is an example that will dive into a sub\-document named \(dqfoo\(dq and print it\(aqs field names.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -498,10 +498,10 @@ bson_iter_t iter;
 bson_iter_t child;
 char *json;
 
-if (bson_iter_init_find (&iter, doc, "foo") &&
+if (bson_iter_init_find (&iter, doc, \(dqfoo\(dq) &&
     BSON_ITER_HOLDS_DOCUMENT (&iter) && bson_iter_recurse (&iter, &child)) {
    while (bson_iter_next (&child)) {
-      printf ("Found sub\-key of \e"foo\e" named \e"%s\e"\en",
+      printf (\(dqFound sub\-key of \e\(dqfoo\e\(dq named \e\(dq%s\e\(dq\en\(dq,
               bson_iter_key (&child));
    }
 }
@@ -511,9 +511,9 @@ if (bson_iter_init_find (&iter, doc, "foo") &&
 .UNINDENT
 .SS Finding Fields using Dot Notation
 .sp
-Using the \fBbson_iter_recurse()\fP function exemplified above, \fBbson_iter_find_descendant()\fP can find a field for you using the MongoDB style path notation such as "foo.bar.0.baz".
+Using the \fI\%bson_iter_recurse()\fP function exemplified above, \fI\%bson_iter_find_descendant()\fP can find a field for you using the MongoDB style path notation such as \(dqfoo.bar.0.baz\(dq.
 .sp
-Let\(aqs create a document like \fB{"foo": {"bar": [{"baz: 1}]}}\fP and locate the \fB"baz"\fP field.
+Let\(aqs create a document like \fB{\(dqfoo\(dq: {\(dqbar\(dq: [{\(dqbaz: 1}]}}\fP and locate the \fB\(dqbaz\(dq\fP field.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -524,12 +524,12 @@ bson_iter_t iter;
 bson_iter_t baz;
 
 b =
-   BCON_NEW ("foo", "{", "bar", "[", "{", "baz", BCON_INT32 (1), "}", "]", "}");
+   BCON_NEW (\(dqfoo\(dq, \(dq{\(dq, \(dqbar\(dq, \(dq[\(dq, \(dq{\(dq, \(dqbaz\(dq, BCON_INT32 (1), \(dq}\(dq, \(dq]\(dq, \(dq}\(dq);
 
 if (bson_iter_init (&iter, b) &&
-    bson_iter_find_descendant (&iter, "foo.bar.0.baz", &baz) &&
+    bson_iter_find_descendant (&iter, \(dqfoo.bar.0.baz\(dq, &baz) &&
     BSON_ITER_HOLDS_INT32 (&baz)) {
-   printf ("baz = %d\en", bson_iter_int32 (&baz));
+   printf (\(dqbaz = %d\en\(dq, bson_iter_int32 (&baz));
 }
 
 bson_destroy (b);
@@ -539,7 +539,7 @@ bson_destroy (b);
 .UNINDENT
 .SS Validating a BSON Document
 .sp
-If all you want to do is validate that a BSON document is valid, you can use \fBbson_validate()\fP\&.
+If all you want to do is validate that a BSON document is valid, you can use \fI\%bson_validate()\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -549,7 +549,7 @@ size_t err_offset;
 
 if (!bson_validate (doc, BSON_VALIDATE_NONE, &err_offset)) {
    fprintf (stderr,
-            "The document failed to validate at offset: %u\en",
+            \(dqThe document failed to validate at offset: %u\en\(dq,
             (unsigned) err_offset);
 }
 .ft P
@@ -557,7 +557,7 @@ if (!bson_validate (doc, BSON_VALIDATE_NONE, &err_offset)) {
 .UNINDENT
 .UNINDENT
 .sp
-See the \fBbson_validate()\fP documentation for more information and examples.
+See the \fI\%bson_validate()\fP documentation for more information and examples.
 .SH UTF-8
 .SS Encoding
 .sp
@@ -573,7 +573,7 @@ To validate the string contained in \fBmy_string\fP, use the following. You may 
 .nf
 .ft C
 if (!bson_utf8_validate (my_string, \-1, false)) {
-   printf ("Validation failed.\en");
+   printf (\(dqValidation failed.\en\(dq);
 }
 .ft P
 .fi
@@ -587,14 +587,14 @@ If \fBmy_string\fP has NULL bytes within the string, you must provide the string
 .nf
 .ft C
 if (!bson_utf8_validate (my_string, my_string_len, true)) {
-   printf ("Validation failed.\en");
+   printf (\(dqValidation failed.\en\(dq);
 }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-For more information see the API reference for \fBbson_utf8_validate()\fP\&.
+For more information see the API reference for \fI\%bson_utf8_validate()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -344,14 +344,14 @@ _test_mongoc_socket_check_closed (int32_t server_sleep_ms)
    mongoc_cond_init (&data.cond);
    data.server_sleep_ms = server_sleep_ms;
 
-   r = COMMON_PREFIX (thread_create) (threads, &socket_test_server, &data);
+   r = mcommon_thread_create (threads, &socket_test_server, &data);
    BSON_ASSERT (r == 0);
 
-   r = COMMON_PREFIX (thread_create) (threads + 1, &socket_test_client, &data);
+   r = mcommon_thread_create (threads + 1, &socket_test_client, &data);
    BSON_ASSERT (r == 0);
 
    for (i = 0; i < 2; i++) {
-      r = COMMON_PREFIX (thread_join) (threads[i]);
+      r = mcommon_thread_join (threads[i]);
       BSON_ASSERT (r == 0);
    }
 
@@ -370,6 +370,8 @@ test_mongoc_socket_check_closed (void)
 static void
 test_mongoc_socket_timed_out (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_mongoc_socket_check_closed (1000);
 }
 
@@ -381,17 +383,19 @@ test_mongoc_socket_sendv (void *ctx)
    bson_thread_t threads[2];
    int i, r;
 
+   BSON_UNUSED (ctx);
+
    bson_mutex_init (&data.cond_mutex);
    mongoc_cond_init (&data.cond);
 
-   r = COMMON_PREFIX (thread_create) (threads, &sendv_test_server, &data);
+   r = mcommon_thread_create (threads, &sendv_test_server, &data);
    BSON_ASSERT (r == 0);
 
-   r = COMMON_PREFIX (thread_create) (threads + 1, &sendv_test_client, &data);
+   r = mcommon_thread_create (threads + 1, &sendv_test_client, &data);
    BSON_ASSERT (r == 0);
 
    for (i = 0; i < 2; i++) {
-      r = COMMON_PREFIX (thread_join) (threads[i]);
+      r = mcommon_thread_join (threads[i]);
       BSON_ASSERT (r == 0);
    }
 
@@ -406,8 +410,10 @@ test_mongoc_socket_poll_refusal (void *ctx)
    mongoc_socket_t *sock;
    mongoc_stream_t *ssock;
    int64_t start;
-
    struct sockaddr_in ipv4_addr = {0};
+
+   BSON_UNUSED (ctx);
+
    ipv4_addr.sin_family = AF_INET;
    BSON_ASSERT (inet_pton (AF_INET, "127.0.0.1", &ipv4_addr.sin_addr));
    ipv4_addr.sin_port = htons (12345);

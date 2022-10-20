@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_MEM_SET_VTABLE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_mem_set_vtable \- bson_mem_set_vtable()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_MEM_SET_VTABLE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_mem_set_vtable \- bson_mem_set_vtable()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -41,7 +41,8 @@ typedef struct _bson_mem_vtable_t {
    void *(*calloc) (size_t n_members, size_t num_bytes);
    void *(*realloc) (void *mem, size_t num_bytes);
    void (*free) (void *mem);
-   void *padding[4];
+   void *(*aligned_alloc) (size_t alignment, size_t num_bytes);
+   void *padding[3];
 } bson_mem_vtable_t;
 
 void
@@ -58,6 +59,8 @@ bson_mem_set_vtable (const bson_mem_vtable_t *vtable);
 .SH DESCRIPTION
 .sp
 This function shall install a new memory allocator to be used by Libbson.
+.sp
+For backwards compatibility, if \fBvtable\->aligned_alloc\fP is not set, calls to \fBvtable\->aligned_alloc\fP will use \fBvtable\->malloc\fP instead.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0

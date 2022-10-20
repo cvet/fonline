@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_SET_DATABASE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_set_database \- mongoc_uri_set_database()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_SET_DATABASE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_set_database \- mongoc_uri_set_database()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ mongoc_uri_set_database (mongoc_uri_t *uri, const char *database);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .IP \(bu 2
 \fBdatabase\fP: The new database name.
 .UNINDENT
@@ -53,7 +53,7 @@ mongoc_uri_set_database (mongoc_uri_t *uri, const char *database);
 .sp
 Sets the URI\(aqs database, after the URI has been parsed from a string.
 .sp
-The driver authenticates to this database if the connection string includes authentication credentials. This database is also the return value of \fBmongoc_client_get_default_database\fP\&.
+The driver authenticates to this database if the connection string includes authentication credentials. This database is also the return value of \fI\%mongoc_client_get_default_database()\fP\&.
 .SH RETURNS
 .sp
 Returns false if the option cannot be set, for example if \fBdatabase\fP is not valid UTF\-8.

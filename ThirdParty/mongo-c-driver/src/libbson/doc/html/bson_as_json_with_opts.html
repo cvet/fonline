@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_as_json_with_opts.html"/>
-    <title>bson_as_json_with_opts() &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_as_json_with_opts.html"/>
+    <title>bson_as_json_with_opts() &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_as_relaxed_extended_json()" href="bson_as_relaxed_extended_json.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_as_json.html" title="bson_as_json()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="bson_t.html" accesskey="U">bson_t</a> &#187;</li> 
       </ul>
@@ -41,42 +46,42 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="bson-as-json-with-opts">
-<h1>bson_as_json_with_opts()<a class="headerlink" href="#bson-as-json-with-opts" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">char</span> <span class="o">*</span>
-<span class="nf">bson_as_json_with_opts</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">bson</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">length</span><span class="p">,</span> <span class="k">const</span> <span class="n">bson_json_opts_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">);</span>
+  <section id="bson-as-json-with-opts">
+<h1>bson_as_json_with_opts()<a class="headerlink" href="#bson-as-json-with-opts" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="w"></span>
+<span class="nf">bson_as_json_with_opts</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">bson</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="o">*</span><span class="n">length</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">bson_json_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">bson</span></code>: A <a class="symbol reference internal" href="bson_t.html"><span class="doc">bson_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">length</span></code>: An optional location for the length of the resulting string.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference internal" href="bson_json_opts_t.html"><span class="doc">bson_json_opts_t</span></a>.</p></li>
 </ul>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>The <a class="symbol reference internal" href="#"><span class="doc">bson_as_json_with_opts()</span></a> encodes <code class="docutils literal notranslate"><span class="pre">bson</span></code> as a UTF-8 string in the <a class="reference external" href="https://github.com/mongodb/specifications/blob/master/source/extended-json.rst">MongoDB Extended JSON format</a>.</p>
 <p>The caller is responsible for freeing the resulting UTF-8 encoded string by calling <a class="symbol reference internal" href="bson_free.html"><span class="doc">bson_free()</span></a> with the result.</p>
 <p>If non-NULL, <code class="docutils literal notranslate"><span class="pre">length</span></code> will be set to the length of the result in bytes.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">opts</span></code> structure is used to pass options for the encoding process. Please refer to the documentation of <a class="symbol reference internal" href="bson_json_opts_t.html"><span class="doc">bson_json_opts_t</span></a> for more details.</p>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>If successful, a newly allocated UTF-8 encoded string and <code class="docutils literal notranslate"><span class="pre">length</span></code> is set.</p>
 <p>Upon failure, NULL is returned.</p>
-</div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_json_opts_t</span> <span class="o">*</span><span class="n">opts</span> <span class="o">=</span> <span class="n">bson_json_opts_new</span> <span class="p">(</span><span class="n">BSON_JSON_MODE_CANONICAL</span><span class="p">,</span> <span class="n">BSON_MAX_LEN_UNLIMITED</span><span class="p">);</span>
-<span class="kt">char</span> <span class="o">*</span><span class="n">str</span> <span class="o">=</span> <span class="n">bson_as_json_with_opts</span> <span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">opts</span><span class="p">);</span>
-<span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
-<span class="n">bson_free</span> <span class="p">(</span><span class="n">str</span><span class="p">);</span>
-<span class="n">bson_json_opts_destroy</span> <span class="p">(</span><span class="n">opts</span><span class="p">);</span>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_json_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_json_opts_new</span><span class="w"> </span><span class="p">(</span><span class="n">BSON_JSON_MODE_CANONICAL</span><span class="p">,</span><span class="w"> </span><span class="n">BSON_MAX_LEN_UNLIMITED</span><span class="p">);</span><span class="w"></span>
+<span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_json_with_opts</span><span class="w"> </span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">opts</span><span class="p">);</span><span class="w"></span>
+<span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">str</span><span class="p">);</span><span class="w"></span>
+<span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">str</span><span class="p">);</span><span class="w"></span>
+<span class="n">bson_json_opts_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">opts</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition seealso">
@@ -97,8 +102,8 @@
 <div class="line"><a class="symbol reference internal" href="bson_as_relaxed_extended_json.html"><span class="doc">bson_as_relaxed_extended_json()</span></a></div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -161,7 +166,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

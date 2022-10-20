@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_READER_NEW_FROM_DATA" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reader_new_from_data \- bson_reader_new_from_data()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_READER_NEW_FROM_DATA" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reader_new_from_data \- bson_reader_new_from_data()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,10 +51,10 @@ bson_reader_new_from_data (const uint8_t *data, size_t length);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_reader_new_from_data()\fP function shall create a new \fBbson_reader_t\fP using the buffer supplied. \fBdata\fP is not copied and \fIMUST\fP be valid for the lifetime of the resulting \fBbson_reader_t\fP\&.
+The \fI\%bson_reader_new_from_data()\fP function shall create a new \fI\%bson_reader_t\fP using the buffer supplied. \fBdata\fP is not copied and \fIMUST\fP be valid for the lifetime of the resulting \fI\%bson_reader_t\fP\&.
 .SH RETURNS
 .sp
-A newly allocated \fBbson_reader_t\fP\&.
+A newly allocated \fI\%bson_reader_t\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

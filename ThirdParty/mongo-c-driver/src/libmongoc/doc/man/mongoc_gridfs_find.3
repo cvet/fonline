@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_FIND" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_find \- mongoc_gridfs_find()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,9 +27,12 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_FIND" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_find \- mongoc_gridfs_find()
 .SH DEPRECATED
 .sp
-This function is deprecated, use \fBmongoc_gridfs_find_with_opts\fP instead.
+This function is deprecated, use \fI\%mongoc_gridfs_find_with_opts()\fP instead.
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -40,7 +40,8 @@ This function is deprecated, use \fBmongoc_gridfs_find_with_opts\fP instead.
 .nf
 .ft C
 mongoc_gridfs_file_list_t *
-mongoc_gridfs_find (mongoc_gridfs_t *gridfs, const bson_t *query)
+mongoc_gridfs_find (mongoc_gridfs_t *gridfs,
+                    const bson_t *query) BSON_GNUC_WARN_UNUSED_RESULT
    BSON_GNUC_DEPRECATED_FOR (mongoc_gridfs_find_with_opts);
 .ft P
 .fi
@@ -49,7 +50,7 @@ mongoc_gridfs_find (mongoc_gridfs_t *gridfs, const bson_t *query)
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBgridfs\fP: A \fBmongoc_gridfs_t\fP\&.
+\fBgridfs\fP: A \fI\%mongoc_gridfs_t\fP\&.
 .IP \(bu 2
 \fBquery\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
@@ -59,10 +60,10 @@ Finds all gridfs files matching \fBquery\fP\&. You can iterate the matched gridf
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_gridfs_file_list_t\fP that should be freed with \fBmongoc_gridfs_file_list_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_gridfs_file_list_t\fP that should be freed with \fI\%mongoc_gridfs_file_list_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

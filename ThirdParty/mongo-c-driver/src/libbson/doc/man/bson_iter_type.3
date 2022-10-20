@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_TYPE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_type \- bson_iter_type()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_TYPE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_type \- bson_iter_type()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -69,14 +69,14 @@ bson_iter_type (const bson_iter_t *iter);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 The \fBbson_iter_type()\fP function shall return the type of the observed element in a bson document.
 .SH RETURNS
 .sp
-A \fBbson_type_t\fP\&.
+A \fI\%bson_type_t\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

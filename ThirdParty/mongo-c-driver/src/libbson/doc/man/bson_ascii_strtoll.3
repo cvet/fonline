@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ASCII_STRTOLL" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_ascii_strtoll \- bson_ascii_strtoll()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ASCII_STRTOLL" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_ascii_strtoll \- bson_ascii_strtoll()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -59,8 +59,8 @@ Converts a string to a 64\-bit signed integer according to the given \fBbase\fP,
 which must be 16, 10, or 8. Leading whitespace will be ignored.
 .sp
 If base is 0 is passed in, the base is inferred from the string\(aqs leading
-characters. Base\-16 numbers start with "0x" or "0X", base\-8 numbers start with
-"0", base\-10 numbers start with a digit from 1 to 9.
+characters. Base\-16 numbers start with \(dq0x\(dq or \(dq0X\(dq, base\-8 numbers start with
+\(dq0\(dq, base\-10 numbers start with a digit from 1 to 9.
 .sp
 If \fBendptr\fP is not NULL, it will be assigned the address of the first invalid
 character of \fBstr\fP, or its null terminating byte if the entire string was valid.

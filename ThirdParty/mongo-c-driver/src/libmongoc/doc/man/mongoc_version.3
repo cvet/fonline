@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_VERSION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_version \- Version Checks
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_VERSION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_version \- Version Checks
 .sp
 Conditional compilation based on mongoc version
 .SH DESCRIPTION
@@ -46,7 +46,7 @@ This may be useful if you only want to enable a feature on a certain version of 
 #define MONGOC_MAJOR_VERSION (x)
 #define MONGOC_MINOR_VERSION (y)
 #define MONGOC_MICRO_VERSION (z)
-#define MONGOC_VERSION_S     "x.y.z"
+#define MONGOC_VERSION_S     \(dqx.y.z\(dq
 #define MONGOC_VERSION_HEX   ((1 << 24) | (0 << 16) | (0 << 8) | 0)
 #define MONGOC_CHECK_VERSION(major, minor, micro)
 .ft P

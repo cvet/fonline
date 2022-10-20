@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_MATCHER_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_matcher_t \- mongoc_matcher_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_MATCHER_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_matcher_t \- mongoc_matcher_t
 .sp
 Client\-side document matching abstraction
 .SH SYNOPSIS
@@ -94,13 +94,13 @@ main (int argc, char *argv[])
 
    reader = bson_reader_new_from_fd (fd, false);
 
-   spec = BCON_NEW ("hello", "world");
+   spec = BCON_NEW (\(dqhello\(dq, \(dqworld\(dq);
    matcher = mongoc_matcher_new (spec, NULL);
 
    while ((bson = bson_reader_read (reader, NULL))) {
       if (mongoc_matcher_match (matcher, bson)) {
          str = bson_as_canonical_extended_json (bson, NULL);
-         printf ("%s\en", str);
+         printf (\(dq%s\en\(dq, str);
          bson_free (str);
       }
    }

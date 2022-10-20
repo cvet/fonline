@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/version.html"/>
-    <title>Libbson Versioning &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/version.html"/>
+    <title>Libbson Versioning &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_check_version()" href="bson_check_version.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_zero_free.html" title="bson_zero_free()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,15 +45,15 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="libbson-versioning">
-<h1>Libbson Versioning<a class="headerlink" href="#libbson-versioning" title="Permalink to this headline">¶</a></h1>
+  <section id="libbson-versioning">
+<h1>Libbson Versioning<a class="headerlink" href="#libbson-versioning" title="Permalink to this heading">¶</a></h1>
 <p>Versioning Macros and Functions</p>
-<div class="section" id="macros">
-<h2>Macros<a class="headerlink" href="#macros" title="Permalink to this headline">¶</a></h2>
+<section id="macros">
+<h2>Macros<a class="headerlink" href="#macros" title="Permalink to this heading">¶</a></h2>
 <p>The following preprocessor macros can be used to perform various checks based on the version of the library you are compiling against. This may be useful if you only want to enable a feature on a certain version of the library.</p>
-</div>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define BSON_CHECK_VERSION(major, minor, micro)</span>
 
 <span class="cp">#define BSON_MAJOR_VERSION (1)</span>
@@ -63,16 +68,16 @@
 </div>
 <p>Only compile a block on Libbson 1.1.0 and newer.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#if BSON_CHECK_VERSION(1, 1, 0)</span>
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">do_something</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span>
-<span class="p">{</span>
-<span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">do_something</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 <span class="cp">#endif</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="bson_check_version.html">bson_check_version()</a></li>
@@ -82,8 +87,8 @@
 <li class="toctree-l1"><a class="reference internal" href="bson_get_version.html">bson_get_version()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -146,7 +151,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

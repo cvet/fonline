@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_new \- mongoc_uri_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_new \- mongoc_uri_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,10 +49,10 @@ mongoc_uri_new (const char *uri_string) BSON_GNUC_WARN_UNUSED_RESULT;
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Calls \fBmongoc_uri_new_with_error\fP\&.
+Calls \fI\%mongoc_uri_new_with_error()\fP\&.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_uri_t\fP if successful. Otherwise \fBNULL\fP, using
+A newly allocated \fI\%mongoc_uri_t\fP if successful. Otherwise \fBNULL\fP, using
 MONGOC_WARNING on error.
 .sp
 \fBWARNING:\fP

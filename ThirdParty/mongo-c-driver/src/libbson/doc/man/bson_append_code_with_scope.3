@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_CODE_WITH_SCOPE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_code_with_scope \- bson_append_code_with_scope()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_CODE_WITH_SCOPE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_code_with_scope \- bson_append_code_with_scope()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,7 +52,7 @@ bson_append_code_with_scope (bson_t *bson,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
@@ -60,13 +60,13 @@ bson_append_code_with_scope (bson_t *bson,
 .IP \(bu 2
 \fBjavascript\fP: A NULL\-terminated UTF\-8 encoded string containing the javascript fragment.
 .IP \(bu 2
-\fBscope\fP: Optional \fBbson_t\fP containing the scope for \fBjavascript\fP\&.
+\fBscope\fP: Optional \fI\%bson_t\fP containing the scope for \fBjavascript\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_code_with_scope()\fP function shall perform like \fBbson_append_code()\fP except it allows providing a scope to the javascript function in the form of a bson document.
+The \fI\%bson_append_code_with_scope()\fP function shall perform like \fI\%bson_append_code()\fP except it allows providing a scope to the javascript function in the form of a bson document.
 .sp
-If \fBscope\fP is NULL, this function appends an element with BSON type "code", otherwise with BSON type "code with scope".
+If \fBscope\fP is NULL, this function appends an element with BSON type \(dqcode\(dq, otherwise with BSON type \(dqcode with scope\(dq.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending \fBjavascript\fP and \fBscope\fP grows \fBbson\fP larger than INT32_MAX.

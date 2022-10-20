@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_SET_BATCH_SIZE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_set_batch_size \- mongoc_cursor_set_batch_size()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_SET_BATCH_SIZE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_set_batch_size \- mongoc_cursor_set_batch_size()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ mongoc_cursor_set_batch_size (mongoc_cursor_t *cursor, uint32_t batch_size);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcursor\fP: A \fBmongoc_cursor_t\fP\&.
+\fBcursor\fP: A \fI\%mongoc_cursor_t\fP\&.
 .IP \(bu 2
 \fBbatch_size\fP: The requested number of documents per batch.
 .UNINDENT
@@ -55,7 +55,7 @@ Limits the number of documents returned in one batch. Each batch requires a roun
 .sp
 See \fI\%Cursor Batches\fP in the MongoDB Manual.
 .sp
-This is not applicable to all cursors. Calling \fBmongoc_cursor_set_batch_size\fP on a cursor returned by \fBmongoc_client_find_databases_with_opts\fP, \fBmongoc_database_find_collections_with_opts\fP, or \fBmongoc_collection_find_indexes_with_opts\fP will not change the results.
+This is not applicable to all cursors. Calling \fI\%mongoc_cursor_set_batch_size()\fP on a cursor returned by \fI\%mongoc_client_find_databases_with_opts()\fP, \fI\%mongoc_database_find_collections_with_opts()\fP, or \fI\%mongoc_collection_find_indexes_with_opts()\fP will not change the results.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

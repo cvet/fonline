@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_ARRAY_END" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_array_end \- bson_append_array_end()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_ARRAY_END" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_array_end \- bson_append_array_end()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_append_array_end (bson_t *bson, bson_t *child);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBchild\fP: The \fBbson_t\fP initialized in a call to \fBbson_append_array_begin()\fP\&.
+\fBchild\fP: The \fI\%bson_t\fP initialized in a call to \fI\%bson_append_array_begin()\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_array_end()\fP function shall complete the appending of an array field started with \fBbson_append_array_begin()\fP\&. \fBchild\fP is invalid after calling this function.
+The \fI\%bson_append_array_end()\fP function shall complete the appending of an array field started with \fI\%bson_append_array_begin()\fP\&. \fBchild\fP is invalid after calling this function.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if successful.

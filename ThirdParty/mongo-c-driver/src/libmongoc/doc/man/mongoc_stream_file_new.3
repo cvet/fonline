@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_STREAM_FILE_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_stream_file_new \- mongoc_stream_file_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_STREAM_FILE_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_stream_file_new \- mongoc_stream_file_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_stream_t *
-mongoc_stream_file_new (int fd);
+mongoc_stream_file_new (int fd) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -48,10 +48,10 @@ mongoc_stream_file_new (int fd);
 \fBfd\fP: A UNIX style file\-descriptor.
 .UNINDENT
 .sp
-Creates a new \fBmongoc_stream_file_t\fP using the file\-descriptor provided.
+Creates a new \fI\%mongoc_stream_file_t\fP using the file\-descriptor provided.
 .SH RETURNS
 .sp
-\fBNULL\fP upon failure, otherwise a newly allocated \fBmongoc_stream_file_t\fP that should be freed with \fBmongoc_stream_destroy()\fP when no longer in use.
+\fBNULL\fP upon failure, otherwise a newly allocated \fI\%mongoc_stream_file_t\fP that should be freed with \fI\%mongoc_stream_destroy()\fP when no longer in use.
 .sp
 \fBerrno\fP is set upon failure.
 .SH AUTHOR

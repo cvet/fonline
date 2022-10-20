@@ -3,16 +3,21 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_set_extra.html"/>
-    <title>mongoc_auto_encryption_opts_set_extra() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_set_extra.html"/>
+    <title>mongoc_auto_encryption_opts_set_extra() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="mongoc_bulk_operation_t" href="mongoc_bulk_operation_t.html" />
+    <link rel="next" title="mongoc_auto_encryption_opts_set_tls_opts()" href="mongoc_auto_encryption_opts_set_tls_opts.html" />
     <link rel="prev" title="mongoc_auto_encryption_opts_set_bypass_auto_encryption()" href="mongoc_auto_encryption_opts_set_bypass_auto_encryption.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -25,12 +30,12 @@
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="mongoc_bulk_operation_t.html" title="mongoc_bulk_operation_t"
+          <a href="mongoc_auto_encryption_opts_set_tls_opts.html" title="mongoc_auto_encryption_opts_set_tls_opts()"
              accesskey="N">next</a></li>
         <li class="right" >
           <a href="mongoc_auto_encryption_opts_set_bypass_auto_encryption.html" title="mongoc_auto_encryption_opts_set_bypass_auto_encryption()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_auto_encryption_opts_t.html" accesskey="U">mongoc_auto_encryption_opts_t</a> &#187;</li> 
       </ul>
@@ -41,28 +46,59 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-auto-encryption-opts-set-extra">
-<h1>mongoc_auto_encryption_opts_set_extra()<a class="headerlink" href="#mongoc-auto-encryption-opts-set-extra" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span>
-<span class="nf">mongoc_auto_encryption_opts_set_extra</span> <span class="p">(</span><span class="n">mongoc_auto_encryption_opts_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">,</span>
-                                       <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">extra</span><span class="p">);</span>
+  <section id="mongoc-auto-encryption-opts-set-extra">
+<h1>mongoc_auto_encryption_opts_set_extra()<a class="headerlink" href="#mongoc-auto-encryption-opts-set-extra" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"></span>
+<span class="nf">mongoc_auto_encryption_opts_set_extra</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_auto_encryption_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                       </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">extra</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: The <a class="symbol reference internal" href="mongoc_auto_encryption_opts_t.html"><span class="doc">mongoc_auto_encryption_opts_t</span></a></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">extra</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> of additional options.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extra</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> of additional options.</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">extra</span></code> is a <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing any of the following optional fields:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">mongocryptdURI</span></code> set to a URI to connect to the mongocryptd process (default is “mongodb://localhost:27027”).</p></li>
+<p><code class="docutils literal notranslate"><span class="pre">extra</span></code> is a <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing any of the following optional fields:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">mongocryptdURI</span></code> set to a URI to connect to the mongocryptd process (default is “mongodb://localhost:27020”).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mongocryptdBypassSpawn</span></code> set to true to prevent the driver from spawning the mongocryptd process (default behavior is to spawn).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mongocryptdSpawnPath</span></code> set to a path (with trailing slash) to search for mongocryptd (defaults to empty string and uses default system paths).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mongocryptdSpawnArgs</span></code> set to an array of string arguments to pass to <code class="docutils literal notranslate"><span class="pre">mongocryptd</span></code> when spawning (defaults to <code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">&quot;--idleShutdownTimeoutSecs=60&quot;</span> <span class="pre">]</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cryptSharedLibPath</span></code> - Set a filepath string referring to a <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code>
+library file. Unset by default.</p>
+<ul>
+<li><p>If not set (the default), <code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> will attempt to load
+<code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code> using the host system’s default dynamic-library-search
+system.</p></li>
+<li><p>If set, the given path should identify the <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code> dynamic library
+file itself, not the directory that contains it.</p></li>
+<li><p>If the given path is a relative path and the first path component is
+<code class="docutils literal notranslate"><span class="pre">$ORIGIN</span></code>, the <code class="docutils literal notranslate"><span class="pre">$ORIGIN</span></code> component will be replaced with the absolute
+path to the directory containing the <code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> library in use by the
+application.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>No other <code class="docutils literal notranslate"><span class="pre">RPATH</span></code>/<code class="docutils literal notranslate"><span class="pre">RUNPATH</span></code>-style substitutions are available.</p>
+</div>
+</li>
+<li><p>If the given path is a relative path, the path will be resolved relative to
+the working directory of the operating system process.</p></li>
+<li><p>If this option is set and <code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> fails to load <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code> from the
+given filepath, <code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> will fail to initialize and will not
+attempt to search for <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code> in any other locations.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cryptSharedLibRequired</span></code> - If set to <code class="docutils literal notranslate"><span class="pre">true</span></code>, and <code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> fails
+to load a <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code> library, initialization of auto-encryption will
+fail immediately and will not attempt to spawn <code class="docutils literal notranslate"><span class="pre">mongocryptd</span></code>.</p>
+<p>If set to <code class="docutils literal notranslate"><span class="pre">false</span></code> (the default), <code class="docutils literal notranslate"><span class="pre">cryptSharedLibPath</span></code> is not set, <em>and</em>
+<code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> fails to load <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code>, then <code class="docutils literal notranslate"><span class="pre">libmongocrypt</span></code> will
+proceed without <code class="docutils literal notranslate"><span class="pre">crypt_shared</span></code> and fall back to using <code class="docutils literal notranslate"><span class="pre">mongocryptd</span></code>.</p>
+</li>
 </ul>
 <p>For more information, see the <a class="reference external" href="https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/client-side-encryption.rst#extraoptions">Client-Side Encryption specification</a>.</p>
 <div class="admonition seealso">
@@ -74,8 +110,8 @@
 <div class="line">The guide for <a class="reference internal" href="using_client_side_encryption.html"><span class="doc">Using Client-Side Field Level Encryption</span></a></div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -111,6 +147,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -186,7 +223,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

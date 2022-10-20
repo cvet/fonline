@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_COMMAND_SIMPLE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_command_simple \- mongoc_collection_command_simple()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_COMMAND_SIMPLE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_command_simple \- mongoc_collection_command_simple()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,19 +49,19 @@ mongoc_collection_command_simple (mongoc_collection_t *collection,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBcommand\fP: A \fI\%bson_t\fP containing the command to execute.
 .IP \(bu 2
-\fBread_prefs\fP: An optional \fBmongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
+\fBread_prefs\fP: An optional \fI\%mongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
 .IP \(bu 2
 \fBreply\fP: A location to initialize a \fI\%bson_t\fP\&. This should be on the stack.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This is a simplified version of \fBmongoc_collection_command()\fP that returns the first result document in \fBreply\fP\&. The collection\(aqs read preference, read concern, and write concern are not applied to the command. The parameter \fBreply\fP is initialized even upon failure to simplify memory management.
+This is a simplified version of \fI\%mongoc_collection_command()\fP that returns the first result document in \fBreply\fP\&. The collection\(aqs read preference, read concern, and write concern are not applied to the command. The parameter \fBreply\fP is initialized even upon failure to simplify memory management.
 .sp
 This function tries to unwrap an embedded error in the command when possible. The unwrapped error will be propagated via the \fBerror\fP parameter. Additionally, the result document is set in \fBreply\fP\&.
 .sp
@@ -95,15 +95,15 @@ print_collection_stats (mongoc_collection_t *collection)
    bson_t reply;
 
    name = mongoc_collection_get_name (collection);
-   cmd = BCON_NEW ("collStats", BCON_UTF8 (name));
+   cmd = BCON_NEW (\(dqcollStats\(dq, BCON_UTF8 (name));
 
    if (mongoc_collection_command_simple (
           collection, cmd, NULL, &reply, &error)) {
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
-      fprintf (stderr, "%s\en", error.message);
+      fprintf (stderr, \(dq%s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);

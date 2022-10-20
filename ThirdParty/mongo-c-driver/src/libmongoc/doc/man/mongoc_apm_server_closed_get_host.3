@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_APM_SERVER_CLOSED_GET_HOST" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_apm_server_closed_get_host \- mongoc_apm_server_closed_get_host()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_APM_SERVER_CLOSED_GET_HOST" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_apm_server_closed_get_host \- mongoc_apm_server_closed_get_host()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,21 +43,21 @@ mongoc_apm_server_closed_get_host (const mongoc_apm_server_closed_t *event);
 .UNINDENT
 .UNINDENT
 .sp
-Returns this event\(aqs host. This \fBmongoc_host_list_t\fP is \fInot\fP part of a linked list, it is solely the server for this event. The data is only valid in the scope of the callback that receives this event; copy it if it will be accessed after the callback returns.
+Returns this event\(aqs host. This \fI\%mongoc_host_list_t\fP is \fInot\fP part of a linked list, it is solely the server for this event. The data is only valid in the scope of the callback that receives this event; copy it if it will be accessed after the callback returns.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBevent\fP: A \fBmongoc_apm_server_closed_t\fP\&.
+\fBevent\fP: A \fI\%mongoc_apm_server_closed_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_host_list_t\fP that should not be modified or freed.
+A \fI\%mongoc_host_list_t\fP that should not be modified or freed.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

@@ -25,6 +25,7 @@
 #include "mongoc/mongoc-client-private.h"
 #include "mongoc/mongoc-uri-private.h"
 #include "mongoc/mongoc-util-private.h"
+#include "mongoc/mongoc-linux-distro-scanner-private.h"
 
 #include "TestSuite.h"
 #include "test-conveniences.h"
@@ -85,6 +86,8 @@ extern void
 test_writer_install (TestSuite *suite);
 extern void
 test_b64_install (TestSuite *suite);
+extern void
+test_bson_cmp_install (TestSuite *suite);
 
 /* libmongoc */
 
@@ -207,6 +210,8 @@ test_transactions_install (TestSuite *suite);
 extern void
 test_topology_scanner_install (TestSuite *suite);
 extern void
+test_ts_pool_install (TestSuite *suite);
+extern void
 test_uri_install (TestSuite *suite);
 extern void
 test_usleep_install (TestSuite *suite);
@@ -278,6 +283,10 @@ extern void
 test_server_stream_install (TestSuite *suite);
 extern void
 test_generation_map_install (TestSuite *suite);
+extern void
+test_shared_install (TestSuite *suite);
+extern void
+test_ssl_install (TestSuite *suite);
 
 typedef struct {
    mongoc_log_level_t level;
@@ -493,6 +502,16 @@ test_framework_getenv (const char *name)
    return _mongoc_getenv (name);
 }
 
+char *
+test_framework_getenv_required (const char *name)
+{
+   char *ret = _mongoc_getenv (name);
+   if (!ret) {
+      test_error ("Expected environment variable %s to be set", name);
+   }
+   return ret;
+}
+
 /* Returns false if unable to set environment variable. Which may occur if
  * test-libmongoc lacks permissions to do so. */
 bool
@@ -657,7 +676,8 @@ static char *
 _uri_str_from_env (void)
 {
    if (test_framework_getenv_bool ("MONGOC_TEST_LOADBALANCED")) {
-      char *loadbalanced_uri_str = test_framework_getenv ("SINGLE_MONGOS_LB_URI");
+      char *loadbalanced_uri_str =
+         test_framework_getenv ("SINGLE_MONGOS_LB_URI");
       if (!loadbalanced_uri_str) {
          test_error ("SINGLE_MONGOS_LB_URI and MULTI_MONGOS_LB_URI must be set "
                      "when MONGOC_TEST_LOADBALANCED is enabled");
@@ -1101,7 +1121,7 @@ test_framework_get_unix_domain_socket_uri_str ()
  *--------------------------------------------------------------------------
  */
 static void
-call_hello_with_host_and_port (char *host_and_port, bson_t *reply)
+call_hello_with_host_and_port (const char *host_and_port, bson_t *reply)
 {
    char *user;
    char *password;
@@ -1141,6 +1161,7 @@ call_hello_with_host_and_port (char *host_and_port, bson_t *reply)
    }
 
    client = test_framework_client_new_from_uri (uri, NULL);
+
 #ifdef MONGOC_ENABLE_SSL
    test_framework_set_ssl_opts (client);
 #endif
@@ -1404,7 +1425,8 @@ test_framework_get_uri ()
 }
 
 mongoc_uri_t *
-test_framework_get_uri_multi_mongos_loadbalanced () {
+test_framework_get_uri_multi_mongos_loadbalanced ()
+{
    char *uri_str_no_auth;
    char *uri_str;
    mongoc_uri_t *uri;
@@ -1693,6 +1715,37 @@ test_framework_new_default_client ()
 
    return client;
 }
+
+/*
+ *--------------------------------------------------------------------------
+ *
+ * test_framework_client_new_no_server_api --
+ *
+ *       Get a client connected to the test MongoDB topology, with no server
+ *       API version set.
+ *
+ * Returns:
+ *       A client you must mongoc_client_destroy.
+ *
+ * Side effects:
+ *       None.
+ *
+ *--------------------------------------------------------------------------
+ */
+mongoc_client_t *
+test_framework_client_new_no_server_api ()
+{
+   mongoc_uri_t *uri = test_framework_get_uri ();
+   mongoc_client_t *client = mongoc_client_new_from_uri (uri);
+
+   BSON_ASSERT (client);
+   test_framework_set_ssl_opts (client);
+
+   mongoc_uri_destroy (uri);
+
+   return client;
+}
+
 
 mongoc_server_api_t *
 test_framework_get_default_server_api (void)
@@ -2004,11 +2057,12 @@ test_framework_server_is_secondary (mongoc_client_t *client, uint32_t server_id)
 {
    bson_t reply;
    bson_iter_t iter;
-   mongoc_server_description_t *sd;
+   mongoc_server_description_t const *sd;
    bson_error_t error;
    bool ret;
 
-   sd = mongoc_topology_server_by_id (client->topology, server_id, &error);
+   sd = mongoc_topology_description_server_by_id_const (
+      client->topology->_shared_descr_.ptr, server_id, &error);
    ASSERT_OR_PRINT (sd, error);
 
    call_hello_with_host_and_port (sd->host.host_and_port, &reply);
@@ -2017,8 +2071,6 @@ test_framework_server_is_secondary (mongoc_client_t *client, uint32_t server_id)
          bson_iter_as_bool (&iter);
 
    bson_destroy (&reply);
-
-   mongoc_server_description_destroy (sd);
 
    return ret;
 }
@@ -2182,6 +2234,31 @@ test_framework_skip_if_offline (void)
 
 
 int
+test_framework_skip_if_rhel8_zseries (void)
+{
+   /* CDRIVER-3923: It appears that when running on RHEL8 on zSeries the
+    * /server_discovery_and_monitoring/monitoring/heartbeat/pooled/dns test
+    * fails.  The best guess is that calling getaddrinfo() on that platform
+    * blocks for 5 seconds, while the test expects a server selection error
+    * after 3000 ms, or 3 seconds.  Skip the test when executing on RHEL8 on
+    * zSeries. */
+#ifdef __s390x__
+   char *name;
+   char *version;
+   _mongoc_linux_distro_scanner_get_distro (&name, &version);
+   bool rhel = strcmp (name, "Red Hat Enterprise Linux") == 0;
+   bool vers8 = version[0] == '8';
+   int skip = (rhel && vers8) ? 0 : 1;
+   bson_free (name);
+   bson_free (version);
+   return skip;
+#else
+   return 1;
+#endif
+}
+
+
+int
 test_framework_skip_if_slow (void)
 {
    return test_framework_getenv_bool ("MONGOC_TEST_SKIP_SLOW") ? 0 : 1;
@@ -2317,14 +2394,12 @@ _parse_server_version (const bson_t *buildinfo)
 }
 
 server_version_t
-test_framework_get_server_version (void)
+test_framework_get_server_version_with_client (mongoc_client_t *client)
 {
-   mongoc_client_t *client;
    bson_t reply;
    bson_error_t error;
    server_version_t ret = 0;
 
-   client = test_framework_new_default_client ();
    ASSERT_OR_PRINT (
       mongoc_client_command_simple (
          client, "admin", tmp_bson ("{'buildinfo': 1}"), NULL, &reply, &error),
@@ -2333,6 +2408,21 @@ test_framework_get_server_version (void)
    ret = _parse_server_version (&reply);
 
    bson_destroy (&reply);
+
+   return ret;
+}
+
+server_version_t
+test_framework_get_server_version (void)
+{
+   mongoc_client_t *client;
+
+   server_version_t ret = 0;
+
+   client = test_framework_new_default_client ();
+
+   ret = test_framework_get_server_version_with_client (client);
+
    mongoc_client_destroy (client);
 
    return ret;
@@ -2506,9 +2596,6 @@ test_framework_skip_if_not_replset (void)
                 : 1;                                                    \
    }
 
-WIRE_VERSION_CHECKS (3)
-WIRE_VERSION_CHECKS (4)
-WIRE_VERSION_CHECKS (5)
 WIRE_VERSION_CHECKS (6)
 WIRE_VERSION_CHECKS (7)
 WIRE_VERSION_CHECKS (8)
@@ -2517,6 +2604,8 @@ WIRE_VERSION_CHECKS (9)
 WIRE_VERSION_CHECKS (13)
 /* wire version 14 begins with the 5.1 prerelease. */
 WIRE_VERSION_CHECKS (14)
+/* wire version 17 begins with the 6.0 release. */
+WIRE_VERSION_CHECKS (17)
 
 int
 test_framework_skip_if_no_dual_ip_hostname (void)
@@ -2603,18 +2692,31 @@ test_framework_skip_if_no_failpoint (void)
 int
 test_framework_skip_if_no_client_side_encryption (void)
 {
-   char *aws_secret_access_key;
-   char *aws_access_key_id;
-   bool has_creds;
+   const char *required_env_vars[] = {
+      "MONGOC_TEST_AWS_SECRET_ACCESS_KEY",
+      "MONGOC_TEST_AWS_ACCESS_KEY_ID",
+      "MONGOC_TEST_AZURE_TENANT_ID",
+      "MONGOC_TEST_AZURE_CLIENT_ID",
+      "MONGOC_TEST_AZURE_CLIENT_SECRET",
+      "MONGOC_TEST_GCP_EMAIL",
+      "MONGOC_TEST_GCP_PRIVATEKEY",
+      "MONGOC_TEST_CSFLE_TLS_CA_FILE",
+      "MONGOC_TEST_CSFLE_TLS_CERTIFICATE_KEY_FILE",
+      NULL};
+   const char **iter;
+   bool has_creds = true;
 
-   aws_secret_access_key =
-      test_framework_getenv ("MONGOC_TEST_AWS_SECRET_ACCESS_KEY");
-   aws_access_key_id = test_framework_getenv ("MONGOC_TEST_AWS_ACCESS_KEY_ID");
+   for (iter = required_env_vars; *iter != NULL; iter++) {
+      char *val;
 
-   has_creds = (NULL != aws_secret_access_key) && (NULL != aws_access_key_id);
-
-   bson_free (aws_secret_access_key);
-   bson_free (aws_access_key_id);
+      val = test_framework_getenv (*iter);
+      if (!val) {
+         MONGOC_DEBUG ("%s not defined", *iter);
+         has_creds = false;
+         break;
+      }
+      bson_free (val);
+   }
 
    if (has_creds) {
 #ifdef MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION
@@ -2650,16 +2752,6 @@ test_framework_skip_if_no_setenv (void)
    }
    bson_free (value);
    return 1;
-}
-
-void
-test_framework_resolve_path (const char *path, char *resolved)
-{
-   if (!realpath (path, resolved)) {
-      MONGOC_ERROR ("Cannot resolve path %s\n", path);
-      MONGOC_ERROR ("Run test-libmongoc in repository root directory.\n");
-      ASSERT (false);
-   }
 }
 
 bool
@@ -2851,6 +2943,7 @@ main (int argc, char *argv[])
    test_value_install (&suite);
    test_writer_install (&suite);
    test_b64_install (&suite);
+   test_bson_cmp_install (&suite);
 
    /* libmongoc */
 
@@ -2915,6 +3008,7 @@ main (int argc, char *argv[])
    test_thread_install (&suite);
    test_topology_install (&suite);
    test_topology_description_install (&suite);
+   test_ts_pool_install (&suite);
    test_uri_install (&suite);
    test_usleep_install (&suite);
    test_util_install (&suite);
@@ -2925,6 +3019,7 @@ main (int argc, char *argv[])
    test_stream_tls_install (&suite);
    test_x509_install (&suite);
    test_stream_tls_error_install (&suite);
+   test_client_side_encryption_install (&suite);
 #endif
 #ifdef MONGOC_ENABLE_SASL_CYRUS
    test_cyrus_install (&suite);
@@ -2934,7 +3029,6 @@ main (int argc, char *argv[])
    test_crud_install (&suite);
    test_mongohouse_install (&suite);
    test_apm_install (&suite);
-   test_client_side_encryption_install (&suite);
    test_server_description_install (&suite);
    test_aws_install (&suite);
    test_streamable_hello_install (&suite);
@@ -2952,6 +3046,8 @@ main (int argc, char *argv[])
    test_loadbalanced_install (&suite);
    test_server_stream_install (&suite);
    test_generation_map_install (&suite);
+   test_shared_install (&suite);
+   test_ssl_install (&suite);
 
    if (test_framework_is_loadbalanced ()) {
       mongoc_global_mock_service_id = true;
@@ -2983,14 +3079,16 @@ main (int argc, char *argv[])
  * initially discover the min/max wire version of a server)
  */
 bool
-test_framework_supports_legacy_opcodes (void) {
+test_framework_supports_legacy_opcodes (void)
+{
    /* Wire v14+ removed legacy opcodes */
-   return test_framework_skip_if_max_wire_version_less_than_14() == 0;
+   return test_framework_skip_if_max_wire_version_less_than_14 () == 0;
 }
 
 int
-test_framework_skip_if_no_legacy_opcodes (void) {
-   if (!TestSuite_CheckLive()) {
+test_framework_skip_if_no_legacy_opcodes (void)
+{
+   if (!TestSuite_CheckLive ()) {
       return 0;
    }
 
@@ -3003,8 +3101,9 @@ test_framework_skip_if_no_legacy_opcodes (void) {
 
 /* SERVER-57390 removed the getLastError command on 5.1 servers. */
 int
-test_framework_skip_if_no_getlasterror (void) {
-   if (!TestSuite_CheckLive()) {
+test_framework_skip_if_no_getlasterror (void)
+{
+   if (!TestSuite_CheckLive ()) {
       return 0;
    }
 
@@ -3016,7 +3115,8 @@ test_framework_skip_if_no_getlasterror (void) {
 }
 
 bool
-test_framework_is_loadbalanced (void) {
+test_framework_is_loadbalanced (void)
+{
    return test_framework_getenv_bool ("MONGOC_TEST_LOADBALANCED") ||
           test_framework_getenv_bool ("MONGOC_TEST_DNS_LOADBALANCED");
 }

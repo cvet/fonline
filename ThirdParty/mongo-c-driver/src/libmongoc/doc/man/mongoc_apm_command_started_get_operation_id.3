@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_APM_COMMAND_STARTED_GET_OPERATION_ID" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_apm_command_started_get_operation_id \- mongoc_apm_command_started_get_operation_id()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_APM_COMMAND_STARTED_GET_OPERATION_ID" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_apm_command_started_get_operation_id \- mongoc_apm_command_started_get_operation_id()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,11 +44,11 @@ mongoc_apm_command_started_get_operation_id (
 .UNINDENT
 .UNINDENT
 .sp
-Returns this event\(aqs operation id. This number correlates all the commands in a bulk operation, or all the "find" and "getMore" commands required to stream a large query result.
+Returns this event\(aqs operation id. This number correlates all the commands in a bulk operation, or all the \(dqfind\(dq and \(dqgetMore\(dq commands required to stream a large query result.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBevent\fP: A \fBmongoc_apm_command_started_t\fP\&.
+\fBevent\fP: A \fI\%mongoc_apm_command_started_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
@@ -58,7 +58,7 @@ The event\(aqs operation id.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

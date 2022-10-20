@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTHENTICATION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_authentication \- Authentication
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTHENTICATION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_authentication \- Authentication
 .sp
 This guide covers the use of authentication options with the MongoDB C Driver. Ensure that the MongoDB server is also properly configured for authentication before making a connection. For more information, see the \fI\%MongoDB security documentation\fP\&.
 .sp
@@ -43,7 +43,7 @@ To select a specific authentication mechanism other than the default, see the li
 .sp
 .nf
 .ft C
-mongoc_client_t *client = mongoc_client_new ("mongodb://user:password@localhost/?authSource=mydb");
+mongoc_client_t *client = mongoc_client_new (\(dqmongodb://user:password@localhost/?authSource=mydb\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -78,7 +78,7 @@ SCRAM\-SHA\-1 and SCRAM\-SHA\-256 credentials:
 .sp
 .nf
 .ft C
-mongoc_client_t *client =  mongoc_client_new ("mongodb://user:password@localhost/?authSource=mydb");
+mongoc_client_t *client =  mongoc_client_new (\(dqmongodb://user:password@localhost/?authSource=mydb\(dq);
 /* the correct authMechanism is negotiated between the driver and server. */
 .ft P
 .fi
@@ -91,7 +91,7 @@ Alternatively, SCRAM\-SHA\-256 can be explicitly specified as an authMechanism.
 .sp
 .nf
 .ft C
-mongoc_client_t *client =  mongoc_client_new ("mongodb://user:password@localhost/?authMechanism=SCRAM\-SHA\-256&authSource=mydb");
+mongoc_client_t *client =  mongoc_client_new (\(dqmongodb://user:password@localhost/?authMechanism=SCRAM\-SHA\-256&authSource=mydb\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -118,7 +118,7 @@ The default authentication mechanism before MongoDB 4.0 is \fBSCRAM\-SHA\-1\fP (
 .sp
 .nf
 .ft C
-mongoc_client_t *client = mongoc_client_new ("mongodb://user:password@localhost/?authMechanism=SCRAM\-SHA\-1&authSource=mydb");
+mongoc_client_t *client = mongoc_client_new (\(dqmongodb://user:password@localhost/?authMechanism=SCRAM\-SHA\-1&authSource=mydb\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -139,7 +139,11 @@ will use an authentication mechanism compatible with your server.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-Kerberos support requires compiling the driver against \fBcyrus\-sasl\fP on UNIX\-like environments. On Windows, configure the driver to build against the Windows Native SSPI.
+On UNIX\-like environments, Kerberos support requires compiling the driver against \fBcyrus\-sasl\fP\&.
+.sp
+On Windows, Kerberos support requires compiling the driver against Windows Native SSPI or \fBcyrus\-sasl\fP\&. The default configuration of the driver will use Windows Native SSPI.
+.sp
+To modify the default configuration, use the cmake option \fBENABLE_SASL\fP\&.
 .UNINDENT
 .UNINDENT
 .sp
@@ -171,7 +175,7 @@ Now authenticate using the MongoDB URI. \fBGSSAPI\fP authenticates against the \
 .ft C
 mongoc_client_t *client;
 
-client = mongoc_client_new ("mongodb://mongodbuser%40EXAMPLE.COM@mongo\-server.example.com/?authMechanism=GSSAPI");
+client = mongoc_client_new (\(dqmongodb://mongodbuser%40EXAMPLE.COM@mongo\-server.example.com/?authMechanism=GSSAPI\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -187,9 +191,9 @@ client = mongoc_client_new ("mongodb://mongodbuser%40EXAMPLE.COM@mongo\-server.e
 The driver supports these GSSAPI properties:
 .INDENT 0.0
 .IP \(bu 2
-\fBCANONICALIZE_HOST_NAME\fP: This might be required with Cyrus\-SASL when the hosts report different hostnames than what is used in the Kerberos database. The default is "false".
+\fBCANONICALIZE_HOST_NAME\fP: This might be required with Cyrus\-SASL when the hosts report different hostnames than what is used in the Kerberos database. The default is \(dqfalse\(dq.
 .IP \(bu 2
-\fBSERVICE_NAME\fP: Use a different service name than the default, "mongodb".
+\fBSERVICE_NAME\fP: Use a different service name than the default, \(dqmongodb\(dq.
 .UNINDENT
 .sp
 Set properties in the URL:
@@ -200,8 +204,8 @@ Set properties in the URL:
 .ft C
 mongoc_client_t *client;
 
-client = mongoc_client_new ("mongodb://mongodbuser%40EXAMPLE.COM@mongo\-server.example.com/?authMechanism=GSSAPI&"
-                            "authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true");
+client = mongoc_client_new (\(dqmongodb://mongodbuser%40EXAMPLE.COM@mongo\-server.example.com/?authMechanism=GSSAPI&\(dq
+                            \(dqauthMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -242,7 +246,7 @@ MongoDB Enterprise Edition supports the \fBSASL PLAIN\fP authentication mechanis
 .ft C
 mongoc_client_t *client;
 
-client = mongoc_client_new ("mongodb://user:password@example.com/?authMechanism=PLAIN");
+client = mongoc_client_new (\(dqmongodb://user:password@example.com/?authMechanism=PLAIN\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -277,13 +281,13 @@ The \fBMONGODB\-X509\fP mechanism authenticates a username derived from the dist
 mongoc_client_t *client;
 mongoc_ssl_opt_t ssl_opts = { 0 };
 
-ssl_opts.pem_file = "mycert.pem";
-ssl_opts.pem_pwd = "mycertpassword";
-ssl_opts.ca_file = "myca.pem";
-ssl_opts.ca_dir = "trust_dir";
+ssl_opts.pem_file = \(dqmycert.pem\(dq;
+ssl_opts.pem_pwd = \(dqmycertpassword\(dq;
+ssl_opts.ca_file = \(dqmyca.pem\(dq;
+ssl_opts.ca_dir = \(dqtrust_dir\(dq;
 ssl_opts.weak_cert_validation = false;
 
-client = mongoc_client_new ("mongodb://x509_derived_username@localhost/?authMechanism=MONGODB\-X509");
+client = mongoc_client_new (\(dqmongodb://x509_derived_username@localhost/?authMechanism=MONGODB\-X509\(dq);
 mongoc_client_set_ssl_opts (client, &ssl_opts);
 .ft P
 .fi
@@ -308,7 +312,7 @@ To authenticate, create a user with an associated Amazon Resource Name (ARN) on 
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost/?authMechanism=MONGODB\-AWS");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost/?authMechanism=MONGODB\-AWS\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -325,7 +329,7 @@ Credentials may be passed directly in the URI as username/password.
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://<access key id>:<secret access key>localhost/?authMechanism=MONGODB\-AWS");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://<access key id>:<secret access key>localhost/?authMechanism=MONGODB\-AWS\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -337,7 +341,7 @@ This may include a \fBsession token\fP passed with \fBauthMechanismProperties\fP
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://<access key id>:<secret access key>localhost/?authMechanism=MONGODB\-AWS&authMechanismProperties=AWS_SESSION_TOKEN:<token>");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://<access key id>:<secret access key>localhost/?authMechanism=MONGODB\-AWS&authMechanismProperties=AWS_SESSION_TOKEN:<token>\(dq);
 .ft P
 .fi
 .UNINDENT

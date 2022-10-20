@@ -39,7 +39,7 @@ On Fedora, a mongo-c-driver package is available in the default repositories and
 
   $ dnf install mongo-c-driver
 
-On recent Red Hat systems, such as CentOS and RHEL 7, a mongo-c-driver package is available in the `EPEL <https://fedoraproject.org/wiki/EPEL>`_ repository. To check which version is available, see `https://apps.fedoraproject.org/packages/mongo-c-driver <https://apps.fedoraproject.org/packages/mongo-c-driver>`_. The package can be installed with:
+On recent Red Hat systems, such as CentOS and RHEL 7, a mongo-c-driver package is available in the `EPEL <https://fedoraproject.org/wiki/EPEL>`_ repository. To check which version is available, see `https://packages.fedoraproject.org/pkgs/mongo-c-driver/mongo-c-driver/ <https://packages.fedoraproject.org/pkgs/mongo-c-driver/mongo-c-driver/>`_. The package can be installed with:
 
 .. code-block:: none
 
@@ -132,7 +132,7 @@ The ``cmake`` utility is also required. First `install Homebrew according to its
 Build environment on Windows with Visual Studio
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Building on Windows requires Windows Vista or newer and Visual Studio 2010 or newer. Additionally, ``cmake`` is required to generate Visual Studio project files.  Installation of these components on Windows is beyond the scope of this document.
+Building on Windows requires Windows Vista or newer and Visual Studio 2013 or newer. Additionally, ``cmake`` is required to generate Visual Studio project files.  Installation of these components on Windows is beyond the scope of this document.
 
 Build environment on Windows with MinGW-W64 and MSYS2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -322,7 +322,7 @@ The second approach simply invokes the uninstall program referenced in the first
 Dealing with Build Failures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If your attempt to build the C driver fails, please see the `README <https://github.com/mongodb/mongo-c-driver#how-to-ask-for-help>` for instructions on requesting assistance.
+If your attempt to build the C driver fails, please see the `README <https://github.com/mongodb/mongo-c-driver#how-to-ask-for-help>`_ for instructions on requesting assistance.
 
 Additional Options for Integrators
 ----------------------------------

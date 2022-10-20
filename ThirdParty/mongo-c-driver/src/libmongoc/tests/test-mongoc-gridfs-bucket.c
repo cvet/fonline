@@ -636,6 +636,8 @@ gridfs_spec_download_operation (mongoc_database_t *db,
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (db);
+
    ASSERT (bson_iter_init_find (&iter, act, "arguments"));
    arguments =
       bson_new_from_data (bson_iter_value (&iter)->value.v_doc.data,
@@ -704,6 +706,11 @@ gridfs_spec_download_by_name_operation (mongoc_database_t *db,
                                         bson_t *act,
                                         bson_t *assert)
 {
+   BSON_UNUSED (db);
+   BSON_UNUSED (bucket);
+   BSON_UNUSED (act);
+   BSON_UNUSED (assert);
+
    /* The download_by_name functionality is part of the Advanced API for GridFS
     * and the C Driver hasn't implemented the Advanced API yet. This is a
     * placeholder to be used when the download_by_name is implemented. */
@@ -877,10 +884,7 @@ test_gridfs_cb (bson_t *scenario)
 static void
 test_all_spec_tests (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
-
-   test_framework_resolve_path (JSON_DIR "/gridfs", resolved);
-   install_json_test_suite (suite, resolved, &test_gridfs_cb);
+   install_json_test_suite (suite, JSON_DIR, "gridfs", &test_gridfs_cb);
 }
 
 static void
@@ -894,6 +898,8 @@ test_upload_error (void *ctx)
    bson_error_t error = {0};
    char *const dbname = gen_collection_name ("test_upload_error");
    bool r;
+
+   BSON_UNUSED (ctx);
 
    client = test_framework_new_default_client ();
    db = mongoc_client_get_database (client, dbname);
@@ -956,6 +962,8 @@ test_find_w_session (void *ctx)
    char *dbname = gen_collection_name ("test_find_w_session");
    bool r;
 
+   BSON_UNUSED (ctx);
+
    client = test_framework_new_default_client ();
    db = mongoc_client_get_database (client, dbname);
    gridfs = mongoc_gridfs_bucket_new (db, NULL, NULL, NULL);
@@ -996,6 +1004,8 @@ test_find (void *ctx)
    bson_value_t const *found_id;
    const bson_t *const find_opts =
       tmp_bson ("{'limit': 1, 'skip': 2, 'sort': {'metadata.testOrder': -1}}");
+
+   BSON_UNUSED (ctx);
 
    _upload_file_from_str (gridfs,
                           "file1",

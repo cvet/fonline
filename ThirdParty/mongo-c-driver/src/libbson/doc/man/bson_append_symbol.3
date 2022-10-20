@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_SYMBOL" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_symbol \- bson_append_symbol()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_SYMBOL" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_symbol \- bson_append_symbol()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,7 +52,7 @@ bson_append_symbol (bson_t *bson,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
@@ -66,7 +66,7 @@ bson_append_symbol (bson_t *bson,
 .sp
 Appends a new field to \fBbson\fP of type BSON_TYPE_SYMBOL. This BSON type is deprecated and should not be used in new code.
 .sp
-Due to legacy behavior, passing \fBNULL\fP for \fBvalue\fP appends a null value, \fInot\fP a symbol value. To append a null value directly, prefer using \fBbson_append_null()\fP\&.
+Due to legacy behavior, passing \fBNULL\fP for \fBvalue\fP appends a null value, \fInot\fP a symbol value. To append a null value directly, prefer using \fI\%bson_append_null()\fP\&.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending the value grows \fBbson\fP larger than INT32_MAX.

@@ -20,10 +20,16 @@ TEST(color_test, format) {
       fmt::format(fg(fmt::color::blue) | bg(fmt::color::red), "two color"),
       "\x1b[38;2;000;000;255m\x1b[48;2;255;000;000mtwo color\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::emphasis::bold, "bold"), "\x1b[1mbold\x1b[0m");
+  EXPECT_EQ(fmt::format(fmt::emphasis::faint, "faint"), "\x1b[2mfaint\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::emphasis::italic, "italic"),
             "\x1b[3mitalic\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::emphasis::underline, "underline"),
             "\x1b[4munderline\x1b[0m");
+  EXPECT_EQ(fmt::format(fmt::emphasis::blink, "blink"), "\x1b[5mblink\x1b[0m");
+  EXPECT_EQ(fmt::format(fmt::emphasis::reverse, "reverse"),
+            "\x1b[7mreverse\x1b[0m");
+  EXPECT_EQ(fmt::format(fmt::emphasis::conceal, "conceal"),
+            "\x1b[8mconceal\x1b[0m");
   EXPECT_EQ(fmt::format(fmt::emphasis::strikethrough, "strikethrough"),
             "\x1b[9mstrikethrough\x1b[0m");
   EXPECT_EQ(
@@ -44,6 +50,12 @@ TEST(color_test, format) {
             "\x1b[105mtbmagenta\x1b[0m");
   EXPECT_EQ(fmt::format(fg(fmt::terminal_color::red), "{}", "foo"),
             "\x1b[31mfoo\x1b[0m");
+  EXPECT_EQ(fmt::format("{}{}", fmt::styled("red", fg(fmt::color::red)),
+                        fmt::styled("bold", fmt::emphasis::bold)),
+            "\x1b[38;2;255;000;000mred\x1b[0m\x1b[1mbold\x1b[0m");
+  EXPECT_EQ(fmt::format("{}", fmt::styled("bar", fg(fmt::color::blue) |
+                                                     fmt::emphasis::underline)),
+            "\x1b[4m\x1b[38;2;000;000;255mbar\x1b[0m");
 }
 
 TEST(color_test, format_to) {

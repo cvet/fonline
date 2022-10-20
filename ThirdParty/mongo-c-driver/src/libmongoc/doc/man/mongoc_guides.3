@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GUIDES" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_guides \- Guides
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GUIDES" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_guides \- Guides
 .SH CONFIGURING TLS
 .SS Configuration with URI options
 .sp
@@ -39,7 +39,7 @@ Enable TLS by including \fBtls=true\fP in the URI.
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost:27017/");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost:27017/\(dq);
 mongoc_uri_set_option_as_bool (uri, MONGOC_URI_TLS, true);
 
 mongoc_client_t *client = mongoc_client_new_from_uri (uri);
@@ -78,7 +78,7 @@ Path to PEM formatted Private Key, with its Public Certificate concatenated at t
 T}
 _
 T{
-MONGOC_URI_TLSCERTIFICATEKEYPASSWORD
+MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD
 T}	T{
 tlscertificatekeypassword
 T}	T{
@@ -136,7 +136,7 @@ _
 .TE
 .SS Configuration with mongoc_ssl_opt_t
 .sp
-Alternatively, the \fBmongoc_ssl_opt_t\fP struct may be used to configure TLS with \fBmongoc_client_set_ssl_opts()\fP or \fBmongoc_client_pool_set_ssl_opts()\fP\&. Most of the configurable options can be set using the \fI\%Connection String URI\fP\&.
+Alternatively, the \fI\%mongoc_ssl_opt_t\fP struct may be used to configure TLS with \fI\%mongoc_client_set_ssl_opts()\fP or \fI\%mongoc_client_pool_set_ssl_opts()\fP\&. Most of the configurable options can be set using the \fI\%Connection String URI\fP\&.
 .TS
 center;
 |l|l|.
@@ -179,7 +179,7 @@ T}
 _
 .TE
 .sp
-The only exclusions are \fBcrl_file\fP and \fBca_dir\fP\&. Those may only be set with \fBmongoc_ssl_opt_t\fP\&.
+The only exclusions are \fBcrl_file\fP and \fBca_dir\fP\&. Those may only be set with \fI\%mongoc_ssl_opt_t\fP\&.
 .SS Client Authentication
 .sp
 When MongoDB is started with TLS enabled, it will by default require the client to provide a client certificate issued by a certificate authority specified by \fB\-\-tlsCAFile\fP, or an authority trusted by the native certificate store in use on the server.
@@ -190,9 +190,9 @@ To provide the client certificate, set the \fBtlsCertificateKeyFile\fP in the UR
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost:27017/");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost:27017/\(dq);
 mongoc_uri_set_option_as_bool (uri, MONGOC_URI_TLS, true);
-mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, "/path/to/client\-certificate.pem");
+mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, \(dq/path/to/client\-certificate.pem\(dq);
 
 mongoc_client_t *client = mongoc_client_new_from_uri (uri);
 .ft P
@@ -251,18 +251,18 @@ cmake \-DOPENSSL_ROOT_DIR=/absolute/path/to/openssl
 .UNINDENT
 .UNINDENT
 .sp
-When compiled against OpenSSL, the driver will attempt to load the system default certificate store, as configured by the distribution. That can be overridden by setting the \fBtlsCAFile\fP URI option or with the fields \fBca_file\fP and \fBca_dir\fP in the \fBmongoc_ssl_opt_t\fP\&.
+When compiled against OpenSSL, the driver will attempt to load the system default certificate store, as configured by the distribution. That can be overridden by setting the \fBtlsCAFile\fP URI option or with the fields \fBca_file\fP and \fBca_dir\fP in the \fI\%mongoc_ssl_opt_t\fP\&.
 .sp
 The Online Certificate Status Protocol (OCSP) (see \fI\%RFC 6960\fP) is fully supported when using OpenSSL 1.0.1+ with the following notes:
 .INDENT 0.0
 .IP \(bu 2
-When a \fBcrl_file\fP is set with \fBmongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the certificate is considered revoked (even if the certificate has a valid stapled OCSP response)
+When a \fBcrl_file\fP is set with \fI\%mongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the certificate is considered revoked (even if the certificate has a valid stapled OCSP response)
 .UNINDENT
 .SS LibreSSL / libtls
 .sp
 The MongoDB C Driver supports LibreSSL through the use of OpenSSL compatibility checks when configured to compile against \fBopenssl\fP\&. It also supports the new \fBlibtls\fP library when configured to build against \fBlibressl\fP\&.
 .sp
-When compiled against the Windows native libraries, the \fBcrl_file\fP option of a \fBmongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
+When compiled against the Windows native libraries, the \fBcrl_file\fP option of a \fI\%mongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
 .sp
 Setting \fBtlsDisableOCSPEndpointCheck\fP and \fBtlsDisableCertificateRevocationCheck\fP has no effect.
 .sp
@@ -277,13 +277,13 @@ Connection will continue if a Must\-Staple certificate is presented without a st
 .sp
 The MongoDB C Driver supports the Windows native TLS library (Secure Channel, or SChannel), and its native crypto library (Cryptography API: Next Generation, or CNG).
 .sp
-When compiled against the Windows native libraries, the \fBca_dir\fP option of a \fBmongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
+When compiled against the Windows native libraries, the \fBca_dir\fP option of a \fI\%mongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
 .sp
 Encrypted PEM files (e.g., setting \fBtlsCertificateKeyPassword\fP) are also not supported, and will result in error when attempting to load them.
 .sp
 When \fBtlsCAFile\fP is set, the driver will only allow server certificates issued by the authority (or authorities) provided. When no \fBtlsCAFile\fP is set, the driver will look up the Certificate Authority using the \fBSystem Local Machine Root\fP certificate store to confirm the provided certificate.
 .sp
-When \fBcrl_file\fP is set with \fBmongoc_ssl_opt_t\fP, the driver will import the revocation list to the \fBSystem Local Machine Root\fP certificate store.
+When \fBcrl_file\fP is set with \fI\%mongoc_ssl_opt_t\fP, the driver will import the revocation list to the \fBSystem Local Machine Root\fP certificate store.
 .sp
 Setting \fBtlsDisableOCSPEndpointCheck\fP has no effect.
 .sp
@@ -292,7 +292,7 @@ The Online Certificate Status Protocol (OCSP) (see \fI\%RFC 6960\fP) is partiall
 .IP \(bu 2
 The Must\-Staple extension (see \fI\%RFC 7633\fP) is ignored. Connection may continue if a Must\-Staple certificate is presented with no stapled response (unless the client receives a revoked response from an OCSP responder).
 .IP \(bu 2
-When a \fBcrl_file\fP is set with \fBmongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the OCSP response takes precedence. E.g. if the server presents a certificate with a valid stapled OCSP response, the certificate is considered valid even if the \fBcrl_file\fP marks it as revoked.
+When a \fBcrl_file\fP is set with \fI\%mongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the OCSP response takes precedence. E.g. if the server presents a certificate with a valid stapled OCSP response, the certificate is considered valid even if the \fBcrl_file\fP marks it as revoked.
 .IP \(bu 2
 Connection will continue if a Must\-Staple certificate is presented without a stapled response and the OCSP responder is down.
 .UNINDENT
@@ -300,7 +300,7 @@ Connection will continue if a Must\-Staple certificate is presented without a st
 .sp
 The MongoDB C Driver supports the Darwin (OS X, macOS, iOS, etc.) native TLS library (Secure Transport), and its native crypto library (Common Crypto, or CC).
 .sp
-When compiled against Secure Transport, the \fBca_dir\fP and \fBcrl_file\fP options of a \fBmongoc_ssl_opt_t\fP are not supported. An error is issued if either are used.
+When compiled against Secure Transport, the \fBca_dir\fP and \fBcrl_file\fP options of a \fI\%mongoc_ssl_opt_t\fP are not supported. An error is issued if either are used.
 .sp
 When \fBtlsCAFile\fP is set, the driver will only allow server certificates issued by the authority (or authorities) provided. When no \fBtlsCAFile\fP is set, the driver will use the Certificate Authorities in the currently unlocked keychains.
 .sp
@@ -342,11 +342,11 @@ insert_data (mongoc_collection_t *collection)
 
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
-   docs[0] = BCON_NEW ("x", BCON_DOUBLE (1.0), "tags", "[", "dog", "cat", "]");
-   docs[1] = BCON_NEW ("x", BCON_DOUBLE (2.0), "tags", "[", "cat", "]");
+   docs[0] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (1.0), \(dqtags\(dq, \(dq[\(dq, \(dqdog\(dq, \(dqcat\(dq, \(dq]\(dq);
+   docs[1] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqcat\(dq, \(dq]\(dq);
    docs[2] = BCON_NEW (
-      "x", BCON_DOUBLE (2.0), "tags", "[", "mouse", "cat", "dog", "]");
-   docs[3] = BCON_NEW ("x", BCON_DOUBLE (3.0), "tags", "[", "]");
+      \(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqmouse\(dq, \(dqcat\(dq, \(dqdog\(dq, \(dq]\(dq);
+   docs[3] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (3.0), \(dqtags\(dq, \(dq[\(dq, \(dq]\(dq);
 
    for (i = 0; i < ndocs; i++) {
       mongoc_bulk_operation_insert (bulk, docs[i]);
@@ -357,7 +357,7 @@ insert_data (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, NULL, &error);
 
    if (!ret) {
-      fprintf (stderr, "Error inserting data: %s\en", error.message);
+      fprintf (stderr, \(dqError inserting data: %s\en\(dq, error.message);
    }
 
    mongoc_bulk_operation_destroy (bulk);
@@ -371,7 +371,7 @@ print_res (const bson_t *reply)
    char *str;
    BSON_ASSERT (reply);
    str = bson_as_canonical_extended_json (reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 }
 
@@ -379,7 +379,7 @@ print_res (const bson_t *reply)
 .fi
 .UNINDENT
 .UNINDENT
-.SS "explain" Command
+.SS \(dqexplain\(dq Command
 .sp
 This is how to use the \fBexplain\fP command in MongoDB 3.2+:
 .sp
@@ -397,20 +397,20 @@ explain (mongoc_collection_t *collection)
    bson_error_t error;
    bool res;
 
-   command = BCON_NEW ("explain",
-                       "{",
-                       "find",
+   command = BCON_NEW (\(dqexplain\(dq,
+                       \(dq{\(dq,
+                       \(dqfind\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "filter",
-                       "{",
-                       "x",
+                       \(dqfilter\(dq,
+                       \(dq{\(dq,
+                       \(dqx\(dq,
                        BCON_INT32 (1),
-                       "}",
-                       "}");
+                       \(dq}\(dq,
+                       \(dq}\(dq);
    res = mongoc_collection_command_simple (
       collection, command, NULL, &reply, &error);
    if (!res) {
-      fprintf (stderr, "Error with explain: %s\en", error.message);
+      fprintf (stderr, \(dqError with explain: %s\en\(dq, error.message);
       goto cleanup;
    }
 
@@ -438,14 +438,14 @@ common\-operations.c
 /*
  * Copyright 2016 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -456,10 +456,10 @@ common\-operations.c
 #include <stdio.h>
 
 
-const char *COLLECTION_NAME = "things";
+const char *COLLECTION_NAME = \(dqthings\(dq;
 
-#include "../doc\-common\-insert.c"
-#include "explain.c"
+#include \(dq../doc\-common\-insert.c\(dq
+#include \(dqexplain.c\(dq
 
 
 int
@@ -475,34 +475,34 @@ main (int argc, char *argv[])
 
    if (argc < 2 || argc > 3) {
       fprintf (stderr,
-               "usage: %s MONGOD\-1\-CONNECTION\-STRING "
-               "[MONGOD\-2\-HOST\-NAME:MONGOD\-2\-PORT]\en",
+               \(dqusage: %s MONGOD\-1\-CONNECTION\-STRING \(dq
+               \(dq[MONGOD\-2\-HOST\-NAME:MONGOD\-2\-PORT]\en\(dq,
                argv[0]);
       fprintf (stderr,
-               "MONGOD\-1\-CONNECTION\-STRING can be "
-               "of the following forms:\en");
-      fprintf (stderr, "localhost\et\et\et\etlocal machine\en");
-      fprintf (stderr, "localhost:27018\et\et\et\etlocal machine on port 27018\en");
+               \(dqMONGOD\-1\-CONNECTION\-STRING can be \(dq
+               \(dqof the following forms:\en\(dq);
+      fprintf (stderr, \(dqlocalhost\et\et\et\etlocal machine\en\(dq);
+      fprintf (stderr, \(dqlocalhost:27018\et\et\et\etlocal machine on port 27018\en\(dq);
       fprintf (stderr,
-               "mongodb://user:pass@localhost:27017\et"
-               "local machine on port 27017, and authenticate with username "
-               "user and password pass\en");
+               \(dqmongodb://user:pass@localhost:27017\et\(dq
+               \(dqlocal machine on port 27017, and authenticate with username \(dq
+               \(dquser and password pass\en\(dq);
       return EXIT_FAILURE;
    }
 
    mongoc_init ();
 
-   if (strncmp (argv[1], "mongodb://", 10) == 0) {
+   if (strncmp (argv[1], \(dqmongodb://\(dq, 10) == 0) {
       host_and_port = bson_strdup (argv[1]);
    } else {
-      host_and_port = bson_strdup_printf ("mongodb://%s", argv[1]);
+      host_and_port = bson_strdup_printf (\(dqmongodb://%s\(dq, argv[1]);
    }
 
    uri = mongoc_uri_new_with_error (host_and_port, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                host_and_port,
                error.message);
       res = EXIT_FAILURE;
@@ -516,16 +516,16 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "test");
+   database = mongoc_client_get_database (client, \(dqtest\(dq);
    collection = mongoc_database_get_collection (database, COLLECTION_NAME);
 
-   printf ("Inserting data\en");
+   printf (\(dqInserting data\en\(dq);
    if (!insert_data (collection)) {
       res = EXIT_FAILURE;
       goto cleanup;
    }
 
-   printf ("explain\en");
+   printf (\(dqexplain\en\(dq);
    if (!explain (collection)) {
       res = EXIT_FAILURE;
       goto cleanup;
@@ -591,60 +591,60 @@ $ cd examples/common_operations/$ gcc \-Wall \-o example common\-operations.c $(
 Inserting data
 explain
 {
-   "executionStats" : {
-      "allPlansExecution" : [],
-      "executionStages" : {
-         "advanced" : 19,
-         "direction" : "forward" ,
-         "docsExamined" : 76,
-         "executionTimeMillisEstimate" : 0,
-         "filter" : {
-            "x" : {
-               "$eq" : 1
+   \(dqexecutionStats\(dq : {
+      \(dqallPlansExecution\(dq : [],
+      \(dqexecutionStages\(dq : {
+         \(dqadvanced\(dq : 19,
+         \(dqdirection\(dq : \(dqforward\(dq ,
+         \(dqdocsExamined\(dq : 76,
+         \(dqexecutionTimeMillisEstimate\(dq : 0,
+         \(dqfilter\(dq : {
+            \(dqx\(dq : {
+               \(dq$eq\(dq : 1
             }
          },
-         "invalidates" : 0,
-         "isEOF" : 1,
-         "nReturned" : 19,
-         "needTime" : 58,
-         "needYield" : 0,
-         "restoreState" : 0,
-         "saveState" : 0,
-         "stage" : "COLLSCAN" ,
-         "works" : 78
+         \(dqinvalidates\(dq : 0,
+         \(dqisEOF\(dq : 1,
+         \(dqnReturned\(dq : 19,
+         \(dqneedTime\(dq : 58,
+         \(dqneedYield\(dq : 0,
+         \(dqrestoreState\(dq : 0,
+         \(dqsaveState\(dq : 0,
+         \(dqstage\(dq : \(dqCOLLSCAN\(dq ,
+         \(dqworks\(dq : 78
       },
-      "executionSuccess" : true,
-      "executionTimeMillis" : 0,
-      "nReturned" : 19,
-      "totalDocsExamined" : 76,
-      "totalKeysExamined" : 0
+      \(dqexecutionSuccess\(dq : true,
+      \(dqexecutionTimeMillis\(dq : 0,
+      \(dqnReturned\(dq : 19,
+      \(dqtotalDocsExamined\(dq : 76,
+      \(dqtotalKeysExamined\(dq : 0
    },
-   "ok" : 1,
-   "queryPlanner" : {
-      "indexFilterSet" : false,
-      "namespace" : "test.things",
-      "parsedQuery" : {
-         "x" : {
-            "$eq" : 1
+   \(dqok\(dq : 1,
+   \(dqqueryPlanner\(dq : {
+      \(dqindexFilterSet\(dq : false,
+      \(dqnamespace\(dq : \(dqtest.things\(dq,
+      \(dqparsedQuery\(dq : {
+         \(dqx\(dq : {
+            \(dq$eq\(dq : 1
          }
       },
-      "plannerVersion" : 1,
-      "rejectedPlans" : [],
-      "winningPlan" : {
-         "direction" : "forward" ,
-         "filter" : {
-            "x" : {
-               "$eq" : 1
+      \(dqplannerVersion\(dq : 1,
+      \(dqrejectedPlans\(dq : [],
+      \(dqwinningPlan\(dq : {
+         \(dqdirection\(dq : \(dqforward\(dq ,
+         \(dqfilter\(dq : {
+            \(dqx\(dq : {
+               \(dq$eq\(dq : 1
             }
          },
-         "stage" : "COLLSCAN"
+         \(dqstage\(dq : \(dqCOLLSCAN\(dq
       }
    },
-   "serverInfo" : {
-      "gitVersion" : "05552b562c7a0b3143a729aaa0838e558dc49b25" ,
-      "host" : "MacBook\-Pro\-57.local",
-      "port" : 27017,
-      "version" : "3.2.6"
+   \(dqserverInfo\(dq : {
+      \(dqgitVersion\(dq : \(dq05552b562c7a0b3143a729aaa0838e558dc49b25\(dq ,
+      \(dqhost\(dq : \(dqMacBook\-Pro\-57.local\(dq,
+      \(dqport\(dq : 27017,
+      \(dqversion\(dq : \(dq3.2.6\(dq
    }
 }
 .ft P
@@ -655,7 +655,7 @@ explain
 .sp
 The following guide contains information specific to certain types of MongoDB configurations.
 .sp
-For an example of connecting to a simple standalone server, see the Tutorial\&. To establish a connection with authentication options enabled, see the Authentication page.
+For an example of connecting to a simple standalone server, see the \fI\%Tutorial\fP\&. To establish a connection with authentication options enabled, see the \fI\%Authentication\fP page.
 .SS Connecting to a Replica Set
 .sp
 Connecting to a \fI\%replica set\fP is much like connecting to a standalone MongoDB server. Simply specify the replica set name using the \fB?replicaSet=myreplset\fP URI option.
@@ -676,7 +676,7 @@ main (int argc, char *argv[])
 
    /* Create our MongoDB Client */
    client = mongoc_client_new (
-      "mongodb://host01:27017,host02:27017,host03:27017/?replicaSet=myreplset");
+      \(dqmongodb://host01:27017,host02:27017,host03:27017/?replicaSet=myreplset\(dq);
 
    /* Do some work */
    /* TODO */
@@ -728,7 +728,7 @@ main (int argc, char *argv[])
    mongoc_init ();
 
    /* Create our MongoDB Client */
-   client = mongoc_client_new ("mongodb://myshard01:27017/");
+   client = mongoc_client_new (\(dqmongodb://myshard01:27017/\(dq);
 
    /* Do something with client ... */
 
@@ -751,7 +751,7 @@ The MongoDB C Driver will automatically resolve IPv6 addresses from host names. 
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://[::1]:27017");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://[::1]:27017\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -771,7 +771,7 @@ On UNIX\-like systems, the C Driver can connect directly to a MongoDB server usi
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://%2Ftmp%2Fmongodb\-27017.sock");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://%2Ftmp%2Fmongodb\-27017.sock\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -783,7 +783,7 @@ Include username and password like so:
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://user:pass@%2Ftmp%2Fmongodb\-27017.sock");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://user:pass@%2Ftmp%2Fmongodb\-27017.sock\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -811,7 +811,7 @@ Add \fB/?tls=true\fP to the end of a client URI.
 .nf
 .ft C
 mongoc_client_t *client = NULL;
-client = mongoc_client_new ("mongodb://localhost:27017/?tls=true");
+client = mongoc_client_new (\(dqmongodb://localhost:27017/?tls=true\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -824,8 +824,8 @@ MongoDB requires client certificates by default, unless the \fB\-\-tlsAllowConne
 .nf
 .ft C
 mongoc_client_t *client = NULL;
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost:27017/?tls=true");
-mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, "client.pem");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost:27017/?tls=true\(dq);
+mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, \(dqclient.pem\(dq);
 
 client = mongoc_client_new_from_uri (uri);
 .ft P
@@ -835,7 +835,7 @@ client = mongoc_client_new_from_uri (uri);
 .sp
 The client certificate provided by \fBtlsCertificateKeyFile\fP must be issued by one of the server trusted Certificate Authorities listed in \fB\-\-tlsCAFile\fP, or issued by a CA in the native certificate store on the server when omitted.
 .sp
-See configuring_tls for more information on the various TLS related options.
+See \fI\%Configuring TLS\fP for more information on the various TLS related options.
 .SS Compressing data to and from MongoDB
 .sp
 MongoDB 3.4 added Snappy compression support, zlib compression in 3.6, and zstd compression in 4.2.
@@ -846,7 +846,7 @@ To enable compression support the client must be configured with which compresso
 .nf
 .ft C
 mongoc_client_t *client = NULL;
-client = mongoc_client_new ("mongodb://localhost:27017/?compressors=snappy,zlib,zstd");
+client = mongoc_client_new (\(dqmongodb://localhost:27017/?compressors=snappy,zlib,zstd\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -866,7 +866,7 @@ The driver must be built with zlib and/or snappy and/or zstd support to enable c
 support, any unknown (or not compiled in) compressor value will be ignored. Note: to build with zstd requires cmake 3.12 or higher.
 .SS Additional Connection Options
 .sp
-The full list of connection options can be found in the \fBmongoc_uri_t\fP docs.
+The full list of connection options can be found in the \fI\%mongoc_uri_t\fP docs.
 .sp
 Certain socket/connection related options are not configurable:
 .TS
@@ -930,14 +930,14 @@ _
 The MongoDB C driver has two connection modes: single\-threaded and pooled. Single\-threaded mode is optimized for embedding the driver within languages like PHP. Multi\-threaded programs should use pooled mode: this mode minimizes the total connection count, and in pooled mode background threads monitor the MongoDB server topology, so the program need not block to scan it.
 .SS Single Mode
 .sp
-In single mode, your program creates a \fBmongoc_client_t\fP directly:
+In single mode, your program creates a \fI\%mongoc_client_t\fP directly:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
 mongoc_client_t *client = mongoc_client_new (
-   "mongodb://hostA,hostB/?replicaSet=my_rs");
+   \(dqmongodb://hostA,hostB/?replicaSet=my_rs\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -945,19 +945,19 @@ mongoc_client_t *client = mongoc_client_new (
 .sp
 The client connects on demand when your program first uses it for a MongoDB operation. Using a non\-blocking socket per server, it begins a check on each server concurrently, and uses the asynchronous \fBpoll\fP or \fBselect\fP function to receive events from the sockets, until all have responded or timed out. Put another way, in single\-threaded mode the C Driver fans out to begin all checks concurrently, then fans in once all checks have completed or timed out. Once the scan completes, the client executes your program\(aqs operation and returns.
 .sp
-In single mode, the client re\-scans the server topology roughly once per minute. If more than a minute has elapsed since the previous scan, the next operation on the client will block while the client completes its scan. This interval is configurable with \fBheartbeatFrequencyMS\fP in the connection string. (See \fBmongoc_uri_t\fP\&.)
+In single mode, the client re\-scans the server topology roughly once per minute. If more than a minute has elapsed since the previous scan, the next operation on the client will block while the client completes its scan. This interval is configurable with \fBheartbeatFrequencyMS\fP in the connection string. (See \fI\%mongoc_uri_t\fP\&.)
 .sp
 A single client opens one connection per server in your topology: these connections are used both for scanning the topology and performing normal operations.
 .SS Pooled Mode
 .sp
-To activate pooled mode, create a \fBmongoc_client_pool_t\fP:
+To activate pooled mode, create a \fI\%mongoc_client_pool_t\fP:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
 mongoc_uri_t *uri = mongoc_uri_new (
-   "mongodb://hostA,hostB/?replicaSet=my_rs");
+   \(dqmongodb://hostA,hostB/?replicaSet=my_rs\(dq);
 
 mongoc_client_pool_t *pool = mongoc_client_pool_new (uri);
 .ft P
@@ -965,7 +965,7 @@ mongoc_client_pool_t *pool = mongoc_client_pool_new (uri);
 .UNINDENT
 .UNINDENT
 .sp
-When your program first calls \fBmongoc_client_pool_pop\fP, the pool launches monitoring threads in the background. Monitoring threads independently connect to all servers in the connection string. As monitoring threads receive hello responses from the servers, they update the shared view of the server topology. Additional monitoring threads and connections are created as new servers are discovered. Monitoring threads are terminated when servers are removed from the shared view of the server topology.
+When your program first calls \fI\%mongoc_client_pool_pop()\fP, the pool launches monitoring threads in the background. Monitoring threads independently connect to all servers in the connection string. As monitoring threads receive hello responses from the servers, they update the shared view of the server topology. Additional monitoring threads and connections are created as new servers are discovered. Monitoring threads are terminated when servers are removed from the shared view of the server topology.
 .sp
 Each thread that executes MongoDB operations must check out a client from the pool:
 .INDENT 0.0
@@ -983,20 +983,20 @@ mongoc_client_pool_push (pool, client);
 .UNINDENT
 .UNINDENT
 .sp
-The \fBmongoc_client_t\fP object is not thread\-safe, only the \fBmongoc_client_pool_t\fP is.
+The \fI\%mongoc_client_t\fP object is not thread\-safe, only the \fI\%mongoc_client_pool_t\fP is.
 .sp
-When the driver is in pooled mode, your program\(aqs operations are unblocked as soon as monitoring discovers a usable server. For example, if a thread in your program is waiting to execute an "insert" on the primary, it is unblocked as soon as the primary is discovered, rather than waiting for all secondaries to be checked as well.
+When the driver is in pooled mode, your program\(aqs operations are unblocked as soon as monitoring discovers a usable server. For example, if a thread in your program is waiting to execute an \(dqinsert\(dq on the primary, it is unblocked as soon as the primary is discovered, rather than waiting for all secondaries to be checked as well.
 .sp
-The pool opens one connection per server for monitoring, and each client opens its own connection to each server it uses for application operations. Background monitoring threads re\-scan servers independently roughly every 10 seconds. This interval is configurable with \fBheartbeatFrequencyMS\fP in the connection string. (See \fBmongoc_uri_t\fP\&.)
+The pool opens one connection per server for monitoring, and each client opens its own connection to each server it uses for application operations. Background monitoring threads re\-scan servers independently roughly every 10 seconds. This interval is configurable with \fBheartbeatFrequencyMS\fP in the connection string. (See \fI\%mongoc_uri_t\fP\&.)
 .sp
-The connection string can also specify \fBwaitQueueTimeoutMS\fP to limit the time that \fBmongoc_client_pool_pop\fP will wait for a client from the pool.  (See \fBmongoc_uri_t\fP\&.)  If \fBwaitQueueTimeoutMS\fP is specified, then it is necessary to confirm that a client was actually returned:
+The connection string can also specify \fBwaitQueueTimeoutMS\fP to limit the time that \fI\%mongoc_client_pool_pop()\fP will wait for a client from the pool.  (See \fI\%mongoc_uri_t\fP\&.)  If \fBwaitQueueTimeoutMS\fP is specified, then it is necessary to confirm that a client was actually returned:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
 mongoc_uri_t *uri = mongoc_uri_new (
-   "mongodb://hostA,hostB/?replicaSet=my_rs&waitQueueTimeoutMS=1000");
+   \(dqmongodb://hostA,hostB/?replicaSet=my_rs&waitQueueTimeoutMS=1000\(dq);
 
 mongoc_client_pool_t *pool = mongoc_client_pool_new (uri);
 
@@ -1014,7 +1014,7 @@ if (client) {
 .UNINDENT
 .UNINDENT
 .sp
-See connection_pool_options to configure pool size and behavior, and see \fBmongoc_client_pool_t\fP for an extended example of a multi\-threaded program that uses the driver in pooled mode.
+See \fI\%Connection Pool Options\fP to configure pool size and behavior, and see \fI\%mongoc_client_pool_t\fP for an extended example of a multi\-threaded program that uses the driver in pooled mode.
 .SH CURSORS
 .SS Handling Cursor Failures
 .sp
@@ -1039,12 +1039,12 @@ print_all_documents (mongoc_collection_t *collection)
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Failed to iterate all documents: %s\en", error.message);
+      fprintf (stderr, \(dqFailed to iterate all documents: %s\en\(dq, error.message);
    }
 
    mongoc_cursor_destroy (cursor);
@@ -1055,10 +1055,10 @@ print_all_documents (mongoc_collection_t *collection)
 .UNINDENT
 .SS Destroying Server\-Side Cursors
 .sp
-The MongoDB C driver will automatically destroy a server\-side cursor when \fBmongoc_cursor_destroy()\fP is called. Failure to call this function when done with a cursor will leak memory client side as well as consume extra memory server side. If the cursor was configured to never timeout, it will become a memory leak on the server.
+The MongoDB C driver will automatically destroy a server\-side cursor when \fI\%mongoc_cursor_destroy()\fP is called. Failure to call this function when done with a cursor will leak memory client side as well as consume extra memory server side. If the cursor was configured to never timeout, it will become a memory leak on the server.
 .SS Tailable Cursors
 .sp
-Tailable cursors are cursors that remain open even after they\(aqve returned a final result. This way, if more documents are added to a collection (i.e., to the cursor\(aqs result set), then you can continue to call \fBmongoc_cursor_next()\fP to retrieve those additional results.
+Tailable cursors are cursors that remain open even after they\(aqve returned a final result. This way, if more documents are added to a collection (i.e., to the cursor\(aqs result set), then you can continue to call \fI\%mongoc_cursor_next()\fP to retrieve those additional results.
 .sp
 Here\(aqs a complete test case that demonstrates the use of tailable cursors.
 .sp
@@ -1093,7 +1093,7 @@ print_bson (const bson_t *b)
    char *str;
 
    str = bson_as_canonical_extended_json (b, NULL);
-   fprintf (stdout, "%s\en", str);
+   fprintf (stdout, \(dq%s\en\(dq, str);
    bson_free (str);
 }
 
@@ -1109,13 +1109,13 @@ query_collection (mongoc_collection_t *collection, uint32_t last_time)
    BSON_ASSERT (collection);
 
    bson_init (&query);
-   BSON_APPEND_DOCUMENT_BEGIN (&query, "ts", &gt);
-   BSON_APPEND_TIMESTAMP (&gt, "$gt", last_time, 0);
+   BSON_APPEND_DOCUMENT_BEGIN (&query, \(dqts\(dq, &gt);
+   BSON_APPEND_TIMESTAMP (&gt, \(dq$gt\(dq, last_time, 0);
    bson_append_document_end (&query, &gt);
 
    bson_init (&opts);
-   BSON_APPEND_BOOL (&opts, "tailable", true);
-   BSON_APPEND_BOOL (&opts, "awaitData", true);
+   BSON_APPEND_BOOL (&opts, \(dqtailable\(dq, true);
+   BSON_APPEND_BOOL (&opts, \(dqawaitData\(dq, true);
 
    cursor = mongoc_collection_find_with_opts (collection, &query, &opts, NULL);
 
@@ -1144,7 +1144,7 @@ tail_collection (mongoc_collection_t *collection)
       while (!mongoc_cursor_error (cursor, &error) &&
              mongoc_cursor_more (cursor)) {
          if (mongoc_cursor_next (cursor, &doc)) {
-            if (bson_iter_init_find (&iter, doc, "ts") &&
+            if (bson_iter_init_find (&iter, doc, \(dqts\(dq) &&
                 BSON_ITER_HOLDS_TIMESTAMP (&iter)) {
                bson_iter_timestamp (&iter, &last_time, NULL);
             }
@@ -1153,7 +1153,7 @@ tail_collection (mongoc_collection_t *collection)
       }
       if (mongoc_cursor_error (cursor, &error)) {
          if (error.domain == MONGOC_ERROR_SERVER) {
-            fprintf (stderr, "%s\en", error.message);
+            fprintf (stderr, \(dq%s\en\(dq, error.message);
             exit (1);
          }
       }
@@ -1173,7 +1173,7 @@ main (int argc, char *argv[])
    bson_error_t error;
 
    if (argc != 2) {
-      fprintf (stderr, "usage: %s MONGO_URI\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s MONGO_URI\en\(dq, argv[0]);
       return EXIT_FAILURE;
    }
 
@@ -1182,8 +1182,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (argv[1], &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                argv[1],
                error.message);
       return EXIT_FAILURE;
@@ -1196,7 +1196,7 @@ main (int argc, char *argv[])
 
    mongoc_client_set_error_api (client, 2);
 
-   collection = mongoc_client_get_collection (client, "local", "oplog.rs");
+   collection = mongoc_client_get_collection (client, \(dqlocal\(dq, \(dqoplog.rs\(dq);
 
    tail_collection (collection);
 
@@ -1221,21 +1221,21 @@ Let\(aqs compile and run this example against a replica set to see updates as th
 $ gcc \-Wall \-o mongoc\-tail mongoc\-tail.c $(pkg\-config \-\-cflags \-\-libs libmongoc\-1.0)
 $ ./mongoc\-tail mongodb://example.com/?replicaSet=myReplSet
 {
-    "h" : \-8458503739429355503,
-    "ns" : "test.test",
-    "o" : {
-        "_id" : {
-            "$oid" : "5372ab0a25164be923d10d50"
+    \(dqh\(dq : \-8458503739429355503,
+    \(dqns\(dq : \(dqtest.test\(dq,
+    \(dqo\(dq : {
+        \(dq_id\(dq : {
+            \(dq$oid\(dq : \(dq5372ab0a25164be923d10d50\(dq
         }
     },
-    "op" : "i",
-    "ts" : {
-        "$timestamp" : {
-            "i" : 1,
-            "t" : 1400023818
+    \(dqop\(dq : \(dqi\(dq,
+    \(dqts\(dq : {
+        \(dq$timestamp\(dq : {
+            \(dqi\(dq : 1,
+            \(dqt\(dq : 1400023818
         }
     },
-    "v" : 2
+    \(dqv\(dq : 2
 }
 .ft P
 .fi
@@ -1248,7 +1248,7 @@ The line of output is a sample from performing \fBdb.test.insert({})\fP from the
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_cursor_set_max_await_time_ms\fP\&.
+\fI\%mongoc_cursor_set_max_await_time_ms()\fP\&.
 .fi
 .sp
 .UNINDENT
@@ -1258,7 +1258,7 @@ The line of output is a sample from performing \fBdb.test.insert({})\fP from the
 This tutorial explains how to take advantage of MongoDB C driver bulk write operation features. Executing write operations in batches reduces the number of network round trips, increasing write throughput.
 .SS Bulk Insert
 .sp
-First we need to fetch a bulk operation handle from the \fBmongoc_collection_t\fP\&.
+First we need to fetch a bulk operation handle from the \fI\%mongoc_collection_t\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -1273,9 +1273,9 @@ mongoc_bulk_operation_t *bulk =
 .sp
 We can now start inserting documents to the bulk operation. These will be buffered until we execute the operation.
 .sp
-The bulk operation will coalesce insertions as a single batch for each consecutive call to \fBmongoc_bulk_operation_insert()\fP\&. This creates a pipelined effect when possible.
+The bulk operation will coalesce insertions as a single batch for each consecutive call to \fI\%mongoc_bulk_operation_insert()\fP\&. This creates a pipelined effect when possible.
 .sp
-To execute the bulk operation and receive the result we call \fBmongoc_bulk_operation_execute()\fP\&.
+To execute the bulk operation and receive the result we call \fI\%mongoc_bulk_operation_execute()\fP\&.
 .sp
 bulk1.c
 .INDENT 0.0
@@ -1301,7 +1301,7 @@ bulk1 (mongoc_collection_t *collection)
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
    for (i = 0; i < 10000; i++) {
-      doc = BCON_NEW ("i", BCON_INT32 (i));
+      doc = BCON_NEW (\(dqi\(dq, BCON_INT32 (i));
       mongoc_bulk_operation_insert (bulk, doc);
       bson_destroy (doc);
    }
@@ -1309,11 +1309,11 @@ bulk1 (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      fprintf (stderr, "Error: %s\en", error.message);
+      fprintf (stderr, \(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -1321,11 +1321,11 @@ bulk1 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk1\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk1\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -1334,8 +1334,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -1347,7 +1347,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk1 (collection);
 
@@ -1371,13 +1371,13 @@ Example \fBreply\fP document:
 .sp
 .nf
 .ft C
-{"nInserted"   : 10000,
- "nMatched"    : 0,
- "nModified"   : 0,
- "nRemoved"    : 0,
- "nUpserted"   : 0,
- "writeErrors" : []
- "writeConcernErrors" : [] }
+{\(dqnInserted\(dq   : 10000,
+ \(dqnMatched\(dq    : 0,
+ \(dqnModified\(dq   : 0,
+ \(dqnRemoved\(dq    : 0,
+ \(dqnUpserted\(dq   : 0,
+ \(dqwriteErrors\(dq : []
+ \(dqwriteConcernErrors\(dq : [] }
 .ft P
 .fi
 .UNINDENT
@@ -1421,30 +1421,30 @@ bulk2 (mongoc_collection_t *collection)
 
    /* Add a few documents */
    for (i = 1; i < 4; i++) {
-      doc = BCON_NEW ("_id", BCON_INT32 (i));
+      doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (i));
       mongoc_bulk_operation_insert (bulk, doc);
       bson_destroy (doc);
    }
 
-   /* {_id: 1} => {$set: {foo: "bar"}} */
-   query = BCON_NEW ("_id", BCON_INT32 (1));
-   doc = BCON_NEW ("$set", "{", "foo", BCON_UTF8 ("bar"), "}");
+   /* {_id: 1} => {$set: {foo: \(dqbar\(dq}} */
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (1));
+   doc = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqfoo\(dq, BCON_UTF8 (\(dqbar\(dq), \(dq}\(dq);
    mongoc_bulk_operation_update_many_with_opts (bulk, query, doc, NULL, &error);
    bson_destroy (query);
    bson_destroy (doc);
 
    /* {_id: 4} => {\(aq$inc\(aq: {\(aqj\(aq: 1}} (upsert) */
-   opts = BCON_NEW ("upsert", BCON_BOOL (true));
-   query = BCON_NEW ("_id", BCON_INT32 (4));
-   doc = BCON_NEW ("$inc", "{", "j", BCON_INT32 (1), "}");
+   opts = BCON_NEW (\(dqupsert\(dq, BCON_BOOL (true));
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (4));
+   doc = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqj\(dq, BCON_INT32 (1), \(dq}\(dq);
    mongoc_bulk_operation_update_many_with_opts (bulk, query, doc, opts, &error);
    bson_destroy (query);
    bson_destroy (doc);
    bson_destroy (opts);
 
    /* replace {j:1} with {j:2} */
-   query = BCON_NEW ("j", BCON_INT32 (1));
-   doc = BCON_NEW ("j", BCON_INT32 (2));
+   query = BCON_NEW (\(dqj\(dq, BCON_INT32 (1));
+   doc = BCON_NEW (\(dqj\(dq, BCON_INT32 (2));
    mongoc_bulk_operation_replace_one_with_opts (bulk, query, doc, NULL, &error);
    bson_destroy (query);
    bson_destroy (doc);
@@ -1452,11 +1452,11 @@ bulk2 (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -1464,11 +1464,11 @@ bulk2 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk2\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk2\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -1477,8 +1477,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -1490,7 +1490,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk2 (collection);
 
@@ -1514,14 +1514,14 @@ Example \fBreply\fP document:
 .sp
 .nf
 .ft C
-{ "nInserted"   : 3,
-  "nMatched"    : 2,
-  "nModified"   : 2,
-  "nRemoved"    : 10000,
-  "nUpserted"   : 1,
-  "upserted"    : [{"index" : 5, "_id" : 4}],
-  "writeErrors" : []
-  "writeConcernErrors" : [] }
+{ \(dqnInserted\(dq   : 3,
+  \(dqnMatched\(dq    : 2,
+  \(dqnModified\(dq   : 2,
+  \(dqnRemoved\(dq    : 10000,
+  \(dqnUpserted\(dq   : 1,
+  \(dqupserted\(dq    : [{\(dqindex\(dq : 5, \(dq_id\(dq : 4}],
+  \(dqwriteErrors\(dq : []
+  \(dqwriteConcernErrors\(dq : [] }
 .ft P
 .fi
 .UNINDENT
@@ -1557,28 +1557,28 @@ bulk3 (mongoc_collection_t *collection)
    bool ret;
 
    /* false indicates unordered */
-   BSON_APPEND_BOOL (&opts, "ordered", false);
+   BSON_APPEND_BOOL (&opts, \(dqordered\(dq, false);
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, &opts);
    bson_destroy (&opts);
 
    /* Add a document */
-   doc = BCON_NEW ("_id", BCON_INT32 (1));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (1));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    /* remove {_id: 2} */
-   query = BCON_NEW ("_id", BCON_INT32 (2));
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (2));
    mongoc_bulk_operation_remove_one (bulk, query);
    bson_destroy (query);
 
    /* insert {_id: 3} */
-   doc = BCON_NEW ("_id", BCON_INT32 (3));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (3));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    /* replace {_id:4} {\(aqi\(aq: 1} */
-   query = BCON_NEW ("_id", BCON_INT32 (4));
-   doc = BCON_NEW ("i", BCON_INT32 (1));
+   query = BCON_NEW (\(dq_id\(dq, BCON_INT32 (4));
+   doc = BCON_NEW (\(dqi\(dq, BCON_INT32 (1));
    mongoc_bulk_operation_replace_one (bulk, query, doc, false);
    bson_destroy (query);
    bson_destroy (doc);
@@ -1586,11 +1586,11 @@ bulk3 (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -1599,11 +1599,11 @@ bulk3 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk3\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk3\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -1612,8 +1612,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -1625,7 +1625,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk3 (collection);
 
@@ -1649,19 +1649,19 @@ Example \fBreply\fP document:
 .sp
 .nf
 .ft C
-{ "nInserted"    : 0,
-  "nMatched"     : 1,
-  "nModified"    : 1,
-  "nRemoved"     : 1,
-  "nUpserted"    : 0,
-  "writeErrors"  : [
-    { "index"  : 0,
-      "code"   : 11000,
-      "errmsg" : "E11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }" },
-    { "index"  : 2,
-      "code"   : 11000,
-      "errmsg" : "E11000 duplicate key error index: test.test.$_id_ dup key: { : 3 }" } ],
-  "writeConcernErrors" : [] }
+{ \(dqnInserted\(dq    : 0,
+  \(dqnMatched\(dq     : 1,
+  \(dqnModified\(dq    : 1,
+  \(dqnRemoved\(dq     : 1,
+  \(dqnUpserted\(dq    : 0,
+  \(dqwriteErrors\(dq  : [
+    { \(dqindex\(dq  : 0,
+      \(dqcode\(dq   : 11000,
+      \(dqerrmsg\(dq : \(dqE11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }\(dq },
+    { \(dqindex\(dq  : 2,
+      \(dqcode\(dq   : 11000,
+      \(dqerrmsg\(dq : \(dqE11000 duplicate key error index: test.test.$_id_ dup key: { : 3 }\(dq } ],
+  \(dqwriteConcernErrors\(dq : [] }
 
 Error: E11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }
 .ft P
@@ -1669,7 +1669,7 @@ Error: E11000 duplicate key error index: test.test.$_id_ dup key: { : 1 }
 .UNINDENT
 .UNINDENT
 .sp
-The \fBbson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP and its code is 11000.
+The \fI\%bson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP and its code is 11000.
 .SS Bulk Operation Bypassing Document Validation
 .sp
 This feature is only available when using MongoDB 3.2 and later.
@@ -1699,11 +1699,11 @@ bulk5_fail (mongoc_collection_t *collection)
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
    /* Two inserts */
-   doc = BCON_NEW ("_id", BCON_INT32 (31));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (31));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (32));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (32));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
@@ -1712,11 +1712,11 @@ bulk5_fail (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -1737,26 +1737,26 @@ bulk5_success (mongoc_collection_t *collection)
 
    /* Allow this document to bypass document validation.
     * NOTE: When authentication is enabled, the authenticated user must have
-    * either the "dbadmin" or "restore" roles to bypass document validation */
+    * either the \(dqdbadmin\(dq or \(dqrestore\(dq roles to bypass document validation */
    mongoc_bulk_operation_set_bypass_document_validation (bulk, true);
 
    /* Two inserts */
-   doc = BCON_NEW ("_id", BCON_INT32 (31));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (31));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (32));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (32));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -1764,14 +1764,14 @@ bulk5_success (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    bson_t *options;
    bson_error_t error;
    mongoc_client_t *client;
    mongoc_collection_t *collection;
    mongoc_database_t *database;
-   const char *uri_string = "mongodb://localhost/?appname=bulk5\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk5\-example\(dq;
    mongoc_uri_t *uri;
 
    mongoc_init ();
@@ -1779,8 +1779,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -1792,20 +1792,20 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "testasdf");
+   database = mongoc_client_get_database (client, \(dqtestasdf\(dq);
 
    /* Create schema validator */
    options = BCON_NEW (
-      "validator", "{", "number", "{", "$gte", BCON_INT32 (5), "}", "}");
+      \(dqvalidator\(dq, \(dq{\(dq, \(dqnumber\(dq, \(dq{\(dq, \(dq$gte\(dq, BCON_INT32 (5), \(dq}\(dq, \(dq}\(dq);
    collection =
-      mongoc_database_create_collection (database, "collname", options, &error);
+      mongoc_database_create_collection (database, \(dqcollname\(dq, options, &error);
 
    if (collection) {
       bulk5_fail (collection);
       bulk5_success (collection);
       mongoc_collection_destroy (collection);
    } else {
-      fprintf (stderr, "Couldn\(aqt create collection: \(aq%s\(aq\en", error.message);
+      fprintf (stderr, \(dqCouldn\(aqt create collection: \(aq%s\(aq\en\(dq, error.message);
    }
 
    bson_free (options);
@@ -1829,33 +1829,33 @@ Running the above example will result in:
 .sp
 .nf
 .ft C
-{ "nInserted" : 0,
-  "nMatched" : 0,
-  "nModified" : 0,
-  "nRemoved" : 0,
-  "nUpserted" : 0,
-  "writeErrors" : [
-    { "index" : 0,
-      "code" : 121,
-      "errmsg" : "Document failed validation" } ] }
+{ \(dqnInserted\(dq : 0,
+  \(dqnMatched\(dq : 0,
+  \(dqnModified\(dq : 0,
+  \(dqnRemoved\(dq : 0,
+  \(dqnUpserted\(dq : 0,
+  \(dqwriteErrors\(dq : [
+    { \(dqindex\(dq : 0,
+      \(dqcode\(dq : 121,
+      \(dqerrmsg\(dq : \(dqDocument failed validation\(dq } ] }
 
 Error: Document failed validation
 
-{ "nInserted" : 2,
-  "nMatched" : 0,
-  "nModified" : 0,
-  "nRemoved" : 0,
-  "nUpserted" : 0,
-  "writeErrors" : [] }
+{ \(dqnInserted\(dq : 2,
+  \(dqnMatched\(dq : 0,
+  \(dqnModified\(dq : 0,
+  \(dqnRemoved\(dq : 0,
+  \(dqnUpserted\(dq : 0,
+  \(dqwriteErrors\(dq : [] }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-The \fBbson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP\&.
+The \fI\%bson_error_t\fP domain is \fBMONGOC_ERROR_COMMAND\fP\&.
 .SS Bulk Operation Write Concerns
 .sp
-By default bulk operations are executed with the \fBwrite_concern\fP of the collection they are executed against. A custom write concern can be passed to the \fBmongoc_collection_create_bulk_operation_with_opts()\fP method. Write concern errors (e.g. wtimeout) will be reported after all operations are attempted, regardless of execution order.
+By default bulk operations are executed with the \fI\%write_concern\fP of the collection they are executed against. A custom write concern can be passed to the \fI\%mongoc_collection_create_bulk_operation_with_opts()\fP method. Write concern errors (e.g. wtimeout) will be reported after all operations are attempted, regardless of execution order.
 .sp
 bulk4.c
 .INDENT 0.0
@@ -1887,22 +1887,22 @@ bulk4 (mongoc_collection_t *collection)
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, &opts);
 
    /* Two inserts */
-   doc = BCON_NEW ("_id", BCON_INT32 (10));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (10));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (11));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (11));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -1912,11 +1912,11 @@ bulk4 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk4\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk4\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -1925,8 +1925,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -1938,7 +1938,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk4 (collection);
 
@@ -1962,15 +1962,15 @@ Example \fBreply\fP document and error message:
 .sp
 .nf
 .ft C
-{ "nInserted"    : 2,
-  "nMatched"     : 0,
-  "nModified"    : 0,
-  "nRemoved"     : 0,
-  "nUpserted"    : 0,
-  "writeErrors"  : [],
-  "writeConcernErrors" : [
-    { "code"   : 64,
-      "errmsg" : "waiting for replication timed out" }
+{ \(dqnInserted\(dq    : 2,
+  \(dqnMatched\(dq     : 0,
+  \(dqnModified\(dq    : 0,
+  \(dqnRemoved\(dq     : 0,
+  \(dqnUpserted\(dq    : 0,
+  \(dqwriteErrors\(dq  : [],
+  \(dqwriteConcernErrors\(dq : [
+    { \(dqcode\(dq   : 64,
+      \(dqerrmsg\(dq : \(dqwaiting for replication timed out\(dq }
 ] }
 
 Error: waiting for replication timed out
@@ -1979,7 +1979,7 @@ Error: waiting for replication timed out
 .UNINDENT
 .UNINDENT
 .sp
-The \fBbson_error_t\fP domain is \fBMONGOC_ERROR_WRITE_CONCERN\fP if there are write concern errors and no write errors. Write errors indicate failed operations, so they take precedence over write concern errors, which mean merely that the write concern is not satisfied \fIyet\fP\&.
+The \fI\%bson_error_t\fP domain is \fBMONGOC_ERROR_WRITE_CONCERN\fP if there are write concern errors and no write errors. Write errors indicate failed operations, so they take precedence over write concern errors, which mean merely that the write concern is not satisfied \fIyet\fP\&.
 .SS Setting Collation Order
 .sp
 This feature is only available when using MongoDB 3.4 and later.
@@ -2006,40 +2006,39 @@ bulk_collation (mongoc_collection_t *collection)
    char *str;
    uint32_t ret;
 
-   /* insert {_id: "one"} and {_id: "One"} */
-   bulk = mongoc_collection_create_bulk_operation_with_opts (
-      collection, NULL);
-   doc = BCON_NEW ("_id", BCON_UTF8 ("one"));
+   /* insert {_id: \(dqone\(dq} and {_id: \(dqOne\(dq} */
+   bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
+   doc = BCON_NEW (\(dq_id\(dq, BCON_UTF8 (\(dqone\(dq));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   doc = BCON_NEW ("_id", BCON_UTF8 ("One"));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_UTF8 (\(dqOne\(dq));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   /* "One" normally sorts before "one"; make "one" come first */
-   opts = BCON_NEW ("collation",
-                    "{",
-                    "locale",
-                    BCON_UTF8 ("en_US"),
-                    "caseFirst",
-                    BCON_UTF8 ("lower"),
-                    "}");
+   /* \(dqOne\(dq normally sorts before \(dqone\(dq; make \(dqone\(dq come first */
+   opts = BCON_NEW (\(dqcollation\(dq,
+                    \(dq{\(dq,
+                    \(dqlocale\(dq,
+                    BCON_UTF8 (\(dqen_US\(dq),
+                    \(dqcaseFirst\(dq,
+                    BCON_UTF8 (\(dqlower\(dq),
+                    \(dq}\(dq);
 
-   /* set x=1 on the document with _id "One", which now sorts after "one" */
-   update = BCON_NEW ("$set", "{", "x", BCON_INT64 (1), "}");
-   selector = BCON_NEW ("_id", "{", "$gt", BCON_UTF8 ("one"), "}");
+   /* set x=1 on the document with _id \(dqOne\(dq, which now sorts after \(dqone\(dq */
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqx\(dq, BCON_INT64 (1), \(dq}\(dq);
+   selector = BCON_NEW (\(dq_id\(dq, \(dq{\(dq, \(dq$gt\(dq, BCON_UTF8 (\(dqone\(dq), \(dq}\(dq);
    mongoc_bulk_operation_update_one_with_opts (
       bulk, selector, update, opts, &error);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -2050,11 +2049,11 @@ bulk_collation (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk\-collation";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk\-collation\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -2063,8 +2062,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -2076,7 +2075,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "db", "collection");
+   collection = mongoc_client_get_collection (client, \(dqdb\(dq, \(dqcollection\(dq);
    bulk_collation (collection);
 
    mongoc_uri_destroy (uri);
@@ -2099,12 +2098,12 @@ Running the above example will result in:
 .sp
 .nf
 .ft C
-{ "nInserted" : 2,
-   "nMatched" : 1,
-   "nModified" : 1,
-   "nRemoved" : 0,
-   "nUpserted" : 0,
-   "writeErrors" : [  ]
+{ \(dqnInserted\(dq : 2,
+   \(dqnMatched\(dq : 1,
+   \(dqnModified\(dq : 1,
+   \(dqnRemoved\(dq : 0,
+   \(dqnUpserted\(dq : 0,
+   \(dqwriteErrors\(dq : [  ]
 }
 .ft P
 .fi
@@ -2112,7 +2111,7 @@ Running the above example will result in:
 .UNINDENT
 .SS Unacknowledged Bulk Writes
 .sp
-Set "w" to zero for an unacknowledged write. The driver sends unacknowledged writes using the legacy opcodes \fBOP_INSERT\fP, \fBOP_UPDATE\fP, and \fBOP_DELETE\fP\&.
+Set \(dqw\(dq to zero for an unacknowledged write. The driver sends unacknowledged writes using the legacy opcodes \fBOP_INSERT\fP, \fBOP_UPDATE\fP, and \fBOP_DELETE\fP\&.
 .sp
 bulk6.c
 .INDENT 0.0
@@ -2142,22 +2141,22 @@ bulk6 (mongoc_collection_t *collection)
 
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, &opts);
 
-   doc = BCON_NEW ("_id", BCON_INT32 (10));
+   doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (10));
    mongoc_bulk_operation_insert (bulk, doc);
    bson_destroy (doc);
 
-   selector = BCON_NEW ("_id", BCON_INT32 (11));
+   selector = BCON_NEW (\(dq_id\(dq, BCON_INT32 (11));
    mongoc_bulk_operation_remove_one (bulk, selector);
    bson_destroy (selector);
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
    str = bson_as_canonical_extended_json (&reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    if (!ret) {
-      printf ("Error: %s\en", error.message);
+      printf (\(dqError: %s\en\(dq, error.message);
    }
 
    bson_destroy (&reply);
@@ -2167,11 +2166,11 @@ bulk6 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
-   const char *uri_string = "mongodb://localhost/?appname=bulk6\-example";
+   const char *uri_string = \(dqmongodb://localhost/?appname=bulk6\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -2180,8 +2179,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -2193,7 +2192,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "test");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqtest\(dq);
 
    bulk6 (collection);
 
@@ -2258,14 +2257,14 @@ connecting to: test
 29467
 > db.zipcodes.findOne()
 {
-      "_id" : "35004",
-      "city" : "ACMAR",
-      "loc" : [
+      \(dq_id\(dq : \(dq35004\(dq,
+      \(dqcity\(dq : \(dqACMAR\(dq,
+      \(dqloc\(dq : [
               \-86.51557,
               33.584132
       ],
-      "pop" : 6055,
-      "state" : "AL"
+      \(dqpop\(dq : 6055,
+      \(dqstate\(dq : \(dqAL\(dq
 }
 .ft P
 .fi
@@ -2280,11 +2279,11 @@ Each document in this collection has the following form:
 .nf
 .ft C
 {
-  "_id" : "35004",
-  "city" : "Acmar",
-  "state" : "AL",
-  "pop" : 6055,
-  "loc" : [\-86.51557, 33.584132]
+  \(dq_id\(dq : \(dq35004\(dq,
+  \(dqcity\(dq : \(dqAcmar\(dq,
+  \(dqstate\(dq : \(dqAL\(dq,
+  \(dqpop\(dq : 6055,
+  \(dqloc\(dq : [\-86.51557, 33.584132]
 }
 .ft P
 .fi
@@ -2326,43 +2325,43 @@ print_pipeline (mongoc_collection_t *collection)
    bson_t *pipeline;
    char *str;
 
-   pipeline = BCON_NEW ("pipeline",
-                        "[",
-                        "{",
-                        "$group",
-                        "{",
-                        "_id",
-                        "$state",
-                        "total_pop",
-                        "{",
-                        "$sum",
-                        "$pop",
-                        "}",
-                        "}",
-                        "}",
-                        "{",
-                        "$match",
-                        "{",
-                        "total_pop",
-                        "{",
-                        "$gte",
+   pipeline = BCON_NEW (\(dqpipeline\(dq,
+                        \(dq[\(dq,
+                        \(dq{\(dq,
+                        \(dq$group\(dq,
+                        \(dq{\(dq,
+                        \(dq_id\(dq,
+                        \(dq$state\(dq,
+                        \(dqtotal_pop\(dq,
+                        \(dq{\(dq,
+                        \(dq$sum\(dq,
+                        \(dq$pop\(dq,
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq{\(dq,
+                        \(dq$match\(dq,
+                        \(dq{\(dq,
+                        \(dqtotal_pop\(dq,
+                        \(dq{\(dq,
+                        \(dq$gte\(dq,
                         BCON_INT32 (10000000),
-                        "}",
-                        "}",
-                        "}",
-                        "]");
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq]\(dq);
 
    cursor = mongoc_collection_aggregate (
       collection, MONGOC_QUERY_NONE, pipeline, NULL, NULL);
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Cursor Failure: %s\en", error.message);
+      fprintf (stderr, \(dqCursor Failure: %s\en\(dq, error.message);
    }
 
    mongoc_cursor_destroy (cursor);
@@ -2370,12 +2369,12 @@ print_pipeline (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
    const char *uri_string =
-      "mongodb://localhost:27017/?appname=aggregation\-example";
+      \(dqmongodb://localhost:27017/?appname=aggregation\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -2384,8 +2383,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -2397,7 +2396,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "zipcodes");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqzipcodes\(dq);
 
    print_pipeline (collection);
 
@@ -2421,13 +2420,13 @@ You should see a result like the following:
 .sp
 .nf
 .ft C
-{ "_id" : "PA", "total_pop" : 11881643 }
-{ "_id" : "OH", "total_pop" : 10847115 }
-{ "_id" : "NY", "total_pop" : 17990455 }
-{ "_id" : "FL", "total_pop" : 12937284 }
-{ "_id" : "TX", "total_pop" : 16986510 }
-{ "_id" : "IL", "total_pop" : 11430472 }
-{ "_id" : "CA", "total_pop" : 29760021 }
+{ \(dq_id\(dq : \(dqPA\(dq, \(dqtotal_pop\(dq : 11881643 }
+{ \(dq_id\(dq : \(dqOH\(dq, \(dqtotal_pop\(dq : 10847115 }
+{ \(dq_id\(dq : \(dqNY\(dq, \(dqtotal_pop\(dq : 17990455 }
+{ \(dq_id\(dq : \(dqFL\(dq, \(dqtotal_pop\(dq : 12937284 }
+{ \(dq_id\(dq : \(dqTX\(dq, \(dqtotal_pop\(dq : 16986510 }
+{ \(dq_id\(dq : \(dqIL\(dq, \(dqtotal_pop\(dq : 11430472 }
+{ \(dq_id\(dq : \(dqCA\(dq, \(dqtotal_pop\(dq : 29760021 }
 .ft P
 .fi
 .UNINDENT
@@ -2443,7 +2442,7 @@ The \fB$group\fP process reads all documents and for each state it creates a sep
 .sp
 .nf
 .ft C
-{ "_id" : "WA", "total_pop" : 4866692 }
+{ \(dq_id\(dq : \(dqWA\(dq, \(dqtotal_pop\(dq : 4866692 }
 .ft P
 .fi
 .UNINDENT
@@ -2460,12 +2459,12 @@ To get the first three states with the greatest average population per city, use
 .sp
 .nf
 .ft C
-pipeline = BCON_NEW ("pipeline", "[",
-   "{", "$group", "{", "_id", "{", "state", "$state", "city", "$city", "}", "pop", "{", "$sum", "$pop", "}", "}", "}",
-   "{", "$group", "{", "_id", "$_id.state", "avg_city_pop", "{", "$avg", "$pop", "}", "}", "}",
-   "{", "$sort", "{", "avg_city_pop", BCON_INT32 (\-1), "}", "}",
-   "{", "$limit", BCON_INT32 (3) "}",
-"]");
+pipeline = BCON_NEW (\(dqpipeline\(dq, \(dq[\(dq,
+   \(dq{\(dq, \(dq$group\(dq, \(dq{\(dq, \(dq_id\(dq, \(dq{\(dq, \(dqstate\(dq, \(dq$state\(dq, \(dqcity\(dq, \(dq$city\(dq, \(dq}\(dq, \(dqpop\(dq, \(dq{\(dq, \(dq$sum\(dq, \(dq$pop\(dq, \(dq}\(dq, \(dq}\(dq, \(dq}\(dq,
+   \(dq{\(dq, \(dq$group\(dq, \(dq{\(dq, \(dq_id\(dq, \(dq$_id.state\(dq, \(dqavg_city_pop\(dq, \(dq{\(dq, \(dq$avg\(dq, \(dq$pop\(dq, \(dq}\(dq, \(dq}\(dq, \(dq}\(dq,
+   \(dq{\(dq, \(dq$sort\(dq, \(dq{\(dq, \(dqavg_city_pop\(dq, BCON_INT32 (\-1), \(dq}\(dq, \(dq}\(dq,
+   \(dq{\(dq, \(dq$limit\(dq, BCON_INT32 (3) \(dq}\(dq,
+\(dq]\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -2477,9 +2476,9 @@ This aggregate pipeline produces:
 .sp
 .nf
 .ft C
-{ "_id" : "DC", "avg_city_pop" : 303450.0 }
-{ "_id" : "FL", "avg_city_pop" : 27942.29805615551 }
-{ "_id" : "CA", "avg_city_pop" : 27735.341099720412 }
+{ \(dq_id\(dq : \(dqDC\(dq, \(dqavg_city_pop\(dq : 303450.0 }
+{ \(dq_id\(dq : \(dqFL\(dq, \(dqavg_city_pop\(dq : 27942.29805615551 }
+{ \(dq_id\(dq : \(dqCA\(dq, \(dqavg_city_pop\(dq : 27735.341099720412 }
 .ft P
 .fi
 .UNINDENT
@@ -2493,7 +2492,7 @@ The first \fB$group\fP operator creates the following documents:
 .sp
 .nf
 .ft C
-{ "_id" : { "state" : "WY", "city" : "Smoot" }, "pop" : 414 }
+{ \(dq_id\(dq : { \(dqstate\(dq : \(dqWY\(dq, \(dqcity\(dq : \(dqSmoot\(dq }, \(dqpop\(dq : 414 }
 .ft P
 .fi
 .UNINDENT
@@ -2507,7 +2506,7 @@ The second \fB$group\fP uses these documents to create the following documents:
 .sp
 .nf
 .ft C
-{ "_id" : "FL", "avg_city_pop" : 27942.29805615551 }
+{ \(dq_id\(dq : \(dqFL\(dq, \(dqavg_city_pop\(dq : 27942.29805615551 }
 .ft P
 .fi
 .UNINDENT
@@ -2543,11 +2542,11 @@ insert_data (mongoc_collection_t *collection)
 
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
-   docs[0] = BCON_NEW ("x", BCON_DOUBLE (1.0), "tags", "[", "dog", "cat", "]");
-   docs[1] = BCON_NEW ("x", BCON_DOUBLE (2.0), "tags", "[", "cat", "]");
+   docs[0] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (1.0), \(dqtags\(dq, \(dq[\(dq, \(dqdog\(dq, \(dqcat\(dq, \(dq]\(dq);
+   docs[1] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqcat\(dq, \(dq]\(dq);
    docs[2] = BCON_NEW (
-      "x", BCON_DOUBLE (2.0), "tags", "[", "mouse", "cat", "dog", "]");
-   docs[3] = BCON_NEW ("x", BCON_DOUBLE (3.0), "tags", "[", "]");
+      \(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqmouse\(dq, \(dqcat\(dq, \(dqdog\(dq, \(dq]\(dq);
+   docs[3] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (3.0), \(dqtags\(dq, \(dq[\(dq, \(dq]\(dq);
 
    for (i = 0; i < ndocs; i++) {
       mongoc_bulk_operation_insert (bulk, docs[i]);
@@ -2558,7 +2557,7 @@ insert_data (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, NULL, &error);
 
    if (!ret) {
-      fprintf (stderr, "Error inserting data: %s\en", error.message);
+      fprintf (stderr, \(dqError inserting data: %s\en\(dq, error.message);
    }
 
    mongoc_bulk_operation_destroy (bulk);
@@ -2572,7 +2571,7 @@ print_res (const bson_t *reply)
    char *str;
    BSON_ASSERT (reply);
    str = bson_as_canonical_extended_json (reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 }
 
@@ -2580,7 +2579,7 @@ print_res (const bson_t *reply)
 .fi
 .UNINDENT
 .UNINDENT
-.SS "distinct" command
+.SS \(dqdistinct\(dq command
 .sp
 This is how to use the \fBdistinct\fP command to get the distinct values of \fBx\fP which are greater than \fB1\fP:
 .sp
@@ -2601,37 +2600,37 @@ distinct (mongoc_database_t *database)
    bson_iter_t array_iter;
    double val;
 
-   command = BCON_NEW ("distinct",
+   command = BCON_NEW (\(dqdistinct\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "key",
-                       BCON_UTF8 ("x"),
-                       "query",
-                       "{",
-                       "x",
-                       "{",
-                       "$gt",
+                       \(dqkey\(dq,
+                       BCON_UTF8 (\(dqx\(dq),
+                       \(dqquery\(dq,
+                       \(dq{\(dq,
+                       \(dqx\(dq,
+                       \(dq{\(dq,
+                       \(dq$gt\(dq,
                        BCON_DOUBLE (1.0),
-                       "}",
-                       "}");
+                       \(dq}\(dq,
+                       \(dq}\(dq);
    res =
       mongoc_database_command_simple (database, command, NULL, &reply, &error);
    if (!res) {
-      fprintf (stderr, "Error with distinct: %s\en", error.message);
+      fprintf (stderr, \(dqError with distinct: %s\en\(dq, error.message);
       goto cleanup;
    }
 
    /* Do something with reply (in this case iterate through the values) */
-   if (!(bson_iter_init_find (&iter, &reply, "values") &&
+   if (!(bson_iter_init_find (&iter, &reply, \(dqvalues\(dq) &&
          BSON_ITER_HOLDS_ARRAY (&iter) &&
          bson_iter_recurse (&iter, &array_iter))) {
-      fprintf (stderr, "Couldn\(aqt extract \e"values\e" field from response\en");
+      fprintf (stderr, \(dqCouldn\(aqt extract \e\(dqvalues\e\(dq field from response\en\(dq);
       goto cleanup;
    }
 
    while (bson_iter_next (&array_iter)) {
       if (BSON_ITER_HOLDS_DOUBLE (&array_iter)) {
          val = bson_iter_double (&array_iter);
-         printf ("Next double: %f\en", val);
+         printf (\(dqNext double: %f\en\(dq, val);
       }
    }
 
@@ -2646,9 +2645,9 @@ cleanup:
 .fi
 .UNINDENT
 .UNINDENT
-.SS "mapReduce" \- basic example
+.SS \(dqmapReduce\(dq \- basic example
 .sp
-A simple example using the map reduce framework. It simply adds up the number of occurrences of each "tag".
+A simple example using the map reduce framework. It simply adds up the number of occurrences of each \(dqtag\(dq.
 .sp
 First define the \fBmap\fP and \fBreduce\fP functions:
 .sp
@@ -2658,25 +2657,25 @@ constants.c
 .sp
 .nf
 .ft C
-const char *const COLLECTION_NAME = "things";
+const char *const COLLECTION_NAME = \(dqthings\(dq;
 
 /* Our map function just emits a single (key, 1) pair for each tag
    in the array: */
-const char *const MAPPER = "function () {"
-                           "this.tags.forEach(function(z) {"
-                           "emit(z, 1);"
-                           "});"
-                           "}";
+const char *const MAPPER = \(dqfunction () {\(dq
+                           \(dqthis.tags.forEach(function(z) {\(dq
+                           \(dqemit(z, 1);\(dq
+                           \(dq});\(dq
+                           \(dq}\(dq;
 
 /* The reduce function sums over all of the emitted values for a
    given key: */
-const char *const REDUCER = "function (key, values) {"
-                            "var total = 0;"
-                            "for (var i = 0; i < values.length; i++) {"
-                            "total += values[i];"
-                            "}"
-                            "return total;"
-                            "}";
+const char *const REDUCER = \(dqfunction (key, values) {\(dq
+                            \(dqvar total = 0;\(dq
+                            \(dqfor (var i = 0; i < values.length; i++) {\(dq
+                            \(dqtotal += values[i];\(dq
+                            \(dq}\(dq
+                            \(dqreturn total;\(dq
+                            \(dq}\(dq;
 /* Note We can\(aqt just return values.length as the reduce function
    might be called iteratively on the results of other reduce
    steps. */
@@ -2686,8 +2685,8 @@ const char *const REDUCER = "function (key, values) {"
 .UNINDENT
 .UNINDENT
 .sp
-Run the \fBmapReduce\fP command. Use the generic command helpers (e.g. \fBmongoc_database_command_simple()\fP).
-Do not the read command helpers (e.g. \fBmongoc_database_read_command_with_opts()\fP) because they are considered
+Run the \fBmapReduce\fP command. Use the generic command helpers (e.g. \fI\%mongoc_database_command_simple()\fP).
+Do not the read command helpers (e.g. \fI\%mongoc_database_read_command_with_opts()\fP) because they are considered
 retryable read operations. If retryable reads are enabled, those operations will retry once on a retryable error,
 giving undesirable behavior for \fBmapReduce\fP\&.
 .sp
@@ -2709,7 +2708,7 @@ map_reduce_basic (mongoc_database_t *database)
 
    bool query_done = false;
 
-   const char *out_collection_name = "outCollection";
+   const char *out_collection_name = \(dqoutCollection\(dq;
    mongoc_collection_t *out_collection;
 
    /* Empty find query */
@@ -2717,21 +2716,21 @@ map_reduce_basic (mongoc_database_t *database)
 
    /* Construct the mapReduce command */
 
-   /* Other arguments can also be specified here, like "query" or
-      "limit" and so on */
-   command = BCON_NEW ("mapReduce",
+   /* Other arguments can also be specified here, like \(dqquery\(dq or
+      \(dqlimit\(dq and so on */
+   command = BCON_NEW (\(dqmapReduce\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "map",
+                       \(dqmap\(dq,
                        BCON_CODE (MAPPER),
-                       "reduce",
+                       \(dqreduce\(dq,
                        BCON_CODE (REDUCER),
-                       "out",
+                       \(dqout\(dq,
                        BCON_UTF8 (out_collection_name));
    res =
       mongoc_database_command_simple (database, command, NULL, &reply, &error);
 
    if (!res) {
-      fprintf (stderr, "MapReduce failed: %s\en", error.message);
+      fprintf (stderr, \(dqMapReduce failed: %s\en\(dq, error.message);
       goto cleanup;
    }
 
@@ -2751,7 +2750,7 @@ map_reduce_basic (mongoc_database_t *database)
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "ERROR: %s\en", error.message);
+      fprintf (stderr, \(dqERROR: %s\en\(dq, error.message);
       res = false;
       goto cleanup;
    }
@@ -2773,11 +2772,11 @@ cleanup:
 .fi
 .UNINDENT
 .UNINDENT
-.SS "mapReduce" \- more complicated example
+.SS \(dqmapReduce\(dq \- more complicated example
 .sp
 You must have replica set running for this.
 .sp
-In this example we contact a secondary in the replica set and do an "inline" map reduce, so the results are returned immediately:
+In this example we contact a secondary in the replica set and do an \(dqinline\(dq map reduce, so the results are returned immediately:
 .sp
 map\-reduce\-advanced.c
 .INDENT 0.0
@@ -2796,21 +2795,21 @@ map_reduce_advanced (mongoc_database_t *database)
    const bson_t *doc;
 
    /* Construct the mapReduce command */
-   /* Other arguments can also be specified here, like "query" or "limit"
+   /* Other arguments can also be specified here, like \(dqquery\(dq or \(dqlimit\(dq
       and so on */
 
    /* Read the results inline from a secondary replica */
-   command = BCON_NEW ("mapReduce",
+   command = BCON_NEW (\(dqmapReduce\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "map",
+                       \(dqmap\(dq,
                        BCON_CODE (MAPPER),
-                       "reduce",
+                       \(dqreduce\(dq,
                        BCON_CODE (REDUCER),
-                       "out",
-                       "{",
-                       "inline",
-                       "1",
-                       "}");
+                       \(dqout\(dq,
+                       \(dq{\(dq,
+                       \(dqinline\(dq,
+                       \(dq1\(dq,
+                       \(dq}\(dq);
 
    read_pref = mongoc_read_prefs_new (MONGOC_READ_SECONDARY);
    cursor = mongoc_database_command (
@@ -2822,7 +2821,7 @@ map_reduce_advanced (mongoc_database_t *database)
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "ERROR: %s\en", error.message);
+      fprintf (stderr, \(dqERROR: %s\en\(dq, error.message);
       res = false;
    }
 
@@ -2850,14 +2849,14 @@ basic\-aggregation.c
 /*
  * Copyright 2016 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -2868,12 +2867,12 @@ basic\-aggregation.c
 #include <stdio.h>
 
 
-#include "constants.c"
+#include \(dqconstants.c\(dq
 
-#include "../doc\-common\-insert.c"
-#include "distinct.c"
-#include "map\-reduce\-basic.c"
-#include "map\-reduce\-advanced.c"
+#include \(dq../doc\-common\-insert.c\(dq
+#include \(dqdistinct.c\(dq
+#include \(dqmap\-reduce\-basic.c\(dq
+#include \(dqmap\-reduce\-advanced.c\(dq
 
 
 int
@@ -2888,31 +2887,31 @@ main (int argc, char *argv[])
    int exit_code = EXIT_FAILURE;
 
    if (argc != 2) {
-      fprintf (stderr, "usage: %s CONNECTION\-STRING\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s CONNECTION\-STRING\en\(dq, argv[0]);
       fprintf (stderr,
-               "the connection string can be of the following forms:\en");
-      fprintf (stderr, "localhost\et\et\et\etlocal machine\en");
-      fprintf (stderr, "localhost:27018\et\et\et\etlocal machine on port 27018\en");
+               \(dqthe connection string can be of the following forms:\en\(dq);
+      fprintf (stderr, \(dqlocalhost\et\et\et\etlocal machine\en\(dq);
+      fprintf (stderr, \(dqlocalhost:27018\et\et\et\etlocal machine on port 27018\en\(dq);
       fprintf (stderr,
-               "mongodb://user:pass@localhost:27017\et"
-               "local machine on port 27017, and authenticate with username "
-               "user and password pass\en");
+               \(dqmongodb://user:pass@localhost:27017\et\(dq
+               \(dqlocal machine on port 27017, and authenticate with username \(dq
+               \(dquser and password pass\en\(dq);
       return exit_code;
    }
 
    mongoc_init ();
 
-   if (strncmp (argv[1], "mongodb://", 10) == 0) {
+   if (strncmp (argv[1], \(dqmongodb://\(dq, 10) == 0) {
       host_and_port = bson_strdup (argv[1]);
    } else {
-      host_and_port = bson_strdup_printf ("mongodb://%s", argv[1]);
+      host_and_port = bson_strdup_printf (\(dqmongodb://%s\(dq, argv[1]);
    }
 
    uri = mongoc_uri_new_with_error (host_and_port, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                host_and_port,
                error.message);
       goto cleanup;
@@ -2924,25 +2923,25 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "test");
+   database = mongoc_client_get_database (client, \(dqtest\(dq);
    collection = mongoc_database_get_collection (database, COLLECTION_NAME);
 
-   printf ("Inserting data\en");
+   printf (\(dqInserting data\en\(dq);
    if (!insert_data (collection)) {
       goto cleanup;
    }
 
-   printf ("distinct\en");
+   printf (\(dqdistinct\en\(dq);
    if (!distinct (database)) {
       goto cleanup;
    }
 
-   printf ("map reduce\en");
+   printf (\(dqmap reduce\en\(dq);
    if (!map_reduce_basic (database)) {
       goto cleanup;
    }
 
-   printf ("more complicated map reduce\en");
+   printf (\(dqmore complicated map reduce\en\(dq);
    if (!map_reduce_advanced (database)) {
       goto cleanup;
    }
@@ -3008,25 +3007,25 @@ distinct
 Next double: 2.000000
 Next double: 3.000000
 map reduce
-{ "result" : "outCollection", "timeMillis" : 155, "counts" : { "input" : 84, "emit" : 126, "reduce" : 3, "output" : 3 }, "ok" : 1 }
-{ "_id" : "cat", "value" : 63 }
-{ "_id" : "dog", "value" : 42 }
-{ "_id" : "mouse", "value" : 21 }
+{ \(dqresult\(dq : \(dqoutCollection\(dq, \(dqtimeMillis\(dq : 155, \(dqcounts\(dq : { \(dqinput\(dq : 84, \(dqemit\(dq : 126, \(dqreduce\(dq : 3, \(dqoutput\(dq : 3 }, \(dqok\(dq : 1 }
+{ \(dq_id\(dq : \(dqcat\(dq, \(dqvalue\(dq : 63 }
+{ \(dq_id\(dq : \(dqdog\(dq, \(dqvalue\(dq : 42 }
+{ \(dq_id\(dq : \(dqmouse\(dq, \(dqvalue\(dq : 21 }
 more complicated map reduce
-{ "results" : [ { "_id" : "cat", "value" : 63 }, { "_id" : "dog", "value" : 42 }, { "_id" : "mouse", "value" : 21 } ], "timeMillis" : 14, "counts" : { "input" : 84, "emit" : 126, "reduce" : 3, "output" : 3 }, "ok" : 1 }
+{ \(dqresults\(dq : [ { \(dq_id\(dq : \(dqcat\(dq, \(dqvalue\(dq : 63 }, { \(dq_id\(dq : \(dqdog\(dq, \(dqvalue\(dq : 42 }, { \(dq_id\(dq : \(dqmouse\(dq, \(dqvalue\(dq : 21 } ], \(dqtimeMillis\(dq : 14, \(dqcounts\(dq : { \(dqinput\(dq : 84, \(dqemit\(dq : 126, \(dqreduce\(dq : 3, \(dqoutput\(dq : 3 }, \(dqok\(dq : 1 }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SH USING LIBMONGOC IN A MICROSOFT VISUAL STUDIO PROJECT
 .sp
-Download and install libmongoc on your system, then open Visual Studio, select "File→New→Project...", and create a new Win32 Console Application.
+\fI\%Download and install libmongoc on your system\fP, then open Visual Studio, select \(dqFile→New→Project...\(dq, and create a new Win32 Console Application.
 [image]
 .sp
 Remember to switch the platform from 32\-bit to 64\-bit:
 [image]
 .sp
-Right\-click on your console application in the Solution Explorer and select "Properties". Choose to edit properties for "All Configurations", expand the "C/C++" options and choose "General". Add to the "Additional Include Directories" these paths:
+Right\-click on your console application in the Solution Explorer and select \(dqProperties\(dq. Choose to edit properties for \(dqAll Configurations\(dq, expand the \(dqC/C++\(dq options and choose \(dqGeneral\(dq. Add to the \(dqAdditional Include Directories\(dq these paths:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -3040,9 +3039,9 @@ C:\emongo\-c\-driver\einclude\elibmongoc\-1.0
 .UNINDENT
 [image]
 .sp
-(If you chose a different \fBCMAKE_INSTALL_PREFIX\fP when you ran CMake, your include paths will be different.)
+(If you chose a different \fBCMAKE_INSTALL_PREFIX\fP \fI\%when you ran CMake\fP, your include paths will be different.)
 .sp
-Also in the Properties dialog, expand the "Linker" options and choose "Input", and add to the "Additional Dependencies" these libraries:
+Also in the Properties dialog, expand the \(dqLinker\(dq options and choose \(dqInput\(dq, and add to the \(dqAdditional Dependencies\(dq these libraries:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -3056,7 +3055,7 @@ C:\emongo\-c\-driver\elib\emongoc\-1.0.lib
 .UNINDENT
 [image]
 .sp
-Adding these libraries as dependencies provides linker symbols to build your application, but to actually run it, libbson\(aqs and libmongoc\(aqs DLLs must be in your executable path. Select "Debugging" in the Properties dialog, and set the "Environment" option to:
+Adding these libraries as dependencies provides linker symbols to build your application, but to actually run it, libbson\(aqs and libmongoc\(aqs DLLs must be in your executable path. Select \(dqDebugging\(dq in the Properties dialog, and set the \(dqEnvironment\(dq option to:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -3069,7 +3068,7 @@ PATH=c:/mongo\-c\-driver/bin
 .UNINDENT
 [image]
 .sp
-Finally, include "mongoc/mongoc.h" in your project\(aqs "stdafx.h":
+Finally, include \(dqmongoc/mongoc.h\(dq in your project\(aqs \(dqstdafx.h\(dq:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -3082,7 +3081,7 @@ Finally, include "mongoc/mongoc.h" in your project\(aqs "stdafx.h":
 .UNINDENT
 .SS Static linking
 .sp
-Following the instructions above, you have dynamically linked your application to the libbson and libmongoc DLLs. This is usually the right choice. If you want to link statically instead, update your "Additional Dependencies" list by removing \fBbson\-1.0.lib\fP and \fBmongoc\-1.0.lib\fP and replacing them with these libraries:
+Following the instructions above, you have dynamically linked your application to the libbson and libmongoc DLLs. This is usually the right choice. If you want to link statically instead, update your \(dqAdditional Dependencies\(dq list by removing \fBbson\-1.0.lib\fP and \fBmongoc\-1.0.lib\fP and replacing them with these libraries:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -3119,12 +3118,12 @@ Finally, define two preprocessor symbols before including \fBmongoc/mongoc.h\fP 
 Making these changes to your project is only required for static linking; for most people, the dynamic\-linking instructions above are preferred.
 .SS Next Steps
 .sp
-Now you can build and debug applications in Visual Studio that use libbson and libmongoc. Proceed to making\-a\-connection in the tutorial to learn how connect to MongoDB and perform operations.
+Now you can build and debug applications in Visual Studio that use libbson and libmongoc. Proceed to \fI\%Making a Connection\fP in the tutorial to learn how connect to MongoDB and perform operations.
 .SH CREATING INDEXES
 .sp
 To create indexes on a MongoDB collection, execute the \fBcreateIndexes\fP command
-with a command function like \fBmongoc_database_write_command_with_opts\fP or
-\fBmongoc_collection_write_command_with_opts\fP\&. See \fI\%the MongoDB
+with a command function like \fI\%mongoc_database_write_command_with_opts()\fP or
+\fI\%mongoc_collection_write_command_with_opts()\fP\&. See \fI\%the MongoDB
 Manual entry for the createIndexes command\fP for details.
 .sp
 \fBWARNING:\fP
@@ -3159,10 +3158,10 @@ main (int argc, char *argv[])
 {
    mongoc_client_t *client;
    const char *uri_string =
-      "mongodb://127.0.0.1/?appname=create\-indexes\-example";
+      \(dqmongodb://127.0.0.1/?appname=create\-indexes\-example\(dq;
    mongoc_uri_t *uri;
    mongoc_database_t *db;
-   const char *collection_name = "test";
+   const char *collection_name = \(dqtest\(dq;
    bson_t keys;
    char *index_name;
    bson_t *create_indexes;
@@ -3184,8 +3183,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -3197,32 +3196,32 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   db = mongoc_client_get_database (client, "test");
+   db = mongoc_client_get_database (client, \(dqtest\(dq);
 
-   /* ascending index on field "x" */
+   /* ascending index on field \(dqx\(dq */
    bson_init (&keys);
-   BSON_APPEND_INT32 (&keys, "x", 1);
+   BSON_APPEND_INT32 (&keys, \(dqx\(dq, 1);
    index_name = mongoc_collection_keys_to_index_string (&keys);
-   create_indexes = BCON_NEW ("createIndexes",
+   create_indexes = BCON_NEW (\(dqcreateIndexes\(dq,
                               BCON_UTF8 (collection_name),
-                              "indexes",
-                              "[",
-                              "{",
-                              "key",
+                              \(dqindexes\(dq,
+                              \(dq[\(dq,
+                              \(dq{\(dq,
+                              \(dqkey\(dq,
                               BCON_DOCUMENT (&keys),
-                              "name",
+                              \(dqname\(dq,
                               BCON_UTF8 (index_name),
-                              "}",
-                              "]");
+                              \(dq}\(dq,
+                              \(dq]\(dq);
 
    r = mongoc_database_write_command_with_opts (
       db, create_indexes, NULL /* opts */, &reply, &error);
 
    reply_str = bson_as_json (&reply, NULL);
-   printf ("%s\en", reply_str);
+   printf (\(dq%s\en\(dq, reply_str);
 
    if (!r) {
-      fprintf (stderr, "Error in createIndexes: %s\en", error.message);
+      fprintf (stderr, \(dqError in createIndexes: %s\en\(dq, error.message);
    }
 
    bson_free (index_name);
@@ -3289,32 +3288,32 @@ An example GDB session looks like:
 ALLOC [0x555556cd7310 + 0] (len=475)
 {
     \(aqbool\(aq : true,
-    \(aqint32\(aq : NumberInt("42"),
-    \(aqint64\(aq : NumberLong("3000000042"),
-    \(aqstring\(aq : "Stŕìñg",
-    \(aqobjectId\(aq : ObjectID("5A1442F3122D331C3C6757E1"),
+    \(aqint32\(aq : NumberInt(\(dq42\(dq),
+    \(aqint64\(aq : NumberLong(\(dq3000000042\(dq),
+    \(aqstring\(aq : \(dqStŕìñg\(dq,
+    \(aqobjectId\(aq : ObjectID(\(dq5A1442F3122D331C3C6757E1\(dq),
     \(aqutcDateTime\(aq : UTCDateTime(1511277299031),
     \(aqarrayOfInts\(aq : [
-        \(aq0\(aq : NumberInt("1"),
-        \(aq1\(aq : NumberInt("2")
+        \(aq0\(aq : NumberInt(\(dq1\(dq),
+        \(aq1\(aq : NumberInt(\(dq2\(dq)
     ],
     \(aqembeddedDocument\(aq : {
         \(aqarrayOfStrings\(aq : [
-            \(aq0\(aq : "one",
-            \(aq1\(aq : "two"
+            \(aq0\(aq : \(dqone\(dq,
+            \(aq1\(aq : \(dqtwo\(dq
         ],
         \(aqdouble\(aq : 2.718280,
         \(aqnotherDoc\(aq : {
-            \(aqtrue\(aq : NumberInt("1"),
+            \(aqtrue\(aq : NumberInt(\(dq1\(dq),
             \(aqfalse\(aq : false
         }
     },
-    \(aqbinary\(aq : Binary("02", "3031343532333637"),
-    \(aqregex\(aq : Regex("@[a\-z]+@", "im"),
+    \(aqbinary\(aq : Binary(\(dq02\(dq, \(dq3031343532333637\(dq),
+    \(aqregex\(aq : Regex(\(dq@[a\-z]+@\(dq, \(dqim\(dq),
     \(aqnull\(aq : null,
-    \(aqjs\(aq : JavaScript("print foo"),
-    \(aqjsws\(aq : JavaScript("print foo") with scope: {
-        \(aqf\(aq : NumberInt("42"),
+    \(aqjs\(aq : JavaScript(\(dqprint foo\(dq),
+    \(aqjsws\(aq : JavaScript(\(dqprint foo\(dq) with scope: {
+        \(aqf\(aq : NumberInt(\(dq42\(dq),
         \(aqa\(aq : [
             \(aq0\(aq : 3.141593,
             \(aq1\(aq : 2.718282
@@ -3336,7 +3335,7 @@ This repository also includes a script that customizes LLDB\(aqs standard \fBpri
 .nf
 .ft C
 (lldb) print b
-(bson_t) $0 = {"x": 1, "y": 2}
+(bson_t) $0 = {\(dqx\(dq: 1, \(dqy\(dq: 2}
 .ft P
 .fi
 .UNINDENT
@@ -3352,8 +3351,8 @@ The custom \fBbson\fP command provides more options:
 len=19
 flags=INLINE|STATIC
 {
-  "x": 1,
-  "y": 2
+  \(dqx\(dq: 1,
+  \(dqy\(dq: 2
 }
 (lldb) bson \-\-raw b
 \(aq\ex13\ex00\ex00\ex00\ex10x\ex00\ex01\ex00\ex00\ex00\ex10y\ex00\ex02\ex00\ex00\ex00\ex00\(aq
@@ -3376,7 +3375,7 @@ python \-m pip install pymongo
 .UNINDENT
 .UNINDENT
 .sp
-If you see "No module named pip" then you must \fI\%install pip\fP, then run the previous command again.
+If you see \(dqNo module named pip\(dq then you must \fI\%install pip\fP, then run the previous command again.
 .sp
 Create a file \fB~/.lldbinit\fP containing:
 .INDENT 0.0
@@ -3390,7 +3389,7 @@ command script import /path/to/mongo\-c\-driver/lldb_bson.py
 .UNINDENT
 .UNINDENT
 .sp
-If you see "bson command installed by lldb_bson" at the beginning of your LLDB session, you\(aqve installed the script correctly.
+If you see \(dqbson command installed by lldb_bson\(dq at the beginning of your LLDB session, you\(aqve installed the script correctly.
 .SS Debug assertions
 .sp
 To enable runtime debug assertions, configure with \fB\-DENABLE_DEBUG_ASSERTIONS=ON\fP\&.
@@ -3416,7 +3415,7 @@ Build and install libmongocrypt
 Build libmongoc
 .UNINDENT
 .sp
-To install libbson, follow the instructions to install with a package manager: Install libbson with a Package Manager or build from source with cmake (disable building libmongoc with \fB\-DENABLE_MONGOC=OFF\fP):
+To install libbson, follow the instructions to install with a package manager: \fI\%Install libbson with a Package Manager\fP or build from source with cmake (disable building libmongoc with \fB\-DENABLE_MONGOC=OFF\fP):
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -3474,27 +3473,27 @@ Uses the specified automatic encryption rules to mark fields in read and write o
 Rejects read/write operations that may return unexpected or incorrect results when applied to an encrypted field. For supported and unsupported operations, see \fI\%Read/Write Support with Automatic Field Level Encryption\fP\&.
 .UNINDENT
 .sp
-A \fBmongoc_client_t\fP configured with auto encryption will automatically spawn the \fBmongocryptd\fP process from the application\(aqs \fBPATH\fP\&. Applications can control the spawning behavior as part of the automatic encryption options. For example, to set a custom path to the \fBmongocryptd\fP process, set the \fBmongocryptdSpawnPath\fP with \fBmongoc_auto_encryption_opts_set_extra()\fP\&.
+A \fI\%mongoc_client_t\fP configured with auto encryption will automatically spawn the \fBmongocryptd\fP process from the application\(aqs \fBPATH\fP\&. Applications can control the spawning behavior as part of the automatic encryption options. For example, to set a custom path to the \fBmongocryptd\fP process, set the \fBmongocryptdSpawnPath\fP with \fI\%mongoc_auto_encryption_opts_set_extra()\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-bson_t *extra = BCON_NEW ("mongocryptdSpawnPath", "/path/to/mongocryptd");
+bson_t *extra = BCON_NEW (\(dqmongocryptdSpawnPath\(dq, \(dq/path/to/mongocryptd\(dq);
 mongoc_auto_encryption_opts_set_extra (opts, extra);
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-To control the logging output of \fBmongocryptd\fP pass \fBmongocryptdSpawnArgs\fP to \fBmongoc_auto_encryption_opts_set_extra()\fP:
+To control the logging output of \fBmongocryptd\fP pass \fBmongocryptdSpawnArgs\fP to \fI\%mongoc_auto_encryption_opts_set_extra()\fP:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-bson_t *extra = BCON_NEW ("mongocryptdSpawnArgs",
-   "[", "\-\-logpath=/path/to/mongocryptd.log", "\-\-logappend", "]");
+bson_t *extra = BCON_NEW (\(dqmongocryptdSpawnArgs\(dq,
+   \(dq[\(dq, \(dq\-\-logpath=/path/to/mongocryptd.log\(dq, \(dq\-\-logappend\(dq, \(dq]\(dq);
 mongoc_auto_encryption_opts_set_extra (opts, extra);
 .ft P
 .fi
@@ -3507,8 +3506,8 @@ If your application wishes to manage the \fBmongocryptd\fP process manually, it 
 .sp
 .nf
 .ft C
-bson_t *extra = BCON_NEW ("mongocryptdBypassSpawn",
-   BCON_BOOL(true), "mongocryptdURI", "mongodb://localhost:27020");
+bson_t *extra = BCON_NEW (\(dqmongocryptdBypassSpawn\(dq,
+   BCON_BOOL(true), \(dqmongocryptdURI\(dq, \(dqmongodb://localhost:27020\(dq);
 mongoc_auto_encryption_opts_set_extra (opts, extra);
 .ft P
 .fi
@@ -3518,7 +3517,7 @@ mongoc_auto_encryption_opts_set_extra (opts, extra);
 \fBmongocryptd\fP is only responsible for supporting automatic Client\-Side Encryption in the driver and does not itself perform any encryption or decryption.
 .SS Automatic Client\-Side Field Level Encryption
 .sp
-Automatic Client\-Side Encryption is enabled by calling \fBmongoc_client_enable_auto_encryption()\fP on a \fBmongoc_client_t\fP\&. The following examples show how to set up automatic client\-side field level encryption using \fBmongoc_client_encryption_t\fP to create a new encryption data key.
+Automatic Client\-Side Encryption is enabled by calling \fI\%mongoc_client_enable_auto_encryption()\fP on a \fI\%mongoc_client_t\fP\&. The following examples show how to set up automatic client\-side field level encryption using \fI\%mongoc_client_encryption_t\fP to create a new encryption data key.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -3528,7 +3527,7 @@ Automatic client\-side field level encryption requires MongoDB 4.2 enterprise or
 .UNINDENT
 .SS Providing Local Automatic Encryption Rules
 .sp
-The following example shows how to specify automatic encryption rules using a schema map set with \fBmongoc_auto_encryption_opts_set_schema_map()\fP\&. The automatic encryption rules are expressed using a strict subset of the JSON Schema syntax.
+The following example shows how to specify automatic encryption rules using a schema map set with \fI\%mongoc_auto_encryption_opts_set_schema_map()\fP\&. The automatic encryption rules are expressed using a strict subset of the JSON Schema syntax.
 .sp
 Supplying a schema map provides more security than relying on JSON Schemas obtained from the server. It protects against a malicious server advertising a false JSON Schema, which could trick the client into sending unencrypted data that should be encrypted.
 .sp
@@ -3544,7 +3543,7 @@ client\-side\-encryption\-schema\-map.c
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "client\-side\-encryption\-helpers.h"
+#include \(dqclient\-side\-encryption\-helpers.h\(dq
 
 /* Helper method to create a new data key in the key vault, a schema to use that
  * key, and writes the schema to a file for later use. */
@@ -3559,7 +3558,7 @@ create_schema_file (bson_t *kms_providers,
    mongoc_client_encryption_opts_t *client_encryption_opts = NULL;
    mongoc_client_encryption_datakey_opts_t *datakey_opts = NULL;
    bson_value_t datakey_id = {0};
-   char *keyaltnames[] = {"mongoc_encryption_example_1"};
+   char *keyaltnames[] = {\(dqmongoc_encryption_example_1\(dq};
    bson_t *schema = NULL;
    char *schema_string = NULL;
    size_t schema_string_len;
@@ -3587,40 +3586,40 @@ create_schema_file (bson_t *kms_providers,
    mongoc_client_encryption_datakey_opts_set_keyaltnames (
       datakey_opts, keyaltnames, 1);
    if (!mongoc_client_encryption_create_datakey (
-          client_encryption, "local", datakey_opts, &datakey_id, error)) {
+          client_encryption, \(dqlocal\(dq, datakey_opts, &datakey_id, error)) {
       goto fail;
    }
 
-   /* Create a schema describing that "encryptedField" is a string encrypted
+   /* Create a schema describing that \(dqencryptedField\(dq is a string encrypted
     * with the newly created data key using deterministic encryption. */
-   schema = BCON_NEW ("properties",
-                      "{",
-                      "encryptedField",
-                      "{",
-                      "encrypt",
-                      "{",
-                      "keyId",
-                      "[",
+   schema = BCON_NEW (\(dqproperties\(dq,
+                      \(dq{\(dq,
+                      \(dqencryptedField\(dq,
+                      \(dq{\(dq,
+                      \(dqencrypt\(dq,
+                      \(dq{\(dq,
+                      \(dqkeyId\(dq,
+                      \(dq[\(dq,
                       BCON_BIN (datakey_id.value.v_binary.subtype,
                                 datakey_id.value.v_binary.data,
                                 datakey_id.value.v_binary.data_len),
-                      "]",
-                      "bsonType",
-                      "string",
-                      "algorithm",
+                      \(dq]\(dq,
+                      \(dqbsonType\(dq,
+                      \(dqstring\(dq,
+                      \(dqalgorithm\(dq,
                       MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_DETERMINISTIC,
-                      "}",
-                      "}",
-                      "}",
-                      "bsonType",
-                      "object");
+                      \(dq}\(dq,
+                      \(dq}\(dq,
+                      \(dq}\(dq,
+                      \(dqbsonType\(dq,
+                      \(dqobject\(dq);
 
    /* Use canonical JSON so that other drivers and tools will be
     * able to parse the MongoDB extended JSON file. */
    schema_string = bson_as_canonical_extended_json (schema, &schema_string_len);
-   outfile = fopen ("jsonSchema.json", "w");
+   outfile = fopen (\(dqjsonSchema.json\(dq, \(dqw\(dq);
    if (0 == fwrite (schema_string, sizeof (char), schema_string_len, outfile)) {
-      fprintf (stderr, "failed to write to file\en");
+      fprintf (stderr, \(dqfailed to write to file\en\(dq);
       goto fail;
    }
 
@@ -3635,20 +3634,20 @@ fail:
    if (outfile) {
       fclose (outfile);
    }
-   return true;
+   return ret;
 }
 
 /* This example demonstrates how to use automatic encryption with a client\-side
  * schema map using the enterprise version of MongoDB */
 int
-main (int argc, char **argv)
+main (void)
 {
 /* The collection used to store the encryption data keys. */
-#define KEYVAULT_DB "encryption"
-#define KEYVAULT_COLL "__libmongocTestKeyVault"
+#define KEYVAULT_DB \(dqencryption\(dq
+#define KEYVAULT_COLL \(dq__libmongocTestKeyVault\(dq
 /* The collection used to store the encrypted documents in this example. */
-#define ENCRYPTED_DB "test"
-#define ENCRYPTED_COLL "coll"
+#define ENCRYPTED_DB \(dqtest\(dq
+#define ENCRYPTED_COLL \(dqcoll\(dq
 
    int exit_status = EXIT_FAILURE;
    bool ret;
@@ -3678,52 +3677,52 @@ main (int argc, char **argv)
    /* Configure the master key. This must be the same master key that was used
     * to create the encryption key. */
    local_masterkey =
-      hex_to_bin (getenv ("LOCAL_MASTERKEY"), &local_masterkey_len);
+      hex_to_bin (getenv (\(dqLOCAL_MASTERKEY\(dq), &local_masterkey_len);
    if (!local_masterkey || local_masterkey_len != 96) {
       fprintf (stderr,
-               "Specify LOCAL_MASTERKEY environment variable as a "
-               "secure random 96 byte hex value.\en");
+               \(dqSpecify LOCAL_MASTERKEY environment variable as a \(dq
+               \(dqsecure random 96 byte hex value.\en\(dq);
       goto fail;
    }
 
-   kms_providers = BCON_NEW ("local",
-                             "{",
-                             "key",
+   kms_providers = BCON_NEW (\(dqlocal\(dq,
+                             \(dq{\(dq,
+                             \(dqkey\(dq,
                              BCON_BIN (0, local_masterkey, local_masterkey_len),
-                             "}");
+                             \(dq}\(dq);
 
    /* Set up the key vault for this example. */
    keyvault_client = mongoc_client_new (
-      "mongodb://localhost/?appname=client\-side\-encryption\-keyvault");
+      \(dqmongodb://localhost/?appname=client\-side\-encryption\-keyvault\(dq);
    keyvault_coll = mongoc_client_get_collection (
       keyvault_client, KEYVAULT_DB, KEYVAULT_COLL);
    mongoc_collection_drop (keyvault_coll, NULL);
 
    /* Create a unique index to ensure that two data keys cannot share the same
     * keyAltName. This is recommended practice for the key vault. */
-   index_keys = BCON_NEW ("keyAltNames", BCON_INT32 (1));
+   index_keys = BCON_NEW (\(dqkeyAltNames\(dq, BCON_INT32 (1));
    index_name = mongoc_collection_keys_to_index_string (index_keys);
-   create_index_cmd = BCON_NEW ("createIndexes",
+   create_index_cmd = BCON_NEW (\(dqcreateIndexes\(dq,
                                 KEYVAULT_COLL,
-                                "indexes",
-                                "[",
-                                "{",
-                                "key",
+                                \(dqindexes\(dq,
+                                \(dq[\(dq,
+                                \(dq{\(dq,
+                                \(dqkey\(dq,
                                 BCON_DOCUMENT (index_keys),
-                                "name",
+                                \(dqname\(dq,
                                 index_name,
-                                "unique",
+                                \(dqunique\(dq,
                                 BCON_BOOL (true),
-                                "partialFilterExpression",
-                                "{",
-                                "keyAltNames",
-                                "{",
-                                "$exists",
+                                \(dqpartialFilterExpression\(dq,
+                                \(dq{\(dq,
+                                \(dqkeyAltNames\(dq,
+                                \(dq{\(dq,
+                                \(dq$exists\(dq,
                                 BCON_BOOL (true),
-                                "}",
-                                "}",
-                                "}",
-                                "]");
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq]\(dq);
    ret = mongoc_client_command_simple (keyvault_client,
                                        KEYVAULT_DB,
                                        create_index_cmd,
@@ -3745,7 +3744,7 @@ main (int argc, char **argv)
    }
 
    /* Load the JSON Schema and construct the local schema_map option. */
-   reader = bson_json_reader_new_from_file ("jsonSchema.json", &error);
+   reader = bson_json_reader_new_from_file (\(dqjsonSchema.json\(dq, &error);
    if (!reader) {
       goto fail;
    }
@@ -3755,7 +3754,7 @@ main (int argc, char **argv)
    /* Construct the schema map, mapping the namespace of the collection to the
     * schema describing encryption. */
    schema_map =
-      BCON_NEW (ENCRYPTED_DB "." ENCRYPTED_COLL, BCON_DOCUMENT (&schema));
+      BCON_NEW (ENCRYPTED_DB \(dq.\(dq ENCRYPTED_COLL, BCON_DOCUMENT (&schema));
 
    auto_encryption_opts = mongoc_auto_encryption_opts_new ();
    mongoc_auto_encryption_opts_set_keyvault_client (auto_encryption_opts,
@@ -3768,7 +3767,7 @@ main (int argc, char **argv)
                                                schema_map);
 
    client =
-      mongoc_client_new ("mongodb://localhost/?appname=client\-side\-encryption");
+      mongoc_client_new (\(dqmongodb://localhost/?appname=client\-side\-encryption\(dq);
 
    /* Enable automatic encryption. It will determine that encryption is
     * necessary from the schema map instead of relying on the server to provide
@@ -3784,32 +3783,32 @@ main (int argc, char **argv)
    /* Clear old data */
    mongoc_collection_drop (coll, NULL);
 
-   to_insert = BCON_NEW ("encryptedField", "123456789");
+   to_insert = BCON_NEW (\(dqencryptedField\(dq, \(dq123456789\(dq);
    ret = mongoc_collection_insert_one (
       coll, to_insert, NULL /* opts */, NULL /* reply */, &error);
    if (!ret) {
       goto fail;
    }
-   printf ("decrypted document: ");
+   printf (\(dqdecrypted document: \(dq);
    if (!print_one_document (coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    unencrypted_client = mongoc_client_new (
-      "mongodb://localhost/?appname=client\-side\-encryption\-unencrypted");
+      \(dqmongodb://localhost/?appname=client\-side\-encryption\-unencrypted\(dq);
    unencrypted_coll = mongoc_client_get_collection (
       unencrypted_client, ENCRYPTED_DB, ENCRYPTED_COLL);
-   printf ("encrypted document: ");
+   printf (\(dqencrypted document: \(dq);
    if (!print_one_document (unencrypted_coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    exit_status = EXIT_SUCCESS;
 fail:
    if (error.code) {
-      fprintf (stderr, "error: %s\en", error.message);
+      fprintf (stderr, \(dqerror: %s\en\(dq, error.message);
    }
 
    bson_free (local_masterkey);
@@ -3831,15 +3830,16 @@ fail:
    mongoc_cleanup ();
    return exit_status;
 }
+
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS Server\-Side Field Level Encryption Enforcement
 .sp
-The MongoDB 4.2 server supports using schema validation to enforce encryption of specific fields in a collection. This schema validation will prevent an application from inserting unencrypted values for any fields marked with the "encrypt" JSON schema keyword.
+The MongoDB 4.2 server supports using schema validation to enforce encryption of specific fields in a collection. This schema validation will prevent an application from inserting unencrypted values for any fields marked with the \(dqencrypt\(dq JSON schema keyword.
 .sp
-The following example shows how to set up automatic client\-side field level encryption using \fBmongoc_client_encryption_t\fP to create a new encryption data key and create a collection with the Automatic Encryption JSON Schema Syntax:
+The following example shows how to set up automatic client\-side field level encryption using \fI\%mongoc_client_encryption_t\fP to create a new encryption data key and create a collection with the Automatic Encryption JSON Schema Syntax:
 .sp
 client\-side\-encryption\-server\-schema.c
 .INDENT 0.0
@@ -3851,7 +3851,7 @@ client\-side\-encryption\-server\-schema.c
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "client\-side\-encryption\-helpers.h"
+#include \(dqclient\-side\-encryption\-helpers.h\(dq
 
 /* Helper method to create and return a JSON schema to use for encryption.
 The caller will use the returned schema for server\-side encryption validation.
@@ -3867,7 +3867,7 @@ create_schema (bson_t *kms_providers,
    mongoc_client_encryption_opts_t *client_encryption_opts = NULL;
    mongoc_client_encryption_datakey_opts_t *datakey_opts = NULL;
    bson_value_t datakey_id = {0};
-   char *keyaltnames[] = {"mongoc_encryption_example_2"};
+   char *keyaltnames[] = {\(dqmongoc_encryption_example_2\(dq};
    bson_t *schema = NULL;
 
    client_encryption_opts = mongoc_client_encryption_opts_new ();
@@ -3891,33 +3891,33 @@ create_schema (bson_t *kms_providers,
    mongoc_client_encryption_datakey_opts_set_keyaltnames (
       datakey_opts, keyaltnames, 1);
    if (!mongoc_client_encryption_create_datakey (
-          client_encryption, "local", datakey_opts, &datakey_id, error)) {
+          client_encryption, \(dqlocal\(dq, datakey_opts, &datakey_id, error)) {
       goto fail;
    }
 
-   /* Create a schema describing that "encryptedField" is a string encrypted
+   /* Create a schema describing that \(dqencryptedField\(dq is a string encrypted
     * with the newly created data key using deterministic encryption. */
-   schema = BCON_NEW ("properties",
-                      "{",
-                      "encryptedField",
-                      "{",
-                      "encrypt",
-                      "{",
-                      "keyId",
-                      "[",
+   schema = BCON_NEW (\(dqproperties\(dq,
+                      \(dq{\(dq,
+                      \(dqencryptedField\(dq,
+                      \(dq{\(dq,
+                      \(dqencrypt\(dq,
+                      \(dq{\(dq,
+                      \(dqkeyId\(dq,
+                      \(dq[\(dq,
                       BCON_BIN (datakey_id.value.v_binary.subtype,
                                 datakey_id.value.v_binary.data,
                                 datakey_id.value.v_binary.data_len),
-                      "]",
-                      "bsonType",
-                      "string",
-                      "algorithm",
+                      \(dq]\(dq,
+                      \(dqbsonType\(dq,
+                      \(dqstring\(dq,
+                      \(dqalgorithm\(dq,
                       MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_DETERMINISTIC,
-                      "}",
-                      "}",
-                      "}",
-                      "bsonType",
-                      "object");
+                      \(dq}\(dq,
+                      \(dq}\(dq,
+                      \(dq}\(dq,
+                      \(dqbsonType\(dq,
+                      \(dqobject\(dq);
 
 fail:
    mongoc_client_encryption_destroy (client_encryption);
@@ -3930,14 +3930,14 @@ fail:
 /* This example demonstrates how to use automatic encryption with a server\-side
  * schema using the enterprise version of MongoDB */
 int
-main (int argc, char **argv)
+main (void)
 {
 /* The collection used to store the encryption data keys. */
-#define KEYVAULT_DB "encryption"
-#define KEYVAULT_COLL "__libmongocTestKeyVault"
+#define KEYVAULT_DB \(dqencryption\(dq
+#define KEYVAULT_COLL \(dq__libmongocTestKeyVault\(dq
 /* The collection used to store the encrypted documents in this example. */
-#define ENCRYPTED_DB "test"
-#define ENCRYPTED_COLL "coll"
+#define ENCRYPTED_DB \(dqtest\(dq
+#define ENCRYPTED_COLL \(dqcoll\(dq
 
    int exit_status = EXIT_FAILURE;
    bool ret;
@@ -3970,52 +3970,52 @@ main (int argc, char **argv)
     * to create
     * the encryption key. */
    local_masterkey =
-      hex_to_bin (getenv ("LOCAL_MASTERKEY"), &local_masterkey_len);
+      hex_to_bin (getenv (\(dqLOCAL_MASTERKEY\(dq), &local_masterkey_len);
    if (!local_masterkey || local_masterkey_len != 96) {
       fprintf (stderr,
-               "Specify LOCAL_MASTERKEY environment variable as a "
-               "secure random 96 byte hex value.\en");
+               \(dqSpecify LOCAL_MASTERKEY environment variable as a \(dq
+               \(dqsecure random 96 byte hex value.\en\(dq);
       goto fail;
    }
 
-   kms_providers = BCON_NEW ("local",
-                             "{",
-                             "key",
+   kms_providers = BCON_NEW (\(dqlocal\(dq,
+                             \(dq{\(dq,
+                             \(dqkey\(dq,
                              BCON_BIN (0, local_masterkey, local_masterkey_len),
-                             "}");
+                             \(dq}\(dq);
 
    /* Set up the key vault for this example. */
    keyvault_client = mongoc_client_new (
-      "mongodb://localhost/?appname=client\-side\-encryption\-keyvault");
+      \(dqmongodb://localhost/?appname=client\-side\-encryption\-keyvault\(dq);
    keyvault_coll = mongoc_client_get_collection (
       keyvault_client, KEYVAULT_DB, KEYVAULT_COLL);
    mongoc_collection_drop (keyvault_coll, NULL);
 
    /* Create a unique index to ensure that two data keys cannot share the same
     * keyAltName. This is recommended practice for the key vault. */
-   index_keys = BCON_NEW ("keyAltNames", BCON_INT32 (1));
+   index_keys = BCON_NEW (\(dqkeyAltNames\(dq, BCON_INT32 (1));
    index_name = mongoc_collection_keys_to_index_string (index_keys);
-   create_index_cmd = BCON_NEW ("createIndexes",
+   create_index_cmd = BCON_NEW (\(dqcreateIndexes\(dq,
                                 KEYVAULT_COLL,
-                                "indexes",
-                                "[",
-                                "{",
-                                "key",
+                                \(dqindexes\(dq,
+                                \(dq[\(dq,
+                                \(dq{\(dq,
+                                \(dqkey\(dq,
                                 BCON_DOCUMENT (index_keys),
-                                "name",
+                                \(dqname\(dq,
                                 index_name,
-                                "unique",
+                                \(dqunique\(dq,
                                 BCON_BOOL (true),
-                                "partialFilterExpression",
-                                "{",
-                                "keyAltNames",
-                                "{",
-                                "$exists",
+                                \(dqpartialFilterExpression\(dq,
+                                \(dq{\(dq,
+                                \(dqkeyAltNames\(dq,
+                                \(dq{\(dq,
+                                \(dq$exists\(dq,
                                 BCON_BOOL (true),
-                                "}",
-                                "}",
-                                "}",
-                                "]");
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq]\(dq);
    ret = mongoc_client_command_simple (keyvault_client,
                                        KEYVAULT_DB,
                                        create_index_cmd,
@@ -4042,7 +4042,7 @@ main (int argc, char **argv)
    }
 
    client =
-      mongoc_client_new ("mongodb://localhost/?appname=client\-side\-encryption");
+      mongoc_client_new (\(dqmongodb://localhost/?appname=client\-side\-encryption\(dq);
    ret = mongoc_client_enable_auto_encryption (
       client, auto_encryption_opts, &error);
    if (!ret) {
@@ -4055,13 +4055,13 @@ main (int argc, char **argv)
    mongoc_collection_drop (coll, NULL);
 
    /* Create the collection with the encryption JSON Schema. */
-   create_cmd = BCON_NEW ("create",
+   create_cmd = BCON_NEW (\(dqcreate\(dq,
                           ENCRYPTED_COLL,
-                          "validator",
-                          "{",
-                          "$jsonSchema",
+                          \(dqvalidator\(dq,
+                          \(dq{\(dq,
+                          \(dq$jsonSchema\(dq,
                           BCON_DOCUMENT (schema),
-                          "}");
+                          \(dq}\(dq);
    wc = mongoc_write_concern_new ();
    mongoc_write_concern_set_wmajority (wc, 0);
    create_cmd_opts = bson_new ();
@@ -4077,41 +4077,41 @@ main (int argc, char **argv)
       goto fail;
    }
 
-   to_insert = BCON_NEW ("encryptedField", "123456789");
+   to_insert = BCON_NEW (\(dqencryptedField\(dq, \(dq123456789\(dq);
    ret = mongoc_collection_insert_one (
       coll, to_insert, NULL /* opts */, NULL /* reply */, &error);
    if (!ret) {
       goto fail;
    }
-   printf ("decrypted document: ");
+   printf (\(dqdecrypted document: \(dq);
    if (!print_one_document (coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    unencrypted_client = mongoc_client_new (
-      "mongodb://localhost/?appname=client\-side\-encryption\-unencrypted");
+      \(dqmongodb://localhost/?appname=client\-side\-encryption\-unencrypted\(dq);
    unencrypted_coll = mongoc_client_get_collection (
       unencrypted_client, ENCRYPTED_DB, ENCRYPTED_COLL);
-   printf ("encrypted document: ");
+   printf (\(dqencrypted document: \(dq);
    if (!print_one_document (unencrypted_coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    /* Expect a server\-side error if inserting with the unencrypted collection.
     */
    ret = mongoc_collection_insert_one (
       unencrypted_coll, to_insert, NULL /* opts */, NULL /* reply */, &error);
    if (!ret) {
-      printf ("insert with unencrypted collection failed: %s\en", error.message);
+      printf (\(dqinsert with unencrypted collection failed: %s\en\(dq, error.message);
       memset (&error, 0, sizeof (error));
    }
 
    exit_status = EXIT_SUCCESS;
 fail:
    if (error.code) {
-      fprintf (stderr, "error: %s\en", error.message);
+      fprintf (stderr, \(dqerror: %s\en\(dq, error.message);
    }
 
    bson_free (local_masterkey);
@@ -4136,13 +4136,14 @@ fail:
    mongoc_cleanup ();
    return exit_status;
 }
+
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS Explicit Encryption
 .sp
-Explicit encryption is a MongoDB community feature and does not use the mongocryptd process. Explicit encryption is provided by the \fBmongoc_client_encryption_t\fP class, for example:
+Explicit encryption is a MongoDB community feature and does not use the mongocryptd process. Explicit encryption is provided by the \fI\%mongoc_client_encryption_t\fP class, for example:
 .sp
 client\-side\-encryption\-explicit.c
 .INDENT 0.0
@@ -4154,19 +4155,19 @@ client\-side\-encryption\-explicit.c
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "client\-side\-encryption\-helpers.h"
+#include \(dqclient\-side\-encryption\-helpers.h\(dq
 
 /* This example demonstrates how to use explicit encryption and decryption using
  * the community version of MongoDB */
 int
-main (int argc, char **argv)
+main (void)
 {
 /* The collection used to store the encryption data keys. */
-#define KEYVAULT_DB "encryption"
-#define KEYVAULT_COLL "__libmongocTestKeyVault"
+#define KEYVAULT_DB \(dqencryption\(dq
+#define KEYVAULT_COLL \(dq__libmongocTestKeyVault\(dq
 /* The collection used to store the encrypted documents in this example. */
-#define ENCRYPTED_DB "test"
-#define ENCRYPTED_COLL "coll"
+#define ENCRYPTED_DB \(dqtest\(dq
+#define ENCRYPTED_COLL \(dqcoll\(dq
 
    int exit_status = EXIT_FAILURE;
    bool ret;
@@ -4188,7 +4189,7 @@ main (int argc, char **argv)
    mongoc_client_encryption_t *client_encryption = NULL;
    mongoc_client_encryption_opts_t *client_encryption_opts = NULL;
    mongoc_client_encryption_datakey_opts_t *datakey_opts = NULL;
-   char *keyaltnames[] = {"mongoc_encryption_example_3"};
+   char *keyaltnames[] = {\(dqmongoc_encryption_example_3\(dq};
    bson_value_t datakey_id = {0};
    bson_value_t encrypted_field = {0};
    bson_value_t to_encrypt = {0};
@@ -4200,23 +4201,23 @@ main (int argc, char **argv)
    /* Configure the master key. This must be the same master key that was used
     * to create the encryption key. */
    local_masterkey =
-      hex_to_bin (getenv ("LOCAL_MASTERKEY"), &local_masterkey_len);
+      hex_to_bin (getenv (\(dqLOCAL_MASTERKEY\(dq), &local_masterkey_len);
    if (!local_masterkey || local_masterkey_len != 96) {
       fprintf (stderr,
-               "Specify LOCAL_MASTERKEY environment variable as a "
-               "secure random 96 byte hex value.\en");
+               \(dqSpecify LOCAL_MASTERKEY environment variable as a \(dq
+               \(dqsecure random 96 byte hex value.\en\(dq);
       goto fail;
    }
 
-   kms_providers = BCON_NEW ("local",
-                             "{",
-                             "key",
+   kms_providers = BCON_NEW (\(dqlocal\(dq,
+                             \(dq{\(dq,
+                             \(dqkey\(dq,
                              BCON_BIN (0, local_masterkey, local_masterkey_len),
-                             "}");
+                             \(dq}\(dq);
 
    /* The mongoc_client_t used to read/write application data. */
    client =
-      mongoc_client_new ("mongodb://localhost/?appname=client\-side\-encryption");
+      mongoc_client_new (\(dqmongodb://localhost/?appname=client\-side\-encryption\(dq);
    coll = mongoc_client_get_collection (client, ENCRYPTED_DB, ENCRYPTED_COLL);
 
    /* Clear old data */
@@ -4229,29 +4230,29 @@ main (int argc, char **argv)
 
    /* Create a unique index to ensure that two data keys cannot share the same
     * keyAltName. This is recommended practice for the key vault. */
-   index_keys = BCON_NEW ("keyAltNames", BCON_INT32 (1));
+   index_keys = BCON_NEW (\(dqkeyAltNames\(dq, BCON_INT32 (1));
    index_name = mongoc_collection_keys_to_index_string (index_keys);
-   create_index_cmd = BCON_NEW ("createIndexes",
+   create_index_cmd = BCON_NEW (\(dqcreateIndexes\(dq,
                                 KEYVAULT_COLL,
-                                "indexes",
-                                "[",
-                                "{",
-                                "key",
+                                \(dqindexes\(dq,
+                                \(dq[\(dq,
+                                \(dq{\(dq,
+                                \(dqkey\(dq,
                                 BCON_DOCUMENT (index_keys),
-                                "name",
+                                \(dqname\(dq,
                                 index_name,
-                                "unique",
+                                \(dqunique\(dq,
                                 BCON_BOOL (true),
-                                "partialFilterExpression",
-                                "{",
-                                "keyAltNames",
-                                "{",
-                                "$exists",
+                                \(dqpartialFilterExpression\(dq,
+                                \(dq{\(dq,
+                                \(dqkeyAltNames\(dq,
+                                \(dq{\(dq,
+                                \(dq$exists\(dq,
                                 BCON_BOOL (true),
-                                "}",
-                                "}",
-                                "}",
-                                "]");
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq]\(dq);
    ret = mongoc_client_command_simple (client,
                                        KEYVAULT_DB,
                                        create_index_cmd,
@@ -4286,7 +4287,7 @@ main (int argc, char **argv)
    mongoc_client_encryption_datakey_opts_set_keyaltnames (
       datakey_opts, keyaltnames, 1);
    if (!mongoc_client_encryption_create_datakey (
-          client_encryption, "local", datakey_opts, &datakey_id, &error)) {
+          client_encryption, \(dqlocal\(dq, datakey_opts, &datakey_id, &error)) {
       goto fail;
    }
 
@@ -4296,7 +4297,7 @@ main (int argc, char **argv)
       encrypt_opts, MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_DETERMINISTIC);
    mongoc_client_encryption_encrypt_opts_set_keyid (encrypt_opts, &datakey_id);
    to_encrypt.value_type = BSON_TYPE_UTF8;
-   to_encrypt.value.v_utf8.str = "123456789";
+   to_encrypt.value.v_utf8.str = \(dq123456789\(dq;
    to_encrypt.value.v_utf8.len = strlen (to_encrypt.value.v_utf8.str);
 
    ret = mongoc_client_encryption_encrypt (
@@ -4306,18 +4307,18 @@ main (int argc, char **argv)
    }
 
    to_insert = bson_new ();
-   BSON_APPEND_VALUE (to_insert, "encryptedField", &encrypted_field);
+   BSON_APPEND_VALUE (to_insert, \(dqencryptedField\(dq, &encrypted_field);
    ret = mongoc_collection_insert_one (
       coll, to_insert, NULL /* opts */, NULL /* reply */, &error);
    if (!ret) {
       goto fail;
    }
 
-   printf ("encrypted document: ");
+   printf (\(dqencrypted document: \(dq);
    if (!print_one_document (coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    /* Explicitly decrypt a field */
    ret = mongoc_client_encryption_decrypt (
@@ -4325,12 +4326,12 @@ main (int argc, char **argv)
    if (!ret) {
       goto fail;
    }
-   printf ("decrypted value: %s\en", decrypted.value.v_utf8.str);
+   printf (\(dqdecrypted value: %s\en\(dq, decrypted.value.v_utf8.str);
 
    exit_status = EXIT_SUCCESS;
 fail:
    if (error.code) {
-      fprintf (stderr, "error: %s\en", error.message);
+      fprintf (stderr, \(dqerror: %s\en\(dq, error.message);
    }
 
    bson_free (local_masterkey);
@@ -4357,13 +4358,14 @@ fail:
    mongoc_cleanup ();
    return exit_status;
 }
+
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SS Explicit Encryption with Automatic Decryption
 .sp
-Although automatic encryption requires MongoDB 4.2 enterprise or a MongoDB 4.2 Atlas cluster, automatic decryption is supported for all users. To configure automatic decryption without automatic encryption set bypass_auto_encryption=True in \fBmongoc_auto_encryption_opts_t\fP:
+Although automatic encryption requires MongoDB 4.2 enterprise or a MongoDB 4.2 Atlas cluster, automatic decryption is supported for all users. To configure automatic decryption without automatic encryption set bypass_auto_encryption=True in \fI\%mongoc_auto_encryption_opts_t\fP:
 .sp
 client\-side\-encryption\-auto\-decryption.c
 .INDENT 0.0
@@ -4375,19 +4377,19 @@ client\-side\-encryption\-auto\-decryption.c
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "client\-side\-encryption\-helpers.h"
+#include \(dqclient\-side\-encryption\-helpers.h\(dq
 
 /* This example demonstrates how to set up automatic decryption without
  * automatic encryption using the community version of MongoDB */
 int
-main (int argc, char **argv)
+main (void)
 {
 /* The collection used to store the encryption data keys. */
-#define KEYVAULT_DB "encryption"
-#define KEYVAULT_COLL "__libmongocTestKeyVault"
+#define KEYVAULT_DB \(dqencryption\(dq
+#define KEYVAULT_COLL \(dq__libmongocTestKeyVault\(dq
 /* The collection used to store the encrypted documents in this example. */
-#define ENCRYPTED_DB "test"
-#define ENCRYPTED_COLL "coll"
+#define ENCRYPTED_DB \(dqtest\(dq
+#define ENCRYPTED_COLL \(dqcoll\(dq
 
    int exit_status = EXIT_FAILURE;
    bool ret;
@@ -4409,7 +4411,7 @@ main (int argc, char **argv)
    mongoc_client_encryption_t *client_encryption = NULL;
    mongoc_client_encryption_opts_t *client_encryption_opts = NULL;
    mongoc_client_encryption_datakey_opts_t *datakey_opts = NULL;
-   char *keyaltnames[] = {"mongoc_encryption_example_4"};
+   char *keyaltnames[] = {\(dqmongoc_encryption_example_4\(dq};
    bson_value_t datakey_id = {0};
    bson_value_t encrypted_field = {0};
    bson_value_t to_encrypt = {0};
@@ -4424,22 +4426,22 @@ main (int argc, char **argv)
    /* Configure the master key. This must be the same master key that was used
     * to create the encryption key. */
    local_masterkey =
-      hex_to_bin (getenv ("LOCAL_MASTERKEY"), &local_masterkey_len);
+      hex_to_bin (getenv (\(dqLOCAL_MASTERKEY\(dq), &local_masterkey_len);
    if (!local_masterkey || local_masterkey_len != 96) {
       fprintf (stderr,
-               "Specify LOCAL_MASTERKEY environment variable as a "
-               "secure random 96 byte hex value.\en");
+               \(dqSpecify LOCAL_MASTERKEY environment variable as a \(dq
+               \(dqsecure random 96 byte hex value.\en\(dq);
       goto fail;
    }
 
-   kms_providers = BCON_NEW ("local",
-                             "{",
-                             "key",
+   kms_providers = BCON_NEW (\(dqlocal\(dq,
+                             \(dq{\(dq,
+                             \(dqkey\(dq,
                              BCON_BIN (0, local_masterkey, local_masterkey_len),
-                             "}");
+                             \(dq}\(dq);
 
    client =
-      mongoc_client_new ("mongodb://localhost/?appname=client\-side\-encryption");
+      mongoc_client_new (\(dqmongodb://localhost/?appname=client\-side\-encryption\(dq);
    auto_encryption_opts = mongoc_auto_encryption_opts_new ();
    mongoc_auto_encryption_opts_set_keyvault_namespace (
       auto_encryption_opts, KEYVAULT_DB, KEYVAULT_COLL);
@@ -4477,29 +4479,29 @@ main (int argc, char **argv)
 
    /* Create a unique index to ensure that two data keys cannot share the same
     * keyAltName. This is recommended practice for the key vault. */
-   index_keys = BCON_NEW ("keyAltNames", BCON_INT32 (1));
+   index_keys = BCON_NEW (\(dqkeyAltNames\(dq, BCON_INT32 (1));
    index_name = mongoc_collection_keys_to_index_string (index_keys);
-   create_index_cmd = BCON_NEW ("createIndexes",
+   create_index_cmd = BCON_NEW (\(dqcreateIndexes\(dq,
                                 KEYVAULT_COLL,
-                                "indexes",
-                                "[",
-                                "{",
-                                "key",
+                                \(dqindexes\(dq,
+                                \(dq[\(dq,
+                                \(dq{\(dq,
+                                \(dqkey\(dq,
                                 BCON_DOCUMENT (index_keys),
-                                "name",
+                                \(dqname\(dq,
                                 index_name,
-                                "unique",
+                                \(dqunique\(dq,
                                 BCON_BOOL (true),
-                                "partialFilterExpression",
-                                "{",
-                                "keyAltNames",
-                                "{",
-                                "$exists",
+                                \(dqpartialFilterExpression\(dq,
+                                \(dq{\(dq,
+                                \(dqkeyAltNames\(dq,
+                                \(dq{\(dq,
+                                \(dq$exists\(dq,
                                 BCON_BOOL (true),
-                                "}",
-                                "}",
-                                "}",
-                                "]");
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq}\(dq,
+                                \(dq]\(dq);
    ret = mongoc_client_command_simple (client,
                                        KEYVAULT_DB,
                                        create_index_cmd,
@@ -4534,7 +4536,7 @@ main (int argc, char **argv)
    mongoc_client_encryption_datakey_opts_set_keyaltnames (
       datakey_opts, keyaltnames, 1);
    ret = mongoc_client_encryption_create_datakey (
-      client_encryption, "local", datakey_opts, &datakey_id, &error);
+      client_encryption, \(dqlocal\(dq, datakey_opts, &datakey_id, &error);
    if (!ret) {
       goto fail;
    }
@@ -4544,9 +4546,9 @@ main (int argc, char **argv)
    mongoc_client_encryption_encrypt_opts_set_algorithm (
       encrypt_opts, MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_DETERMINISTIC);
    mongoc_client_encryption_encrypt_opts_set_keyaltname (
-      encrypt_opts, "mongoc_encryption_example_4");
+      encrypt_opts, \(dqmongoc_encryption_example_4\(dq);
    to_encrypt.value_type = BSON_TYPE_UTF8;
-   to_encrypt.value.v_utf8.str = "123456789";
+   to_encrypt.value.v_utf8.str = \(dq123456789\(dq;
    to_encrypt.value.v_utf8.len = strlen (to_encrypt.value.v_utf8.str);
 
    ret = mongoc_client_encryption_encrypt (
@@ -4556,7 +4558,7 @@ main (int argc, char **argv)
    }
 
    to_insert = bson_new ();
-   BSON_APPEND_VALUE (to_insert, "encryptedField", &encrypted_field);
+   BSON_APPEND_VALUE (to_insert, \(dqencryptedField\(dq, &encrypted_field);
    ret = mongoc_collection_insert_one (
       coll, to_insert, NULL /* opts */, NULL /* reply */, &error);
    if (!ret) {
@@ -4565,27 +4567,27 @@ main (int argc, char **argv)
 
    /* When we retrieve the document, any encrypted fields will get automatically
     * decrypted by the driver. */
-   printf ("decrypted document: ");
+   printf (\(dqdecrypted document: \(dq);
    if (!print_one_document (coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    unencrypted_client =
-      mongoc_client_new ("mongodb://localhost/?appname=client\-side\-encryption");
+      mongoc_client_new (\(dqmongodb://localhost/?appname=client\-side\-encryption\(dq);
    unencrypted_coll = mongoc_client_get_collection (
       unencrypted_client, ENCRYPTED_DB, ENCRYPTED_COLL);
 
-   printf ("encrypted document: ");
+   printf (\(dqencrypted document: \(dq);
    if (!print_one_document (unencrypted_coll, &error)) {
       goto fail;
    }
-   printf ("\en");
+   printf (\(dq\en\(dq);
 
    exit_status = EXIT_SUCCESS;
 fail:
    if (error.code) {
-      fprintf (stderr, "error: %s\en", error.message);
+      fprintf (stderr, \(dqerror: %s\en\(dq, error.message);
    }
 
    bson_free (local_masterkey);
@@ -4615,6 +4617,7 @@ fail:
    mongoc_cleanup ();
    return exit_status;
 }
+
 .ft P
 .fi
 .UNINDENT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_NEW_FROM_COMMAND_REPLY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_new_from_command_reply \- mongoc_cursor_new_from_command_reply()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_NEW_FROM_COMMAND_REPLY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_new_from_command_reply \- mongoc_cursor_new_from_command_reply()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,28 +49,28 @@ mongoc_cursor_new_from_command_reply (mongoc_client_t *client,
 .sp
 This function is deprecated and should not be used in new code.
 .sp
-Please use \fBmongoc_cursor_new_from_command_reply_with_opts()\fP instead.
+Please use \fI\%mongoc_cursor_new_from_command_reply_with_opts()\fP instead.
 .sp
-When migrating from the deprecated \fBmongoc_cursor_new_from_command_reply()\fP to \fBmongoc_cursor_new_from_command_reply_with_opts()\fP,
-note that options previously passed to the \fBreply\fP argument (e.g. "batchSize") must instead be provided in the \fBopts\fP argument.
+When migrating from the deprecated \fI\%mongoc_cursor_new_from_command_reply()\fP to \fI\%mongoc_cursor_new_from_command_reply_with_opts()\fP,
+note that options previously passed to the \fBreply\fP argument (e.g. \(dqbatchSize\(dq) must instead be provided in the \fBopts\fP argument.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
-\fBreply\fP: The reply to a command, such as "aggregate", "find", or "listCollections", that returns a cursor document. The reply is destroyed by \fBmongoc_cursor_new_from_command_reply\fP and must not be accessed afterward.
+\fBreply\fP: The reply to a command, such as \(dqaggregate\(dq, \(dqfind\(dq, or \(dqlistCollections\(dq, that returns a cursor document. The reply is destroyed by \fBmongoc_cursor_new_from_command_reply\fP and must not be accessed afterward.
 .IP \(bu 2
 \fBserver_id\fP: The opaque id of the server used to execute the command.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Some MongoDB commands return a "cursor" document. For example, given an "aggregate" command:
+Some MongoDB commands return a \(dqcursor\(dq document. For example, given an \(dqaggregate\(dq command:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-{ "aggregate" : "collection", "pipeline" : [], "cursor" : {}}
+{ \(dqaggregate\(dq : \(dqcollection\(dq, \(dqpipeline\(dq : [], \(dqcursor\(dq : {}}
 .ft P
 .fi
 .UNINDENT
@@ -83,26 +83,26 @@ The server replies:
 .nf
 .ft C
 {
-   "cursor" : {
-      "id" : 1234,
-      "ns" : "db.collection",
-      "firstBatch" : [ ]
+   \(dqcursor\(dq : {
+      \(dqid\(dq : 1234,
+      \(dqns\(dq : \(dqdb.collection\(dq,
+      \(dqfirstBatch\(dq : [ ]
    },
-   "ok" : 1
+   \(dqok\(dq : 1
 }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-\fBmongoc_cursor_new_from_command_reply\fP is a low\-level function that initializes a \fBmongoc_cursor_t\fP from such a reply. Additional options such as "tailable" or "awaitData" can be included in the reply.
+\fBmongoc_cursor_new_from_command_reply\fP is a low\-level function that initializes a \fI\%mongoc_cursor_t\fP from such a reply. Additional options such as \(dqtailable\(dq or \(dqawaitData\(dq can be included in the reply.
 .sp
 When synthesizing a completed cursor response that has no more batches (i.e. with cursor id 0), set \fBserver_id\fP to 0 as well.
 .sp
-Use this function only for building a language driver that wraps the C Driver. When writing applications in C, higher\-level functions such as \fBmongoc_collection_aggregate\fP are more appropriate, and ensure compatibility with a range of MongoDB versions.
+Use this function only for building a language driver that wraps the C Driver. When writing applications in C, higher\-level functions such as \fI\%mongoc_collection_aggregate()\fP are more appropriate, and ensure compatibility with a range of MongoDB versions.
 .SH RETURNS
 .sp
-A \fBmongoc_cursor_t\fP\&. On failure, the cursor\(aqs error is set. Check for failure with \fBmongoc_cursor_error\fP\&.
+A \fI\%mongoc_cursor_t\fP\&. On failure, the cursor\(aqs error is set. Check for failure with \fI\%mongoc_cursor_error()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

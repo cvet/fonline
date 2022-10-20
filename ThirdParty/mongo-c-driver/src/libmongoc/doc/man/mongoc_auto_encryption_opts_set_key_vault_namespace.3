@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_KEY_VAULT_NAMESPACE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_auto_encryption_opts_set_key_vault_namespace \- mongoc_auto_encryption_opts_set_keyvault_namespace()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_KEY_VAULT_NAMESPACE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_auto_encryption_opts_set_key_vault_namespace \- mongoc_auto_encryption_opts_set_keyvault_namespace()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,7 +48,7 @@ Set the database and collection name of the key vault. The key vault is the spec
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: The \fBmongoc_auto_encryption_opts_t\fP
+\fBopts\fP: The \fI\%mongoc_auto_encryption_opts_t\fP
 .IP \(bu 2
 \fBdb\fP: A \fBconst char *\fP representing the database name of the key vault collection.
 .IP \(bu 2
@@ -59,11 +59,11 @@ Set the database and collection name of the key vault. The key vault is the spec
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP
 .fi
 .sp
 .UNINDENT

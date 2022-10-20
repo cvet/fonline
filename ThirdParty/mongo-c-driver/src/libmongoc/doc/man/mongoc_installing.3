@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_INSTALLING" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_installing \- Installing the MongoDB C Driver (libmongoc) and BSON library (libbson)
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_INSTALLING" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_installing \- Installing the MongoDB C Driver (libmongoc) and BSON library (libbson)
 .sp
 The following guide will step you through the process of downloading, building, and installing the current release of the MongoDB C Driver (libmongoc) and BSON library (libbson).
 .SH SUPPORTED PLATFORMS
@@ -87,7 +87,7 @@ $ dnf install mongo\-c\-driver
 .UNINDENT
 .UNINDENT
 .sp
-On recent Red Hat systems, such as CentOS and RHEL 7, a mongo\-c\-driver package is available in the \fI\%EPEL\fP repository. To check which version is available, see \fI\%https://apps.fedoraproject.org/packages/mongo\-c\-driver\fP\&. The package can be installed with:
+On recent Red Hat systems, such as CentOS and RHEL 7, a mongo\-c\-driver package is available in the \fI\%EPEL\fP repository. To check which version is available, see \fI\%https://packages.fedoraproject.org/pkgs/mongo\-c\-driver/mongo\-c\-driver/\fP\&. The package can be installed with:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -221,7 +221,7 @@ $ brew install cmake
 .UNINDENT
 .SS Build environment on Windows with Visual Studio
 .sp
-Building on Windows requires Windows Vista or newer and Visual Studio 2010 or newer. Additionally, \fBcmake\fP is required to generate Visual Studio project files.  Installation of these components on Windows is beyond the scope of this document.
+Building on Windows requires Windows Vista or newer and Visual Studio 2013 or newer. Additionally, \fBcmake\fP is required to generate Visual Studio project files.  Installation of these components on Windows is beyond the scope of this document.
 .SS Build environment on Windows with MinGW\-W64 and MSYS2
 .sp
 Install MSYS2 from \fI\%msys2.github.io\fP\&. Choose the x86_64 version, not i686.
@@ -253,9 +253,9 @@ The following snippet will download and extract the driver, and configure it:
 .sp
 .nf
 .ft C
-$ wget \fI\%https://github.com/mongodb/mongo\-c\-driver/releases/download/\fP1.19.2/mongo\-c\-driver\-1.19.2\&.tar.gz
-$ tar xzf mongo\-c\-driver\-1.19.2\&.tar.gz
-$ cd mongo\-c\-driver\-1.19.2
+$ wget \fI\%https://github.com/mongodb/mongo\-c\-driver/releases/download/\fP1.23.0/mongo\-c\-driver\-1.23.0\&.tar.gz
+$ tar xzf mongo\-c\-driver\-1.23.0\&.tar.gz
+$ cd mongo\-c\-driver\-1.23.0
 $ mkdir cmake\-build
 $ cd cmake\-build
 $ cmake \-DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
@@ -264,7 +264,7 @@ $ cmake \-DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
 .UNINDENT
 .UNINDENT
 .sp
-The \fB\-DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF\fP option is recommended, see init\-cleanup\&. Another useful \fBcmake\fP option is \fB\-DCMAKE_BUILD_TYPE=Release\fP for a release optimized build and \fB\-DCMAKE_BUILD_TYPE=Debug\fP for a debug build. For a list of all configure options, run \fBcmake \-L ..\fP\&.
+The \fB\-DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF\fP option is recommended, see \fI\%Initialization and cleanup\fP\&. Another useful \fBcmake\fP option is \fB\-DCMAKE_BUILD_TYPE=Release\fP for a release optimized build and \fB\-DCMAKE_BUILD_TYPE=Debug\fP for a debug build. For a list of all configure options, run \fBcmake \-L ..\fP\&.
 .sp
 If \fBcmake\fP completed successfully, you will see a considerable amount of output describing your build configuration. The final line of output should look something like this:
 .INDENT 0.0
@@ -272,7 +272,7 @@ If \fBcmake\fP completed successfully, you will see a considerable amount of out
 .sp
 .nf
 .ft C
-\-\- Build files have been written to: /home/user/mongo\-c\-driver\-1.19.2/cmake\-build
+\-\- Build files have been written to: /home/user/mongo\-c\-driver\-1.23.0/cmake\-build
 .ft P
 .fi
 .UNINDENT
@@ -305,7 +305,7 @@ Clone the repository and prepare the build on the current branch or a particular
 .ft C
 $ git clone \fI\%https://github.com/mongodb/mongo\-c\-driver.git\fP
 $ cd mongo\-c\-driver
-$ git checkout 1.19.2  # To build a particular release
+$ git checkout 1.23.0  # To build a particular release
 $ python build/calc_release_version.py > VERSION_CURRENT
 $ mkdir cmake\-build
 $ cd cmake\-build
@@ -324,12 +324,12 @@ Start by generating Visual Studio project files. The following assumes you are c
 .sp
 .nf
 .ft C
-$ cd mongo\-c\-driver\-1.19.2
+$ cd mongo\-c\-driver\-1.23.0
 $ mkdir cmake\-build
 $ cd cmake\-build
-$ cmake \-G "Visual Studio 14 2015 Win64" \e
-    "\-DCMAKE_INSTALL_PREFIX=C:\emongo\-c\-driver" \e
-    "\-DCMAKE_PREFIX_PATH=C:\emongo\-c\-driver" \e
+$ cmake \-G \(dqVisual Studio 14 2015 Win64\(dq \e
+    \(dq\-DCMAKE_INSTALL_PREFIX=C:\emongo\-c\-driver\(dq \e
+    \(dq\-DCMAKE_PREFIX_PATH=C:\emongo\-c\-driver\(dq \e
     ..
 .ft P
 .fi
@@ -420,7 +420,7 @@ $ cmake \-\-build . \-\- /targets
 .sp
 Alternately, you can examine the files matching the glob \fB*.vcxproj\fP in the \fBcmake\-build\fP directory.
 .sp
-To use the driver libraries in your program, see visual\-studio\-guide\&.
+To use the driver libraries in your program, see \fI\%Using libmongoc in a Microsoft Visual Studio project\fP\&.
 .SS Generating the documentation
 .sp
 Install \fI\%Sphinx\fP, then:
@@ -491,7 +491,7 @@ $ sudo cmake \-\-build . \-\-target uninstall
 The second approach simply invokes the uninstall program referenced in the first approach.
 .SS Dealing with Build Failures
 .sp
-If your attempt to build the C driver fails, please see the \fIREADME <https://github.com/mongodb/mongo\-c\-driver#how\-to\-ask\-for\-help>\fP for instructions on requesting assistance.
+If your attempt to build the C driver fails, please see the \fI\%README\fP for instructions on requesting assistance.
 .SH ADDITIONAL OPTIONS FOR INTEGRATORS
 .sp
 In the event that you are building the BSON library and/or the C driver to embed with other components and you wish to avoid the potential for collision with components installed from a standard build or from a distribution package manager, you can make use of the \fBBSON_OUTPUT_BASENAME\fP and \fBMONGOC_OUTPUT_BASENAME\fP options to \fBcmake\fP\&.

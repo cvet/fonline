@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_SCHEMA_MAP" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_auto_encryption_opts_set_schema_map \- mongoc_auto_encryption_opts_set_schema_map()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_SCHEMA_MAP" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_auto_encryption_opts_set_schema_map \- mongoc_auto_encryption_opts_set_schema_map()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,7 +46,7 @@ mongoc_auto_encryption_opts_set_schema_map (mongoc_auto_encryption_opts_t *opts,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: The \fBmongoc_auto_encryption_opts_t\fP
+\fBopts\fP: The \fI\%mongoc_auto_encryption_opts_t\fP
 .IP \(bu 2
 \fBschema_map\fP: A \fI\%bson_t\fP where keys are collection namespaces and values are JSON schemas.
 .UNINDENT
@@ -62,24 +62,24 @@ The following is an example of a schema map which configures automatic encryptio
 .nf
 .ft C
 {
-     "db.coll": {
-         "properties": {
-         "encrypted_string": {
-             "encrypt": {
-             "keyId": [
+     \(dqdb.coll\(dq: {
+         \(dqproperties\(dq: {
+         \(dqencrypted_string\(dq: {
+             \(dqencrypt\(dq: {
+             \(dqkeyId\(dq: [
                  {
-                 "$binary": {
-                     "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
-                     "subType": "04"
+                 \(dq$binary\(dq: {
+                     \(dqbase64\(dq: \(dqAAAAAAAAAAAAAAAAAAAAAA==\(dq,
+                     \(dqsubType\(dq: \(dq04\(dq
                  }
                  }
              ],
-             "bsonType": "string",
-             "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512\-Deterministic"
+             \(dqbsonType\(dq: \(dqstring\(dq,
+             \(dqalgorithm\(dq: \(dqAEAD_AES_256_CBC_HMAC_SHA_512\-Deterministic\(dq
              }
          }
          },
-         "bsonType": "object"
+         \(dqbsonType\(dq: \(dqobject\(dq
      }
  }
 .ft P
@@ -91,11 +91,11 @@ The following is an example of a schema map which configures automatic encryptio
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP
 .fi
 .sp
 .UNINDENT

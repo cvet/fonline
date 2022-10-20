@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_get_monotonic_time.html"/>
-    <title>System Clock &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_get_monotonic_time.html"/>
+    <title>System Clock &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Memory Management" href="bson_memory.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_writer_rollback.html" title="bson_writer_rollback()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,28 +45,28 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="system-clock">
-<h1>System Clock<a class="headerlink" href="#system-clock" title="Permalink to this headline">¶</a></h1>
+  <section id="system-clock">
+<h1>System Clock<a class="headerlink" href="#system-clock" title="Permalink to this heading">¶</a></h1>
 <p>BSON Clock Abstraction</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int64_t</span>
-<span class="nf">bson_get_monotonic_time</span> <span class="p">(</span><span class="kt">void</span><span class="p">);</span>
-<span class="kt">int</span>
-<span class="nf">bson_gettimeofday</span> <span class="p">(</span><span class="k">struct</span> <span class="nc">timeval</span> <span class="o">*</span><span class="n">tv</span><span class="p">);</span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int64_t</span><span class="w"></span>
+<span class="nf">bson_get_monotonic_time</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="p">);</span><span class="w"></span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">bson_gettimeofday</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">timeval</span><span class="w"> </span><span class="o">*</span><span class="n">tv</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>The clock abstraction in Libbson provides a cross-platform way to handle timeouts within the BSON library. It abstracts the differences in implementations of <code class="docutils literal notranslate"><span class="pre">gettimeofday()</span></code> as well as providing a monotonic (incrementing only) clock in microseconds.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -124,7 +129,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

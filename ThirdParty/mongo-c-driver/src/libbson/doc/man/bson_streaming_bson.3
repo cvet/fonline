@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_STREAMING_BSON" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_streaming_bson \- Streaming BSON
 .
 .nr rst2man-indent-level 0
 .
@@ -30,11 +27,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_STREAMING_BSON" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_streaming_bson \- Streaming BSON
 .sp
-\fBbson_reader_t\fP provides a streaming reader which can be initialized with a filedescriptor or memory region. \fBbson_writer_t\fP provides a streaming writer which can be initialized with a memory region. (Streaming BSON to a file descriptor is not yet supported.)
+\fI\%bson_reader_t\fP provides a streaming reader which can be initialized with a filedescriptor or memory region. \fI\%bson_writer_t\fP provides a streaming writer which can be initialized with a memory region. (Streaming BSON to a file descriptor is not yet supported.)
 .SH READING FROM A BSON STREAM
 .sp
-\fBbson_reader_t\fP provides a convenient API to read sequential BSON documents from a file\-descriptor or memory buffer. The \fBbson_reader_read()\fP function will read forward in the underlying stream and return a \fBbson_t\fP that can be inspected and iterated upon.
+\fI\%bson_reader_t\fP provides a convenient API to read sequential BSON documents from a file\-descriptor or memory buffer. The \fI\%bson_reader_read()\fP function will read forward in the underlying stream and return a \fI\%bson_t\fP that can be inspected and iterated upon.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -51,22 +51,22 @@ main (int argc, char *argv[])
    bson_error_t error;
    bool eof;
 
-   reader = bson_reader_new_from_file ("mycollection.bson", &error);
+   reader = bson_reader_new_from_file (\(dqmycollection.bson\(dq, &error);
 
    if (!reader) {
-      fprintf (stderr, "Failed to open file.\en");
+      fprintf (stderr, \(dqFailed to open file.\en\(dq);
       return 1;
    }
 
    while ((doc = bson_reader_read (reader, &eof))) {
       char *str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (!eof) {
       fprintf (stderr,
-               "corrupted bson document found at %u\en",
+               \(dqcorrupted bson document found at %u\en\(dq,
                (unsigned) bson_reader_tell (reader));
    }
 
@@ -79,10 +79,10 @@ main (int argc, char *argv[])
 .UNINDENT
 .UNINDENT
 .sp
-See \fBbson_reader_new_from_fd()\fP, \fBbson_reader_new_from_file()\fP, and \fBbson_reader_new_from_data()\fP for more information.
+See \fI\%bson_reader_new_from_fd()\fP, \fI\%bson_reader_new_from_file()\fP, and \fI\%bson_reader_new_from_data()\fP for more information.
 .SH WRITING A SEQUENCE OF BSON DOCUMENTS
 .sp
-\fBbson_writer_t\fP provides a convenient API to write a sequence of BSON documents to a memory buffer that can grow with \fBrealloc()\fP\&. The \fBbson_writer_begin()\fP and \fBbson_writer_end()\fP functions will manage the underlying buffer while building the sequence of documents.
+\fI\%bson_writer_t\fP provides a convenient API to write a sequence of BSON documents to a memory buffer that can grow with \fBrealloc()\fP\&. The \fI\%bson_writer_begin()\fP and \fI\%bson_writer_end()\fP functions will manage the underlying buffer while building the sequence of documents.
 .sp
 This could also be useful if you want to write to a network packet while serializing the documents from a higher level language, (but do so just after the packets header).
 .INDENT 0.0
@@ -110,7 +110,7 @@ main (int argc, char *argv[])
       r = bson_writer_begin (writer, &doc);
       assert (r);
 
-      r = BSON_APPEND_INT32 (doc, "i", i);
+      r = BSON_APPEND_INT32 (doc, \(dqi\(dq, i);
       assert (r);
 
       bson_writer_end (writer);
@@ -125,7 +125,7 @@ main (int argc, char *argv[])
 .UNINDENT
 .UNINDENT
 .sp
-See \fBbson_writer_new()\fP for more information.
+See \fI\%bson_writer_new()\fP for more information.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

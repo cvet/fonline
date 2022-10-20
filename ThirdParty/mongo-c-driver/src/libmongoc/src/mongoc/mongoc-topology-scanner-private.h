@@ -31,6 +31,7 @@
 #include "mongoc-ssl.h"
 #include "mongoc-crypto-private.h"
 #include "mongoc-server-description-private.h"
+#include "common-thread-private.h"
 
 BSON_BEGIN_DECLS
 
@@ -53,6 +54,10 @@ typedef struct mongoc_topology_scanner_node {
    mongoc_stream_t *stream;
 
    int64_t last_used;
+   /* last_failed is set upon a network error trying to check a server.
+    * last_failed is used to enforce cooldownMS.
+    * last_failed is not set upon a network error during an application
+    * operation on @stream. */
    int64_t last_failed;
    bool has_auth;
    bool hello_ok;
@@ -85,15 +90,33 @@ typedef struct mongoc_topology_scanner_node {
    mongoc_server_description_t *handshake_sd;
 } mongoc_topology_scanner_node_t;
 
+typedef enum handshake_state_t {
+   /**
+    * The handshake command has no value. The handshake_cmd pointer will be
+    * NULL.
+    */
+   HANDSHAKE_CMD_UNINITIALIZED,
+   /**
+    * The handshake command could not be constructed because it would be too
+    * large. The handshake_cmd pointer will be NULL.
+    */
+   HANDSHAKE_CMD_TOO_BIG,
+   /**
+    * The handshake command is valid and ready to be copied-from.
+    */
+   HANDSHAKE_CMD_OKAY,
+} handshake_state_t;
+
 typedef struct mongoc_topology_scanner {
    mongoc_async_t *async;
    int64_t connect_timeout_msec;
    mongoc_topology_scanner_node_t *nodes;
    bson_t hello_cmd;
    bson_t legacy_hello_cmd;
-   bson_t handshake_cmd;
+   bson_mutex_t handshake_cmd_mtx;
+   bson_t *handshake_cmd;
+   handshake_state_t handshake_state;
    bson_t cluster_time;
-   bool handshake_ok_to_send;
    const char *appname;
 
    mongoc_topology_scanner_setup_err_cb_t setup_err_cb;
@@ -206,8 +229,16 @@ const bson_t *
 _mongoc_topology_scanner_get_monitoring_cmd (mongoc_topology_scanner_t *ts,
                                              bool hello_ok);
 
-const bson_t *
-_mongoc_topology_scanner_get_handshake_cmd (mongoc_topology_scanner_t *ts);
+/**
+ * @brief Get the scanner's associated handshake command BSON document.
+ *
+ * @param ts The scanner to inspect
+ * @param copy_into A pointer to an initialized bson_t. The handshake command
+ * will be copied into the pointee.
+ */
+void
+_mongoc_topology_scanner_dup_handshake_cmd (mongoc_topology_scanner_t *ts,
+                                            bson_t *copy_into);
 
 bool
 mongoc_topology_scanner_has_node_for_host (mongoc_topology_scanner_t *ts,
@@ -243,11 +274,18 @@ _mongoc_topology_scanner_set_server_api (mongoc_topology_scanner_t *ts,
                                          const mongoc_server_api_t *api);
 
 void
-_mongoc_topology_scanner_set_loadbalanced (mongoc_topology_scanner_t *ts, bool val);
+_mongoc_topology_scanner_set_loadbalanced (mongoc_topology_scanner_t *ts,
+                                           bool val);
 
 /* for testing. */
 mongoc_stream_t *
 _mongoc_topology_scanner_tcp_initiate (mongoc_async_cmd_t *acmd);
+
+/* Returns true if versioned server API has been selected, otherwise
+ * false. */
+bool
+mongoc_topology_scanner_uses_server_api (
+   const mongoc_topology_scanner_t *topology_scanner);
 
 BSON_END_DECLS
 

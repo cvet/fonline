@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_socket_send.html"/>
-    <title>mongoc_socket_send() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_socket_send.html"/>
+    <title>mongoc_socket_send() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_socket_sendv()" href="mongoc_socket_sendv.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_socket_recv.html" title="mongoc_socket_recv()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_socket_t.html" accesskey="U">mongoc_socket_t</a> &#187;</li> 
       </ul>
@@ -41,36 +46,36 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-socket-send">
-<h1>mongoc_socket_send()<a class="headerlink" href="#mongoc-socket-send" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">ssize_t</span>
-<span class="nf">mongoc_socket_send</span> <span class="p">(</span><span class="n">mongoc_socket_t</span> <span class="o">*</span><span class="n">sock</span><span class="p">,</span>
-                    <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
-                    <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
-                    <span class="kt">int64_t</span> <span class="n">expire_at</span><span class="p">);</span>
+  <section id="mongoc-socket-send">
+<h1>mongoc_socket_send()<a class="headerlink" href="#mongoc-socket-send" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">ssize_t</span><span class="w"></span>
+<span class="nf">mongoc_socket_send</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_socket_t</span><span class="w"> </span><span class="o">*</span><span class="n">sock</span><span class="p">,</span><span class="w"></span>
+<span class="w">                    </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">buf</span><span class="p">,</span><span class="w"></span>
+<span class="w">                    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">buflen</span><span class="p">,</span><span class="w"></span>
+<span class="w">                    </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">expire_at</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">sock</span></code>: A <a class="symbol reference internal" href="mongoc_socket_t.html"><span class="doc">mongoc_socket_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">buf</span></code>: A buffer to send.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">buflen</span></code>: A size_t with the number of bytes in buf.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">expire_at</span></code>: A int64_t with an absolute timeout for the operation or 0. The timeout is in monotonic time using microseconds. You can retrieve the current monotonic time with <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_get_monotonic_time.html" title="(in libbson v1.19.2)"><code class="docutils literal notranslate"><span class="pre">System</span> <span class="pre">Clock</span></code></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">expire_at</span></code>: A int64_t with an absolute timeout for the operation or 0. The timeout is in monotonic time using microseconds. You can retrieve the current monotonic time with <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_get_monotonic_time.html" title="(in libbson v1.23.0)"><code class="docutils literal notranslate"><span class="pre">System</span> <span class="pre">Clock</span></code></a>.</p></li>
 </ul>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>Sends buflen bytes in buf to the destination. If a timeout expired, the number of bytes sent will be returned or -1 if no bytes were sent.</p>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>-1 on failure and errno is set, or the number of bytes sent.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -106,6 +111,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -181,7 +187,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

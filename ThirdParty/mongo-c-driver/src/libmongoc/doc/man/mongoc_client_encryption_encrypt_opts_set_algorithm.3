@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT_OPTS_SET_ALGORITHM" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_encryption_encrypt_opts_set_algorithm \- mongoc_client_encryption_encrypt_opts_set_algorithm()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENCRYPTION_ENCRYPT_OPTS_SET_ALGORITHM" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_encryption_encrypt_opts_set_algorithm \- mongoc_client_encryption_encrypt_opts_set_algorithm()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -40,24 +40,68 @@ void
 mongoc_client_encryption_encrypt_opts_set_algorithm (
    mongoc_client_encryption_encrypt_opts_t *opts, const char *algorithm);
 
-#define MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_RANDOM "AEAD_AES_256_CBC_HMAC_SHA_512\-Random"
-#define MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_DETERMINISTIC "AEAD_AES_256_CBC_HMAC_SHA_512\-Deterministic"
+#define MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_RANDOM \(dqAEAD_AES_256_CBC_HMAC_SHA_512\-Random\(dq
+#define MONGOC_AEAD_AES_256_CBC_HMAC_SHA_512_DETERMINISTIC \(dqAEAD_AES_256_CBC_HMAC_SHA_512\-Deterministic\(dq
+// (Experimental: See below)
+#define MONGOC_ENCRYPT_ALGORITHM_INDEXED \(dqIndexed\(dq
+// (Experimental: See below)
+#define MONGOC_ENCRYPT_ALGORITHM_UNINDEXED \(dqUnindexed\(dq
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
 Identifies the algorithm to use for encryption. Valid values of \fBalgorithm\fP are:
+.sp
+\fB\(dqAEAD_AES_256_CBC_HMAC_SHA_512\-Random\(dq\fP
 .INDENT 0.0
-.IP \(bu 2
-"AEAD_AES_256_CBC_HMAC_SHA_512\-Random" for randomized encryption.
-.IP \(bu 2
-"AEAD_AES_256_CBC_HMAC_SHA_512\-Deterministic" for deterministic (queryable) encryption.
+.INDENT 3.5
+for randomized encryption.
+.UNINDENT
+.UNINDENT
+.sp
+\fB\(dqAEAD_AES_256_CBC_HMAC_SHA_512\-Deterministic\(dq\fP
+.INDENT 0.0
+.INDENT 3.5
+for deterministic (queryable) encryption.
+.UNINDENT
+.UNINDENT
+.sp
+\fB\(dqIndexed\(dq\fP
+.INDENT 0.0
+.INDENT 3.5
+for indexed encryption.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is part of the experimental
+\fI\%Queryable Encryption\fP API and may be subject
+to breaking changes in future releases.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fB\(dqUnindexed\(dq\fP
+.INDENT 0.0
+.INDENT 3.5
+for unindexed encryption.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option is part of the experimental
+\fI\%Queryable Encryption\fP API and may be subject
+to breaking changes in future releases.
+.UNINDENT
+.UNINDENT
+.UNINDENT
 .UNINDENT
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_client_encryption_encrypt_opts_t\fP
+\fBopts\fP: A \fI\%mongoc_client_encryption_encrypt_opts_t\fP
 .IP \(bu 2
 \fBalgorithm\fP: A \fBchar *\fP identifying the algorithm.
 .UNINDENT

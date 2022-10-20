@@ -39,7 +39,7 @@ The ``fmt::format`` function returns a string "The answer is 42.". You can use
 .. code:: c++
 
   auto out = fmt::memory_buffer();
-  format_to(std::back_inserter(out),
+  fmt::format_to(std::back_inserter(out),
             "For a moment, {} happened.", "nothing");
   auto data = out.data(); // pointer to the formatted data
   auto size = out.size(); // size of the formatted data
@@ -101,7 +101,7 @@ The code
   format(FMT_STRING("The answer is {:d}"), "forty-two");
 
 reports a compile-time error on compilers that support relaxed ``constexpr``.
-See `here <api.html#c.fmt>`_ for details.
+See `here <api.html#compile-time-format-string-checks>`_ for details.
 
 The following code
 

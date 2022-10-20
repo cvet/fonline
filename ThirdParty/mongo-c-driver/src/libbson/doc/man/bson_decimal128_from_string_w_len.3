@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_DECIMAL128_FROM_STRING_W_LEN" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_decimal128_from_string_w_len \- bson_decimal128_from_string_w_len()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_DECIMAL128_FROM_STRING_W_LEN" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_decimal128_from_string_w_len \- bson_decimal128_from_string_w_len()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,7 +51,7 @@ bson_decimal128_from_string_w_len (const char *string,
 .IP \(bu 2
 \fBlen\fP: The length of \fBstring\fP in bytes, or \-1 meaning the string is null\-terminated.
 .IP \(bu 2
-\fBdec\fP: A \fBbson_decimal128_t\fP\&.
+\fBdec\fP: A \fI\%bson_decimal128_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -69,8 +69,8 @@ and \fBdec\fP will be set to \fBNaN\fP\&.
 .nf
 .ft C
 bson_decimal128_t dec;
-bson_decimal128_from_string_w_len ("1.00", 4, &dec);
-bson_decimal128_from_string_w_len ("1.00", \-1, &dec);
+bson_decimal128_from_string_w_len (\(dq1.00\(dq, 4, &dec);
+bson_decimal128_from_string_w_len (\(dq1.00\(dq, \-1, &dec);
 .ft P
 .fi
 .UNINDENT

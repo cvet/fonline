@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_DECIMAL128_TO_STRING" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_decimal128_to_string \- bson_decimal128_to_string()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_DECIMAL128_TO_STRING" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_decimal128_to_string \- bson_decimal128_to_string()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ bson_decimal128_to_string (const bson_decimal128_t *dec, char *str);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdec\fP: A \fBbson_decimal128_t\fP\&.
+\fBdec\fP: A \fI\%bson_decimal128_t\fP\&.
 .IP \(bu 2
 \fBstr\fP: A location of length BSON_DECIMAL128_STRING for the resulting string.
 .UNINDENT

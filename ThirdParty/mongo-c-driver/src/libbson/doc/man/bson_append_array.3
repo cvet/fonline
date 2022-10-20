@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_ARRAY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_array \- bson_append_array()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_ARRAY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_array \- bson_append_array()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,17 +51,17 @@ bson_append_array (bson_t *bson,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
 \fBkey_length\fP: The length of \fBkey\fP in bytes, or \-1 to determine the length with \fBstrlen()\fP\&.
 .IP \(bu 2
-\fBarray\fP: A \fBbson_t\fP\&.
+\fBarray\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_array()\fP function shall append \fBarray\fP to \fBbson\fP using the specified key. The type of the field will be an array, but it is the responsibility of the caller to ensure that the keys of \fBarray\fP are properly formatted with string keys such as "0", "1", "2" and so forth.
+The \fI\%bson_append_array()\fP function shall append \fBarray\fP to \fBbson\fP using the specified key. The type of the field will be an array, but it is the responsibility of the caller to ensure that the keys of \fBarray\fP are properly formatted with string keys such as \(dq0\(dq, \(dq1\(dq, \(dq2\(dq and so forth.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function fails if appending the array grows \fBbson\fP larger than INT32_MAX.

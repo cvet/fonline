@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_STRING_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_string_t \- bson_string_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_STRING_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_string_t \- bson_string_t
 .sp
 String Building Abstraction
 .SH SYNOPSIS
@@ -51,7 +51,7 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-\fBbson_string_t\fP is an abstraction for building strings. As chunks are added to the string, allocations are performed in powers of two.
+\fI\%bson_string_t\fP is an abstraction for building strings. As chunks are added to the string, allocations are performed in powers of two.
 .sp
 This API is useful if you need to build UTF\-8 encoded strings.
 .SH EXAMPLE
@@ -63,8 +63,8 @@ This API is useful if you need to build UTF\-8 encoded strings.
 bson_string_t *str;
 
 str = bson_string_new (NULL);
-bson_string_append_printf (str, "%d %s %f\en", 0, "some string", 0.123);
-printf ("%s\en", str\->str);
+bson_string_append_printf (str, \(dq%d %s %f\en\(dq, 0, \(dqsome string\(dq, 0.123);
+printf (\(dq%s\en\(dq, str\->str);
 
 bson_string_free (str, true);
 .ft P
@@ -75,7 +75,7 @@ bson_string_free (str, true);
 \fBTIP:\fP
 .INDENT 0.0
 .INDENT 3.5
-You can call \fBbson_string_free()\fP with \fBfalse\fP if you would like to take ownership of \fBstr\->str\fP\&. Some APIs that do this might call \fBreturn bson_string_free (str, false);\fP after building the string.
+You can call \fI\%bson_string_free()\fP with \fBfalse\fP if you would like to take ownership of \fBstr\->str\fP\&. Some APIs that do this might call \fBreturn bson_string_free (str, false);\fP after building the string.
 .UNINDENT
 .UNINDENT
 .SH AUTHOR

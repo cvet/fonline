@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_UINT32_TO_STRING" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_uint32_to_string \- bson_uint32_to_string()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_UINT32_TO_STRING" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_uint32_to_string \- bson_uint32_to_string()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -67,7 +67,7 @@ If not, a string will be formatted using \fBstr\fP and \fBsnprintf()\fP\&.
 \fBstrptr\fP will always be set. It will either point to \fBstr\fP or a constant string. Use this as your key.
 .SH ARRAY ELEMENT KEY BUILDING
 .sp
-Each element in a BSON array has a monotonic string key like \fB"0"\fP, \fB"1"\fP, etc. This function is optimized for generating such string keys.
+Each element in a BSON array has a monotonic string key like \fB\(dq0\(dq\fP, \fB\(dq1\(dq\fP, etc. This function is optimized for generating such string keys.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -79,7 +79,7 @@ uint32_t i;
 
 for (i = 0; i < 10; i++) {
    bson_uint32_to_string (i, &key, str, sizeof str);
-   printf ("Key: %s\en", key);
+   printf (\(dqKey: %s\en\(dq, key);
 }
 .ft P
 .fi

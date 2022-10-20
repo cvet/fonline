@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SESSION_OPTS_SET_CAUSAL_CONSISTENCY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_session_opts_set_causal_consistency \- mongoc_session_opts_set_causal_consistency()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SESSION_OPTS_SET_CAUSAL_CONSISTENCY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_session_opts_set_causal_consistency \- mongoc_session_opts_set_causal_consistency()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,13 +46,13 @@ mongoc_session_opts_set_causal_consistency (mongoc_session_opt_t *opts,
 .sp
 Configure causal consistency in a session. If true (the default), each operation in the session will be causally ordered after the previous read or write operation. Set to false to disable causal consistency. See \fI\%the MongoDB Manual Entry for Causal Consistency\fP\&.
 .sp
-Causal consistency and snapshot reads are mutually exclusive. Attempting to set both to true will result in an error. See \fBmongoc_session_opts_set_snapshot()\fP\&.
+Causal consistency and snapshot reads are mutually exclusive. Attempting to set both to true will result in an error. See \fI\%mongoc_session_opts_set_snapshot()\fP\&.
 .sp
-Unacknowledged writes are not causally consistent. If you execute a write operation with a \fBmongoc_write_concern_t\fP on which you have called \fBmongoc_write_concern_set_w\fP with a value of 0, the write does not participate in causal consistency.
+Unacknowledged writes are not causally consistent. If you execute a write operation with a \fI\%mongoc_write_concern_t\fP on which you have called \fI\%mongoc_write_concern_set_w()\fP with a value of 0, the write does not participate in causal consistency.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_session_opt_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_session_opt_t\fP\&.
 .IP \(bu 2
 \fBcausal_consistency\fP: True or false.
 .UNINDENT
@@ -71,7 +71,7 @@ bson_t *doc;
 bson_error_t error;
 bool r;
 
-client = mongoc_client_new ("mongodb://example/?appname=session\-opts\-example");
+client = mongoc_client_new (\(dqmongodb://example/?appname=session\-opts\-example\(dq);
 mongoc_client_set_error_api (client, 2);
 
 session_opts = mongoc_session_opts_new ();
@@ -80,15 +80,15 @@ client_session = mongoc_client_start_session (client, session_opts, &error);
 mongoc_session_opts_destroy (session_opts);
 
 if (!client_session) {
-   fprintf (stderr, "Failed to start session: %s\en", error.message);
+   fprintf (stderr, \(dqFailed to start session: %s\en\(dq, error.message);
    abort ();
 }
 
-collection = mongoc_client_get_collection (client, "test", "collection");
-doc = BCON_NEW ("_id", BCON_INT32 (1));
+collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqcollection\(dq);
+doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (1));
 r = mongoc_client_session_append (client_session, &insert_opts, NULL);
 if (!r) {
-   fprintf (stderr, "mongoc_client_session_append failed: %s\en", error.message);
+   fprintf (stderr, \(dqmongoc_client_session_append failed: %s\en\(dq, error.message);
    abort ();
 }
 
@@ -96,7 +96,7 @@ r = mongoc_collection_insert_one (
    collection, doc, &insert_opts, NULL /* reply */, &error);
 
 if (!r) {
-   fprintf (stderr, "Insert failed: %s\en", error.message);
+   fprintf (stderr, \(dqInsert failed: %s\en\(dq, error.message);
    abort ();
 }
 .ft P

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DISTINCT_MAPREDUCE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_distinct_mapreduce \- "distinct" and "mapReduce"
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DISTINCT_MAPREDUCE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_distinct_mapreduce \- "distinct" and "mapReduce"
 .sp
 This document provides some practical, simple, examples to demonstrate the \fBdistinct\fP and \fBmapReduce\fP commands.
 .SH SETUP
@@ -58,11 +58,11 @@ insert_data (mongoc_collection_t *collection)
 
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
-   docs[0] = BCON_NEW ("x", BCON_DOUBLE (1.0), "tags", "[", "dog", "cat", "]");
-   docs[1] = BCON_NEW ("x", BCON_DOUBLE (2.0), "tags", "[", "cat", "]");
+   docs[0] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (1.0), \(dqtags\(dq, \(dq[\(dq, \(dqdog\(dq, \(dqcat\(dq, \(dq]\(dq);
+   docs[1] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqcat\(dq, \(dq]\(dq);
    docs[2] = BCON_NEW (
-      "x", BCON_DOUBLE (2.0), "tags", "[", "mouse", "cat", "dog", "]");
-   docs[3] = BCON_NEW ("x", BCON_DOUBLE (3.0), "tags", "[", "]");
+      \(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqmouse\(dq, \(dqcat\(dq, \(dqdog\(dq, \(dq]\(dq);
+   docs[3] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (3.0), \(dqtags\(dq, \(dq[\(dq, \(dq]\(dq);
 
    for (i = 0; i < ndocs; i++) {
       mongoc_bulk_operation_insert (bulk, docs[i]);
@@ -73,7 +73,7 @@ insert_data (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, NULL, &error);
 
    if (!ret) {
-      fprintf (stderr, "Error inserting data: %s\en", error.message);
+      fprintf (stderr, \(dqError inserting data: %s\en\(dq, error.message);
    }
 
    mongoc_bulk_operation_destroy (bulk);
@@ -87,7 +87,7 @@ print_res (const bson_t *reply)
    char *str;
    BSON_ASSERT (reply);
    str = bson_as_canonical_extended_json (reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 }
 
@@ -116,37 +116,37 @@ distinct (mongoc_database_t *database)
    bson_iter_t array_iter;
    double val;
 
-   command = BCON_NEW ("distinct",
+   command = BCON_NEW (\(dqdistinct\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "key",
-                       BCON_UTF8 ("x"),
-                       "query",
-                       "{",
-                       "x",
-                       "{",
-                       "$gt",
+                       \(dqkey\(dq,
+                       BCON_UTF8 (\(dqx\(dq),
+                       \(dqquery\(dq,
+                       \(dq{\(dq,
+                       \(dqx\(dq,
+                       \(dq{\(dq,
+                       \(dq$gt\(dq,
                        BCON_DOUBLE (1.0),
-                       "}",
-                       "}");
+                       \(dq}\(dq,
+                       \(dq}\(dq);
    res =
       mongoc_database_command_simple (database, command, NULL, &reply, &error);
    if (!res) {
-      fprintf (stderr, "Error with distinct: %s\en", error.message);
+      fprintf (stderr, \(dqError with distinct: %s\en\(dq, error.message);
       goto cleanup;
    }
 
    /* Do something with reply (in this case iterate through the values) */
-   if (!(bson_iter_init_find (&iter, &reply, "values") &&
+   if (!(bson_iter_init_find (&iter, &reply, \(dqvalues\(dq) &&
          BSON_ITER_HOLDS_ARRAY (&iter) &&
          bson_iter_recurse (&iter, &array_iter))) {
-      fprintf (stderr, "Couldn\(aqt extract \e"values\e" field from response\en");
+      fprintf (stderr, \(dqCouldn\(aqt extract \e\(dqvalues\e\(dq field from response\en\(dq);
       goto cleanup;
    }
 
    while (bson_iter_next (&array_iter)) {
       if (BSON_ITER_HOLDS_DOUBLE (&array_iter)) {
          val = bson_iter_double (&array_iter);
-         printf ("Next double: %f\en", val);
+         printf (\(dqNext double: %f\en\(dq, val);
       }
    }
 
@@ -163,7 +163,7 @@ cleanup:
 .UNINDENT
 .SH "MAPREDUCE" - BASIC EXAMPLE
 .sp
-A simple example using the map reduce framework. It simply adds up the number of occurrences of each "tag".
+A simple example using the map reduce framework. It simply adds up the number of occurrences of each \(dqtag\(dq.
 .sp
 First define the \fBmap\fP and \fBreduce\fP functions:
 .sp
@@ -173,25 +173,25 @@ constants.c
 .sp
 .nf
 .ft C
-const char *const COLLECTION_NAME = "things";
+const char *const COLLECTION_NAME = \(dqthings\(dq;
 
 /* Our map function just emits a single (key, 1) pair for each tag
    in the array: */
-const char *const MAPPER = "function () {"
-                           "this.tags.forEach(function(z) {"
-                           "emit(z, 1);"
-                           "});"
-                           "}";
+const char *const MAPPER = \(dqfunction () {\(dq
+                           \(dqthis.tags.forEach(function(z) {\(dq
+                           \(dqemit(z, 1);\(dq
+                           \(dq});\(dq
+                           \(dq}\(dq;
 
 /* The reduce function sums over all of the emitted values for a
    given key: */
-const char *const REDUCER = "function (key, values) {"
-                            "var total = 0;"
-                            "for (var i = 0; i < values.length; i++) {"
-                            "total += values[i];"
-                            "}"
-                            "return total;"
-                            "}";
+const char *const REDUCER = \(dqfunction (key, values) {\(dq
+                            \(dqvar total = 0;\(dq
+                            \(dqfor (var i = 0; i < values.length; i++) {\(dq
+                            \(dqtotal += values[i];\(dq
+                            \(dq}\(dq
+                            \(dqreturn total;\(dq
+                            \(dq}\(dq;
 /* Note We can\(aqt just return values.length as the reduce function
    might be called iteratively on the results of other reduce
    steps. */
@@ -201,8 +201,8 @@ const char *const REDUCER = "function (key, values) {"
 .UNINDENT
 .UNINDENT
 .sp
-Run the \fBmapReduce\fP command. Use the generic command helpers (e.g. \fBmongoc_database_command_simple()\fP).
-Do not the read command helpers (e.g. \fBmongoc_database_read_command_with_opts()\fP) because they are considered
+Run the \fBmapReduce\fP command. Use the generic command helpers (e.g. \fI\%mongoc_database_command_simple()\fP).
+Do not the read command helpers (e.g. \fI\%mongoc_database_read_command_with_opts()\fP) because they are considered
 retryable read operations. If retryable reads are enabled, those operations will retry once on a retryable error,
 giving undesirable behavior for \fBmapReduce\fP\&.
 .sp
@@ -224,7 +224,7 @@ map_reduce_basic (mongoc_database_t *database)
 
    bool query_done = false;
 
-   const char *out_collection_name = "outCollection";
+   const char *out_collection_name = \(dqoutCollection\(dq;
    mongoc_collection_t *out_collection;
 
    /* Empty find query */
@@ -232,21 +232,21 @@ map_reduce_basic (mongoc_database_t *database)
 
    /* Construct the mapReduce command */
 
-   /* Other arguments can also be specified here, like "query" or
-      "limit" and so on */
-   command = BCON_NEW ("mapReduce",
+   /* Other arguments can also be specified here, like \(dqquery\(dq or
+      \(dqlimit\(dq and so on */
+   command = BCON_NEW (\(dqmapReduce\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "map",
+                       \(dqmap\(dq,
                        BCON_CODE (MAPPER),
-                       "reduce",
+                       \(dqreduce\(dq,
                        BCON_CODE (REDUCER),
-                       "out",
+                       \(dqout\(dq,
                        BCON_UTF8 (out_collection_name));
    res =
       mongoc_database_command_simple (database, command, NULL, &reply, &error);
 
    if (!res) {
-      fprintf (stderr, "MapReduce failed: %s\en", error.message);
+      fprintf (stderr, \(dqMapReduce failed: %s\en\(dq, error.message);
       goto cleanup;
    }
 
@@ -266,7 +266,7 @@ map_reduce_basic (mongoc_database_t *database)
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "ERROR: %s\en", error.message);
+      fprintf (stderr, \(dqERROR: %s\en\(dq, error.message);
       res = false;
       goto cleanup;
    }
@@ -292,7 +292,7 @@ cleanup:
 .sp
 You must have replica set running for this.
 .sp
-In this example we contact a secondary in the replica set and do an "inline" map reduce, so the results are returned immediately:
+In this example we contact a secondary in the replica set and do an \(dqinline\(dq map reduce, so the results are returned immediately:
 .sp
 map\-reduce\-advanced.c
 .INDENT 0.0
@@ -311,21 +311,21 @@ map_reduce_advanced (mongoc_database_t *database)
    const bson_t *doc;
 
    /* Construct the mapReduce command */
-   /* Other arguments can also be specified here, like "query" or "limit"
+   /* Other arguments can also be specified here, like \(dqquery\(dq or \(dqlimit\(dq
       and so on */
 
    /* Read the results inline from a secondary replica */
-   command = BCON_NEW ("mapReduce",
+   command = BCON_NEW (\(dqmapReduce\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "map",
+                       \(dqmap\(dq,
                        BCON_CODE (MAPPER),
-                       "reduce",
+                       \(dqreduce\(dq,
                        BCON_CODE (REDUCER),
-                       "out",
-                       "{",
-                       "inline",
-                       "1",
-                       "}");
+                       \(dqout\(dq,
+                       \(dq{\(dq,
+                       \(dqinline\(dq,
+                       \(dq1\(dq,
+                       \(dq}\(dq);
 
    read_pref = mongoc_read_prefs_new (MONGOC_READ_SECONDARY);
    cursor = mongoc_database_command (
@@ -337,7 +337,7 @@ map_reduce_advanced (mongoc_database_t *database)
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "ERROR: %s\en", error.message);
+      fprintf (stderr, \(dqERROR: %s\en\(dq, error.message);
       res = false;
    }
 
@@ -365,14 +365,14 @@ basic\-aggregation.c
 /*
  * Copyright 2016 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -383,12 +383,12 @@ basic\-aggregation.c
 #include <stdio.h>
 
 
-#include "constants.c"
+#include \(dqconstants.c\(dq
 
-#include "../doc\-common\-insert.c"
-#include "distinct.c"
-#include "map\-reduce\-basic.c"
-#include "map\-reduce\-advanced.c"
+#include \(dq../doc\-common\-insert.c\(dq
+#include \(dqdistinct.c\(dq
+#include \(dqmap\-reduce\-basic.c\(dq
+#include \(dqmap\-reduce\-advanced.c\(dq
 
 
 int
@@ -403,31 +403,31 @@ main (int argc, char *argv[])
    int exit_code = EXIT_FAILURE;
 
    if (argc != 2) {
-      fprintf (stderr, "usage: %s CONNECTION\-STRING\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s CONNECTION\-STRING\en\(dq, argv[0]);
       fprintf (stderr,
-               "the connection string can be of the following forms:\en");
-      fprintf (stderr, "localhost\et\et\et\etlocal machine\en");
-      fprintf (stderr, "localhost:27018\et\et\et\etlocal machine on port 27018\en");
+               \(dqthe connection string can be of the following forms:\en\(dq);
+      fprintf (stderr, \(dqlocalhost\et\et\et\etlocal machine\en\(dq);
+      fprintf (stderr, \(dqlocalhost:27018\et\et\et\etlocal machine on port 27018\en\(dq);
       fprintf (stderr,
-               "mongodb://user:pass@localhost:27017\et"
-               "local machine on port 27017, and authenticate with username "
-               "user and password pass\en");
+               \(dqmongodb://user:pass@localhost:27017\et\(dq
+               \(dqlocal machine on port 27017, and authenticate with username \(dq
+               \(dquser and password pass\en\(dq);
       return exit_code;
    }
 
    mongoc_init ();
 
-   if (strncmp (argv[1], "mongodb://", 10) == 0) {
+   if (strncmp (argv[1], \(dqmongodb://\(dq, 10) == 0) {
       host_and_port = bson_strdup (argv[1]);
    } else {
-      host_and_port = bson_strdup_printf ("mongodb://%s", argv[1]);
+      host_and_port = bson_strdup_printf (\(dqmongodb://%s\(dq, argv[1]);
    }
 
    uri = mongoc_uri_new_with_error (host_and_port, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                host_and_port,
                error.message);
       goto cleanup;
@@ -439,25 +439,25 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "test");
+   database = mongoc_client_get_database (client, \(dqtest\(dq);
    collection = mongoc_database_get_collection (database, COLLECTION_NAME);
 
-   printf ("Inserting data\en");
+   printf (\(dqInserting data\en\(dq);
    if (!insert_data (collection)) {
       goto cleanup;
    }
 
-   printf ("distinct\en");
+   printf (\(dqdistinct\en\(dq);
    if (!distinct (database)) {
       goto cleanup;
    }
 
-   printf ("map reduce\en");
+   printf (\(dqmap reduce\en\(dq);
    if (!map_reduce_basic (database)) {
       goto cleanup;
    }
 
-   printf ("more complicated map reduce\en");
+   printf (\(dqmore complicated map reduce\en\(dq);
    if (!map_reduce_advanced (database)) {
       goto cleanup;
    }
@@ -523,12 +523,12 @@ distinct
 Next double: 2.000000
 Next double: 3.000000
 map reduce
-{ "result" : "outCollection", "timeMillis" : 155, "counts" : { "input" : 84, "emit" : 126, "reduce" : 3, "output" : 3 }, "ok" : 1 }
-{ "_id" : "cat", "value" : 63 }
-{ "_id" : "dog", "value" : 42 }
-{ "_id" : "mouse", "value" : 21 }
+{ \(dqresult\(dq : \(dqoutCollection\(dq, \(dqtimeMillis\(dq : 155, \(dqcounts\(dq : { \(dqinput\(dq : 84, \(dqemit\(dq : 126, \(dqreduce\(dq : 3, \(dqoutput\(dq : 3 }, \(dqok\(dq : 1 }
+{ \(dq_id\(dq : \(dqcat\(dq, \(dqvalue\(dq : 63 }
+{ \(dq_id\(dq : \(dqdog\(dq, \(dqvalue\(dq : 42 }
+{ \(dq_id\(dq : \(dqmouse\(dq, \(dqvalue\(dq : 21 }
 more complicated map reduce
-{ "results" : [ { "_id" : "cat", "value" : 63 }, { "_id" : "dog", "value" : 42 }, { "_id" : "mouse", "value" : 21 } ], "timeMillis" : 14, "counts" : { "input" : 84, "emit" : 126, "reduce" : 3, "output" : 3 }, "ok" : 1 }
+{ \(dqresults\(dq : [ { \(dq_id\(dq : \(dqcat\(dq, \(dqvalue\(dq : 63 }, { \(dq_id\(dq : \(dqdog\(dq, \(dqvalue\(dq : 42 }, { \(dq_id\(dq : \(dqmouse\(dq, \(dqvalue\(dq : 21 } ], \(dqtimeMillis\(dq : 14, \(dqcounts\(dq : { \(dqinput\(dq : 84, \(dqemit\(dq : 126, \(dqreduce\(dq : 3, \(dqoutput\(dq : 3 }, \(dqok\(dq : 1 }
 .ft P
 .fi
 .UNINDENT

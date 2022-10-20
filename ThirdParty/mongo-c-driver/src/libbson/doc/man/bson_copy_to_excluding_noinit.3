@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_COPY_TO_EXCLUDING_NOINIT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_copy_to_excluding_noinit \- bson_copy_to_excluding_noinit()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_COPY_TO_EXCLUDING_NOINIT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_copy_to_excluding_noinit \- bson_copy_to_excluding_noinit()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,20 +48,20 @@ bson_copy_to_excluding_noinit (const bson_t *src,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsrc\fP: A \fBbson_t\fP\&.
+\fBsrc\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBdst\fP: A \fBbson_t\fP\&.
+\fBdst\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBfirst_exclude\fP: The first field name to exclude.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_copy_to_excluding_noinit()\fP function shall copy all fields
+The \fI\%bson_copy_to_excluding_noinit()\fP function shall copy all fields
 from \fBsrc\fP to \fBdst\fP except those specified by the variadic, NULL terminated
 list of keys starting from \fBfirst_exclude\fP\&.
-Works the same way as \fBbson_copy_to_excluding\fP, except does \fBnot\fP call
-\fBbson_init\fP on \fBdst\fP\&.
-This function should be preferred in new code over \fBbson_copy_to_excluding\fP\&.
+Works the same way as \fI\%bson_copy_to_excluding()\fP, except does \fBnot\fP call
+\fI\%bson_init()\fP on \fBdst\fP\&.
+This function should be preferred in new code over \fI\%bson_copy_to_excluding()\fP\&.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -84,18 +84,18 @@ int main ()
    char *str;
 
    bson_init (&bson);
-   bson_append_int32 (&bson, "a", 1, 1);
-   bson_append_int32 (&bson, "b", 1, 2);
-   bson_append_int32 (&bson, "c", 1, 2);
+   bson_append_int32 (&bson, \(dqa\(dq, 1, 1);
+   bson_append_int32 (&bson, \(dqb\(dq, 1, 2);
+   bson_append_int32 (&bson, \(dqc\(dq, 1, 2);
 
    bson_init (&bson2);
-   bson_copy_to_excluding_noinit (&bson, &bson2, "b", NULL);
+   bson_copy_to_excluding_noinit (&bson, &bson2, \(dqb\(dq, NULL);
 
    str = bson_as_json (&bson2, NULL);
    /* Prints
-    * { "a" : 1, "c" : 2 }
+    * { \(dqa\(dq : 1, \(dqc\(dq : 2 }
     */
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 
    bson_destroy (&bson);

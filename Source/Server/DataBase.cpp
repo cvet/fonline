@@ -1033,17 +1033,17 @@ public:
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
 
-        bson_t fields;
-        bson_init(&fields);
+        bson_t filter;
+        bson_init(&filter);
 
-        if (!bson_append_int32(&fields, "_id", 3, 1)) {
+        if (!bson_append_int32(&filter, "_id", 3, 1)) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name);
         }
 
-        bson_t query;
-        bson_init(&query);
+        bson_t opts;
+        bson_init(&opts);
 
-        auto* cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 0, static_cast<uint>(-1), &query, &fields, nullptr);
+        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
         if (cursor == nullptr) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
@@ -1072,8 +1072,8 @@ public:
         }
 
         mongoc_cursor_destroy(cursor);
-        bson_destroy(&query);
-        bson_destroy(&fields);
+        bson_destroy(&filter);
+        bson_destroy(&opts);
         return ids;
     }
 
@@ -1085,14 +1085,21 @@ protected:
             throw DataBaseException("DbMongo Can't get collection", collection_name);
         }
 
-        bson_t query;
-        bson_init(&query);
+        bson_t filter;
+        bson_init(&filter);
 
-        if (!bson_append_int32(&query, "_id", 3, id)) {
+        if (!bson_append_int32(&filter, "_id", 3, id)) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
-        auto* cursor = mongoc_collection_find(collection, MONGOC_QUERY_NONE, 0, 1, 0, &query, nullptr, nullptr);
+        bson_t opts;
+        bson_init(&opts);
+
+        if (!bson_append_int32(&opts, "limit", 5, 1)) {
+            throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
+        }
+
+        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
         if (cursor == nullptr) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name, id);
         }
@@ -1100,7 +1107,8 @@ protected:
         const bson_t* bson = nullptr;
         if (!mongoc_cursor_next(cursor, &bson)) {
             mongoc_cursor_destroy(cursor);
-            bson_destroy(&query);
+            bson_destroy(&filter);
+            bson_destroy(&opts);
             return AnyData::Document();
         }
 
@@ -1108,7 +1116,8 @@ protected:
         BsonToDocument(bson, doc);
 
         mongoc_cursor_destroy(cursor);
-        bson_destroy(&query);
+        bson_destroy(&filter);
+        bson_destroy(&opts);
         return doc;
     }
 

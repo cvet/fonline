@@ -30,11 +30,12 @@
 #define DESTROY_CHANGE_STREAM(cursor_id)                                      \
    do {                                                                       \
       future_t *_future = future_change_stream_destroy (stream);              \
-      request_t *_request = mock_server_receives_command (                    \
+      request_t *_request = mock_server_receives_msg (                        \
          server,                                                              \
-         "db",                                                                \
-         MONGOC_QUERY_SECONDARY_OK,                                               \
-         "{ 'killCursors' : 'coll', 'cursors' : [ " #cursor_id " ] }");       \
+         MONGOC_MSG_NONE,                                                     \
+         tmp_bson ("{'$db': 'db',"                                            \
+                   " 'killCursors': 'coll',"                                  \
+                   " 'cursors': [{'$numberLong': '" #cursor_id "'}]}"));      \
       mock_server_replies_simple (_request,                                   \
                                   "{ 'cursorsKilled': [ " #cursor_id " ] }"); \
       future_wait (_future);                                                  \
@@ -81,10 +82,8 @@ test_framework_skip_if_not_single_version_5 (void)
    if (!TestSuite_CheckLive ()) {
       return 0;
    }
-   return (test_framework_max_wire_version_at_least (5) &&
-           !test_framework_is_replset () && !test_framework_is_mongos ())
-             ? 1
-             : 0;
+   return (!test_framework_is_replset () && !test_framework_is_mongos ()) ? 1
+                                                                          : 0;
 }
 
 static mongoc_collection_t *
@@ -114,7 +113,7 @@ test_change_stream_pipeline (void)
    bson_t *nonempty_pipeline =
       tmp_bson ("{ 'pipeline' : [ { '$project' : { 'ns': false } } ] }");
 
-   server = mock_server_with_auto_hello (5);
+   server = mock_server_with_auto_hello (WIRE_VERSION_MIN);
    mock_server_run (server);
 
    client =
@@ -126,18 +125,13 @@ test_change_stream_pipeline (void)
 
    future = future_collection_watch (coll, tmp_bson ("{}"), NULL);
 
-   request = mock_server_receives_command (
+   request = mock_server_receives_msg (
       server,
-      "db",
-      MONGOC_QUERY_SECONDARY_OK,
-      "{"
-      "'aggregate' : 'coll',"
-      "'pipeline' : "
-      "   ["
-      "      { '$changeStream':{ 'fullDocument' : 'default' } }"
-      "   ],"
-      "'cursor' : {}"
-      "}");
+      MONGOC_MSG_NONE,
+      tmp_bson ("{'$db': 'db',"
+                " 'aggregate': 'coll',"
+                " 'pipeline': [{'$changeStream': {}}],"
+                " 'cursor': {}}"));
 
    mock_server_replies_simple (
       request,
@@ -152,10 +146,11 @@ test_change_stream_pipeline (void)
    future = future_change_stream_next (stream, &next_doc);
 
    request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{'getMore': 123, 'collection': 'coll'}");
+      mock_server_receives_msg (server,
+                                MONGOC_MSG_NONE,
+                                tmp_bson ("{'$db': 'db',"
+                                          " 'getMore': {'$numberLong': '123'},"
+                                          " 'collection': 'coll'}"));
    mock_server_replies_simple (request,
                                "{'cursor' : { 'nextBatch' : [] }, 'ok': 1}");
    ASSERT (!future_get_bool (future));
@@ -167,10 +162,11 @@ test_change_stream_pipeline (void)
    /* Another call to next should produce another getMore */
    future = future_change_stream_next (stream, &next_doc);
    request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 123, 'collection': 'coll' }");
+      mock_server_receives_msg (server,
+                                MONGOC_MSG_NONE,
+                                tmp_bson ("{'$db': 'db',"
+                                          " 'getMore': {'$numberLong': '123'},"
+                                          " 'collection': 'coll'}"));
    mock_server_replies_simple (request,
                                "{ 'cursor': { 'nextBatch': [] }, 'ok': 1 }");
    ASSERT (!future_get_bool (future));
@@ -184,19 +180,15 @@ test_change_stream_pipeline (void)
    /* Test non-empty pipeline */
    future = future_collection_watch (coll, nonempty_pipeline, NULL);
 
-   request = mock_server_receives_command (
-      server,
-      "db",
-      MONGOC_QUERY_SECONDARY_OK,
-      "{"
-      "'aggregate' : 'coll',"
-      "'pipeline' : "
-      "   ["
-      "      { '$changeStream':{ 'fullDocument' : 'default' } },"
-      "      { '$project': { 'ns': false } }"
-      "   ],"
-      "'cursor' : {}"
-      "}");
+   request =
+      mock_server_receives_msg (server,
+                                MONGOC_MSG_NONE,
+                                tmp_bson ("{'$db': 'db',"
+                                          " 'aggregate': 'coll',"
+                                          " 'pipeline': ["
+                                          "   {'$changeStream': {}},"
+                                          "   {'$project': {'ns': false}}],"
+                                          " 'cursor': {}}"));
    mock_server_replies_simple (
       request,
       "{'cursor': {'id': 123, 'ns': 'db.coll','firstBatch': []},'ok': 1}");
@@ -210,10 +202,11 @@ test_change_stream_pipeline (void)
 
    future = future_change_stream_next (stream, &next_doc);
    request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 123, 'collection': 'coll' }");
+      mock_server_receives_msg (server,
+                                MONGOC_MSG_NONE,
+                                tmp_bson ("{'$db': 'db',"
+                                          " 'getMore': {'$numberLong': '123'},"
+                                          " 'collection': 'coll'}"));
    mock_server_replies_simple (request,
                                "{ 'cursor': { 'nextBatch': [] }, 'ok': 1 }");
    ASSERT (!future_get_bool (future));
@@ -249,6 +242,8 @@ test_change_stream_live_single_server (void *test_ctx)
 
    /* Don't use the errmsg field since it contains quotes. */
    const char *not_supported_doc = "{'code' : 40324, 'ok' : 0 }";
+
+   BSON_UNUSED (test_ctx);
 
    ASSERT (client);
 
@@ -332,6 +327,8 @@ test_change_stream_live_track_resume_token (void *test_ctx)
    bson_t opts = BSON_INITIALIZER;
    bson_t doc0_rt, doc1_rt, doc2_rt;
    const bson_t *resume_token;
+
+   BSON_UNUSED (test_ctx);
 
    client = test_framework_new_default_client ();
    ASSERT (client);
@@ -464,6 +461,8 @@ test_change_stream_live_batch_size (void *test_ctx)
    bson_error_t err;
    uint32_t i;
 
+   BSON_UNUSED (test_ctx);
+
    client = test_framework_new_default_client ();
    ASSERT (client);
 
@@ -590,12 +589,16 @@ _test_resume_token_error (const char *id_projection)
 static void
 test_change_stream_live_missing_resume_token (void *test_ctx)
 {
+   BSON_UNUSED (test_ctx);
+
    _test_resume_token_error ("0");
 }
 
 static void
 test_change_stream_live_invalid_resume_token (void *test_ctx)
 {
+   BSON_UNUSED (test_ctx);
+
    /* test a few non-document BSON types */
    _test_resume_token_error ("{'$literal': 1}");
    _test_resume_token_error ("{'$literal': true}");
@@ -616,14 +619,14 @@ _test_getmore_error (const char *server_reply,
    mongoc_change_stream_t *stream;
    const bson_t *next_doc = NULL;
 
-   server = mock_server_with_auto_hello (5);
+   server = mock_server_with_auto_hello (WIRE_VERSION_MIN);
    mock_server_run (server);
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
    coll = mongoc_client_get_collection (client, "db", "coll");
    future = future_collection_watch (coll, tmp_bson ("{}"), NULL);
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, "{ 'aggregate': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson ("{'$db': 'db', 'aggregate': 'coll'}"));
    mock_server_replies_simple (
       request,
       "{'cursor': {'id': 123, 'ns': 'db.coll','firstBatch': []},'ok': 1 }");
@@ -635,10 +638,11 @@ _test_getmore_error (const char *server_reply,
    /* the first getMore receives an error. */
    future = future_change_stream_next (stream, &next_doc);
    request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 123, 'collection': 'coll' }");
+      mock_server_receives_msg (server,
+                                MONGOC_MSG_NONE,
+                                tmp_bson ("{'$db': 'db',"
+                                          " 'getMore': {'$numberLong': '123'},"
+                                          " 'collection': 'coll'}"));
    mock_server_replies_simple (request, server_reply);
    request_destroy (request);
    if (should_resume) {
@@ -647,13 +651,17 @@ _test_getmore_error (const char *server_reply,
          /* errors that are considered "not primary" or "node is recovering"
           * errors by SDAM will mark the connected server as UNKNOWN, and no
           * killCursors will be executed. */
-         request = mock_server_receives_command (
-            server, "db", MONGOC_QUERY_SECONDARY_OK, "{'killCursors': 'coll'}");
+         request = mock_server_receives_msg (
+            server,
+            MONGOC_MSG_NONE,
+            tmp_bson ("{'$db': 'db', 'killCursors': 'coll'}"));
          mock_server_replies_simple (request, "{'cursorsKilled': [123]}");
          request_destroy (request);
       }
-      request = mock_server_receives_command (
-         server, "db", MONGOC_QUERY_SECONDARY_OK, "{ 'aggregate': 'coll' }");
+      request = mock_server_receives_msg (
+         server,
+         MONGOC_MSG_NONE,
+         tmp_bson ("{'$db': 'db', 'aggregate': 'coll'}"));
       mock_server_replies_simple (request,
                                   "{'cursor':"
                                   "  {'id': 124,"
@@ -741,12 +749,14 @@ test_change_stream_resumable_error (void)
       "{ 'code': 10107, 'errmsg': 'not primary', 'ok': 0 }";
    const char *interrupted_err =
       "{ 'code': 11601, 'errmsg': 'interrupted', 'ok': 0 }";
-   const char *watch_cmd =
-      "{ 'aggregate': 'coll', 'pipeline' "
-      ": [ { '$changeStream': { 'fullDocument': 'default' } } ], "
-      "'cursor': {  } }";
+   const bson_t *watch_cmd = tmp_bson ("{'$db': 'db',"
+                                       " 'aggregate': 'coll',"
+                                       " 'pipeline': [{'$changeStream': {}}],"
+                                       " 'cursor': {}}");
+   const char *expected_msg =
+      "{'$db': 'db', 'getMore': {'$numberLong': '%d'}, 'collection': 'coll' }";
 
-   server = mock_server_with_auto_hello (5);
+   server = mock_server_with_auto_hello (WIRE_VERSION_MIN);
    mock_server_run (server);
 
    uri = mongoc_uri_copy (mock_server_get_uri (server));
@@ -757,8 +767,7 @@ test_change_stream_resumable_error (void)
 
    future = future_collection_watch (coll, tmp_bson ("{}"), NULL);
 
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, watch_cmd);
+   request = mock_server_receives_msg (server, MONGOC_MSG_NONE, watch_cmd);
 
    mock_server_replies_simple (request,
                                "{'cursor': {'id': 123, 'ns': "
@@ -773,28 +782,21 @@ test_change_stream_resumable_error (void)
 
    /* Test that a network hangup results in a resumable error */
    future = future_change_stream_next (stream, &next_doc);
-   request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 123, 'collection': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson (expected_msg, 123));
    BSON_ASSERT (request);
    mock_server_hangs_up (request);
    request_destroy (request);
 
    /* Retry command */
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, watch_cmd);
+   request = mock_server_receives_msg (server, MONGOC_MSG_NONE, watch_cmd);
    BSON_ASSERT (request);
    mock_server_replies_simple (
       request,
       "{'cursor': {'id': 124,'ns': 'db.coll','firstBatch': []},'ok': 1 }");
    request_destroy (request);
-   request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 124, 'collection': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson (expected_msg, 124));
    mock_server_replies_simple (request,
                                "{ 'cursor': { 'nextBatch': [] }, 'ok': 1 }");
    request_destroy (request);
@@ -806,45 +808,33 @@ test_change_stream_resumable_error (void)
 
    /* Test the "not_primary" resumable error occurring twice in a row */
    future = future_change_stream_next (stream, &next_doc);
-   request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 124, 'collection': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson (expected_msg, 124));
    mock_server_replies_simple (request, not_primary_err);
    request_destroy (request);
 
    /* Retry command */
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, watch_cmd);
-   mock_server_replies_simple (request,
-                               "{'cursor': {'id': 125, 'ns': "
-                               "'db.coll','firstBatch': []},'ok': 1 "
-                               "}");
+   request = mock_server_receives_msg (server, MONGOC_MSG_NONE, watch_cmd);
+   mock_server_replies_simple (
+      request,
+      "{'cursor': {'id': 125, 'ns': 'db.coll','firstBatch': []},'ok': 1}");
    request_destroy (request);
 
-   request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 125, 'collection': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson (expected_msg, 125));
    mock_server_replies_simple (request, not_primary_err);
    request_destroy (request);
 
    /* Retry command */
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, watch_cmd);
+   request = mock_server_receives_msg (server, MONGOC_MSG_NONE, watch_cmd);
    mock_server_replies_simple (request,
                                "{'cursor': {'id': 126, 'ns': "
                                "'db.coll','firstBatch': []},'ok': 1 "
                                "}");
    request_destroy (request);
 
-   request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 126, 'collection': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson (expected_msg, 126));
    mock_server_replies_simple (request, interrupted_err);
    request_destroy (request);
 
@@ -859,8 +849,7 @@ test_change_stream_resumable_error (void)
 
    /* Test an error on the initial aggregate when resuming. */
    future = future_collection_watch (coll, tmp_bson ("{}"), NULL);
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, watch_cmd);
+   request = mock_server_receives_msg (server, MONGOC_MSG_NONE, watch_cmd);
    mock_server_replies_simple (request,
                                "{'cursor': {'id': 123, 'ns': "
                                "'db.coll','firstBatch': []},'ok': 1 "
@@ -871,18 +860,14 @@ test_change_stream_resumable_error (void)
    future_destroy (future);
 
    future = future_change_stream_next (stream, &next_doc);
-   request =
-      mock_server_receives_command (server,
-                                    "db",
-                                    MONGOC_QUERY_SECONDARY_OK,
-                                    "{ 'getMore': 123, 'collection': 'coll' }");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson (expected_msg, 123));
    mock_server_replies_simple (
       request, "{ 'code': 10107, 'errmsg': 'not primary', 'ok': 0 }");
    request_destroy (request);
 
    /* Retry command */
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, watch_cmd);
+   request = mock_server_receives_msg (server, MONGOC_MSG_NONE, watch_cmd);
    mock_server_replies_simple (request,
                                "{'code': 123, 'errmsg': 'bad cmd', 'ok': 0}");
    request_destroy (request);
@@ -916,7 +901,7 @@ test_change_stream_options (void)
    const bson_t *next_doc = NULL;
    bson_error_t err;
 
-   server = mock_server_with_auto_hello (5);
+   server = mock_server_with_auto_hello (WIRE_VERSION_MIN);
    mock_server_run (server);
 
    client =
@@ -948,24 +933,20 @@ test_change_stream_options (void)
                 "'maxAwaitTimeMS': 5000, 'batchSize': "
                 "5, 'collation': { 'locale': 'en' }}"));
 
-   request = mock_server_receives_command (
+   request = mock_server_receives_msg (
       server,
-      "db",
-      MONGOC_QUERY_SECONDARY_OK,
-      "{"
-      "'aggregate': 'coll',"
-      "'pipeline': "
-      "   ["
-      "      { '$changeStream': {"
-      "'fullDocument': 'updateLookup', "
-      "'resumeAfter': {'resume': 'after'}, "
-      "'startAfter': {'start': 'after'}, "
-      "'startAtOperationTime': { '$timestamp': { 't': 1, 'i': 1 }}"
-      "      } }"
-      "   ],"
-      "'cursor': { 'batchSize': 5 },"
-      "'collation': { 'locale': 'en' }"
-      "}");
+      MONGOC_MSG_NONE,
+      tmp_bson (
+         "{'$db': 'db',"
+         " 'aggregate': 'coll',"
+         " 'pipeline': ["
+         "   {'$changeStream': {"
+         "     'fullDocument': 'updateLookup',"
+         "     'resumeAfter': {'resume': 'after'},"
+         "     'startAfter': {'start': 'after'},"
+         "     'startAtOperationTime': {'$timestamp': { 't': 1, 'i': 1 }}}}],"
+         " 'cursor': {'batchSize': 5},"
+         " 'collation': {'locale': 'en'}}"));
 
    mock_server_replies_simple (
       request,
@@ -977,12 +958,14 @@ test_change_stream_options (void)
    request_destroy (request);
 
    future = future_change_stream_next (stream, &next_doc);
-   request = mock_server_receives_command (server,
-                                           "db",
-                                           MONGOC_QUERY_SECONDARY_OK,
-                                           "{ 'getMore': 123, 'collection': "
-                                           "'coll', 'maxTimeMS': 5000, "
-                                           "'batchSize': 5 }");
+   request = mock_server_receives_msg (
+      server,
+      MONGOC_MSG_NONE,
+      tmp_bson ("{'$db': 'db',"
+                " 'getMore': {'$numberLong': '123'},"
+                " 'collection': 'coll',"
+                " 'maxTimeMS': {'$numberLong': '5000'},"
+                " 'batchSize': {'$numberLong': '5'}}"));
    mock_server_replies_simple (request,
                                "{ 'cursor': { 'nextBatch': [] }, 'ok': 1 }");
    request_destroy (request);
@@ -1011,6 +994,8 @@ test_change_stream_live_watch (void *test_ctx)
    mongoc_write_concern_t *wc = mongoc_write_concern_new ();
    bson_t opts = BSON_INITIALIZER;
    bson_error_t err;
+
+   BSON_UNUSED (test_ctx);
 
    mongoc_write_concern_set_wmajority (wc, 30000);
 
@@ -1099,6 +1084,8 @@ test_change_stream_live_read_prefs (void *test_ctx)
    bson_error_t err;
    uint64_t first_cursor_id;
 
+   BSON_UNUSED (test_ctx);
+
    coll = drop_and_get_coll (client, "db", "coll_read_prefs");
    ASSERT (coll);
    ASSERT_OR_PRINT (mongoc_collection_insert_one (
@@ -1184,6 +1171,8 @@ test_change_stream_next_after_error (void *test_ctx)
    const bson_t *bson;
    bson_error_t err;
 
+   BSON_UNUSED (test_ctx);
+
    mongoc_client_set_error_api (client, MONGOC_ERROR_API_VERSION_2);
    coll = mongoc_client_get_collection (client, "db", "coll");
    ASSERT_OR_PRINT (
@@ -1232,6 +1221,8 @@ test_change_stream_accepts_array (void *test_ctx)
    bson_error_t err;
    bson_t *opts =
       tmp_bson ("{'maxAwaitTimeMS': 1}"); /* to speed up the test. */
+
+   BSON_UNUSED (test_ctx);
 
    mongoc_client_set_error_api (client, MONGOC_ERROR_API_VERSION_2);
    /* set up apm callbacks to listen for the agg commands. */
@@ -1307,6 +1298,8 @@ test_change_stream_start_at_operation_time (void *test_ctx)
    bson_t opts;
    mongoc_client_session_t *session;
    bson_error_t error;
+
+   BSON_UNUSED (test_ctx);
 
    session = mongoc_client_start_session (client, NULL, &error);
    coll = mongoc_client_get_collection (client, "db", "coll");
@@ -1409,6 +1402,8 @@ test_change_stream_resume_at_optime (void *test_ctx)
    mongoc_apm_callbacks_t *callbacks;
    resume_ctx_t ctx = RESUME_INITIALIZER;
 
+   BSON_UNUSED (test_ctx);
+
    callbacks = mongoc_apm_callbacks_new ();
    mongoc_apm_set_command_started_cb (callbacks, _resume_at_optime_started);
    mongoc_apm_set_command_succeeded_cb (callbacks, _resume_at_optime_succeeded);
@@ -1496,6 +1491,8 @@ test_change_stream_resume_with_post_batch_resume_token (void *test_ctx)
    mongoc_apm_callbacks_t *callbacks;
    resume_ctx_t ctx = RESUME_INITIALIZER;
 
+   BSON_UNUSED (test_ctx);
+
    callbacks = mongoc_apm_callbacks_new ();
    mongoc_apm_set_command_started_cb (
       callbacks, _resume_with_post_batch_resume_token_started);
@@ -1531,6 +1528,8 @@ test_change_stream_database_watch (void *test_ctx)
    bson_t opts;
    bson_error_t error;
 
+   BSON_UNUSED (test_ctx);
+
    db = mongoc_client_get_database (client, "db");
    bson_init (&opts);
 
@@ -1562,6 +1561,8 @@ test_change_stream_client_watch (void *test_ctx)
    const bson_t *doc;
    bson_t opts;
    bson_error_t error;
+
+   BSON_UNUSED (test_ctx);
 
    bson_init (&opts);
 
@@ -1766,7 +1767,7 @@ change_stream_spec_after_test_cb (json_test_ctx_t *test_ctx, const bson_t *test)
       }
 
       /* iterate over the change stream, and verify that the document exists.
-         */
+       */
       for (i = 0; i < num_iterations; i++) {
          char *key = bson_strdup_printf ("%d", i);
          ret = _iterate_until_error_or_event (
@@ -1782,7 +1783,7 @@ change_stream_spec_after_test_cb (json_test_ctx_t *test_ctx, const bson_t *test)
       }
 
       /* check that everything in the "result.success" array is contained in
-         * our captured changes. */
+       * our captured changes. */
       while (bson_iter_next (&expected_iter)) {
          bson_t expected_doc;
          match_ctx_t match_ctx = {{0}};
@@ -1840,7 +1841,7 @@ _test_resume (const char *opts,
    char *msg;
    const bson_t *doc = NULL;
 
-   server = mock_server_with_auto_hello (7);
+   server = mock_server_with_auto_hello (WIRE_VERSION_4_0);
    mock_server_run (server);
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
@@ -1851,7 +1852,7 @@ _test_resume (const char *opts,
       server,
       MONGOC_QUERY_NONE,
       tmp_bson ("{ 'aggregate': 'coll', 'pipeline' : [ { '$changeStream': { %s "
-                "'fullDocument': 'default' } } ], 'cursor': {  } }",
+                " 'fullDocument': null } } ], 'cursor': {  } }",
                 expected_change_stream_opts));
    msg = bson_strdup_printf ("{'cursor': {'id': 123, 'ns': 'db.coll',"
                              "'firstBatch': [%s]%s }, 'operationTime': "
@@ -1881,7 +1882,7 @@ _test_resume (const char *opts,
       server,
       MONGOC_QUERY_NONE,
       tmp_bson ("{ 'aggregate': 'coll', 'pipeline' : [ { '$changeStream': { %s "
-                "'fullDocument': 'default' }} ], 'cursor': {  } }",
+                " 'fullDocument': null }} ], 'cursor': {  } }",
                 expected_resume_change_stream_opts));
    mock_server_replies_simple (
       request,
@@ -2103,6 +2104,8 @@ test_error_null_doc (void *ctx)
    const bson_t *error_doc =
       tmp_bson ("{}"); /* assign to a non-zero address. */
 
+   BSON_UNUSED (ctx);
+
    client = test_framework_new_default_client ();
    stream = mongoc_client_watch (client, tmp_bson ("{}"), NULL);
    /* error_doc starts as non-NULL. */
@@ -2140,6 +2143,8 @@ prose_test_11 (void *ctx)
    bson_t opts = BSON_INITIALIZER;
    const bson_t *resume_token;
    _data_change_stream_t *post_batch_expected;
+
+   BSON_UNUSED (ctx);
 
    client = test_framework_new_default_client ();
    ASSERT (client);
@@ -2202,6 +2207,8 @@ prose_test_12 (void *ctx)
    bson_iter_t iter, child;
    bson_t expected_token;
    bson_t expected_doc;
+
+   BSON_UNUSED (ctx);
 
    client = test_framework_new_default_client ();
    ASSERT (client);
@@ -2365,6 +2372,8 @@ prose_test_14 (void *test_ctx)
    const bson_t *doc = NULL;
    mongoc_timestamp_t optime = {0};
    mongoc_apm_callbacks_t *callbacks;
+
+   BSON_UNUSED (test_ctx);
 
    callbacks = mongoc_apm_callbacks_new ();
    mongoc_apm_set_command_succeeded_cb (callbacks,
@@ -2610,7 +2619,6 @@ prose_test_18 (void)
 void
 test_change_stream_install (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
    TestSuite_AddMockServerTest (
       suite, "/change_stream/pipeline", test_change_stream_pipeline);
 
@@ -2774,6 +2782,6 @@ test_change_stream_install (TestSuite *suite)
    TestSuite_AddMockServerTest (
       suite, "/change_streams/prose_test_18", prose_test_18);
 
-   test_framework_resolve_path (JSON_DIR "/change_streams/legacy", resolved);
-   install_json_test_suite (suite, resolved, &test_change_stream_spec_cb);
+   install_json_test_suite (
+      suite, JSON_DIR, "/change_streams/legacy", &test_change_stream_spec_cb);
 }

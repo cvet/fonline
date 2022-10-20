@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_UNESCAPE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_unescape \- mongoc_uri_unescape()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_UNESCAPE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_unescape \- mongoc_uri_unescape()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 char *
-mongoc_uri_unescape (const char *escaped_string);
+mongoc_uri_unescape (const char *escaped_string) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -49,7 +49,7 @@ mongoc_uri_unescape (const char *escaped_string);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Unescapes an URI encoded string. For example, "%40" would become "@".
+Unescapes an URI encoded string. For example, \(dq%40\(dq would become \(dq@\(dq.
 .SH RETURNS
 .sp
 Returns a newly allocated string that should be freed with \fI\%bson_free()\fP\&. If \fBescaped_string\fP contains an invalid UTF\-8 character or an invalid escape sequence, returns \fBNULL\fP\&.

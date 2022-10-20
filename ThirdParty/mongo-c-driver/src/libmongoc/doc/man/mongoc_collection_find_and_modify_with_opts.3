@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_FIND_AND_MODIFY_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_find_and_modify_with_opts \- mongoc_collection_find_and_modify_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_FIND_AND_MODIFY_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_find_and_modify_with_opts \- mongoc_collection_find_and_modify_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,15 +50,15 @@ mongoc_collection_find_and_modify_with_opts (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBquery\fP: A \fI\%bson_t\fP containing the query to locate target document(s).
 .IP \(bu 2
-\fBopts\fP: A \fBfind and modify options\fP\&. Must not be NULL.
+\fBopts\fP: A \fI\%find and modify options\fP\&. Must not be NULL.
 .IP \(bu 2
 \fBreply\fP: An optional location for a \fI\%bson_t\fP that will be initialized with the result or \fBNULL\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -66,7 +66,7 @@ Update and return an object.
 .sp
 \fBreply\fP is always initialized, and must be freed with \fI\%bson_destroy()\fP\&.
 .sp
-If an unacknowledged write concern is set (through \fBmongoc_find_and_modify_opts_append\fP), the output \fBreply\fP is always an empty document.
+If an unacknowledged write concern is set (through \fI\%mongoc_find_and_modify_opts_append()\fP), the output \fBreply\fP is always an empty document.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
@@ -77,7 +77,7 @@ Returns \fBtrue\fP if successful. Returns \fBfalse\fP and sets \fBerror\fP if th
 A write concern timeout or write concern error is considered a failure.
 .SH EXAMPLE
 .sp
-See the example code for mongoc_find_and_modify_opts_t\&.
+See the example code for \fI\%mongoc_find_and_modify_opts_t\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

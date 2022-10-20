@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_VALUE" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_value \- bson_iter_value()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_VALUE" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_value \- bson_iter_value()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,16 +45,16 @@ bson_iter_value (bson_iter_t *iter);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Fetches the value for the currently observed type as a boxed type. This allows passing around the value without knowing the type at runtime.
 .sp
-If the \fBbson_iter_t\fP is further modified, the \fBbson_value_t\fP is invalidated.
+If the \fI\%bson_iter_t\fP is further modified, the \fI\%bson_value_t\fP is invalidated.
 .SH RETURNS
 .sp
-A \fBbson_value_t\fP that should not be modified or freed.
+A \fI\%bson_value_t\fP that should not be modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

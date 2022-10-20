@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_MAX_MESSAGE_SIZE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_max_message_size \- mongoc_client_get_max_message_size()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_MAX_MESSAGE_SIZE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_max_message_size \- mongoc_client_get_max_message_size()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,7 +43,7 @@ mongoc_client_get_max_message_size (mongoc_client_t *client);
 .UNINDENT
 .UNINDENT
 .sp
-The \fBmongoc_client_get_max_message_size()\fP returns the maximum message size allowed by the cluster. Until a connection has been made, this will be the default of 40Mb.
+The \fI\%mongoc_client_get_max_message_size()\fP returns the maximum message size allowed by the cluster. Until a connection has been made, this will be the default of 40Mb.
 .SH DEPRECATED
 .sp
 \fBWARNING:\fP
@@ -55,7 +55,7 @@ This function is deprecated and should not be used in new code.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp

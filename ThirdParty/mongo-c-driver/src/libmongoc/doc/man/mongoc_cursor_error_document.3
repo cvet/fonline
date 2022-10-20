@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_ERROR_DOCUMENT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_error_document \- mongoc_cursor_error_document()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_ERROR_DOCUMENT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_error_document \- mongoc_cursor_error_document()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,9 +47,9 @@ mongoc_cursor_error_document (mongoc_cursor_t *cursor,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcursor\fP: A \fBmongoc_cursor_t\fP\&.
+\fBcursor\fP: A \fI\%mongoc_cursor_t\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .IP \(bu 2
 \fBreply\fP: A location for a \fI\%bson_t\fP\&.
 .UNINDENT
@@ -65,10 +65,10 @@ Errors are propagated via the \fBerror\fP and \fBreply\fP parameters.
 .sp
 False if no error has occurred, otherwise true and \fBerror\fP is set.
 .sp
-If the function returns true and \fBreply\fP is not NULL, then \fBreply\fP is set to a pointer to a BSON document, which is either empty or the server\(aqs error response. The document is invalid after the cursor is freed with \fBmongoc_cursor_destroy()\fP\&.
+If the function returns true and \fBreply\fP is not NULL, then \fBreply\fP is set to a pointer to a BSON document, which is either empty or the server\(aqs error response. The document is invalid after the cursor is freed with \fI\%mongoc_cursor_destroy()\fP\&.
 .SH EXAMPLE
 .sp
-This example shows the difference between a client\-side and server\-side error. If the client cannot connect to the server, for example, the error message includes "No suitable servers found" and \fBreply\fP is set to an empty BSON document.
+This example shows the difference between a client\-side and server\-side error. If the client cannot connect to the server, for example, the error message includes \(dqNo suitable servers found\(dq and \fBreply\fP is set to an empty BSON document.
 .sp
 On the other hand, if the client connects to the server successfully and attempts to execute an invalid query, the error message comes from the server and \fBreply\fP is set to the server\(aqs reply document, with fields \fBerrmsg\fP and \fBcode\fP\&.
 .INDENT 0.0
@@ -91,7 +91,7 @@ run_query (const char *uri_str, const bson_t *query)
 
    mongoc_client_set_error_api (client, 2);
 
-   collection = mongoc_client_get_collection (client, "db", "collection");
+   collection = mongoc_client_get_collection (client, \(dqdb\(dq, \(dqcollection\(dq);
    cursor = mongoc_collection_find_with_opts (
       collection,
       query,
@@ -104,7 +104,7 @@ run_query (const char *uri_str, const bson_t *query)
 
    if (mongoc_cursor_error_document (cursor, &error, &reply)) {
       str = bson_as_json (reply, NULL);
-      fprintf (stderr, "Cursor Failure: %s\enReply: %s\en", error.message, str);
+      fprintf (stderr, \(dqCursor Failure: %s\enReply: %s\en\(dq, error.message, str);
       bson_free (str);
    }
 
@@ -121,8 +121,8 @@ main (int argc, char *argv[])
 
    mongoc_init ();
 
-   /* find documents matching the query {"x": 1} */
-   good_query = BCON_NEW ("x", BCON_INT64 (1));
+   /* find documents matching the query {\(dqx\(dq: 1} */
+   good_query = BCON_NEW (\(dqx\(dq, BCON_INT64 (1));
 
    /* Cause a network error. This will print an error and empty reply document:
     *
@@ -132,24 +132,24 @@ main (int argc, char *argv[])
     * Reply: { }
     *
     */
-   run_query ("mongodb://fake\-domain/?appname=cursor\-example", good_query);
+   run_query (\(dqmongodb://fake\-domain/?appname=cursor\-example\(dq, good_query);
 
-   /* invalid: {"x": {"$badOperator": 1}} */
-   bad_query = BCON_NEW ("x", "{", "$badOperator", BCON_INT64 (1), "}");
+   /* invalid: {\(dqx\(dq: {\(dq$badOperator\(dq: 1}} */
+   bad_query = BCON_NEW (\(dqx\(dq, \(dq{\(dq, \(dq$badOperator\(dq, BCON_INT64 (1), \(dq}\(dq);
 
    /* Cause a server error. This will print an error and server reply document:
     *
     * Cursor Failure: unknown operator: $badOperator
     *
     * Reply:
-    * {"ok": 0.0,
-    *  "errmsg":"unknown operator: $badOperator",
-    *  "code": 2,
-    *  "codeName":"BadValue"
+    * {\(dqok\(dq: 0.0,
+    *  \(dqerrmsg\(dq:\(dqunknown operator: $badOperator\(dq,
+    *  \(dqcode\(dq: 2,
+    *  \(dqcodeName\(dq:\(dqBadValue\(dq
     * }
     *
     */
-   run_query ("mongodb://localhost/?appname=cursor\-example", bad_query);
+   run_query (\(dqmongodb://localhost/?appname=cursor\-example\(dq, bad_query);
 
    bson_destroy (good_query);
    bson_destroy (bad_query);

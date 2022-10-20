@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_CONCERN_IS_DEFAULT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_concern_is_default \- mongoc_read_concern_is_default()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_CONCERN_IS_DEFAULT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_concern_is_default \- mongoc_read_concern_is_default()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,11 +45,11 @@ mongoc_read_concern_is_default (mongoc_read_concern_t *read_concern);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBread_concern\fP: A pointer to a \fBmongoc_read_concern_t\fP\&.
+\fBread_concern\fP: A pointer to a \fI\%mongoc_read_concern_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Returns true if \fBread_concern\fP has not been modified from the default. For example, if no "readConcern" option is set in the MongoDB URI and you have not called \fBmongoc_client_set_read_concern()\fP, then \fBmongoc_read_concern_is_default()\fP is true for the read concern returned by \fBmongoc_client_get_read_concern()\fP\&.
+Returns true if \fBread_concern\fP has not been modified from the default. For example, if no \(dqreadConcern\(dq option is set in the MongoDB URI and you have not called \fI\%mongoc_client_set_read_concern()\fP, then \fI\%mongoc_read_concern_is_default()\fP is true for the read concern returned by \fI\%mongoc_client_get_read_concern()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

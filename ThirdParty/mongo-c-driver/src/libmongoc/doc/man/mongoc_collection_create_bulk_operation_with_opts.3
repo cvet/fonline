@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_CREATE_BULK_OPERATION_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_create_bulk_operation_with_opts \- mongoc_collection_create_bulk_operation_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_CREATE_BULK_OPERATION_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_create_bulk_operation_with_opts \- mongoc_collection_create_bulk_operation_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,29 +47,33 @@ mongoc_collection_create_bulk_operation_with_opts (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .UNINDENT
 .sp
 \fBopts\fP may be NULL or a BSON document with additional command options:
 .INDENT 0.0
 .IP \(bu 2
-\fBwriteConcern\fP: Construct a \fBmongoc_write_concern_t\fP and use \fBmongoc_write_concern_append\fP to add the write concern to \fBopts\fP\&. See the example code for \fBmongoc_client_write_command_with_opts\fP\&.
+\fBwriteConcern\fP: Construct a \fI\%mongoc_write_concern_t\fP and use \fI\%mongoc_write_concern_append()\fP to add the write concern to \fBopts\fP\&. See the example code for \fI\%mongoc_client_write_command_with_opts()\fP\&.
 .IP \(bu 2
 \fBordered\fP: set to \fBfalse\fP to attempt to insert all documents, continuing after errors.
 .IP \(bu 2
-\fBsessionId\fP: First, construct a \fBmongoc_client_session_t\fP with \fBmongoc_client_start_session\fP\&. You can begin a transaction with \fBmongoc_client_session_start_transaction\fP, optionally with a \fBmongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fBmongoc_client_session_append\fP to add the session to \fBopts\fP\&. See the example code for \fBmongoc_client_session_t\fP\&.
+\fBsessionId\fP: First, construct a \fI\%mongoc_client_session_t\fP with \fI\%mongoc_client_start_session()\fP\&. You can begin a transaction with \fI\%mongoc_client_session_start_transaction()\fP, optionally with a \fI\%mongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fI\%mongoc_client_session_append()\fP to add the session to \fBopts\fP\&. See the example code for \fI\%mongoc_client_session_t\fP\&.
+.IP \(bu 2
+\fBlet\fP: A BSON document consisting of any number of parameter names, each followed by definitions of constants in the MQL Aggregate Expression language.
+.IP \(bu 2
+\fBcomment\fP: A \fI\%bson_value_t\fP specifying the comment to attach to this command. The comment will appear in log messages, profiler output, and currentOp output. Requires MongoDB 4.4 or later.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function shall begin a new bulk operation. After creating this you may call various functions such as \fBmongoc_bulk_operation_update()\fP, \fBmongoc_bulk_operation_insert()\fP and others.
+This function shall begin a new bulk operation. After creating this you may call various functions such as \fI\%mongoc_bulk_operation_update()\fP, \fI\%mongoc_bulk_operation_insert()\fP and others.
 .sp
-After calling \fBmongoc_bulk_operation_execute()\fP the commands will be executed in as large as batches as reasonable by the client.
+After calling \fI\%mongoc_bulk_operation_execute()\fP the commands will be executed in as large as batches as reasonable by the client.
 .SH ERRORS
 .sp
 Errors are propagated when executing the bulk operation.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_bulk_operation_t\fP that should be freed with \fBmongoc_bulk_operation_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_bulk_operation_t\fP that should be freed with \fI\%mongoc_bulk_operation_destroy()\fP when no longer in use.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -82,11 +86,11 @@ Failure to handle the result of this function is a programming error.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBBulk Write Operations\fP
+\fI\%Bulk Write Operations\fP
 .fi
 .sp
 .nf
-\fBmongoc_bulk_operation_t\fP
+\fI\%mongoc_bulk_operation_t\fP
 .fi
 .sp
 .UNINDENT

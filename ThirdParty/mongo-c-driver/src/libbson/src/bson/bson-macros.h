@@ -141,14 +141,25 @@
 #define BSON_ABS(a) (((a) < 0) ? ((a) * -1) : (a))
 #endif
 
+#if __STDC_VERSION__ >= 201112L
+#define BSON_ALIGNOF(expr) _Alignof(expr)
+#else
+#if defined(_MSC_VER)
+#define BSON_ALIGNOF(expr) __alignof(expr)
+#else
+#define BSON_ALIGNOF(expr) __alignof__(expr)
+#endif
+#endif // __STDC_VERSION__ >= 201112L
+
 #ifdef _MSC_VER
+// __declspec (align (_N)) only permits integer literals as _N.
 #ifdef _WIN64
 #define BSON_ALIGN_OF_PTR 8
 #else
 #define BSON_ALIGN_OF_PTR 4
 #endif
 #else
-#define BSON_ALIGN_OF_PTR (sizeof (void *))
+#define BSON_ALIGN_OF_PTR (BSON_ALIGNOF (void *))
 #endif
 
 #ifdef BSON_EXTRA_ALIGN
@@ -166,8 +177,8 @@
 #else
 #define BSON_ALIGNED_BEGIN(_N)
 #define BSON_ALIGNED_END(_N) \
-   __attribute__ (           \
-      (aligned ((_N) > BSON_ALIGN_OF_PTR ? BSON_ALIGN_OF_PTR : (_N))))
+   __attribute__ ((          \
+      aligned ((_N) > BSON_ALIGN_OF_PTR ? BSON_ALIGN_OF_PTR : (_N))))
 #endif
 #endif
 
@@ -196,18 +207,48 @@
          abort ();                                         \
       }                                                    \
    } while (0)
-       
+
+/**
+ * @brief Assert the expression `Assertion`, and evaluates to `Value` on
+ * success.
+ */
+#define BSON_ASSERT_INLINE(Assertion, Value)                              \
+   ((void) ((Assertion) ? (0)                                             \
+                        : ((fprintf (stderr,                              \
+                                     "%s:%d %s(): Assertion '%s' failed", \
+                                     __FILE__,                            \
+                                     __LINE__,                            \
+                                     BSON_FUNC,                           \
+                                     #Assertion),                         \
+                            abort ()),                                    \
+                           0)),                                           \
+    Value)
+
+/**
+ * @brief Assert that the given pointer is non-NULL, while also evaluating to
+ * that pointer.
+ *
+ * Can be used to inline assertions with a pointer dereference:
+ *
+ * ```
+ * foo* f = get_foo();
+ * bar* b = BSON_ASSERT_PTR_INLINE(f)->bar_value;
+ * ```
+ */
+#define BSON_ASSERT_PTR_INLINE(Pointer) \
+   BSON_ASSERT_INLINE ((Pointer) != NULL, (Pointer))
+
 /* Used for asserting parameters to provide a more precise error message */
-#define BSON_ASSERT_PARAM(param)                                                   \
-   do {                                                                            \
-      if ((BSON_UNLIKELY (param == NULL))) {                                       \
-         fprintf (stderr,                                                          \
-                  "The parameter: %s, in function %s, cannot be NULL\n",           \
-                  #param,                                                          \
-                  BSON_FUNC);                                                      \
-         abort ();                                                                 \
-      }                                                                            \
-   } while (0)      
+#define BSON_ASSERT_PARAM(param)                                         \
+   do {                                                                  \
+      if ((BSON_UNLIKELY (param == NULL))) {                             \
+         fprintf (stderr,                                                \
+                  "The parameter: %s, in function %s, cannot be NULL\n", \
+                  #param,                                                \
+                  BSON_FUNC);                                            \
+         abort ();                                                       \
+      }                                                                  \
+   } while (0)
 
 /* obsolete macros, preserved for compatibility */
 #define BSON_STATIC_ASSERT(s) BSON_STATIC_ASSERT_ (s, __LINE__)
@@ -293,6 +334,11 @@
 #define BSON_GNUC_DEPRECATED
 #endif
 
+#define BSON_CONCAT_IMPL(a, ...) a##__VA_ARGS__
+#define BSON_CONCAT(a, ...) BSON_CONCAT_IMPL (a, __VA_ARGS__)
+#define BSON_CONCAT3(a, b, c) BSON_CONCAT (a, BSON_CONCAT (b, c))
+#define BSON_CONCAT4(a, b, c, d) \
+   BSON_CONCAT (BSON_CONCAT (a, b), BSON_CONCAT (c, d))
 
 #if BSON_GNUC_CHECK_VERSION(4, 5)
 #define BSON_GNUC_DEPRECATED_FOR(f) \
@@ -301,5 +347,49 @@
 #define BSON_GNUC_DEPRECATED_FOR(f) BSON_GNUC_DEPRECATED
 #endif
 
+/**
+ * @brief String-ify the given argument
+ */
+#define BSON_STR(...) #__VA_ARGS__
+
+/**
+ * @brief Mark the attached declared entity as "possibly-unused."
+ *
+ * Does nothing on MSVC.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+#define BSON_MAYBE_UNUSED __attribute__ ((unused))
+#else
+#define BSON_MAYBE_UNUSED /* Nothing for other compilers */
+#endif
+
+/**
+ * @brief Mark a point in the code as unreachable. If the point is reached, the
+ * program will abort with an error message.
+ *
+ * @param What A string to include in the error message if this point is ever
+ * executed.
+ */
+#define BSON_UNREACHABLE(What)                               \
+   do {                                                      \
+      fprintf (stderr,                                       \
+               "%s:%d %s(): Unreachable code reached: %s\n", \
+               __FILE__,                                     \
+               __LINE__,                                     \
+               BSON_FUNC,                                    \
+               What);                                        \
+      abort ();                                              \
+   } while (0)
+
+/**
+ * @brief Silence warnings for deliberately unused variables or parameters.
+ *
+ * @param expr An unused variable or parameter.
+ *
+ */
+#define BSON_UNUSED(expr) \
+   do {                   \
+      (void) (expr);      \
+   } while (0)
 
 #endif /* BSON_MACROS_H */

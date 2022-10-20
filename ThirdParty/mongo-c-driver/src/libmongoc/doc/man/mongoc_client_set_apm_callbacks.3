@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SET_APM_CALLBACKS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_set_apm_callbacks \- mongoc_client_set_apm_callbacks()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SET_APM_CALLBACKS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_set_apm_callbacks \- mongoc_client_set_apm_callbacks()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,9 +51,9 @@ The \fBcallbacks\fP are copied by the client and may be destroyed at any time af
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
-\fBcallbacks\fP: Optional \fBmongoc_apm_callbacks_t\fP\&. Pass NULL to clear all callbacks.
+\fBcallbacks\fP: Optional \fI\%mongoc_apm_callbacks_t\fP\&. Pass NULL to clear all callbacks.
 .IP \(bu 2
 \fBcontext\fP: Optional pointer to include with each event notification.
 .UNINDENT
@@ -65,7 +65,7 @@ Returns true on success. If any arguments are invalid, returns false and logs an
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

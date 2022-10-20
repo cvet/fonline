@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_t \- mongoc_gridfs_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,11 +27,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_t \- mongoc_gridfs_t
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-This GridFS implementation does not conform to the \fI\%MongoDB GridFS specification\fP\&. For a spec compliant implementation, use \fBmongoc_gridfs_bucket_t\fP\&.
+This GridFS implementation does not conform to the \fI\%MongoDB GridFS specification\fP\&. For a spec compliant implementation, use \fI\%mongoc_gridfs_bucket_t\fP\&.
 .UNINDENT
 .UNINDENT
 .SH SYNOPSIS
@@ -56,7 +56,7 @@ typedef struct _mongoc_gridfs_t mongoc_gridfs_t;
 .sp
 There are extensive caveats about the kind of use cases gridfs is practical for. In particular, any writing after initial file creation is likely to both break any concurrent readers and be quite expensive. That said, this implementation does allow for arbitrary writes to existing gridfs object, just use them with caution.
 .sp
-mongoc_gridfs also integrates tightly with the \fBmongoc_stream_t\fP abstraction, which provides some convenient wrapping for file creation and reading/writing.  It can be used without, but its worth looking to see if your problem can fit that model.
+mongoc_gridfs also integrates tightly with the \fI\%mongoc_stream_t\fP abstraction, which provides some convenient wrapping for file creation and reading/writing.  It can be used without, but its worth looking to see if your problem can fit that model.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -66,10 +66,10 @@ mongoc_gridfs also integrates tightly with the \fBmongoc_stream_t\fP abstraction
 .UNINDENT
 .SH THREAD SAFETY
 .sp
-\fBmongoc_gridfs_t\fP is NOT thread\-safe and should only be used in the same thread as the owning \fBmongoc_client_t\fP\&.
+\fBmongoc_gridfs_t\fP is NOT thread\-safe and should only be used in the same thread as the owning \fI\%mongoc_client_t\fP\&.
 .SH LIFECYCLE
 .sp
-It is an error to free a \fBmongoc_gridfs_t\fP before freeing all related instances of \fBmongoc_gridfs_file_t\fP and \fBmongoc_gridfs_file_list_t\fP\&.
+It is an error to free a \fBmongoc_gridfs_t\fP before freeing all related instances of \fI\%mongoc_gridfs_file_t\fP and \fI\%mongoc_gridfs_file_list_t\fP\&.
 .SH EXAMPLE
 .sp
 example\-gridfs.c
@@ -92,7 +92,7 @@ main (int argc, char *argv[])
    mongoc_gridfs_file_list_t *list;
    mongoc_gridfs_file_opt_t opt = {0};
    mongoc_client_t *client;
-   const char *uri_string = "mongodb://127.0.0.1:27017/?appname=gridfs\-example";
+   const char *uri_string = \(dqmongodb://127.0.0.1:27017/?appname=gridfs\-example\(dq;
    mongoc_uri_t *uri;
    mongoc_stream_t *stream;
    bson_t filter;
@@ -107,7 +107,7 @@ main (int argc, char *argv[])
    bson_value_t id;
 
    if (argc < 2) {
-      fprintf (stderr, "usage \- %s command ...\en", argv[0]);
+      fprintf (stderr, \(dqusage \- %s command ...\en\(dq, argv[0]);
       return EXIT_FAILURE;
    }
 
@@ -120,8 +120,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -132,15 +132,15 @@ main (int argc, char *argv[])
    mongoc_client_set_error_api (client, 2);
 
    /* grab a gridfs handle in test prefixed by fs */
-   gridfs = mongoc_client_get_gridfs (client, "test", "fs", &error);
+   gridfs = mongoc_client_get_gridfs (client, \(dqtest\(dq, \(dqfs\(dq, &error);
    assert (gridfs);
 
    command = argv[1];
    filename = argv[2];
 
-   if (strcmp (command, "read") == 0) {
+   if (strcmp (command, \(dqread\(dq) == 0) {
       if (argc != 3) {
-         fprintf (stderr, "usage \- %s read filename\en", argv[0]);
+         fprintf (stderr, \(dqusage \- %s read filename\en\(dq, argv[0]);
          return EXIT_FAILURE;
       }
       file = mongoc_gridfs_find_one_by_filename (gridfs, filename, &error);
@@ -159,19 +159,19 @@ main (int argc, char *argv[])
          }
 
          if (fwrite (iov.iov_base, 1, r, stdout) != r) {
-            MONGOC_ERROR ("Failed to write to stdout. Exiting.\en");
+            MONGOC_ERROR (\(dqFailed to write to stdout. Exiting.\en\(dq);
             exit (1);
          }
       }
 
       mongoc_stream_destroy (stream);
       mongoc_gridfs_file_destroy (file);
-   } else if (strcmp (command, "list") == 0) {
+   } else if (strcmp (command, \(dqlist\(dq) == 0) {
       bson_init (&filter);
 
       bson_init (&opts);
-      bson_append_document_begin (&opts, "sort", \-1, &child);
-      BSON_APPEND_INT32 (&child, "filename", 1);
+      bson_append_document_begin (&opts, \(dqsort\(dq, \-1, &child);
+      BSON_APPEND_INT32 (&child, \(dqfilename\(dq, 1);
       bson_append_document_end (&opts, &child);
 
       list = mongoc_gridfs_find_with_opts (gridfs, &filter, &opts);
@@ -181,15 +181,15 @@ main (int argc, char *argv[])
 
       while ((file = mongoc_gridfs_file_list_next (list))) {
          const char *name = mongoc_gridfs_file_get_filename (file);
-         printf ("%s\en", name ? name : "?");
+         printf (\(dq%s\en\(dq, name ? name : \(dq?\(dq);
 
          mongoc_gridfs_file_destroy (file);
       }
 
       mongoc_gridfs_file_list_destroy (list);
-   } else if (strcmp (command, "write") == 0) {
+   } else if (strcmp (command, \(dqwrite\(dq) == 0) {
       if (argc != 4) {
-         fprintf (stderr, "usage \- %s write filename input_file\en", argv[0]);
+         fprintf (stderr, \(dqusage \- %s write filename input_file\en\(dq, argv[0]);
          return EXIT_FAILURE;
       }
 
@@ -208,19 +208,19 @@ main (int argc, char *argv[])
       /* optional: the following method specifies a file_id of any
          BSON type */
       if (!mongoc_gridfs_file_set_id (file, &id, &error)) {
-         fprintf (stderr, "%s\en", error.message);
+         fprintf (stderr, \(dq%s\en\(dq, error.message);
          return EXIT_FAILURE;
       }
 
       if (!mongoc_gridfs_file_save (file)) {
          mongoc_gridfs_file_error (file, &error);
-         fprintf (stderr, "Could not save: %s\en", error.message);
+         fprintf (stderr, \(dqCould not save: %s\en\(dq, error.message);
          return EXIT_FAILURE;
       }
 
       mongoc_gridfs_file_destroy (file);
    } else {
-      fprintf (stderr, "Unknown command");
+      fprintf (stderr, \(dqUnknown command\(dq);
       return EXIT_FAILURE;
    }
 
@@ -246,7 +246,7 @@ The \fI\%MongoDB GridFS specification\fP\&.
 .fi
 .sp
 .nf
-The spec\-compliant \fBmongoc_gridfs_bucket_t\fP\&.
+The spec\-compliant \fI\%mongoc_gridfs_bucket_t\fP\&.
 .fi
 .sp
 .UNINDENT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_APM_SET_TOPOLOGY_CHANGED_CB" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_apm_set_topology_changed_cb \- mongoc_apm_set_topology_changed_cb()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_APM_SET_TOPOLOGY_CHANGED_CB" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_apm_set_topology_changed_cb \- mongoc_apm_set_topology_changed_cb()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,16 +51,16 @@ Receive an event notification whenever the driver observes a change in any of th
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcallbacks\fP: A \fBmongoc_apm_callbacks_t\fP\&.
+\fBcallbacks\fP: A \fI\%mongoc_apm_callbacks_t\fP\&.
 .IP \(bu 2
-\fBcb\fP: A function to call with a \fBmongoc_apm_topology_changed_t\fP whenever the driver observes a change in any of the servers it is connected to or a change in the overall server topology.
+\fBcb\fP: A function to call with a \fI\%mongoc_apm_topology_changed_t\fP whenever the driver observes a change in any of the servers it is connected to or a change in the overall server topology.
 .UNINDENT
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_MIN_SIZE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_min_size \- mongoc_client_pool_min_size()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_MIN_SIZE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_min_size \- mongoc_client_pool_min_size()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ mongoc_client_pool_min_size (mongoc_client_pool_t *pool,
 .UNINDENT
 .UNINDENT
 .sp
-This function sets the \fImaximum\fP number of idle clients to be kept in the pool. Any idle clients in excess of the maximum are destroyed. This function is deprecated because its behavior does not match what developers expect from a "minimum pool size", and its actual behavior is likely to hurt performance.
+This function sets the \fImaximum\fP number of idle clients to be kept in the pool. Any idle clients in excess of the maximum are destroyed. This function is deprecated because its behavior does not match what developers expect from a \(dqminimum pool size\(dq, and its actual behavior is likely to hurt performance.
 .sp
 Applications should not call this function, they should instead accept the default behavior, which is to keep all idle clients that are pushed into the pool.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .IP \(bu 2
 \fBmin_pool_size\fP: The number of idle clients to keep in the pool.
 .UNINDENT
@@ -59,7 +59,7 @@ Applications should not call this function, they should instead accept the defau
 .sp
 This function is safe to call from multiple threads.
 .sp
-Subsequent calls to \fBmongoc_client_pool_push\fP respect the new minimum size, and close the least recently used \fBmongoc_client_t\fP if the minimum size is exceeded.
+Subsequent calls to \fI\%mongoc_client_pool_push()\fP respect the new minimum size, and close the least recently used \fI\%mongoc_client_t\fP if the minimum size is exceeded.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

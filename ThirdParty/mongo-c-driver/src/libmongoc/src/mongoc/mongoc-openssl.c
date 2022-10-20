@@ -112,6 +112,8 @@ _mongoc_openssl_password_cb (char *buf, int num, int rwflag, void *user_data)
    char *pass = (char *) user_data;
    int pass_len = (int) strlen (pass);
 
+   BSON_UNUSED (rwflag);
+
    if (num < pass_len + 1) {
       return 0;
    }
@@ -523,8 +525,10 @@ STACK_OF (X509) * _get_verified_chain (SSL *ssl)
    return SSL_get0_verified_chain (ssl);
 }
 
-void _free_verified_chain (STACK_OF (X509) * verified_chain)
+void
+_free_verified_chain (STACK_OF (X509) * verified_chain)
 {
+   BSON_UNUSED (verified_chain);
    /* _get_verified_chain does not return a copy. Do nothing. */
    return;
 }
@@ -572,7 +576,8 @@ fail:
 
 /* On OpenSSL < 1.1.0, this chain isn't attached to the SSL session, so we need
  * it to dispose of itself. */
-void _free_verified_chain (STACK_OF (X509) * verified_chain)
+void
+_free_verified_chain (STACK_OF (X509) * verified_chain)
 {
    if (!verified_chain) {
       return;
@@ -775,6 +780,7 @@ _mongoc_ocsp_tlsext_status (SSL *ssl, mongoc_openssl_ocsp_opt_t *opts)
    X509 *peer = NULL, *issuer = NULL;
    STACK_OF (X509) *cert_chain = NULL;
    const unsigned char *resp_data = NULL;
+   unsigned char *mutable_resp_data = NULL;
    int cert_status, reason, len, status;
    OCSP_CERTID *id = NULL;
    ASN1_GENERALIZEDTIME *produced_at = NULL, *this_update = NULL,
@@ -817,7 +823,8 @@ _mongoc_ocsp_tlsext_status (SSL *ssl, mongoc_openssl_ocsp_opt_t *opts)
    }
 
    /* Get the stapled OCSP response returned by the server */
-   len = SSL_get_tlsext_status_ocsp_resp (ssl, &resp_data);
+   len = SSL_get_tlsext_status_ocsp_resp (ssl, &mutable_resp_data);
+   resp_data = mutable_resp_data;
    stapled_response = !!resp_data;
    if (stapled_response) {
       /* obtain an OCSP_RESPONSE object from the OCSP response */
@@ -1066,6 +1073,8 @@ _mongoc_openssl_extract_subject (const char *filename, const char *passphrase)
    BIO *strbio = NULL;
    char *str = NULL;
    int ret;
+
+   BSON_UNUSED (passphrase);
 
    if (!filename) {
       return NULL;

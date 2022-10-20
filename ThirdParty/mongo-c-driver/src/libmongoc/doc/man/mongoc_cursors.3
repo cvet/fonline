@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSORS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursors \- Cursors
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSORS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursors \- Cursors
 .SH HANDLING CURSOR FAILURES
 .sp
 Cursors exist on a MongoDB server. However, the \fBmongoc_cursor_t\fP structure gives the local process a handle to the cursor. It is possible for errors to occur on the server while iterating a cursor on the client. Even a network partition may occur. This means that applications should be robust in handling cursor failures.
@@ -53,12 +53,12 @@ print_all_documents (mongoc_collection_t *collection)
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Failed to iterate all documents: %s\en", error.message);
+      fprintf (stderr, \(dqFailed to iterate all documents: %s\en\(dq, error.message);
    }
 
    mongoc_cursor_destroy (cursor);
@@ -69,10 +69,10 @@ print_all_documents (mongoc_collection_t *collection)
 .UNINDENT
 .SH DESTROYING SERVER-SIDE CURSORS
 .sp
-The MongoDB C driver will automatically destroy a server\-side cursor when \fBmongoc_cursor_destroy()\fP is called. Failure to call this function when done with a cursor will leak memory client side as well as consume extra memory server side. If the cursor was configured to never timeout, it will become a memory leak on the server.
+The MongoDB C driver will automatically destroy a server\-side cursor when \fI\%mongoc_cursor_destroy()\fP is called. Failure to call this function when done with a cursor will leak memory client side as well as consume extra memory server side. If the cursor was configured to never timeout, it will become a memory leak on the server.
 .SH TAILABLE CURSORS
 .sp
-Tailable cursors are cursors that remain open even after they\(aqve returned a final result. This way, if more documents are added to a collection (i.e., to the cursor\(aqs result set), then you can continue to call \fBmongoc_cursor_next()\fP to retrieve those additional results.
+Tailable cursors are cursors that remain open even after they\(aqve returned a final result. This way, if more documents are added to a collection (i.e., to the cursor\(aqs result set), then you can continue to call \fI\%mongoc_cursor_next()\fP to retrieve those additional results.
 .sp
 Here\(aqs a complete test case that demonstrates the use of tailable cursors.
 .sp
@@ -107,7 +107,7 @@ print_bson (const bson_t *b)
    char *str;
 
    str = bson_as_canonical_extended_json (b, NULL);
-   fprintf (stdout, "%s\en", str);
+   fprintf (stdout, \(dq%s\en\(dq, str);
    bson_free (str);
 }
 
@@ -123,13 +123,13 @@ query_collection (mongoc_collection_t *collection, uint32_t last_time)
    BSON_ASSERT (collection);
 
    bson_init (&query);
-   BSON_APPEND_DOCUMENT_BEGIN (&query, "ts", &gt);
-   BSON_APPEND_TIMESTAMP (&gt, "$gt", last_time, 0);
+   BSON_APPEND_DOCUMENT_BEGIN (&query, \(dqts\(dq, &gt);
+   BSON_APPEND_TIMESTAMP (&gt, \(dq$gt\(dq, last_time, 0);
    bson_append_document_end (&query, &gt);
 
    bson_init (&opts);
-   BSON_APPEND_BOOL (&opts, "tailable", true);
-   BSON_APPEND_BOOL (&opts, "awaitData", true);
+   BSON_APPEND_BOOL (&opts, \(dqtailable\(dq, true);
+   BSON_APPEND_BOOL (&opts, \(dqawaitData\(dq, true);
 
    cursor = mongoc_collection_find_with_opts (collection, &query, &opts, NULL);
 
@@ -158,7 +158,7 @@ tail_collection (mongoc_collection_t *collection)
       while (!mongoc_cursor_error (cursor, &error) &&
              mongoc_cursor_more (cursor)) {
          if (mongoc_cursor_next (cursor, &doc)) {
-            if (bson_iter_init_find (&iter, doc, "ts") &&
+            if (bson_iter_init_find (&iter, doc, \(dqts\(dq) &&
                 BSON_ITER_HOLDS_TIMESTAMP (&iter)) {
                bson_iter_timestamp (&iter, &last_time, NULL);
             }
@@ -167,7 +167,7 @@ tail_collection (mongoc_collection_t *collection)
       }
       if (mongoc_cursor_error (cursor, &error)) {
          if (error.domain == MONGOC_ERROR_SERVER) {
-            fprintf (stderr, "%s\en", error.message);
+            fprintf (stderr, \(dq%s\en\(dq, error.message);
             exit (1);
          }
       }
@@ -187,7 +187,7 @@ main (int argc, char *argv[])
    bson_error_t error;
 
    if (argc != 2) {
-      fprintf (stderr, "usage: %s MONGO_URI\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s MONGO_URI\en\(dq, argv[0]);
       return EXIT_FAILURE;
    }
 
@@ -196,8 +196,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (argv[1], &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                argv[1],
                error.message);
       return EXIT_FAILURE;
@@ -210,7 +210,7 @@ main (int argc, char *argv[])
 
    mongoc_client_set_error_api (client, 2);
 
-   collection = mongoc_client_get_collection (client, "local", "oplog.rs");
+   collection = mongoc_client_get_collection (client, \(dqlocal\(dq, \(dqoplog.rs\(dq);
 
    tail_collection (collection);
 
@@ -235,21 +235,21 @@ Let\(aqs compile and run this example against a replica set to see updates as th
 $ gcc \-Wall \-o mongoc\-tail mongoc\-tail.c $(pkg\-config \-\-cflags \-\-libs libmongoc\-1.0)
 $ ./mongoc\-tail mongodb://example.com/?replicaSet=myReplSet
 {
-    "h" : \-8458503739429355503,
-    "ns" : "test.test",
-    "o" : {
-        "_id" : {
-            "$oid" : "5372ab0a25164be923d10d50"
+    \(dqh\(dq : \-8458503739429355503,
+    \(dqns\(dq : \(dqtest.test\(dq,
+    \(dqo\(dq : {
+        \(dq_id\(dq : {
+            \(dq$oid\(dq : \(dq5372ab0a25164be923d10d50\(dq
         }
     },
-    "op" : "i",
-    "ts" : {
-        "$timestamp" : {
-            "i" : 1,
-            "t" : 1400023818
+    \(dqop\(dq : \(dqi\(dq,
+    \(dqts\(dq : {
+        \(dq$timestamp\(dq : {
+            \(dqi\(dq : 1,
+            \(dqt\(dq : 1400023818
         }
     },
-    "v" : 2
+    \(dqv\(dq : 2
 }
 .ft P
 .fi
@@ -262,7 +262,7 @@ The line of output is a sample from performing \fBdb.test.insert({})\fP from the
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_cursor_set_max_await_time_ms\fP\&.
+\fI\%mongoc_cursor_set_max_await_time_ms()\fP\&.
 .fi
 .sp
 .UNINDENT

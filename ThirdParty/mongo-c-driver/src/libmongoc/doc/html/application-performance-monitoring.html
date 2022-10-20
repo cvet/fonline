@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/application-performance-monitoring.html"/>
-    <title>Application Performance Monitoring (APM) &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/application-performance-monitoring.html"/>
+    <title>Application Performance Monitoring (APM) &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_apm_callbacks_t" href="mongoc_apm_callbacks_t.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_write_concern_set_wtimeout_int64.html" title="mongoc_write_concern_set_wtimeout_int64()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -39,154 +44,154 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="application-performance-monitoring-apm">
-<h1>Application Performance Monitoring (APM)<a class="headerlink" href="#application-performance-monitoring-apm" title="Permalink to this headline">¶</a></h1>
+  <section id="application-performance-monitoring-apm">
+<h1>Application Performance Monitoring (APM)<a class="headerlink" href="#application-performance-monitoring-apm" title="Permalink to this heading">¶</a></h1>
 <p>The MongoDB C Driver allows you to monitor all the MongoDB operations the driver executes. This event-notification system conforms to two MongoDB driver specs:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://github.com/mongodb/specifications/blob/master/source/command-monitoring/command-monitoring.rst">Command Monitoring</a>: events related to all application operations.</p></li>
 <li><p><a class="reference external" href="https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring-monitoring.rst">SDAM Monitoring</a>: events related to the driver’s Server Discovery And Monitoring logic.</p></li>
 </ul>
 <p>To receive notifications, create a <code class="docutils literal notranslate"><span class="pre">mongoc_apm_callbacks_t</span></code> with <a class="symbol reference internal" href="mongoc_apm_callbacks_new.html"><span class="doc">mongoc_apm_callbacks_new()</span></a>, set callbacks on it, then pass it to <a class="symbol reference internal" href="mongoc_client_set_apm_callbacks.html"><span class="doc">mongoc_client_set_apm_callbacks()</span></a> or <a class="symbol reference internal" href="mongoc_client_pool_set_apm_callbacks.html"><span class="doc">mongoc_client_pool_set_apm_callbacks()</span></a>.</p>
-<div class="section" id="command-monitoring-example">
-<h2>Command-Monitoring Example<a class="headerlink" href="#command-monitoring-example" title="Permalink to this headline">¶</a></h2>
+<section id="command-monitoring-example">
+<h2>Command-Monitoring Example<a class="headerlink" href="#command-monitoring-example" title="Permalink to this heading">¶</a></h2>
 <div class="literal-block-wrapper docutils container" id="id1">
 <div class="code-block-caption"><span class="caption-text">example-command-monitoring.c</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* gcc example-command-monitoring.c -o example-command-monitoring \</span>
-<span class="cm"> *     $(pkg-config --cflags --libs libmongoc-1.0) */</span>
+<span class="cm"> *     $(pkg-config --cflags --libs libmongoc-1.0) */</span><span class="w"></span>
 
-<span class="cm">/* ./example-command-monitoring [CONNECTION_STRING] */</span>
+<span class="cm">/* ./example-command-monitoring [CONNECTION_STRING] */</span><span class="w"></span>
 
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
-
-
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="kt">int</span> <span class="n">started</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">succeeded</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">failed</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">stats_t</span><span class="p">;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 
 
-<span class="kt">void</span>
-<span class="nf">command_started</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_command_started_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>
-
-   <span class="n">s</span> <span class="o">=</span> <span class="n">bson_as_relaxed_extended_json</span> <span class="p">(</span>
-      <span class="n">mongoc_apm_command_started_get_command</span> <span class="p">(</span><span class="n">event</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">);</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Command %s started on %s:</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_command_started_get_command_name</span> <span class="p">(</span><span class="n">event</span><span class="p">),</span>
-           <span class="n">mongoc_apm_command_started_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host</span><span class="p">,</span>
-           <span class="n">s</span><span class="p">);</span>
-
-   <span class="p">((</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_command_started_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">))</span><span class="o">-&gt;</span><span class="n">started</span><span class="o">++</span><span class="p">;</span>
-
-   <span class="n">bson_free</span> <span class="p">(</span><span class="n">s</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">started</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">succeeded</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">failed</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">stats_t</span><span class="p">;</span><span class="w"></span>
 
 
-<span class="kt">void</span>
-<span class="nf">command_succeeded</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_command_succeeded_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>
+<span class="kt">void</span><span class="w"></span>
+<span class="nf">command_started</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_command_started_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">s</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">s</span> <span class="o">=</span> <span class="n">bson_as_relaxed_extended_json</span> <span class="p">(</span>
-      <span class="n">mongoc_apm_command_succeeded_get_reply</span> <span class="p">(</span><span class="n">event</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">);</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Command %s succeeded:</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_command_succeeded_get_command_name</span> <span class="p">(</span><span class="n">event</span><span class="p">),</span>
-           <span class="n">s</span><span class="p">);</span>
+<span class="w">   </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_relaxed_extended_json</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_apm_command_started_get_command</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">),</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Command %s started on %s:</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_command_started_get_command_name</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">),</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_command_started_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">s</span><span class="p">);</span><span class="w"></span>
 
-   <span class="p">((</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_command_succeeded_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">))</span><span class="o">-&gt;</span><span class="n">succeeded</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="p">((</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_command_started_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">))</span><span class="o">-&gt;</span><span class="n">started</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">bson_free</span> <span class="p">(</span><span class="n">s</span><span class="p">);</span>
-<span class="p">}</span>
-
-
-<span class="kt">void</span>
-<span class="nf">command_failed</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_command_failed_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-
-   <span class="n">mongoc_apm_command_failed_get_error</span> <span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Command %s failed:</span><span class="se">\n\&quot;</span><span class="s">%s</span><span class="se">\&quot;\n\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_command_failed_get_command_name</span> <span class="p">(</span><span class="n">event</span><span class="p">),</span>
-           <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-
-   <span class="p">((</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_command_failed_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">))</span><span class="o">-&gt;</span><span class="n">failed</span><span class="o">++</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="kt">int</span>
-<span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">;</span>
-   <span class="n">mongoc_apm_callbacks_t</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">;</span>
-   <span class="n">stats_t</span> <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-   <span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri_string</span> <span class="o">=</span>
-      <span class="s">&quot;mongodb://127.0.0.1/?appname=cmd-monitoring-example&quot;</span><span class="p">;</span>
-   <span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">collection_name</span> <span class="o">=</span> <span class="s">&quot;test&quot;</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="o">*</span><span class="n">docs</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+<span class="kt">void</span><span class="w"></span>
+<span class="nf">command_succeeded</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_command_succeeded_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">s</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_relaxed_extended_json</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_apm_command_succeeded_get_reply</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">),</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Command %s succeeded:</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_command_succeeded_get_command_name</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">),</span><span class="w"></span>
+<span class="w">           </span><span class="n">s</span><span class="p">);</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">uri_string</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="p">((</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_command_succeeded_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">))</span><span class="o">-&gt;</span><span class="n">succeeded</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new_with_error</span> <span class="p">(</span><span class="n">uri_string</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span>
-               <span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-               <span class="n">uri_string</span><span class="p">,</span>
-               <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new_from_uri</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
 
-   <span class="n">mongoc_client_set_error_api</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
-   <span class="n">callbacks</span> <span class="o">=</span> <span class="n">mongoc_apm_callbacks_new</span> <span class="p">();</span>
-   <span class="n">mongoc_apm_set_command_started_cb</span> <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">command_started</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_command_succeeded_cb</span> <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">command_succeeded</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_command_failed_cb</span> <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">command_failed</span><span class="p">);</span>
-   <span class="n">mongoc_client_set_apm_callbacks</span> <span class="p">(</span>
-      <span class="n">client</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">stats</span> <span class="cm">/* context pointer */</span><span class="p">);</span>
+<span class="kt">void</span><span class="w"></span>
+<span class="nf">command_failed</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_command_failed_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">collection</span> <span class="o">=</span> <span class="n">mongoc_client_get_collection</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s">&quot;test&quot;</span><span class="p">,</span> <span class="n">collection_name</span><span class="p">);</span>
-   <span class="n">mongoc_collection_drop</span> <span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="w">   </span><span class="n">mongoc_apm_command_failed_get_error</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Command %s failed:</span><span class="se">\n\&quot;</span><span class="s">%s</span><span class="se">\&quot;\n\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_command_failed_get_command_name</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">),</span><span class="w"></span>
+<span class="w">           </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;_id&quot;</span><span class="p">,</span> <span class="n">BCON_INT32</span> <span class="p">(</span><span class="mi">0</span><span class="p">));</span>
-   <span class="n">docs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;_id&quot;</span><span class="p">,</span> <span class="n">BCON_INT32</span> <span class="p">(</span><span class="mi">1</span><span class="p">));</span>
-   <span class="n">mongoc_collection_insert_many</span> <span class="p">(</span>
-      <span class="n">collection</span><span class="p">,</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_t</span> <span class="o">**</span><span class="p">)</span> <span class="n">docs</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="w">   </span><span class="p">((</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_command_failed_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">))</span><span class="o">-&gt;</span><span class="n">failed</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-   <span class="cm">/* duplicate key error on the second insert */</span>
-   <span class="n">mongoc_collection_insert_one</span> <span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
 
-   <span class="n">mongoc_collection_destroy</span> <span class="p">(</span><span class="n">collection</span><span class="p">);</span>
-   <span class="n">mongoc_apm_callbacks_destroy</span> <span class="p">(</span><span class="n">callbacks</span><span class="p">);</span>
-   <span class="n">mongoc_uri_destroy</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_callbacks_t</span><span class="w"> </span><span class="o">*</span><span class="n">callbacks</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="n">stats</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">0</span><span class="p">};</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">      </span><span class="s">&quot;mongodb://127.0.0.1/?appname=cmd-monitoring-example&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">collection_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">docs</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;started: %d</span><span class="se">\n</span><span class="s">succeeded: %d</span><span class="se">\n</span><span class="s">failed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">started</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">succeeded</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">failed</span><span class="p">);</span>
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new_with_error</span><span class="w"> </span><span class="p">(</span><span class="n">uri_string</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">uri_string</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new_from_uri</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_client_set_error_api</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">callbacks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_apm_callbacks_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_command_started_cb</span><span class="w"> </span><span class="p">(</span><span class="n">callbacks</span><span class="p">,</span><span class="w"> </span><span class="n">command_started</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_command_succeeded_cb</span><span class="w"> </span><span class="p">(</span><span class="n">callbacks</span><span class="p">,</span><span class="w"> </span><span class="n">command_succeeded</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_command_failed_cb</span><span class="w"> </span><span class="p">(</span><span class="n">callbacks</span><span class="p">,</span><span class="w"> </span><span class="n">command_failed</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_set_apm_callbacks</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">callbacks</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stats</span><span class="w"> </span><span class="cm">/* context pointer */</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_get_collection</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">collection_name</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_drop</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_INT32</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="p">));</span><span class="w"></span>
+<span class="w">   </span><span class="n">docs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_INT32</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">));</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_insert_many</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">**</span><span class="p">)</span><span class="w"> </span><span class="n">docs</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="cm">/* duplicate key error on the second insert */</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_insert_one</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_collection_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_callbacks_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">callbacks</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;started: %d</span><span class="se">\n</span><span class="s">succeeded: %d</span><span class="se">\n</span><span class="s">failed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">started</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">succeeded</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">failed</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_SUCCESS</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
@@ -234,304 +239,304 @@ failed: 0
 </div>
 <p>The output has been edited and formatted for clarity. Depending on your server configuration, messages may include metadata like database name, logical session ids, or cluster times that are not shown here.</p>
 <p>The final “insert” command is considered successful, despite the writeError, because the server replied to the overall command with <code class="docutils literal notranslate"><span class="pre">&quot;ok&quot;:</span> <span class="pre">1</span></code>.</p>
-</div>
-<div class="section" id="sdam-monitoring-example">
-<h2>SDAM Monitoring Example<a class="headerlink" href="#sdam-monitoring-example" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="sdam-monitoring-example">
+<h2>SDAM Monitoring Example<a class="headerlink" href="#sdam-monitoring-example" title="Permalink to this heading">¶</a></h2>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">example-sdam-monitoring.c</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* gcc example-sdam-monitoring.c -o example-sdam-monitoring \</span>
-<span class="cm"> *     $(pkg-config --cflags --libs libmongoc-1.0) */</span>
+<span class="cm"> *     $(pkg-config --cflags --libs libmongoc-1.0) */</span><span class="w"></span>
 
-<span class="cm">/* ./example-sdam-monitoring [CONNECTION_STRING] */</span>
+<span class="cm">/* ./example-sdam-monitoring [CONNECTION_STRING] */</span><span class="w"></span>
 
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
-
-
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="kt">int</span> <span class="n">server_changed_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">server_opening_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">server_closed_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">topology_changed_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">topology_opening_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">topology_closed_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">heartbeat_started_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">heartbeat_succeeded_events</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">heartbeat_failed_events</span><span class="p">;</span>
-<span class="p">}</span> <span class="n">stats_t</span><span class="p">;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">server_changed</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_server_changed_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">mongoc_server_description_t</span> <span class="o">*</span><span class="n">prev_sd</span><span class="p">,</span> <span class="o">*</span><span class="n">new_sd</span><span class="p">;</span>
-
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_server_changed_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">server_changed_events</span><span class="o">++</span><span class="p">;</span>
-
-   <span class="n">prev_sd</span> <span class="o">=</span> <span class="n">mongoc_apm_server_changed_get_previous_description</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">new_sd</span> <span class="o">=</span> <span class="n">mongoc_apm_server_changed_get_new_description</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;server changed: %s %s -&gt; %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_server_changed_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">,</span>
-           <span class="n">mongoc_server_description_type</span> <span class="p">(</span><span class="n">prev_sd</span><span class="p">),</span>
-           <span class="n">mongoc_server_description_type</span> <span class="p">(</span><span class="n">new_sd</span><span class="p">));</span>
-<span class="p">}</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">server_changed_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">server_opening_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">server_closed_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">topology_changed_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">topology_opening_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">topology_closed_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">heartbeat_started_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">heartbeat_succeeded_events</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">heartbeat_failed_events</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">stats_t</span><span class="p">;</span><span class="w"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">server_opening</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_server_opening_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">server_changed</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_server_changed_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_server_description_t</span><span class="w"> </span><span class="o">*</span><span class="n">prev_sd</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">new_sd</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_server_opening_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">server_opening_events</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_server_changed_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">server_changed_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;server opening: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_server_opening_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">prev_sd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_apm_server_changed_get_previous_description</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">new_sd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_apm_server_changed_get_new_description</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
 
-
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">server_closed</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_server_closed_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
-
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_server_closed_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">server_closed_events</span><span class="o">++</span><span class="p">;</span>
-
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;server closed: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_server_closed_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;server changed: %s %s -&gt; %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_server_changed_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_server_description_type</span><span class="w"> </span><span class="p">(</span><span class="n">prev_sd</span><span class="p">),</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_server_description_type</span><span class="w"> </span><span class="p">(</span><span class="n">new_sd</span><span class="p">));</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">topology_changed</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_topology_changed_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">mongoc_topology_description_t</span> <span class="o">*</span><span class="n">prev_td</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">mongoc_topology_description_t</span> <span class="o">*</span><span class="n">new_td</span><span class="p">;</span>
-   <span class="n">mongoc_server_description_t</span> <span class="o">**</span><span class="n">prev_sds</span><span class="p">;</span>
-   <span class="kt">size_t</span> <span class="n">n_prev_sds</span><span class="p">;</span>
-   <span class="n">mongoc_server_description_t</span> <span class="o">**</span><span class="n">new_sds</span><span class="p">;</span>
-   <span class="kt">size_t</span> <span class="n">n_new_sds</span><span class="p">;</span>
-   <span class="kt">size_t</span> <span class="n">i</span><span class="p">;</span>
-   <span class="n">mongoc_read_prefs_t</span> <span class="o">*</span><span class="n">prefs</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">server_opening</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_server_opening_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_topology_changed_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">topology_changed_events</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_server_opening_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">server_opening_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">prev_td</span> <span class="o">=</span> <span class="n">mongoc_apm_topology_changed_get_previous_description</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">prev_sds</span> <span class="o">=</span> <span class="n">mongoc_topology_description_get_servers</span> <span class="p">(</span><span class="n">prev_td</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">n_prev_sds</span><span class="p">);</span>
-   <span class="n">new_td</span> <span class="o">=</span> <span class="n">mongoc_apm_topology_changed_get_new_description</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">new_sds</span> <span class="o">=</span> <span class="n">mongoc_topology_description_get_servers</span> <span class="p">(</span><span class="n">new_td</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">n_new_sds</span><span class="p">);</span>
-
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;topology changed: %s -&gt; %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_topology_description_type</span> <span class="p">(</span><span class="n">prev_td</span><span class="p">),</span>
-           <span class="n">mongoc_topology_description_type</span> <span class="p">(</span><span class="n">new_td</span><span class="p">));</span>
-
-   <span class="k">if</span> <span class="p">(</span><span class="n">n_prev_sds</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;  previous servers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n_prev_sds</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;      %s %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-                 <span class="n">mongoc_server_description_type</span> <span class="p">(</span><span class="n">prev_sds</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
-                 <span class="n">mongoc_server_description_host</span> <span class="p">(</span><span class="n">prev_sds</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span>
-      <span class="p">}</span>
-   <span class="p">}</span>
-
-   <span class="k">if</span> <span class="p">(</span><span class="n">n_new_sds</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;  new servers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n_new_sds</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;      %s %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-                 <span class="n">mongoc_server_description_type</span> <span class="p">(</span><span class="n">new_sds</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
-                 <span class="n">mongoc_server_description_host</span> <span class="p">(</span><span class="n">new_sds</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span>
-      <span class="p">}</span>
-   <span class="p">}</span>
-
-   <span class="n">prefs</span> <span class="o">=</span> <span class="n">mongoc_read_prefs_new</span> <span class="p">(</span><span class="n">MONGOC_READ_SECONDARY</span><span class="p">);</span>
-
-   <span class="cm">/* it is safe, and unfortunately necessary, to cast away const here */</span>
-   <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_topology_description_has_readable_server</span> <span class="p">(</span>
-          <span class="p">(</span><span class="n">mongoc_topology_description_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">new_td</span><span class="p">,</span> <span class="n">prefs</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;  secondary AVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;  secondary UNAVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="p">}</span>
-
-   <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_topology_description_has_writable_server</span> <span class="p">(</span>
-          <span class="p">(</span><span class="n">mongoc_topology_description_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">new_td</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;  primary AVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;  primary UNAVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="p">}</span>
-
-   <span class="n">mongoc_read_prefs_destroy</span> <span class="p">(</span><span class="n">prefs</span><span class="p">);</span>
-   <span class="n">mongoc_server_descriptions_destroy_all</span> <span class="p">(</span><span class="n">prev_sds</span><span class="p">,</span> <span class="n">n_prev_sds</span><span class="p">);</span>
-   <span class="n">mongoc_server_descriptions_destroy_all</span> <span class="p">(</span><span class="n">new_sds</span><span class="p">,</span> <span class="n">n_new_sds</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;server opening: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_server_opening_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">topology_opening</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_topology_opening_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">server_closed</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_server_closed_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_topology_opening_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">topology_opening_events</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_server_closed_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">server_closed_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;topology opening</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-
-
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">topology_closed</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_topology_closed_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
-
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_topology_closed_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">topology_closed_events</span><span class="o">++</span><span class="p">;</span>
-
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;topology closed</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;server closed: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_server_closed_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">server_heartbeat_started</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_server_heartbeat_started_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">topology_changed</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_topology_changed_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_topology_description_t</span><span class="w"> </span><span class="o">*</span><span class="n">prev_td</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_topology_description_t</span><span class="w"> </span><span class="o">*</span><span class="n">new_td</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_server_description_t</span><span class="w"> </span><span class="o">**</span><span class="n">prev_sds</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">size_t</span><span class="w"> </span><span class="n">n_prev_sds</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_server_description_t</span><span class="w"> </span><span class="o">**</span><span class="n">new_sds</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">size_t</span><span class="w"> </span><span class="n">n_new_sds</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_read_prefs_t</span><span class="w"> </span><span class="o">*</span><span class="n">prefs</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">context</span> <span class="o">=</span>
-      <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_server_heartbeat_started_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">heartbeat_started_events</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_topology_changed_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">topology_changed_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s heartbeat started</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_server_heartbeat_started_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">prev_td</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_apm_topology_changed_get_previous_description</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">prev_sds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_topology_description_get_servers</span><span class="w"> </span><span class="p">(</span><span class="n">prev_td</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">n_prev_sds</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">new_td</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_apm_topology_changed_get_new_description</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">new_sds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_topology_description_get_servers</span><span class="w"> </span><span class="p">(</span><span class="n">new_td</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">n_new_sds</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;topology changed: %s -&gt; %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_topology_description_type</span><span class="w"> </span><span class="p">(</span><span class="n">prev_td</span><span class="p">),</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_topology_description_type</span><span class="w"> </span><span class="p">(</span><span class="n">new_td</span><span class="p">));</span><span class="w"></span>
+
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">n_prev_sds</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;  previous servers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n_prev_sds</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;      %s %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                 </span><span class="n">mongoc_server_description_type</span><span class="w"> </span><span class="p">(</span><span class="n">prev_sds</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span><span class="w"></span>
+<span class="w">                 </span><span class="n">mongoc_server_description_host</span><span class="w"> </span><span class="p">(</span><span class="n">prev_sds</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">n_new_sds</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;  new servers:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n_new_sds</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;      %s %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                 </span><span class="n">mongoc_server_description_type</span><span class="w"> </span><span class="p">(</span><span class="n">new_sds</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span><span class="w"></span>
+<span class="w">                 </span><span class="n">mongoc_server_description_host</span><span class="w"> </span><span class="p">(</span><span class="n">new_sds</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">prefs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_read_prefs_new</span><span class="w"> </span><span class="p">(</span><span class="n">MONGOC_READ_SECONDARY</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="cm">/* it is safe, and unfortunately necessary, to cast away const here */</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_topology_description_has_readable_server</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">          </span><span class="p">(</span><span class="n">mongoc_topology_description_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">new_td</span><span class="p">,</span><span class="w"> </span><span class="n">prefs</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;  secondary AVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;  secondary UNAVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_topology_description_has_writable_server</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">          </span><span class="p">(</span><span class="n">mongoc_topology_description_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">new_td</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;  primary AVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;  primary UNAVAILABLE</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_read_prefs_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">prefs</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_server_descriptions_destroy_all</span><span class="w"> </span><span class="p">(</span><span class="n">prev_sds</span><span class="p">,</span><span class="w"> </span><span class="n">n_prev_sds</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_server_descriptions_destroy_all</span><span class="w"> </span><span class="p">(</span><span class="n">new_sds</span><span class="p">,</span><span class="w"> </span><span class="n">n_new_sds</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">server_heartbeat_succeeded</span> <span class="p">(</span>
-   <span class="k">const</span> <span class="n">mongoc_apm_server_heartbeat_succeeded_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">reply</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">topology_opening</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_topology_opening_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">context</span> <span class="o">=</span>
-      <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_server_heartbeat_succeeded_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">heartbeat_succeeded_events</span><span class="o">++</span><span class="p">;</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_topology_opening_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">topology_opening_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">reply</span> <span class="o">=</span> <span class="n">bson_as_canonical_extended_json</span> <span class="p">(</span>
-      <span class="n">mongoc_apm_server_heartbeat_succeeded_get_reply</span> <span class="p">(</span><span class="n">event</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">);</span>
-
-   <span class="n">printf</span> <span class="p">(</span>
-      <span class="s">&quot;%s heartbeat succeeded: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-      <span class="n">mongoc_apm_server_heartbeat_succeeded_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">,</span>
-      <span class="n">reply</span><span class="p">);</span>
-
-   <span class="n">bson_free</span> <span class="p">(</span><span class="n">reply</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;topology opening</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="k">static</span> <span class="kt">void</span>
-<span class="n">server_heartbeat_failed</span> <span class="p">(</span><span class="k">const</span> <span class="n">mongoc_apm_server_heartbeat_failed_t</span> <span class="o">*</span><span class="n">event</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">stats_t</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">topology_closed</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_topology_closed_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_t</span> <span class="o">*</span><span class="p">)</span> <span class="n">mongoc_apm_server_heartbeat_failed_get_context</span> <span class="p">(</span><span class="n">event</span><span class="p">);</span>
-   <span class="n">context</span><span class="o">-&gt;</span><span class="n">heartbeat_failed_events</span><span class="o">++</span><span class="p">;</span>
-   <span class="n">mongoc_apm_server_heartbeat_failed_get_error</span> <span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_topology_closed_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">topology_closed_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s heartbeat failed: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">mongoc_apm_server_heartbeat_failed_get_host</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">,</span>
-           <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;topology closed</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
 
-<span class="kt">int</span>
-<span class="n">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">;</span>
-   <span class="n">mongoc_apm_callbacks_t</span> <span class="o">*</span><span class="n">cbs</span><span class="p">;</span>
-   <span class="n">stats_t</span> <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri_string</span> <span class="o">=</span>
-      <span class="s">&quot;mongodb://127.0.0.1/?appname=sdam-monitoring-example&quot;</span><span class="p">;</span>
-   <span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="n">cmd</span> <span class="o">=</span> <span class="n">BSON_INITIALIZER</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="n">reply</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">server_heartbeat_started</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_server_heartbeat_started_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">      </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_server_heartbeat_started_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">heartbeat_started_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">uri_string</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s heartbeat started</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_server_heartbeat_started_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-   <span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new_with_error</span> <span class="p">(</span><span class="n">uri_string</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span>
-               <span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-               <span class="n">uri_string</span><span class="p">,</span>
-               <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
 
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new_from_uri</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">server_heartbeat_succeeded</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_server_heartbeat_succeeded_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">reply</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_client_set_error_api</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
-   <span class="n">cbs</span> <span class="o">=</span> <span class="n">mongoc_apm_callbacks_new</span> <span class="p">();</span>
-   <span class="n">mongoc_apm_set_server_changed_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">server_changed</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_server_opening_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">server_opening</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_server_closed_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">server_closed</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_topology_changed_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">topology_changed</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_topology_opening_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">topology_opening</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_topology_closed_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">topology_closed</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_server_heartbeat_started_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">server_heartbeat_started</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_server_heartbeat_succeeded_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span>
-                                                 <span class="n">server_heartbeat_succeeded</span><span class="p">);</span>
-   <span class="n">mongoc_apm_set_server_heartbeat_failed_cb</span> <span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">server_heartbeat_failed</span><span class="p">);</span>
-   <span class="n">mongoc_client_set_apm_callbacks</span> <span class="p">(</span>
-      <span class="n">client</span><span class="p">,</span> <span class="n">cbs</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">stats</span> <span class="cm">/* context pointer */</span><span class="p">);</span>
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">      </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_server_heartbeat_succeeded_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">heartbeat_succeeded_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
 
-   <span class="cm">/* the driver connects on demand to perform first operation */</span>
-   <span class="n">BSON_APPEND_INT32</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">cmd</span><span class="p">,</span> <span class="s">&quot;buildinfo&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
-   <span class="n">mongoc_client_command_simple</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s">&quot;admin&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">cmd</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="n">mongoc_uri_destroy</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="w">   </span><span class="n">reply</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_canonical_extended_json</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_apm_server_heartbeat_succeeded_get_reply</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">),</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Events:</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   server changed: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   server opening: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   server closed: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   topology changed: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   topology opening: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   topology closed: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   heartbeat started: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   heartbeat succeeded: %d</span><span class="se">\n</span><span class="s">&quot;</span>
-           <span class="s">&quot;   heartbeat failed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">server_changed_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">server_opening_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">server_closed_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">topology_changed_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">topology_opening_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">topology_closed_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">heartbeat_started_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">heartbeat_succeeded_events</span><span class="p">,</span>
-           <span class="n">stats</span><span class="p">.</span><span class="n">heartbeat_failed_events</span><span class="p">);</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="s">&quot;%s heartbeat succeeded: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_apm_server_heartbeat_succeeded_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">cmd</span><span class="p">);</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span>
-   <span class="n">mongoc_apm_callbacks_destroy</span> <span class="p">(</span><span class="n">cbs</span><span class="p">);</span>
+<span class="w">   </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
 
-   <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"></span>
+<span class="nf">server_heartbeat_failed</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_apm_server_heartbeat_failed_t</span><span class="w"> </span><span class="o">*</span><span class="n">event</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="n">context</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">stats_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">mongoc_apm_server_heartbeat_failed_get_context</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">context</span><span class="o">-&gt;</span><span class="n">heartbeat_failed_events</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_server_heartbeat_failed_get_error</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s heartbeat failed: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">mongoc_apm_server_heartbeat_failed_get_host</span><span class="w"> </span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">host_and_port</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_callbacks_t</span><span class="w"> </span><span class="o">*</span><span class="n">cbs</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">stats_t</span><span class="w"> </span><span class="n">stats</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">0</span><span class="p">};</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">      </span><span class="s">&quot;mongodb://127.0.0.1/?appname=sdam-monitoring-example&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="n">cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BSON_INITIALIZER</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="n">reply</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new_with_error</span><span class="w"> </span><span class="p">(</span><span class="n">uri_string</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">uri_string</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new_from_uri</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_client_set_error_api</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">cbs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_apm_callbacks_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_server_changed_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">server_changed</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_server_opening_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">server_opening</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_server_closed_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">server_closed</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_topology_changed_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">topology_changed</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_topology_opening_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">topology_opening</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_topology_closed_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">topology_closed</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_server_heartbeat_started_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">server_heartbeat_started</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_server_heartbeat_succeeded_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                                 </span><span class="n">server_heartbeat_succeeded</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_set_server_heartbeat_failed_cb</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="n">server_heartbeat_failed</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_set_apm_callbacks</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">cbs</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stats</span><span class="w"> </span><span class="cm">/* context pointer */</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="cm">/* the driver connects on demand to perform first operation */</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_APPEND_INT32</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">cmd</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;buildinfo&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_command_simple</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;admin&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cmd</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Events:</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   server changed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   server opening: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   server closed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   topology changed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   topology opening: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   topology closed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   heartbeat started: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   heartbeat succeeded: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">           </span><span class="s">&quot;   heartbeat failed: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">server_changed_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">server_opening_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">server_closed_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">topology_changed_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">topology_opening_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">topology_closed_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">heartbeat_started_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">heartbeat_succeeded_events</span><span class="p">,</span><span class="w"></span>
+<span class="w">           </span><span class="n">stats</span><span class="p">.</span><span class="n">heartbeat_failed_events</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">cmd</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_apm_callbacks_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">cbs</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_SUCCESS</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
@@ -594,9 +599,9 @@ Events:
 </pre></div>
 </div>
 <p>The driver connects to the mongods on ports 27017 and 27018, which were specified in the URI, and determines which is primary. It also discovers the third member, “localhost:27019”, and adds it to the topology.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_apm_callbacks_t.html">mongoc_apm_callbacks_t</a></li>
@@ -614,8 +619,8 @@ Events:
 <li class="toctree-l1"><a class="reference internal" href="mongoc_apm_topology_opening_t.html">mongoc_apm_topology_opening_t</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -680,7 +685,7 @@ Events:
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

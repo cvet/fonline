@@ -188,7 +188,7 @@ test_mongoc_handshake_data_append_success (void)
    /* Force topology scanner to start */
    client = mongoc_client_pool_pop (pool);
 
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
    ASSERT (request);
    request_doc = request_get_doc (request, 0);
    ASSERT (request_doc);
@@ -297,7 +297,7 @@ test_mongoc_handshake_data_append_null_args (void)
    /* Force topology scanner to start */
    client = mongoc_client_pool_pop (pool);
 
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
    ASSERT (request);
    request_doc = request_get_doc (request, 0);
    ASSERT (request_doc);
@@ -501,6 +501,7 @@ test_mongoc_handshake_too_big (void)
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    /* avoid rare test timeouts */
    mongoc_uri_set_option_as_int32 (uri, MONGOC_URI_CONNECTTIMEOUTMS, 20000);
+
    client = test_framework_client_new_from_uri (uri, NULL);
 
    ASSERT (mongoc_client_set_appname (client, "my app"));
@@ -508,7 +509,7 @@ test_mongoc_handshake_too_big (void)
    /* Send a ping, mock server deals with it */
    future = future_client_command_simple (
       client, "admin", tmp_bson ("{'ping': 1}"), NULL, NULL, NULL);
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
 
    /* Make sure the hello request has a handshake field, and it's not huge */
    ASSERT (request);
@@ -525,11 +526,14 @@ test_mongoc_handshake_too_big (void)
    ASSERT (len == HANDSHAKE_MAX_SIZE);
 
    mock_server_replies_simple (
-      request, "{'ok': 1, 'minWireVersion': 2, 'maxWireVersion': 5}");
+      request,
+      tmp_str ("{'ok': 1, 'minWireVersion': %d, 'maxWireVersion': %d}",
+               WIRE_VERSION_MIN,
+               WIRE_VERSION_MAX));
    request_destroy (request);
 
-   request = mock_server_receives_command (
-      server, "admin", MONGOC_QUERY_SECONDARY_OK, "{'ping': 1}");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson ("{'$db': 'admin', 'ping': 1}"));
 
    mock_server_replies_simple (request, "{'ok': 1}");
    ASSERT (future_get_bool (future));
@@ -674,7 +678,7 @@ test_mongoc_handshake_cannot_send (void)
 
    /* Pop a client to trigger the topology scanner */
    client = mongoc_client_pool_pop (pool);
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
 
    /* Make sure the hello request DOESN'T have a handshake field: */
    ASSERT (request);
@@ -686,14 +690,14 @@ test_mongoc_handshake_cannot_send (void)
    request_destroy (request);
 
    /* Cause failure on client side */
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
    ASSERT (request);
    mock_server_hangs_up (request);
    request_destroy (request);
 
    /* Make sure the hello request still DOESN'T have a handshake field
     * on subsequent heartbeats. */
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
    ASSERT (request);
    request_doc = request_get_doc (request, 0);
    ASSERT (request_doc);
@@ -740,7 +744,7 @@ _get_bit (char *config_str, uint32_t bit)
 }
 
 void
-test_handshake_platform_config ()
+test_handshake_platform_config (void)
 {
    /* Parse the config string, and check that it matches the defined flags. */
    char *config_str = _mongoc_handshake_get_config_hex_string ();
@@ -872,9 +876,9 @@ test_handshake_platform_config ()
    BSON_ASSERT (_get_bit (config_str, MONGOC_MD_FLAG_ENABLE_SHM_COUNTERS));
 #endif
 
-#ifdef MONGOC_TRACE
-   BSON_ASSERT (_get_bit (config_str, MONGOC_MD_FLAG_TRACE));
-#endif
+   if (MONGOC_TRACE_ENABLED) {
+      BSON_ASSERT (_get_bit (config_str, MONGOC_MD_FLAG_TRACE));
+   }
 
 #ifdef MONGOC_ENABLE_ICU
    BSON_ASSERT (_get_bit (config_str, MONGOC_MD_FLAG_ENABLE_ICU));
@@ -903,6 +907,8 @@ static BSON_THREAD_FUN (handshake_append_worker, data)
    const char *driver_version = "version abc";
    const char *platform = "./configure -nottoomanyflags";
 
+   BSON_UNUSED (data);
+
    mongoc_handshake_data_append (driver_name, driver_version, platform);
 
    BSON_THREAD_RETURN;
@@ -919,11 +925,11 @@ test_mongoc_handshake_race_condition (void)
       _reset_handshake ();
 
       for (j = 0; j < 4; ++j) {
-         BSON_ASSERT (!COMMON_PREFIX (thread_create) (
+         BSON_ASSERT (!mcommon_thread_create (
             &threads[j], &handshake_append_worker, NULL));
       }
       for (j = 0; j < 4; ++j) {
-         COMMON_PREFIX (thread_join) (threads[j]);
+         mcommon_thread_join (threads[j]);
       }
    }
 

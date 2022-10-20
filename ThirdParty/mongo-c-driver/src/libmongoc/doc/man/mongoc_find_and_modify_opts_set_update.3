@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_UPDATE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_find_and_modify_opts_set_update \- mongoc_find_and_modify_opts_set_update()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_UPDATE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_find_and_modify_opts_set_update \- mongoc_find_and_modify_opts_set_update()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,9 +46,9 @@ mongoc_find_and_modify_opts_set_update (mongoc_find_and_modify_opts_t *opts,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_find_and_modify_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_find_and_modify_opts_t\fP\&.
 .IP \(bu 2
-\fBupdate\fP: The \fBupdate\fP document is the same format as the \fBupdate\fP document passed to \fBmongoc_collection_update\fP\&.
+\fBupdate\fP: The \fBupdate\fP document is the same format as the \fBupdate\fP document passed to \fI\%mongoc_collection_update()\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -78,11 +78,11 @@ fam_update (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
 
    /* Make him a book author */
-   update = BCON_NEW ("$set", "{", "author", BCON_BOOL (true), "}");
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqauthor\(dq, BCON_BOOL (true), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    /* Note that the document returned is the _previous_ version of the document
@@ -99,11 +99,11 @@ fam_update (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -124,17 +124,17 @@ Outputs:
 .nf
 .ft C
 {
-   "lastErrorObject" : {"updatedExisting" : true, "n" : 1},
-                       "value" : {
-                          "_id" : {"$oid" : "56562a99d13e6d86239c7b00"},
-                          "age" : 35,
-                          "firstname" : "Zlatan",
-                          "goals" : 342,
-                          "lastname" : "Ibrahimovic",
-                          "profession" : "Football player",
-                          "position" : "striker"
+   \(dqlastErrorObject\(dq : {\(dqupdatedExisting\(dq : true, \(dqn\(dq : 1},
+                       \(dqvalue\(dq : {
+                          \(dq_id\(dq : {\(dq$oid\(dq : \(dq56562a99d13e6d86239c7b00\(dq},
+                          \(dqage\(dq : 35,
+                          \(dqfirstname\(dq : \(dqZlatan\(dq,
+                          \(dqgoals\(dq : 342,
+                          \(dqlastname\(dq : \(dqIbrahimovic\(dq,
+                          \(dqprofession\(dq : \(dqFootball player\(dq,
+                          \(dqposition\(dq : \(dqstriker\(dq
                        },
-                                 "ok" : 1
+                                 \(dqok\(dq : 1
 }
 .ft P
 .fi

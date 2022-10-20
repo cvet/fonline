@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_MAX_TIME_MS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_find_and_modify_opts_set_max_time_ms \- mongoc_find_and_modify_opts_set_max_time_ms()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_MAX_TIME_MS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_find_and_modify_opts_set_max_time_ms \- mongoc_find_and_modify_opts_set_max_time_ms()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,7 +46,7 @@ mongoc_find_and_modify_opts_set_max_time_ms (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_find_and_modify_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_find_and_modify_opts_t\fP\&.
 .IP \(bu 2
 \fBmax_time_ms\fP: The maximum server\-side execution time permitted, in milliseconds, or 0 to specify no maximum time (the default setting).
 .UNINDENT
@@ -57,7 +57,7 @@ Adds a maxTimeMS argument to the builder.
 .sp
 Returns \fBtrue\fP if it successfully added the option to the builder, otherwise \fBfalse\fP and logs an error.
 .sp
-Note: although \fBmax_time_ms\fP is a uint32_t, it is possible to set it as a uint64_t through the options arguments in some cursor returning functions like \fBmongoc_collection_find_with_opts()\fP\&.
+Note: although \fBmax_time_ms\fP is a uint32_t, it is possible to set it as a uint64_t through the options arguments in some cursor returning functions like \fI\%mongoc_collection_find_with_opts()\fP\&.
 .SH SETTING MAXTIMEMS
 .sp
 opts.c
@@ -80,12 +80,12 @@ fam_opts (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic, the striker */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "profession", "Football player");
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqprofession\(dq, \(dqFootball player\(dq);
 
    /* Bump his age */
-   update = BCON_NEW ("$inc", "{", "age", BCON_INT32 (1), "}");
+   update = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqage\(dq, BCON_INT32 (1), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    mongoc_find_and_modify_opts_set_update (opts, update);
@@ -100,7 +100,7 @@ fam_opts (mongoc_collection_t *collection)
 
    /* Some future findAndModify option the driver doesn\(aqt support conveniently
     */
-   BSON_APPEND_INT32 (&extra, "futureOption", 42);
+   BSON_APPEND_INT32 (&extra, \(dqfutureOption\(dq, 42);
    mongoc_find_and_modify_opts_append (opts, &extra);
 
    success = mongoc_collection_find_and_modify_with_opts (
@@ -110,11 +110,11 @@ fam_opts (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);

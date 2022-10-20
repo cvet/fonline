@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_COMMAND" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_command \- mongoc_database_command()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_COMMAND" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_command \- mongoc_database_command()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,24 +44,25 @@ mongoc_database_command (mongoc_database_t *database,
                          uint32_t batch_size,
                          const bson_t *command,
                          const bson_t *fields,
-                         const mongoc_read_prefs_t *read_prefs);
+                         const mongoc_read_prefs_t *read_prefs)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-This function is superseded by \fBmongoc_database_command_with_opts()\fP, \fBmongoc_database_read_command_with_opts()\fP, \fBmongoc_database_write_command_with_opts()\fP, and \fBmongoc_database_read_write_command_with_opts()\fP\&.
+This function is superseded by \fI\%mongoc_database_command_with_opts()\fP, \fI\%mongoc_database_read_command_with_opts()\fP, \fI\%mongoc_database_write_command_with_opts()\fP, and \fI\%mongoc_database_read_write_command_with_opts()\fP\&.
 .SH DESCRIPTION
 .sp
-This function creates a cursor which will execute the command when \fBmongoc_cursor_next\fP is called on it. The database\(aqs read preference, read concern, and write concern are not applied to the command, and \fBmongoc_cursor_next\fP will not check the server response for a write concern error or write concern timeout.
+This function creates a cursor which will execute the command when \fI\%mongoc_cursor_next()\fP is called on it. The database\(aqs read preference, read concern, and write concern are not applied to the command, and \fI\%mongoc_cursor_next()\fP will not check the server response for a write concern error or write concern timeout.
 .sp
 This function is not considered a retryable read operation.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdatabase\fP: A \fBmongoc_database_t\fP\&.
+\fBdatabase\fP: A \fI\%mongoc_database_t\fP\&.
 .IP \(bu 2
-\fBflags\fP: A \fBmongoc_query_flags_t\fP\&.
+\fBflags\fP: A \fI\%mongoc_query_flags_t\fP\&.
 .IP \(bu 2
 \fBskip\fP: The number of documents to skip on the server.
 .IP \(bu 2
@@ -73,13 +74,13 @@ This function is not considered a retryable read operation.
 .IP \(bu 2
 \fBfields\fP: An optional \fI\%bson_t\fP containing the fields to return. \fBNULL\fP for all fields.
 .IP \(bu 2
-\fBread_prefs\fP: An optional \fBmongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
+\fBread_prefs\fP: An optional \fI\%mongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-This function returns a newly allocated \fBmongoc_cursor_t\fP that should be freed with \fBmongoc_cursor_destroy()\fP when no longer in use. The returned \fBmongoc_cursor_t\fP is never \fBNULL\fP, even on error. The user must call \fBmongoc_cursor_next()\fP on the returned \fBmongoc_cursor_t\fP to execute the initial command.
+This function returns a newly allocated \fI\%mongoc_cursor_t\fP that should be freed with \fI\%mongoc_cursor_destroy()\fP when no longer in use. The returned \fI\%mongoc_cursor_t\fP is never \fBNULL\fP, even on error. The user must call \fI\%mongoc_cursor_next()\fP on the returned \fI\%mongoc_cursor_t\fP to execute the initial command.
 .sp
-Cursor errors can be checked with \fBmongoc_cursor_error_document\fP\&. It always fills out the \fI\%bson_error_t\fP if an error occurred, and optionally includes a server reply document if the error occurred server\-side.
+Cursor errors can be checked with \fI\%mongoc_cursor_error_document()\fP\&. It always fills out the \fI\%bson_error_t\fP if an error occurred, and optionally includes a server reply document if the error occurred server\-side.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_SET_LIMIT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_set_limit \- mongoc_cursor_set_limit()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_SET_LIMIT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_set_limit \- mongoc_cursor_set_limit()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ mongoc_cursor_set_limit (mongoc_cursor_t *cursor, int64_t limit);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcursor\fP: A \fBmongoc_cursor_t\fP\&.
+\fBcursor\fP: A \fI\%mongoc_cursor_t\fP\&.
 .IP \(bu 2
 \fBlimit\fP: The maximum number of documents to retrieve for this query.
 .UNINDENT
@@ -53,11 +53,11 @@ mongoc_cursor_set_limit (mongoc_cursor_t *cursor, int64_t limit);
 .sp
 Limits the number of documents in the result set.
 .sp
-This function is useful for setting the limit on a cursor after the cursor is created, but before any calls to \fBmongoc_cursor_next\fP\&. It can also be used to pass a negative limit: The \fBlimit\fP parameter to \fBmongoc_cursor_set_limit\fP is signed, although for backward\-compatibility reasons the \fBlimit\fP parameter to \fBmongoc_collection_find\fP is not.
+This function is useful for setting the limit on a cursor after the cursor is created, but before any calls to \fI\%mongoc_cursor_next()\fP\&. It can also be used to pass a negative limit: The \fBlimit\fP parameter to \fBmongoc_cursor_set_limit\fP is signed, although for backward\-compatibility reasons the \fBlimit\fP parameter to \fI\%mongoc_collection_find()\fP is not.
 .sp
-Calling this function after \fBmongoc_cursor_next\fP has no effect.
+Calling this function after \fI\%mongoc_cursor_next()\fP has no effect.
 .sp
-This is not applicable to all cursors. Calling \fBmongoc_cursor_set_limit\fP on a cursor returned by \fBmongoc_client_find_databases_with_opts\fP, \fBmongoc_database_find_collections_with_opts\fP, or \fBmongoc_collection_find_indexes_with_opts\fP will not change the results.
+This is not applicable to all cursors. Calling \fI\%mongoc_cursor_set_limit()\fP on a cursor returned by \fI\%mongoc_client_find_databases_with_opts()\fP, \fI\%mongoc_database_find_collections_with_opts()\fP, or \fI\%mongoc_collection_find_indexes_with_opts()\fP will not change the results.
 .SH RETURNS
 .sp
 Returns true on success. If any arguments are invalid, returns false and leaves the limit unchanged.

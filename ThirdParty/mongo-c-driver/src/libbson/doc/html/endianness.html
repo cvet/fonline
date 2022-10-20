@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/endianness.html"/>
-    <title>Endianness &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/endianness.html"/>
+    <title>Endianness &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Threading" href="threading.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="cross-platform-notes.html" title="Cross Platform Notes"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="cross-platform-notes.html" accesskey="U">Cross Platform Notes</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,10 +45,10 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="endianness">
-<h1>Endianness<a class="headerlink" href="#endianness" title="Permalink to this headline">¶</a></h1>
+  <section id="endianness">
+<h1>Endianness<a class="headerlink" href="#endianness" title="Permalink to this heading">¶</a></h1>
 <p>The BSON specification dictates that the encoding format is in little-endian. Many implementations simply ignore endianness altogether and expect that they are to be run on little-endian. Libbson supports both Big and Little Endian systems. This means we use <code class="docutils literal notranslate"><span class="pre">memcpy()</span></code> when appropriate instead of dereferencing and properly convert to and from the host endian format. We expect the compiler intrinsics to optimize it to a dereference when possible.</p>
-</div>
+</section>
 
 
           </div>
@@ -88,7 +93,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

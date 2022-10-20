@@ -9,7 +9,7 @@ Synopsis
 .. code-block:: c
 
   mongoc_client_t *
-  mongoc_client_new (const char *uri_string);
+  mongoc_client_new (const char *uri_string) BSON_GNUC_WARN_UNUSED_RESULT;
 
 Creates a new :symbol:`mongoc_client_t` using the URI string provided.
 
@@ -21,7 +21,7 @@ Parameters
 Returns
 -------
 
-A newly allocated :symbol:`mongoc_client_t` if the URI parsed successfully, otherwise ``NULL``.
+A newly allocated :symbol:`mongoc_client_t` that should be freed with :symbol:`mongoc_client_destroy()` when no longer in use. On error, ``NULL`` is returned and an error or warning will be logged.
 
 .. seealso::
 

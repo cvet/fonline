@@ -32,6 +32,8 @@ test_topology_scanner_helper (uint32_t id,
    int *finished = (int *) data;
    uint32_t max_wire_version;
 
+   BSON_UNUSED (rtt_msec);
+
    if (error->code) {
       fprintf (stderr, "scanner error: %s\n", error->message);
       abort ();
@@ -156,9 +158,11 @@ test_topology_scanner_discovery (void)
       bson_strdup_printf ("{'ok': 1, "
                           " 'isWritablePrimary': true,"
                           " 'setName': 'rs',"
-                          " 'minWireVersion': 2,"
-                          " 'maxWireVersion': 5,"
+                          " 'minWireVersion': %d,"
+                          " 'maxWireVersion': %d,"
                           " 'hosts': ['%s', '%s']}",
+                          WIRE_VERSION_MIN,
+                          WIRE_VERSION_MAX,
                           mock_server_get_host_and_port (primary),
                           mock_server_get_host_and_port (secondary));
 
@@ -167,9 +171,11 @@ test_topology_scanner_discovery (void)
                           " 'isWritablePrimary': false,"
                           " 'secondary': true,"
                           " 'setName': 'rs',"
-                          " 'minWireVersion': 2,"
-                          " 'maxWireVersion': 5,"
+                          " 'minWireVersion': %d,"
+                          " 'maxWireVersion': %d,"
                           " 'hosts': ['%s', '%s']}",
+                          WIRE_VERSION_MIN,
+                          WIRE_VERSION_MAX,
                           mock_server_get_host_and_port (primary),
                           mock_server_get_host_and_port (secondary));
 
@@ -179,10 +185,10 @@ test_topology_scanner_discovery (void)
    secondary_pref = mongoc_read_prefs_new (MONGOC_READ_SECONDARY_PREFERRED);
 
    future = future_topology_select (
-      client->topology, MONGOC_SS_READ, secondary_pref, &error);
+      client->topology, MONGOC_SS_READ, secondary_pref, NULL, &error);
 
    /* a single scan discovers *and* checks the secondary */
-   request = mock_server_receives_legacy_hello (primary, NULL);
+   request = mock_server_receives_any_hello (primary);
    mock_server_replies_simple (request, primary_response);
    request_destroy (request);
 
@@ -190,7 +196,7 @@ test_topology_scanner_discovery (void)
    _mongoc_usleep (250 * 1000);
 
    /* a check of the secondary is scheduled in this scan */
-   request = mock_server_receives_legacy_hello (secondary, NULL);
+   request = mock_server_receives_any_hello (secondary);
    mock_server_replies_simple (request, secondary_response);
 
    /* scan completes */
@@ -259,17 +265,17 @@ test_topology_scanner_oscillate (void)
 
    BSON_ASSERT (!scanner->async->ncmds);
    future = future_topology_select (
-      client->topology, MONGOC_SS_READ, primary_pref, &error);
+      client->topology, MONGOC_SS_READ, primary_pref, NULL, &error);
 
    /* a single scan discovers servers 0 and 1 */
-   request = mock_server_receives_legacy_hello (server0, NULL);
+   request = mock_server_receives_any_hello (server0);
    mock_server_replies_simple (request, server0_response);
    request_destroy (request);
 
    /* let client process that response */
    _mongoc_usleep (250 * 1000);
 
-   request = mock_server_receives_legacy_hello (server1, NULL);
+   request = mock_server_receives_any_hello (server1);
    mock_server_replies_simple (request, server1_response);
 
    /* we don't schedule another check of server0 */
@@ -468,6 +474,11 @@ _test_topology_scanner_dns_helper (uint32_t id,
                                    const bson_error_t *error /* IN */)
 {
    dns_testcase_t *testcase = (dns_testcase_t *) data;
+
+   BSON_UNUSED (id);
+   BSON_UNUSED (bson);
+   BSON_UNUSED (rtt_msec);
+
    if (testcase->should_succeed) {
       ASSERT_OR_PRINT (!error->code, (*error));
    } else {
@@ -573,6 +584,11 @@ _retired_fails_to_initiate_cb (uint32_t id,
                                void *data,
                                const bson_error_t *error /* IN */)
 {
+   BSON_UNUSED (id);
+   BSON_UNUSED (bson);
+   BSON_UNUSED (rtt_msec);
+   BSON_UNUSED (data);
+   BSON_UNUSED (error);
    /* this should never get called. */
    BSON_ASSERT (false);
 }
@@ -580,6 +596,8 @@ _retired_fails_to_initiate_cb (uint32_t id,
 static mongoc_stream_t *
 null_initiator (mongoc_async_cmd_t *acmd)
 {
+   BSON_UNUSED (acmd);
+
    return NULL;
 }
 
@@ -698,12 +716,16 @@ _test_topology_scanner_does_not_renegotiate (bool pooled)
 static void
 test_topology_scanner_does_not_renegotiate_single (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_topology_scanner_does_not_renegotiate (false);
 }
 
 static void
 test_topology_scanner_does_not_renegotiate_pooled (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_topology_scanner_does_not_renegotiate (true);
 }
 

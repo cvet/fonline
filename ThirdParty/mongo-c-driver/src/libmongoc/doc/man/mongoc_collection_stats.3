@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_STATS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_stats \- mongoc_collection_stats()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_STATS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_stats \- mongoc_collection_stats()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,23 +47,23 @@ mongoc_collection_stats (mongoc_collection_t *collection,
 .UNINDENT
 .SH DEPRECATED
 .sp
-This helper function is deprecated and should not be used in new code. Run the \fI\%collStats\fP command directly with \fBmongoc_client_read_command_with_opts()\fP instead.
+This helper function is deprecated and should not be used in new code. Run the \fI\%collStats\fP command directly with \fI\%mongoc_client_read_command_with_opts()\fP instead.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBoptions\fP: An optional \fI\%bson_t\fP containing extra options to pass to the \fBcollStats\fP command.
 .IP \(bu 2
 \fBreply\fP: An uninitialized \fI\%bson_t\fP to store the result.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Run the \fBcollStats\fP command to retrieve statistics about the collection.
 .sp
-The command uses the \fBmongoc_read_prefs_t\fP set on \fBcollection\fP\&.
+The command uses the \fI\%mongoc_read_prefs_t\fP set on \fBcollection\fP\&.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.

@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_get_database_names_with_opts.html"/>
-    <title>mongoc_client_get_database_names_with_opts() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_get_database_names_with_opts.html"/>
+    <title>mongoc_client_get_database_names_with_opts() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_client_get_default_database()" href="mongoc_client_get_default_database.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_client_get_database_names.html" title="mongoc_client_get_database_names()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_client_t.html" accesskey="U">mongoc_client_t</a> &#187;</li> 
       </ul>
@@ -41,23 +46,27 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-client-get-database-names-with-opts">
-<h1>mongoc_client_get_database_names_with_opts()<a class="headerlink" href="#mongoc-client-get-database-names-with-opts" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">char</span> <span class="o">**</span>
-<span class="nf">mongoc_client_get_database_names_with_opts</span> <span class="p">(</span><span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">,</span>
-                                            <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">,</span>
-                                            <span class="n">bson_error_t</span> <span class="o">*</span><span class="n">error</span><span class="p">);</span>
+  <section id="mongoc-client-get-database-names-with-opts">
+<h1>mongoc_client_get_database_names_with_opts()<a class="headerlink" href="#mongoc-client-get-database-names-with-opts" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">char</span><span class="w"> </span><span class="o">**</span><span class="w"></span>
+<span class="nf">mongoc_client_get_database_names_with_opts</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                            </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                            </span><span class="n">bson_error_t</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="p">)</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_GNUC_WARN_UNUSED_RESULT</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
 <p>This function queries the MongoDB server for a list of known databases.</p>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<p>This function is considered a retryable read operation.
+Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
+If <code class="docutils literal notranslate"><span class="pre">retryreads</span></code> is false in the URI (see <a class="symbol reference internal" href="mongoc_uri_t.html"><span class="doc">mongoc_uri_t</span></a>) the retry behavior does not apply.</p>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">client</span></code>: A <a class="symbol reference internal" href="mongoc_client_t.html"><span class="doc">mongoc_client_t</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing additional options.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing additional options.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: An optional location for a <a class="symbol reference internal" href="errors.html"><span class="doc">bson_error_t</span></a> or <code class="docutils literal notranslate"><span class="pre">NULL</span></code>.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">opts</span></code> may be NULL or a BSON document with additional command options:</p>
@@ -65,38 +74,36 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">sessionId</span></code>: First, construct a <a class="symbol reference internal" href="mongoc_client_session_t.html"><span class="doc">mongoc_client_session_t</span></a> with <a class="symbol reference internal" href="mongoc_client_start_session.html"><span class="doc">mongoc_client_start_session()</span></a>. You can begin a transaction with <a class="symbol reference internal" href="mongoc_client_session_start_transaction.html"><span class="doc">mongoc_client_session_start_transaction()</span></a>, optionally with a <a class="symbol reference internal" href="mongoc_transaction_opt_t.html"><span class="doc">mongoc_transaction_opt_t</span></a> that overrides the options inherited from <code class="docutils literal notranslate"><span class="pre">client</span></code>, and use <a class="symbol reference internal" href="mongoc_client_session_append.html"><span class="doc">mongoc_client_session_append()</span></a> to add the session to <code class="docutils literal notranslate"><span class="pre">opts</span></code>. See the example code for <a class="symbol reference internal" href="mongoc_client_session_t.html"><span class="doc">mongoc_client_session_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">serverId</span></code>: To target a specific server, include an int32 “serverId” field. Obtain the id by calling <a class="symbol reference internal" href="mongoc_client_select_server.html"><span class="doc">mongoc_client_select_server()</span></a>, then <a class="symbol reference internal" href="mongoc_server_description_id.html"><span class="doc">mongoc_server_description_id()</span></a> on its return value.</p></li>
 </ul>
-<p>This function is considered a retryable read operation.
-Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If <code class="docutils literal notranslate"><span class="pre">retryreads</span></code> is false in the URI (see <a class="symbol reference internal" href="mongoc_uri_t.html"><span class="doc">mongoc_uri_t</span></a>) the retry behavior does not apply.</p>
-</div>
-<div class="section" id="errors">
-<h2>Errors<a class="headerlink" href="#errors" title="Permalink to this headline">¶</a></h2>
+<p>For a list of all options, see <a class="reference external" href="https://www.mongodb.com/docs/manual/reference/command/listDatabases/">the MongoDB Manual entry on the listDatabases command</a>.</p>
+</section>
+<section id="errors">
+<h2>Errors<a class="headerlink" href="#errors" title="Permalink to this heading">¶</a></h2>
 <p>Errors are propagated via the <code class="docutils literal notranslate"><span class="pre">error</span></code> parameter.</p>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">NULL</span></code> terminated vector of <code class="docutils literal notranslate"><span class="pre">NULL-byte</span></code> terminated strings. The result should be freed with <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_strfreev.html" title="(in libbson v1.19.2)"><code class="docutils literal notranslate"><span class="pre">bson_strfreev()</span></code></a>.</p>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">NULL</span></code> terminated vector of <code class="docutils literal notranslate"><span class="pre">NULL-byte</span></code> terminated strings. The result should be freed with <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_strfreev.html" title="(in libbson v1.23.0)"><code class="docutils literal notranslate"><span class="pre">bson_strfreev()</span></code></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">NULL</span></code> is returned upon failure and <code class="docutils literal notranslate"><span class="pre">error</span></code> is set.</p>
-</div>
-<div class="section" id="examples">
-<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="kt">char</span> <span class="o">**</span><span class="n">strv</span><span class="p">;</span>
-   <span class="kt">unsigned</span> <span class="n">i</span><span class="p">;</span>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">**</span><span class="n">strv</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">unsigned</span><span class="w"> </span><span class="n">i</span><span class="p">;</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">((</span><span class="n">strv</span> <span class="o">=</span> <span class="n">mongoc_client_get_database_names_with_opts</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">)))</span> <span class="p">{</span>
-      <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">strv</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
-         <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strv</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
-      <span class="n">bson_strfreev</span> <span class="p">(</span><span class="n">strv</span><span class="p">);</span>
-   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Command failed: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-   <span class="p">}</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="n">strv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_get_database_names_with_opts</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">strv</span><span class="p">[</span><span class="n">i</span><span class="p">];</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"></span>
+<span class="w">         </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">strv</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_strfreev</span><span class="w"> </span><span class="p">(</span><span class="n">strv</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Command failed: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -132,6 +139,7 @@ If <code class="docutils literal notranslate"><span class="pre">retryreads</span
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -207,7 +215,7 @@ If <code class="docutils literal notranslate"><span class="pre">retryreads</span
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

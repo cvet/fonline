@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SERVER_DESCRIPTION_NEW_COPY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_server_description_new_copy \- mongoc_server_description_new_copy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SERVER_DESCRIPTION_NEW_COPY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_server_description_new_copy \- mongoc_server_description_new_copy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -38,7 +38,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .ft C
 mongoc_server_description_t *
 mongoc_server_description_new_copy (
-   const mongoc_server_description_t *description);
+   const mongoc_server_description_t *description) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -46,14 +46,14 @@ mongoc_server_description_new_copy (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdescription\fP: A \fBmongoc_server_description_t\fP\&.
+\fBdescription\fP: A \fI\%mongoc_server_description_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function copies the given server description and returns a new server description object.  The caller is responsible for destroying the new copy.
+Performs a deep copy of \fBdescription\fP\&.
 .SH RETURNS
 .sp
-A copy of the original server description.
+Returns a newly allocated copy of \fBdescription\fP that should be freed with \fI\%mongoc_server_description_destroy()\fP when no longer in use. Returns NULL if \fBdescription\fP is NULL.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

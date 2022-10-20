@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ERROR_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_error_t \- bson_error_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ERROR_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_error_t \- bson_error_t
 .sp
 BSON Error Encapsulation
 .SH SYNOPSIS
@@ -51,9 +51,9 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_error_t\fP structure is used as an out\-parameter to pass error information to the caller. It should be stack\-allocated and does not requiring freeing.
+The \fI\%bson_error_t\fP structure is used as an out\-parameter to pass error information to the caller. It should be stack\-allocated and does not requiring freeing.
 .sp
-See Handling Errors\&.
+See \fI\%Handling Errors\fP\&.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -63,10 +63,10 @@ See Handling Errors\&.
 bson_reader_t *reader;
 bson_error_t error;
 
-reader = bson_reader_new_from_file ("dump.bson", &error);
+reader = bson_reader_new_from_file (\(dqdump.bson\(dq, &error);
 if (!reader) {
    fprintf (
-      stderr, "ERROR: %d.%d: %s\en", error.domain, error.code, error.message);
+      stderr, \(dqERROR: %d.%d: %s\en\(dq, error.domain, error.code, error.message);
 }
 .ft P
 .fi

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CREATE_INDEXES" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_create_indexes \- Creating Indexes
 .
 .nr rst2man-indent-level 0
 .
@@ -30,10 +27,13 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CREATE_INDEXES" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_create_indexes \- Creating Indexes
 .sp
 To create indexes on a MongoDB collection, execute the \fBcreateIndexes\fP command
-with a command function like \fBmongoc_database_write_command_with_opts\fP or
-\fBmongoc_collection_write_command_with_opts\fP\&. See \fI\%the MongoDB
+with a command function like \fI\%mongoc_database_write_command_with_opts()\fP or
+\fI\%mongoc_collection_write_command_with_opts()\fP\&. See \fI\%the MongoDB
 Manual entry for the createIndexes command\fP for details.
 .sp
 \fBWARNING:\fP
@@ -68,10 +68,10 @@ main (int argc, char *argv[])
 {
    mongoc_client_t *client;
    const char *uri_string =
-      "mongodb://127.0.0.1/?appname=create\-indexes\-example";
+      \(dqmongodb://127.0.0.1/?appname=create\-indexes\-example\(dq;
    mongoc_uri_t *uri;
    mongoc_database_t *db;
-   const char *collection_name = "test";
+   const char *collection_name = \(dqtest\(dq;
    bson_t keys;
    char *index_name;
    bson_t *create_indexes;
@@ -93,8 +93,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -106,32 +106,32 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   db = mongoc_client_get_database (client, "test");
+   db = mongoc_client_get_database (client, \(dqtest\(dq);
 
-   /* ascending index on field "x" */
+   /* ascending index on field \(dqx\(dq */
    bson_init (&keys);
-   BSON_APPEND_INT32 (&keys, "x", 1);
+   BSON_APPEND_INT32 (&keys, \(dqx\(dq, 1);
    index_name = mongoc_collection_keys_to_index_string (&keys);
-   create_indexes = BCON_NEW ("createIndexes",
+   create_indexes = BCON_NEW (\(dqcreateIndexes\(dq,
                               BCON_UTF8 (collection_name),
-                              "indexes",
-                              "[",
-                              "{",
-                              "key",
+                              \(dqindexes\(dq,
+                              \(dq[\(dq,
+                              \(dq{\(dq,
+                              \(dqkey\(dq,
                               BCON_DOCUMENT (&keys),
-                              "name",
+                              \(dqname\(dq,
                               BCON_UTF8 (index_name),
-                              "}",
-                              "]");
+                              \(dq}\(dq,
+                              \(dq]\(dq);
 
    r = mongoc_database_write_command_with_opts (
       db, create_indexes, NULL /* opts */, &reply, &error);
 
    reply_str = bson_as_json (&reply, NULL);
-   printf ("%s\en", reply_str);
+   printf (\(dq%s\en\(dq, reply_str);
 
    if (!r) {
-      fprintf (stderr, "Error in createIndexes: %s\en", error.message);
+      fprintf (stderr, \(dqError in createIndexes: %s\en\(dq, error.message);
    }
 
    bson_free (index_name);

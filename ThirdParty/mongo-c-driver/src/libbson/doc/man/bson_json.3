@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_JSON" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_json \- JSON
 .
 .nr rst2man-indent-level 0
 .
@@ -30,11 +27,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_JSON" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_json \- JSON
 .sp
 Libbson provides routines for converting to and from the JSON format. In particular, it supports the \fI\%MongoDB extended JSON\fP format.
 .SH CONVERTING BSON TO JSON
 .sp
-There are often times where you might want to convert a BSON document to JSON. It is convenient for debugging as well as an interchange format. To help with this, Libbson contains the functions \fBbson_as_canonical_extended_json()\fP and \fBbson_as_relaxed_extended_json()\fP\&. The canonical format preserves BSON type information for values that may have ambiguous representations in JSON (e.g. numeric types).
+There are often times where you might want to convert a BSON document to JSON. It is convenient for debugging as well as an interchange format. To help with this, Libbson contains the functions \fI\%bson_as_canonical_extended_json()\fP and \fI\%bson_as_relaxed_extended_json()\fP\&. The canonical format preserves BSON type information for values that may have ambiguous representations in JSON (e.g. numeric types).
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -44,10 +44,10 @@ bson_t *b;
 size_t len;
 char *str;
 
-b = BCON_NEW ("a", BCON_INT32 (1));
+b = BCON_NEW (\(dqa\(dq, BCON_INT32 (1));
 
 str = bson_as_canonical_extended_json (b, &len);
-printf ("%s\en", str);
+printf (\(dq%s\en\(dq, str);
 bson_free (str);
 
 bson_destroy (b);
@@ -60,7 +60,7 @@ bson_destroy (b);
 .sp
 .nf
 .ft C
-{ "a" : { "$numberInt": "1" } }
+{ \(dqa\(dq : { \(dq$numberInt\(dq: \(dq1\(dq } }
 .ft P
 .fi
 .UNINDENT
@@ -76,10 +76,10 @@ bson_t *b;
 size_t len;
 char *str;
 
-b = BCON_NEW ("a", BCON_INT32 (1));
+b = BCON_NEW (\(dqa\(dq, BCON_INT32 (1));
 
 str = bson_as_relaxed_extended_json (b, &len);
-printf ("%s\en", str);
+printf (\(dq%s\en\(dq, str);
 bson_free (str);
 
 bson_destroy (b);
@@ -92,16 +92,16 @@ bson_destroy (b);
 .sp
 .nf
 .ft C
-{ "a" : 1 }
+{ \(dqa\(dq : 1 }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .SH CONVERTING JSON TO BSON
 .sp
-Converting back from JSON is also useful and common enough that we added \fBbson_init_from_json()\fP and \fBbson_new_from_json()\fP\&.
+Converting back from JSON is also useful and common enough that we added \fI\%bson_init_from_json()\fP and \fI\%bson_new_from_json()\fP\&.
 .sp
-The following example creates a new \fBbson_t\fP from the JSON string \fB{"a":1}\fP\&.
+The following example creates a new \fI\%bson_t\fP from the JSON string \fB{\(dqa\(dq:1}\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -110,10 +110,10 @@ The following example creates a new \fBbson_t\fP from the JSON string \fB{"a":1}
 bson_t *b;
 bson_error_t error;
 
-b = bson_new_from_json ("{\e"a\e":1}", \-1, &error);
+b = bson_new_from_json (\(dq{\e\(dqa\e\(dq:1}\(dq, \-1, &error);
 
 if (!b) {
-   printf ("Error: %s\en", error.message);
+   printf (\(dqError: %s\en\(dq, error.message);
 } else {
    bson_destroy (b);
 }
@@ -123,7 +123,7 @@ if (!b) {
 .UNINDENT
 .SH STREAMING JSON PARSING
 .sp
-Libbson provides \fBbson_json_reader_t\fP to allow for parsing a sequence of JSON documents into BSON. The interface is similar to \fBbson_reader_t\fP but expects the input to be in the \fI\%MongoDB extended JSON\fP format.
+Libbson provides \fI\%bson_json_reader_t\fP to allow for parsing a sequence of JSON documents into BSON. The interface is similar to \fI\%bson_reader_t\fP but expects the input to be in the \fI\%MongoDB extended JSON\fP format.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -132,14 +132,14 @@ Libbson provides \fBbson_json_reader_t\fP to allow for parsing a sequence of JSO
 /*
  * Copyright 2013 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -171,7 +171,7 @@ main (int argc, char *argv[])
     * Print program usage if no arguments are provided.
     */
    if (argc == 1) {
-      fprintf (stderr, "usage: %s FILE...\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s FILE...\en\(dq, argv[0]);
       return 1;
    }
 
@@ -184,12 +184,12 @@ main (int argc, char *argv[])
       /*
        * Open the filename provided in command line arguments.
        */
-      if (0 == strcmp (filename, "\-")) {
+      if (0 == strcmp (filename, \(dq\-\(dq)) {
          reader = bson_json_reader_new_from_fd (STDIN_FILENO, false);
       } else {
          if (!(reader = bson_json_reader_new_from_file (filename, &error))) {
             fprintf (
-               stderr, "Failed to open \e"%s\e": %s\en", filename, error.message);
+               stderr, \(dqFailed to open \e\(dq%s\e\(dq: %s\en\(dq, filename, error.message);
             continue;
          }
       }
@@ -199,12 +199,12 @@ main (int argc, char *argv[])
        */
       while ((b = bson_json_reader_read (reader, &doc, &error))) {
          if (b < 0) {
-            fprintf (stderr, "Error in json parsing:\en%s\en", error.message);
+            fprintf (stderr, \(dqError in json parsing:\en%s\en\(dq, error.message);
             abort ();
          }
 
          if (fwrite (bson_get_data (&doc), 1, doc.len, stdout) != doc.len) {
-            fprintf (stderr, "Failed to write to stdout, exiting.\en");
+            fprintf (stderr, \(dqFailed to write to stdout, exiting.\en\(dq);
             exit (1);
          }
          bson_reinit (&doc);
@@ -231,14 +231,14 @@ The following example reads BSON documents from \fBstdin\fP and prints them to \
 /*
  * Copyright 2013 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -269,7 +269,7 @@ main (int argc, char *argv[])
     * Print program usage if no arguments are provided.
     */
    if (argc == 1) {
-      fprintf (stderr, "usage: %s [FILE | \-]...\enUse \- for STDIN.\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s [FILE | \-]...\enUse \- for STDIN.\en\(dq, argv[0]);
       return 1;
    }
 
@@ -279,12 +279,12 @@ main (int argc, char *argv[])
    for (i = 1; i < argc; i++) {
       filename = argv[i];
 
-      if (strcmp (filename, "\-") == 0) {
+      if (strcmp (filename, \(dq\-\(dq) == 0) {
          reader = bson_reader_new_from_fd (STDIN_FILENO, false);
       } else {
          if (!(reader = bson_reader_new_from_file (filename, &error))) {
             fprintf (
-               stderr, "Failed to open \e"%s\e": %s\en", filename, error.message);
+               stderr, \(dqFailed to open \e\(dq%s\e\(dq: %s\en\(dq, filename, error.message);
             continue;
          }
       }
@@ -294,7 +294,7 @@ main (int argc, char *argv[])
        */
       while ((b = bson_reader_read (reader, NULL))) {
          str = bson_as_canonical_extended_json (b, NULL);
-         fprintf (stdout, "%s\en", str);
+         fprintf (stdout, \(dq%s\en\(dq, str);
          bson_free (str);
       }
 

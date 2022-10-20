@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_BINARY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_binary \- bson_iter_binary()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_BINARY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_binary \- bson_iter_binary()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,9 +51,9 @@ bson_iter_binary (const bson_iter_t *iter,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
-\fBsubtype\fP: A location for a \fBbson_subtype_t\fP or NULL.
+\fBsubtype\fP: A location for a \fI\%bson_subtype_t\fP or NULL.
 .IP \(bu 2
 \fBbinary_len\fP: A location for the length of \fBbinary\fP\&.
 .IP \(bu 2
@@ -61,9 +61,9 @@ bson_iter_binary (const bson_iter_t *iter,
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function shall return the binary data of a BSON_TYPE_BINARY element. It is a programming error to call this function on a field that is not of type BSON_TYPE_BINARY. You can check this with the BSON_ITER_HOLDS_BINARY() macro or \fBbson_iter_type()\fP\&.
+This function shall return the binary data of a BSON_TYPE_BINARY element. It is a programming error to call this function on a field that is not of type BSON_TYPE_BINARY. You can check this with the BSON_ITER_HOLDS_BINARY() macro or \fI\%bson_iter_type()\fP\&.
 .sp
-The buffer that \fBbinary\fP points to is only valid until the iterator\(aqs \fBbson_t\fP is modified or freed.
+The buffer that \fBbinary\fP points to is only valid until the iterator\(aqs \fI\%bson_t\fP is modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

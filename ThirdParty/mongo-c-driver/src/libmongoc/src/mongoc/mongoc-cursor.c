@@ -247,10 +247,11 @@ _mongoc_cursor_new_with_opts (mongoc_client_t *client,
 
    BSON_ASSERT (client);
 
-   cursor = (mongoc_cursor_t *) bson_malloc0 (sizeof *cursor);
+   cursor = BSON_ALIGNED_ALLOC0 (mongoc_cursor_t);
    cursor->client = client;
    cursor->state = UNPRIMED;
    cursor->client_generation = client->generation;
+   cursor->is_aggr_with_write_stage = false;
 
    bson_init (&cursor->opts);
    bson_init (&cursor->error_doc);
@@ -654,6 +655,8 @@ _mongoc_cursor_fetch_stream (mongoc_cursor_t *cursor)
    ENTRY;
 
    if (cursor->server_id) {
+      /* We already did server selection once before. Reuse the prior
+       * selection to create a new stream on the same server. */
       server_stream =
          mongoc_cluster_stream_for_server (&cursor->client->cluster,
                                            cursor->server_id,
@@ -661,15 +664,26 @@ _mongoc_cursor_fetch_stream (mongoc_cursor_t *cursor)
                                            cursor->client_session,
                                            &reply,
                                            &cursor->error);
+      if (server_stream) {
+         /* Also restore whether primary read preference was forced by server
+          * selection */
+         server_stream->must_use_primary = cursor->must_use_primary;
+      }
    } else {
-      server_stream = mongoc_cluster_stream_for_reads (&cursor->client->cluster,
-                                                       cursor->read_prefs,
-                                                       cursor->client_session,
-                                                       &reply,
-                                                       &cursor->error);
+      server_stream =
+         mongoc_cluster_stream_for_reads (&cursor->client->cluster,
+                                          cursor->read_prefs,
+                                          cursor->client_session,
+                                          &reply,
+                                          cursor->is_aggr_with_write_stage,
+                                          &cursor->error);
 
       if (server_stream) {
+         /* Remember the selected server_id and whether primary read mode was
+          * forced so that we can re-create an equivalent server_stream at a
+          * later time */
          cursor->server_id = server_stream->sd->id;
+         cursor->must_use_primary = server_stream->must_use_primary;
       }
    }
 
@@ -712,6 +726,7 @@ _mongoc_cursor_monitor_command (mongoc_cursor_t *cursor,
                                     &server_stream->sd->host,
                                     server_stream->sd->id,
                                     &server_stream->sd->service_id,
+                                    server_stream->sd->server_connection_id,
                                     NULL,
                                     client->apm_context);
 
@@ -735,6 +750,8 @@ _mongoc_cursor_append_docs_array (mongoc_cursor_t *cursor,
    uint32_t i = 0;
    size_t keylen;
    const bson_t *doc;
+
+   BSON_UNUSED (cursor);
 
    while ((doc = bson_reader_read (response->reader, &eof))) {
       keylen = bson_uint32_to_string (i, &key, str, sizeof str);
@@ -794,6 +811,7 @@ _mongoc_cursor_monitor_succeeded (mongoc_cursor_t *cursor,
                                       &stream->sd->host,
                                       stream->sd->id,
                                       &stream->sd->service_id,
+                                      stream->sd->server_connection_id,
                                       false,
                                       client->apm_context);
 
@@ -840,6 +858,7 @@ _mongoc_cursor_monitor_failed (mongoc_cursor_t *cursor,
                                    &stream->sd->host,
                                    stream->sd->id,
                                    &stream->sd->service_id,
+                                   stream->sd->server_connection_id,
                                    false,
                                    client->apm_context);
 
@@ -963,6 +982,11 @@ _mongoc_cursor_run_command (mongoc_cursor_t *cursor,
          _mongoc_bson_init_if_set (reply);
          GOTO (done);
       }
+      if (_mongoc_cursor_get_opt_bool (cursor, MONGOC_CURSOR_EXHAUST)) {
+         MONGOC_WARNING (
+            "exhaust cursors not supported with OP_MSG, using normal "
+            "cursor instead");
+      }
    }
 
    if (parts.assembled.session) {
@@ -1003,6 +1027,14 @@ _mongoc_cursor_run_command (mongoc_cursor_t *cursor,
           cursor, server_stream, &parts.user_query_flags)) {
       _mongoc_bson_init_if_set (reply);
       GOTO (done);
+   }
+
+   /* Exhaust cursors with OP_MSG not yet supported; fallback to normal cursor.
+    * user_query_flags is unused in OP_MSG, so this technically has no effect,
+    * but is done anyways to ensure the query flags match handling of options.
+    */
+   if (parts.user_query_flags & MONGOC_QUERY_EXHAUST) {
+      parts.user_query_flags ^= MONGOC_QUERY_EXHAUST;
    }
 
    /* we might use mongoc_cursor_set_hint to target a secondary but have no
@@ -1070,11 +1102,16 @@ retry:
 
       mongoc_server_stream_cleanup (server_stream);
 
-      server_stream = mongoc_cluster_stream_for_reads (&cursor->client->cluster,
-                                                       cursor->read_prefs,
-                                                       cursor->client_session,
-                                                       reply,
-                                                       &cursor->error);
+      BSON_ASSERT (!cursor->is_aggr_with_write_stage &&
+                   "Cannot attempt a retry on an aggregate operation that "
+                   "contains write stages");
+      server_stream =
+         mongoc_cluster_stream_for_reads (&cursor->client->cluster,
+                                          cursor->read_prefs,
+                                          cursor->client_session,
+                                          reply,
+                                          /* Not aggregate-with-write */ false,
+                                          &cursor->error);
 
       if (server_stream &&
           server_stream->sd->max_wire_version >= WIRE_VERSION_RETRY_READS) {
@@ -1322,7 +1359,8 @@ mongoc_cursor_more (mongoc_cursor_t *cursor)
 void
 mongoc_cursor_get_host (mongoc_cursor_t *cursor, mongoc_host_list_t *host)
 {
-   mongoc_server_description_t *description;
+   mongoc_server_description_t const *description;
+   mc_shared_tpld td;
 
    BSON_ASSERT (cursor);
    BSON_ASSERT (host);
@@ -1334,15 +1372,15 @@ mongoc_cursor_get_host (mongoc_cursor_t *cursor, mongoc_host_list_t *host)
       return;
    }
 
-   description = mongoc_topology_server_by_id (
-      cursor->client->topology, cursor->server_id, &cursor->error);
+   td = mc_tpld_take_ref (cursor->client->topology);
+   description = mongoc_topology_description_server_by_id_const (
+      td.ptr, cursor->server_id, &cursor->error);
+   mc_tpld_drop_ref (&td);
    if (!description) {
       return;
    }
 
    *host = description->host;
-
-   mongoc_server_description_destroy (description);
 
    EXIT;
 }
@@ -1355,7 +1393,7 @@ mongoc_cursor_clone (const mongoc_cursor_t *cursor)
 
    BSON_ASSERT (cursor);
 
-   _clone = (mongoc_cursor_t *) bson_malloc0 (sizeof *_clone);
+   _clone = BSON_ALIGNED_ALLOC0 (mongoc_cursor_t);
 
    _clone->client = cursor->client;
    _clone->nslen = cursor->nslen;
@@ -1654,6 +1692,8 @@ _mongoc_cursor_response_read (mongoc_cursor_t *cursor,
 
    ENTRY;
 
+   BSON_UNUSED (cursor);
+
    if (bson_iter_next (&response->batch_iter) &&
        BSON_ITER_HOLDS_DOCUMENT (&response->batch_iter)) {
       bson_iter_document (&response->batch_iter, &data_len, &data);
@@ -1698,6 +1738,7 @@ _mongoc_cursor_prepare_getmore_command (mongoc_cursor_t *cursor,
    const char *collection;
    int collection_len;
    int64_t batch_size;
+   bson_iter_t iter;
    bool await_data;
    int64_t max_await_time_ms;
 
@@ -1717,6 +1758,29 @@ _mongoc_cursor_prepare_getmore_command (mongoc_cursor_t *cursor,
                          MONGOC_CURSOR_BATCH_SIZE,
                          MONGOC_CURSOR_BATCH_SIZE_LEN,
                          abs (_mongoc_n_return (cursor)));
+   }
+
+   if (bson_iter_init_find (&iter, &cursor->opts, MONGOC_CURSOR_COMMENT) &&
+       bson_iter_value (&iter)->value_type != BSON_TYPE_EOD) {
+      const bson_value_t *comment = bson_iter_value (&iter);
+      mongoc_server_stream_t *server_stream;
+
+      /* CRUD spec: If a comment is provided, drivers MUST attach this comment
+       * to all subsequent getMore commands run on the same cursor for server
+       * versions 4.4 and above. For server versions below 4.4 drivers MUST NOT
+       * attach a comment to getMore commands.
+       *
+       * Since this function has no error reporting, we also no-op if we cannot
+       * fetch a stream. */
+      server_stream = _mongoc_cursor_fetch_stream (cursor);
+
+      if (server_stream != NULL &&
+          server_stream->sd->max_wire_version >= WIRE_VERSION_4_4) {
+         bson_append_value (
+            command, MONGOC_CURSOR_COMMENT, MONGOC_CURSOR_COMMENT_LEN, comment);
+      }
+
+      mongoc_server_stream_cleanup (server_stream);
    }
 
    /* Find, getMore And killCursors Commands Spec: "In the case of a tailable

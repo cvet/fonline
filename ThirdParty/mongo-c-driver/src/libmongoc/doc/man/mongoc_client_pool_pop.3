@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_POP" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_pop \- mongoc_client_pool_pop()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_POP" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_pop \- mongoc_client_pool_pop()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,23 +37,24 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_client_t *
-mongoc_client_pool_pop (mongoc_client_pool_t *pool);
+mongoc_client_pool_pop (mongoc_client_pool_t *pool)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Retrieve a \fBmongoc_client_t\fP from the client pool, or create one. The total number of clients that can be created from this pool is limited by the URI option "maxPoolSize", default 100. If this number of clients has been created and all are in use, \fBmongoc_client_pool_pop\fP blocks until another thread returns a client with \fBmongoc_client_pool_push()\fP\&. If the "waitQueueTimeoutMS" URI option was specified with a positive value, then \fBmongoc_client_pool_pop\fP will return \fBNULL\fP when the timeout expires.
+Retrieve a \fI\%mongoc_client_t\fP from the client pool, or create one. The total number of clients that can be created from this pool is limited by the URI option \(dqmaxPoolSize\(dq, default 100. If this number of clients has been created and all are in use, \fBmongoc_client_pool_pop\fP blocks until another thread returns a client with \fI\%mongoc_client_pool_push()\fP\&. If the \(dqwaitQueueTimeoutMS\(dq URI option was specified with a positive value, then \fBmongoc_client_pool_pop\fP will return \fBNULL\fP when the timeout expires.
 .sp
-The returned \fBmongoc_client_t\fP must be returned to the pool with \fBmongoc_client_pool_push()\fP\&.
+The returned \fI\%mongoc_client_t\fP must be returned to the pool with \fI\%mongoc_client_pool_push()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_client_t\fP\&.
+A \fI\%mongoc_client_t\fP\&.
 .SH THREAD SAFETY
 .sp
 This function is safe to call from multiple threads.

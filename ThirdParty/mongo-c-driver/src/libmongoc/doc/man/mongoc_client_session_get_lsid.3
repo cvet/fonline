@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SESSION_GET_LSID" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_session_get_lsid \- mongoc_client_session_get_lsid()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SESSION_GET_LSID" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_session_get_lsid \- mongoc_client_session_get_lsid()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,15 +43,15 @@ mongoc_client_session_get_lsid (mongoc_client_session_t *session);
 .UNINDENT
 .UNINDENT
 .sp
-Get the server\-side "logical session ID" associated with this \fBmongoc_client_session_t\fP, as a BSON document.
+Get the server\-side \(dqlogical session ID\(dq associated with this \fI\%mongoc_client_session_t\fP as a BSON document.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsession\fP: A \fBmongoc_client_session_t\fP\&.
+\fBsession\fP: A \fI\%mongoc_client_session_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fI\%bson_t\fP you must not modify or free.
+A \fI\%bson_t\fP that is valid only for the lifetime of \fBsession\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_COMMAND" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_command \- mongoc_client_command()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_COMMAND" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_command \- mongoc_client_command()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,24 +45,25 @@ mongoc_client_command (mongoc_client_t *client,
                        uint32_t batch_size,
                        const bson_t *query,
                        const bson_t *fields,
-                       const mongoc_read_prefs_t *read_prefs);
+                       const mongoc_read_prefs_t *read_prefs)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-This function is superseded by \fBmongoc_client_command_with_opts()\fP, \fBmongoc_client_read_command_with_opts()\fP, \fBmongoc_client_write_command_with_opts()\fP, and \fBmongoc_client_read_write_command_with_opts()\fP\&.
+This function is superseded by \fI\%mongoc_client_command_with_opts()\fP, \fI\%mongoc_client_read_command_with_opts()\fP, \fI\%mongoc_client_write_command_with_opts()\fP, and \fI\%mongoc_client_read_write_command_with_opts()\fP\&.
 .sp
 This function is not considered a retryable read operation.
 .SH DESCRIPTION
 .sp
-This function creates a cursor which will execute the command when \fBmongoc_cursor_next\fP is called on it. The client\(aqs read preference, read concern, and write concern are not applied to the command, and \fBmongoc_cursor_next\fP will not check the server response for a write concern error or write concern timeout.
+This function creates a cursor which will execute the command when \fI\%mongoc_cursor_next()\fP is called on it. The client\(aqs read preference, read concern, and write concern are not applied to the command, and \fI\%mongoc_cursor_next()\fP will not check the server response for a write concern error or write concern timeout.
 .sp
-If \fBmongoc_cursor_next()\fP returns \fBfalse\fP, then retrieve error details with \fBmongoc_cursor_error()\fP or \fBmongoc_cursor_error_document()\fP\&.
+If \fI\%mongoc_cursor_next()\fP returns \fBfalse\fP, then retrieve error details with \fI\%mongoc_cursor_error()\fP or \fI\%mongoc_cursor_error_document()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
 \fBdb_name\fP: The name of the database to run the command on.
 .IP \(bu 2
@@ -78,13 +79,13 @@ If \fBmongoc_cursor_next()\fP returns \fBfalse\fP, then retrieve error details w
 .IP \(bu 2
 \fBfields\fP: Unused.
 .IP \(bu 2
-\fBread_prefs\fP: An optional \fBmongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
+\fBread_prefs\fP: An optional \fI\%mongoc_read_prefs_t\fP\&. Otherwise, the command uses mode \fBMONGOC_READ_PRIMARY\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_cursor_t\fP\&.
+A \fI\%mongoc_cursor_t\fP\&.
 .sp
-The cursor should be freed with \fBmongoc_cursor_destroy()\fP\&.
+The cursor should be freed with \fI\%mongoc_cursor_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

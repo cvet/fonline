@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_GRIDFS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_gridfs \- mongoc_client_get_gridfs()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_GRIDFS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_gridfs \- mongoc_client_get_gridfs()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -40,30 +40,30 @@ mongoc_gridfs_t *
 mongoc_client_get_gridfs (mongoc_client_t *client,
                           const char *db,
                           const char *prefix,
-                          bson_error_t *error);
+                          bson_error_t *error) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-The \fBmongoc_client_get_gridfs()\fP function shall create a new \fBmongoc_gridfs_t\fP\&. The \fBdb\fP parameter is the name of the database which the gridfs instance should exist in. The \fBprefix\fP parameter corresponds to the gridfs collection namespacing; its default is "fs", thus the default GridFS collection names are "fs.files" and "fs.chunks".
+The \fBmongoc_client_get_gridfs()\fP function shall create a new \fI\%mongoc_gridfs_t\fP\&. The \fBdb\fP parameter is the name of the database which the gridfs instance should exist in. The \fBprefix\fP parameter corresponds to the gridfs collection namespacing; its default is \(dqfs\(dq, thus the default GridFS collection names are \(dqfs.files\(dq and \(dqfs.chunks\(dq.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
 \fBdb\fP: The database name.
 .IP \(bu 2
 \fBprefix\fP: Optional prefix for gridfs collection names or \fBNULL\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
 .SH RETURNS
 .sp
-On success, returns a \fBmongoc_gridfs_t\fP you must free with \fBmongoc_gridfs_destroy()\fP\&. Returns \fBNULL\fP upon failure and sets \fBerror\fP\&.
+On success, returns a \fI\%mongoc_gridfs_t\fP you must free with \fI\%mongoc_gridfs_destroy()\fP\&. Returns \fBNULL\fP upon failure and sets \fBerror\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

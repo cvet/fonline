@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_SET_HINT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_set_hint \- mongoc_bulk_operation_set_hint()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_SET_HINT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_set_hint \- mongoc_bulk_operation_set_hint()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,15 +46,15 @@ mongoc_bulk_operation_set_hint (const mongoc_bulk_operation_t *bulk,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbulk\fP: A \fBmongoc_bulk_operation_t\fP\&.
+\fBbulk\fP: A \fI\%mongoc_bulk_operation_t\fP\&.
 .IP \(bu 2
 \fBserver_id\fP: An opaque id identifying the server to use.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Specifies which server to use for the operation. This function has an effect only if called before \fBmongoc_bulk_operation_execute\fP\&.
+Specifies which server to use for the operation. This function has an effect only if called before \fI\%mongoc_bulk_operation_execute()\fP\&.
 .sp
-(The function name includes the old term "hint" for the sake of backward compatibility, but we now call this number a "server id".)
+(The function name includes the old term \(dqhint\(dq for the sake of backward compatibility, but we now call this number a \(dqserver id\(dq.)
 .sp
 Use \fBmongoc_bulk_operation_set_hint\fP only for building a language driver that wraps the C Driver. When writing applications in C, leave the server id unset and allow the driver to choose a suitable server for the bulk operation.
 .SH AUTHOR

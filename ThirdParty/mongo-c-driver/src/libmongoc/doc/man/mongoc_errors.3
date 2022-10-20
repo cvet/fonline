@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_ERRORS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_errors \- Error Reporting
 .
 .nr rst2man-indent-level 0
 .
@@ -30,7 +27,10 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-« index
+.TH "MONGOC_ERRORS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_errors \- Error Reporting
+« \fI\%libmongoc\fP
 .SH DESCRIPTION
 .sp
 Many C Driver functions report errors by returning \fBfalse\fP or \-1 and filling out a \fI\%bson_error_t\fP structure with an error domain, error code, and message. Use \fBdomain\fP to determine which subsystem generated the error, and \fBcode\fP for the specific error. \fBmessage\fP is a human\-readable error description.
@@ -82,7 +82,7 @@ T{
 T}	T{
 \fBMONGOC_ERROR_CLIENT_IN_EXHAUST\fP
 T}	T{
-You began iterating an exhaust cursor, then tried to begin another operation with the same \fBmongoc_client_t\fP\&.
+You began iterating an exhaust cursor, then tried to begin another operation with the same \fI\%mongoc_client_t\fP\&.
 T}
 _
 T{
@@ -155,14 +155,14 @@ T{
 T}	T{
 \fBMONGOC_ERROR_CURSOR_INVALID_CURSOR\fP
 T}	T{
-You passed bad arguments to \fBmongoc_collection_find_with_opts\fP, or you called \fBmongoc_cursor_next\fP on a completed or failed cursor, or the cursor timed out on the server.
+You passed bad arguments to \fI\%mongoc_collection_find_with_opts()\fP, or you called \fI\%mongoc_cursor_next()\fP on a completed or failed cursor, or the cursor timed out on the server.
 T}
 _
 T{
 T}	T{
 \fBMONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN\fP
 T}	T{
-A resume token was not returned in a document found with \fBmongoc_change_stream_next\fP
+A resume token was not returned in a document found with \fI\%mongoc_change_stream_next()\fP
 T}
 _
 T{
@@ -194,7 +194,7 @@ T{
 T}	T{
 \fBMONGOC_ERROR_BSON_INVALID\fP
 T}	T{
-You passed an invalid or oversized BSON document as a parameter, or called \fBmongoc_collection_create_index\fP with invalid keys, or the server reply was corrupt.
+You passed an invalid or oversized BSON document as a parameter, or called \fI\%mongoc_collection_create_index()\fP with invalid keys, or the server reply was corrupt.
 T}
 _
 T{
@@ -262,7 +262,7 @@ T{
 T}	T{
 \fBMONGOC_ERROR_COLLECTION_INSERT_FAILED\fP, \fBMONGOC_ERROR_COLLECTION_UPDATE_FAILED\fP, \fBMONGOC_ERROR_COLLECTION_DELETE_FAILED\fP\&.
 T}	T{
-Invalid or empty input to \fBmongoc_collection_insert_one\fP, \fBmongoc_collection_insert_bulk\fP, \fBmongoc_collection_update_one\fP, \fBmongoc_collection_update_many\fP, \fBmongoc_collection_replace_one\fP, \fBmongoc_collection_delete_one\fP, or \fBmongoc_collection_delete_many\fP\&.
+Invalid or empty input to \fI\%mongoc_collection_insert_one()\fP, \fI\%mongoc_collection_insert_bulk()\fP, \fI\%mongoc_collection_update_one()\fP, \fI\%mongoc_collection_update_many()\fP, \fI\%mongoc_collection_replace_one()\fP, \fI\%mongoc_collection_delete_one()\fP, or \fI\%mongoc_collection_delete_many()\fP\&.
 T}
 _
 T{
@@ -270,7 +270,7 @@ T{
 T}	T{
 \fI\%Error code from server\fP\&.
 T}	T{
-\fI\%Error API Version 1\fP: Server error from \fBmongoc_collection_insert_one\fP, \fBmongoc_collection_insert_bulk\fP, \fBmongoc_collection_update_one\fP, \fBmongoc_collection_update_many\fP, \fBmongoc_collection_replace_one\fP,
+\fI\%Error API Version 1\fP: Server error from \fI\%mongoc_collection_insert_one()\fP, \fI\%mongoc_collection_insert_bulk()\fP, \fI\%mongoc_collection_update_one()\fP, \fI\%mongoc_collection_update_many()\fP, \fI\%mongoc_collection_replace_one()\fP,
 T}
 _
 T{
@@ -278,7 +278,7 @@ T{
 T}	T{
 \fI\%Error code from server\fP\&.
 T}	T{
-\fI\%Error API Version 2\fP: Server error from \fBmongoc_collection_insert_one\fP, \fBmongoc_collection_insert_bulk\fP, \fBmongoc_collection_update_one\fP, \fBmongoc_collection_update_many\fP, \fBmongoc_collection_replace_one\fP,
+\fI\%Error API Version 2\fP: Server error from \fI\%mongoc_collection_insert_one()\fP, \fI\%mongoc_collection_insert_bulk()\fP, \fI\%mongoc_collection_update_one()\fP, \fI\%mongoc_collection_update_many()\fP, \fI\%mongoc_collection_replace_one()\fP,
 T}
 _
 T{
@@ -300,14 +300,14 @@ T{
 T}	T{
 \fBMONGOC_ERROR_GRIDFS_INVALID_FILENAME\fP
 T}	T{
-You passed a NULL filename to \fBmongoc_gridfs_remove_by_filename\fP\&.
+You passed a NULL filename to \fI\%mongoc_gridfs_remove_by_filename()\fP\&.
 T}
 _
 T{
 T}	T{
 \fBMONGOC_ERROR_GRIDFS_PROTOCOL_ERROR\fP
 T}	T{
-You called \fBmongoc_gridfs_file_set_id\fP after \fBmongoc_gridfs_file_save\fP, or tried to write on a closed GridFS stream.
+You called \fI\%mongoc_gridfs_file_set_id()\fP after \fI\%mongoc_gridfs_file_save()\fP, or tried to write on a closed GridFS stream.
 T}
 _
 T{
@@ -321,7 +321,7 @@ T{
 T}	T{
 \fBMONGOC_ERROR_GRIDFS_BUCKET_STREAM\fP
 T}	T{
-An error occurred on a stream created from a GridFS operation like \fBmongoc_gridfs_bucket_upload_from_stream\fP\&.
+An error occurred on a stream created from a GridFS operation like \fI\%mongoc_gridfs_bucket_upload_from_stream()\fP\&.
 T}
 _
 T{
@@ -337,7 +337,7 @@ T{
 T}	T{
 \fBMONGOC_ERROR_SERVER_SELECTION_FAILURE\fP
 T}	T{
-No replica set member or mongos is available, or none matches your read preference, or you supplied an invalid \fBmongoc_read_prefs_t\fP\&.
+No replica set member or mongos is available, or none matches your \fI\%read preference\fP, or you supplied an invalid \fI\%mongoc_read_prefs_t\fP\&.
 T}
 _
 T{
@@ -345,7 +345,7 @@ T{
 T}	T{
 \fI\%Error code from server\fP\&.
 T}	T{
-There was a write concern error or timeout from the server.
+There was a \fI\%write concern\fP error or \fI\%timeout\fP from the server.
 T}
 _
 T{
@@ -369,19 +369,19 @@ _
 .sp
 In some cases your application must make decisions based on what category of error the driver has returned, but these categories do not correspond perfectly to an error domain or code. In such cases, error \fIlabels\fP provide a reliable way to determine how your application should respond to an error.
 .sp
-Any C Driver function that has a \fI\%bson_t\fP out\-parameter named \fBreply\fP may include error labels to the reply, in the form of a BSON field named "errorLabels" containing an array of strings:
+Any C Driver function that has a \fI\%bson_t\fP out\-parameter named \fBreply\fP may include error labels to the reply, in the form of a BSON field named \(dqerrorLabels\(dq containing an array of strings:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-{ "errorLabels": [ "TransientTransactionError" ] }
+{ \(dqerrorLabels\(dq: [ \(dqTransientTransactionError\(dq ] }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Use \fBmongoc_error_has_label\fP to test if a reply contains a specific label. See \fBmongoc_client_session_start_transaction\fP for example code that demonstrates the use of error labels in application logic.
+Use \fI\%mongoc_error_has_label()\fP to test if a reply contains a specific label. See \fI\%mongoc_client_session_start_transaction()\fP for example code that demonstrates the use of error labels in application logic.
 .sp
 The following error labels are currently defined. Future versions of MongoDB may introduce new labels.
 .SS TransientTransactionError
@@ -389,14 +389,14 @@ The following error labels are currently defined. Future versions of MongoDB may
 Within a multi\-document transaction, certain errors can leave the transaction in an unknown or aborted state. These include write conflicts, primary stepdowns, and network errors. In response, the application should abort the transaction and try the same sequence of operations again in a new transaction.
 .SS UnknownTransactionCommitResult
 .sp
-When \fBmongoc_client_session_commit_transaction\fP encounters a network error or certain server errors, it is not known whether the transaction was committed. Applications should attempt to commit the transaction again until: the commit succeeds, the commit fails with an error \fInot\fP labeled "UnknownTransactionCommitResult", or the application chooses to give up.
+When \fI\%mongoc_client_session_commit_transaction()\fP encounters a network error or certain server errors, it is not known whether the transaction was committed. Applications should attempt to commit the transaction again until: the commit succeeds, the commit fails with an error \fInot\fP labeled \(dqUnknownTransactionCommitResult\(dq, or the application chooses to give up.
 .SH SETTING THE ERROR API VERSION
 .sp
 The driver\(aqs error reporting began with a design flaw: when the error \fIdomain\fP is \fBMONGOC_ERROR_COLLECTION\fP, \fBMONGOC_ERROR_QUERY\fP, or \fBMONGOC_ERROR_COMMAND\fP, the error \fIcode\fP might originate from the server or the driver. An application cannot always know where an error originated, and therefore cannot tell what the code means.
 .sp
-For example, if \fBmongoc_collection_update_one\fP sets the error\(aqs domain to \fBMONGOC_ERROR_COLLECTION\fP and its code to 24, the application cannot know whether 24 is the generic driver error code \fBMONGOC_ERROR_COLLECTION_UPDATE_FAILED\fP or the specific server error code "LockTimeout".
+For example, if \fI\%mongoc_collection_update_one()\fP sets the error\(aqs domain to \fBMONGOC_ERROR_COLLECTION\fP and its code to 24, the application cannot know whether 24 is the generic driver error code \fBMONGOC_ERROR_COLLECTION_UPDATE_FAILED\fP or the specific server error code \(dqLockTimeout\(dq.
 .sp
-To fix this flaw while preserving backward compatibility, the C Driver 1.4 introduces "Error API Versions". Version 1, the default Error API Version, maintains the flawed behavior. Version 2 adds a new error domain, \fBMONGOC_ERROR_SERVER\fP\&. In Version 2, error codes originating on the server always have error domain \fBMONGOC_ERROR_SERVER\fP or \fBMONGOC_ERROR_WRITE_CONCERN\fP\&. When the driver uses Version 2 the application can always determine the origin and meaning of error codes. New applications should use Version 2, and existing applications should be updated to use Version 2 as well.
+To fix this flaw while preserving backward compatibility, the C Driver 1.4 introduces \(dqError API Versions\(dq. Version 1, the default Error API Version, maintains the flawed behavior. Version 2 adds a new error domain, \fBMONGOC_ERROR_SERVER\fP\&. In Version 2, error codes originating on the server always have error domain \fBMONGOC_ERROR_SERVER\fP or \fBMONGOC_ERROR_WRITE_CONCERN\fP\&. When the driver uses Version 2 the application can always determine the origin and meaning of error codes. New applications should use Version 2, and existing applications should be updated to use Version 2 as well.
 .TS
 center;
 |l|l|l|.
@@ -410,7 +410,7 @@ API Version 2
 T}
 _
 T{
-\fBmongoc_cursor_error\fP
+\fI\%mongoc_cursor_error()\fP
 T}	T{
 \fBMONGOC_ERROR_QUERY\fP
 T}	T{
@@ -418,8 +418,8 @@ T}	T{
 T}
 _
 T{
-\fBmongoc_client_command_with_opts\fP,
-\fBmongoc_database_command_with_opts\fP, and
+\fI\%mongoc_client_command_with_opts()\fP,
+\fI\%mongoc_database_command_with_opts()\fP, and
 other command functions
 T}	T{
 \fBMONGOC_ERROR_QUERY\fP
@@ -428,8 +428,8 @@ T}	T{
 T}
 _
 T{
-\fBmongoc_collection_count_with_opts\fP
-\fBmongoc_client_get_database_names_with_opts\fP,
+\fI\%mongoc_collection_count_with_opts()\fP
+\fI\%mongoc_client_get_database_names_with_opts()\fP,
 and other command helper functions
 T}	T{
 \fBMONGOC_ERROR_QUERY\fP
@@ -438,13 +438,13 @@ T}	T{
 T}
 _
 T{
-\fBmongoc_collection_insert_one\fP
-\fBmongoc_collection_insert_bulk\fP
-\fBmongoc_collection_update_one\fP
-\fBmongoc_collection_update_many\fP
-\fBmongoc_collection_replace_one\fP
-\fBmongoc_collection_delete_one\fP
-\fBmongoc_collection_delete_many\fP
+\fI\%mongoc_collection_insert_one()\fP
+\fI\%mongoc_collection_insert_bulk()\fP
+\fI\%mongoc_collection_update_one()\fP
+\fI\%mongoc_collection_update_many()\fP
+\fI\%mongoc_collection_replace_one()\fP
+\fI\%mongoc_collection_delete_one()\fP
+\fI\%mongoc_collection_delete_many()\fP
 T}	T{
 \fBMONGOC_ERROR_COMMAND\fP
 T}	T{
@@ -452,7 +452,7 @@ T}	T{
 T}
 _
 T{
-\fBmongoc_bulk_operation_execute\fP
+\fI\%mongoc_bulk_operation_execute()\fP
 T}	T{
 \fBMONGOC_ERROR_COMMAND\fP
 T}	T{
@@ -469,7 +469,7 @@ T}
 _
 .TE
 .sp
-The Error API Versions are defined with \fBMONGOC_ERROR_API_VERSION_LEGACY\fP and \fBMONGOC_ERROR_API_VERSION_2\fP\&. Set the version with \fBmongoc_client_set_error_api\fP or \fBmongoc_client_pool_set_error_api\fP\&.
+The Error API Versions are defined with \fBMONGOC_ERROR_API_VERSION_LEGACY\fP and \fBMONGOC_ERROR_API_VERSION_2\fP\&. Set the version with \fI\%mongoc_client_set_error_api()\fP or \fI\%mongoc_client_pool_set_error_api()\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0

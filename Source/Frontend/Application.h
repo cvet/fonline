@@ -343,6 +343,7 @@ public:
 
     [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 
+    void OpenLink(string_view link);
     void HideCursor();
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));

@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/basic-troubleshooting.html"/>
-    <title>Basic Troubleshooting &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/basic-troubleshooting.html"/>
+    <title>Basic Troubleshooting &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Guides" href="guides.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="authentication.html" title="Authentication"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -39,10 +44,10 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="basic-troubleshooting">
-<h1>Basic Troubleshooting<a class="headerlink" href="#basic-troubleshooting" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="troubleshooting-checklist">
-<h2>Troubleshooting Checklist<a class="headerlink" href="#troubleshooting-checklist" title="Permalink to this headline">¶</a></h2>
+  <section id="basic-troubleshooting">
+<h1>Basic Troubleshooting<a class="headerlink" href="#basic-troubleshooting" title="Permalink to this heading">¶</a></h1>
+<section id="troubleshooting-checklist">
+<h2>Troubleshooting Checklist<a class="headerlink" href="#troubleshooting-checklist" title="Permalink to this heading">¶</a></h2>
 <p>The following is a short list of things to check when you have a problem.</p>
 <ul class="simple">
 <li><p>Did you call <code class="docutils literal notranslate"><span class="pre">mongoc_init()</span></code> in <code class="docutils literal notranslate"><span class="pre">main()</span></code>? If not, you will likely see a segfault.</p></li>
@@ -51,15 +56,15 @@
 <li><p>Does <code class="docutils literal notranslate"><span class="pre">valgrind</span></code> show any leaks? Ensure you call <code class="docutils literal notranslate"><span class="pre">mongoc_cleanup()</span></code> at the end of your process to cleanup lingering allocations from the MongoDB C driver.</p></li>
 <li><p>If compiling your own copy of MongoDB C Driver, consider using the cmake option <code class="docutils literal notranslate"><span class="pre">-DENABLE_TRACING=ON</span></code> to enable function tracing and hex dumps of network packets to <code class="docutils literal notranslate"><span class="pre">STDERR</span></code> and <code class="docutils literal notranslate"><span class="pre">STDOUT</span></code>.</p></li>
 </ul>
-</div>
-<div class="section" id="performance-counters">
-<h2>Performance Counters<a class="headerlink" href="#performance-counters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="performance-counters">
+<h2>Performance Counters<a class="headerlink" href="#performance-counters" title="Permalink to this heading">¶</a></h2>
 <p>The MongoDB C driver comes with an optional unique feature to help developers and sysadmins troubleshoot problems in production.
 Performance counters are available for each process using the driver.
 If available, the counters can be accessed outside of the application process via a shared memory segment.
 This means that you can graph statistics about your application process easily from tools like Munin or Nagios.
 Your author often uses <code class="docutils literal notranslate"><span class="pre">watch</span> <span class="pre">--interval=0.5</span> <span class="pre">-d</span> <span class="pre">mongoc-stat</span> <span class="pre">$PID</span></code> to monitor an application.</p>
-<p>Performance counters are only available on Linux platforms supporting shared memory segments.
+<p>Performance counters are only available on Linux platforms and macOS arm64 platforms supporting shared memory segments.
 On supported platforms they are enabled by default.
 Applications can be built without the counters by specifying the cmake option <code class="docutils literal notranslate"><span class="pre">-DENABLE_SHM_COUNTERS=OFF</span></code>. Additionally, if
 performance counters are already compiled, they can be disabled at runtime by specifying the environment variable <code class="docutils literal notranslate"><span class="pre">MONGOC_DISABLE_SHM</span></code>.</p>
@@ -108,9 +113,9 @@ performance counters are already compiled, they can be disabled at runtime by sp
          Auth : Success             : The number of successful authentication requests. : 0
 </pre></div>
 </div>
-</div>
-<div class="section" id="submitting-a-bug-report">
-<span id="basic-troubleshooting-file-bug"></span><h2>Submitting a Bug Report<a class="headerlink" href="#submitting-a-bug-report" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="submitting-a-bug-report">
+<span id="basic-troubleshooting-file-bug"></span><h2>Submitting a Bug Report<a class="headerlink" href="#submitting-a-bug-report" title="Permalink to this heading">¶</a></h2>
 <p>Think you’ve found a bug? Want to see a new feature in the MongoDB C driver? Please open a case in our issue management tool, JIRA:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://jira.mongodb.org">Create an account and login</a>.</p></li>
@@ -118,8 +123,8 @@ performance counters are already compiled, they can be disabled at runtime by sp
 <li><p>Click <em>Create Issue</em> - Please provide as much information as possible about the issue type and how to reproduce it.</p></li>
 </ul>
 <p>Bug reports in JIRA for all driver projects (i.e. CDRIVER, CSHARP, JAVA) and the Core Server (i.e. SERVER) project are <em>public</em>.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -174,7 +179,7 @@ performance counters are already compiled, they can be disabled at runtime by sp
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

@@ -253,6 +253,9 @@ test_mongoc_client_pool_ssl_disabled (void)
    ASSERT (uri);
    capture_logs (true);
    ASSERT (NULL == test_framework_client_pool_new_from_uri (uri, NULL));
+   ASSERT_CAPTURED_LOG ("mongoc_client_pool_new",
+                        MONGOC_LOG_LEVEL_ERROR,
+                        "SSL not enabled in this build.");
 
    mongoc_uri_destroy (uri);
 }
@@ -387,6 +390,8 @@ test_client_pool_create_unused_session (void *context)
    bson_error_t error;
    int count = 0;
 
+   BSON_UNUSED (context);
+
    capture_logs (true);
 
    callbacks = mongoc_apm_callbacks_new ();
@@ -448,8 +453,8 @@ test_client_pool_max_pool_size_exceeded (void)
    bson_mutex_init (&args->mutex);
    mongoc_cond_init (&args->cond);
 
-   COMMON_PREFIX (thread_create) (&thread1, worker, args);
-   COMMON_PREFIX (thread_create) (&thread2, worker, args);
+   mcommon_thread_create (&thread1, worker, args);
+   mcommon_thread_create (&thread2, worker, args);
 
    bson_mutex_lock (&args->mutex);
    while (args->nleft > 0) {
@@ -459,8 +464,8 @@ test_client_pool_max_pool_size_exceeded (void)
    }
    bson_mutex_unlock (&args->mutex);
 
-   COMMON_PREFIX (thread_join) (thread1);
-   COMMON_PREFIX (thread_join) (thread2);
+   mcommon_thread_join (thread1);
+   mcommon_thread_join (thread2);
 
    mongoc_uri_destroy (uri);
    mongoc_client_pool_destroy (pool);

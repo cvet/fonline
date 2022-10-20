@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_write_concern_t.html"/>
-    <title>mongoc_write_concern_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_write_concern_t.html"/>
+    <title>mongoc_write_concern_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_write_concern_append()" href="mongoc_write_concern_append.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_get_version.html" title="mongoc_get_version()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,11 +45,11 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-write-concern-t">
-<h1>mongoc_write_concern_t<a class="headerlink" href="#mongoc-write-concern-t" title="Permalink to this headline">¶</a></h1>
+  <section id="mongoc-write-concern-t">
+<h1>mongoc_write_concern_t<a class="headerlink" href="#mongoc-write-concern-t" title="Permalink to this heading">¶</a></h1>
 <p>Write Concern abstraction</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">mongoc_write_concern_t</span></code> tells the driver what level of acknowledgement to await from the server. The default, MONGOC_WRITE_CONCERN_W_DEFAULT, is right for the great majority of applications.</p>
 <p>You can specify a write concern on connection objects, database objects, collection objects, or per-operation. Data-modifying operations typically use the write concern of the object they operate on, and check the server response for a write concern error or write concern timeout. For example, <a class="symbol reference internal" href="mongoc_collection_drop_index.html"><span class="doc">mongoc_collection_drop_index()</span></a> uses the collection’s write concern, and a write concern error or timeout in the response is considered a failure.</p>
 <p>Exceptions to this principle are the generic command functions:</p>
@@ -58,15 +63,11 @@
 </ul>
 <p>These generic command functions do not automatically apply a write concern, and they do not check the server response for a write concern error or write concern timeout.</p>
 <p>See <a class="reference external" href="https://docs.mongodb.org/manual/core/write-concern/">Write Concern</a> on the MongoDB website for more information.</p>
-</div>
-<div class="section" id="write-concern-levels">
-<h2>Write Concern Levels<a class="headerlink" href="#write-concern-levels" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="write-concern-levels">
+<h2>Write Concern Levels<a class="headerlink" href="#write-concern-levels" title="Permalink to this heading">¶</a></h2>
 <p>Set the write concern level with <a class="symbol reference internal" href="mongoc_write_concern_set_w.html"><span class="doc">mongoc_write_concern_set_w()</span></a>.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 17%" />
-<col style="width: 83%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p>MONGOC_WRITE_CONCERN_W_DEFAULT (1)</p></td>
 <td><p>By default, writes block awaiting acknowledgement from MongoDB. Acknowledged write concern allows clients to catch network, duplicate key, and other errors.</p></td>
@@ -82,14 +83,14 @@
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="deprecations">
-<h2>Deprecations<a class="headerlink" href="#deprecations" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="deprecations">
+<h2>Deprecations<a class="headerlink" href="#deprecations" title="Permalink to this heading">¶</a></h2>
 <p>The write concern <code class="docutils literal notranslate"><span class="pre">MONGOC_WRITE_CONCERN_W_ERRORS_IGNORED</span></code> (value -1) is a deprecated synonym for <code class="docutils literal notranslate"><span class="pre">MONGOC_WRITE_CONCERN_W_UNACKNOWLEDGED</span></code> (value 0), and will be removed in the next major release.</p>
 <p><a class="symbol reference internal" href="mongoc_write_concern_set_fsync.html"><span class="doc">mongoc_write_concern_set_fsync()</span></a> is deprecated.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_write_concern_append.html">mongoc_write_concern_append()</a></li>
@@ -116,8 +117,8 @@
 <li class="toctree-l1"><a class="reference internal" href="mongoc_write_concern_set_wtimeout_int64.html">mongoc_write_concern_set_wtimeout_int64()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -153,6 +154,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -228,7 +230,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

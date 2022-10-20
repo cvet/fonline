@@ -551,6 +551,11 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
     _time = SDL_GetPerformanceCounter();
 }
 
+void Application::OpenLink(string_view link)
+{
+    SDL_OpenURL(string(link).c_str());
+}
+
 void Application::HideCursor()
 {
     NON_CONST_METHOD_HINT();

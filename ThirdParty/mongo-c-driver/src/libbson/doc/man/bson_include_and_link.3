@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_INCLUDE_AND_LINK" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_include_and_link \- Using libbson In Your C Program
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_INCLUDE_AND_LINK" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_include_and_link \- Using libbson In Your C Program
 .SH INCLUDE BSON.H
 .sp
 All libbson\(aqs functions and types are available in one header file. Simply include \fBbson.h\fP:
@@ -49,9 +49,9 @@ main (int argc, const char **argv)
    bson_t *b;
    char *j;
 
-   b = BCON_NEW ("hello", BCON_UTF8 ("bson!"));
+   b = BCON_NEW (\(dqhello\(dq, BCON_UTF8 (\(dqbson!\(dq));
    j = bson_as_canonical_extended_json (b, NULL);
-   printf ("%s\en", j);
+   printf (\(dq%s\en\(dq, j);
 
    bson_free (j);
    bson_destroy (b);
@@ -76,7 +76,7 @@ CMakeLists.txt
 # Specify the minimum version you require.
 find_package (bson\-1.0 1.7 REQUIRED)
 
-# The "hello_bson.c" sample program is shared among four tests.
+# The \(dqhello_bson.c\(dq sample program is shared among four tests.
 add_executable (hello_bson ../../hello_bson.c)
 target_link_libraries (hello_bson PRIVATE mongo::bson_shared)
 
@@ -94,7 +94,7 @@ You can also use libbson as a static library instead: Use the \fBmongo::bson_sta
 # Specify the minimum version you require.
 find_package (bson\-1.0 1.7 REQUIRED)
 
-# The "hello_bson.c" sample program is shared among four tests.
+# The \(dqhello_bson.c\(dq sample program is shared among four tests.
 add_executable (hello_bson ../../hello_bson.c)
 target_link_libraries (hello_bson PRIVATE mongo::bson_static)
 

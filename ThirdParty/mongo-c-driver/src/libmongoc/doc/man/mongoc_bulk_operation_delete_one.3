@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_DELETE_ONE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_delete_one \- mongoc_bulk_operation_delete_one()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_DELETE_ONE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_delete_one \- mongoc_bulk_operation_delete_one()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,7 +44,7 @@ mongoc_bulk_operation_delete_one (mongoc_bulk_operation_t *bulk,
 .UNINDENT
 .UNINDENT
 .sp
-Delete a single document as part of a bulk operation. This only queues the operation. To execute it, call \fBmongoc_bulk_operation_execute()\fP\&.
+Delete a single document as part of a bulk operation. This only queues the operation. To execute it, call \fI\%mongoc_bulk_operation_execute()\fP\&.
 .SH DEPRECATED
 .sp
 \fBWARNING:\fP
@@ -54,27 +54,27 @@ This function is deprecated and should not be used in new code.
 .UNINDENT
 .UNINDENT
 .sp
-Please use \fBmongoc_bulk_operation_remove_one()\fP instead.
+Please use \fI\%mongoc_bulk_operation_remove_one()\fP instead.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbulk\fP: A \fBmongoc_bulk_operation_t\fP\&.
+\fBbulk\fP: A \fI\%mongoc_bulk_operation_t\fP\&.
 .IP \(bu 2
 \fBselector\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH ERRORS
 .sp
-Errors are propagated via \fBmongoc_bulk_operation_execute()\fP\&.
+Errors are propagated via \fI\%mongoc_bulk_operation_execute()\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_bulk_operation_remove_one_with_opts()\fP
+\fI\%mongoc_bulk_operation_remove_one_with_opts()\fP
 .fi
 .sp
 .nf
-\fBmongoc_bulk_operation_remove_many_with_opts()\fP
+\fI\%mongoc_bulk_operation_remove_many_with_opts()\fP
 .fi
 .sp
 .UNINDENT

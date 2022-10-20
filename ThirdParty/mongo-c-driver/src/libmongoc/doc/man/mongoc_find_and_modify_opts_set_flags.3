@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_FLAGS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_find_and_modify_opts_set_flags \- mongoc_find_and_modify_opts_set_flags()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_FLAGS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_find_and_modify_opts_set_flags \- mongoc_find_and_modify_opts_set_flags()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,7 +47,7 @@ mongoc_find_and_modify_opts_set_flags (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_find_and_modify_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_find_and_modify_opts_t\fP\&.
 .IP \(bu 2
 \fBflags\fP: .
 .UNINDENT
@@ -106,15 +106,15 @@ fam_flags (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic, the striker */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "profession", "Football player");
-   BSON_APPEND_INT32 (&query, "age", 34);
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqprofession\(dq, \(dqFootball player\(dq);
+   BSON_APPEND_INT32 (&query, \(dqage\(dq, 34);
    BSON_APPEND_INT32 (
-      &query, "goals", (16 + 35 + 23 + 57 + 16 + 14 + 28 + 84) + (1 + 6 + 62));
+      &query, \(dqgoals\(dq, (16 + 35 + 23 + 57 + 16 + 14 + 28 + 84) + (1 + 6 + 62));
 
    /* Add his football position */
-   update = BCON_NEW ("$set", "{", "position", BCON_UTF8 ("striker"), "}");
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqposition\(dq, BCON_UTF8 (\(dqstriker\(dq), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
 
@@ -131,11 +131,11 @@ fam_flags (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -156,21 +156,21 @@ Outputs:
 .nf
 .ft C
 {
-   "lastErrorObject" : {
-      "updatedExisting" : false,
-      "n" : 1,
-      "upserted" : {"$oid" : "56562a99d13e6d86239c7b00"}
+   \(dqlastErrorObject\(dq : {
+      \(dqupdatedExisting\(dq : false,
+      \(dqn\(dq : 1,
+      \(dqupserted\(dq : {\(dq$oid\(dq : \(dq56562a99d13e6d86239c7b00\(dq}
    },
-                       "value" : {
-                          "_id" : {"$oid" : "56562a99d13e6d86239c7b00"},
-                          "age" : 34,
-                          "firstname" : "Zlatan",
-                          "goals" : 342,
-                          "lastname" : "Ibrahimovic",
-                          "profession" : "Football player",
-                          "position" : "striker"
+                       \(dqvalue\(dq : {
+                          \(dq_id\(dq : {\(dq$oid\(dq : \(dq56562a99d13e6d86239c7b00\(dq},
+                          \(dqage\(dq : 34,
+                          \(dqfirstname\(dq : \(dqZlatan\(dq,
+                          \(dqgoals\(dq : 342,
+                          \(dqlastname\(dq : \(dqIbrahimovic\(dq,
+                          \(dqprofession\(dq : \(dqFootball player\(dq,
+                          \(dqposition\(dq : \(dqstriker\(dq
                        },
-                                 "ok" : 1
+                                 \(dqok\(dq : 1
 }
 .ft P
 .fi

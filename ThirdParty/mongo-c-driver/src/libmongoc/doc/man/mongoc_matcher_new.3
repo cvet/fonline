@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_MATCHER_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_matcher_new \- mongoc_matcher_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_MATCHER_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_matcher_new \- mongoc_matcher_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,13 +37,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_matcher_t *
-mongoc_matcher_new (const bson_t *query, bson_error_t *error);
+mongoc_matcher_new (const bson_t *query, bson_error_t *error)
+   BSON_GNUC_WARN_UNUSED_RESULT BSON_GNUC_DEPRECATED;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Create a new \fBmongoc_matcher_t\fP using the query specification provided.
+Create a new \fI\%mongoc_matcher_t\fP using the query specification provided.
 .SH DEPRECATED
 .sp
 \fBWARNING:\fP
@@ -57,14 +58,14 @@ Create a new \fBmongoc_matcher_t\fP using the query specification provided.
 .IP \(bu 2
 \fBquery\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_matcher_t\fP that should be freed with \fBmongoc_matcher_destroy()\fP when no longer in use. Upon failure, \fBNULL\fP is returned and \fBerror\fP is set. This could happen if \fBquery\fP contains an invalid query specification.
+A newly allocated \fI\%mongoc_matcher_t\fP that should be freed with \fI\%mongoc_matcher_destroy()\fP when no longer in use. Upon failure, \fBNULL\fP is returned and \fBerror\fP is set. This could happen if \fBquery\fP contains an invalid query specification.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

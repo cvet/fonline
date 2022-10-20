@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_INIT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_init \- bson_iter_init()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_INIT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_init \- bson_iter_init()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_iter_init (bson_iter_t *iter, const bson_t *bson);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_iter_init()\fP function shall initialize \fBiter\fP to iterate upon the BSON document \fBbson\fP\&. Upon initialization, \fBiter\fP is placed before the first element. Callers must call \fBbson_iter_next()\fP, \fBbson_iter_find()\fP, or \fBbson_iter_find_case()\fP to advance to an element.
+The \fBbson_iter_init()\fP function shall initialize \fBiter\fP to iterate upon the BSON document \fBbson\fP\&. Upon initialization, \fBiter\fP is placed before the first element. Callers must call \fI\%bson_iter_next()\fP, \fI\%bson_iter_find()\fP, or \fI\%bson_iter_find_case()\fP to advance to an element.
 .SH RETURNS
 .sp
 Returns true if the iter was successfully initialized.
@@ -68,13 +68,13 @@ print_doc_id (const bson_t *doc)
    bson_oid_t oid;
    char oidstr[25];
 
-   if (bson_iter_init (&iter, doc) && bson_iter_find (&iter, "_id") &&
+   if (bson_iter_init (&iter, doc) && bson_iter_find (&iter, \(dq_id\(dq) &&
        BSON_ITER_HOLDS_OID (&iter)) {
       bson_iter_oid (&iter, &oid);
       bson_oid_to_string (&oid, oidstr);
-      printf ("%s\en", oidstr);
+      printf (\(dq%s\en\(dq, oidstr);
    } else {
-      printf ("Document is missing _id.\en");
+      printf (\(dqDocument is missing _id.\en\(dq);
    }
 }
 
@@ -87,12 +87,12 @@ print_doc_id (const bson_t *doc)
    bson_oid_t oid;
    char oidstr[25];
 
-   if (bson_iter_init_find (&iter, doc, "_id") && BSON_ITER_HOLDS_OID (&iter)) {
+   if (bson_iter_init_find (&iter, doc, \(dq_id\(dq) && BSON_ITER_HOLDS_OID (&iter)) {
       bson_iter_oid (&iter, &oid);
       bson_oid_to_string (&oid, oidstr);
-      printf ("%s\en", oidstr);
+      printf (\(dq%s\en\(dq, oidstr);
    } else {
-      printf ("Document is missing _id.\en");
+      printf (\(dqDocument is missing _id.\en\(dq);
    }
 }
 .ft P

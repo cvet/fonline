@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_CONCERN_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_concern_t \- mongoc_read_concern_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_CONCERN_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_concern_t \- mongoc_read_concern_t
 .sp
 Read Concern abstraction
 .SH SYNOPSIS
@@ -42,7 +42,7 @@ You can specify a read concern on connection objects, database objects, or colle
 .sp
 See \fI\%readConcern\fP on the MongoDB website for more information.
 .sp
-Read Concern is only sent to MongoDB when it has explicitly been set by \fBmongoc_read_concern_set_level\fP to anything other than NULL.
+Read Concern is only sent to MongoDB when it has explicitly been set by \fI\%mongoc_read_concern_set_level()\fP to anything other than NULL.
 .SH READ CONCERN LEVELS
 .TS
 center;
@@ -59,7 +59,7 @@ _
 T{
 MONGOC_READ_CONCERN_LEVEL_LOCAL
 T}	T{
-Level "local", the default.
+Level \(dqlocal\(dq, the default.
 T}	T{
 3.2
 T}
@@ -67,7 +67,7 @@ _
 T{
 MONGOC_READ_CONCERN_LEVEL_MAJORITY
 T}	T{
-Level "majority".
+Level \(dqmajority\(dq.
 T}	T{
 3.2
 T}
@@ -75,7 +75,7 @@ _
 T{
 MONGOC_READ_CONCERN_LEVEL_LINEARIZABLE
 T}	T{
-Level "linearizable".
+Level \(dqlinearizable\(dq.
 T}	T{
 3.4
 T}
@@ -83,7 +83,7 @@ _
 T{
 MONGOC_READ_CONCERN_LEVEL_AVAILABLE
 T}	T{
-Level "available".
+Level \(dqavailable\(dq.
 T}	T{
 3.6
 T}
@@ -91,14 +91,14 @@ _
 T{
 MONGOC_READ_CONCERN_LEVEL_SNAPSHOT
 T}	T{
-Level "snapshot".
+Level \(dqsnapshot\(dq.
 T}	T{
 4.0
 T}
 _
 .TE
 .sp
-For the sake of compatibility with future versions of MongoDB, \fBmongoc_read_concern_set_level\fP allows any string, not just this list of known read concern levels.
+For the sake of compatibility with future versions of MongoDB, \fI\%mongoc_read_concern_set_level()\fP allows any string, not just this list of known read concern levels.
 .sp
 See \fI\%Read Concern Levels\fP in the MongoDB manual for more information about the individual read concern levels.
 .SH AUTHOR

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_DESTROY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_destroy \- mongoc_client_pool_destroy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_DESTROY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_destroy \- mongoc_client_pool_destroy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool);
 .sp
 Release all resources associated with \fBpool\fP, including freeing the structure.
 .sp
-All \fBmongoc_client_t\fP objects obtained from \fBmongoc_client_pool_pop()\fP from \fBpool\fP must be pushed back onto the pool with \fBmongoc_client_pool_push()\fP prior to calling \fBmongoc_client_pool_destroy()\fP\&.
+All \fI\%mongoc_client_t\fP objects obtained from \fI\%mongoc_client_pool_pop()\fP from \fBpool\fP must be pushed back onto the pool with \fI\%mongoc_client_pool_push()\fP prior to calling \fI\%mongoc_client_pool_destroy()\fP\&.
 .sp
 This method is NOT thread safe, and must only be called by one thread. It should be called once the application is shutting down, and after all other threads that use clients have been joined.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .UNINDENT
 .SH AUTHOR
 MongoDB, Inc

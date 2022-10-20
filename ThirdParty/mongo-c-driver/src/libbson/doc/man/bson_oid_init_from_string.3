@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_OID_INIT_FROM_STRING" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_oid_init_from_string \- bson_oid_init_from_string()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_OID_INIT_FROM_STRING" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_oid_init_from_string \- bson_oid_init_from_string()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ bson_oid_init_from_string (bson_oid_t *oid, const char *str);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBoid\fP: A \fBbson_oid_t\fP\&.
+\fBoid\fP: A \fI\%bson_oid_t\fP\&.
 .IP \(bu 2
 \fBstr\fP: A string containing a hex encoded version of the oid.
 .UNINDENT
@@ -58,7 +58,7 @@ Parses the string containing hex encoded oid and initialize the bytes in \fBoid\
 .sp
 .nf
 .ft C
-bson_oid_init_from_string (&oid, "012345678901234567890123");
+bson_oid_init_from_string (&oid, \(dq012345678901234567890123\(dq);
 .ft P
 .fi
 .UNINDENT

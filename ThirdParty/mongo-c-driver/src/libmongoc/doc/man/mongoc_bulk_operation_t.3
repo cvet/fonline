@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_t \- mongoc_bulk_operation_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_t \- mongoc_bulk_operation_t
 .sp
 Bulk Write Operations
 .SH SYNOPSIS
@@ -46,12 +46,12 @@ typedef struct _mongoc_bulk_operation_t mongoc_bulk_operation_t;
 .sp
 The opaque type \fBmongoc_bulk_operation_t\fP provides an abstraction for submitting multiple write operations as a single batch.
 .sp
-After adding all of the write operations to the \fBmongoc_bulk_operation_t\fP, call \fBmongoc_bulk_operation_execute()\fP to execute the operation.
+After adding all of the write operations to the \fBmongoc_bulk_operation_t\fP, call \fI\%mongoc_bulk_operation_execute()\fP to execute the operation.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-It is only valid to call \fBmongoc_bulk_operation_execute()\fP once. The \fBmongoc_bulk_operation_t\fP must be destroyed afterwards.
+It is only valid to call \fI\%mongoc_bulk_operation_execute()\fP once. The \fBmongoc_bulk_operation_t\fP must be destroyed afterwards.
 .UNINDENT
 .UNINDENT
 .sp
@@ -59,7 +59,7 @@ It is only valid to call \fBmongoc_bulk_operation_execute()\fP once. The \fBmong
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBBulk Write Operations\fP
+\fI\%Bulk Write Operations\fP
 .fi
 .sp
 .UNINDENT

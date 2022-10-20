@@ -145,6 +145,18 @@ future_get_const_char_ptr (future_t *future)
    abort ();
 }
 
+bool_ptr
+future_get_bool_ptr (future_t *future)
+{
+   if (future_wait (future)) {
+      return future_value_get_bool_ptr (&future->return_value);
+   }
+
+   fprintf (stderr, "%s timed out\n", BSON_FUNC);
+   fflush (stderr);
+   abort ();
+}
+
 bson_error_ptr
 future_get_bson_error_ptr (future_t *future)
 {
@@ -531,9 +543,9 @@ void
 future_start (future_t *future,
               BSON_THREAD_FUN_TYPE (start_routine))
 {
-   int r = COMMON_PREFIX (thread_create) (&future->thread,
-                               start_routine,
-                               (void *) future);
+   int r = mcommon_thread_create (&future->thread,
+                                  start_routine,
+                                  (void *) future);
 
    BSON_ASSERT (!r);
 }
@@ -572,7 +584,7 @@ future_wait_max (future_t *future, int64_t timeout_ms)
       future->awaited = true;
 
       /* free memory */
-      COMMON_PREFIX (thread_join) (future->thread);
+      mcommon_thread_join (future->thread);
    }
 
    return resolved;

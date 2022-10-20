@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SOCKET_GETNAMEINFO" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_socket_getnameinfo \- mongoc_socket_getnameinfo()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SOCKET_GETNAMEINFO" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_socket_getnameinfo \- mongoc_socket_getnameinfo()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 char *
-mongoc_socket_getnameinfo (mongoc_socket_t *sock);
+mongoc_socket_getnameinfo (mongoc_socket_t *sock) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,7 +45,7 @@ mongoc_socket_getnameinfo (mongoc_socket_t *sock);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsock\fP: A \fBmongoc_socket_t\fP\&.
+\fBsock\fP: A \fI\%mongoc_socket_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp

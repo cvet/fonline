@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_t.html"/>
-    <title>mongoc_auto_encryption_opts_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_auto_encryption_opts_t.html"/>
+    <title>mongoc_auto_encryption_opts_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_auto_encryption_opts_new()" href="mongoc_auto_encryption_opts_new.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="gridfs.html" title="GridFS"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,12 +45,12 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-auto-encryption-opts-t">
-<h1>mongoc_auto_encryption_opts_t<a class="headerlink" href="#mongoc-auto-encryption-opts-t" title="Permalink to this headline">¶</a></h1>
+  <section id="mongoc-auto-encryption-opts-t">
+<h1>mongoc_auto_encryption_opts_t<a class="headerlink" href="#mongoc-auto-encryption-opts-t" title="Permalink to this heading">¶</a></h1>
 <p>Options for enabling automatic encryption and decryption for <a class="reference external" href="https://docs.mongodb.com/manual/core/security-client-side-encryption/">Client-Side Field Level Encryption</a>.</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_mongoc_auto_encryption_opts_t</span> <span class="n">mongoc_auto_encryption_opts_t</span><span class="p">;</span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_mongoc_auto_encryption_opts_t</span><span class="w"> </span><span class="n">mongoc_auto_encryption_opts_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition seealso">
@@ -54,9 +59,9 @@
 <div class="line">The guide for <a class="reference internal" href="using_client_side_encryption.html"><span class="doc">Using Client-Side Field Level Encryption</span></a></div>
 </div>
 </div>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_new.html">mongoc_auto_encryption_opts_new()</a></li>
@@ -65,13 +70,17 @@
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_keyvault_client_pool.html">mongoc_auto_encryption_opts_set_keyvault_client_pool()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_keyvault_namespace.html">mongoc_auto_encryption_opts_set_keyvault_namespace()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_kms_providers.html">mongoc_auto_encryption_opts_set_kms_providers()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_kms_credential_provider_callback.html">mongoc_auto_encryption_opts_set_kms_credential_provider_callback()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_schema_map.html">mongoc_auto_encryption_opts_set_schema_map()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_bypass_auto_encryption.html">mongoc_auto_encryption_opts_set_bypass_auto_encryption()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_extra.html">mongoc_auto_encryption_opts_set_extra()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_tls_opts.html">mongoc_auto_encryption_opts_set_tls_opts()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_encrypted_fields_map.html">mongoc_auto_encryption_opts_set_encrypted_fields_map()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_auto_encryption_opts_set_bypass_query_analysis.html">mongoc_auto_encryption_opts_set_bypass_query_analysis()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -107,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -182,7 +192,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

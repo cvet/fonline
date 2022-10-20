@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_TOPOLOGY_DESCRIPTION_HAS_WRITABLE_SERVER" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_topology_description_has_writable_server \- mongoc_topology_description_has_writable_server()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_TOPOLOGY_DESCRIPTION_HAS_WRITABLE_SERVER" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_topology_description_has_writable_server \- mongoc_topology_description_has_writable_server()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -38,19 +38,20 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .ft C
 bool
 mongoc_topology_description_has_writable_server (
-   mongoc_topology_description_t *td);
+   const mongoc_topology_description_t *td);
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Determines if the topology has a writable server available, such as a primary, mongos, or standalone. This function uses the driver\(aqs current knowledge of the state of the MongoDB server or servers it is connected to; it does no I/O and it does not block.
-.sp
-Use this function in a topology\-changed callback registered with \fBmongoc_apm_set_topology_changed_cb\fP\&. For historical reasons, the \fBmongoc_topology_description_t\fP passed to the callback is a const pointer, you must cast away const to pass the pointer to \fBmongoc_topology_description_has_writable_server\fP\&.
+Determines if the topology has a writable server available, such as a primary,
+mongos, or standalone. This function uses the driver\(aqs current knowledge of the
+state of the MongoDB server or servers it is connected to; it does no I/O and it
+does not block.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBtd\fP: A \fBmongoc_topology_description_t\fP\&.
+\fBtd\fP: A \fI\%mongoc_topology_description_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
@@ -60,7 +61,7 @@ True if there is a known writable server.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

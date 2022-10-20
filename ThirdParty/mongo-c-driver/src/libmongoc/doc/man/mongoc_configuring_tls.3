@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CONFIGURING_TLS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_configuring_tls \- Configuring TLS
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CONFIGURING_TLS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_configuring_tls \- Configuring TLS
 .SH CONFIGURATION WITH URI OPTIONS
 .sp
 Enable TLS by including \fBtls=true\fP in the URI.
@@ -38,7 +38,7 @@ Enable TLS by including \fBtls=true\fP in the URI.
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost:27017/");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost:27017/\(dq);
 mongoc_uri_set_option_as_bool (uri, MONGOC_URI_TLS, true);
 
 mongoc_client_t *client = mongoc_client_new_from_uri (uri);
@@ -77,7 +77,7 @@ Path to PEM formatted Private Key, with its Public Certificate concatenated at t
 T}
 _
 T{
-MONGOC_URI_TLSCERTIFICATEKEYPASSWORD
+MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD
 T}	T{
 tlscertificatekeypassword
 T}	T{
@@ -135,7 +135,7 @@ _
 .TE
 .SH CONFIGURATION WITH MONGOC_SSL_OPT_T
 .sp
-Alternatively, the \fBmongoc_ssl_opt_t\fP struct may be used to configure TLS with \fBmongoc_client_set_ssl_opts()\fP or \fBmongoc_client_pool_set_ssl_opts()\fP\&. Most of the configurable options can be set using the \fI\%Connection String URI\fP\&.
+Alternatively, the \fI\%mongoc_ssl_opt_t\fP struct may be used to configure TLS with \fI\%mongoc_client_set_ssl_opts()\fP or \fI\%mongoc_client_pool_set_ssl_opts()\fP\&. Most of the configurable options can be set using the \fI\%Connection String URI\fP\&.
 .TS
 center;
 |l|l|.
@@ -178,7 +178,7 @@ T}
 _
 .TE
 .sp
-The only exclusions are \fBcrl_file\fP and \fBca_dir\fP\&. Those may only be set with \fBmongoc_ssl_opt_t\fP\&.
+The only exclusions are \fBcrl_file\fP and \fBca_dir\fP\&. Those may only be set with \fI\%mongoc_ssl_opt_t\fP\&.
 .SH CLIENT AUTHENTICATION
 .sp
 When MongoDB is started with TLS enabled, it will by default require the client to provide a client certificate issued by a certificate authority specified by \fB\-\-tlsCAFile\fP, or an authority trusted by the native certificate store in use on the server.
@@ -189,9 +189,9 @@ To provide the client certificate, set the \fBtlsCertificateKeyFile\fP in the UR
 .sp
 .nf
 .ft C
-mongoc_uri_t *uri = mongoc_uri_new ("mongodb://localhost:27017/");
+mongoc_uri_t *uri = mongoc_uri_new (\(dqmongodb://localhost:27017/\(dq);
 mongoc_uri_set_option_as_bool (uri, MONGOC_URI_TLS, true);
-mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, "/path/to/client\-certificate.pem");
+mongoc_uri_set_option_as_utf8 (uri, MONGOC_URI_TLSCERTIFICATEKEYFILE, \(dq/path/to/client\-certificate.pem\(dq);
 
 mongoc_client_t *client = mongoc_client_new_from_uri (uri);
 .ft P
@@ -250,18 +250,18 @@ cmake \-DOPENSSL_ROOT_DIR=/absolute/path/to/openssl
 .UNINDENT
 .UNINDENT
 .sp
-When compiled against OpenSSL, the driver will attempt to load the system default certificate store, as configured by the distribution. That can be overridden by setting the \fBtlsCAFile\fP URI option or with the fields \fBca_file\fP and \fBca_dir\fP in the \fBmongoc_ssl_opt_t\fP\&.
+When compiled against OpenSSL, the driver will attempt to load the system default certificate store, as configured by the distribution. That can be overridden by setting the \fBtlsCAFile\fP URI option or with the fields \fBca_file\fP and \fBca_dir\fP in the \fI\%mongoc_ssl_opt_t\fP\&.
 .sp
 The Online Certificate Status Protocol (OCSP) (see \fI\%RFC 6960\fP) is fully supported when using OpenSSL 1.0.1+ with the following notes:
 .INDENT 0.0
 .IP \(bu 2
-When a \fBcrl_file\fP is set with \fBmongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the certificate is considered revoked (even if the certificate has a valid stapled OCSP response)
+When a \fBcrl_file\fP is set with \fI\%mongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the certificate is considered revoked (even if the certificate has a valid stapled OCSP response)
 .UNINDENT
 .SS LibreSSL / libtls
 .sp
 The MongoDB C Driver supports LibreSSL through the use of OpenSSL compatibility checks when configured to compile against \fBopenssl\fP\&. It also supports the new \fBlibtls\fP library when configured to build against \fBlibressl\fP\&.
 .sp
-When compiled against the Windows native libraries, the \fBcrl_file\fP option of a \fBmongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
+When compiled against the Windows native libraries, the \fBcrl_file\fP option of a \fI\%mongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
 .sp
 Setting \fBtlsDisableOCSPEndpointCheck\fP and \fBtlsDisableCertificateRevocationCheck\fP has no effect.
 .sp
@@ -276,13 +276,13 @@ Connection will continue if a Must\-Staple certificate is presented without a st
 .sp
 The MongoDB C Driver supports the Windows native TLS library (Secure Channel, or SChannel), and its native crypto library (Cryptography API: Next Generation, or CNG).
 .sp
-When compiled against the Windows native libraries, the \fBca_dir\fP option of a \fBmongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
+When compiled against the Windows native libraries, the \fBca_dir\fP option of a \fI\%mongoc_ssl_opt_t\fP is not supported, and will issue an error if used.
 .sp
 Encrypted PEM files (e.g., setting \fBtlsCertificateKeyPassword\fP) are also not supported, and will result in error when attempting to load them.
 .sp
 When \fBtlsCAFile\fP is set, the driver will only allow server certificates issued by the authority (or authorities) provided. When no \fBtlsCAFile\fP is set, the driver will look up the Certificate Authority using the \fBSystem Local Machine Root\fP certificate store to confirm the provided certificate.
 .sp
-When \fBcrl_file\fP is set with \fBmongoc_ssl_opt_t\fP, the driver will import the revocation list to the \fBSystem Local Machine Root\fP certificate store.
+When \fBcrl_file\fP is set with \fI\%mongoc_ssl_opt_t\fP, the driver will import the revocation list to the \fBSystem Local Machine Root\fP certificate store.
 .sp
 Setting \fBtlsDisableOCSPEndpointCheck\fP has no effect.
 .sp
@@ -291,7 +291,7 @@ The Online Certificate Status Protocol (OCSP) (see \fI\%RFC 6960\fP) is partiall
 .IP \(bu 2
 The Must\-Staple extension (see \fI\%RFC 7633\fP) is ignored. Connection may continue if a Must\-Staple certificate is presented with no stapled response (unless the client receives a revoked response from an OCSP responder).
 .IP \(bu 2
-When a \fBcrl_file\fP is set with \fBmongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the OCSP response takes precedence. E.g. if the server presents a certificate with a valid stapled OCSP response, the certificate is considered valid even if the \fBcrl_file\fP marks it as revoked.
+When a \fBcrl_file\fP is set with \fI\%mongoc_ssl_opt_t\fP, and the \fBcrl_file\fP revokes the server\(aqs certificate, the OCSP response takes precedence. E.g. if the server presents a certificate with a valid stapled OCSP response, the certificate is considered valid even if the \fBcrl_file\fP marks it as revoked.
 .IP \(bu 2
 Connection will continue if a Must\-Staple certificate is presented without a stapled response and the OCSP responder is down.
 .UNINDENT
@@ -299,7 +299,7 @@ Connection will continue if a Must\-Staple certificate is presented without a st
 .sp
 The MongoDB C Driver supports the Darwin (OS X, macOS, iOS, etc.) native TLS library (Secure Transport), and its native crypto library (Common Crypto, or CC).
 .sp
-When compiled against Secure Transport, the \fBca_dir\fP and \fBcrl_file\fP options of a \fBmongoc_ssl_opt_t\fP are not supported. An error is issued if either are used.
+When compiled against Secure Transport, the \fBca_dir\fP and \fBcrl_file\fP options of a \fI\%mongoc_ssl_opt_t\fP are not supported. An error is issued if either are used.
 .sp
 When \fBtlsCAFile\fP is set, the driver will only allow server certificates issued by the authority (or authorities) provided. When no \fBtlsCAFile\fP is set, the driver will use the Certificate Authorities in the currently unlocked keychains.
 .sp

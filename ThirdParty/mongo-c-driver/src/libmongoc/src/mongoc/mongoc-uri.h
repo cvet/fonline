@@ -62,6 +62,8 @@
 #define MONGOC_URI_SLAVEOK "slaveok"
 #define MONGOC_URI_SOCKETCHECKINTERVALMS "socketcheckintervalms"
 #define MONGOC_URI_SOCKETTIMEOUTMS "sockettimeoutms"
+#define MONGOC_URI_SRVSERVICENAME "srvservicename"
+#define MONGOC_URI_SRVMAXHOSTS "srvmaxhosts"
 #define MONGOC_URI_TLS "tls"
 #define MONGOC_URI_TLSCERTIFICATEKEYFILE "tlscertificatekeyfile"
 #define MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD "tlscertificatekeyfilepassword"
@@ -94,7 +96,7 @@ typedef struct _mongoc_uri_t mongoc_uri_t;
 
 
 MONGOC_EXPORT (mongoc_uri_t *)
-mongoc_uri_copy (const mongoc_uri_t *uri);
+mongoc_uri_copy (const mongoc_uri_t *uri) BSON_GNUC_WARN_UNUSED_RESULT;
 MONGOC_EXPORT (void)
 mongoc_uri_destroy (mongoc_uri_t *uri);
 MONGOC_EXPORT (mongoc_uri_t *)
@@ -108,7 +110,12 @@ mongoc_uri_new_for_host_port (const char *hostname,
 MONGOC_EXPORT (const mongoc_host_list_t *)
 mongoc_uri_get_hosts (const mongoc_uri_t *uri);
 MONGOC_EXPORT (const char *)
-mongoc_uri_get_service (const mongoc_uri_t *uri);
+mongoc_uri_get_service (const mongoc_uri_t *uri)
+   BSON_GNUC_DEPRECATED_FOR (mongoc_uri_get_srv_hostname);
+MONGOC_EXPORT (const char *)
+mongoc_uri_get_srv_hostname (const mongoc_uri_t *uri);
+MONGOC_EXPORT (const char *)
+mongoc_uri_get_srv_service_name (const mongoc_uri_t *uri);
 MONGOC_EXPORT (const char *)
 mongoc_uri_get_database (const mongoc_uri_t *uri);
 MONGOC_EXPORT (bool)
@@ -202,7 +209,7 @@ mongoc_uri_get_ssl (const mongoc_uri_t *uri)
 MONGOC_EXPORT (bool)
 mongoc_uri_get_tls (const mongoc_uri_t *uri);
 MONGOC_EXPORT (char *)
-mongoc_uri_unescape (const char *escaped_string);
+mongoc_uri_unescape (const char *escaped_string) BSON_GNUC_WARN_UNUSED_RESULT;
 MONGOC_EXPORT (const mongoc_read_prefs_t *)
 mongoc_uri_get_read_prefs_t (const mongoc_uri_t *uri);
 MONGOC_EXPORT (void)

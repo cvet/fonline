@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/advanced-connections.html"/>
-    <title>Advanced Connections &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/advanced-connections.html"/>
+    <title>Advanced Connections &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Connection Pooling" href="connection-pooling.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc-common-task-examples.html" title="Common Tasks"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="guides.html" accesskey="U">Guides</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,36 +45,36 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="advanced-connections">
-<h1>Advanced Connections<a class="headerlink" href="#advanced-connections" title="Permalink to this headline">¶</a></h1>
+  <section id="advanced-connections">
+<h1>Advanced Connections<a class="headerlink" href="#advanced-connections" title="Permalink to this heading">¶</a></h1>
 <p>The following guide contains information specific to certain types of MongoDB configurations.</p>
 <p>For an example of connecting to a simple standalone server, see the <a class="reference internal" href="tutorial.html#tutorial-connecting"><span class="std std-ref">Tutorial</span></a>. To establish a connection with authentication options enabled, see the <a class="reference internal" href="authentication.html"><span class="doc">Authentication</span></a> page.</p>
-<div class="section" id="connecting-to-a-replica-set">
-<h2>Connecting to a Replica Set<a class="headerlink" href="#connecting-to-a-replica-set" title="Permalink to this headline">¶</a></h2>
+<section id="connecting-to-a-replica-set">
+<h2>Connecting to a Replica Set<a class="headerlink" href="#connecting-to-a-replica-set" title="Permalink to this heading">¶</a></h2>
 <p>Connecting to a <a class="reference external" href="https://docs.mongodb.org/manual/replication/">replica set</a> is much like connecting to a standalone MongoDB server. Simply specify the replica set name using the <code class="docutils literal notranslate"><span class="pre">?replicaSet=myreplset</span></code> URI option.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span>
-<span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="cm">/* Create our MongoDB Client */</span>
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new</span> <span class="p">(</span>
-      <span class="s">&quot;mongodb://host01:27017,host02:27017,host03:27017/?replicaSet=myreplset&quot;</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* Create our MongoDB Client */</span><span class="w"></span>
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="s">&quot;mongodb://host01:27017,host02:27017,host03:27017/?replicaSet=myreplset&quot;</span><span class="p">);</span><span class="w"></span>
 
-   <span class="cm">/* Do some work */</span>
-   <span class="cm">/* TODO */</span>
+<span class="w">   </span><span class="cm">/* Do some work */</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/* TODO */</span><span class="w"></span>
 
-   <span class="cm">/* Clean up */</span>
-   <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
+<span class="w">   </span><span class="cm">/* Clean up */</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition tip">
@@ -77,55 +82,55 @@
 <p>Multiple hostnames can be specified in the MongoDB connection string URI, with a comma separating hosts in the seed list.</p>
 <p>It is recommended to use a seed list of members of the replica set to allow the driver to connect to any node.</p>
 </div>
-</div>
-<div class="section" id="connecting-to-a-sharded-cluster">
-<h2>Connecting to a Sharded Cluster<a class="headerlink" href="#connecting-to-a-sharded-cluster" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connecting-to-a-sharded-cluster">
+<h2>Connecting to a Sharded Cluster<a class="headerlink" href="#connecting-to-a-sharded-cluster" title="Permalink to this heading">¶</a></h2>
 <p>To connect to a <a class="reference external" href="https://docs.mongodb.org/manual/sharding/">sharded cluster</a>, specify the <code class="docutils literal notranslate"><span class="pre">mongos</span></code> nodes the client should connect to. The C Driver will automatically detect that it has connected to a <code class="docutils literal notranslate"><span class="pre">mongos</span></code> sharding server.</p>
 <p>If more than one hostname is specified, a seed list will be created to attempt failover between the <code class="docutils literal notranslate"><span class="pre">mongos</span></code> instances.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Specifying the <code class="docutils literal notranslate"><span class="pre">replicaSet</span></code> parameter when connecting to a <code class="docutils literal notranslate"><span class="pre">mongos</span></code> sharding server is invalid.</p>
 </div>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 
-<span class="kt">int</span>
-<span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="cm">/* Create our MongoDB Client */</span>
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new</span> <span class="p">(</span><span class="s">&quot;mongodb://myshard01:27017/&quot;</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* Create our MongoDB Client */</span><span class="w"></span>
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://myshard01:27017/&quot;</span><span class="p">);</span><span class="w"></span>
 
-   <span class="cm">/* Do something with client ... */</span>
+<span class="w">   </span><span class="cm">/* Do something with client ... */</span><span class="w"></span>
 
-   <span class="cm">/* Free the client */</span>
-   <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* Free the client */</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="connecting-to-an-ipv6-address">
-<h2>Connecting to an IPv6 Address<a class="headerlink" href="#connecting-to-an-ipv6-address" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connecting-to-an-ipv6-address">
+<h2>Connecting to an IPv6 Address<a class="headerlink" href="#connecting-to-an-ipv6-address" title="Permalink to this heading">¶</a></h2>
 <p>The MongoDB C Driver will automatically resolve IPv6 addresses from host names. However, to specify an IPv6 address directly, wrap the address in <code class="docutils literal notranslate"><span class="pre">[]</span></code>.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongoc_uri_t *uri = mongoc_uri_new (&quot;mongodb://[::1]:27017&quot;);
 </pre></div>
 </div>
-</div>
-<div class="section" id="connecting-with-ipv4-and-ipv6">
-<h2>Connecting with IPv4 and IPv6<a class="headerlink" href="#connecting-with-ipv4-and-ipv6" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connecting-with-ipv4-and-ipv6">
+<h2>Connecting with IPv4 and IPv6<a class="headerlink" href="#connecting-with-ipv4-and-ipv6" title="Permalink to this heading">¶</a></h2>
 <p>If connecting to a hostname that has both IPv4 and IPv6 DNS records, the behavior follows <a class="reference external" href="https://www.ietf.org/rfc/rfc6555.txt">RFC-6555</a>. A connection to the IPv6 address is attempted first. If IPv6 fails, then a connection is attempted to the IPv4 address. If the connection attempt to IPv6 does not complete within 250ms, then IPv4 is tried in parallel. Whichever succeeds connection first cancels the other. The successful DNS result is cached for 10 minutes.</p>
 <p>As a consequence, attempts to connect to a mongod only listening on IPv4 may be delayed if there are both A (IPv4) and AAAA (IPv6) DNS records associated with the host.</p>
 <p>To avoid a delay, configure hostnames to match the MongoDB configuration. That is, only create an A record if the mongod is only listening on IPv4.</p>
-</div>
-<div class="section" id="connecting-to-a-unix-domain-socket">
-<h2>Connecting to a UNIX Domain Socket<a class="headerlink" href="#connecting-to-a-unix-domain-socket" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connecting-to-a-unix-domain-socket">
+<h2>Connecting to a UNIX Domain Socket<a class="headerlink" href="#connecting-to-a-unix-domain-socket" title="Permalink to this heading">¶</a></h2>
 <p>On UNIX-like systems, the C Driver can connect directly to a MongoDB server using a UNIX domain socket. Pass the URL-encoded path to the socket, which <em>must</em> be suffixed with <code class="docutils literal notranslate"><span class="pre">.sock</span></code>. For example, to connect to a domain socket at <code class="docutils literal notranslate"><span class="pre">/tmp/mongodb-27017.sock</span></code>:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongoc_uri_t *uri = mongoc_uri_new (&quot;mongodb://%2Ftmp%2Fmongodb-27017.sock&quot;);
 </pre></div>
@@ -134,9 +139,9 @@
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongoc_uri_t *uri = mongoc_uri_new (&quot;mongodb://user:pass@%2Ftmp%2Fmongodb-27017.sock&quot;);
 </pre></div>
 </div>
-</div>
-<div class="section" id="connecting-to-a-server-over-tls">
-<h2>Connecting to a server over TLS<a class="headerlink" href="#connecting-to-a-server-over-tls" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connecting-to-a-server-over-tls">
+<h2>Connecting to a server over TLS<a class="headerlink" href="#connecting-to-a-server-over-tls" title="Permalink to this heading">¶</a></h2>
 <p>These are instructions for configuring TLS/SSL connections.</p>
 <p>To run a server locally (on port 27017, for example):</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ mongod --port 27017 --tlsMode requireTLS --tlsCertificateKeyFile server.pem --tlsCAFile ca.pem
@@ -157,9 +162,9 @@ client = mongoc_client_new_from_uri (uri);
 </div>
 <p>The client certificate provided by <code class="docutils literal notranslate"><span class="pre">tlsCertificateKeyFile</span></code> must be issued by one of the server trusted Certificate Authorities listed in <code class="docutils literal notranslate"><span class="pre">--tlsCAFile</span></code>, or issued by a CA in the native certificate store on the server when omitted.</p>
 <p>See <a class="reference internal" href="configuring_tls.html"><span class="doc">Configuring TLS</span></a> for more information on the various TLS related options.</p>
-</div>
-<div class="section" id="compressing-data-to-and-from-mongodb">
-<h2>Compressing data to and from MongoDB<a class="headerlink" href="#compressing-data-to-and-from-mongodb" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="compressing-data-to-and-from-mongodb">
+<h2>Compressing data to and from MongoDB<a class="headerlink" href="#compressing-data-to-and-from-mongodb" title="Permalink to this heading">¶</a></h2>
 <p>MongoDB 3.4 added Snappy compression support, zlib compression in 3.6, and zstd compression in 4.2.
 To enable compression support the client must be configured with which compressors to use:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongoc_client_t *client = NULL;
@@ -176,17 +181,12 @@ data (if possible), but the server might still reply using <code class="docutils
 depending on how the server was configured.</p>
 <p>The driver must be built with zlib and/or snappy and/or zstd support to enable compression
 support, any unknown (or not compiled in) compressor value will be ignored. Note: to build with zstd requires cmake 3.12 or higher.</p>
-</div>
-<div class="section" id="additional-connection-options">
-<h2>Additional Connection Options<a class="headerlink" href="#additional-connection-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="additional-connection-options">
+<h2>Additional Connection Options<a class="headerlink" href="#additional-connection-options" title="Permalink to this heading">¶</a></h2>
 <p>The full list of connection options can be found in the <a class="symbol reference internal" href="mongoc_uri_t.html"><span class="doc">mongoc_uri_t</span></a> docs.</p>
 <p>Certain socket/connection related options are not configurable:</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 16%" />
-<col style="width: 60%" />
-<col style="width: 25%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Option</p></th>
 <th class="head"><p>Description</p></th>
@@ -219,8 +219,8 @@ packets (Nagle algorithm)</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -284,7 +284,7 @@ packets (Nagle algorithm)</p></td>
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

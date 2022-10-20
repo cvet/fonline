@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_MATCHER" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_matcher \- Client Side Document Matching
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_MATCHER" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_matcher \- Client Side Document Matching
 .SH BASIC DOCUMENT MATCHING (DEPRECATED)
 .sp
 \fBWARNING:\fP
@@ -49,13 +49,13 @@ To test this, perform a \fBmongodump\fP of a single collection and pipe it to th
 .sp
 .nf
 .ft C
-$ echo "db.test.insert({hello:\(aqworld\(aq})" | mongo
+$ echo \(dqdb.test.insert({hello:\(aqworld\(aq})\(dq | mongo
 connecting to: test
-WriteResult({ "nInserted" : 1 })
+WriteResult({ \(dqnInserted\(dq : 1 })
 bye
 
 $ mongodump \-d test \-c test \-o \- | filter\-bsondump
-{ "_id" : { "$oid" : "537afac9a70e5b4d556153bc" }, "hello" : "world" }
+{ \(dq_id\(dq : { \(dq$oid\(dq : \(dq537afac9a70e5b4d556153bc\(dq }, \(dqhello\(dq : \(dqworld\(dq }
 .ft P
 .fi
 .UNINDENT

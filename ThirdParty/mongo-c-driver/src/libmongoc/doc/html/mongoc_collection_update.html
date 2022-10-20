@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_collection_update.html"/>
-    <title>mongoc_collection_update() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_collection_update.html"/>
+    <title>mongoc_collection_update() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_collection_update_one()" href="mongoc_collection_update_one.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_collection_stats.html" title="mongoc_collection_stats()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_collection_t.html" accesskey="U">mongoc_collection_t</a> &#187;</li> 
       </ul>
@@ -41,47 +46,47 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-collection-update">
-<h1>mongoc_collection_update()<a class="headerlink" href="#mongoc-collection-update" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span>
-<span class="nf">mongoc_collection_update</span> <span class="p">(</span><span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span><span class="p">,</span>
-                          <span class="n">mongoc_update_flags_t</span> <span class="n">flags</span><span class="p">,</span>
-                          <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">selector</span><span class="p">,</span>
-                          <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">update</span><span class="p">,</span>
-                          <span class="k">const</span> <span class="n">mongoc_write_concern_t</span> <span class="o">*</span><span class="n">write_concern</span><span class="p">,</span>
-                          <span class="n">bson_error_t</span> <span class="o">*</span><span class="n">error</span><span class="p">);</span>
+  <section id="mongoc-collection-update">
+<h1>mongoc_collection_update()<a class="headerlink" href="#mongoc-collection-update" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span><span class="w"></span>
+<span class="nf">mongoc_collection_update</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="p">,</span><span class="w"></span>
+<span class="w">                          </span><span class="n">mongoc_update_flags_t</span><span class="w"> </span><span class="n">flags</span><span class="p">,</span><span class="w"></span>
+<span class="w">                          </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">selector</span><span class="p">,</span><span class="w"></span>
+<span class="w">                          </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">update</span><span class="p">,</span><span class="w"></span>
+<span class="w">                          </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_write_concern_t</span><span class="w"> </span><span class="o">*</span><span class="n">write_concern</span><span class="p">,</span><span class="w"></span>
+<span class="w">                          </span><span class="n">bson_error_t</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">collection</span></code>: A <a class="symbol reference internal" href="mongoc_collection_t.html"><span class="doc">mongoc_collection_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">flags</span></code>: A bitwise or of <a class="symbol reference internal" href="mongoc_update_flags_t.html"><span class="doc">mongoc_update_flags_t</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">selector</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the query to match documents for updating.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">update</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the update to perform. If updating with a pipeline, a <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> array.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">selector</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the query to match documents for updating.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">update</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the update to perform. If updating with a pipeline, a <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> array.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">write_concern</span></code>: A <a class="symbol reference internal" href="mongoc_write_concern_t.html"><span class="doc">mongoc_write_concern_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: An optional location for a <a class="symbol reference internal" href="errors.html"><span class="doc">bson_error_t</span></a> or <code class="docutils literal notranslate"><span class="pre">NULL</span></code>.</p></li>
 </ul>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>Superseded by <a class="symbol reference internal" href="mongoc_collection_update_one.html"><span class="doc">mongoc_collection_update_one()</span></a>, <a class="symbol reference internal" href="mongoc_collection_update_many.html"><span class="doc">mongoc_collection_update_many()</span></a>, and <a class="symbol reference internal" href="mongoc_collection_replace_one.html"><span class="doc">mongoc_collection_replace_one()</span></a>.</p>
 <p>This function shall update documents in <code class="docutils literal notranslate"><span class="pre">collection</span></code> that match <code class="docutils literal notranslate"><span class="pre">selector</span></code>.</p>
 <p>By default, updates only a single document. Set flags to <code class="docutils literal notranslate"><span class="pre">MONGOC_UPDATE_MULTI_UPDATE</span></code> to update multiple documents.</p>
-</div>
-<div class="section" id="errors">
-<h2>Errors<a class="headerlink" href="#errors" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="errors">
+<h2>Errors<a class="headerlink" href="#errors" title="Permalink to this heading">¶</a></h2>
 <p>Errors are propagated via the <code class="docutils literal notranslate"><span class="pre">error</span></code> parameter.</p>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if successful. Returns <code class="docutils literal notranslate"><span class="pre">false</span></code> and sets <code class="docutils literal notranslate"><span class="pre">error</span></code> if there are invalid arguments or a server or network error.</p>
 <p>A write concern timeout or write concern error is considered a failure.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -117,6 +122,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -192,7 +198,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

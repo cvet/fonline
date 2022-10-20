@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SET_STREAM_INITIATOR" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_set_stream_initiator \- mongoc_client_set_stream_initiator()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SET_STREAM_INITIATOR" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_set_stream_initiator \- mongoc_client_set_stream_initiator()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,15 +45,15 @@ mongoc_client_set_stream_initiator (mongoc_client_t *client,
 .UNINDENT
 .UNINDENT
 .sp
-The \fBmongoc_client_set_stream_initiator()\fP function shall associate a given \fBmongoc_client_t\fP with a new stream initiator. This will completely replace the default transport (buffered TCP, possibly with TLS). The \fBinitiator\fP should fulfill the \fBmongoc_stream_t\fP contract. \fBuser_data\fP is passed through to the \fBinitiator\fP callback and may be used for whatever run time customization is necessary.
+The \fI\%mongoc_client_set_stream_initiator()\fP function shall associate a given \fI\%mongoc_client_t\fP with a new stream initiator. This will completely replace the default transport (buffered TCP, possibly with TLS). The \fBinitiator\fP should fulfill the \fI\%mongoc_stream_t\fP contract. \fBuser_data\fP is passed through to the \fBinitiator\fP callback and may be used for whatever run time customization is necessary.
 .sp
 If \fBuser_data\fP is passed, it is the application\(aqs responsibility to ensure \fBuser_data\fP remains valid for the lifetime of the client.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
-\fBinitiator\fP: A \fBmongoc_stream_initiator_t\fP\&.
+\fBinitiator\fP: A \fI\%mongoc_stream_initiator_t\fP\&.
 .IP \(bu 2
 \fBuser_data\fP: User supplied pointer for callback function.
 .UNINDENT

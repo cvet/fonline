@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_GET_MECHANISM_PROPERTIES" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_get_mechanism_properties \- mongoc_uri_get_mechanism_properties()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_GET_MECHANISM_PROPERTIES" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_get_mechanism_properties \- mongoc_uri_get_mechanism_properties()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,16 +46,16 @@ mongoc_uri_get_mechanism_properties (const mongoc_uri_t *uri,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .IP \(bu 2
 \fBproperties\fP: An uninitialized \fI\%bson_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Fetches the "authMechanismProperties" options set on this \fBmongoc_uri_t\fP\&. The out\-parameter \fBproperties\fP should be an uninitialized, stack\-allocated \fI\%bson_t\fP\&. It is statically initialized with \fI\%bson_init_static()\fP to point to the internal data of \fBuri\fP, so its contents must not be modified and it becomes invalid after \fBuri\fP is destroyed.
+Fetches the \(dqauthMechanismProperties\(dq options set on this \fI\%mongoc_uri_t\fP\&. The out\-parameter \fBproperties\fP should be an uninitialized, stack\-allocated \fI\%bson_t\fP\&. It is statically initialized with \fI\%bson_init_static()\fP to point to the internal data of \fBuri\fP, so its contents must not be modified and it becomes invalid after \fBuri\fP is destroyed.
 .SH RETURNS
 .sp
-If no "authMechanismProperties" have been set on \fBuri\fP, this functions returns false and \fBproperties\fP remains uninitialized.
+If no \(dqauthMechanismProperties\(dq have been set on \fBuri\fP, this functions returns false and \fBproperties\fP remains uninitialized.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -66,15 +66,15 @@ mongoc_uri_t *uri;
 bson_t props;
 
 uri = mongoc_uri_new (
-   "mongodb://user%40DOMAIN.COM:password@localhost/?authMechanism=GSSAPI"
-   "&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true");
+   \(dqmongodb://user%40DOMAIN.COM:password@localhost/?authMechanism=GSSAPI\(dq
+   \(dq&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true\(dq);
 
 if (mongoc_uri_get_mechanism_properties (uri, &props)) {
    char *json = bson_as_canonical_extended_json (&props, NULL);
-   printf ("%s\en", json);
+   printf (\(dq%s\en\(dq, json);
    bson_free (json);
 } else {
-   printf ("No authMechanismProperties.\en");
+   printf (\(dqNo authMechanismProperties.\en\(dq);
 }
 .ft P
 .fi
@@ -87,7 +87,7 @@ This code produces the output:
 .sp
 .nf
 .ft C
-{ "SERVICE_NAME" : "other", "CANONICALIZE_HOST_NAME" : "true" }
+{ \(dqSERVICE_NAME\(dq : \(dqother\(dq, \(dqCANONICALIZE_HOST_NAME\(dq : \(dqtrue\(dq }
 .ft P
 .fi
 .UNINDENT

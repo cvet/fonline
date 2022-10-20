@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_BUCKET_ABORT_UPLOAD" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_bucket_abort_upload \- mongoc_gridfs_bucket_abort_upload()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_BUCKET_ABORT_UPLOAD" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_bucket_abort_upload \- mongoc_gridfs_bucket_abort_upload()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ mongoc_gridfs_bucket_abort_upload (mongoc_stream_t *stream);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBstream\fP: A \fBmongoc_stream_t\fP created by \fBmongoc_gridfs_bucket_open_upload_stream\fP or \fBmongoc_gridfs_bucket_open_upload_stream_with_id\fP\&.
+\fBstream\fP: A \fI\%mongoc_stream_t\fP created by \fI\%mongoc_gridfs_bucket_open_upload_stream()\fP or \fI\%mongoc_gridfs_bucket_open_upload_stream_with_id()\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -58,11 +58,11 @@ True on success. False otherwise, and sets an error on \fBstream\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_gridfs_bucket_open_upload_stream\fP
+\fI\%mongoc_gridfs_bucket_open_upload_stream()\fP
 .fi
 .sp
 .nf
-\fBmongoc_gridfs_bucket_open_upload_stream_with_id()\fP
+\fI\%mongoc_gridfs_bucket_open_upload_stream_with_id()\fP
 .fi
 .sp
 .UNINDENT

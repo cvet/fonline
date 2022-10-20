@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_GET_SERVICE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_get_service \- mongoc_uri_get_service()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_GET_SERVICE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_get_service \- mongoc_uri_get_service()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 const char *
-mongoc_uri_get_service (const mongoc_uri_t *uri);
+mongoc_uri_get_service (const mongoc_uri_t *uri)
+   BSON_GNUC_DEPRECATED_FOR (mongoc_uri_get_srv_hostname);
 .ft P
 .fi
 .UNINDENT
@@ -45,14 +46,18 @@ mongoc_uri_get_service (const mongoc_uri_t *uri);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .UNINDENT
-.SH DESCRIPTION
+.SH DEPRECATED
 .sp
-Returns the SRV service name of a MongoDB URI.
+This function is deprecated and should not be used in new code.
+.sp
+Please use \fI\%mongoc_uri_get_srv_hostname()\fP instead.
+.sp
+Returns the SRV host and domain name of a MongoDB URI.
 .SH RETURNS
 .sp
-A string if this URI\(aqs scheme is "mongodb+srv://", or NULL if the scheme is "mongodb://".
+A string if this URI\(aqs scheme is \(dqmongodb+srv://\(dq, or NULL if the scheme is \(dqmongodb://\(dq.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

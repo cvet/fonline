@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_CONCERN_SET_LEVEL" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_concern_set_level \- mongoc_read_concern_set_level()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_CONCERN_SET_LEVEL" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_concern_set_level \- mongoc_read_concern_set_level()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,17 +46,17 @@ mongoc_read_concern_set_level (mongoc_read_concern_t *read_concern,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBread_concern\fP: A \fBmongoc_read_concern_t\fP\&.
+\fBread_concern\fP: A \fI\%mongoc_read_concern_t\fP\&.
 .IP \(bu 2
 \fBlevel\fP: The readConcern level to use.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Sets the read concern level. See \fBmongoc_read_concern_t\fP for details.
+Sets the read concern level. See \fI\%mongoc_read_concern_t\fP for details.
 .sp
 Beginning in version 1.9.0, this function can now alter the read concern after
 it has been used in an operation. Previously, using the struct with an operation
-would mark it as "frozen" and calling this function would return \fBfalse\fP
+would mark it as \(dqfrozen\(dq and calling this function would return \fBfalse\fP
 instead of altering the read concern.
 .SH RETURNS
 .sp

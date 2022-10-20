@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_TIMESTAMP" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_timestamp \- bson_iter_timestamp()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_TIMESTAMP" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_timestamp \- bson_iter_timestamp()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,7 +50,7 @@ bson_iter_timestamp (const bson_iter_t *iter,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
 \fBtimestamp\fP: A uint32_t.
 .IP \(bu 2
@@ -60,9 +60,9 @@ bson_iter_timestamp (const bson_iter_t *iter,
 .sp
 The BSON_TYPE_TIMESTAMP type is not a date/time and is typically used for intra\-server communication.
 .sp
-You probably want \fBbson_iter_date_time()\fP\&.
+You probably want \fI\%bson_iter_date_time()\fP\&.
 .sp
-The \fBbson_iter_timestamp()\fP function shall return the contents of a BSON_TYPE_TIMESTAMP element. It is invalid to call this function while observing an element that is not of type BSON_TYPE_TIMESTAMP.
+The \fI\%bson_iter_timestamp()\fP function shall return the contents of a BSON_TYPE_TIMESTAMP element. It is invalid to call this function while observing an element that is not of type BSON_TYPE_TIMESTAMP.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

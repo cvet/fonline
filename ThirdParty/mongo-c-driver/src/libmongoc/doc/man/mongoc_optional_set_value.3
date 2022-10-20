@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_OPTIONAL_SET_VALUE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_optional_set_value \- mongoc_optional_set_value()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_OPTIONAL_SET_VALUE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_optional_set_value \- mongoc_optional_set_value()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,11 +43,11 @@ mongoc_optional_set_value (mongoc_optional_t *opt);
 .UNINDENT
 .UNINDENT
 .sp
-Sets a value on a \fBmongoc_optional_t\fP\&. Once a value has been set, it cannot be unset, i.e. \fImongoc_optional_is_set\fP will always return \fBtrue\fP after calling \fImongoc_optional_set_value\fP\&.
+Sets a value on a \fI\%mongoc_optional_t\fP\&. Once a value has been set, it cannot be unset, i.e. \fImongoc_optional_is_set\fP will always return \fBtrue\fP after calling \fImongoc_optional_set_value\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopt\fP: A \fBmongoc_optional_t\fP\&.
+\fBopt\fP: A \fI\%mongoc_optional_t\fP\&.
 .UNINDENT
 .SH AUTHOR
 MongoDB, Inc

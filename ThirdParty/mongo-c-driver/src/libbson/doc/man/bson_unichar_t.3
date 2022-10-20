@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_UNICHAR_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_unichar_t \- bson_unichar_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_UNICHAR_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_unichar_t \- bson_unichar_t
 .sp
 Unicode Character Abstraction
 .SH SYNOPSIS
@@ -45,7 +45,7 @@ typedef uint32_t bson_unichar_t;
 .UNINDENT
 .SH DESCRIPTION
 .sp
-\fBbson_unichar_t\fP provides an abstraction on a single unicode character. It is the 32\-bit representation of a character. As UTF\-8 can contain multi\-byte characters, this should be used when iterating through UTF\-8 text.
+\fI\%bson_unichar_t\fP provides an abstraction on a single unicode character. It is the 32\-bit representation of a character. As UTF\-8 can contain multi\-byte characters, this should be used when iterating through UTF\-8 text.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -59,7 +59,7 @@ print_each_char (const char *str)
 
    for (; *str; str = bson_utf8_next_char (str)) {
       c = bson_utf8_get_char (str);
-      printf ("The numberic value is %u.\en", (unsigned) c);
+      printf (\(dqThe numberic value is %u.\en\(dq, (unsigned) c);
    }
 }
 .ft P

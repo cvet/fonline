@@ -62,6 +62,8 @@ test_hello_helper (mongoc_async_cmd_t *acmd,
    bson_iter_t iter;
    bson_error_t *error = &acmd->error;
 
+   BSON_UNUSED (duration_usec);
+
    /* ignore the connected event. */
    if (result == MONGOC_ASYNC_CMD_CONNECTED) {
       return;
@@ -153,6 +155,7 @@ test_hello_impl (bool with_ssl)
                             setup_ctx,
                             "admin",
                             &q,
+                            MONGOC_OPCODE_QUERY, /* used by legacy hello */
                             &test_hello_helper,
                             (void *) &results[i],
                             TIMEOUT);
@@ -168,12 +171,15 @@ test_hello_impl (bool with_ssl)
          servers[server_id], "admin", MONGOC_QUERY_SECONDARY_OK, NULL);
 
       /* use "serverId" field to distinguish among responses */
-      reply = bson_strdup_printf ("{'ok': 1,"
-                                  " '"HANDSHAKE_RESPONSE_LEGACY_HELLO"': true,"
-                                  " 'minWireVersion': 0,"
-                                  " 'maxWireVersion': 1000,"
-                                  " 'serverId': %d}",
-                                  server_id);
+      reply =
+         bson_strdup_printf ("{'ok': 1,"
+                             " '" HANDSHAKE_RESPONSE_LEGACY_HELLO "': true,"
+                             " 'minWireVersion': %d,"
+                             " 'maxWireVersion': %d,"
+                             " 'serverId': %d}",
+                             WIRE_VERSION_MIN,
+                             WIRE_VERSION_MAX,
+                             server_id);
 
       mock_server_replies_simple (request, reply);
       bson_free (reply);
@@ -218,9 +224,9 @@ test_hello_ssl (void)
 
 static void
 test_large_hello_helper (mongoc_async_cmd_t *acmd,
-                            mongoc_async_cmd_result_t result,
-                            const bson_t *bson,
-                            int64_t duration_usec)
+                         mongoc_async_cmd_result_t result,
+                         const bson_t *bson,
+                         int64_t duration_usec)
 {
    bson_iter_t iter;
    bson_error_t *error = &acmd->error;
@@ -236,7 +242,8 @@ test_large_hello_helper (mongoc_async_cmd_t *acmd,
    ASSERT_CMPINT (result, ==, MONGOC_ASYNC_CMD_SUCCESS);
 
    ASSERT_HAS_FIELD (bson, HANDSHAKE_RESPONSE_LEGACY_HELLO);
-   BSON_ASSERT (bson_iter_init_find (&iter, bson, HANDSHAKE_RESPONSE_LEGACY_HELLO));
+   BSON_ASSERT (
+      bson_iter_init_find (&iter, bson, HANDSHAKE_RESPONSE_LEGACY_HELLO));
    BSON_ASSERT (BSON_ITER_HOLDS_BOOL (&iter) && bson_iter_bool (&iter));
 }
 
@@ -294,6 +301,7 @@ test_large_hello (void *ctx)
                          NULL,
                          "admin",
                          &q,
+                         MONGOC_OPCODE_QUERY, /* used by legacy hello */
                          &test_large_hello_helper,
                          NULL,
                          TIMEOUT);
@@ -316,6 +324,10 @@ test_hello_delay_callback (mongoc_async_cmd_t *acmd,
                            const bson_t *bson,
                            int64_t duration_usec)
 {
+   BSON_UNUSED (result);
+   BSON_UNUSED (bson);
+   BSON_UNUSED (duration_usec);
+
    ((stream_with_result_t *) acmd->data)->finished = true;
 }
 
@@ -326,7 +338,7 @@ test_hello_delay_initializer (mongoc_async_cmd_t *acmd)
 }
 
 static void
-test_hello_delay ()
+test_hello_delay (void)
 {
    /* test that a delayed cmd works. */
    mock_server_t *server = mock_server_with_auto_hello (WIRE_VERSION_MAX);
@@ -352,6 +364,7 @@ test_hello_delay ()
                          NULL, /* setup ctx. */
                          "admin",
                          &hello_cmd,
+                         MONGOC_OPCODE_QUERY, /* used by legacy hello */
                          &test_hello_delay_callback,
                          &stream_with_result,
                          TIMEOUT);

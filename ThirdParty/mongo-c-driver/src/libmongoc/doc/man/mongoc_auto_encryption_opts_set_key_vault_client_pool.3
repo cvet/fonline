@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_KEY_VAULT_CLIENT_POOL" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_auto_encryption_opts_set_key_vault_client_pool \- mongoc_auto_encryption_opts_set_keyvault_client_pool()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTO_ENCRYPTION_OPTS_SET_KEY_VAULT_CLIENT_POOL" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_auto_encryption_opts_set_key_vault_client_pool \- mongoc_auto_encryption_opts_set_keyvault_client_pool()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,28 +44,28 @@ mongoc_auto_encryption_opts_set_keyvault_client_pool (
 .UNINDENT
 .UNINDENT
 .sp
-Set an optional separate \fBmongoc_client_pool_t\fP to use during key lookup for automatic encryption and decryption. Only applies to automatic encryption on a \fBmongoc_client_pool_t\fP\&. It is invalid to set this for automatic encryption on a single\-threaded \fBmongoc_client_t\fP\&.
+Set an optional separate \fI\%mongoc_client_pool_t\fP to use during key lookup for automatic encryption and decryption. Only applies to automatic encryption on a \fI\%mongoc_client_pool_t\fP\&. It is invalid to set this for automatic encryption on a single\-threaded \fI\%mongoc_client_t\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_auto_encryption_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_auto_encryption_opts_t\fP\&.
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP to use for key queries. This client pool should \fInot\fP have automatic encryption enabled, as it will only execute \fBfind\fP commands against the key vault collection to retrieve keys for automatic encryption and decryption. This \fBpool\fP MUST outlive any \fBmongoc_client_pool_t\fP which has been enabled to use it through \fBmongoc_client_pool_enable_auto_encryption()\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP to use for key queries. This client pool should \fInot\fP have automatic encryption enabled, as it will only execute \fBfind\fP commands against the key vault collection to retrieve keys for automatic encryption and decryption. This \fBpool\fP MUST outlive any \fI\%mongoc_client_pool_t\fP which has been enabled to use it through \fI\%mongoc_client_pool_enable_auto_encryption()\fP\&.
 .UNINDENT
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_pool_enable_auto_encryption()\fP
+\fI\%mongoc_client_pool_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-\fBmongoc_auto_encryption_opts_set_keyvault_client()\fP
+\fI\%mongoc_auto_encryption_opts_set_keyvault_client()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP
 .fi
 .sp
 .UNINDENT

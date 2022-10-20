@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_READ_CONCERN" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_read_concern \- mongoc_client_get_read_concern()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_READ_CONCERN" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_read_concern \- mongoc_client_get_read_concern()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,11 +47,11 @@ Retrieve the default read concern configured for the client instance. The result
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_read_concern_t\fP\&.
+A \fI\%mongoc_read_concern_t\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

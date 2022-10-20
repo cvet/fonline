@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_encryption_datakey_opts_set_masterkey.html"/>
-    <title>mongoc_client_encryption_datakey_opts_set_masterkey() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_encryption_datakey_opts_set_masterkey.html"/>
+    <title>mongoc_client_encryption_datakey_opts_set_masterkey() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_client_encryption_datakey_opts_set_keyaltnames()" href="mongoc_client_encryption_datakey_opts_set_keyaltnames.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_client_encryption_datakey_opts_destroy.html" title="mongoc_client_encryption_datakey_opts_destroy()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_client_encryption_datakey_opts_t.html" accesskey="U">mongoc_client_encryption_datakey_opts_t</a> &#187;</li> 
       </ul>
@@ -41,38 +46,64 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-client-encryption-datakey-opts-set-masterkey">
-<h1>mongoc_client_encryption_datakey_opts_set_masterkey()<a class="headerlink" href="#mongoc-client-encryption-datakey-opts-set-masterkey" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span>
-<span class="nf">mongoc_client_encryption_datakey_opts_set_masterkey</span> <span class="p">(</span>
-   <span class="n">mongoc_client_encryption_datakey_opts_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">,</span> <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">masterkey</span><span class="p">);</span>
+  <section id="mongoc-client-encryption-datakey-opts-set-masterkey">
+<h1>mongoc_client_encryption_datakey_opts_set_masterkey()<a class="headerlink" href="#mongoc-client-encryption-datakey-opts-set-masterkey" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"></span>
+<span class="nf">mongoc_client_encryption_datakey_opts_set_masterkey</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_encryption_datakey_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">masterkey</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Identifies the masterkey for the Key Management Service (KMS) provider used to encrypt a new data key.</p>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference internal" href="mongoc_client_encryption_datakey_opts_t.html"><span class="doc">mongoc_client_encryption_datakey_opts_t</span></a></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">masterkey</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> document describing the KMS provider specific masterkey.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">masterkey</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> document describing the KMS provider specific masterkey.</p></li>
 </ul>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
-<p>Setting the masterkey is required if using AWS KMS, and <code class="docutils literal notranslate"><span class="pre">masterkey</span></code> must have the form:</p>
-<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-   <span class="nx">region</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">string</span><span class="o">&gt;</span><span class="p">,</span> <span class="c1">// Required.</span>
-   <span class="nx">key</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">string</span><span class="o">&gt;</span><span class="p">,</span> <span class="c1">// Required. The Amazon Resource Name (ARN) to the AWS customer master key (CMK).</span>
-   <span class="nx">endpoint</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">string</span><span class="o">&gt;</span> <span class="c1">// Optional. An alternate host identifier to send KMS requests to. May include port number.</span>
-<span class="p">}</span>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
+<p>Setting the masterkey is required when creating a data key with the KMS providers: <code class="docutils literal notranslate"><span class="pre">aws</span></code>, <code class="docutils literal notranslate"><span class="pre">azure</span></code>, <code class="docutils literal notranslate"><span class="pre">gcp</span></code>, and <code class="docutils literal notranslate"><span class="pre">kmip</span></code>.</p>
+<p>Setting the masterkey is prohibited with the KMS provider <code class="docutils literal notranslate"><span class="pre">local</span></code>.</p>
+<p>The format of <code class="docutils literal notranslate"><span class="pre">masterkey</span></code> for “aws” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">region</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="cm">/* The Amazon Resource Name (ARN) to the AWS customer master key (CMK). */</span><span class="w"></span>
+<span class="w">   </span><span class="nx">endpoint</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="w"> </span><span class="cm">/* An alternate host identifier to send KMS requests to. May include port number. Defaults to &quot;kms.&lt;region&gt;.amazonaws.com&quot; */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-<p>The value of “endpoint” is a host name with optional port number separated by a colon. E.g. “kms.us-east-1.amazonaws.com” or “kms.us-east-1.amazonaws.com:443”</p>
-<p>This function is only applicable for the “aws” KMS provider. It is not applicable for creating data keys with the “local” KMS provider (as configured in <a class="symbol reference internal" href="mongoc_client_encryption_opts_set_kms_providers.html"><span class="doc">mongoc_client_encryption_opts_set_kms_providers()</span></a>).</p>
+<p>The format of <code class="docutils literal notranslate"><span class="pre">masterkey</span></code> for “azure” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyVaultEndpoint</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="cm">/* Host with optional port. Example: &quot;example.vault.azure.net&quot;. */</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyName</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyVersion</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="w"> </span><span class="cm">/* A specific version of the named key, defaults to using the key&#39;s primary version. */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
 </div>
+<p>The format of <code class="docutils literal notranslate"><span class="pre">masterkey</span></code> for “gcp” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">projectId</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">location</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyRing</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyName</span><span class="o">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyVersion</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="cm">/* A specific version of the named key, defaults to using the key&#39;s primary version. */</span><span class="w"></span>
+<span class="w">   </span><span class="nx">endpoint</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="w"> </span><span class="cm">/* Host with optional port. Defaults to &quot;cloudkms.googleapis.com&quot;. */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
 </div>
+<p>The format of <code class="docutils literal notranslate"><span class="pre">masterkey</span></code> for “kmip” is as follows:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nx">keyId</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nx">endpoint</span><span class="o">:</span><span class="w"> </span><span class="nx">Optional</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="w"> </span><span class="cm">/* Host with optional port. */</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
 
 
           </div>
@@ -108,6 +139,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -183,7 +215,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

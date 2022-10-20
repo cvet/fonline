@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_URI" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_uri \- mongoc_client_get_uri()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_URI" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_uri \- mongoc_client_get_uri()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,15 +43,15 @@ mongoc_client_get_uri (const mongoc_client_t *client);
 .UNINDENT
 .UNINDENT
 .sp
-Fetches the \fBmongoc_uri_t\fP used to create the client.
+Fetches the \fI\%mongoc_uri_t\fP used to create the client.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_uri_t\fP that should not be modified or freed.
+A \fI\%mongoc_uri_t\fP that should not be modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

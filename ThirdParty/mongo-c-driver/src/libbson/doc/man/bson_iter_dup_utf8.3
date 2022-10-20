@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_DUP_UTF8" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_dup_utf8 \- bson_iter_dup_utf8()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_DUP_UTF8" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_dup_utf8 \- bson_iter_dup_utf8()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,16 +45,16 @@ bson_iter_dup_utf8 (const bson_iter_t *iter, uint32_t *length);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
 \fBlength\fP: An optional location for the length of the UTF\-8 encoded string.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function is similar to \fBbson_iter_utf8()\fP except that it calls \fBbson_strndup()\fP on the result.
+This function is similar to \fI\%bson_iter_utf8()\fP except that it calls \fI\%bson_strndup()\fP on the result.
 .SH RETURNS
 .sp
-A newly allocated string that should be freed with \fBbson_free()\fP\&.
+A newly allocated string that should be freed with \fI\%bson_free()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT
