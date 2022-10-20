@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/errors.html"/>
-    <title>Handling Errors &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/errors.html"/>
+    <title>Handling Errors &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="ObjectIDs" href="oid.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="creating.html" title="Creating a BSON Document"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="tutorial.html" accesskey="U">Tutorial</a> &#187;</li> 
       </ul>
     </div>  
@@ -39,10 +44,10 @@
       <div class="documentwrapper">
           <div class="body" role="main">
             
-  <div class="section" id="handling-errors">
-<h1>Handling Errors<a class="headerlink" href="#handling-errors" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+  <section id="handling-errors">
+<h1>Handling Errors<a class="headerlink" href="#handling-errors" title="Permalink to this heading">¶</a></h1>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>Many libbson functions report errors by returning <code class="docutils literal notranslate"><span class="pre">NULL</span></code> or -1 and filling out a <a class="symbol reference internal" href="bson_error_t.html"><span class="doc">bson_error_t</span></a> structure with an error domain, error code, and message.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">error.domain</span></code> names the subsystem that generated the error.</p></li>
@@ -51,11 +56,6 @@
 </ul>
 <p>Some error codes overlap with others; always check both the domain and code to determine the type of error.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 13%" />
-<col style="width: 24%" />
-<col style="width: 62%" />
-</colgroup>
 <tbody>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BSON_ERROR_JSON</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BSON_JSON_ERROR_READ_CORRUPT_JS</span></code>
@@ -71,8 +71,8 @@ An internal callback failure during JSON parsing.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -81,7 +81,7 @@ An internal callback failure during JSON parsing.</p></td>
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

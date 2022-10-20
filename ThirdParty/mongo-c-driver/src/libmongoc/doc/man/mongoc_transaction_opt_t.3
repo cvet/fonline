@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_TRANSACTION_OPT_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_transaction_opt_t \- mongoc_transaction_opt_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_TRANSACTION_OPT_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_transaction_opt_t \- mongoc_transaction_opt_t
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -46,17 +46,17 @@ typedef struct _mongoc_transaction_opt_t mongoc_transaction_opt_t;
 .sp
 Options for starting a multi\-document transaction.
 .sp
-When a session is first created with \fBmongoc_client_start_session\fP, it inherits from the client the read concern, write concern, and read preference with which to start transactions. Each of these fields can be overridden independently. Create a \fBmongoc_transaction_opt_t\fP with \fBmongoc_transaction_opts_new\fP, and pass a non\-NULL option to any of the \fBmongoc_transaction_opt_t\fP setter functions:
+When a session is first created with \fI\%mongoc_client_start_session()\fP, it inherits from the client the read concern, write concern, and read preference with which to start transactions. Each of these fields can be overridden independently. Create a \fI\%mongoc_transaction_opt_t\fP with \fI\%mongoc_transaction_opts_new()\fP, and pass a non\-NULL option to any of the \fI\%mongoc_transaction_opt_t\fP setter functions:
 .INDENT 0.0
 .IP \(bu 2
-\fBmongoc_transaction_opts_set_read_concern\fP
+\fI\%mongoc_transaction_opts_set_read_concern()\fP
 .IP \(bu 2
-\fBmongoc_transaction_opts_set_write_concern\fP
+\fI\%mongoc_transaction_opts_set_write_concern()\fP
 .IP \(bu 2
-\fBmongoc_transaction_opts_set_read_prefs\fP
+\fI\%mongoc_transaction_opts_set_read_prefs()\fP
 .UNINDENT
 .sp
-Pass the resulting transaction options to \fBmongoc_client_session_start_transaction\fP\&. Each field set in the transaction options overrides the inherited client configuration.
+Pass the resulting transaction options to \fI\%mongoc_client_session_start_transaction()\fP\&. Each field set in the transaction options overrides the inherited client configuration.
 .SH EXAMPLE
 .sp
 example\-transaction.c
@@ -88,7 +88,7 @@ main (int argc, char *argv[])
    mongoc_transaction_opt_t *txn_opts = NULL;
    mongoc_read_concern_t *read_concern = NULL;
    mongoc_write_concern_t *write_concern = NULL;
-   const char *uri_string = "mongodb://127.0.0.1/?appname=transaction\-example";
+   const char *uri_string = \(dqmongodb://127.0.0.1/?appname=transaction\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
    bson_t *doc = NULL;
@@ -107,8 +107,8 @@ main (int argc, char *argv[])
 
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
-      MONGOC_ERROR ("failed to parse URI: %s\en"
-                    "error message:       %s\en",
+      MONGOC_ERROR (\(dqfailed to parse URI: %s\en\(dq
+                    \(dqerror message:       %s\en\(dq,
                     uri_string,
                     error.message);
       goto done;
@@ -120,19 +120,19 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "example\-transaction");
+   database = mongoc_client_get_database (client, \(dqexample\-transaction\(dq);
 
    /* inserting into a nonexistent collection normally creates it, but a
     * collection can\(aqt be created in a transaction; create it now */
    collection =
-      mongoc_database_create_collection (database, "collection", NULL, &error);
+      mongoc_database_create_collection (database, \(dqcollection\(dq, NULL, &error);
 
    if (!collection) {
       /* code 48 is NamespaceExists, see error_codes.err in mongodb source */
       if (error.code == 48) {
-         collection = mongoc_database_get_collection (database, "collection");
+         collection = mongoc_database_get_collection (database, \(dqcollection\(dq);
       } else {
-         MONGOC_ERROR ("Failed to create collection: %s", error.message);
+         MONGOC_ERROR (\(dqFailed to create collection: %s\(dq, error.message);
          goto done;
       }
    }
@@ -143,7 +143,7 @@ main (int argc, char *argv[])
     * default transaction options. */
    default_txn_opts = mongoc_transaction_opts_new ();
    read_concern = mongoc_read_concern_new ();
-   mongoc_read_concern_set_level (read_concern, "snapshot");
+   mongoc_read_concern_set_level (read_concern, \(dqsnapshot\(dq);
    mongoc_transaction_opts_set_read_concern (default_txn_opts, read_concern);
    session_opts = mongoc_session_opts_new ();
    mongoc_session_opts_set_default_transaction_opts (session_opts,
@@ -151,7 +151,7 @@ main (int argc, char *argv[])
 
    session = mongoc_client_start_session (client, session_opts, &error);
    if (!session) {
-      MONGOC_ERROR ("Failed to start session: %s", error.message);
+      MONGOC_ERROR (\(dqFailed to start session: %s\(dq, error.message);
       goto done;
    }
 
@@ -163,20 +163,20 @@ main (int argc, char *argv[])
 
    insert_opts = bson_new ();
    if (!mongoc_client_session_append (session, insert_opts, &error)) {
-      MONGOC_ERROR ("Could not add session to opts: %s", error.message);
+      MONGOC_ERROR (\(dqCould not add session to opts: %s\(dq, error.message);
       goto done;
    }
 
 retry_transaction:
    r = mongoc_client_session_start_transaction (session, txn_opts, &error);
    if (!r) {
-      MONGOC_ERROR ("Failed to start transaction: %s", error.message);
+      MONGOC_ERROR (\(dqFailed to start transaction: %s\(dq, error.message);
       goto done;
    }
 
    /* insert two documents \- on error, retry the whole transaction */
    for (i = 0; i < 2; i++) {
-      doc = BCON_NEW ("_id", BCON_INT32 (i));
+      doc = BCON_NEW (\(dq_id\(dq, BCON_INT32 (i));
       bson_destroy (&reply);
       r = mongoc_collection_insert_one (
          collection, doc, insert_opts, &reply, &error);
@@ -184,14 +184,14 @@ retry_transaction:
       bson_destroy (doc);
 
       if (!r) {
-         MONGOC_ERROR ("Insert failed: %s", error.message);
+         MONGOC_ERROR (\(dqInsert failed: %s\(dq, error.message);
          mongoc_client_session_abort_transaction (session, NULL);
 
          /* a network error, primary failover, or other temporary error in a
-          * transaction includes {"errorLabels": ["TransientTransactionError"]},
+          * transaction includes {\(dqerrorLabels\(dq: [\(dqTransientTransactionError\(dq]},
           * meaning that trying the entire transaction again may succeed
           */
-         if (mongoc_error_has_label (&reply, "TransientTransactionError")) {
+         if (mongoc_error_has_label (&reply, \(dqTransientTransactionError\(dq)) {
             goto retry_transaction;
          }
 
@@ -199,7 +199,7 @@ retry_transaction:
       }
 
       reply_json = bson_as_json (&reply, NULL);
-      printf ("%s\en", reply_json);
+      printf (\(dq%s\en\(dq, reply_json);
       bson_free (reply_json);
    }
 
@@ -212,11 +212,11 @@ retry_transaction:
          /* success */
          break;
       } else {
-         MONGOC_ERROR ("Warning: commit failed: %s", error.message);
-         if (mongoc_error_has_label (&reply, "TransientTransactionError")) {
+         MONGOC_ERROR (\(dqWarning: commit failed: %s\(dq, error.message);
+         if (mongoc_error_has_label (&reply, \(dqTransientTransactionError\(dq)) {
             goto retry_transaction;
          } else if (mongoc_error_has_label (&reply,
-                                            "UnknownTransactionCommitResult")) {
+                                            \(dqUnknownTransactionCommitResult\(dq)) {
             /* try again to commit */
             continue;
          }

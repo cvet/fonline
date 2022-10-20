@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_STREAM_SOCKET_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_stream_socket_new \- mongoc_stream_socket_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_STREAM_SOCKET_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_stream_socket_new \- mongoc_stream_socket_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_stream_t *
-mongoc_stream_socket_new (mongoc_socket_t *socket);
+mongoc_stream_socket_new (mongoc_socket_t *socket)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,10 +46,10 @@ mongoc_stream_socket_new (mongoc_socket_t *socket);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsocket\fP: A \fBmongoc_socket_t\fP\&.
+\fBsocket\fP: A \fI\%mongoc_socket_t\fP\&.
 .UNINDENT
 .sp
-Creates a new \fBmongoc_stream_socket_t\fP using the \fBmongoc_socket_t\fP provided.
+Creates a new \fI\%mongoc_stream_socket_t\fP using the \fI\%mongoc_socket_t\fP provided.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -58,7 +59,7 @@ This function transfers ownership of \fBsocket\fP to the newly allocated stream.
 .UNINDENT
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_stream_socket_t\fP that should be freed with \fBmongoc_stream_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_stream_socket_t\fP that should be freed with \fI\%mongoc_stream_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

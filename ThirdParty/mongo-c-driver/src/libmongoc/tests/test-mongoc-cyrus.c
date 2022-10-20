@@ -73,9 +73,11 @@ test_sasl_canonicalize_hostname (void *ctx)
    char real_name[BSON_HOST_NAME_MAX + 1] = {'\0'};
    bson_error_t error;
 
+   BSON_UNUSED (ctx);
+
    client = test_framework_new_default_client ();
    ss = mongoc_cluster_stream_for_reads (
-      &client->cluster, NULL, NULL, NULL, &error);
+      &client->cluster, NULL, NULL, NULL, false, &error);
    ASSERT_OR_PRINT (ss, error);
 
    BSON_ASSERT (_mongoc_sasl_get_canonicalized_name (

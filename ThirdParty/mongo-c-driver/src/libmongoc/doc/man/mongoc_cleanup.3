@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLEANUP" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cleanup \- mongoc_cleanup()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLEANUP" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cleanup \- mongoc_cleanup()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,11 +44,11 @@ mongoc_cleanup (void);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Initialize the MongoDB C Driver by calling \fBmongoc_init\fP exactly once at the beginning of your program. It is responsible for initializing global state such as process counters, SSL, and threading primitives.
+Initialize the MongoDB C Driver by calling \fI\%mongoc_init()\fP exactly once at the beginning of your program. It is responsible for initializing global state such as process counters, SSL, and threading primitives.
 .sp
-Exception to this is \fBmongoc_log_set_handler()\fP, which should be called before \fBmongoc_init()\fP or some log traces would not use your log handling function. See Custom Log Handlers for a detailed example.
+Exception to this is \fBmongoc_log_set_handler()\fP, which should be called before \fBmongoc_init()\fP or some log traces would not use your log handling function. See \fI\%Custom Log Handlers\fP for a detailed example.
 .sp
-Call \fBmongoc_cleanup\fP exactly once at the end of your program to release all memory and other resources allocated by the driver. You must not call any other MongoDB C Driver functions after \fBmongoc_cleanup\fP\&. Note that \fBmongoc_init\fP does \fBnot\fP reinitialize the driver after \fBmongoc_cleanup\fP\&.
+Call \fI\%mongoc_cleanup()\fP exactly once at the end of your program to release all memory and other resources allocated by the driver. You must not call any other MongoDB C Driver functions after \fI\%mongoc_cleanup()\fP\&. Note that \fI\%mongoc_init()\fP does \fBnot\fP reinitialize the driver after \fI\%mongoc_cleanup()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

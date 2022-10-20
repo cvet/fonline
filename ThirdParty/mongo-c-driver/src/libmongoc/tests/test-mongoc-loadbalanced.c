@@ -152,6 +152,8 @@ test_loadbalanced_sessions_supported (void *unused)
    mongoc_client_session_t *session;
    bson_error_t error;
 
+   BSON_UNUSED (unused);
+
    client = test_framework_new_default_client ();
    session = mongoc_client_start_session (client, NULL /* opts */, &error);
    ASSERT_OR_PRINT (session, error);
@@ -169,10 +171,15 @@ test_loadbalanced_sessions_do_not_expire (void *unused)
    bson_error_t error;
    bson_t *session1_lsid;
    bson_t *session2_lsid;
+   mc_tpld_modification tdmod;
+
+   BSON_UNUSED (unused);
 
    client = test_framework_new_default_client ();
    /* Mock a timeout so session expiration applies. */
-   client->topology->description.session_timeout_minutes = 1;
+   tdmod = mc_tpld_modify_begin (client->topology);
+   tdmod.new_td->session_timeout_minutes = 1;
+   mc_tpld_modify_commit (tdmod);
 
    /* Start two sessions, to ensure that pooled sessions remain in the pool when
     * the pool is accessed. */
@@ -222,28 +229,22 @@ test_loadbalanced_client_uri_validation (void *unused)
    mongoc_client_t *client;
    mongoc_uri_t *uri;
    bson_error_t error;
-   bool ret;
+
+   BSON_UNUSED (unused);
 
    uri = mongoc_uri_new ("mongodb://localhost:27017");
    mongoc_uri_set_option_as_bool (uri, MONGOC_URI_LOADBALANCED, true);
    mongoc_uri_set_option_as_bool (uri, MONGOC_URI_DIRECTCONNECTION, true);
-   client = mongoc_client_new_from_uri (uri);
+   client = mongoc_client_new_from_uri_with_error (uri, &error);
 
-   ret = mongoc_client_command_simple (client,
-                                       "admin",
-                                       tmp_bson ("{'ping': 1}"),
-                                       NULL /* read prefs */,
-                                       NULL /* reply */,
-                                       &error);
+   BSON_ASSERT (!client);
    ASSERT_ERROR_CONTAINS (error,
-                          MONGOC_ERROR_SERVER_SELECTION,
-                          MONGOC_ERROR_SERVER_SELECTION_FAILURE,
+                          MONGOC_ERROR_COMMAND,
+                          MONGOC_ERROR_COMMAND_INVALID_ARG,
                           "URI with \"loadBalanced\" enabled must not contain "
                           "option \"directConnection\" enabled");
-   BSON_ASSERT (!ret);
 
    mongoc_uri_destroy (uri);
-   mongoc_client_destroy (client);
 }
 
 /* Test basic connectivity to a load balanced cluster. */
@@ -255,6 +256,8 @@ test_loadbalanced_connect_single (void *unused)
    bool ok;
    mongoc_server_description_t *monitor_sd;
    stats_t *stats;
+
+   BSON_UNUSED (unused);
 
    client = test_framework_new_default_client ();
    stats = set_client_callbacks (client);
@@ -287,6 +290,8 @@ test_loadbalanced_connect_pooled (void *unused)
    bool ok;
    mongoc_server_description_t *monitor_sd;
    stats_t *stats;
+
+   BSON_UNUSED (unused);
 
    pool = test_framework_new_default_client_pool ();
    stats = set_client_pool_callbacks (pool);
@@ -324,6 +329,8 @@ test_loadbalanced_server_selection_establishes_connection_single (void *unused)
    mongoc_server_description_t *handshake_sd;
    stats_t *stats;
 
+   BSON_UNUSED (unused);
+
    client = test_framework_new_default_client ();
    stats = set_client_callbacks (client);
    monitor_sd = mongoc_client_select_server (
@@ -354,6 +361,8 @@ test_loadbalanced_cooldown_is_bypassed_single (void *unused)
    bool ok;
    stats_t *stats;
    mongoc_server_description_t *monitor_sd;
+
+   BSON_UNUSED (unused);
 
    client = test_framework_new_default_client ();
    stats = set_client_callbacks (client);
@@ -421,9 +430,14 @@ test_loadbalanced_cooldown_is_bypassed_single (void *unused)
  * - loadBalanced: true is added to the handshake
  * - serviceId is set in the server description.
  */
-#define LB_HELLO                                                               \
-   "{'ismaster': true, 'maxWireVersion': 13, 'msg': 'isdbgrid', 'serviceId': " \
-   "{'$oid': 'AAAAAAAAAAAAAAAAAAAAAAAA'}}"
+#define LB_HELLO                                                   \
+   tmp_str ("{'ismaster': true,"                                   \
+            " 'minWireVersion': %d,"                               \
+            " 'maxWireVersion': %d,"                               \
+            " 'msg': 'isdbgrid',"                                  \
+            " 'serviceId': {'$oid': 'AAAAAAAAAAAAAAAAAAAAAAAA'}}", \
+            WIRE_VERSION_MIN,                                      \
+            WIRE_VERSION_5_0)
 static void
 test_loadbalanced_handshake_sends_loadbalanced (void)
 {
@@ -443,7 +457,7 @@ test_loadbalanced_handshake_sends_loadbalanced (void)
    mock_server_auto_endsessions (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    mongoc_uri_set_option_as_bool (uri, MONGOC_URI_LOADBALANCED, true);
-   client = mongoc_client_new_from_uri (uri);
+   client = test_framework_client_new_from_uri (uri, NULL);
 
    future = future_client_command_simple (client,
                                           "admin",
@@ -451,8 +465,8 @@ test_loadbalanced_handshake_sends_loadbalanced (void)
                                           NULL /* read prefs */,
                                           NULL /* reply */,
                                           &error);
-   request =
-      mock_server_receives_legacy_hello (server, "{'loadBalanced': true}");
+   request = mock_server_receives_any_hello_with_match (
+      server, "{'loadBalanced': true}", "{'loadBalanced': true}");
    mock_server_replies_simple (request, LB_HELLO);
    request_destroy (request);
 
@@ -483,8 +497,13 @@ test_loadbalanced_handshake_sends_loadbalanced (void)
 
 /* Tests that a connection is rejected if the handshake reply does not include a
  * serviceID field. */
-#define NON_LB_HELLO \
-   "{'ismaster': true, 'maxWireVersion': 13, 'msg': 'isdbgrid'}"
+#define NON_LB_HELLO                 \
+   tmp_str ("{'ismaster': true,"     \
+            " 'minWireVersion': %d," \
+            " 'maxWireVersion': %d," \
+            " 'msg': 'isdbgrid'}",   \
+            WIRE_VERSION_MIN,        \
+            WIRE_VERSION_5_0)
 static void
 test_loadbalanced_handshake_rejects_non_loadbalanced (void)
 {
@@ -500,7 +519,7 @@ test_loadbalanced_handshake_rejects_non_loadbalanced (void)
    mock_server_auto_endsessions (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    mongoc_uri_set_option_as_bool (uri, MONGOC_URI_LOADBALANCED, true);
-   client = mongoc_client_new_from_uri (uri);
+   client = test_framework_client_new_from_uri (uri, NULL);
 
    future = future_client_command_simple (client,
                                           "admin",
@@ -508,8 +527,8 @@ test_loadbalanced_handshake_rejects_non_loadbalanced (void)
                                           NULL /* read prefs */,
                                           NULL /* reply */,
                                           &error);
-   request =
-      mock_server_receives_legacy_hello (server, "{'loadBalanced': true}");
+   request = mock_server_receives_any_hello_with_match (
+      server, "{'loadBalanced': true}", "{'loadBalanced': true}");
    mock_server_replies_simple (request, NON_LB_HELLO);
    request_destroy (request);
    BSON_ASSERT (!future_get_bool (future));
@@ -612,13 +631,23 @@ test_pre_handshake_error_does_not_clear_pool (void)
    mock_server_destroy (server);
 }
 
-#define LB_HELLO_A                                                             \
-   "{'ismaster': true, 'maxWireVersion': 13, 'msg': 'isdbgrid', 'serviceId': " \
-   "{'$oid': 'AAAAAAAAAAAAAAAAAAAAAAAA'}}"
+#define LB_HELLO_A                                                 \
+   tmp_str ("{'ismaster': true,"                                   \
+            " 'minWireVersion': %d,"                               \
+            " 'maxWireVersion': %d,"                               \
+            " 'msg': 'isdbgrid',"                                  \
+            " 'serviceId': {'$oid': 'AAAAAAAAAAAAAAAAAAAAAAAA'}}", \
+            WIRE_VERSION_MIN,                                      \
+            WIRE_VERSION_5_0)
 
-#define LB_HELLO_B                                                             \
-   "{'ismaster': true, 'maxWireVersion': 13, 'msg': 'isdbgrid', 'serviceId': " \
-   "{'$oid': 'BBBBBBBBBBBBBBBBBBBBBBBB'}}"
+#define LB_HELLO_B                                                 \
+   tmp_str ("{'ismaster': true,"                                   \
+            " 'minWireVersion': %d,"                               \
+            " 'maxWireVersion': %d,"                               \
+            " 'msg': 'isdbgrid',"                                  \
+            " 'serviceId': {'$oid': 'BBBBBBBBBBBBBBBBBBBBBBBB'}}", \
+            WIRE_VERSION_MIN,                                      \
+            WIRE_VERSION_5_0)
 
 /* Test that a post handshake error clears the pool ONLY for connections with
  * the same serviceID. Test that a post handshake error does not mark the server
@@ -667,7 +696,8 @@ test_post_handshake_error_clears_pool (void)
    ASSERT_OR_PRINT (future_get_bool (future), error);
    future_destroy (future);
 
-   /* client_2_serviceid_a also opens a new connection and receives the same service ID. */
+   /* client_2_serviceid_a also opens a new connection and receives the same
+    * service ID. */
    future = future_client_command_simple (client_2_serviceid_a,
                                           "admin",
                                           tmp_bson ("{'ping': 1}"),
@@ -687,7 +717,8 @@ test_post_handshake_error_clears_pool (void)
    ASSERT_OR_PRINT (future_get_bool (future), error);
    future_destroy (future);
 
-   /* client_3_serviceid_b also opens a new connection, but receives a different service ID. */
+   /* client_3_serviceid_b also opens a new connection, but receives a different
+    * service ID. */
    future = future_client_command_simple (client_3_serviceid_b,
                                           "admin",
                                           tmp_bson ("{'ping': 1}"),
@@ -721,20 +752,22 @@ test_post_handshake_error_clears_pool (void)
    mock_server_hangs_up (request);
    request_destroy (request);
    BSON_ASSERT (!future_get_bool (future));
-   ASSERT_ERROR_CONTAINS (error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "Failed to send");
+   ASSERT_ERROR_CONTAINS (
+      error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_SOCKET, "Failed to send");
    future_destroy (future);
 
    /* Assert that the server is NOT marked Unknown. */
-   monitor_sd = mongoc_client_select_server (client_1_serviceid_a, true, NULL /* read prefs */, &error);
+   monitor_sd = mongoc_client_select_server (
+      client_1_serviceid_a, true, NULL /* read prefs */, &error);
    ASSERT_CMPSTR ("LoadBalancer", mongoc_server_description_type (monitor_sd));
 
    /* This should have invalidated the connection for client_2_serviceid_a. */
    future = future_client_command_simple (client_2_serviceid_a,
-                                       "admin",
-                                       tmp_bson ("{'ping': 1}"),
-                                       NULL /* read prefs */,
-                                       NULL /* reply */,
-                                       &error);
+                                          "admin",
+                                          tmp_bson ("{'ping': 1}"),
+                                          NULL /* read prefs */,
+                                          NULL /* reply */,
+                                          &error);
    /* A new connection is opened. */
    request =
       mock_server_receives_legacy_hello (server, "{'loadBalanced': true}");
@@ -750,11 +783,11 @@ test_post_handshake_error_clears_pool (void)
 
    /* But the connection for client_3_serviceid_b should still be OK. */
    future = future_client_command_simple (client_3_serviceid_b,
-                                       "admin",
-                                       tmp_bson ("{'ping': 1}"),
-                                       NULL /* read prefs */,
-                                       NULL /* reply */,
-                                       &error);
+                                          "admin",
+                                          tmp_bson ("{'ping': 1}"),
+                                          NULL /* read prefs */,
+                                          NULL /* reply */,
+                                          &error);
    /* The "ping" command is sent. */
    request = mock_server_receives_msg (server, 0, tmp_bson ("{'ping': 1}"));
    BSON_ASSERT (request);

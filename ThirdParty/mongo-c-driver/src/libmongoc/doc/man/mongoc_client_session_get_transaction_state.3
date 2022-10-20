@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SESSION_GET_TRANSACTION_STATE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_session_get_transaction_state \- mongoc_client_session_get_transaction_state()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SESSION_GET_TRANSACTION_STATE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_session_get_transaction_state \- mongoc_client_session_get_transaction_state()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,11 +47,11 @@ Returns the current transaction state for this session.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsession\fP: A \fBmongoc_client_session_t\fP\&.
+\fBsession\fP: A \fI\%mongoc_client_session_t\fP\&.
 .UNINDENT
 .SH RETURN
 .sp
-Returns a \fBmongoc_transaction_state_t\fP that represents the current transaction state.
+Returns a \fI\%mongoc_transaction_state_t\fP that represents the current transaction state.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CHANGE_STREAM_NEXT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_change_stream_next \- mongoc_change_stream_next()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CHANGE_STREAM_NEXT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_change_stream_next \- mongoc_change_stream_next()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,7 +52,7 @@ may be returned before the timeout. If no data is returned this function returns
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBstream\fP: A \fBmongoc_change_stream_t\fP\&.
+\fBstream\fP: A \fI\%mongoc_change_stream_t\fP\&.
 .IP \(bu 2
 \fBbson\fP: The location for the resulting document.
 .UNINDENT
@@ -61,12 +61,12 @@ may be returned before the timeout. If no data is returned this function returns
 This function returns true if a valid bson document was read from the stream.
 Otherwise, false if there was an error or no document was available.
 .sp
-Errors can be determined with the \fBmongoc_change_stream_error_document\fP
+Errors can be determined with the \fI\%mongoc_change_stream_error_document()\fP
 function.
 .SH LIFECYCLE
 .sp
-Similar to \fBmongoc_cursor_next\fP the lifetime of \fBbson\fP is until the
-next call to \fBmongoc_change_stream_next\fP, so it needs to be copied to
+Similar to \fI\%mongoc_cursor_next()\fP the lifetime of \fBbson\fP is until the
+next call to \fI\%mongoc_change_stream_next()\fP, so it needs to be copied to
 extend the lifetime.
 .SH AUTHOR
 MongoDB, Inc

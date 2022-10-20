@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_STREAM_BUFFERED_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_stream_buffered_new \- mongoc_stream_buffered_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_STREAM_BUFFERED_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_stream_buffered_new \- mongoc_stream_buffered_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_stream_t *
-mongoc_stream_buffered_new (mongoc_stream_t *base_stream, size_t buffer_size);
+mongoc_stream_buffered_new (mongoc_stream_t *base_stream,
+                        size_t buffer_size) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,17 +46,17 @@ mongoc_stream_buffered_new (mongoc_stream_t *base_stream, size_t buffer_size);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbase_stream\fP: A \fBmongoc_stream_t\fP to buffer.
+\fBbase_stream\fP: A \fI\%mongoc_stream_t\fP to buffer.
 .IP \(bu 2
 \fBbuffer_size\fP: A size_t containing the desired buffer size.
 .UNINDENT
 .sp
-This function shall create a new \fBmongoc_stream_t\fP that buffers bytes to and from the underlying \fBbase_stream\fP\&.
+This function shall create a new \fI\%mongoc_stream_t\fP that buffers bytes to and from the underlying \fBbase_stream\fP\&.
 .sp
 \fBbuffer_size\fP will be used as the initial buffer size. It may grow past this size.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_stream_buffered_t\fP on success, otherwise \fBNULL\fP\&. This should be freed with \fBmongoc_stream_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_stream_buffered_t\fP on success, otherwise \fBNULL\fP\&. This should be freed with \fI\%mongoc_stream_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

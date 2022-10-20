@@ -1709,7 +1709,7 @@ void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy,
     }
 }
 
-void MapView::ParseLightTriangleFan(LightSource& ls)
+void MapView::ParseLightTriangleFan(const LightSource& ls)
 {
     // All dirs disabled
     if ((ls.Flags & 0x3F) == 0x3F) {
@@ -1799,7 +1799,7 @@ void MapView::ParseLightTriangleFan(LightSource& ls)
 
             auto hx_ = static_cast<ushort>(std::clamp(hx_far, 0, _maxHexX - 1));
             auto hy_ = static_cast<ushort>(std::clamp(hy_far, 0, _maxHexY - 1));
-            if (j >= 0 && IsBitSet(ls.Flags, LIGHT_DISABLE_DIR(i))) {
+            if (IsBitSet(ls.Flags, LIGHT_DISABLE_DIR(i))) {
                 hx_ = hx;
                 hy_ = hy;
             }
@@ -1814,6 +1814,10 @@ void MapView::ParseLightTriangleFan(LightSource& ls)
                     int a = alpha - _engine->Geometry.DistGame(hx, hy, hx_, hy_) * alpha / dist;
                     a = std::clamp(a, 0, alpha);
                     color = COLOR_RGBA(a, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+                    if (hx_ == hx && hy_ == hy) {
+                        ox = ls.OffsX;
+                        oy = ls.OffsY;
+                    }
                 }
                 else {
                     color = COLOR_RGBA(0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);

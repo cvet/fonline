@@ -162,6 +162,11 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
 #endif
 }
 
+void Application::OpenLink(string_view link)
+{
+    UNUSED_VARIABLE(link);
+}
+
 void Application::HideCursor()
 {
 }

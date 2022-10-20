@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_GET_WRITE_CONCERN" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_get_write_concern \- mongoc_database_get_write_concern()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_GET_WRITE_CONCERN" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_get_write_concern \- mongoc_database_get_write_concern()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -43,15 +43,15 @@ mongoc_database_get_write_concern (const mongoc_database_t *database);
 .UNINDENT
 .UNINDENT
 .sp
-This function retrieves the default \fBmongoc_write_concern_t\fP to use with \fBdatabase\fP as configured by the client.
+This function retrieves the default \fI\%mongoc_write_concern_t\fP to use with \fBdatabase\fP as configured by the client.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdatabase\fP: A \fBmongoc_database_t\fP\&.
+\fBdatabase\fP: A \fI\%mongoc_database_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A \fBmongoc_write_concern_t\fP that should not be modified or freed.
+A \fI\%mongoc_write_concern_t\fP that should not be modified or freed.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -123,7 +123,12 @@ _make_command (mongoc_change_stream_t *stream, bson_t *command)
    bson_append_document_begin (&pipeline, "0", 1, &change_stream_stage);
    bson_append_document_begin (
       &change_stream_stage, "$changeStream", 13, &change_stream_doc);
-   bson_concat (&change_stream_doc, stream->full_document);
+   if (stream->full_document) {
+      bson_concat (&change_stream_doc, stream->full_document);
+   }
+   if (stream->full_document_before_change) {
+      bson_concat (&change_stream_doc, stream->full_document_before_change);
+   }
 
    if (stream->resumed) {
       /* Change stream spec: Resume Process */
@@ -243,6 +248,11 @@ _make_cursor (mongoc_change_stream_t *stream)
    bson_init (&command);
    bson_copy_to (&(stream->opts.extra), &command_opts);
 
+   if (stream->opts.comment.value_type != BSON_TYPE_EOD) {
+      bson_append_value (&command_opts, "comment", 7, &stream->opts.comment);
+      bson_append_value (&getmore_opts, "comment", 7, &stream->opts.comment);
+   }
+
    if (bson_iter_init_find (&iter, &command_opts, "sessionId")) {
       if (!_mongoc_client_session_from_iter (
              stream->client, &iter, &cs, &stream->err)) {
@@ -279,8 +289,13 @@ _make_cursor (mongoc_change_stream_t *stream)
       goto cleanup;
    }
 
-   server_stream = mongoc_cluster_stream_for_reads (
-      &stream->client->cluster, stream->read_prefs, cs, &reply, &stream->err);
+   server_stream =
+      mongoc_cluster_stream_for_reads (&stream->client->cluster,
+                                       stream->read_prefs,
+                                       cs,
+                                       &reply,
+                                       /* Not aggregate-with-write */ false,
+                                       &stream->err);
    if (!server_stream) {
       bson_destroy (&stream->err_doc);
       bson_copy_to (&reply, &stream->err_doc);
@@ -403,7 +418,15 @@ _change_stream_init (mongoc_change_stream_t *stream,
       return;
    }
 
-   stream->full_document = BCON_NEW ("fullDocument", stream->opts.fullDocument);
+   if (stream->opts.fullDocument) {
+      stream->full_document =
+         BCON_NEW ("fullDocument", stream->opts.fullDocument);
+   }
+
+   if (stream->opts.fullDocumentBeforeChange) {
+      stream->full_document_before_change = BCON_NEW (
+         "fullDocumentBeforeChange", stream->opts.fullDocumentBeforeChange);
+   }
 
    _mongoc_timestamp_set (&stream->operation_time,
                           &stream->opts.startAtOperationTime);
@@ -447,8 +470,7 @@ _mongoc_change_stream_new_from_collection (const mongoc_collection_t *coll,
    mongoc_change_stream_t *stream;
    BSON_ASSERT (coll);
 
-   stream =
-      (mongoc_change_stream_t *) bson_malloc0 (sizeof (mongoc_change_stream_t));
+   stream = BSON_ALIGNED_ALLOC0 (mongoc_change_stream_t);
    stream->db = bson_strdup (coll->db);
    stream->coll = bson_strdup (coll->collection);
    stream->read_prefs = mongoc_read_prefs_copy (coll->read_prefs);
@@ -467,8 +489,7 @@ _mongoc_change_stream_new_from_database (const mongoc_database_t *db,
    mongoc_change_stream_t *stream;
    BSON_ASSERT (db);
 
-   stream =
-      (mongoc_change_stream_t *) bson_malloc0 (sizeof (mongoc_change_stream_t));
+   stream = BSON_ALIGNED_ALLOC0 (mongoc_change_stream_t);
    stream->db = bson_strdup (db->name);
    stream->coll = NULL;
    stream->read_prefs = mongoc_read_prefs_copy (db->read_prefs);
@@ -487,8 +508,7 @@ _mongoc_change_stream_new_from_client (mongoc_client_t *client,
    mongoc_change_stream_t *stream;
    BSON_ASSERT (client);
 
-   stream =
-      (mongoc_change_stream_t *) bson_malloc0 (sizeof (mongoc_change_stream_t));
+   stream = BSON_ALIGNED_ALLOC0 (mongoc_change_stream_t);
    stream->db = bson_strdup ("admin");
    stream->coll = NULL;
    stream->read_prefs = mongoc_read_prefs_copy (client->read_prefs);
@@ -651,6 +671,7 @@ mongoc_change_stream_destroy (mongoc_change_stream_t *stream)
    bson_destroy (&stream->pipeline_to_append);
    bson_destroy (&stream->resume_token);
    bson_destroy (stream->full_document);
+   bson_destroy (stream->full_document_before_change);
    bson_destroy (&stream->err_doc);
    _mongoc_change_stream_opts_cleanup (&stream->opts);
    mongoc_cursor_destroy (stream->cursor);

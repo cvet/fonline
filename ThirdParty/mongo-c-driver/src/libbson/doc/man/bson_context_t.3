@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_CONTEXT_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_context_t \- bson_context_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_CONTEXT_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_context_t \- bson_context_t
 .sp
 BSON OID Generation Context
 .SH SYNOPSIS
@@ -42,12 +42,7 @@ BSON OID Generation Context
 
 typedef enum {
   BSON_CONTEXT_NONE = 0,
-  BSON_CONTEXT_THREAD_SAFE = (1 << 0),
-  BSON_CONTEXT_DISABLE_HOST_CACHE = (1 << 1),
   BSON_CONTEXT_DISABLE_PID_CACHE = (1 << 2),
-#ifdef BSON_HAVE_SYSCALL_TID
-  BSON_CONTEXT_USE_TASK_ID = (1 << 3),
-#endif
 } bson_context_flags_t;
 
 typedef struct _bson_context_t bson_context_t;
@@ -64,7 +59,7 @@ bson_context_destroy (bson_context_t *context);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_context_t\fP structure is context for generation of BSON Object
+The \fI\%bson_context_t\fP structure is context for generation of BSON Object
 IDs. This context allows overriding behavior of generating ObjectIDs. The flags
 \fBBSON_CONTEXT_NONE\fP, \fBBSON_CONTEXT_THREAD_SAFE\fP, and \fBBSON_CONTEXT_DISABLE_PID_CACHE\fP
 are the only ones used. The others have no effect.
@@ -86,7 +81,7 @@ main (int argc, char *argv[])
    bson_oid_init (&oid, NULL);
 
    /* specify a local context for additional control */
-   ctx = bson_context_new (BSON_CONTEXT_THREAD_SAFE);
+   ctx = bson_context_new (BSON_CONTEXT_NONE);
    bson_oid_init (&oid, ctx);
 
    bson_context_destroy (ctx);

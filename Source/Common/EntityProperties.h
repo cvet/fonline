@@ -252,7 +252,7 @@ public:
     ///@ ExportProperty ScriptFuncType = CritterInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, string, NiceName);
+    ENTITY_PROPERTY(PrivateClient, string, CustomName);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty ReadOnly

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_OPTION_IS_BOOL" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_option_is_bool \- mongoc_uri_option_is_bool()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_OPTION_IS_BOOL" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_option_is_bool \- mongoc_uri_option_is_bool()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,7 +49,7 @@ mongoc_uri_option_is_bool (const char *option);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Returns true if the option is a known MongoDB URI option of boolean type. For example, "tls=false" is a valid MongoDB URI option, so \fBmongoc_uri_option_is_bool ("tls")\fP is true.
+Returns true if the option is a known MongoDB URI option of boolean type. For example, \(dqtls=false\(dq is a valid MongoDB URI option, so \fBmongoc_uri_option_is_bool (\(dqtls\(dq)\fP is true.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

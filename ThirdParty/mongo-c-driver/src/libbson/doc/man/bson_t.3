@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_t \- bson_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_t \- bson_t
 .sp
 BSON Document Abstraction
 .SH SYNOPSIS
@@ -164,10 +164,10 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_t\fP structure represents a BSON document. This structure manages the underlying BSON encoded buffer. For mutable documents, it can append new data to the document.
+The \fI\%bson_t\fP structure represents a BSON document. This structure manages the underlying BSON encoded buffer. For mutable documents, it can append new data to the document.
 .SH PERFORMANCE NOTES
 .sp
-The \fBbson_t\fP structure attempts to use an inline allocation within the structure to speed up performance of small documents. When this internal buffer has been exhausted, a heap allocated buffer will be dynamically allocated. Therefore, it is essential to call \fBbson_destroy()\fP on allocated documents.
+The \fI\%bson_t\fP structure attempts to use an inline allocation within the structure to speed up performance of small documents. When this internal buffer has been exhausted, a heap allocated buffer will be dynamically allocated. Therefore, it is essential to call \fI\%bson_destroy()\fP on allocated documents.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -179,9 +179,9 @@ create_on_heap (void)
 {
    bson_t *b = bson_new ();
 
-   BSON_APPEND_INT32 (b, "foo", 123);
-   BSON_APPEND_UTF8 (b, "bar", "foo");
-   BSON_APPEND_DOUBLE (b, "baz", 1.23f);
+   BSON_APPEND_INT32 (b, \(dqfoo\(dq, 123);
+   BSON_APPEND_UTF8 (b, \(dqbar\(dq, \(dqfoo\(dq);
+   BSON_APPEND_DOUBLE (b, \(dqbaz\(dq, 1.23f);
 
    bson_destroy (b);
 }

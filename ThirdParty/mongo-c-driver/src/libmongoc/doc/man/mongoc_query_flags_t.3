@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_QUERY_FLAGS_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_query_flags_t \- mongoc_query_flags_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_QUERY_FLAGS_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_query_flags_t \- mongoc_query_flags_t
 .sp
 Flags for query operations
 .SH SYNOPSIS
@@ -99,8 +99,8 @@ _
 T{
 MONGOC_QUERY_EXHAUST
 T}	T{
-Stream the data down full blast in multiple "reply" packets. Faster when you are pulling down a lot of data and you know you want to retrieve it all.
-Only applies to cursors created from a find operation (i.e. \fBmongoc_collection_find()\fP).
+Stream the data down full blast in multiple \(dqreply\(dq packets. Faster when you are pulling down a lot of data and you know you want to retrieve it all.
+Only applies to cursors created from a find operation (i.e. \fI\%mongoc_collection_find()\fP).
 T}
 _
 T{

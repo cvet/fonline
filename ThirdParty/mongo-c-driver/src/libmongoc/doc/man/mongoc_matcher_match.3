@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_MATCHER_MATCH" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_matcher_match \- mongoc_matcher_match()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_MATCHER_MATCH" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_matcher_match \- mongoc_matcher_match()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -55,13 +55,13 @@ This function will check to see if the query compiled in \fBmatcher\fP matches \
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBmatcher\fP: A \fBmongoc_matcher_t\fP\&.
+\fBmatcher\fP: A \fI\%mongoc_matcher_t\fP\&.
 .IP \(bu 2
 \fBquery\fP: A \fI\%bson_t\fP that contains the query.
 .UNINDENT
 .SH RETURNS
 .sp
-\fBtrue\fP if \fBdocument\fP matches the query specification provided to \fBmongoc_matcher_new()\fP\&. Otherwise, \fBfalse\fP\&.
+\fBtrue\fP if \fBdocument\fP matches the query specification provided to \fI\%mongoc_matcher_new()\fP\&. Otherwise, \fBfalse\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

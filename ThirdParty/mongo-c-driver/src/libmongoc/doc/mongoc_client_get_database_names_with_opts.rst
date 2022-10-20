@@ -11,9 +11,12 @@ Synopsis
   char **
   mongoc_client_get_database_names_with_opts (mongoc_client_t *client,
                                               const bson_t *opts,
-                                              bson_error_t *error);
+                                              bson_error_t *error)
+     BSON_GNUC_WARN_UNUSED_RESULT;
 
 This function queries the MongoDB server for a list of known databases.
+
+.. include:: includes/retryable-read.txt
 
 Parameters
 ----------
@@ -26,7 +29,7 @@ Parameters
 
 .. include:: includes/generic-opts.txt
 
-.. include:: includes/retryable-read.txt
+For a list of all options, see `the MongoDB Manual entry on the listDatabases command <https://www.mongodb.com/docs/manual/reference/command/listDatabases/>`_.
 
 Errors
 ------

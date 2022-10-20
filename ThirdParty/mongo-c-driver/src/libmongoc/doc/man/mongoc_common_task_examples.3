@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COMMON_TASK_EXAMPLES" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_common_task_examples \- Common Tasks
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COMMON_TASK_EXAMPLES" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_common_task_examples \- Common Tasks
 .sp
 Drivers for some other languages provide helper functions to perform certain common tasks. In the C Driver we must explicitly build commands to send to the server.
 .SH SETUP
@@ -58,11 +58,11 @@ insert_data (mongoc_collection_t *collection)
 
    bulk = mongoc_collection_create_bulk_operation_with_opts (collection, NULL);
 
-   docs[0] = BCON_NEW ("x", BCON_DOUBLE (1.0), "tags", "[", "dog", "cat", "]");
-   docs[1] = BCON_NEW ("x", BCON_DOUBLE (2.0), "tags", "[", "cat", "]");
+   docs[0] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (1.0), \(dqtags\(dq, \(dq[\(dq, \(dqdog\(dq, \(dqcat\(dq, \(dq]\(dq);
+   docs[1] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqcat\(dq, \(dq]\(dq);
    docs[2] = BCON_NEW (
-      "x", BCON_DOUBLE (2.0), "tags", "[", "mouse", "cat", "dog", "]");
-   docs[3] = BCON_NEW ("x", BCON_DOUBLE (3.0), "tags", "[", "]");
+      \(dqx\(dq, BCON_DOUBLE (2.0), \(dqtags\(dq, \(dq[\(dq, \(dqmouse\(dq, \(dqcat\(dq, \(dqdog\(dq, \(dq]\(dq);
+   docs[3] = BCON_NEW (\(dqx\(dq, BCON_DOUBLE (3.0), \(dqtags\(dq, \(dq[\(dq, \(dq]\(dq);
 
    for (i = 0; i < ndocs; i++) {
       mongoc_bulk_operation_insert (bulk, docs[i]);
@@ -73,7 +73,7 @@ insert_data (mongoc_collection_t *collection)
    ret = mongoc_bulk_operation_execute (bulk, NULL, &error);
 
    if (!ret) {
-      fprintf (stderr, "Error inserting data: %s\en", error.message);
+      fprintf (stderr, \(dqError inserting data: %s\en\(dq, error.message);
    }
 
    mongoc_bulk_operation_destroy (bulk);
@@ -87,7 +87,7 @@ print_res (const bson_t *reply)
    char *str;
    BSON_ASSERT (reply);
    str = bson_as_canonical_extended_json (reply, NULL);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
    bson_free (str);
 }
 
@@ -113,20 +113,20 @@ explain (mongoc_collection_t *collection)
    bson_error_t error;
    bool res;
 
-   command = BCON_NEW ("explain",
-                       "{",
-                       "find",
+   command = BCON_NEW (\(dqexplain\(dq,
+                       \(dq{\(dq,
+                       \(dqfind\(dq,
                        BCON_UTF8 (COLLECTION_NAME),
-                       "filter",
-                       "{",
-                       "x",
+                       \(dqfilter\(dq,
+                       \(dq{\(dq,
+                       \(dqx\(dq,
                        BCON_INT32 (1),
-                       "}",
-                       "}");
+                       \(dq}\(dq,
+                       \(dq}\(dq);
    res = mongoc_collection_command_simple (
       collection, command, NULL, &reply, &error);
    if (!res) {
-      fprintf (stderr, "Error with explain: %s\en", error.message);
+      fprintf (stderr, \(dqError with explain: %s\en\(dq, error.message);
       goto cleanup;
    }
 
@@ -154,14 +154,14 @@ common\-operations.c
 /*
  * Copyright 2016 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -172,10 +172,10 @@ common\-operations.c
 #include <stdio.h>
 
 
-const char *COLLECTION_NAME = "things";
+const char *COLLECTION_NAME = \(dqthings\(dq;
 
-#include "../doc\-common\-insert.c"
-#include "explain.c"
+#include \(dq../doc\-common\-insert.c\(dq
+#include \(dqexplain.c\(dq
 
 
 int
@@ -191,34 +191,34 @@ main (int argc, char *argv[])
 
    if (argc < 2 || argc > 3) {
       fprintf (stderr,
-               "usage: %s MONGOD\-1\-CONNECTION\-STRING "
-               "[MONGOD\-2\-HOST\-NAME:MONGOD\-2\-PORT]\en",
+               \(dqusage: %s MONGOD\-1\-CONNECTION\-STRING \(dq
+               \(dq[MONGOD\-2\-HOST\-NAME:MONGOD\-2\-PORT]\en\(dq,
                argv[0]);
       fprintf (stderr,
-               "MONGOD\-1\-CONNECTION\-STRING can be "
-               "of the following forms:\en");
-      fprintf (stderr, "localhost\et\et\et\etlocal machine\en");
-      fprintf (stderr, "localhost:27018\et\et\et\etlocal machine on port 27018\en");
+               \(dqMONGOD\-1\-CONNECTION\-STRING can be \(dq
+               \(dqof the following forms:\en\(dq);
+      fprintf (stderr, \(dqlocalhost\et\et\et\etlocal machine\en\(dq);
+      fprintf (stderr, \(dqlocalhost:27018\et\et\et\etlocal machine on port 27018\en\(dq);
       fprintf (stderr,
-               "mongodb://user:pass@localhost:27017\et"
-               "local machine on port 27017, and authenticate with username "
-               "user and password pass\en");
+               \(dqmongodb://user:pass@localhost:27017\et\(dq
+               \(dqlocal machine on port 27017, and authenticate with username \(dq
+               \(dquser and password pass\en\(dq);
       return EXIT_FAILURE;
    }
 
    mongoc_init ();
 
-   if (strncmp (argv[1], "mongodb://", 10) == 0) {
+   if (strncmp (argv[1], \(dqmongodb://\(dq, 10) == 0) {
       host_and_port = bson_strdup (argv[1]);
    } else {
-      host_and_port = bson_strdup_printf ("mongodb://%s", argv[1]);
+      host_and_port = bson_strdup_printf (\(dqmongodb://%s\(dq, argv[1]);
    }
 
    uri = mongoc_uri_new_with_error (host_and_port, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                host_and_port,
                error.message);
       res = EXIT_FAILURE;
@@ -232,16 +232,16 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "test");
+   database = mongoc_client_get_database (client, \(dqtest\(dq);
    collection = mongoc_database_get_collection (database, COLLECTION_NAME);
 
-   printf ("Inserting data\en");
+   printf (\(dqInserting data\en\(dq);
    if (!insert_data (collection)) {
       res = EXIT_FAILURE;
       goto cleanup;
    }
 
-   printf ("explain\en");
+   printf (\(dqexplain\en\(dq);
    if (!explain (collection)) {
       res = EXIT_FAILURE;
       goto cleanup;
@@ -307,60 +307,60 @@ $ cd examples/common_operations/$ gcc \-Wall \-o example common\-operations.c $(
 Inserting data
 explain
 {
-   "executionStats" : {
-      "allPlansExecution" : [],
-      "executionStages" : {
-         "advanced" : 19,
-         "direction" : "forward" ,
-         "docsExamined" : 76,
-         "executionTimeMillisEstimate" : 0,
-         "filter" : {
-            "x" : {
-               "$eq" : 1
+   \(dqexecutionStats\(dq : {
+      \(dqallPlansExecution\(dq : [],
+      \(dqexecutionStages\(dq : {
+         \(dqadvanced\(dq : 19,
+         \(dqdirection\(dq : \(dqforward\(dq ,
+         \(dqdocsExamined\(dq : 76,
+         \(dqexecutionTimeMillisEstimate\(dq : 0,
+         \(dqfilter\(dq : {
+            \(dqx\(dq : {
+               \(dq$eq\(dq : 1
             }
          },
-         "invalidates" : 0,
-         "isEOF" : 1,
-         "nReturned" : 19,
-         "needTime" : 58,
-         "needYield" : 0,
-         "restoreState" : 0,
-         "saveState" : 0,
-         "stage" : "COLLSCAN" ,
-         "works" : 78
+         \(dqinvalidates\(dq : 0,
+         \(dqisEOF\(dq : 1,
+         \(dqnReturned\(dq : 19,
+         \(dqneedTime\(dq : 58,
+         \(dqneedYield\(dq : 0,
+         \(dqrestoreState\(dq : 0,
+         \(dqsaveState\(dq : 0,
+         \(dqstage\(dq : \(dqCOLLSCAN\(dq ,
+         \(dqworks\(dq : 78
       },
-      "executionSuccess" : true,
-      "executionTimeMillis" : 0,
-      "nReturned" : 19,
-      "totalDocsExamined" : 76,
-      "totalKeysExamined" : 0
+      \(dqexecutionSuccess\(dq : true,
+      \(dqexecutionTimeMillis\(dq : 0,
+      \(dqnReturned\(dq : 19,
+      \(dqtotalDocsExamined\(dq : 76,
+      \(dqtotalKeysExamined\(dq : 0
    },
-   "ok" : 1,
-   "queryPlanner" : {
-      "indexFilterSet" : false,
-      "namespace" : "test.things",
-      "parsedQuery" : {
-         "x" : {
-            "$eq" : 1
+   \(dqok\(dq : 1,
+   \(dqqueryPlanner\(dq : {
+      \(dqindexFilterSet\(dq : false,
+      \(dqnamespace\(dq : \(dqtest.things\(dq,
+      \(dqparsedQuery\(dq : {
+         \(dqx\(dq : {
+            \(dq$eq\(dq : 1
          }
       },
-      "plannerVersion" : 1,
-      "rejectedPlans" : [],
-      "winningPlan" : {
-         "direction" : "forward" ,
-         "filter" : {
-            "x" : {
-               "$eq" : 1
+      \(dqplannerVersion\(dq : 1,
+      \(dqrejectedPlans\(dq : [],
+      \(dqwinningPlan\(dq : {
+         \(dqdirection\(dq : \(dqforward\(dq ,
+         \(dqfilter\(dq : {
+            \(dqx\(dq : {
+               \(dq$eq\(dq : 1
             }
          },
-         "stage" : "COLLSCAN"
+         \(dqstage\(dq : \(dqCOLLSCAN\(dq
       }
    },
-   "serverInfo" : {
-      "gitVersion" : "05552b562c7a0b3143a729aaa0838e558dc49b25" ,
-      "host" : "MacBook\-Pro\-57.local",
-      "port" : 27017,
-      "version" : "3.2.6"
+   \(dqserverInfo\(dq : {
+      \(dqgitVersion\(dq : \(dq05552b562c7a0b3143a729aaa0838e558dc49b25\(dq ,
+      \(dqhost\(dq : \(dqMacBook\-Pro\-57.local\(dq,
+      \(dqport\(dq : 27017,
+      \(dqversion\(dq : \(dq3.2.6\(dq
    }
 }
 .ft P

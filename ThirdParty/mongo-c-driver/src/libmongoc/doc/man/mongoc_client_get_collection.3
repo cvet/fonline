@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_COLLECTION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_collection \- mongoc_client_get_collection()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_COLLECTION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_collection \- mongoc_client_get_collection()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -39,13 +39,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 mongoc_collection_t *
 mongoc_client_get_collection (mongoc_client_t *client,
                               const char *db,
-                              const char *collection);
+                              const char *collection)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Get a newly allocated \fBmongoc_collection_t\fP for the collection named \fBcollection\fP in the database named \fBdb\fP\&.
+Get a newly allocated \fI\%mongoc_collection_t\fP for the collection named \fBcollection\fP in the database named \fBdb\fP\&.
 .sp
 \fBTIP:\fP
 .INDENT 0.0
@@ -56,7 +57,7 @@ Collections are automatically created on the MongoDB server upon insertion of th
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
 \fBdb\fP: The name of the database containing the collection.
 .IP \(bu 2
@@ -64,7 +65,7 @@ Collections are automatically created on the MongoDB server upon insertion of th
 .UNINDENT
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_collection_t\fP that should be freed with \fBmongoc_collection_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_collection_t\fP that should be freed with \fI\%mongoc_collection_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

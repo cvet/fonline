@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_BUCKET_FIND" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_bucket_find \- mongoc_gridfs_bucket_find()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_BUCKET_FIND" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_bucket_find \- mongoc_gridfs_bucket_find()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -39,7 +39,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 mongoc_cursor_t *
 mongoc_gridfs_bucket_find (mongoc_gridfs_bucket_t *bucket,
                            const bson_t *filter,
-                           const bson_t *opts);
+                           const bson_t *opts) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -47,11 +47,11 @@ mongoc_gridfs_bucket_find (mongoc_gridfs_bucket_t *bucket,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbucket\fP: A \fBmongoc_gridfs_bucket_t\fP\&.
+\fBbucket\fP: A \fI\%mongoc_gridfs_bucket_t\fP\&.
 .IP \(bu 2
 \fBfilter\fP: A \fI\%bson_t\fP containing the query to execute.
 .IP \(bu 2
-\fBopts\fP: A \fI\%bson_t\fP for query options, supporting all options in \fBmongoc_collection_find_with_opts()\fP excluding \fBsessionId\fP\&.
+\fBopts\fP: A \fI\%bson_t\fP for query options, supporting all options in \fI\%mongoc_collection_find_with_opts()\fP excluding \fBsessionId\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -59,10 +59,10 @@ Finds file documents from the bucket\(aqs \fBfiles\fP collection.
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_cursor_t\fP that must be freed with \fBmongoc_cursor_destroy()\fP\&.
+A newly allocated \fI\%mongoc_cursor_t\fP that must be freed with \fI\%mongoc_cursor_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

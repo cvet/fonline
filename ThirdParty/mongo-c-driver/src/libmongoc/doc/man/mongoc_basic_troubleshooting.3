@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BASIC_TROUBLESHOOTING" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_basic_troubleshooting \- Basic Troubleshooting
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BASIC_TROUBLESHOOTING" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_basic_troubleshooting \- Basic Troubleshooting
 .SH TROUBLESHOOTING CHECKLIST
 .sp
 The following is a short list of things to check when you have a problem.
@@ -53,7 +53,7 @@ If available, the counters can be accessed outside of the application process vi
 This means that you can graph statistics about your application process easily from tools like Munin or Nagios.
 Your author often uses \fBwatch \-\-interval=0.5 \-d mongoc\-stat $PID\fP to monitor an application.
 .sp
-Performance counters are only available on Linux platforms supporting shared memory segments.
+Performance counters are only available on Linux platforms and macOS arm64 platforms supporting shared memory segments.
 On supported platforms they are enabled by default.
 Applications can be built without the counters by specifying the cmake option \fB\-DENABLE_SHM_COUNTERS=OFF\fP\&. Additionally, if
 performance counters are already compiled, they can be disabled at runtime by specifying the environment variable \fBMONGOC_DISABLE_SHM\fP\&.

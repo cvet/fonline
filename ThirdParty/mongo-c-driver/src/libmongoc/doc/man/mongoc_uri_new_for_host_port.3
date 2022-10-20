@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_NEW_FOR_HOST_PORT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_new_for_host_port \- mongoc_uri_new_for_host_port()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_NEW_FOR_HOST_PORT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_new_for_host_port \- mongoc_uri_new_for_host_port()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,10 +51,10 @@ mongoc_uri_new_for_host_port (const char *hostname, uint16_t port);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Creates a new \fBmongoc_uri_t\fP based on the hostname and port provided.
+Creates a new \fI\%mongoc_uri_t\fP based on the hostname and port provided.
 .SH RETURNS
 .sp
-Returns a newly allocated \fBmongoc_uri_t\fP that should be freed with \fBmongoc_uri_destroy()\fP when no longer in use.
+Returns a newly allocated \fI\%mongoc_uri_t\fP that should be freed with \fI\%mongoc_uri_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

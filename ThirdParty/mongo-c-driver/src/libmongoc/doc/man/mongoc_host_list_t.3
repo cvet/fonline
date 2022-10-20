@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_HOST_LIST_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_host_list_t \- mongoc_host_list_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_HOST_LIST_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_host_list_t \- mongoc_host_list_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,13 +50,13 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The host and port of a MongoDB server. Can be part of a linked list: for example the return value of \fBmongoc_uri_get_hosts\fP when multiple hosts are provided in the MongoDB URI.
+The host and port of a MongoDB server. Can be part of a linked list: for example the return value of \fI\%mongoc_uri_get_hosts()\fP when multiple hosts are provided in the MongoDB URI.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_uri_get_hosts\fP and \fBmongoc_cursor_get_host\fP\&.
+\fI\%mongoc_uri_get_hosts()\fP and \fI\%mongoc_cursor_get_host()\fP\&.
 .fi
 .sp
 .UNINDENT

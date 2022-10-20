@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_transaction_opt_t.html"/>
-    <title>mongoc_transaction_opt_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_transaction_opt_t.html"/>
+    <title>mongoc_transaction_opt_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_transaction_opts_new()" href="mongoc_transaction_opts_new.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_topology_description_type.html" title="mongoc_topology_description_type()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,15 +45,15 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-transaction-opt-t">
-<h1>mongoc_transaction_opt_t<a class="headerlink" href="#mongoc-transaction-opt-t" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+  <section id="mongoc-transaction-opt-t">
+<h1>mongoc_transaction_opt_t<a class="headerlink" href="#mongoc-transaction-opt-t" title="Permalink to this heading">¶</a></h1>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_mongoc_transaction_opt_t</span> <span class="n">mongoc_transaction_opt_t</span><span class="p">;</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_mongoc_transaction_opt_t</span><span class="w"> </span><span class="n">mongoc_transaction_opt_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
 <p>Options for starting a multi-document transaction.</p>
 <p>When a session is first created with <a class="symbol reference internal" href="mongoc_client_start_session.html"><span class="doc">mongoc_client_start_session()</span></a>, it inherits from the client the read concern, write concern, and read preference with which to start transactions. Each of these fields can be overridden independently. Create a <a class="symbol reference internal" href="#"><span class="doc">mongoc_transaction_opt_t</span></a> with <a class="symbol reference internal" href="mongoc_transaction_opts_new.html"><span class="doc">mongoc_transaction_opts_new()</span></a>, and pass a non-NULL option to any of the <a class="symbol reference internal" href="#"><span class="doc">mongoc_transaction_opt_t</span></a> setter functions:</p>
 <ul class="simple">
@@ -57,197 +62,197 @@
 <li><p><a class="symbol reference internal" href="mongoc_transaction_opts_set_read_prefs.html"><span class="doc">mongoc_transaction_opts_set_read_prefs()</span></a></p></li>
 </ul>
 <p>Pass the resulting transaction options to <a class="symbol reference internal" href="mongoc_client_session_start_transaction.html"><span class="doc">mongoc_client_session_start_transaction()</span></a>. Each field set in the transaction options overrides the inherited client configuration.</p>
-</div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h2>
 <div class="literal-block-wrapper docutils container" id="id1">
 <div class="code-block-caption"><span class="caption-text">example-transaction.c</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* gcc example-transaction.c -o example-transaction \</span>
-<span class="cm"> *     $(pkg-config --cflags --libs libmongoc-1.0) */</span>
+<span class="cm"> *     $(pkg-config --cflags --libs libmongoc-1.0) */</span><span class="w"></span>
 
-<span class="cm">/* ./example-transaction [CONNECTION_STRING] */</span>
+<span class="cm">/* ./example-transaction [CONNECTION_STRING] */</span><span class="w"></span>
 
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 
 
-<span class="kt">int</span>
-<span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="kt">int</span> <span class="n">exit_code</span> <span class="o">=</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">exit_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_database_t</span> <span class="o">*</span><span class="n">database</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_client_session_t</span> <span class="o">*</span><span class="n">session</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_session_opt_t</span> <span class="o">*</span><span class="n">session_opts</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_transaction_opt_t</span> <span class="o">*</span><span class="n">default_txn_opts</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_transaction_opt_t</span> <span class="o">*</span><span class="n">txn_opts</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_read_concern_t</span> <span class="o">*</span><span class="n">read_concern</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_write_concern_t</span> <span class="o">*</span><span class="n">write_concern</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">uri_string</span> <span class="o">=</span> <span class="s">&quot;mongodb://127.0.0.1/?appname=transaction-example&quot;</span><span class="p">;</span>
-   <span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="o">*</span><span class="n">doc</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="o">*</span><span class="n">insert_opts</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="kt">int32_t</span> <span class="n">i</span><span class="p">;</span>
-   <span class="kt">int64_t</span> <span class="n">start</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="n">reply</span> <span class="o">=</span> <span class="n">BSON_INITIALIZER</span><span class="p">;</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">reply_json</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">r</span><span class="p">;</span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_database_t</span><span class="w"> </span><span class="o">*</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_session_t</span><span class="w"> </span><span class="o">*</span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_session_opt_t</span><span class="w"> </span><span class="o">*</span><span class="n">session_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_transaction_opt_t</span><span class="w"> </span><span class="o">*</span><span class="n">default_txn_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_transaction_opt_t</span><span class="w"> </span><span class="o">*</span><span class="n">txn_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_read_concern_t</span><span class="w"> </span><span class="o">*</span><span class="n">read_concern</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_write_concern_t</span><span class="w"> </span><span class="o">*</span><span class="n">write_concern</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;mongodb://127.0.0.1/?appname=transaction-example&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">insert_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int32_t</span><span class="w"> </span><span class="n">i</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">start</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="n">reply</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BSON_INITIALIZER</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">reply_json</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">r</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">uri_string</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">uri_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new_with_error</span> <span class="p">(</span><span class="n">uri_string</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span>
-                    <span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-                    <span class="n">uri_string</span><span class="p">,</span>
-                    <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new_with_error</span><span class="w"> </span><span class="p">(</span><span class="n">uri_string</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">                    </span><span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                    </span><span class="n">uri_string</span><span class="p">,</span><span class="w"></span>
+<span class="w">                    </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new_from_uri</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new_from_uri</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_client_set_error_api</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
-   <span class="n">database</span> <span class="o">=</span> <span class="n">mongoc_client_get_database</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s">&quot;example-transaction&quot;</span><span class="p">);</span>
+<span class="w">   </span><span class="n">mongoc_client_set_error_api</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_get_database</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;example-transaction&quot;</span><span class="p">);</span><span class="w"></span>
 
-   <span class="cm">/* inserting into a nonexistent collection normally creates it, but a</span>
-<span class="cm">    * collection can&#39;t be created in a transaction; create it now */</span>
-   <span class="n">collection</span> <span class="o">=</span>
-      <span class="n">mongoc_database_create_collection</span> <span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="s">&quot;collection&quot;</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* inserting into a nonexistent collection normally creates it, but a</span>
+<span class="cm">    * collection can&#39;t be created in a transaction; create it now */</span><span class="w"></span>
+<span class="w">   </span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_database_create_collection</span><span class="w"> </span><span class="p">(</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;collection&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">collection</span><span class="p">)</span> <span class="p">{</span>
-      <span class="cm">/* code 48 is NamespaceExists, see error_codes.err in mongodb source */</span>
-      <span class="k">if</span> <span class="p">(</span><span class="n">error</span><span class="p">.</span><span class="n">code</span> <span class="o">==</span> <span class="mi">48</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">collection</span> <span class="o">=</span> <span class="n">mongoc_database_get_collection</span> <span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="s">&quot;collection&quot;</span><span class="p">);</span>
-      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-         <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;Failed to create collection: %s&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-         <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-      <span class="p">}</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">collection</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="cm">/* code 48 is NamespaceExists, see error_codes.err in mongodb source */</span><span class="w"></span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">error</span><span class="p">.</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">48</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_database_get_collection</span><span class="w"> </span><span class="p">(</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;collection&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Failed to create collection: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">         </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="cm">/* a transaction&#39;s read preferences, read concern, and write concern can be</span>
+<span class="w">   </span><span class="cm">/* a transaction&#39;s read preferences, read concern, and write concern can be</span>
 <span class="cm">    * set on the client, on the default transaction options, or when starting</span>
 <span class="cm">    * the transaction. for the sake of this example, set read concern on the</span>
-<span class="cm">    * default transaction options. */</span>
-   <span class="n">default_txn_opts</span> <span class="o">=</span> <span class="n">mongoc_transaction_opts_new</span> <span class="p">();</span>
-   <span class="n">read_concern</span> <span class="o">=</span> <span class="n">mongoc_read_concern_new</span> <span class="p">();</span>
-   <span class="n">mongoc_read_concern_set_level</span> <span class="p">(</span><span class="n">read_concern</span><span class="p">,</span> <span class="s">&quot;snapshot&quot;</span><span class="p">);</span>
-   <span class="n">mongoc_transaction_opts_set_read_concern</span> <span class="p">(</span><span class="n">default_txn_opts</span><span class="p">,</span> <span class="n">read_concern</span><span class="p">);</span>
-   <span class="n">session_opts</span> <span class="o">=</span> <span class="n">mongoc_session_opts_new</span> <span class="p">();</span>
-   <span class="n">mongoc_session_opts_set_default_transaction_opts</span> <span class="p">(</span><span class="n">session_opts</span><span class="p">,</span>
-                                                     <span class="n">default_txn_opts</span><span class="p">);</span>
+<span class="cm">    * default transaction options. */</span><span class="w"></span>
+<span class="w">   </span><span class="n">default_txn_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_transaction_opts_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">read_concern</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_read_concern_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_read_concern_set_level</span><span class="w"> </span><span class="p">(</span><span class="n">read_concern</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;snapshot&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_transaction_opts_set_read_concern</span><span class="w"> </span><span class="p">(</span><span class="n">default_txn_opts</span><span class="p">,</span><span class="w"> </span><span class="n">read_concern</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">session_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_session_opts_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_session_opts_set_default_transaction_opts</span><span class="w"> </span><span class="p">(</span><span class="n">session_opts</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                                     </span><span class="n">default_txn_opts</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">session</span> <span class="o">=</span> <span class="n">mongoc_client_start_session</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">session_opts</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">session</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;Failed to start session: %s&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_start_session</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">session_opts</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">session</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Failed to start session: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="cm">/* in this example, set write concern when starting the transaction */</span>
-   <span class="n">txn_opts</span> <span class="o">=</span> <span class="n">mongoc_transaction_opts_new</span> <span class="p">();</span>
-   <span class="n">write_concern</span> <span class="o">=</span> <span class="n">mongoc_write_concern_new</span> <span class="p">();</span>
-   <span class="n">mongoc_write_concern_set_wmajority</span> <span class="p">(</span><span class="n">write_concern</span><span class="p">,</span> <span class="mi">1000</span> <span class="cm">/* wtimeout */</span><span class="p">);</span>
-   <span class="n">mongoc_transaction_opts_set_write_concern</span> <span class="p">(</span><span class="n">txn_opts</span><span class="p">,</span> <span class="n">write_concern</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* in this example, set write concern when starting the transaction */</span><span class="w"></span>
+<span class="w">   </span><span class="n">txn_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_transaction_opts_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">write_concern</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_write_concern_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_write_concern_set_wmajority</span><span class="w"> </span><span class="p">(</span><span class="n">write_concern</span><span class="p">,</span><span class="w"> </span><span class="mi">1000</span><span class="w"> </span><span class="cm">/* wtimeout */</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_transaction_opts_set_write_concern</span><span class="w"> </span><span class="p">(</span><span class="n">txn_opts</span><span class="p">,</span><span class="w"> </span><span class="n">write_concern</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">insert_opts</span> <span class="o">=</span> <span class="n">bson_new</span> <span class="p">();</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">mongoc_client_session_append</span> <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">insert_opts</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;Could not add session to opts: %s&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">insert_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_new</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">mongoc_client_session_append</span><span class="w"> </span><span class="p">(</span><span class="n">session</span><span class="p">,</span><span class="w"> </span><span class="n">insert_opts</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Could not add session to opts: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-<span class="nl">retry_transaction</span><span class="p">:</span>
-   <span class="n">r</span> <span class="o">=</span> <span class="n">mongoc_client_session_start_transaction</span> <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">txn_opts</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">r</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;Failed to start transaction: %s&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="nl">retry_transaction</span><span class="p">:</span><span class="w"></span>
+<span class="w">   </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_session_start_transaction</span><span class="w"> </span><span class="p">(</span><span class="n">session</span><span class="p">,</span><span class="w"> </span><span class="n">txn_opts</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Failed to start transaction: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="cm">/* insert two documents - on error, retry the whole transaction */</span>
-   <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">doc</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;_id&quot;</span><span class="p">,</span> <span class="n">BCON_INT32</span> <span class="p">(</span><span class="n">i</span><span class="p">));</span>
-      <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span>
-      <span class="n">r</span> <span class="o">=</span> <span class="n">mongoc_collection_insert_one</span> <span class="p">(</span>
-         <span class="n">collection</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">insert_opts</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* insert two documents - on error, retry the whole transaction */</span><span class="w"></span>
+<span class="w">   </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_INT32</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="p">));</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_collection_insert_one</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">         </span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="n">doc</span><span class="p">,</span><span class="w"> </span><span class="n">insert_opts</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 
-      <span class="n">bson_destroy</span> <span class="p">(</span><span class="n">doc</span><span class="p">);</span>
+<span class="w">      </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">doc</span><span class="p">);</span><span class="w"></span>
 
-      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">r</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;Insert failed: %s&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-         <span class="n">mongoc_client_session_abort_transaction</span> <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Insert failed: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">         </span><span class="n">mongoc_client_session_abort_transaction</span><span class="w"> </span><span class="p">(</span><span class="n">session</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
 
-         <span class="cm">/* a network error, primary failover, or other temporary error in a</span>
+<span class="w">         </span><span class="cm">/* a network error, primary failover, or other temporary error in a</span>
 <span class="cm">          * transaction includes {&quot;errorLabels&quot;: [&quot;TransientTransactionError&quot;]},</span>
 <span class="cm">          * meaning that trying the entire transaction again may succeed</span>
-<span class="cm">          */</span>
-         <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_error_has_label</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="s">&quot;TransientTransactionError&quot;</span><span class="p">))</span> <span class="p">{</span>
-            <span class="k">goto</span> <span class="n">retry_transaction</span><span class="p">;</span>
-         <span class="p">}</span>
+<span class="cm">          */</span><span class="w"></span>
+<span class="w">         </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_error_has_label</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TransientTransactionError&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="k">goto</span><span class="w"> </span><span class="n">retry_transaction</span><span class="p">;</span><span class="w"></span>
+<span class="w">         </span><span class="p">}</span><span class="w"></span>
 
-         <span class="k">goto</span> <span class="n">done</span><span class="p">;</span>
-      <span class="p">}</span>
+<span class="w">         </span><span class="k">goto</span><span class="w"> </span><span class="n">done</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
 
-      <span class="n">reply_json</span> <span class="o">=</span> <span class="n">bson_as_json</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">reply_json</span><span class="p">);</span>
-      <span class="n">bson_free</span> <span class="p">(</span><span class="n">reply_json</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">      </span><span class="n">reply_json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_json</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">reply_json</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">reply_json</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="cm">/* in case of transient errors, retry for 5 seconds to commit transaction */</span>
-   <span class="n">start</span> <span class="o">=</span> <span class="n">bson_get_monotonic_time</span> <span class="p">();</span>
-   <span class="k">while</span> <span class="p">(</span><span class="n">bson_get_monotonic_time</span> <span class="p">()</span> <span class="o">-</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="mi">5</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span>
-      <span class="n">r</span> <span class="o">=</span> <span class="n">mongoc_client_session_commit_transaction</span> <span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-      <span class="k">if</span> <span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="p">{</span>
-         <span class="cm">/* success */</span>
-         <span class="k">break</span><span class="p">;</span>
-      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-         <span class="n">MONGOC_ERROR</span> <span class="p">(</span><span class="s">&quot;Warning: commit failed: %s&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-         <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_error_has_label</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="s">&quot;TransientTransactionError&quot;</span><span class="p">))</span> <span class="p">{</span>
-            <span class="k">goto</span> <span class="n">retry_transaction</span><span class="p">;</span>
-         <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_error_has_label</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span>
-                                            <span class="s">&quot;UnknownTransactionCommitResult&quot;</span><span class="p">))</span> <span class="p">{</span>
-            <span class="cm">/* try again to commit */</span>
-            <span class="k">continue</span><span class="p">;</span>
-         <span class="p">}</span>
+<span class="w">   </span><span class="cm">/* in case of transient errors, retry for 5 seconds to commit transaction */</span><span class="w"></span>
+<span class="w">   </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_get_monotonic_time</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">bson_get_monotonic_time</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_session_commit_transaction</span><span class="w"> </span><span class="p">(</span><span class="n">session</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="cm">/* success */</span><span class="w"></span>
+<span class="w">         </span><span class="k">break</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">MONGOC_ERROR</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Warning: commit failed: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">         </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_error_has_label</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TransientTransactionError&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="k">goto</span><span class="w"> </span><span class="n">retry_transaction</span><span class="p">;</span><span class="w"></span>
+<span class="w">         </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_error_has_label</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                            </span><span class="s">&quot;UnknownTransactionCommitResult&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="cm">/* try again to commit */</span><span class="w"></span>
+<span class="w">            </span><span class="k">continue</span><span class="p">;</span><span class="w"></span>
+<span class="w">         </span><span class="p">}</span><span class="w"></span>
 
-         <span class="cm">/* unrecoverable error trying to commit */</span>
-         <span class="k">break</span><span class="p">;</span>
-      <span class="p">}</span>
-   <span class="p">}</span>
+<span class="w">         </span><span class="cm">/* unrecoverable error trying to commit */</span><span class="w"></span>
+<span class="w">         </span><span class="k">break</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">exit_code</span> <span class="o">=</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="w">   </span><span class="n">exit_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXIT_SUCCESS</span><span class="p">;</span><span class="w"></span>
 
-<span class="nl">done</span><span class="p">:</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="n">insert_opts</span><span class="p">);</span>
-   <span class="n">mongoc_write_concern_destroy</span> <span class="p">(</span><span class="n">write_concern</span><span class="p">);</span>
-   <span class="n">mongoc_read_concern_destroy</span> <span class="p">(</span><span class="n">read_concern</span><span class="p">);</span>
-   <span class="n">mongoc_transaction_opts_destroy</span> <span class="p">(</span><span class="n">txn_opts</span><span class="p">);</span>
-   <span class="n">mongoc_transaction_opts_destroy</span> <span class="p">(</span><span class="n">default_txn_opts</span><span class="p">);</span>
-   <span class="n">mongoc_client_session_destroy</span> <span class="p">(</span><span class="n">session</span><span class="p">);</span>
-   <span class="n">mongoc_collection_destroy</span> <span class="p">(</span><span class="n">collection</span><span class="p">);</span>
-   <span class="n">mongoc_database_destroy</span> <span class="p">(</span><span class="n">database</span><span class="p">);</span>
-   <span class="n">mongoc_uri_destroy</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="nl">done</span><span class="p">:</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">insert_opts</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_write_concern_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">write_concern</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_read_concern_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">read_concern</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_transaction_opts_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">txn_opts</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_transaction_opts_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">default_txn_opts</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_session_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">session</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_database_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">database</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="k">return</span> <span class="n">exit_code</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">exit_code</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_transaction_opts_new.html">mongoc_transaction_opts_new()</a></li>
@@ -263,8 +268,8 @@
 <li class="toctree-l1"><a class="reference internal" href="mongoc_transaction_opts_destroy.html">mongoc_transaction_opts_destroy()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -300,6 +305,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -375,7 +381,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

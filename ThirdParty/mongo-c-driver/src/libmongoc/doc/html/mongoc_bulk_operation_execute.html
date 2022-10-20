@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_bulk_operation_execute.html"/>
-    <title>mongoc_bulk_operation_execute() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_bulk_operation_execute.html"/>
+    <title>mongoc_bulk_operation_execute() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_bulk_operation_get_hint()" href="mongoc_bulk_operation_get_hint.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_bulk_operation_destroy.html" title="mongoc_bulk_operation_destroy()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_bulk_operation_t.html" accesskey="U">mongoc_bulk_operation_t</a> &#187;</li> 
       </ul>
@@ -41,37 +46,37 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-bulk-operation-execute">
-<h1>mongoc_bulk_operation_execute()<a class="headerlink" href="#mongoc-bulk-operation-execute" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">uint32_t</span>
-<span class="nf">mongoc_bulk_operation_execute</span> <span class="p">(</span><span class="n">mongoc_bulk_operation_t</span> <span class="o">*</span><span class="n">bulk</span><span class="p">,</span>
-                               <span class="n">bson_t</span> <span class="o">*</span><span class="n">reply</span><span class="p">,</span>
-                               <span class="n">bson_error_t</span> <span class="o">*</span><span class="n">error</span><span class="p">);</span>
+  <section id="mongoc-bulk-operation-execute">
+<h1>mongoc_bulk_operation_execute()<a class="headerlink" href="#mongoc-bulk-operation-execute" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">uint32_t</span><span class="w"></span>
+<span class="nf">mongoc_bulk_operation_execute</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_bulk_operation_t</span><span class="w"> </span><span class="o">*</span><span class="n">bulk</span><span class="p">,</span><span class="w"></span>
+<span class="w">                               </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">reply</span><span class="p">,</span><span class="w"></span>
+<span class="w">                               </span><span class="n">bson_error_t</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>This function executes all operations queued into the bulk operation. Unless <code class="docutils literal notranslate"><span class="pre">ordered:</span> <span class="pre">false</span></code> was specified in the <code class="docutils literal notranslate"><span class="pre">opts</span></code> passed to <a class="symbol reference internal" href="mongoc_collection_create_bulk_operation_with_opts.html"><span class="doc">mongoc_collection_create_bulk_operation_with_opts()</span></a>, then forward progress will be stopped upon the first error.</p>
 <p>It is only valid to call <a class="symbol reference internal" href="#"><span class="doc">mongoc_bulk_operation_execute()</span></a> once. The <code class="docutils literal notranslate"><span class="pre">mongoc_bulk_operation_t</span></code> must be destroyed afterwards.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p><code class="docutils literal notranslate"><span class="pre">reply</span></code> is always initialized, even upon failure. Callers <em>must</em> call <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_destroy.html" title="(in libbson v1.19.2)"><code class="docutils literal notranslate"><span class="pre">bson_destroy()</span></code></a> to release this potential allocation.</p>
+<p><code class="docutils literal notranslate"><span class="pre">reply</span></code> is always initialized, even upon failure. Callers <em>must</em> call <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_destroy.html" title="(in libbson v1.23.0)"><code class="docutils literal notranslate"><span class="pre">bson_destroy()</span></code></a> to release this potential allocation.</p>
 </div>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">bulk</span></code>: A <a class="symbol reference internal" href="mongoc_bulk_operation_t.html"><span class="doc">mongoc_bulk_operation_t</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">reply</span></code>: An uninitialized <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reply</span></code>: An uninitialized <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: An optional location for a <a class="symbol reference internal" href="errors.html"><span class="doc">bson_error_t</span></a> or <code class="docutils literal notranslate"><span class="pre">NULL</span></code>.</p></li>
 </ul>
-</div>
-<div class="section" id="errors">
-<h2>Errors<a class="headerlink" href="#errors" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="errors">
+<h2>Errors<a class="headerlink" href="#errors" title="Permalink to this heading">¶</a></h2>
 <p>Errors are propagated via the <code class="docutils literal notranslate"><span class="pre">error</span></code> parameter.</p>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>On success, returns the server id used. On failure, returns 0 and sets <code class="docutils literal notranslate"><span class="pre">error</span></code>.</p>
 <p>A write concern timeout or write concern error is considered a failure.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">reply</span></code> document counts operations and collects error information. See <a class="reference internal" href="bulk.html"><span class="doc">Bulk Write Operations</span></a> for examples.</p>
@@ -84,8 +89,8 @@
 <div class="line"><a class="symbol reference internal" href="mongoc_bulk_operation_get_hint.html"><span class="doc">mongoc_bulk_operation_get_hint()</span></a>, which gets the id of the server used even if the operation failed.</div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -121,6 +126,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -196,7 +202,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

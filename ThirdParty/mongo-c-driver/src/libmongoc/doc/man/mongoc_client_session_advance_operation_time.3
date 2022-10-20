@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SESSION_ADVANCE_OPERATION_TIME" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_session_advance_operation_time \- mongoc_client_session_advance_operation_time()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SESSION_ADVANCE_OPERATION_TIME" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_session_advance_operation_time \- mongoc_client_session_advance_operation_time()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,11 +47,11 @@ mongoc_client_session_advance_operation_time (mongoc_client_session_t *session,
 .sp
 Advance the session\(aqs operation time, expressed as a BSON Timestamp with timestamp and increment components. Has an effect only if the new operation time is greater than the session\(aqs current operation time.
 .sp
-Use \fBmongoc_client_session_advance_operation_time\fP and \fBmongoc_client_session_advance_cluster_time\fP to copy the operationTime and clusterTime from another session, ensuring subsequent operations in this session are causally consistent with the last operation in the other session
+Use \fI\%mongoc_client_session_advance_operation_time()\fP and \fI\%mongoc_client_session_advance_cluster_time()\fP to copy the operationTime and clusterTime from another session, ensuring subsequent operations in this session are causally consistent with the last operation in the other session
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBsession\fP: A \fBmongoc_client_session_t\fP\&.
+\fBsession\fP: A \fI\%mongoc_client_session_t\fP\&.
 .IP \(bu 2
 \fBtimestamp\fP: The new operationTime\(aqs timestamp component.
 .IP \(bu 2

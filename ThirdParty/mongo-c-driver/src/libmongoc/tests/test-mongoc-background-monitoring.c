@@ -41,7 +41,10 @@ typedef struct {
 typedef enum {
    TF_FAST_HEARTBEAT = 1 << 0,
    TF_FAST_MIN_HEARTBEAT = 1 << 1,
-   TF_AUTO_RESPOND_POLLING_HELLO = 1 << 2
+   TF_AUTO_RESPOND_POLLING_HELLO = 1 << 2,
+   TF_NO_MONGODB_API_VERSION =
+      1 << 3, /* if set, do not pick up the MONGODB_API_VERSION environment
+                 variable */
 } tf_flags_t;
 
 typedef struct {
@@ -189,6 +192,8 @@ _server_changed (const mongoc_apm_server_changed_t *event)
 bool
 auto_respond_polling_hello (request_t *request, void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    if (0 == strcasecmp (request->command_name, HANDSHAKE_CMD_LEGACY_HELLO) ||
        0 == strcmp (request->command_name, "hello")) {
       const bson_t *doc;
@@ -226,14 +231,22 @@ tf_new (tf_flags_t flags)
    mongoc_apm_set_server_heartbeat_succeeded_cb (callbacks,
                                                  _heartbeat_succeeded);
    mongoc_apm_set_server_heartbeat_failed_cb (callbacks, _heartbeat_failed);
-   tf->pool = test_framework_client_pool_new_from_uri (
-      mock_server_get_uri (tf->server), NULL);
+
+   if (flags & TF_NO_MONGODB_API_VERSION) {
+      tf->pool = mongoc_client_pool_new (mock_server_get_uri (tf->server));
+   } else {
+      tf->pool = test_framework_client_pool_new_from_uri (
+         mock_server_get_uri (tf->server), NULL);
+   }
+
    mongoc_client_pool_set_apm_callbacks (tf->pool, callbacks, tf);
    mongoc_apm_callbacks_destroy (callbacks);
 
    if (flags & TF_FAST_HEARTBEAT) {
-      _mongoc_client_pool_get_topology (tf->pool)->description.heartbeat_msec =
-         FAST_HEARTBEAT_MS;
+      mc_tpld_modification tdmod =
+         mc_tpld_modify_begin (_mongoc_client_pool_get_topology (tf->pool));
+      tdmod.new_td->heartbeat_msec = FAST_HEARTBEAT_MS;
+      mc_tpld_modify_commit (tdmod);
       /* A fast heartbeat implies a fast min heartbeat. */
       flags |= TF_FAST_MIN_HEARTBEAT;
    }
@@ -309,16 +322,16 @@ tf_destroy (test_fixture_t *tf)
 static void
 _signal_shutdown (test_fixture_t *tf)
 {
-   bson_mutex_lock (&tf->client->topology->mutex);
+   mc_tpld_modification tdmod = mc_tpld_modify_begin (tf->client->topology);
    /* Ignore the "Last server removed from topology" warning. */
    capture_logs (true);
    /* remove the server description from the topology description. */
-   mongoc_topology_description_reconcile (&tf->client->topology->description,
-                                          NULL);
+   mongoc_topology_description_reconcile (tdmod.new_td, NULL);
    capture_logs (false);
    /* remove the server monitor from the set of server monitors. */
-   _mongoc_topology_background_monitoring_reconcile (tf->client->topology);
-   bson_mutex_unlock (&tf->client->topology->mutex);
+   _mongoc_topology_background_monitoring_reconcile (tf->client->topology,
+                                                     tdmod.new_td);
+   mc_tpld_modify_commit (tdmod);
 }
 
 static void
@@ -326,35 +339,34 @@ _add_server_monitor (test_fixture_t *tf)
 {
    uint32_t id;
    const mongoc_uri_t *uri;
+   mc_tpld_modification tdmod = mc_tpld_modify_begin (tf->client->topology);
 
    uri = mock_server_get_uri (tf->server);
-   bson_mutex_lock (&tf->client->topology->mutex);
    /* remove the server description from the topology description. */
    mongoc_topology_description_add_server (
-      &tf->client->topology->description,
-      mongoc_uri_get_hosts (uri)->host_and_port,
-      &id);
+      tdmod.new_td, mongoc_uri_get_hosts (uri)->host_and_port, &id);
    /* add the server monitor from the set of server monitors. */
-   _mongoc_topology_background_monitoring_reconcile (tf->client->topology);
-   bson_mutex_unlock (&tf->client->topology->mutex);
+   _mongoc_topology_background_monitoring_reconcile (tf->client->topology,
+                                                     tdmod.new_td);
+   mc_tpld_modify_commit (tdmod);
 }
 
 static void
 _request_scan (test_fixture_t *tf)
 {
-   bson_mutex_lock (&tf->client->topology->mutex);
+   bson_mutex_lock (&tf->client->topology->tpld_modification_mtx);
    _mongoc_topology_request_scan (tf->client->topology);
-   bson_mutex_unlock (&tf->client->topology->mutex);
+   bson_mutex_unlock (&tf->client->topology->tpld_modification_mtx);
 }
 
 static void
 _request_cancel (test_fixture_t *tf)
 {
-   bson_mutex_lock (&tf->client->topology->mutex);
+   bson_mutex_lock (&tf->client->topology->tpld_modification_mtx);
    /* Assume server id is 1. */
    _mongoc_topology_background_monitoring_cancel_check (tf->client->topology,
                                                         1);
-   bson_mutex_unlock (&tf->client->topology->mutex);
+   bson_mutex_unlock (&tf->client->topology->tpld_modification_mtx);
 }
 
 void
@@ -363,7 +375,7 @@ test_connect_succeeds (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (0);
+   tf = tf_new (TF_NO_MONGODB_API_VERSION);
    request = mock_server_receives_legacy_hello (tf->server, NULL);
    OBSERVE (tf, request);
    OBSERVE (tf, tf->observations->n_heartbeat_started == 1);
@@ -384,7 +396,7 @@ test_connect_hangup (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (0);
+   tf = tf_new (TF_NO_MONGODB_API_VERSION);
    request = mock_server_receives_legacy_hello (tf->server, NULL);
    OBSERVE (tf, request);
    OBSERVE (tf, tf->observations->n_heartbeat_started == 1);
@@ -410,7 +422,7 @@ test_connect_badreply (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (0);
+   tf = tf_new (TF_NO_MONGODB_API_VERSION);
    request = mock_server_receives_legacy_hello (tf->server, NULL);
    OBSERVE (tf, request);
    OBSERVE_SOON (tf, tf->observations->n_heartbeat_started == 1);
@@ -435,7 +447,7 @@ test_connect_shutdown (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (0);
+   tf = tf_new (TF_NO_MONGODB_API_VERSION);
    request = mock_server_receives_legacy_hello (tf->server, NULL);
    OBSERVE (tf, request);
    OBSERVE_SOON (tf, tf->observations->n_heartbeat_started == 1);
@@ -461,7 +473,7 @@ test_connect_requestscan (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (0);
+   tf = tf_new (TF_NO_MONGODB_API_VERSION);
    request = mock_server_receives_legacy_hello (tf->server, NULL);
    OBSERVE (tf, request);
    /* Before the mock server replies, request a scan. */
@@ -486,7 +498,7 @@ test_retry_succeeds (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (TF_FAST_MIN_HEARTBEAT);
+   tf = tf_new (TF_FAST_MIN_HEARTBEAT | TF_NO_MONGODB_API_VERSION);
 
    /* Initial discovery occurs. */
    request = mock_server_receives_legacy_hello (tf->server, NULL);
@@ -532,7 +544,7 @@ test_retry_hangup (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (TF_FAST_MIN_HEARTBEAT);
+   tf = tf_new (TF_FAST_MIN_HEARTBEAT | TF_NO_MONGODB_API_VERSION);
 
    /* Initial discovery occurs. */
    request = mock_server_receives_legacy_hello (tf->server, NULL);
@@ -579,7 +591,7 @@ test_retry_badreply (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (TF_FAST_MIN_HEARTBEAT);
+   tf = tf_new (TF_FAST_MIN_HEARTBEAT | TF_NO_MONGODB_API_VERSION);
 
    /* Initial discovery occurs. */
    request = mock_server_receives_legacy_hello (tf->server, NULL);
@@ -627,7 +639,7 @@ test_retry_shutdown (void)
    test_fixture_t *tf;
    request_t *request;
 
-   tf = tf_new (TF_FAST_HEARTBEAT);
+   tf = tf_new (TF_FAST_HEARTBEAT | TF_NO_MONGODB_API_VERSION);
 
    /* Initial discovery occurs. */
    request = mock_server_receives_legacy_hello (tf->server, NULL);
@@ -665,7 +677,7 @@ test_flip_flop (void)
    request_t *request;
    int i;
 
-   tf = tf_new (0);
+   tf = tf_new (TF_NO_MONGODB_API_VERSION);
 
    for (i = 1; i < 100; i++) {
       request = mock_server_receives_legacy_hello (tf->server, NULL);
@@ -689,7 +701,7 @@ test_repeated_requestscan (void)
 
    /* Multiple repeated requests before a hello completes should not cause a
     * subsequent scan. */
-   tf = tf_new (TF_FAST_MIN_HEARTBEAT);
+   tf = tf_new (TF_FAST_MIN_HEARTBEAT | TF_NO_MONGODB_API_VERSION);
    for (i = 0; i < 10; i++) {
       _request_scan (tf);
    }
@@ -713,7 +725,7 @@ test_sleep_after_scan (void)
    request_t *request;
 
    /* After handling a scan request */
-   tf = tf_new (TF_FAST_MIN_HEARTBEAT);
+   tf = tf_new (TF_FAST_MIN_HEARTBEAT | TF_NO_MONGODB_API_VERSION);
    _request_scan (tf);
    request = mock_server_receives_legacy_hello (tf->server, NULL);
    OBSERVE (tf, tf->observations->n_heartbeat_started == 1);

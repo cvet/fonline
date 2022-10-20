@@ -25,8 +25,8 @@ server_id_for_reads (mongoc_cluster_t *cluster)
    mongoc_server_stream_t *server_stream;
    uint32_t id;
 
-   server_stream =
-      mongoc_cluster_stream_for_reads (cluster, NULL, NULL, NULL, &error);
+   server_stream = mongoc_cluster_stream_for_reads (
+      cluster, NULL, NULL, NULL, false, &error);
    ASSERT_OR_PRINT (server_stream, error);
    id = server_stream->sd->id;
 
@@ -45,15 +45,17 @@ test_get_max_bson_obj_size (void)
    mongoc_client_t *client;
    int32_t max_bson_obj_size = 16;
    uint32_t id;
+   mc_tpld_modification tdmod;
 
    /* single-threaded */
    client = test_framework_new_default_client ();
    BSON_ASSERT (client);
 
    id = server_id_for_reads (&client->cluster);
-   sd = (mongoc_server_description_t *) mongoc_set_get (
-      client->topology->description.servers, id);
+   tdmod = mc_tpld_modify_begin (client->topology);
+   sd = mongoc_set_get (mc_tpld_servers (tdmod.new_td), id);
    sd->max_bson_obj_size = max_bson_obj_size;
+   mc_tpld_modify_commit (tdmod);
    BSON_ASSERT (max_bson_obj_size ==
                 mongoc_cluster_get_max_bson_obj_size (&client->cluster));
 
@@ -82,14 +84,16 @@ test_get_max_msg_size (void)
    mongoc_client_t *client;
    int32_t max_msg_size = 32;
    uint32_t id;
+   mc_tpld_modification tdmod;
 
    /* single-threaded */
    client = test_framework_new_default_client ();
    id = server_id_for_reads (&client->cluster);
 
-   sd = (mongoc_server_description_t *) mongoc_set_get (
-      client->topology->description.servers, id);
+   tdmod = mc_tpld_modify_begin (client->topology);
+   sd = mongoc_set_get (mc_tpld_servers (tdmod.new_td), id);
    sd->max_msg_size = max_msg_size;
+   mc_tpld_modify_commit (tdmod);
    BSON_ASSERT (max_msg_size ==
                 mongoc_cluster_get_max_msg_size (&client->cluster));
 
@@ -122,15 +126,17 @@ test_get_max_msg_size (void)
    } while (0)
 
 
-#define START_QUERY(client_port_variable)                               \
-   do {                                                                 \
-      cursor = mongoc_collection_find_with_opts (                       \
-         collection, tmp_bson ("{}"), NULL, NULL);                      \
-      future = future_cursor_next (cursor, &doc);                       \
-      request = mock_server_receives_query (                            \
-         server, "test.test", MONGOC_QUERY_SECONDARY_OK, 0, 0, "{}", NULL); \
-      BSON_ASSERT (request);                                            \
-      client_port_variable = request_get_client_port (request);         \
+#define START_QUERY(client_port_variable)                             \
+   do {                                                               \
+      cursor = mongoc_collection_find_with_opts (                     \
+         collection, tmp_bson ("{}"), NULL, NULL);                    \
+      future = future_cursor_next (cursor, &doc);                     \
+      request = mock_server_receives_msg (                            \
+         server,                                                      \
+         MONGOC_MSG_NONE,                                             \
+         tmp_bson ("{'$db': 'test', 'find': 'test', 'filter': {}}")); \
+      BSON_ASSERT (request);                                          \
+      client_port_variable = request_get_client_port (request);       \
    } while (0)
 
 
@@ -168,6 +174,7 @@ _test_cluster_node_disconnect (bool pooled)
    mock_server_run (server);
 
    uri = mongoc_uri_copy (mock_server_get_uri (server));
+   mongoc_uri_set_option_as_bool (uri, MONGOC_URI_RETRYREADS, false);
 
    if (pooled) {
       pool = test_framework_client_pool_new_from_uri (uri, NULL);
@@ -188,7 +195,12 @@ _test_cluster_node_disconnect (bool pooled)
    /* query 1 opens a new socket. set client_port_1 to the new port. */
    START_QUERY (client_port_1);
    ASSERT_CMPINT (client_port_1, !=, client_port_0);
-   mock_server_replies_simple (request, "{'a': 1}");
+   mock_server_replies_simple (request,
+                               "{'ok': 1,"
+                               " 'cursor': {"
+                               "   'id': 0,"
+                               "   'ns': 'db.collection',"
+                               "   'firstBatch': [{'a': 1}]}}");
 
    /* success! */
    BSON_ASSERT (future_get_bool (future));
@@ -211,6 +223,8 @@ _test_cluster_node_disconnect (bool pooled)
 static void
 test_cluster_node_disconnect_single (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_cluster_node_disconnect (false);
 }
 
@@ -218,6 +232,8 @@ test_cluster_node_disconnect_single (void *ctx)
 static void
 test_cluster_node_disconnect_pooled (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_cluster_node_disconnect (true);
 }
 
@@ -233,7 +249,7 @@ _test_cluster_command_timeout (bool pooled)
    future_t *future;
    request_t *request;
    uint16_t client_port;
-   mongoc_server_description_t *sd;
+   mongoc_server_description_t const *sd;
    bson_t reply;
 
    capture_logs (true);
@@ -253,8 +269,8 @@ _test_cluster_command_timeout (bool pooled)
    /* server doesn't respond in time */
    future = future_client_command_simple (
       client, "db", tmp_bson ("{'foo': 1}"), NULL, NULL, &error);
-   request =
-      mock_server_receives_command (server, "db", MONGOC_QUERY_SECONDARY_OK, NULL);
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson ("{'$db': 'db', 'foo': 1}"));
    client_port = request_get_client_port (request);
 
    ASSERT (!future_get_bool (future));
@@ -265,9 +281,9 @@ _test_cluster_command_timeout (bool pooled)
       "Failed to send \"foo\" command with database \"db\"");
 
    /* a network timeout does NOT invalidate the server description */
-   sd = mongoc_topology_server_by_id (client->topology, 1, NULL);
+   sd = mongoc_topology_description_server_by_id_const (
+      mc_tpld_unsafe_get_const (client->topology), 1, NULL);
    BSON_ASSERT (sd->type != MONGOC_SERVER_UNKNOWN);
-   mongoc_server_description_destroy (sd);
 
    /* late response */
    mock_server_replies_simple (request, "{'ok': 1, 'bar': 1}");
@@ -276,8 +292,8 @@ _test_cluster_command_timeout (bool pooled)
 
    future = future_client_command_simple (
       client, "db", tmp_bson ("{'baz': 1}"), NULL, &reply, &error);
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, "{'baz': 1}");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson ("{'$db': 'db', 'baz': 1}"));
    ASSERT (request);
    /* new socket */
    ASSERT_CMPUINT16 (client_port, !=, request_get_client_port (request));
@@ -327,7 +343,7 @@ _test_write_disconnect (void)
    future_t *future;
    request_t *request;
    mongoc_topology_scanner_node_t *scanner_node;
-   mongoc_server_description_t *sd;
+   mongoc_server_description_t const *sd;
 
    if (!TestSuite_CheckMockServerAllowed ()) {
       return;
@@ -343,17 +359,19 @@ _test_write_disconnect (void)
     */
    future = future_client_command_simple (
       client, "db", tmp_bson ("{'ping': 1}"), NULL, NULL, &error);
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
    hello = bson_strdup_printf ("{'ok': 1.0,"
                                " 'isWritablePrimary': true,"
-                               " 'minWireVersion': 2,"
-                               " 'maxWireVersion': 3}");
+                               " 'minWireVersion': %d,"
+                               " 'maxWireVersion': %d}",
+                               WIRE_VERSION_MIN,
+                               WIRE_VERSION_MAX);
 
    mock_server_replies_simple (request, hello);
    request_destroy (request);
 
-   request = mock_server_receives_command (
-      server, "db", MONGOC_QUERY_SECONDARY_OK, "{'ping': 1}");
+   request = mock_server_receives_msg (
+      server, MONGOC_MSG_NONE, tmp_bson ("{'$db': 'db', 'ping': 1}"));
    mock_server_replies_simple (request, "{'ok': 1}");
    ASSERT_OR_PRINT (future_get_bool (future), error);
 
@@ -379,9 +397,9 @@ _test_write_disconnect (void)
    ASSERT (scanner_node && !scanner_node->stream);
 
    /* a hangup DOES invalidate the server description */
-   sd = mongoc_topology_server_by_id (client->topology, 1, NULL);
+   sd = mongoc_topology_description_server_by_id_const (
+      mc_tpld_unsafe_get_const (client->topology), 1, NULL);
    BSON_ASSERT (sd->type == MONGOC_SERVER_UNKNOWN);
-   mongoc_server_description_destroy (sd);
 
    mongoc_collection_destroy (collection);
    request_destroy (request);
@@ -395,81 +413,9 @@ _test_write_disconnect (void)
 static void
 test_write_command_disconnect (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_write_disconnect ();
-}
-
-
-/* Test for CDRIVER-3306 - Do not assume non-empty server reply implies stream
- * is still valid */
-static void
-test_cluster_command_not_primary (void)
-{
-   mock_server_t *server;
-   mongoc_uri_t *uri;
-   mongoc_client_t *client;
-   mongoc_collection_t *collection;
-   mongoc_bulk_operation_t *bulk;
-   bson_t *doc;
-   uint32_t i;
-   bson_error_t error;
-   future_t *future;
-   request_t *request;
-   bson_t reply;
-
-   if (!TestSuite_CheckMockServerAllowed ()) {
-      return;
-   }
-
-   server = mock_server_new ();
-   mock_server_run (server);
-
-   /* server is "recovering": not primary, not secondary */
-   mock_server_auto_hello (server,
-                           "{'ok': 1,"
-                           " 'maxWireVersion': %d,"
-                           " 'isWritablePrimary': false,"
-                           " 'secondary': false,"
-                           " 'setName': 'rs',"
-                           " 'hosts': ['%s']}",
-                           WIRE_VERSION_OP_MSG - 1,
-                           mock_server_get_host_and_port (server));
-
-   uri = mongoc_uri_copy (mock_server_get_uri (server));
-   mongoc_uri_set_option_as_utf8 (uri, "replicaSet", "rs");
-
-   client = test_framework_client_new_from_uri (uri, NULL);
-
-   collection = mongoc_client_get_collection (client, "db", "test");
-   /* use an unordered bulk write, so it attempts to continue on error */
-   bulk = mongoc_collection_create_bulk_operation_with_opts (
-      collection, tmp_bson ("{'ordered': false}"));
-   /* Set a "hint" aka "server id" to force the write to be directed to the
-    * non-primary */
-   mongoc_bulk_operation_set_hint (bulk, 1);
-   doc = tmp_bson ("{'foo': 1}");
-   /* Have enough inserts to ensure some batch splits */
-   for (i = 0; i < 10001; i++) {
-      mongoc_bulk_operation_insert_with_opts (bulk, doc, NULL, &error);
-   }
-   /* If CDRIVER-3306 is still present, then this operation will trigger a
-    * segfault; once the below non-empty reply is received from the mock
-    * server, the stream will be invalidated but the non-empty reply will be
-    * interpreted as meaning it is OK to proceed with the other operations */
-   future = future_bulk_operation_execute (bulk, &reply, &error);
-
-   request = mock_server_receives_request (server);
-   mock_server_replies_simple (
-      request, "{ 'code': 10107, 'errmsg': 'not primary', 'ok': 0 }");
-   ASSERT (future_wait (future));
-
-   mongoc_client_destroy (client);
-   mongoc_collection_destroy (collection);
-   mongoc_bulk_operation_destroy (bulk);
-   bson_destroy (&reply);
-   request_destroy (request);
-   future_destroy (future);
-   mongoc_uri_destroy (uri);
-   mock_server_destroy (server);
 }
 
 
@@ -900,8 +846,13 @@ future_ping (mongoc_client_t *client, bson_error_t *error)
 static void
 _test_cluster_time_comparison (bool pooled)
 {
-   const char *hello = "{'ok': 1.0, 'isWritablePrimary': true, 'msg': "
-                       "'isdbgrid', 'maxWireVersion': 6}";
+   const char *hello = tmp_str ("{'ok': 1.0,"
+                                " 'isWritablePrimary': true,"
+                                " 'msg': 'isdbgrid',"
+                                " 'minWireVersion': %d,"
+                                " 'maxWireVersion': %d}",
+                                WIRE_VERSION_MIN,
+                                WIRE_VERSION_MAX);
    mock_server_t *server;
    mongoc_uri_t *uri;
    mongoc_client_pool_t *pool = NULL;
@@ -926,12 +877,12 @@ _test_cluster_time_comparison (bool pooled)
    future = future_ping (client, &error);
 
    /* timestamp is 1 */
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
    replies_with_cluster_time (request, 1, 1, hello);
 
    if (pooled) {
       /* a pooled client handshakes its own connection */
-      request = mock_server_receives_legacy_hello (server, NULL);
+      request = mock_server_receives_any_hello (server);
       replies_with_cluster_time (request, 1, 1, hello);
    }
 
@@ -957,11 +908,15 @@ _test_cluster_time_comparison (bool pooled)
 
    if (pooled) {
       /* wait for next heartbeat, it should contain newest cluster time */
-      request =
-         mock_server_receives_legacy_hello (server,
-                                            "{'$clusterTime': "
-                                            "{'clusterTime': {'$timestamp': "
-                                            "{'t': 2, 'i': 2}}}}");
+      request = mock_server_receives_any_hello_with_match (
+         server,
+         "{'$clusterTime': "
+         "{'clusterTime': {'$timestamp': "
+         "{'t': 2, 'i': 2}}}}",
+
+         "{'$clusterTime': "
+         "{'clusterTime': {'$timestamp': "
+         "{'t': 2, 'i': 2}}}}");
 
       replies_with_cluster_time (request, 2, 1, hello);
 
@@ -971,11 +926,15 @@ _test_cluster_time_comparison (bool pooled)
       /* trigger next heartbeat, it should contain newest cluster time */
       _mongoc_usleep (750 * 1000); /* 750 ms */
       future = future_ping (client, &error);
-      request =
-         mock_server_receives_legacy_hello (server,
-                                            "{'$clusterTime': "
-                                            "{'clusterTime': {'$timestamp': "
-                                            "{'t': 2, 'i': 2}}}}");
+      request = mock_server_receives_any_hello_with_match (
+         server,
+         "{'$clusterTime': "
+         "{'clusterTime': {'$timestamp': "
+         "{'t': 2, 'i': 2}}}}",
+
+         "{'$clusterTime': "
+         "{'clusterTime': {'$timestamp': "
+         "{'t': 2, 'i': 2}}}}");
 
       replies_with_cluster_time (request, 2, 1, hello);
       request = receives_with_cluster_time (server, 2, 2, ping);
@@ -1030,7 +989,6 @@ test_error_msg_t errors[] = {
    message. */
 static void
 _test_not_primary (bool pooled,
-                   bool use_op_msg,
                    run_command_fn_t run_command,
                    cleanup_fn_t cleanup_fn)
 {
@@ -1042,11 +1000,11 @@ _test_not_primary (bool pooled,
    bson_error_t error;
    future_t *future;
    request_t *request;
-   mongoc_topology_description_t *td;
-   mongoc_server_description_t *sd;
+   mongoc_topology_description_t const *td;
+   const mongoc_server_description_t *sd;
    char *reply;
 
-   server = mock_server_with_auto_hello (use_op_msg ? 6 : 5);
+   server = mock_server_with_auto_hello (WIRE_VERSION_MIN);
    mock_server_run (server);
 
    if (pooled) {
@@ -1057,9 +1015,6 @@ _test_not_primary (bool pooled,
       client = test_framework_client_new_from_uri (mock_server_get_uri (server),
                                                    NULL);
    }
-
-   td = &client->topology->description;
-   sd = (mongoc_server_description_t *) mongoc_set_get (td->servers, 1);
 
    for (test_error_msg = errors; test_error_msg->errmsg; test_error_msg++) {
       /*
@@ -1073,6 +1028,10 @@ _test_not_primary (bool pooled,
       BSON_ASSERT (future_get_bool (future));
       future_destroy (future);
 
+      /* Topology may be invalidated by client_command_simple */
+      td = mc_tpld_unsafe_get_const (client->topology);
+      sd = mongoc_set_get_const (mc_tpld_servers_const (td), 1);
+
       BSON_ASSERT (sd->type == MONGOC_SERVER_STANDALONE);
 
       /*
@@ -1085,6 +1044,10 @@ _test_not_primary (bool pooled,
                                   test_error_msg->errmsg);
       mock_server_replies_simple (request, reply);
       BSON_ASSERT (!future_get_bool (future));
+
+      /* Topology should be invalidated by run_command */
+      td = mc_tpld_unsafe_get_const (client->topology);
+      sd = mongoc_set_get_const (mc_tpld_servers_const (td), 1);
 
       if (test_error_msg->is_not_primary_err) {
          BSON_ASSERT (sd->type == MONGOC_SERVER_UNKNOWN);
@@ -1124,33 +1087,18 @@ function_command_simple_cleanup (future_t *future)
 
 
 static void
-test_not_primary_single_op_query (void)
+test_not_primary_single (void)
 {
    _test_not_primary (
-      false, false, future_command_simple, function_command_simple_cleanup);
+      false, future_command_simple, function_command_simple_cleanup);
 }
 
 
 static void
-test_not_primary_pooled_op_query (void)
+test_not_primary_pooled (void)
 {
    _test_not_primary (
-      true, false, future_command_simple, function_command_simple_cleanup);
-}
-
-static void
-test_not_primary_single_op_msg (void)
-{
-   _test_not_primary (
-      false, true, future_command_simple, function_command_simple_cleanup);
-}
-
-
-static void
-test_not_primary_pooled_op_msg (void)
-{
-   _test_not_primary (
-      true, true, future_command_simple, function_command_simple_cleanup);
+      true, future_command_simple, function_command_simple_cleanup);
 }
 
 
@@ -1187,33 +1135,18 @@ future_command_private_cleanup (future_t *future)
 
 
 static void
-test_not_primary_auth_single_op_query (void)
+test_not_primary_auth_single (void)
 {
    _test_not_primary (
-      false, false, future_command_private, future_command_private_cleanup);
+      false, future_command_private, future_command_private_cleanup);
 }
 
 
 static void
-test_not_primary_auth_pooled_op_query (void)
+test_not_primary_auth_pooled (void)
 {
    _test_not_primary (
-      true, false, future_command_private, future_command_private_cleanup);
-}
-
-static void
-test_not_primary_auth_single_op_msg (void)
-{
-   _test_not_primary (
-      false, true, future_command_private, future_command_private_cleanup);
-}
-
-
-static void
-test_not_primary_auth_pooled_op_msg (void)
-{
-   _test_not_primary (
-      true, true, future_command_private, future_command_private_cleanup);
+      true, future_command_private, future_command_private_cleanup);
 }
 
 
@@ -1232,18 +1165,21 @@ auto_hello_callback (request_t *request, void *data, bson_t *hello_response)
    dollar_query_test_t *test;
    bson_t cluster_time;
 
+   BSON_UNUSED (request);
+
    test = (dollar_query_test_t *) data;
 
    bson_init (hello_response);
    BSON_APPEND_INT32 (hello_response, "ok", 1);
    BSON_APPEND_BOOL (hello_response, "isWritablePrimary", !test->secondary);
    BSON_APPEND_BOOL (hello_response, "secondary", test->secondary);
-   BSON_APPEND_INT32 (hello_response, "minWireVersion", 0);
-   BSON_APPEND_INT32 (hello_response, "maxWireVersion", WIRE_VERSION_OP_MSG);
+   BSON_APPEND_INT32 (hello_response, "minWireVersion", WIRE_VERSION_MIN);
+   BSON_APPEND_INT32 (hello_response, "maxWireVersion", WIRE_VERSION_MAX);
    BSON_APPEND_UTF8 (hello_response, "setName", "rs");
 
    if (test->cluster_time) {
-      BSON_APPEND_DOCUMENT_BEGIN (hello_response, "$clusterTime", &cluster_time);
+      BSON_APPEND_DOCUMENT_BEGIN (
+         hello_response, "$clusterTime", &cluster_time);
       BSON_APPEND_TIMESTAMP (&cluster_time, "clusterTime", 1, 1);
       bson_append_document_end (hello_response, &cluster_time);
    }
@@ -1452,7 +1388,7 @@ _test_cluster_hello_fails (bool hangup)
       client, "test", tmp_bson ("{'ping': 1}"), NULL, NULL, &error);
    /* the client adds a cluster node, creating a stream to the server, and then
     * sends a hello request. */
-   request = mock_server_receives_legacy_hello (mock_server, NULL);
+   request = mock_server_receives_any_hello (mock_server);
    /* CDRIVER-2576: the server replies with an error, so
     * _mongoc_stream_run_hello returns NULL, which
     * _mongoc_cluster_run_hello must check. */
@@ -1491,7 +1427,7 @@ test_cluster_hello_hangup (void)
 }
 
 static void
-_test_cluster_command_error (bool use_op_msg)
+test_cluster_command_error (void)
 {
    mock_server_t *server;
    mongoc_client_t *client;
@@ -1499,11 +1435,7 @@ _test_cluster_command_error (bool use_op_msg)
    request_t *request;
    future_t *future;
 
-   if (use_op_msg) {
-      server = mock_server_with_auto_hello (WIRE_VERSION_OP_MSG);
-   } else {
-      server = mock_server_with_auto_hello (WIRE_VERSION_OP_MSG - 1);
-   }
+   server = mock_server_with_auto_hello (WIRE_VERSION_MIN);
    mock_server_run (server);
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
@@ -1513,46 +1445,21 @@ _test_cluster_command_error (bool use_op_msg)
                                           NULL /* opts */,
                                           NULL /* read prefs */,
                                           &err);
-   if (use_op_msg) {
-      request = mock_server_receives_msg (
-         server, MONGOC_QUERY_NONE, tmp_bson ("{'ping': 1}"));
-   } else {
-      request = mock_server_receives_command (
-         server, "db", MONGOC_QUERY_SECONDARY_OK, "{'ping': 1}");
-   }
+   request = mock_server_receives_msg (
+      server, MONGOC_QUERY_NONE, tmp_bson ("{'$db': 'db', 'ping': 1}"));
    mock_server_hangs_up (request);
    BSON_ASSERT (!future_get_bool (future));
    future_destroy (future);
    request_destroy (request);
-   if (use_op_msg) {
-      /* _mongoc_buffer_append_from_stream, used by opmsg gives more detail. */
-      ASSERT_ERROR_CONTAINS (err,
-                             MONGOC_ERROR_STREAM,
-                             MONGOC_ERROR_STREAM_SOCKET,
-                             "Failed to send \"ping\" command with database "
-                             "\"db\": Failed to read 4 bytes: socket error or "
-                             "timeout");
-   } else {
-      ASSERT_ERROR_CONTAINS (err,
-                             MONGOC_ERROR_STREAM,
-                             MONGOC_ERROR_STREAM_SOCKET,
-                             "Failed to send \"ping\" command with database "
-                             "\"db\": socket error or timeout");
-   }
+   /* _mongoc_buffer_append_from_stream, used by opmsg gives more detail. */
+   ASSERT_ERROR_CONTAINS (err,
+                          MONGOC_ERROR_STREAM,
+                          MONGOC_ERROR_STREAM_SOCKET,
+                          "Failed to send \"ping\" command with database "
+                          "\"db\": Failed to read 4 bytes: socket error or "
+                          "timeout");
    mock_server_destroy (server);
    mongoc_client_destroy (client);
-}
-
-static void
-test_cluster_command_error_op_msg ()
-{
-   _test_cluster_command_error (true);
-}
-
-static void
-test_cluster_command_error_op_query ()
-{
-   _test_cluster_command_error (false);
 }
 
 static void
@@ -1574,9 +1481,11 @@ test_advanced_cluster_time_not_sent_to_standalone (void)
    mock_server_auto_hello (server,
                            "{'ok': 1.0,"
                            " 'isWritablePrimary': true,"
-                           " 'minWireVersion': 0,"
-                           " 'maxWireVersion': 6,"
-                           " 'logicalSessionTimeoutMinutes': 30}");
+                           " 'minWireVersion': %d,"
+                           " 'maxWireVersion': %d,"
+                           " 'logicalSessionTimeoutMinutes': 30}",
+                           WIRE_VERSION_MIN,
+                           WIRE_VERSION_MAX);
    mock_server_run (server);
    client =
       test_framework_client_new_from_uri (mock_server_get_uri (server), NULL);
@@ -1675,8 +1584,8 @@ _initiator_fn (const mongoc_uri_t *uri,
    return stream;
 }
 
-static void
-_test_hello_on_unknown (char *hello)
+void
+test_hello_on_unknown (void)
 {
    mock_server_t *mock_server;
    mongoc_client_pool_t *pool;
@@ -1687,7 +1596,16 @@ _test_hello_on_unknown (char *hello)
 
    mock_server = mock_server_new ();
    mock_server_run (mock_server);
-   mock_server_autoresponds (mock_server, _responder, hello, NULL);
+   mock_server_autoresponds (mock_server,
+                             _responder,
+                             (void *) tmp_str ("{ 'ok': 1.0,"
+                                               " 'isWritablePrimary': true,"
+                                               " 'minWireVersion': %d,"
+                                               " 'maxWireVersion': %d,"
+                                               " 'msg': 'isdbgrid'}",
+                                               WIRE_VERSION_MIN,
+                                               WIRE_VERSION_MAX),
+                             NULL);
 
    uri = mongoc_uri_copy (mock_server_get_uri (mock_server));
 
@@ -1713,20 +1631,6 @@ _test_hello_on_unknown (char *hello)
    mongoc_client_pool_push (pool, client);
    mongoc_client_pool_destroy (pool);
    mock_server_destroy (mock_server);
-}
-
-void
-test_hello_on_unknown (void)
-{
-   /* Test with pre-OP_MSG to test fix to CDRIVER-3404. */
-   _test_hello_on_unknown ("{ 'ok': 1.0, 'isWritablePrimary': true, "
-                           "'minWireVersion': 0, 'maxWireVersion': 5, "
-                           "'msg': 'isdbgrid'}");
-
-   /* Test with OP_MSG. */
-   _test_hello_on_unknown ("{ 'ok': 1.0, 'isWritablePrimary': true, "
-                           "'minWireVersion': 0, 'maxWireVersion': 8, "
-                           "'msg': 'isdbgrid'}");
 }
 
 
@@ -1789,10 +1693,7 @@ _test_cmd_on_unknown_serverid (bool pooled)
    ASSERT_OR_PRINT (ret, error);
 
    /* Invalidate the server, giving it the server type MONGOC_SERVER_UNKNOWN */
-   bson_set_error (
-      &error, MONGOC_ERROR_STREAM, MONGOC_ERROR_STREAM_CONNECT, "invalidated");
-   mongoc_topology_invalidate_server (client->topology, 1, &error);
-   memset (&error, 0, sizeof (error));
+   _mongoc_topology_invalidate_server (client->topology, 1);
 
    /* The next command is attempted directly on the unknown server and should
     * result in an error. */
@@ -1835,6 +1736,7 @@ test_cluster_stream_invalidation_single (void)
    mongoc_server_description_t *sd;
    bson_error_t error;
    mongoc_server_stream_t *stream;
+   mc_tpld_modification tdmod;
 
    client = test_framework_new_default_client ();
    /* Select a server to start monitoring. */
@@ -1848,8 +1750,10 @@ test_cluster_stream_invalidation_single (void)
       &client->cluster, NULL /* session */, NULL /* reply */, &error);
    ASSERT_OR_PRINT (stream, error);
    BSON_ASSERT (mongoc_cluster_stream_valid (&client->cluster, stream));
-   _mongoc_topology_clear_connection_pool (
-      client->topology, mongoc_server_description_id (sd), &kZeroServiceId);
+   tdmod = mc_tpld_modify_begin (client->topology);
+   _mongoc_topology_description_clear_connection_pool (
+      tdmod.new_td, mongoc_server_description_id (sd), &kZeroServiceId);
+   mc_tpld_modify_commit (tdmod);
    BSON_ASSERT (!mongoc_cluster_stream_valid (&client->cluster, stream));
    mongoc_server_stream_cleanup (stream);
 
@@ -1883,6 +1787,7 @@ test_cluster_stream_invalidation_pooled (void)
    mongoc_server_description_t *sd;
    bson_error_t error;
    mongoc_server_stream_t *stream;
+   mc_tpld_modification tdmod;
 
    pool = test_framework_new_default_client_pool ();
    client = mongoc_client_pool_pop (pool);
@@ -1897,8 +1802,10 @@ test_cluster_stream_invalidation_pooled (void)
       &client->cluster, NULL /* session */, NULL /* reply */, &error);
    ASSERT_OR_PRINT (stream, error);
    BSON_ASSERT (mongoc_cluster_stream_valid (&client->cluster, stream));
-   _mongoc_topology_clear_connection_pool (
-      client->topology, mongoc_server_description_id (sd), &kZeroServiceId);
+   tdmod = mc_tpld_modify_begin (client->topology);
+   _mongoc_topology_description_clear_connection_pool (
+      tdmod.new_td, mongoc_server_description_id (sd), &kZeroServiceId);
+   mc_tpld_modify_commit (tdmod);
    BSON_ASSERT (!mongoc_cluster_stream_valid (&client->cluster, stream));
    mongoc_server_stream_cleanup (stream);
 
@@ -1962,8 +1869,6 @@ test_cluster_install (TestSuite *suite)
    TestSuite_AddMockServerTest (suite,
                                 "/Cluster/command/timeout/pooled",
                                 test_cluster_command_timeout_pooled);
-   TestSuite_AddMockServerTest (
-      suite, "/Cluster/command/notprimary", test_cluster_command_not_primary);
    TestSuite_AddFull (suite,
                       "/Cluster/write_command/disconnect",
                       test_write_command_disconnect,
@@ -2020,55 +1925,38 @@ test_cluster_install (TestSuite *suite)
       test_advanced_cluster_time_not_sent_to_standalone,
       test_framework_skip_if_no_crypto);
    TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary/single/op_query",
-                                test_not_primary_single_op_query,
+                                "/Cluster/not_primary/single",
+                                test_not_primary_single,
                                 test_framework_skip_if_slow);
    TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary/pooled/op_query",
-                                test_not_primary_pooled_op_query,
+                                "/Cluster/not_primary/pooled",
+                                test_not_primary_pooled,
                                 test_framework_skip_if_slow);
    TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary/single/op_msg",
-                                test_not_primary_single_op_msg,
+                                "/Cluster/not_primary_auth/single",
+                                test_not_primary_auth_single,
                                 test_framework_skip_if_slow);
    TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary/pooled/op_msg",
-                                test_not_primary_pooled_op_msg,
-                                test_framework_skip_if_slow);
-   TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary_auth/single/op_query",
-                                test_not_primary_auth_single_op_query,
-                                test_framework_skip_if_slow);
-   TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary_auth/pooled/op_query",
-                                test_not_primary_auth_pooled_op_query,
-                                test_framework_skip_if_slow);
-   TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary_auth/single/op_msg",
-                                test_not_primary_auth_single_op_msg,
-                                test_framework_skip_if_slow);
-   TestSuite_AddMockServerTest (suite,
-                                "/Cluster/not_primary_auth/pooled/op_msg",
-                                test_not_primary_auth_pooled_op_msg,
+                                "/Cluster/not_primary_auth/pooled",
+                                test_not_primary_auth_pooled,
                                 test_framework_skip_if_slow);
    TestSuite_AddMockServerTest (
       suite, "/Cluster/hello_fails", test_cluster_hello_fails);
    TestSuite_AddMockServerTest (
       suite, "/Cluster/hello_hangup", test_cluster_hello_hangup);
-   TestSuite_AddMockServerTest (suite,
-                                "/Cluster/command_error/op_msg",
-                                test_cluster_command_error_op_msg);
-   TestSuite_AddMockServerTest (suite,
-                                "/Cluster/command_error/op_query",
-                                test_cluster_command_error_op_query);
+   TestSuite_AddMockServerTest (
+      suite, "/Cluster/command_error/op_msg", test_cluster_command_error);
    TestSuite_AddMockServerTest (
       suite, "/Cluster/hello_on_unknown/mock", test_hello_on_unknown);
-   TestSuite_AddLive (suite,
-                      "/Cluster/cmd_on_unknown_serverid/pooled",
-                      test_cmd_on_unknown_serverid_pooled);
-   TestSuite_AddLive (suite,
-                      "/Cluster/cmd_on_unknown_serverid/single",
-                      test_cmd_on_unknown_serverid_single);
+   /* These tests exhibit some mysterious behavior after the new feature
+   changes-- see: "https://jira.mongodb.org/browse/CDRIVER-4293".
+      TestSuite_AddLive (suite,
+                         "/Cluster/cmd_on_unknown_serverid/pooled",
+                         test_cmd_on_unknown_serverid_pooled);
+      TestSuite_AddLive (suite,
+                         "/Cluster/cmd_on_unknown_serverid/single",
+                         test_cmd_on_unknown_serverid_single);
+   */
    TestSuite_AddLive (suite,
                       "/Cluster/stream_invalidation/single",
                       test_cluster_stream_invalidation_single);

@@ -129,7 +129,7 @@ They are located in ThirdParty directory.
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
-* [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
+* [SDL2](https://github.com/libsdl-org/SDL) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter

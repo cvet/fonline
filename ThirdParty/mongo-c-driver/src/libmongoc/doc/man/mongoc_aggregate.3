@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AGGREGATE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_aggregate \- Aggregation Framework Examples
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AGGREGATE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_aggregate \- Aggregation Framework Examples
 .sp
 This document provides a number of practical examples that display the capabilities of the aggregation framework.
 .sp
@@ -62,14 +62,14 @@ connecting to: test
 29467
 > db.zipcodes.findOne()
 {
-      "_id" : "35004",
-      "city" : "ACMAR",
-      "loc" : [
+      \(dq_id\(dq : \(dq35004\(dq,
+      \(dqcity\(dq : \(dqACMAR\(dq,
+      \(dqloc\(dq : [
               \-86.51557,
               33.584132
       ],
-      "pop" : 6055,
-      "state" : "AL"
+      \(dqpop\(dq : 6055,
+      \(dqstate\(dq : \(dqAL\(dq
 }
 .ft P
 .fi
@@ -84,11 +84,11 @@ Each document in this collection has the following form:
 .nf
 .ft C
 {
-  "_id" : "35004",
-  "city" : "Acmar",
-  "state" : "AL",
-  "pop" : 6055,
-  "loc" : [\-86.51557, 33.584132]
+  \(dq_id\(dq : \(dq35004\(dq,
+  \(dqcity\(dq : \(dqAcmar\(dq,
+  \(dqstate\(dq : \(dqAL\(dq,
+  \(dqpop\(dq : 6055,
+  \(dqloc\(dq : [\-86.51557, 33.584132]
 }
 .ft P
 .fi
@@ -130,43 +130,43 @@ print_pipeline (mongoc_collection_t *collection)
    bson_t *pipeline;
    char *str;
 
-   pipeline = BCON_NEW ("pipeline",
-                        "[",
-                        "{",
-                        "$group",
-                        "{",
-                        "_id",
-                        "$state",
-                        "total_pop",
-                        "{",
-                        "$sum",
-                        "$pop",
-                        "}",
-                        "}",
-                        "}",
-                        "{",
-                        "$match",
-                        "{",
-                        "total_pop",
-                        "{",
-                        "$gte",
+   pipeline = BCON_NEW (\(dqpipeline\(dq,
+                        \(dq[\(dq,
+                        \(dq{\(dq,
+                        \(dq$group\(dq,
+                        \(dq{\(dq,
+                        \(dq_id\(dq,
+                        \(dq$state\(dq,
+                        \(dqtotal_pop\(dq,
+                        \(dq{\(dq,
+                        \(dq$sum\(dq,
+                        \(dq$pop\(dq,
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq{\(dq,
+                        \(dq$match\(dq,
+                        \(dq{\(dq,
+                        \(dqtotal_pop\(dq,
+                        \(dq{\(dq,
+                        \(dq$gte\(dq,
                         BCON_INT32 (10000000),
-                        "}",
-                        "}",
-                        "}",
-                        "]");
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq}\(dq,
+                        \(dq]\(dq);
 
    cursor = mongoc_collection_aggregate (
       collection, MONGOC_QUERY_NONE, pipeline, NULL, NULL);
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Cursor Failure: %s\en", error.message);
+      fprintf (stderr, \(dqCursor Failure: %s\en\(dq, error.message);
    }
 
    mongoc_cursor_destroy (cursor);
@@ -174,12 +174,12 @@ print_pipeline (mongoc_collection_t *collection)
 }
 
 int
-main (int argc, char *argv[])
+main (void)
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;
    const char *uri_string =
-      "mongodb://localhost:27017/?appname=aggregation\-example";
+      \(dqmongodb://localhost:27017/?appname=aggregation\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
 
@@ -188,8 +188,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -201,7 +201,7 @@ main (int argc, char *argv[])
    }
 
    mongoc_client_set_error_api (client, 2);
-   collection = mongoc_client_get_collection (client, "test", "zipcodes");
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqzipcodes\(dq);
 
    print_pipeline (collection);
 
@@ -225,13 +225,13 @@ You should see a result like the following:
 .sp
 .nf
 .ft C
-{ "_id" : "PA", "total_pop" : 11881643 }
-{ "_id" : "OH", "total_pop" : 10847115 }
-{ "_id" : "NY", "total_pop" : 17990455 }
-{ "_id" : "FL", "total_pop" : 12937284 }
-{ "_id" : "TX", "total_pop" : 16986510 }
-{ "_id" : "IL", "total_pop" : 11430472 }
-{ "_id" : "CA", "total_pop" : 29760021 }
+{ \(dq_id\(dq : \(dqPA\(dq, \(dqtotal_pop\(dq : 11881643 }
+{ \(dq_id\(dq : \(dqOH\(dq, \(dqtotal_pop\(dq : 10847115 }
+{ \(dq_id\(dq : \(dqNY\(dq, \(dqtotal_pop\(dq : 17990455 }
+{ \(dq_id\(dq : \(dqFL\(dq, \(dqtotal_pop\(dq : 12937284 }
+{ \(dq_id\(dq : \(dqTX\(dq, \(dqtotal_pop\(dq : 16986510 }
+{ \(dq_id\(dq : \(dqIL\(dq, \(dqtotal_pop\(dq : 11430472 }
+{ \(dq_id\(dq : \(dqCA\(dq, \(dqtotal_pop\(dq : 29760021 }
 .ft P
 .fi
 .UNINDENT
@@ -247,7 +247,7 @@ The \fB$group\fP process reads all documents and for each state it creates a sep
 .sp
 .nf
 .ft C
-{ "_id" : "WA", "total_pop" : 4866692 }
+{ \(dq_id\(dq : \(dqWA\(dq, \(dqtotal_pop\(dq : 4866692 }
 .ft P
 .fi
 .UNINDENT
@@ -264,12 +264,12 @@ To get the first three states with the greatest average population per city, use
 .sp
 .nf
 .ft C
-pipeline = BCON_NEW ("pipeline", "[",
-   "{", "$group", "{", "_id", "{", "state", "$state", "city", "$city", "}", "pop", "{", "$sum", "$pop", "}", "}", "}",
-   "{", "$group", "{", "_id", "$_id.state", "avg_city_pop", "{", "$avg", "$pop", "}", "}", "}",
-   "{", "$sort", "{", "avg_city_pop", BCON_INT32 (\-1), "}", "}",
-   "{", "$limit", BCON_INT32 (3) "}",
-"]");
+pipeline = BCON_NEW (\(dqpipeline\(dq, \(dq[\(dq,
+   \(dq{\(dq, \(dq$group\(dq, \(dq{\(dq, \(dq_id\(dq, \(dq{\(dq, \(dqstate\(dq, \(dq$state\(dq, \(dqcity\(dq, \(dq$city\(dq, \(dq}\(dq, \(dqpop\(dq, \(dq{\(dq, \(dq$sum\(dq, \(dq$pop\(dq, \(dq}\(dq, \(dq}\(dq, \(dq}\(dq,
+   \(dq{\(dq, \(dq$group\(dq, \(dq{\(dq, \(dq_id\(dq, \(dq$_id.state\(dq, \(dqavg_city_pop\(dq, \(dq{\(dq, \(dq$avg\(dq, \(dq$pop\(dq, \(dq}\(dq, \(dq}\(dq, \(dq}\(dq,
+   \(dq{\(dq, \(dq$sort\(dq, \(dq{\(dq, \(dqavg_city_pop\(dq, BCON_INT32 (\-1), \(dq}\(dq, \(dq}\(dq,
+   \(dq{\(dq, \(dq$limit\(dq, BCON_INT32 (3) \(dq}\(dq,
+\(dq]\(dq);
 .ft P
 .fi
 .UNINDENT
@@ -281,9 +281,9 @@ This aggregate pipeline produces:
 .sp
 .nf
 .ft C
-{ "_id" : "DC", "avg_city_pop" : 303450.0 }
-{ "_id" : "FL", "avg_city_pop" : 27942.29805615551 }
-{ "_id" : "CA", "avg_city_pop" : 27735.341099720412 }
+{ \(dq_id\(dq : \(dqDC\(dq, \(dqavg_city_pop\(dq : 303450.0 }
+{ \(dq_id\(dq : \(dqFL\(dq, \(dqavg_city_pop\(dq : 27942.29805615551 }
+{ \(dq_id\(dq : \(dqCA\(dq, \(dqavg_city_pop\(dq : 27735.341099720412 }
 .ft P
 .fi
 .UNINDENT
@@ -297,7 +297,7 @@ The first \fB$group\fP operator creates the following documents:
 .sp
 .nf
 .ft C
-{ "_id" : { "state" : "WY", "city" : "Smoot" }, "pop" : 414 }
+{ \(dq_id\(dq : { \(dqstate\(dq : \(dqWY\(dq, \(dqcity\(dq : \(dqSmoot\(dq }, \(dqpop\(dq : 414 }
 .ft P
 .fi
 .UNINDENT
@@ -311,7 +311,7 @@ The second \fB$group\fP uses these documents to create the following documents:
 .sp
 .nf
 .ft C
-{ "_id" : "FL", "avg_city_pop" : 27942.29805615551 }
+{ \(dq_id\(dq : \(dqFL\(dq, \(dqavg_city_pop\(dq : 27942.29805615551 }
 .ft P
 .fi
 .UNINDENT

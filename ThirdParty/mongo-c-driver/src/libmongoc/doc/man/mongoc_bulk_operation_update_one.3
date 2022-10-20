@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_UPDATE_ONE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_update_one \- mongoc_bulk_operation_update_one()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_UPDATE_ONE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_update_one \- mongoc_bulk_operation_update_one()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,13 +46,13 @@ mongoc_bulk_operation_update_one (mongoc_bulk_operation_t *bulk,
 .UNINDENT
 .UNINDENT
 .sp
-This function queues an update as part of a bulk operation. It will only modify a single document on the MongoDB server. This function does not execute the operation. To execute the entirety of the bulk operation call \fBmongoc_bulk_operation_execute()\fP\&.
+This function queues an update as part of a bulk operation. It will only modify a single document on the MongoDB server. This function does not execute the operation. To execute the entirety of the bulk operation call \fI\%mongoc_bulk_operation_execute()\fP\&.
 .sp
-This function is superseded by \fBmongoc_bulk_operation_update_one_with_opts()\fP\&.
+This function is superseded by \fI\%mongoc_bulk_operation_update_one_with_opts()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbulk\fP: A \fBmongoc_bulk_operation_t\fP\&.
+\fBbulk\fP: A \fI\%mongoc_bulk_operation_t\fP\&.
 .IP \(bu 2
 \fBselector\fP: A \fI\%bson_t\fP that selects which document to remove.
 .IP \(bu 2
@@ -72,11 +72,11 @@ This function is superseded by \fBmongoc_bulk_operation_update_one_with_opts()\f
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_bulk_operation_update()\fP
+\fI\%mongoc_bulk_operation_update()\fP
 .fi
 .sp
 .nf
-\fBmongoc_bulk_operation_update_one_with_opts()\fP
+\fI\%mongoc_bulk_operation_update_one_with_opts()\fP
 .fi
 .sp
 .UNINDENT

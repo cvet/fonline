@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_OID_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_oid_t \- bson_oid_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_OID_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_oid_t \- bson_oid_t
 .sp
 BSON ObjectID Abstraction
 .SH SYNOPSIS
@@ -49,7 +49,7 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_oid_t\fP structure contains the 12\-byte ObjectId notation defined by the \fI\%BSON ObjectID specification\fP\&.
+The \fI\%bson_oid_t\fP structure contains the 12\-byte ObjectId notation defined by the \fI\%BSON ObjectID specification\fP\&.
 .sp
 ObjectId is a 12\-byte BSON type, constructed using:
 .INDENT 0.0
@@ -62,16 +62,16 @@ a 3\-byte counter (Big Endian), starting with a random value.
 .UNINDENT
 .SH STRING CONVERSION
 .sp
-You can convert an Object ID to a string using \fBbson_oid_to_string()\fP and back with \fBbson_oid_init_from_string()\fP\&.
+You can convert an Object ID to a string using \fI\%bson_oid_to_string()\fP and back with \fI\%bson_oid_init_from_string()\fP\&.
 .SH HASHING
 .sp
-A \fBbson_oid_t\fP can be used in hashtables using the function \fBbson_oid_hash()\fP and \fBbson_oid_equal()\fP\&.
+A \fI\%bson_oid_t\fP can be used in hashtables using the function \fI\%bson_oid_hash()\fP and \fI\%bson_oid_equal()\fP\&.
 .SH COMPARING
 .sp
-A \fBbson_oid_t\fP can be compared to another using \fBbson_oid_compare()\fP for \fBqsort()\fP style comparing and \fBbson_oid_equal()\fP for direct equality.
+A \fI\%bson_oid_t\fP can be compared to another using \fI\%bson_oid_compare()\fP for \fBqsort()\fP style comparing and \fI\%bson_oid_equal()\fP for direct equality.
 .SH VALIDATING
 .sp
-You can validate that a string containing a hex\-encoded ObjectID is valid using the function \fBbson_oid_is_valid()\fP\&.
+You can validate that a string containing a hex\-encoded ObjectID is valid using the function \fI\%bson_oid_is_valid()\fP\&.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -89,13 +89,13 @@ main (int argc, char *argv[])
 
    bson_oid_init (&oid, NULL);
    bson_oid_to_string (&oid, str);
-   printf ("%s\en", str);
+   printf (\(dq%s\en\(dq, str);
 
    if (bson_oid_is_valid (str, sizeof str)) {
       bson_oid_init_from_string (&oid, str);
    }
 
-   printf ("The UNIX time was: %u\en", (unsigned) bson_oid_get_time_t (&oid));
+   printf (\(dqThe UNIX time was: %u\en\(dq, (unsigned) bson_oid_get_time_t (&oid));
 
    return 0;
 }

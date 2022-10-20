@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_MEMORY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_memory \- Memory Management
 .
 .nr rst2man-indent-level 0
 .
@@ -30,13 +27,16 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_MEMORY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_memory \- Memory Management
 .sp
 BSON Memory Abstraction.
 .SH DESCRIPTION
 .sp
 Libbson contains a lightweight memory abstraction to make portability to new platforms easier. Additionally, it helps us integrate with interesting higher\-level languages. One caveat, however, is that Libbson is not designed to deal with Out of Memory (OOM) situations. Doing so requires extreme diligence throughout the application stack that has rarely been implemented correctly. This may change in the future. As it stands now, Libbson will \fBabort()\fP under OOM situations.
 .sp
-To aid in language binding integration, Libbson allows for setting a custom memory allocator via \fBbson_mem_set_vtable()\fP\&.  This allocation may be reversed via \fBbson_mem_restore_vtable()\fP\&.
+To aid in language binding integration, Libbson allows for setting a custom memory allocator via \fI\%bson_mem_set_vtable()\fP\&.  This allocation may be reversed via \fI\%bson_mem_restore_vtable()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

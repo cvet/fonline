@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_CREATE_INDEX_WITH_OPTS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_create_index_with_opts \- mongoc_collection_create_index_with_opts()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_CREATE_INDEX_WITH_OPTS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_create_index_with_opts \- mongoc_collection_create_index_with_opts()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,11 +49,11 @@ mongoc_collection_create_index_with_opts (mongoc_collection_t *collection,
 .UNINDENT
 .SH DEPRECATED
 .sp
-This function is deprecated and should not be used in new code. See create\-indexes\&.
+This function is deprecated and should not be used in new code. See \fI\%Creating Indexes\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBkeys\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
@@ -61,15 +61,15 @@ This function is deprecated and should not be used in new code. See create\-inde
 .IP \(bu 2
 \fBreply\fP: An optional location for a \fI\%bson_t\fP which will store the server\(aqs reply.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
 \fBcommand_opts\fP may be NULL or a BSON document with additional command options:
 .INDENT 0.0
 .IP \(bu 2
-\fBwriteConcern\fP: Construct a \fBmongoc_write_concern_t\fP and use \fBmongoc_write_concern_append\fP to add the write concern to \fBopts\fP\&. See the example code for \fBmongoc_client_write_command_with_opts\fP\&.
+\fBwriteConcern\fP: Construct a \fI\%mongoc_write_concern_t\fP and use \fI\%mongoc_write_concern_append()\fP to add the write concern to \fBopts\fP\&. See the example code for \fI\%mongoc_client_write_command_with_opts()\fP\&.
 .IP \(bu 2
-\fBsessionId\fP: First, construct a \fBmongoc_client_session_t\fP with \fBmongoc_client_start_session\fP\&. You can begin a transaction with \fBmongoc_client_session_start_transaction\fP, optionally with a \fBmongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fBmongoc_client_session_append\fP to add the session to \fBopts\fP\&. See the example code for \fBmongoc_client_session_t\fP\&.
+\fBsessionId\fP: First, construct a \fI\%mongoc_client_session_t\fP with \fI\%mongoc_client_start_session()\fP\&. You can begin a transaction with \fI\%mongoc_client_session_start_transaction()\fP, optionally with a \fI\%mongoc_transaction_opt_t\fP that overrides the options inherited from \fBcollection\fP, and use \fI\%mongoc_client_session_append()\fP to add the session to \fBopts\fP\&. See the example code for \fI\%mongoc_client_session_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -80,7 +80,7 @@ The server\(aqs reply is stored in \fBreply\fP\&.
 .sp
 If no write concern is provided in \fBcommand_opts\fP, the collection\(aqs write concern is used.
 .sp
-See \fBmongoc_index_opt_t\fP for options on creating indexes.
+See \fI\%mongoc_index_opt_t\fP for options on creating indexes.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.

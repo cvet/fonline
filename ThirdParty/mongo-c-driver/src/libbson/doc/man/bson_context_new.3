@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_CONTEXT_NEW" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_context_new \- bson_context_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_CONTEXT_NEW" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_context_new \- bson_context_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,22 +45,29 @@ bson_context_new (bson_context_flags_t flags);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBflags\fP: A \fBbson_context_flags_t\fP\&.
+\fBflags\fP: A \fI\%bson_context_flags_t\fP\&.
 .UNINDENT
 .sp
 The following \fBflags\fP may be used:
 * \fBBSON_CONTEXT_NONE\fP meaning creating ObjectIDs with this context is not a thread\-safe operation.
-* \fBBSON_CONTEXT_THREAD_SAFE\fP meaning creating ObjectIDs with this context is a thread\-safe operation.
 * \fBBSON_CONTEXT_DISABLE_PID_CACHE\fP meaning creating ObjectIDs will also check if the process has
 changed by calling \fBgetpid()\fP on every ObjectID generation.
 .sp
-To use multiple flags, xor them together.
+The following flags are deprecated and have no effect:
+.INDENT 0.0
+.IP \(bu 2
+\fBBSON_CONTEXT_DISABLE_HOST_CACHE\fP
+.IP \(bu 2
+\fBBSON_CONTEXT_THREAD_SAFE\fP
+.IP \(bu 2
+\fBBSON_CONTEXT_USE_TASK_ID\fP
+.UNINDENT
 .SH DESCRIPTION
 .sp
-Creates a new \fBbson_context_t\fP\&. This is rarely needed as \fBbson_context_get_default()\fP serves most use\-cases.
+Creates a new \fI\%bson_context_t\fP\&. This is rarely needed as \fI\%bson_context_get_default()\fP serves most use\-cases.
 .SH RETURNS
 .sp
-A newly allocated \fBbson_context_t\fP that should be freed with \fBbson_context_destroy\fP\&.
+A newly allocated \fI\%bson_context_t\fP that should be freed with \fI\%bson_context_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

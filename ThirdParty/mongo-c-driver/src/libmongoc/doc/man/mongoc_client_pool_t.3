@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_t \- mongoc_client_pool_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,8 +27,11 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_t \- mongoc_client_pool_t
 .sp
-A connection pool for multi\-threaded programs. See connection\-pooling\&.
+A connection pool for multi\-threaded programs. See \fI\%Connection Pooling\fP\&.
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,7 +44,7 @@ typedef struct _mongoc_client_pool_t mongoc_client_pool_t
 .UNINDENT
 .UNINDENT
 .sp
-\fBmongoc_client_pool_t\fP is the basis for multi\-threading in the MongoDB C driver. Since \fBmongoc_client_t\fP structures are not thread\-safe, this structure is used to retrieve a new \fBmongoc_client_t\fP for a given thread. This structure \fIis thread\-safe\fP, except for its destructor method, \fBmongoc_client_pool_destroy\fP, which \fIis not thread\-safe\fP and must only be called from one thread.
+\fBmongoc_client_pool_t\fP is the basis for multi\-threading in the MongoDB C driver. Since \fI\%mongoc_client_t\fP structures are not thread\-safe, this structure is used to retrieve a new \fI\%mongoc_client_t\fP for a given thread. This structure \fIis thread\-safe\fP, except for its destructor method, \fI\%mongoc_client_pool_destroy()\fP, which \fIis not thread\-safe\fP and must only be called from one thread.
 .SH EXAMPLE
 .sp
 example\-pool.c
@@ -74,7 +74,7 @@ worker (void *data)
    bson_error_t error;
    bool r;
 
-   BSON_APPEND_INT32 (&ping, "ping", 1);
+   BSON_APPEND_INT32 (&ping, \(dqping\(dq, 1);
 
    while (true) {
       client = mongoc_client_pool_pop (pool);
@@ -83,10 +83,10 @@ worker (void *data)
        * request performing database queries.
        */
       r = mongoc_client_command_simple (
-         client, "admin", &ping, NULL, NULL, &error);
+         client, \(dqadmin\(dq, &ping, NULL, NULL, &error);
 
       if (!r) {
-         fprintf (stderr, "%s\en", error.message);
+         fprintf (stderr, \(dq%s\en\(dq, error.message);
       }
 
       mongoc_client_pool_push (pool, client);
@@ -107,7 +107,7 @@ worker (void *data)
 int
 main (int argc, char *argv[])
 {
-   const char *uri_string = "mongodb://127.0.0.1/?appname=pool\-example";
+   const char *uri_string = \(dqmongodb://127.0.0.1/?appname=pool\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
    mongoc_client_pool_t *pool;
@@ -125,8 +125,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;

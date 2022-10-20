@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_t \- mongoc_client_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,8 +27,11 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_t \- mongoc_client_t
 .sp
-A single\-threaded MongoDB connection. See connection\-pooling\&.
+A single\-threaded MongoDB connection. See \fI\%Connection Pooling\fP\&.
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,13 +52,13 @@ typedef mongoc_stream_t *(*mongoc_stream_initiator_t) (
 .sp
 \fBmongoc_client_t\fP is an opaque type that provides access to a MongoDB server,
 replica set, or sharded cluster. It maintains management of underlying sockets
-and routing to individual nodes based on \fBmongoc_read_prefs_t\fP or \fBmongoc_write_concern_t\fP\&.
+and routing to individual nodes based on \fI\%mongoc_read_prefs_t\fP or \fI\%mongoc_write_concern_t\fP\&.
 .SH STREAMS
 .sp
-The underlying transport for a given client can be customized, wrapped or replaced by any implementation that fulfills \fBmongoc_stream_t\fP\&. A custom transport can be set with \fBmongoc_client_set_stream_initiator()\fP\&.
+The underlying transport for a given client can be customized, wrapped or replaced by any implementation that fulfills \fI\%mongoc_stream_t\fP\&. A custom transport can be set with \fI\%mongoc_client_set_stream_initiator()\fP\&.
 .SH THREAD SAFETY
 .sp
-\fBmongoc_client_t\fP is \fINOT\fP thread\-safe and should only be used from one thread at a time. When used in multi\-threaded scenarios, it is recommended that you use the thread\-safe \fBmongoc_client_pool_t\fP to retrieve a \fBmongoc_client_t\fP for your thread.
+\fBmongoc_client_t\fP is \fINOT\fP thread\-safe and should only be used from one thread at a time. When used in multi\-threaded scenarios, it is recommended that you use the thread\-safe \fI\%mongoc_client_pool_t\fP to retrieve a \fBmongoc_client_t\fP for your thread.
 .SH EXAMPLE
 .sp
 example\-client.c
@@ -84,10 +84,10 @@ main (int argc, char *argv[])
    mongoc_cursor_t *cursor;
    bson_error_t error;
    const bson_t *doc;
-   const char *collection_name = "test";
+   const char *collection_name = \(dqtest\(dq;
    bson_t query;
    char *str;
-   const char *uri_string = "mongodb://127.0.0.1/?appname=client\-example";
+   const char *uri_string = \(dqmongodb://127.0.0.1/?appname=client\-example\(dq;
    mongoc_uri_t *uri;
 
    mongoc_init ();
@@ -102,8 +102,8 @@ main (int argc, char *argv[])
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -117,7 +117,7 @@ main (int argc, char *argv[])
    mongoc_client_set_error_api (client, 2);
 
    bson_init (&query);
-   collection = mongoc_client_get_collection (client, "test", collection_name);
+   collection = mongoc_client_get_collection (client, \(dqtest\(dq, collection_name);
    cursor = mongoc_collection_find_with_opts (
       collection,
       &query,
@@ -126,12 +126,12 @@ main (int argc, char *argv[])
 
    while (mongoc_cursor_next (cursor, &doc)) {
       str = bson_as_canonical_extended_json (doc, NULL);
-      fprintf (stdout, "%s\en", str);
+      fprintf (stdout, \(dq%s\en\(dq, str);
       bson_free (str);
    }
 
    if (mongoc_cursor_error (cursor, &error)) {
-      fprintf (stderr, "Cursor Failure: %s\en", error.message);
+      fprintf (stderr, \(dqCursor Failure: %s\en\(dq, error.message);
       return EXIT_FAILURE;
    }
 

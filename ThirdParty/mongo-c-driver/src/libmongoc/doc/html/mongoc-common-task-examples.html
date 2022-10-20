@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc-common-task-examples.html"/>
-    <title>Common Tasks &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc-common-task-examples.html"/>
+    <title>Common Tasks &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Advanced Connections" href="advanced-connections.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="configuring_tls.html" title="Configuring TLS"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="guides.html" accesskey="U">Guides</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,110 +45,110 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="common-tasks">
-<h1>Common Tasks<a class="headerlink" href="#common-tasks" title="Permalink to this headline">¶</a></h1>
+  <section id="common-tasks">
+<h1>Common Tasks<a class="headerlink" href="#common-tasks" title="Permalink to this heading">¶</a></h1>
 <p>Drivers for some other languages provide helper functions to perform certain common tasks. In the C Driver we must explicitly build commands to send to the server.</p>
-<div class="section" id="setup">
-<h2>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h2>
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Permalink to this heading">¶</a></h2>
 <p>First we’ll write some code to insert sample data:</p>
 <div class="literal-block-wrapper docutils container" id="id1">
 <div class="code-block-caption"><span class="caption-text">doc-common-insert.c</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Don&#39;t try to compile this file on its own. It&#39;s meant to be #included</span>
-<span class="cm">   by example code */</span>
+<span class="cm">   by example code */</span><span class="w"></span>
 
-<span class="cm">/* Insert some sample data */</span>
-<span class="kt">bool</span>
-<span class="nf">insert_data</span> <span class="p">(</span><span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">mongoc_bulk_operation_t</span> <span class="o">*</span><span class="n">bulk</span><span class="p">;</span>
-   <span class="k">enum</span> <span class="n">N</span> <span class="p">{</span> <span class="n">ndocs</span> <span class="o">=</span> <span class="mi">4</span> <span class="p">};</span>
-   <span class="n">bson_t</span> <span class="o">*</span><span class="n">docs</span><span class="p">[</span><span class="n">ndocs</span><span class="p">];</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">ret</span><span class="p">;</span>
+<span class="cm">/* Insert some sample data */</span><span class="w"></span>
+<span class="kt">bool</span><span class="w"></span>
+<span class="nf">insert_data</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_bulk_operation_t</span><span class="w"> </span><span class="o">*</span><span class="n">bulk</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">enum</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ndocs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="p">};</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">docs</span><span class="p">[</span><span class="n">ndocs</span><span class="p">];</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">ret</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">bulk</span> <span class="o">=</span> <span class="n">mongoc_collection_create_bulk_operation_with_opts</span> <span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="w">   </span><span class="n">bulk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_collection_create_bulk_operation_with_opts</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span> <span class="n">BCON_DOUBLE</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="s">&quot;tags&quot;</span><span class="p">,</span> <span class="s">&quot;[&quot;</span><span class="p">,</span> <span class="s">&quot;dog&quot;</span><span class="p">,</span> <span class="s">&quot;cat&quot;</span><span class="p">,</span> <span class="s">&quot;]&quot;</span><span class="p">);</span>
-   <span class="n">docs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span> <span class="n">BCON_DOUBLE</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">),</span> <span class="s">&quot;tags&quot;</span><span class="p">,</span> <span class="s">&quot;[&quot;</span><span class="p">,</span> <span class="s">&quot;cat&quot;</span><span class="p">,</span> <span class="s">&quot;]&quot;</span><span class="p">);</span>
-   <span class="n">docs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span>
-      <span class="s">&quot;x&quot;</span><span class="p">,</span> <span class="n">BCON_DOUBLE</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">),</span> <span class="s">&quot;tags&quot;</span><span class="p">,</span> <span class="s">&quot;[&quot;</span><span class="p">,</span> <span class="s">&quot;mouse&quot;</span><span class="p">,</span> <span class="s">&quot;cat&quot;</span><span class="p">,</span> <span class="s">&quot;dog&quot;</span><span class="p">,</span> <span class="s">&quot;]&quot;</span><span class="p">);</span>
-   <span class="n">docs</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span> <span class="n">BCON_DOUBLE</span> <span class="p">(</span><span class="mf">3.0</span><span class="p">),</span> <span class="s">&quot;tags&quot;</span><span class="p">,</span> <span class="s">&quot;[&quot;</span><span class="p">,</span> <span class="s">&quot;]&quot;</span><span class="p">);</span>
+<span class="w">   </span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_DOUBLE</span><span class="w"> </span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;tags&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;[&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;dog&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cat&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;]&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">docs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_DOUBLE</span><span class="w"> </span><span class="p">(</span><span class="mf">2.0</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;tags&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;[&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cat&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;]&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">docs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="s">&quot;x&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_DOUBLE</span><span class="w"> </span><span class="p">(</span><span class="mf">2.0</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;tags&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;[&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mouse&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cat&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;dog&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;]&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">docs</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">BCON_DOUBLE</span><span class="w"> </span><span class="p">(</span><span class="mf">3.0</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;tags&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;[&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;]&quot;</span><span class="p">);</span><span class="w"></span>
 
-   <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">ndocs</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">mongoc_bulk_operation_insert</span> <span class="p">(</span><span class="n">bulk</span><span class="p">,</span> <span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
-      <span class="n">bson_destroy</span> <span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
-      <span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">ndocs</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_bulk_operation_insert</span><span class="w"> </span><span class="p">(</span><span class="n">bulk</span><span class="p">,</span><span class="w"> </span><span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span><span class="w"></span>
+<span class="w">      </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span><span class="w"></span>
+<span class="w">      </span><span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">ret</span> <span class="o">=</span> <span class="n">mongoc_bulk_operation_execute</span> <span class="p">(</span><span class="n">bulk</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="w">   </span><span class="n">ret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_bulk_operation_execute</span><span class="w"> </span><span class="p">(</span><span class="n">bulk</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">ret</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Error inserting data: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">ret</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Error inserting data: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_bulk_operation_destroy</span> <span class="p">(</span><span class="n">bulk</span><span class="p">);</span>
-   <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">mongoc_bulk_operation_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">bulk</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">ret</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="cm">/* A helper which we&#39;ll use a lot later on */</span>
-<span class="kt">void</span>
-<span class="nf">print_res</span> <span class="p">(</span><span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">reply</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">;</span>
-   <span class="n">BSON_ASSERT</span> <span class="p">(</span><span class="n">reply</span><span class="p">);</span>
-   <span class="n">str</span> <span class="o">=</span> <span class="n">bson_as_canonical_extended_json</span> <span class="p">(</span><span class="n">reply</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
-   <span class="n">bson_free</span> <span class="p">(</span><span class="n">str</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="cm">/* A helper which we&#39;ll use a lot later on */</span><span class="w"></span>
+<span class="kt">void</span><span class="w"></span>
+<span class="nf">print_res</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">reply</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">str</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_ASSERT</span><span class="w"> </span><span class="p">(</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_as_canonical_extended_json</span><span class="w"> </span><span class="p">(</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">str</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">str</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="explain-command">
-<h2>“explain” Command<a class="headerlink" href="#explain-command" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="explain-command">
+<h2>“explain” Command<a class="headerlink" href="#explain-command" title="Permalink to this heading">¶</a></h2>
 <p>This is how to use the <code class="docutils literal notranslate"><span class="pre">explain</span></code> command in MongoDB 3.2+:</p>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">explain.c</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span>
-<span class="nf">explain</span> <span class="p">(</span><span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span><span class="p">)</span>
-<span class="p">{</span>
-   <span class="n">bson_t</span> <span class="o">*</span><span class="n">command</span><span class="p">;</span>
-   <span class="n">bson_t</span> <span class="n">reply</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">res</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span><span class="w"></span>
+<span class="nf">explain</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">command</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="n">reply</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">res</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">command</span> <span class="o">=</span> <span class="n">BCON_NEW</span> <span class="p">(</span><span class="s">&quot;explain&quot;</span><span class="p">,</span>
-                       <span class="s">&quot;{&quot;</span><span class="p">,</span>
-                       <span class="s">&quot;find&quot;</span><span class="p">,</span>
-                       <span class="n">BCON_UTF8</span> <span class="p">(</span><span class="n">COLLECTION_NAME</span><span class="p">),</span>
-                       <span class="s">&quot;filter&quot;</span><span class="p">,</span>
-                       <span class="s">&quot;{&quot;</span><span class="p">,</span>
-                       <span class="s">&quot;x&quot;</span><span class="p">,</span>
-                       <span class="n">BCON_INT32</span> <span class="p">(</span><span class="mi">1</span><span class="p">),</span>
-                       <span class="s">&quot;}&quot;</span><span class="p">,</span>
-                       <span class="s">&quot;}&quot;</span><span class="p">);</span>
-   <span class="n">res</span> <span class="o">=</span> <span class="n">mongoc_collection_command_simple</span> <span class="p">(</span>
-      <span class="n">collection</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Error with explain: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="k">goto</span> <span class="n">cleanup</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BCON_NEW</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;explain&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;{&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;find&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="n">BCON_UTF8</span><span class="w"> </span><span class="p">(</span><span class="n">COLLECTION_NAME</span><span class="p">),</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;filter&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;{&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;x&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="n">BCON_INT32</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;}&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="s">&quot;}&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_collection_command_simple</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="n">command</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">reply</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">res</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Error with explain: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">cleanup</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="cm">/* Do something with the reply */</span>
-   <span class="n">print_res</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span>
+<span class="w">   </span><span class="cm">/* Do something with the reply */</span><span class="w"></span>
+<span class="w">   </span><span class="n">print_res</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
 
-<span class="nl">cleanup</span><span class="p">:</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="n">command</span><span class="p">);</span>
-   <span class="k">return</span> <span class="n">res</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="nl">cleanup</span><span class="p">:</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">reply</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">command</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">res</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="running-the-examples">
-<h2>Running the Examples<a class="headerlink" href="#running-the-examples" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="running-the-examples">
+<h2>Running the Examples<a class="headerlink" href="#running-the-examples" title="Permalink to this heading">¶</a></h2>
 <div class="literal-block-wrapper docutils container" id="id3">
 <div class="code-block-caption"><span class="caption-text">common-operations.c</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/*</span>
@@ -160,109 +165,109 @@
 <span class="cm"> * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
 <span class="cm"> * See the License for the specific language governing permissions and</span>
 <span class="cm"> * limitations under the License.</span>
-<span class="cm"> */</span>
+<span class="cm"> */</span><span class="w"></span>
 
 
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span><span class="cp"></span>
 
 
-<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">COLLECTION_NAME</span> <span class="o">=</span> <span class="s">&quot;things&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">COLLECTION_NAME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;things&quot;</span><span class="p">;</span><span class="w"></span>
 
-<span class="cp">#include</span> <span class="cpf">&quot;../doc-common-insert.c&quot;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&quot;explain.c&quot;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../doc-common-insert.c&quot;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;explain.c&quot;</span><span class="cp"></span>
 
 
-<span class="kt">int</span>
-<span class="nf">main</span> <span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
-   <span class="n">mongoc_database_t</span> <span class="o">*</span><span class="n">database</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_collection_t</span> <span class="o">*</span><span class="n">collection</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="kt">char</span> <span class="o">*</span><span class="n">host_and_port</span><span class="p">;</span>
-   <span class="kt">int</span> <span class="n">res</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"></span>
+<span class="nf">main</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[])</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_database_t</span><span class="w"> </span><span class="o">*</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_t</span><span class="w"> </span><span class="o">*</span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">host_and_port</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int</span><span class="w"> </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">||</span> <span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;usage: %s MONGOD-1-CONNECTION-STRING &quot;</span>
-               <span class="s">&quot;[MONGOD-2-HOST-NAME:MONGOD-2-PORT]</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-               <span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;MONGOD-1-CONNECTION-STRING can be &quot;</span>
-               <span class="s">&quot;of the following forms:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;localhost</span><span class="se">\t\t\t\t</span><span class="s">local machine</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;localhost:27018</span><span class="se">\t\t\t\t</span><span class="s">local machine on port 27018</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;mongodb://user:pass@localhost:27017</span><span class="se">\t</span><span class="s">&quot;</span>
-               <span class="s">&quot;local machine on port 27017, and authenticate with username &quot;</span>
-               <span class="s">&quot;user and password pass</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-      <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">argc</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">argc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;usage: %s MONGOD-1-CONNECTION-STRING &quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;[MONGOD-2-HOST-NAME:MONGOD-2-PORT]</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;MONGOD-1-CONNECTION-STRING can be &quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;of the following forms:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;localhost</span><span class="se">\t\t\t\t</span><span class="s">local machine</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;localhost:27018</span><span class="se">\t\t\t\t</span><span class="s">local machine on port 27018</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;mongodb://user:pass@localhost:27017</span><span class="se">\t</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;local machine on port 27017, and authenticate with username &quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;user and password pass</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_init</span> <span class="p">();</span>
+<span class="w">   </span><span class="n">mongoc_init</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">strncmp</span> <span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;mongodb://&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">host_and_port</span> <span class="o">=</span> <span class="n">bson_strdup</span> <span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
-   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-      <span class="n">host_and_port</span> <span class="o">=</span> <span class="n">bson_strdup_printf</span> <span class="p">(</span><span class="s">&quot;mongodb://%s&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">strncmp</span><span class="w"> </span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="s">&quot;mongodb://&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">host_and_port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_strdup</span><span class="w"> </span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">host_and_port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_strdup_printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new_with_error</span> <span class="p">(</span><span class="n">host_and_port</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">fprintf</span> <span class="p">(</span><span class="n">stderr</span><span class="p">,</span>
-               <span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span>
-               <span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
-               <span class="n">host_and_port</span><span class="p">,</span>
-               <span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span>
-      <span class="n">res</span> <span class="o">=</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-      <span class="k">goto</span> <span class="n">cleanup</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new_with_error</span><span class="w"> </span><span class="p">(</span><span class="n">host_and_port</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">uri</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">fprintf</span><span class="w"> </span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;failed to parse URI: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="w"></span>
+<span class="w">               </span><span class="s">&quot;error message:       %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">host_and_port</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">error</span><span class="p">.</span><span class="n">message</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">cleanup</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">client</span> <span class="o">=</span> <span class="n">mongoc_client_new_from_uri</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">res</span> <span class="o">=</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-      <span class="k">goto</span> <span class="n">cleanup</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_new_from_uri</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">cleanup</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">mongoc_client_set_error_api</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
-   <span class="n">database</span> <span class="o">=</span> <span class="n">mongoc_client_get_database</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s">&quot;test&quot;</span><span class="p">);</span>
-   <span class="n">collection</span> <span class="o">=</span> <span class="n">mongoc_database_get_collection</span> <span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="n">COLLECTION_NAME</span><span class="p">);</span>
+<span class="w">   </span><span class="n">mongoc_client_set_error_api</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_get_database</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_database_get_collection</span><span class="w"> </span><span class="p">(</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="n">COLLECTION_NAME</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Inserting data</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">insert_data</span> <span class="p">(</span><span class="n">collection</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">res</span> <span class="o">=</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-      <span class="k">goto</span> <span class="n">cleanup</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Inserting data</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">insert_data</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">cleanup</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;explain</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">explain</span> <span class="p">(</span><span class="n">collection</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">res</span> <span class="o">=</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
-      <span class="k">goto</span> <span class="n">cleanup</span><span class="p">;</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;explain</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">explain</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXIT_FAILURE</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="k">goto</span><span class="w"> </span><span class="n">cleanup</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-<span class="nl">cleanup</span><span class="p">:</span>
-   <span class="k">if</span> <span class="p">(</span><span class="n">collection</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">mongoc_collection_destroy</span> <span class="p">(</span><span class="n">collection</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="nl">cleanup</span><span class="p">:</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_collection_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">database</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">mongoc_database_destroy</span> <span class="p">(</span><span class="n">database</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">database</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_database_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">database</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">client</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">mongoc_client_destroy</span> <span class="p">(</span><span class="n">client</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_client_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="k">if</span> <span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">mongoc_uri_destroy</span> <span class="p">(</span><span class="n">uri</span><span class="p">);</span>
-   <span class="p">}</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">mongoc_uri_destroy</span><span class="w"> </span><span class="p">(</span><span class="n">uri</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
 
-   <span class="n">bson_free</span> <span class="p">(</span><span class="n">host_and_port</span><span class="p">);</span>
-   <span class="n">mongoc_cleanup</span> <span class="p">();</span>
-   <span class="k">return</span> <span class="n">res</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">bson_free</span><span class="w"> </span><span class="p">(</span><span class="n">host_and_port</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_cleanup</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="n">res</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
@@ -337,8 +342,8 @@ explain
 }
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -402,7 +407,7 @@ explain
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

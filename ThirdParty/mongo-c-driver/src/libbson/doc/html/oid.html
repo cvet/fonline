@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/oid.html"/>
-    <title>ObjectIDs &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/oid.html"/>
+    <title>ObjectIDs &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Parsing and Iterating BSON Documents" href="parsing.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="errors.html" title="Handling Errors"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="tutorial.html" accesskey="U">Tutorial</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,69 +45,69 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="objectids">
-<h1>ObjectIDs<a class="headerlink" href="#objectids" title="Permalink to this headline">¶</a></h1>
+  <section id="objectids">
+<h1>ObjectIDs<a class="headerlink" href="#objectids" title="Permalink to this heading">¶</a></h1>
 <p>Libbson provides a simple way to generate ObjectIDs. It can be used in a single-threaded or multi-threaded manner depending on your requirements.</p>
 <p>The <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a> structure represents an <code class="docutils literal notranslate"><span class="pre">ObjectID</span></code> in MongoDB. It is a 96-bit identifier.</p>
-<div class="section" id="composition">
-<h2>Composition<a class="headerlink" href="#composition" title="Permalink to this headline">¶</a></h2>
+<section id="composition">
+<h2>Composition<a class="headerlink" href="#composition" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>4 bytes : The UNIX timestamp in big-endian format.</p></li>
 <li><p>5 bytes : A random number.</p></li>
 <li><p>3 bytes : A 24-bit monotonic counter incrementing from <code class="docutils literal notranslate"><span class="pre">rand()</span></code> in big-endian.</p></li>
 </ul>
-</div>
-<div class="section" id="sorting-objectids">
-<h2>Sorting ObjectIDs<a class="headerlink" href="#sorting-objectids" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="sorting-objectids">
+<h2>Sorting ObjectIDs<a class="headerlink" href="#sorting-objectids" title="Permalink to this heading">¶</a></h2>
 <p>The typical way to sort in C is using <code class="docutils literal notranslate"><span class="pre">qsort()</span></code>. Therefore, Libbson provides a <code class="docutils literal notranslate"><span class="pre">qsort()</span></code> compatible callback function named <a class="symbol reference internal" href="bson_oid_compare.html"><span class="doc">bson_oid_compare()</span></a>. It returns <code class="docutils literal notranslate"><span class="pre">less</span> <span class="pre">than</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">greater</span> <span class="pre">than</span> <span class="pre">1</span></code>, or <code class="docutils literal notranslate"><span class="pre">0</span></code> depending on the equality of two <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a> structures.</p>
-</div>
-<div class="section" id="comparing-object-ids">
-<h2>Comparing Object IDs<a class="headerlink" href="#comparing-object-ids" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="comparing-object-ids">
+<h2>Comparing Object IDs<a class="headerlink" href="#comparing-object-ids" title="Permalink to this heading">¶</a></h2>
 <p>If you simply want to compare two <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a> structures for equality, use <a class="symbol reference internal" href="bson_oid_equal.html"><span class="doc">bson_oid_equal()</span></a>.</p>
-</div>
-<div class="section" id="generating">
-<h2>Generating<a class="headerlink" href="#generating" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="generating">
+<h2>Generating<a class="headerlink" href="#generating" title="Permalink to this heading">¶</a></h2>
 <p>To generate a <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a>, you may use the following.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_oid_t</span> <span class="n">oid</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_oid_t</span><span class="w"> </span><span class="n">oid</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">bson_oid_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="n">bson_oid_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="parsing-objectid-strings">
-<h2>Parsing ObjectID Strings<a class="headerlink" href="#parsing-objectid-strings" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parsing-objectid-strings">
+<h2>Parsing ObjectID Strings<a class="headerlink" href="#parsing-objectid-strings" title="Permalink to this heading">¶</a></h2>
 <p>You can also parse a string containing a <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a>. The input string <em>MUST</em> be 24 characters or more in length.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_oid_t</span> <span class="n">oid</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_oid_t</span><span class="w"> </span><span class="n">oid</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">bson_oid_init_from_string</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span> <span class="s">&quot;123456789012345678901234&quot;</span><span class="p">);</span>
+<span class="n">bson_oid_init_from_string</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;123456789012345678901234&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_oid_t</span> <span class="n">oid</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_oid_t</span><span class="w"> </span><span class="n">oid</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">bson_oid_init_from_string_unsafe</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span> <span class="s">&quot;123456789012345678901234&quot;</span><span class="p">);</span>
+<span class="n">bson_oid_init_from_string_unsafe</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;123456789012345678901234&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="hashing-objectids">
-<h2>Hashing ObjectIDs<a class="headerlink" href="#hashing-objectids" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="hashing-objectids">
+<h2>Hashing ObjectIDs<a class="headerlink" href="#hashing-objectids" title="Permalink to this heading">¶</a></h2>
 <p>If you need to store items in a hashtable, you may want to use the <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a> as the key. Libbson provides a hash function for just this purpose. It is based on DJB hash.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">unsigned</span> <span class="n">hash</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">unsigned</span><span class="w"> </span><span class="n">hash</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">hash</span> <span class="o">=</span> <span class="n">bson_oid_hash</span> <span class="p">(</span><span class="n">oid</span><span class="p">);</span>
+<span class="n">hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_oid_hash</span><span class="w"> </span><span class="p">(</span><span class="n">oid</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="fetching-objectid-creation-time">
-<h2>Fetching ObjectID Creation Time<a class="headerlink" href="#fetching-objectid-creation-time" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="fetching-objectid-creation-time">
+<h2>Fetching ObjectID Creation Time<a class="headerlink" href="#fetching-objectid-creation-time" title="Permalink to this heading">¶</a></h2>
 <p>You can easily fetch the time that a <a class="symbol reference internal" href="bson_oid_t.html"><span class="doc">bson_oid_t</span></a> was generated using <a class="symbol reference internal" href="bson_oid_get_time_t.html"><span class="doc">bson_oid_get_time_t()</span></a>.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">time_t</span> <span class="n">t</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">time_t</span><span class="w"> </span><span class="n">t</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">t</span> <span class="o">=</span> <span class="n">bson_oid_get_time_t</span> <span class="p">(</span><span class="n">oid</span><span class="p">);</span>
-<span class="n">printf</span> <span class="p">(</span><span class="s">&quot;The OID was generated at %u</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span><span class="p">)</span> <span class="n">t</span><span class="p">);</span>
+<span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bson_oid_get_time_t</span><span class="w"> </span><span class="p">(</span><span class="n">oid</span><span class="p">);</span><span class="w"></span>
+<span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;The OID was generated at %u</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">unsigned</span><span class="p">)</span><span class="w"> </span><span class="n">t</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -151,7 +156,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

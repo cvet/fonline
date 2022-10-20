@@ -122,9 +122,8 @@ _mongoc_interrupt_new (uint32_t timeout_ms)
                                 (struct sockaddr *) &server_addr,
                                 sock_len,
                                 0);
-   if (ret == -1 &&
-       !MONGOC_ERRNO_IS_AGAIN (
-          mongoc_socket_errno (interrupt->impl.socket_pair.read))) {
+   if (ret == -1 && !MONGOC_ERRNO_IS_AGAIN (mongoc_socket_errno (
+                       interrupt->impl.socket_pair.read))) {
       _log_errno ("connect failed",
                   mongoc_socket_errno (interrupt->impl.socket_pair.read));
       GOTO (fail);
@@ -238,6 +237,8 @@ _mongoc_interrupt_new (uint32_t timeout_ms)
 
    ENTRY;
 
+   BSON_UNUSED (timeout_ms);
+
    interrupt = (mongoc_interrupt_t *) bson_malloc0 (sizeof *interrupt);
    bson_mutex_init (&interrupt->mutex);
 
@@ -284,8 +285,8 @@ _mongoc_interrupt_flush (mongoc_interrupt_t *interrupt)
          }
       }
    }
-   /* Should never be reached. */
-   BSON_ASSERT (false);
+
+   BSON_UNREACHABLE ("reached unreachable code");
 }
 
 bool

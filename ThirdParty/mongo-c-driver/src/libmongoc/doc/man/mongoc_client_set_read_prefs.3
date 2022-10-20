@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_SET_READ_PREFS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_set_read_prefs \- mongoc_client_set_read_prefs()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_SET_READ_PREFS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_set_read_prefs \- mongoc_client_set_read_prefs()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,15 +48,15 @@ Sets the default read preferences to use with future operations upon \fBclient\f
 .sp
 The global default is to read from the replica set primary.
 .sp
-It is a programming error to call this function on a client from a \fBmongoc_client_pool_t\fP\&. For pooled clients, set the read preferences with the MongoDB URI instead.
+It is a programming error to call this function on a client from a \fI\%mongoc_client_pool_t\fP\&. For pooled clients, set the read preferences with the \fI\%MongoDB URI\fP instead.
 .sp
 Please see the MongoDB website for a description of \fI\%Read Preferences\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP\&.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP\&.
 .UNINDENT
 .SH AUTHOR
 MongoDB, Inc

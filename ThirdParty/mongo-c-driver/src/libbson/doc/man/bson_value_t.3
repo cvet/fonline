@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_VALUE_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_value_t \- bson_value_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_VALUE_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_value_t \- bson_value_t
 .sp
 BSON Boxed Container Type
 .SH SYNOPSIS
@@ -98,7 +98,7 @@ typedef struct _bson_value_t {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_value_t\fP structure is a boxed type for encapsulating a runtime determined type.
+The \fI\%bson_value_t\fP structure is a boxed type for encapsulating a runtime determined type.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -110,7 +110,7 @@ const bson_value_t *value;
 value = bson_iter_value (&iter);
 
 if (value\->value_type == BSON_TYPE_INT32) {
-   printf ("%d\en", value\->value.v_int32);
+   printf (\(dq%d\en\(dq, value\->value.v_int32);
 }
 .ft P
 .fi

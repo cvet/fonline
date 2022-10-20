@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_READER_T" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reader_t \- bson_reader_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_READER_T" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reader_t \- bson_reader_t
 .sp
 Streaming BSON Document Reader
 .SH SYNOPSIS
@@ -61,7 +61,7 @@ bson_reader_destroy (bson_reader_t *reader);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-\fBbson_reader_t\fP is a structure used for reading a sequence of BSON documents. The sequence can come from a file\-descriptor, memory region, or custom callbacks.
+\fI\%bson_reader_t\fP is a structure used for reading a sequence of BSON documents. The sequence can come from a file\-descriptor, memory region, or custom callbacks.
 .SH EXAMPLE
 .INDENT 0.0
 .INDENT 3.5
@@ -71,14 +71,14 @@ bson_reader_destroy (bson_reader_t *reader);
 /*
  * Copyright 2013 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the \(dqLicense\(dq);
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE\-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an \(dqAS IS\(dq BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -109,7 +109,7 @@ main (int argc, char *argv[])
     * Print program usage if no arguments are provided.
     */
    if (argc == 1) {
-      fprintf (stderr, "usage: %s [FILE | \-]...\enUse \- for STDIN.\en", argv[0]);
+      fprintf (stderr, \(dqusage: %s [FILE | \-]...\enUse \- for STDIN.\en\(dq, argv[0]);
       return 1;
    }
 
@@ -119,12 +119,12 @@ main (int argc, char *argv[])
    for (i = 1; i < argc; i++) {
       filename = argv[i];
 
-      if (strcmp (filename, "\-") == 0) {
+      if (strcmp (filename, \(dq\-\(dq) == 0) {
          reader = bson_reader_new_from_fd (STDIN_FILENO, false);
       } else {
          if (!(reader = bson_reader_new_from_file (filename, &error))) {
             fprintf (
-               stderr, "Failed to open \e"%s\e": %s\en", filename, error.message);
+               stderr, \(dqFailed to open \e\(dq%s\e\(dq: %s\en\(dq, filename, error.message);
             continue;
          }
       }
@@ -134,7 +134,7 @@ main (int argc, char *argv[])
        */
       while ((b = bson_reader_read (reader, NULL))) {
          str = bson_as_canonical_extended_json (b, NULL);
-         fprintf (stdout, "%s\en", str);
+         fprintf (stdout, \(dq%s\en\(dq, str);
          bson_free (str);
       }
 

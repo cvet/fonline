@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_INIT_CLEANUP" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_init_cleanup \- Initialization and cleanup
 .
 .nr rst2man-indent-level 0
 .
@@ -30,18 +27,21 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_INIT_CLEANUP" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_init_cleanup \- Initialization and cleanup
 .SH SYNOPSIS
 .sp
-Initialize the MongoDB C Driver by calling \fBmongoc_init\fP exactly once at the beginning of your program. It is responsible for initializing global state such as process counters, SSL, and threading primitives.
+Initialize the MongoDB C Driver by calling \fI\%mongoc_init()\fP exactly once at the beginning of your program. It is responsible for initializing global state such as process counters, SSL, and threading primitives.
 .sp
-Exception to this is \fBmongoc_log_set_handler()\fP, which should be called before \fBmongoc_init()\fP or some log traces would not use your log handling function. See Custom Log Handlers for a detailed example.
+Exception to this is \fBmongoc_log_set_handler()\fP, which should be called before \fBmongoc_init()\fP or some log traces would not use your log handling function. See \fI\%Custom Log Handlers\fP for a detailed example.
 .sp
-Call \fBmongoc_cleanup\fP exactly once at the end of your program to release all memory and other resources allocated by the driver. You must not call any other MongoDB C Driver functions after \fBmongoc_cleanup\fP\&. Note that \fBmongoc_init\fP does \fBnot\fP reinitialize the driver after \fBmongoc_cleanup\fP\&.
+Call \fI\%mongoc_cleanup()\fP exactly once at the end of your program to release all memory and other resources allocated by the driver. You must not call any other MongoDB C Driver functions after \fI\%mongoc_cleanup()\fP\&. Note that \fI\%mongoc_init()\fP does \fBnot\fP reinitialize the driver after \fI\%mongoc_cleanup()\fP\&.
 .SH DEPRECATED FEATURE: AUTOMATIC INITIALIZATION AND CLEANUP
 .sp
-On some platforms the driver can automatically call \fBmongoc_init\fP before \fBmain\fP, and call \fBmongoc_cleanup\fP as the process exits. This is problematic in situations where related libraries also execute cleanup code on shutdown, and it creates inconsistent rules across platforms. Therefore the automatic initialization and cleanup feature is deprecated, and will be dropped in version 2.0. Meanwhile, for backward compatibility, the feature is \fIenabled\fP by default on platforms where it is available.
+On some platforms the driver can automatically call \fI\%mongoc_init()\fP before \fBmain\fP, and call \fI\%mongoc_cleanup()\fP as the process exits. This is problematic in situations where related libraries also execute cleanup code on shutdown, and it creates inconsistent rules across platforms. Therefore the automatic initialization and cleanup feature is deprecated, and will be dropped in version 2.0. Meanwhile, for backward compatibility, the feature is \fIenabled\fP by default on platforms where it is available.
 .sp
-For portable, future\-proof code, always call \fBmongoc_init\fP and \fBmongoc_cleanup\fP yourself, and configure the driver like:
+For portable, future\-proof code, always call \fI\%mongoc_init()\fP and \fI\%mongoc_cleanup()\fP yourself, and configure the driver like:
 .INDENT 0.0
 .INDENT 3.5
 .sp

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_COUNT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_count \- mongoc_collection_count()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,18 +27,21 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_COUNT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_count \- mongoc_collection_count()
 .SH DEPRECATED
 .sp
 This function is deprecated and should not be used in new code.
-Use \fBmongoc_collection_count_documents\fP or \fBmongoc_collection_estimated_document_count\fP instead.
+Use \fI\%mongoc_collection_count_documents()\fP or \fI\%mongoc_collection_estimated_document_count()\fP instead.
 .sp
-\fBmongoc_collection_count_documents\fP has similar performance to calling \fBmongoc_collection_count\fP with a non\-NULL \fBquery\fP, and is guaranteed to retrieve an accurate collection count. See migrating from deprecated count functions for details.
+\fI\%mongoc_collection_count_documents()\fP has similar performance to calling \fI\%mongoc_collection_count()\fP with a non\-NULL \fBquery\fP, and is guaranteed to retrieve an accurate collection count. See \fI\%migrating from deprecated count functions\fP for details.
 .sp
-\fBmongoc_collection_estimated_document_count\fP has the same performance as calling \fBmongoc_collection_count\fP with a NULL \fBquery\fP, but is not guaranteed to retrieve an accurate collection count.
+\fI\%mongoc_collection_estimated_document_count()\fP has the same performance as calling \fI\%mongoc_collection_count()\fP with a NULL \fBquery\fP, but is not guaranteed to retrieve an accurate collection count.
 .sp
 This function is considered a retryable read operation.
 Upon a transient error (a network error, errors due to replica set failover, etc.) the operation is safely retried once.
-If \fBretryreads\fP is false in the URI (see \fBmongoc_uri_t\fP) the retry behavior does not apply.
+If \fBretryreads\fP is false in the URI (see \fI\%mongoc_uri_t\fP) the retry behavior does not apply.
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -65,9 +65,9 @@ mongoc_collection_count (mongoc_collection_t *collection,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
-\fBflags\fP: A \fBmongoc_query_flags_t\fP\&.
+\fBflags\fP: A \fI\%mongoc_query_flags_t\fP\&.
 .IP \(bu 2
 \fBquery\fP: A \fI\%bson_t\fP containing the query.
 .IP \(bu 2
@@ -75,9 +75,9 @@ mongoc_collection_count (mongoc_collection_t *collection,
 .IP \(bu 2
 \fBlimit\fP: A int64_t, zero to ignore.
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP or \fBNULL\fP\&.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP or \fBNULL\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -85,7 +85,7 @@ This function shall execute a count query on the underlying \(aqcollection\(aq. 
 .sp
 For more information, see the \fI\%query reference\fP at the MongoDB website.
 .sp
-The \fBmongoc_read_concern_t\fP specified on the \fBmongoc_collection_t\fP will be used, if any. If \fBread_prefs\fP is NULL, the collection\(aqs read preferences are used.
+The \fI\%mongoc_read_concern_t\fP specified on the \fI\%mongoc_collection_t\fP will be used, if any. If \fBread_prefs\fP is NULL, the collection\(aqs read preferences are used.
 .SH ERRORS
 .sp
 Errors are propagated via the \fBerror\fP parameter.
@@ -112,9 +112,9 @@ print_query_count (mongoc_collection_t *collection, bson_t *query)
       collection, MONGOC_QUERY_NONE, query, 0, 0, NULL, &error);
 
    if (count < 0) {
-      fprintf (stderr, "Count failed: %s\en", error.message);
+      fprintf (stderr, \(dqCount failed: %s\en\(dq, error.message);
    } else {
-      printf ("%" PRId64 " documents counted.\en", count);
+      printf (\(dq%\(dq PRId64 \(dq documents counted.\en\(dq, count);
    }
 }
 .ft P

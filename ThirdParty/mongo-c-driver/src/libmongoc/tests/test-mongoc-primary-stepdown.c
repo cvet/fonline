@@ -143,8 +143,11 @@ test_getmore_iteration (mongoc_client_t *client)
    /* Store the primary ID. After step down, the primary may be a different
     * server. We must execute serverStatus against the same server to check
     * connection counts. */
-   primary_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL /* read prefs */, &error);
+   primary_id = mongoc_topology_select_server_id (client->topology,
+                                                  MONGOC_SS_WRITE,
+                                                  NULL /* read prefs */,
+                                                  NULL /* chosen read mode */,
+                                                  &error);
    ASSERT_OR_PRINT (primary_id, error);
    conn_count = _connection_count (client, primary_id);
 
@@ -194,6 +197,8 @@ test_getmore_iteration (mongoc_client_t *client)
 static void
 test_getmore_iteration_runner (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    /* Only run on 4.2 or higher */
    if (!test_framework_max_wire_version_at_least (8)) {
       return;
@@ -217,8 +222,11 @@ test_not_primary_keep_pool (mongoc_client_t *client)
    /* Store the primary ID. After step down, the primary may be a different
     * server. We must execute serverStatus against the same server to check
     * connection counts. */
-   primary_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL /* read prefs */, &error);
+   primary_id = mongoc_topology_select_server_id (client->topology,
+                                                  MONGOC_SS_WRITE,
+                                                  NULL /* read prefs */,
+                                                  NULL /* chosen read mode */,
+                                                  &error);
    ASSERT_OR_PRINT (primary_id, error);
    conn_count = _connection_count (client, primary_id);
    res = mongoc_database_command_simple (
@@ -258,6 +266,8 @@ test_not_primary_keep_pool (mongoc_client_t *client)
 static void
 test_not_primary_keep_pool_runner (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    /* Only run on 4.2 and higher */
    if (!test_framework_max_wire_version_at_least (8)) {
       return;
@@ -283,8 +293,11 @@ test_not_primary_reset_pool (mongoc_client_t *client)
    /* Store the primary ID. After step down, the primary may be a different
     * server. We must execute serverStatus against the same server to check
     * connection counts. */
-   primary_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL /* read prefs */, &error);
+   primary_id = mongoc_topology_select_server_id (client->topology,
+                                                  MONGOC_SS_WRITE,
+                                                  NULL /* read prefs */,
+                                                  NULL /* chosen read mode */,
+                                                  &error);
    ASSERT_OR_PRINT (primary_id, error);
    conn_count = _connection_count (client, primary_id);
    res = mongoc_database_command_simple (
@@ -327,9 +340,11 @@ test_not_primary_reset_pool_runner (void *ctx)
 {
    int64_t max_wire_version;
 
+   BSON_UNUSED (ctx);
+
    /* Only run if version 4.0 */
    test_framework_get_max_wire_version (&max_wire_version);
-   if (max_wire_version != 7) {
+   if (max_wire_version != WIRE_VERSION_4_0) {
       return;
    }
 
@@ -353,8 +368,11 @@ test_shutdown_reset_pool (mongoc_client_t *client)
    /* Store the primary ID. After step down, the primary may be a different
     * server. We must execute serverStatus against the same server to check
     * connection counts. */
-   primary_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL /* read prefs */, &error);
+   primary_id = mongoc_topology_select_server_id (client->topology,
+                                                  MONGOC_SS_WRITE,
+                                                  NULL /* read prefs */,
+                                                  NULL /* chosen read mode */,
+                                                  &error);
    ASSERT_OR_PRINT (primary_id, error);
    conn_count = _connection_count (client, primary_id);
    res = mongoc_database_command_simple (
@@ -392,11 +410,10 @@ test_shutdown_reset_pool (mongoc_client_t *client)
 static void
 test_shutdown_reset_pool_runner (void *ctx)
 {
-   int64_t max_wire_version;
+   BSON_UNUSED (ctx);
 
    /* Only run if version >= 4.0 */
-   test_framework_get_max_wire_version (&max_wire_version);
-   if (max_wire_version < 7) {
+   if (!test_framework_max_wire_version_at_least (WIRE_VERSION_4_0)) {
       return;
    }
 
@@ -420,8 +437,11 @@ test_interrupted_shutdown_reset_pool (mongoc_client_t *client)
    /* Store the primary ID. After step down, the primary may be a different
     * server. We must execute serverStatus against the same server to check
     * connection counts. */
-   primary_id = mongoc_topology_select_server_id (
-      client->topology, MONGOC_SS_WRITE, NULL /* read prefs */, &error);
+   primary_id = mongoc_topology_select_server_id (client->topology,
+                                                  MONGOC_SS_WRITE,
+                                                  NULL /* read prefs */,
+                                                  NULL /* chosen read mode */,
+                                                  &error);
    ASSERT_OR_PRINT (primary_id, error);
    conn_count = _connection_count (client, primary_id);
    res = mongoc_database_command_simple (
@@ -459,11 +479,10 @@ test_interrupted_shutdown_reset_pool (mongoc_client_t *client)
 static void
 test_interrupted_shutdown_reset_pool_runner (void *ctx)
 {
-   int64_t max_wire_version;
+   BSON_UNUSED (ctx);
 
    /* Only run if version >= 4.0 */
-   test_framework_get_max_wire_version (&max_wire_version);
-   if (max_wire_version < 7) {
+   if (!test_framework_max_wire_version_at_least (WIRE_VERSION_4_0)) {
       return;
    }
 

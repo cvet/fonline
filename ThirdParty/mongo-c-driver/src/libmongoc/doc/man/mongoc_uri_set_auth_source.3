@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_SET_AUTH_SOURCE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_set_auth_source \- mongoc_uri_set_auth_source()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_SET_AUTH_SOURCE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_set_auth_source \- mongoc_uri_set_auth_source()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ mongoc_uri_set_auth_source (mongoc_uri_t *uri, const char *value);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .IP \(bu 2
-\fBvalue\fP: The new "authSource" value.
+\fBvalue\fP: The new \(dqauthSource\(dq value.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Sets the "authSource" URI option, after the URI has been parsed from a string.
+Sets the \(dqauthSource\(dq URI option, after the URI has been parsed from a string.
 .sp
 Updates the option in\-place if already set, otherwise appends it to the URI\(aqs \fI\%bson_t\fP of options.
 .SH RETURNS

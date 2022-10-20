@@ -56,6 +56,7 @@ _mongoc_monitor_legacy_write (mongoc_client_t *client,
       &stream->sd->host,
       stream->sd->id,
       &stream->sd->service_id,
+      stream->sd->server_connection_id,
       NULL,
       client->apm_context);
 
@@ -107,6 +108,7 @@ _mongoc_monitor_legacy_write_succeeded (mongoc_client_t *client,
       &stream->sd->host,
       stream->sd->id,
       &stream->sd->service_id,
+      stream->sd->server_connection_id,
       false,
       client->apm_context);
 
@@ -144,6 +146,8 @@ _mongoc_write_command_delete_legacy (mongoc_write_command_t *command,
    bool eof;
 
    ENTRY;
+
+   BSON_UNUSED (offset);
 
    BSON_ASSERT (command);
    BSON_ASSERT (client);
@@ -258,6 +262,8 @@ _mongoc_write_command_insert_legacy (mongoc_write_command_t *command,
    int data_offset = 0;
 
    ENTRY;
+
+   BSON_UNUSED (offset);
 
    BSON_ASSERT (command);
    BSON_ASSERT (client);
@@ -397,6 +403,8 @@ _mongoc_write_command_update_legacy (mongoc_write_command_t *command,
 
    ENTRY;
 
+   BSON_UNUSED (offset);
+
    BSON_ASSERT (command);
    BSON_ASSERT (client);
    BSON_ASSERT (database);
@@ -469,14 +477,16 @@ _mongoc_write_command_update_legacy (mongoc_write_command_t *command,
          } else if (strcmp (bson_iter_key (&subiter), "multi") == 0) {
             val = bson_iter_bool (&subiter);
             if (val) {
-               rpc.update.flags = (mongoc_update_flags_t) (
-                  rpc.update.flags | MONGOC_UPDATE_MULTI_UPDATE);
+               rpc.update.flags =
+                  (mongoc_update_flags_t) (rpc.update.flags |
+                                           MONGOC_UPDATE_MULTI_UPDATE);
             }
          } else if (strcmp (bson_iter_key (&subiter), "upsert") == 0) {
             val = bson_iter_bool (&subiter);
             if (val) {
-               rpc.update.flags = (mongoc_update_flags_t) (
-                  rpc.update.flags | MONGOC_UPDATE_UPSERT);
+               rpc.update.flags =
+                  (mongoc_update_flags_t) (rpc.update.flags |
+                                           MONGOC_UPDATE_UPSERT);
             }
          }
       }

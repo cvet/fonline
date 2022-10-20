@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/authentication.html"/>
-    <title>Authentication &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/authentication.html"/>
+    <title>Authentication &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Basic Troubleshooting" href="basic-troubleshooting.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="tutorial.html" title="Tutorial"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -39,8 +44,8 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="authentication">
-<h1>Authentication<a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h1>
+  <section id="authentication">
+<h1>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">¶</a></h1>
 <p>This guide covers the use of authentication options with the MongoDB C Driver. Ensure that the MongoDB server is also properly configured for authentication before making a connection. For more information, see the <a class="reference external" href="https://docs.mongodb.org/manual/administration/security/">MongoDB security documentation</a>.</p>
 <p>The MongoDB C driver supports several authentication mechanisms through the use of MongoDB connection URIs.</p>
 <p>By default, if a username and password are provided as part of the connection string (and an optional authentication database), they are used to connect via the default authentication mechanism of the server.</p>
@@ -57,8 +62,8 @@
 <li><p><a class="reference internal" href="#authentication-x509"><span class="std std-ref">X509</span></a></p></li>
 <li><p><a class="reference internal" href="#authentication-aws"><span class="std std-ref">MONGODB-AWS</span></a></p></li>
 </ul>
-<div class="section" id="basic-authentication-scram-sha-256">
-<span id="authentication-scram-sha-256"></span><h2>Basic Authentication (SCRAM-SHA-256)<a class="headerlink" href="#basic-authentication-scram-sha-256" title="Permalink to this headline">¶</a></h2>
+<section id="basic-authentication-scram-sha-256">
+<span id="authentication-scram-sha-256"></span><h2>Basic Authentication (SCRAM-SHA-256)<a class="headerlink" href="#basic-authentication-scram-sha-256" title="Permalink to this heading">¶</a></h2>
 <p>MongoDB 4.0 introduces support for authenticating using the SCRAM protocol
 with the more secure SHA-256 hash described in <a class="reference external" href="https://tools.ietf.org/html/rfc7677">RFC 7677</a>. Using this authentication mechanism
 means that the password is never actually sent over the wire when
@@ -85,9 +90,9 @@ be changed with the <code class="docutils literal notranslate"><span class="pre"
 path of libicu, specify <code class="docutils literal notranslate"><span class="pre">ICU_ROOT</span></code> as a cmake option. See the
 <a class="reference external" href="https://cmake.org/cmake/help/v3.7/module/FindICU.html">FindICU</a> documentation
 for more information.</p>
-</div>
-<div class="section" id="basic-authentication-scram-sha-1">
-<span id="authentication-scram-sha-1"></span><h2>Basic Authentication (SCRAM-SHA-1)<a class="headerlink" href="#basic-authentication-scram-sha-1" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="basic-authentication-scram-sha-1">
+<span id="authentication-scram-sha-1"></span><h2>Basic Authentication (SCRAM-SHA-1)<a class="headerlink" href="#basic-authentication-scram-sha-1" title="Permalink to this heading">¶</a></h2>
 <p>The default authentication mechanism before MongoDB 4.0 is <code class="docutils literal notranslate"><span class="pre">SCRAM-SHA-1</span></code> (<a class="reference external" href="http://tools.ietf.org/html/rfc5802">RFC 5802</a>). Using this authentication mechanism means that the password is never actually sent over the wire when authenticating, but rather a computed proof that the client password is the same as the password the server knows.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongoc_client_t *client = mongoc_client_new (&quot;mongodb://user:password@localhost/?authMechanism=SCRAM-SHA-1&amp;authSource=mydb&quot;);
 </pre></div>
@@ -96,17 +101,19 @@ for more information.</p>
 <p class="admonition-title">Note</p>
 <p><code class="docutils literal notranslate"><span class="pre">SCRAM-SHA-1</span></code> authenticates against the <code class="docutils literal notranslate"><span class="pre">admin</span></code> database by default. If the user is created in another database, then specifying the authSource is required.</p>
 </div>
-</div>
-<div class="section" id="legacy-authentication-mongodb-cr">
-<span id="authentication-mongodbcr"></span><h2>Legacy Authentication (MONGODB-CR)<a class="headerlink" href="#legacy-authentication-mongodb-cr" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="legacy-authentication-mongodb-cr">
+<span id="authentication-mongodbcr"></span><h2>Legacy Authentication (MONGODB-CR)<a class="headerlink" href="#legacy-authentication-mongodb-cr" title="Permalink to this heading">¶</a></h2>
 <p>The MONGODB-CR authMechanism is deprecated and will no longer function in MongoDB 4.0. Instead, specify no authMechanism and the driver
 will use an authentication mechanism compatible with your server.</p>
-</div>
-<div class="section" id="gssapi-kerberos-authentication">
-<span id="authentication-kerberos"></span><h2>GSSAPI (Kerberos) Authentication<a class="headerlink" href="#gssapi-kerberos-authentication" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="gssapi-kerberos-authentication">
+<span id="authentication-kerberos"></span><h2>GSSAPI (Kerberos) Authentication<a class="headerlink" href="#gssapi-kerberos-authentication" title="Permalink to this heading">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Kerberos support requires compiling the driver against <code class="docutils literal notranslate"><span class="pre">cyrus-sasl</span></code> on UNIX-like environments. On Windows, configure the driver to build against the Windows Native SSPI.</p>
+<p>On UNIX-like environments, Kerberos support requires compiling the driver against <code class="docutils literal notranslate"><span class="pre">cyrus-sasl</span></code>.</p>
+<p>On Windows, Kerberos support requires compiling the driver against Windows Native SSPI or <code class="docutils literal notranslate"><span class="pre">cyrus-sasl</span></code>. The default configuration of the driver will use Windows Native SSPI.</p>
+<p>To modify the default configuration, use the cmake option <code class="docutils literal notranslate"><span class="pre">ENABLE_SASL</span></code>.</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">GSSAPI</span></code> (Kerberos) authentication is available in the Enterprise Edition of MongoDB. To authenticate using <code class="docutils literal notranslate"><span class="pre">GSSAPI</span></code>, the MongoDB C driver must be installed with SASL support.</p>
 <p>On UNIX-like environments, run the <code class="docutils literal notranslate"><span class="pre">kinit</span></code> command before using the following authentication methods:</p>
@@ -145,9 +152,9 @@ client = mongoc_client_new (&quot;mongodb://mongodbuser%40EXAMPLE.COM@mongo-serv
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ kinit -f -A mongodbuser@EXAMPLE.COM
 </pre></div>
 </div>
-</div>
-<div class="section" id="sasl-plain-authentication">
-<span id="authentication-plain"></span><h2>SASL Plain Authentication<a class="headerlink" href="#sasl-plain-authentication" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="sasl-plain-authentication">
+<span id="authentication-plain"></span><h2>SASL Plain Authentication<a class="headerlink" href="#sasl-plain-authentication" title="Permalink to this heading">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The MongoDB C Driver must be compiled with SASL support in order to use <code class="docutils literal notranslate"><span class="pre">SASL</span> <span class="pre">PLAIN</span></code> authentication.</p>
@@ -163,9 +170,9 @@ client = mongoc_client_new (&quot;mongodb://user:password@example.com/?authMecha
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">PLAIN</span></code> authenticates against the <code class="docutils literal notranslate"><span class="pre">$external</span></code> database, so specifying the authSource database is not required.</p>
-</div>
-<div class="section" id="x-509-certificate-authentication">
-<span id="authentication-x509"></span><h2>X.509 Certificate Authentication<a class="headerlink" href="#x-509-certificate-authentication" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="x-509-certificate-authentication">
+<span id="authentication-x509"></span><h2>X.509 Certificate Authentication<a class="headerlink" href="#x-509-certificate-authentication" title="Permalink to this heading">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The MongoDB C Driver must be compiled with TLS support for X.509 authentication support. Once this is done, start a server with the following options:</p>
@@ -192,42 +199,42 @@ mongoc_client_set_ssl_opts (client, &amp;ssl_opts);
 <p class="admonition-title">Note</p>
 <p>The MongoDB C Driver will attempt to determine the x509 derived username when none is provided, and as of MongoDB 3.4 providing the username is not required at all.</p>
 </div>
-</div>
-<div class="section" id="authentication-via-aws-iam">
-<span id="authentication-aws"></span><h2>Authentication via AWS IAM<a class="headerlink" href="#authentication-via-aws-iam" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="authentication-via-aws-iam">
+<span id="authentication-aws"></span><h2>Authentication via AWS IAM<a class="headerlink" href="#authentication-via-aws-iam" title="Permalink to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">MONGODB-AWS</span></code> mechanism authenticates to MongoDB servers with credentials provided by AWS Identity and Access Management (IAM).</p>
 <p>To authenticate, create a user with an associated Amazon Resource Name (ARN) on the <code class="docutils literal notranslate"><span class="pre">$external</span></code> database, and specify the <code class="docutils literal notranslate"><span class="pre">MONGODB-AWS</span></code> <code class="docutils literal notranslate"><span class="pre">authMechanism</span></code> in the URI.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb://localhost/?authMechanism=MONGODB-AWS&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://localhost/?authMechanism=MONGODB-AWS&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Since <code class="docutils literal notranslate"><span class="pre">MONGODB-AWS</span></code> always authenticates against the <code class="docutils literal notranslate"><span class="pre">$external</span></code> database, so specifying the authSource database is not required.</p>
 <p>Credentials include the <code class="docutils literal notranslate"><span class="pre">access</span> <span class="pre">key</span> <span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">secret</span> <span class="pre">access</span> <span class="pre">key</span></code>, and optional <code class="docutils literal notranslate"><span class="pre">session</span> <span class="pre">token</span></code>. They may be obtained from the following ways.</p>
-<div class="section" id="aws-credentials-via-uri">
-<h3>AWS credentials via URI<a class="headerlink" href="#aws-credentials-via-uri" title="Permalink to this headline">¶</a></h3>
+<section id="aws-credentials-via-uri">
+<h3>AWS credentials via URI<a class="headerlink" href="#aws-credentials-via-uri" title="Permalink to this heading">¶</a></h3>
 <p>Credentials may be passed directly in the URI as username/password.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb://&lt;access key id&gt;:&lt;secret access key&gt;localhost/?authMechanism=MONGODB-AWS&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://&lt;access key id&gt;:&lt;secret access key&gt;localhost/?authMechanism=MONGODB-AWS&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>This may include a <code class="docutils literal notranslate"><span class="pre">session</span> <span class="pre">token</span></code> passed with <code class="docutils literal notranslate"><span class="pre">authMechanismProperties</span></code>.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_uri_t</span> <span class="o">*</span><span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb://&lt;access key id&gt;:&lt;secret access key&gt;localhost/?authMechanism=MONGODB-AWS&amp;authMechanismProperties=AWS_SESSION_TOKEN:&lt;token&gt;&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_uri_t</span><span class="w"> </span><span class="o">*</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://&lt;access key id&gt;:&lt;secret access key&gt;localhost/?authMechanism=MONGODB-AWS&amp;authMechanismProperties=AWS_SESSION_TOKEN:&lt;token&gt;&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="aws-credentials-via-environment">
-<h3>AWS credentials via environment<a class="headerlink" href="#aws-credentials-via-environment" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="aws-credentials-via-environment">
+<h3>AWS credentials via environment<a class="headerlink" href="#aws-credentials-via-environment" title="Permalink to this heading">¶</a></h3>
 <p>If credentials are not passed through the URI, libmongoc will check for the following environment variables.</p>
 <ul class="simple">
 <li><p>AWS_ACCESS_KEY_ID</p></li>
 <li><p>AWS_SECRET_ACCESS_KEY</p></li>
 <li><p>AWS_SESSION_TOKEN (optional)</p></li>
 </ul>
-</div>
-<div class="section" id="aws-credentials-via-ecs">
-<h3>AWS Credentials via ECS<a class="headerlink" href="#aws-credentials-via-ecs" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="aws-credentials-via-ecs">
+<h3>AWS Credentials via ECS<a class="headerlink" href="#aws-credentials-via-ecs" title="Permalink to this heading">¶</a></h3>
 <p>If credentials are not passed in the URI or with environment variables, libmongoc will check if the environment variable <code class="docutils literal notranslate"><span class="pre">AWS_CONTAINER_CREDENTIALS_RELATIVE_URI</span></code> is set, and if so, attempt to retrieve temporary credentials from the ECS task metadata by querying a link local address.</p>
-</div>
-<div class="section" id="aws-credentials-via-ec2">
-<h3>AWS Credentials via EC2<a class="headerlink" href="#aws-credentials-via-ec2" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="aws-credentials-via-ec2">
+<h3>AWS Credentials via EC2<a class="headerlink" href="#aws-credentials-via-ec2" title="Permalink to this heading">¶</a></h3>
 <p>If credentials are not passed in the URI or with environment variables, and the environment variable <code class="docutils literal notranslate"><span class="pre">AWS_CONTAINER_CREDENTIALS_RELATIVE_URI</span></code> is not set, libmongoc will attempt to retrieve temporary credentials from the EC2 machine metadata by querying link local addresses.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -253,9 +260,9 @@ mongoc_client_set_ssl_opts (client, &amp;ssl_opts);
 <div class="line"><a class="symbol reference internal" href="mongoc_uri_set_mechanism_properties.html"><span class="doc">mongoc_uri_set_mechanism_properties()</span></a></div>
 </div>
 </div>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -314,7 +321,7 @@ mongoc_client_set_ssl_opts (client, &amp;ssl_opts);
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

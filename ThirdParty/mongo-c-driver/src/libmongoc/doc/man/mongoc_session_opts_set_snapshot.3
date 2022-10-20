@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SESSION_OPTS_SET_SNAPSHOT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_session_opts_set_snapshot \- mongoc_session_opts_set_snapshot()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SESSION_OPTS_SET_SNAPSHOT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_session_opts_set_snapshot \- mongoc_session_opts_set_snapshot()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,15 +44,15 @@ mongoc_session_opts_set_snapshot (mongoc_session_opt_t *opts,
 .UNINDENT
 .UNINDENT
 .sp
-Configure snapshot reads for a session. If true (false by default), each read operation in the session will be sent with a "snapshot" level read concern. After the first read operation ("find", "aggregate" or "distinct"), subsequent read operations will read from the same point in time as the first read operation. Set to true to enable snapshot reads. See \fI\%the official documentation for Read Concern "snapshot"\fP\&.
+Configure snapshot reads for a session. If true (false by default), each read operation in the session will be sent with a \(dqsnapshot\(dq level read concern. After the first read operation (\(dqfind\(dq, \(dqaggregate\(dq or \(dqdistinct\(dq), subsequent read operations will read from the same point in time as the first read operation. Set to true to enable snapshot reads. See \fI\%the official documentation for Read Concern \(dqsnapshot\(dq\fP\&.
 .sp
-Snapshot reads and causal consistency are mutually exclusive. Attempting to set both to true will result in an error. See \fBmongoc_session_opts_set_causal_consistency()\fP\&.
+Snapshot reads and causal consistency are mutually exclusive. Attempting to set both to true will result in an error. See \fI\%mongoc_session_opts_set_causal_consistency()\fP\&.
 .sp
 Snapshot reads can only be used on MongoDB server version 5.0 and later and cannot be used during a transaction. A write operation in a snapshot\-enabled session will also result in an error.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_session_opt_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_session_opt_t\fP\&.
 .IP \(bu 2
 \fBsnapshot\fP: True or false.
 .UNINDENT
@@ -70,7 +70,7 @@ bson_t query_opts = BSON_INITIALIZER;
 bson_t filter = BSON_INITIALIZER;
 bson_t pipeline = BSON_INITIALIZER;
 
-client = mongoc_client_new ("mongodb://example/?appname=session\-opts\-example");
+client = mongoc_client_new (\(dqmongodb://example/?appname=session\-opts\-example\(dq);
 mongoc_client_set_error_api (client, MONGOC_ERROR_API_VERSION_2);
 
 session_opts = mongoc_session_opts_new ();
@@ -79,14 +79,14 @@ client_session = mongoc_client_start_session (client, session_opts, &error);
 mongoc_session_opts_destroy (session_opts);
 
 if (!client_session) {
-   fprintf (stderr, "Failed to start session: %s\en", error.message);
+   fprintf (stderr, \(dqFailed to start session: %s\en\(dq, error.message);
    abort ();
 }
 
-collection = mongoc_client_get_collection (client, "test", "collection");
+collection = mongoc_client_get_collection (client, \(dqtest\(dq, \(dqcollection\(dq);
 r = mongoc_client_session_append (client_session, &find_opts, &error);
 if (!r) {
-   fprintf (stderr, "mongoc_client_session_append failed: %s\en", error.message);
+   fprintf (stderr, \(dqmongoc_client_session_append failed: %s\en\(dq, error.message);
    abort ();
 }
 

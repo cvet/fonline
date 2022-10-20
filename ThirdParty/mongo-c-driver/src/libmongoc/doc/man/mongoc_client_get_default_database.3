@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_DEFAULT_DATABASE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_default_database \- mongoc_client_get_default_database()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_DEFAULT_DATABASE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_default_database \- mongoc_client_get_default_database()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_database_t *
-mongoc_client_get_default_database (mongoc_client_t *client);
+mongoc_client_get_default_database (mongoc_client_t *client)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -49,11 +50,11 @@ Useful when you want to choose which database to use based only on the URI in a 
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_database_t\fP that should be freed with \fBmongoc_database_destroy()\fP\&.
+A newly allocated \fI\%mongoc_database_t\fP that should be freed with \fI\%mongoc_database_destroy()\fP\&.
 .SH EXAMPLE
 .sp
 Default Database Example
@@ -62,17 +63,17 @@ Default Database Example
 .sp
 .nf
 .ft C
-/* default database is "db_name" */
-mongoc_client_t *client = mongoc_client_new ("mongodb://host/db_name");
+/* default database is \(dqdb_name\(dq */
+mongoc_client_t *client = mongoc_client_new (\(dqmongodb://host/db_name\(dq);
 mongoc_database_t *db = mongoc_client_get_default_database (client);
 
-assert (!strcmp ("db_name", mongoc_database_get_name (db)));
+assert (!strcmp (\(dqdb_name\(dq, mongoc_database_get_name (db)));
 
 mongoc_database_destroy (db);
 mongoc_client_destroy (client);
 
 /* no default database */
-client = mongoc_client_new ("mongodb://host/");
+client = mongoc_client_new (\(dqmongodb://host/\(dq);
 db = mongoc_client_get_default_database (client);
 
 assert (!db);

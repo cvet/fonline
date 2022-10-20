@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_UTF8" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_utf8 \- UTF-8
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_UTF8" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_utf8 \- UTF-8
 .SH ENCODING
 .sp
 Libbson expects that you are always working with UTF\-8 encoded text. Anything else is \fBinvalid API use\fP\&.
@@ -44,7 +44,7 @@ To validate the string contained in \fBmy_string\fP, use the following. You may 
 .nf
 .ft C
 if (!bson_utf8_validate (my_string, \-1, false)) {
-   printf ("Validation failed.\en");
+   printf (\(dqValidation failed.\en\(dq);
 }
 .ft P
 .fi
@@ -58,14 +58,14 @@ If \fBmy_string\fP has NULL bytes within the string, you must provide the string
 .nf
 .ft C
 if (!bson_utf8_validate (my_string, my_string_len, true)) {
-   printf ("Validation failed.\en");
+   printf (\(dqValidation failed.\en\(dq);
 }
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-For more information see the API reference for \fBbson_utf8_validate()\fP\&.
+For more information see the API reference for \fI\%bson_utf8_validate()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

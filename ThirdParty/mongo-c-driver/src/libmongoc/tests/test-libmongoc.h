@@ -41,6 +41,8 @@ int64_t
 get_future_timeout_ms (void);
 char *
 test_framework_getenv (const char *name);
+char *
+test_framework_getenv_required (const char *name);
 bool
 test_framework_getenv_bool (const char *name);
 int64_t
@@ -106,6 +108,8 @@ test_framework_get_default_server_api (void);
 
 mongoc_client_t *
 test_framework_new_default_client (void);
+mongoc_client_t *
+test_framework_client_new_no_server_api (void);
 mongoc_client_t *
 test_framework_client_new (const char *uri_str, const mongoc_server_api_t *api);
 mongoc_client_t *
@@ -173,6 +177,8 @@ test_framework_skip_if_not_single (void);
 int
 test_framework_skip_if_offline (void);
 int
+test_framework_skip_if_rhel8_zseries (void);
+int
 test_framework_skip_if_slow (void);
 int
 test_framework_skip_if_slow_or_live (void);
@@ -185,9 +191,6 @@ test_framework_skip_if_valgrind (void);
    int test_framework_skip_if_rs_version_##wv (void);                 \
    int test_framework_skip_if_not_rs_version_##wv (void);
 
-WIRE_VERSION_CHECK_DECLS (3)
-WIRE_VERSION_CHECK_DECLS (4)
-WIRE_VERSION_CHECK_DECLS (5)
 WIRE_VERSION_CHECK_DECLS (6)
 WIRE_VERSION_CHECK_DECLS (7)
 WIRE_VERSION_CHECK_DECLS (8)
@@ -196,6 +199,8 @@ WIRE_VERSION_CHECK_DECLS (9)
 WIRE_VERSION_CHECK_DECLS (13)
 /* wire version 14 begins with the 5.1 prerelease. */
 WIRE_VERSION_CHECK_DECLS (14)
+/* wire version 17 begins with the 6.0 release. */
+WIRE_VERSION_CHECK_DECLS (17)
 
 #undef WIRE_VERSION_CHECK_DECLS
 
@@ -211,6 +216,8 @@ test_framework_set_debug_stream (mongoc_client_t *client,
 
 typedef int64_t server_version_t;
 
+server_version_t
+test_framework_get_server_version_with_client (mongoc_client_t *client);
 server_version_t
 test_framework_get_server_version (void);
 server_version_t
@@ -236,9 +243,6 @@ test_framework_skip_if_no_client_side_encryption (void);
 
 int
 test_framework_skip_if_time_sensitive (void);
-
-void
-test_framework_resolve_path (const char *path, char *resolved);
 
 int
 test_framework_skip_if_no_aws (void);

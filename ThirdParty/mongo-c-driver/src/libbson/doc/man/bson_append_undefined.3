@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_UNDEFINED" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_undefined \- bson_append_undefined()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_UNDEFINED" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_undefined \- bson_append_undefined()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,7 +48,7 @@ bson_append_undefined (bson_t *bson, const char *key, int key_length);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
@@ -56,7 +56,7 @@ bson_append_undefined (bson_t *bson, const char *key, int key_length);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_undefined()\fP function shall append a new element to \fBbson\fP of type BSON_TYPE_UNDEFINED. Undefined is common in Javascript. However, this element type is deprecated and should not be used in new code.
+The \fI\%bson_append_undefined()\fP function shall append a new element to \fBbson\fP of type BSON_TYPE_UNDEFINED. Undefined is common in Javascript. However, this element type is deprecated and should not be used in new code.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending the value grows \fBbson\fP larger than INT32_MAX.

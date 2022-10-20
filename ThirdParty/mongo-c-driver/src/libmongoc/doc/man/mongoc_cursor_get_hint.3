@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_GET_HINT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_get_hint \- mongoc_cursor_get_hint()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_GET_HINT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_get_hint \- mongoc_cursor_get_hint()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,15 +45,15 @@ mongoc_cursor_get_hint (const mongoc_cursor_t *cursor);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcursor\fP: A \fBmongoc_cursor_t\fP\&.
+\fBcursor\fP: A \fI\%mongoc_cursor_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Retrieves the opaque id of the server used for the operation.
 .sp
-(The function name includes the old term "hint" for the sake of backward compatibility, but we now call this number a "server id".)
+(The function name includes the old term \(dqhint\(dq for the sake of backward compatibility, but we now call this number a \(dqserver id\(dq.)
 .sp
-This number is zero until the driver actually uses a server when executing the find operation or \fBmongoc_cursor_set_hint\fP is called.
+This number is zero until the driver actually uses a server when executing the find operation or \fI\%mongoc_cursor_set_hint()\fP is called.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

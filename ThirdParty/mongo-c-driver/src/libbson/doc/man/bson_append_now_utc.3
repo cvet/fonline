@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_NOW_UTC" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_now_utc \- bson_append_now_utc()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_NOW_UTC" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_now_utc \- bson_append_now_utc()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ bson_append_now_utc (bson_t *bson, const char *key, int key_length);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
@@ -53,9 +53,9 @@ bson_append_now_utc (bson_t *bson, const char *key, int key_length);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_now_utc()\fP function is a helper to get the current date and time in UTC and append it to \fBbson\fP as a BSON_TYPE_DATE_TIME element.
+The \fI\%bson_append_now_utc()\fP function is a helper to get the current date and time in UTC and append it to \fBbson\fP as a BSON_TYPE_DATE_TIME element.
 .sp
-This function calls \fBbson_append_date_time()\fP internally.
+This function calls \fI\%bson_append_date_time()\fP internally.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if appending the value grows \fBbson\fP larger than INT32_MAX.

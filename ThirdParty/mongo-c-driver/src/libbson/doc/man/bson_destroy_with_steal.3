@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_DESTROY_WITH_STEAL" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_destroy_with_steal \- bson_destroy_with_steal()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_DESTROY_WITH_STEAL" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_destroy_with_steal \- bson_destroy_with_steal()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ bson_destroy_with_steal (bson_t *bson, bool steal, uint32_t *length);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBsteal\fP: A bool indicating if the underlying buffer should be stolen.
 .IP \(bu 2
@@ -53,16 +53,16 @@ bson_destroy_with_steal (bson_t *bson, bool steal, uint32_t *length);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_destroy_with_steal()\fP function shall destroy a \fBbson_t\fP structure but return the underlying buffer instead of freeing it. If steal is false, this is equivalent to calling bson_destroy(). It is a programming error to call this function on a \fBbson_t\fP that is not a top\-level \fBbson_t\fP, such as those initialized with \fBbson_append_document_begin()\fP, \fBbson_append_array_begin()\fP, and \fBbson_writer_begin()\fP\&.
+The \fI\%bson_destroy_with_steal()\fP function shall destroy a \fI\%bson_t\fP structure but return the underlying buffer instead of freeing it. If steal is false, this is equivalent to calling bson_destroy(). It is a programming error to call this function on a \fI\%bson_t\fP that is not a top\-level \fI\%bson_t\fP, such as those initialized with \fI\%bson_append_document_begin()\fP, \fI\%bson_append_array_begin()\fP, and \fI\%bson_writer_begin()\fP\&.
 .SH RETURNS
 .sp
-\fBbson_destroy_with_steal()\fP shall return a buffer containing the contents of the \fBbson_t\fP if \fBsteal\fP is non\-zero. This should be freed with \fBbson_free()\fP when no longer in use. \fBlength\fP will be set to the length of the bson document if non\-NULL.
+\fI\%bson_destroy_with_steal()\fP shall return a buffer containing the contents of the \fI\%bson_t\fP if \fBsteal\fP is non\-zero. This should be freed with \fI\%bson_free()\fP when no longer in use. \fBlength\fP will be set to the length of the bson document if non\-NULL.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBbson_steal\fP, a higher\-level function that efficiently transfers the contents of one \fBbson_t\fP to another.
+\fI\%bson_steal()\fP, a higher\-level function that efficiently transfers the contents of one \fI\%bson_t\fP to another.
 .fi
 .sp
 .UNINDENT

@@ -169,16 +169,19 @@ mock_server_with_auto_hello (int32_t max_wire_version)
 {
    mock_server_t *server = mock_server_new ();
 
-   char *hello = bson_strdup_printf ("{'ok': 1.0,"
-                                     " 'isWritablePrimary': true,"
-                                     " 'minWireVersion': 0,"
-                                     " 'maxWireVersion': %d}",
-                                     max_wire_version);
+   ASSERT_WITH_MSG (max_wire_version >= WIRE_VERSION_MIN,
+                    "max_wire_version %" PRId32
+                    " must be greater than or equal to minimum wire version %d",
+                    max_wire_version,
+                    WIRE_VERSION_MIN);
 
-   BSON_ASSERT (max_wire_version > 0);
-   mock_server_auto_hello (server, hello);
-
-   bson_free (hello);
+   mock_server_auto_hello (server,
+                           "{'ok': 1.0,"
+                           " 'isWritablePrimary': true,"
+                           " 'minWireVersion': %d,"
+                           " 'maxWireVersion': %d}",
+                           WIRE_VERSION_MIN,
+                           max_wire_version);
 
    return server;
 }
@@ -205,36 +208,30 @@ mock_server_t *
 mock_mongos_new (int32_t max_wire_version)
 {
    mock_server_t *server = mock_server_new ();
-   char *mongos_36_fields = "";
-   char *hello;
 
-   if (max_wire_version >= WIRE_VERSION_OP_MSG) {
-      mongos_36_fields =
-         ","
-         "'$clusterTime': {"
-         "  'clusterTime': {'$timestamp': {'t': 1, 'i': 1}},"
-         "  'signature': {"
-         "    'hash': {'$binary': {'subType': '0', 'base64': ''}},"
-         "    'keyId': {'$numberLong': '6446735049323708417'}"
-         "  },"
-         "  'operationTime': {'$timestamp': {'t': 1, 'i': 1}}"
-         "},"
-         "'logicalSessionTimeoutMinutes': 30";
-   }
+   ASSERT_WITH_MSG (max_wire_version >= WIRE_VERSION_MIN,
+                    "max_wire_version %" PRId32
+                    " must be greater than or equal to minimum wire version %d",
+                    max_wire_version,
+                    WIRE_VERSION_MIN);
 
-   hello = bson_strdup_printf ("{'ok': 1.0,"
-                               " 'isWritablePrimary': true,"
-                               " 'msg': 'isdbgrid',"
-                               " 'minWireVersion': 2,"
-                               " 'maxWireVersion': %d"
-                               " %s}",
-                               max_wire_version,
-                               mongos_36_fields);
-
-   BSON_ASSERT (max_wire_version > 0);
-   mock_server_auto_hello (server, hello);
-
-   bson_free (hello);
+   mock_server_auto_hello (
+      server,
+      "{'ok': 1.0,"
+      " 'isWritablePrimary': true,"
+      " 'msg': 'isdbgrid',"
+      " 'minWireVersion': %d,"
+      " 'maxWireVersion': %d,"
+      " '$clusterTime': {"
+      "   'clusterTime': {'$timestamp': {'t': 1, 'i': 1}},"
+      "   'signature': {"
+      "     'hash': {'$binary': {'subType': '0', 'base64': ''}},"
+      "     'keyId': {'$numberLong': '6446735049323708417'}"
+      "   },"
+      "   'operationTime': {'$timestamp': {'t': 1, 'i': 1}}},"
+      " 'logicalSessionTimeoutMinutes': 30}",
+      WIRE_VERSION_MIN,
+      max_wire_version);
 
    return server;
 }
@@ -243,8 +240,11 @@ mock_mongos_new (int32_t max_wire_version)
 static bool
 hangup (request_t *request, void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    mock_server_hangs_up (request);
    request_destroy (request);
+
    return true;
 }
 
@@ -391,7 +391,7 @@ mock_server_run (mock_server_t *server)
       bound_port);
    server->uri = mongoc_uri_new (server->uri_str);
 
-   r = COMMON_PREFIX (thread_create) (
+   r = mcommon_thread_create (
       &server->main_thread, main_thread, (void *) server);
    BSON_ASSERT (r == 0);
    while (!server->running) {
@@ -493,12 +493,14 @@ mock_server_remove_autoresponder (mock_server_t *server, int id)
 
 static bool
 auto_hello_generate_response (request_t *request,
-                                     void *data,
-                                     bson_t *hello_response)
+                              void *data,
+                              bson_t *hello_response)
 {
    const char *response_json = (const char *) data;
    char *quotes_replaced;
    bson_error_t error;
+
+   BSON_UNUSED (request);
 
    quotes_replaced = single_quotes_to_double (response_json);
 
@@ -553,7 +555,7 @@ auto_hello (request_t *request, void *data)
       BSON_APPEND_INT32 (&response, "minWireVersion", WIRE_VERSION_MIN);
    }
    if (!bson_iter_init_find (&iter, &response, "maxWireVersion")) {
-      BSON_APPEND_INT32 (&response, "maxWireVersion", WIRE_VERSION_OP_MSG - 1);
+      BSON_APPEND_INT32 (&response, "maxWireVersion", WIRE_VERSION_MAX);
    }
 
    response_json = bson_as_json (&response, 0);
@@ -636,6 +638,8 @@ mock_server_auto_hello (mock_server_t *server, const char *response_json, ...)
 static bool
 auto_endsessions (request_t *request, void *data)
 {
+   BSON_UNUSED (data);
+
    if (!request->is_command ||
        strcasecmp (request->command_name, "endSessions") != 0) {
       return false;
@@ -888,6 +892,59 @@ mock_server_receives_request (mock_server_t *server)
    return r;
 }
 
+/*--------------------------------------------------------------------------
+ *
+ * mock_server_receives_bulk_msg --
+ *
+ *       Pop a client OP_MSG request if one is enqueued, or wait up to
+ *       request_timeout_ms for the client to send a request. Pass
+ *       `msg_pattern`, which is matched to the series of exactly `n_doc`
+ *       documents in the request, regardless of section boundaries.
+ *
+ * Returns:
+ *       A request you must request_destroy, or NULL if the request does not
+ *       match.
+ *
+ * Side effects:
+ *       Logs and aborts if the current request is not an OP_MSG matching
+ *       flags and expected pattern and number of documents.
+ *
+ *--------------------------------------------------------------------------
+ */
+request_t *
+mock_server_receives_bulk_msg (mock_server_t *server,
+                               uint32_t flags,
+                               const bson_t *msg_pattern,
+                               const bson_t *doc_pattern,
+                               size_t n_docs)
+{
+   request_t *request;
+   bool r;
+
+   BSON_UNUSED (flags);
+
+   request = mock_server_receives_request (server);
+
+   {
+      const bson_t **docs;
+      size_t i;
+      docs = bson_malloc (n_docs * sizeof (bson_t *));
+      docs[0] = msg_pattern;
+      for (i = 1; i < n_docs; ++i) {
+         docs[i] = doc_pattern;
+      }
+      r = request_matches_msg (request, MONGOC_MSG_NONE, docs, n_docs);
+      bson_free ((bson_t **) docs);
+   }
+
+   if (!r) {
+      request_destroy (request);
+      return NULL;
+   }
+
+   return request;
+}
+
 
 /*--------------------------------------------------------------------------
  *
@@ -984,31 +1041,114 @@ _mock_server_receives_msg (mock_server_t *server, uint32_t flags, ...)
    return request;
 }
 
+request_t *
+_mock_server_receives_single_msg (mock_server_t *server,
+                                  uint32_t flags,
+                                  const bson_t *doc)
+{
+   request_t *request;
+   bool r;
+
+   BSON_ASSERT (doc);
+
+   request = mock_server_receives_request (server);
+
+   r = request_matches_msg (request, flags, &doc, 1);
+
+   if (!r) {
+      request_destroy (request);
+      return NULL;
+   }
+
+   return request;
+}
+
+
+request_t *
+mock_server_matches_legacy_hello (request_t *request, const char *match_json);
+
+request_t *
+mock_server_matches_any_hello_with_json (request_t *request,
+                                         const char *match_json_op_msg,
+                                         const char *match_json_op_query)
+{
+   if (!request) {
+      return NULL;
+   }
+
+   /* We check the opcode separately because request_matches_msg() and friends
+   like to abort the program when checks fail: */
+   if (MONGOC_OPCODE_MSG == request->opcode) {
+      bson_t *hello_doc = NULL;
+      const char *hello_str =
+         "{'hello': 1, 'maxAwaitTimeMS': { '$exists': false }}";
+
+      if (NULL != match_json_op_msg)
+         hello_doc = tmp_bson (match_json_op_msg);
+      else
+         hello_doc = tmp_bson (hello_str);
+
+      if (request_matches_msg (request,
+                               0, /* flags */
+                               (const bson_t **) &hello_doc,
+                               1 /* number of documents */)) {
+         return request;
+      }
+   }
+
+   if (mock_server_matches_legacy_hello (
+          request, match_json_op_query ? match_json_op_query : NULL)) {
+      return request;
+   }
+
+   /* No match: */
+   request_destroy (request);
+
+   return NULL;
+}
+
 /*--------------------------------------------------------------------------
  *
- * mock_server_receives_hello --
+ * mock_server_receives_any_hello--
  *
- *       Pop a client non-streaming hello call if one is enqueued,
- *       or wait up to request_timeout_ms for the client to send a request.
+ * Check first for an OP_MSG hello or an OP_QUERY with hello or legacy hello.
  *
  * Returns:
  *       A request you must request_destroy, or NULL if the current
  *       request is not a hello command.
  *
  * Side effects:
- *       Logs if the current request is not a hello command.
+ *       Logs if the current request is not a legacy hello command ("isMaster")
+ *       using OP_QUERY.
  *
  *--------------------------------------------------------------------------
  */
-
 request_t *
-mock_server_receives_legacy_hello (mock_server_t *server,
-                                   const char *match_json)
+mock_server_receives_any_hello (mock_server_t *server)
 {
-   request_t *request;
-   char *formatted_command_json;
+   return mock_server_receives_any_hello_with_match (server, NULL, NULL);
+}
 
-   request = mock_server_receives_request (server);
+/*--------------------------------------------------------------------------
+ *
+ * mock_server_matches_legacy_hello --
+ *
+ * Checks to see if a given request matches OP_QUERY hello or legacy hello.
+ *
+ * Returns:
+ *       A request you must request_destroy (the same one passed in), or
+ *       NULL if the current request is not a hello command.
+ *
+ * Side effects:
+ *       Logs if the current request is not hello command or legacy hello
+ *       command ("isMaster") using OP_QUERY.
+ *
+ *--------------------------------------------------------------------------
+ */
+request_t *
+mock_server_matches_legacy_hello (request_t *request, const char *match_json)
+{
+   char *formatted_command_json = NULL;
 
    if (!request) {
       return NULL;
@@ -1017,6 +1157,12 @@ mock_server_receives_legacy_hello (mock_server_t *server,
    if (strcasecmp (request->command_name, "hello") &&
        strcasecmp (request->command_name, HANDSHAKE_CMD_LEGACY_HELLO)) {
       request_destroy (request);
+
+      fprintf (stderr,
+               "expected hello or legacy hello (\"%s\"), but got \"%s\"\n",
+               HANDSHAKE_CMD_LEGACY_HELLO,
+               request->command_name);
+
       return NULL;
    }
 
@@ -1024,6 +1170,8 @@ mock_server_receives_legacy_hello (mock_server_t *server,
       bson_strdup_printf ("{'%s': 1, 'maxAwaitTimeMS': { '$exists': false }}",
                           request->command_name);
 
+   /* request_matches_query() always checks for OPCODE_QUERY, used by legacy
+    * hello: */
    if (!request_matches_query (request,
                                "admin.$cmd",
                                MONGOC_QUERY_SECONDARY_OK,
@@ -1041,6 +1189,32 @@ mock_server_receives_legacy_hello (mock_server_t *server,
    return request;
 }
 
+/*--------------------------------------------------------------------------
+ *
+ * mock_server_receives_legacy_hello --
+ *
+ *       Pop a client non-streaming hello call if one is enqueued,
+ *       or wait up to request_timeout_ms for the client to send a request.
+ *
+ * Returns:
+ *       A request you must request_destroy, or NULL if the current
+ *       request is not a hello command.
+ *
+ * Side effects:
+ *       Logs if the current request is not a legacy hello command ("isMaster")
+ *       using OP_QUERY.
+ *
+ *--------------------------------------------------------------------------
+ */
+
+request_t *
+mock_server_receives_legacy_hello (mock_server_t *server,
+                                   const char *match_json)
+{
+   return mock_server_matches_legacy_hello (
+      mock_server_receives_request (server), match_json);
+}
+
 
 /*--------------------------------------------------------------------------
  *
@@ -1054,7 +1228,7 @@ mock_server_receives_legacy_hello (mock_server_t *server,
  *       request is not a hello command.
  *
  * Side effects:
- *       Logs if the current request is not a hello command.
+ *       Logs if the current request is a hello command using OP_QUERY.
  *
  *--------------------------------------------------------------------------
  */
@@ -1069,6 +1243,42 @@ mock_server_receives_hello (mock_server_t *server)
       "{'hello': 1, 'maxAwaitTimeMS': { '$exists': false }}");
 }
 
+/*--------------------------------------------------------------------------
+ *
+ * mock_server_receives_any_hello_with_match --
+ *
+ *       Pop a client non-streaming hello call if one is enqueued,
+ *       or wait up to request_timeout_ms for the client to send a request;
+ *       if non-NULL values are provided for either or both of the optional
+ *       match_json_op_msg or match_json_op_query parameters, the reply is
+ *       matched to those, as per request_matches_msg() or
+ *       mock_server_matches_legacy_hello().
+ *
+ * Returns:
+ *       A request you must request_destroy, or NULL if the current
+ *       request is not a hello command.
+ *
+ * Side effects:
+ *       Logs if the current request uses OP_QUERY but is not hello or legacy
+ *       hello.
+ *
+ *--------------------------------------------------------------------------
+ */
+
+request_t *
+mock_server_receives_any_hello_with_match (mock_server_t *server,
+                                           const char *match_json_op_msg,
+                                           const char *match_json_op_query)
+{
+   request_t *request = mock_server_receives_request (server);
+
+   if (NULL == request) {
+      return NULL;
+   }
+
+   return mock_server_matches_any_hello_with_json (
+      request, match_json_op_msg, match_json_op_query);
+}
 
 /*--------------------------------------------------------------------------
  *
@@ -1109,6 +1319,32 @@ mock_server_receives_query (mock_server_t *server,
    }
 
    return request;
+}
+
+/*--------------------------------------------------------------------------
+ *
+ * mock_server_receives_hello_op_msg --
+ *
+ *       Pop a client non-streaming hello call if one is enqueued,
+ *       or wait up to request_timeout_ms for the client to send a request.
+ *
+ * Returns:
+ *       A request you must request_destroy, or NULL if the current
+ *       request is not a hello command.
+ *
+ * Side effects:
+ *       None. (See also request_matches_msg()).
+ *
+ *--------------------------------------------------------------------------
+ */
+
+request_t *
+mock_server_receives_hello_op_msg (mock_server_t *server)
+{
+   return _mock_server_receives_single_msg (
+      server,
+      0,
+      tmp_bson ("{'hello': 1, 'maxAwaitTimeMS': { '$exists': false }}"));
 }
 
 
@@ -1420,6 +1656,9 @@ mock_server_replies (request_t *request,
    bson_error_t error;
    bool r;
 
+   BSON_UNUSED (starting_from);
+   BSON_UNUSED (number_returned);
+
    BSON_ASSERT (request);
 
    if (docs_json) {
@@ -1475,7 +1714,7 @@ mock_server_replies_opmsg (request_t *request,
 
    reply->opmsg_flags = flags;
    reply->n_docs = 1;
-   reply->docs = bson_malloc0 (sizeof (bson_t));
+   reply->docs = BSON_ALIGNED_ALLOC0 (bson_t);
    bson_copy_to (doc, &reply->docs[0]);
 
    reply->cursor_id = 0;
@@ -1538,6 +1777,8 @@ mock_server_replies_to_find (request_t *request,
 {
    char *find_reply;
    char *db;
+
+   BSON_ASSERT_PARAM (request);
 
    db = _mongoc_get_db_name (ns);
 
@@ -1631,7 +1872,7 @@ mock_server_destroy (mock_server_t *server)
    }
 
    bson_mutex_unlock (&server->mutex);
-   COMMON_PREFIX (thread_join) (server->main_thread);
+   mcommon_thread_join (server->main_thread);
 
    _mongoc_array_destroy (&server->worker_threads);
 
@@ -1757,7 +1998,7 @@ static BSON_THREAD_FUN (main_thread, data)
          closure->port = port;
 
          bson_mutex_lock (&server->mutex);
-         r = COMMON_PREFIX (thread_create) (&thread, worker_thread, closure);
+         r = mcommon_thread_create (&thread, worker_thread, closure);
          BSON_ASSERT (r == 0);
          _mongoc_array_append_val (&server->worker_threads, thread);
          bson_mutex_unlock (&server->mutex);
@@ -1771,8 +2012,8 @@ static BSON_THREAD_FUN (main_thread, data)
    bson_mutex_unlock (&server->mutex);
 
    for (i = 0; i < worker_threads.len; i++) {
-      COMMON_PREFIX (thread_join)
-      (_mongoc_array_index (&worker_threads, bson_thread_t, i));
+      mcommon_thread_join (
+         _mongoc_array_index (&worker_threads, bson_thread_t, i));
    }
 
    _mongoc_array_destroy (&worker_threads);
@@ -1963,7 +2204,8 @@ mock_server_reply_multi (request_t *request,
    reply->type = REPLY;
    reply->flags = flags;
    reply->n_docs = n_docs;
-   reply->docs = bson_malloc0 (n_docs * sizeof (bson_t));
+   reply->docs =
+      bson_aligned_alloc0 (BSON_ALIGNOF (bson_t), n_docs * sizeof (bson_t));
 
    for (i = 0; i < n_docs; i++) {
       bson_copy_to (&docs[i], &reply->docs[i]);
@@ -2123,8 +2365,12 @@ rs_response_to_hello (
    bson_string_t *hosts;
    bool first;
    mock_server_t *host;
-   const char *session_timeout;
-   char *hello;
+
+   ASSERT_WITH_MSG (max_wire_version >= WIRE_VERSION_MIN,
+                    "max_wire_version %" PRId32
+                    " must be greater than or equal to minimum wire version %d",
+                    max_wire_version,
+                    WIRE_VERSION_MIN);
 
    hosts = bson_string_new ("");
 
@@ -2144,32 +2390,24 @@ rs_response_to_hello (
 
    va_end (ap);
 
-   if (max_wire_version >= 6) {
-      session_timeout = ", 'logicalSessionTimeoutMinutes': 30";
-      mock_server_auto_endsessions (server);
-   } else {
-      session_timeout = "";
-   }
+   mock_server_auto_endsessions (server);
 
-   hello = bson_strdup_printf ("{'ok': 1, "
-                               " 'setName': 'rs',"
-                               " 'isWritablePrimary': %s,"
-                               " 'secondary': %s,"
-                               " 'tags': {%s},"
-                               " 'minWireVersion': 3,"
-                               " 'maxWireVersion': %d,"
-                               " 'hosts': [%s]"
-                               " %s"
-                               "}",
-                               primary ? "true" : "false",
-                               primary ? "false" : "true",
-                               has_tags ? "'key': 'value'" : "",
-                               max_wire_version,
-                               hosts->str,
-                               session_timeout);
+   mock_server_auto_hello (server,
+                           "{'ok': 1, "
+                           " 'setName': 'rs',"
+                           " 'isWritablePrimary': %s,"
+                           " 'secondary': %s,"
+                           " 'tags': {%s},"
+                           " 'minWireVersion': %d,"
+                           " 'maxWireVersion': %d,"
+                           " 'hosts': [%s],"
+                           " 'logicalSessionTimeoutMinutes': 30}",
+                           primary ? "true" : "false",
+                           primary ? "false" : "true",
+                           has_tags ? "'key': 'value'" : "",
+                           WIRE_VERSION_MIN,
+                           max_wire_version,
+                           hosts->str);
 
-   mock_server_auto_hello (server, "%s", hello);
-
-   bson_free (hello);
    bson_string_free (hosts, true);
 }

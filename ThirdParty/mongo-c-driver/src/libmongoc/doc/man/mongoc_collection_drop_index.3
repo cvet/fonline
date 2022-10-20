@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_DROP_INDEX" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_drop_index \- mongoc_collection_drop_index()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_DROP_INDEX" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_drop_index \- mongoc_collection_drop_index()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,15 +47,15 @@ mongoc_collection_drop_index (mongoc_collection_t *collection,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBindex_name\fP: A string containing the name of the index.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-For more information, see \fBmongoc_collection_drop_with_opts()\fP\&. This function is a thin wrapper, passing \fBNULL\fP in as \fI\%bson_t\fP parameter.
+For more information, see \fI\%mongoc_collection_drop_with_opts()\fP\&. This function is a thin wrapper, passing \fBNULL\fP in as \fI\%bson_t\fP parameter.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1128,7 +1128,7 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
 
         name_visible = true;
 
-        str = _nameOnHead;
+        str = _name;
 
         if (_engine->Settings.ShowCritId) {
             str += _str("  {}", GetId());
@@ -1169,7 +1169,7 @@ void CritterHexView::DrawTextOnHead()
         string str;
         uint color;
         if (_strTextOnHead.empty()) {
-            str = _nameOnHead;
+            str = _name;
 
             if (_engine->Settings.ShowCritId) {
                 str += _str(" ({})", GetId());

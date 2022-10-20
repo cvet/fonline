@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_GET_COLLECTION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_get_collection \- mongoc_database_get_collection()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_GET_COLLECTION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_get_collection \- mongoc_database_get_collection()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,16 +37,17 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_collection_t *
-mongoc_database_get_collection (mongoc_database_t *database, const char *name);
+mongoc_database_get_collection (mongoc_database_t *database,
+                                const char *name) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Allocates a new \fBmongoc_collection_t\fP structure for the collection named \fBname\fP in \fBdatabase\fP\&.
+Allocates a new \fI\%mongoc_collection_t\fP structure for the collection named \fBname\fP in \fBdatabase\fP\&.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_collection_t\fP that should be freed with \fBmongoc_collection_destroy()\fP\&.
+A newly allocated \fI\%mongoc_collection_t\fP that should be freed with \fI\%mongoc_collection_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_UTF8_ESCAPE_FOR_JSON" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_utf8_escape_for_json \- bson_utf8_escape_for_json()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_UTF8_ESCAPE_FOR_JSON" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_utf8_escape_for_json \- bson_utf8_escape_for_json()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -55,12 +55,12 @@ Allocates a new string matching \fButf8\fP except that special
 characters in JSON are escaped. The resulting string is also
 UTF\-8 encoded.
 .sp
-Both " and \e characters will be backslash\-escaped. If a NUL
+Both \(dq and \e characters will be backslash\-escaped. If a NUL
 byte is found before \fButf8_len\fP bytes, it is converted to
-"\eu0000". Other non\-ASCII characters in the input are preserved.
+\(dq\eu0000\(dq. Other non\-ASCII characters in the input are preserved.
 .SH RETURNS
 .sp
-A newly allocated string that should be freed with \fBbson_free()\fP\&.
+A newly allocated string that should be freed with \fI\%bson_free()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

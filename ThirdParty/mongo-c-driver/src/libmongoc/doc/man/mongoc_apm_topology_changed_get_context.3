@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_APM_TOPOLOGY_CHANGED_GET_CONTEXT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_apm_topology_changed_get_context \- mongoc_apm_topology_changed_get_context()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_APM_TOPOLOGY_CHANGED_GET_CONTEXT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_apm_topology_changed_get_context \- mongoc_apm_topology_changed_get_context()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -48,17 +48,17 @@ Returns this event\(aqs context.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBevent\fP: A \fBmongoc_apm_topology_changed_t\fP\&.
+\fBevent\fP: A \fI\%mongoc_apm_topology_changed_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-The pointer passed with \fBmongoc_client_set_apm_callbacks\fP or \fBmongoc_client_pool_set_apm_callbacks\fP\&.
+The pointer passed with \fI\%mongoc_client_set_apm_callbacks()\fP or \fI\%mongoc_client_pool_set_apm_callbacks()\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

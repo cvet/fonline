@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_REALLOC_FUNC" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_realloc_func \- bson_realloc_func
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_REALLOC_FUNC" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_realloc_func \- bson_realloc_func
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,7 +52,7 @@ typedef void *(*bson_realloc_func) (void *mem, size_t num_bytes, void *ctx);
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This is a prototype for pluggable realloc functions used through the Libbson library. If you wish to use a custom allocator this is one way to do it. Additionally, \fBbson_realloc_ctx()\fP is a default implementation of this prototype.
+This is a prototype for pluggable realloc functions used through the Libbson library. If you wish to use a custom allocator this is one way to do it. Additionally, \fI\%bson_realloc_ctx()\fP is a default implementation of this prototype.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

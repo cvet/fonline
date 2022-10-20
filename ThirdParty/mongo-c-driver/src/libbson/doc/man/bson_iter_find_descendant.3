@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_FIND_DESCENDANT" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_find_descendant \- bson_iter_find_descendant()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_FIND_DESCENDANT" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_find_descendant \- bson_iter_find_descendant()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -47,15 +47,15 @@ bson_iter_find_descendant (bson_iter_t *iter,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
-\fBdotkey\fP: A dot\-notation key like \fB"a.b.c.d"\fP\&.
+\fBdotkey\fP: A dot\-notation key like \fB\(dqa.b.c.d\(dq\fP\&.
 .IP \(bu 2
-\fBdescendant\fP: A \fBbson_iter_t\fP\&.
+\fBdescendant\fP: A \fI\%bson_iter_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_iter_find_descendant()\fP function shall follow standard MongoDB dot notation to recurse into subdocuments. \fBdescendant\fP will be initialized and advanced to the descendant. If false is returned, both \fBiter\fP and \fBdescendant\fP should be considered invalid.
+The \fI\%bson_iter_find_descendant()\fP function shall follow standard MongoDB dot notation to recurse into subdocuments. \fBdescendant\fP will be initialized and advanced to the descendant. If false is returned, both \fBiter\fP and \fBdescendant\fP should be considered invalid.
 .SH RETURNS
 .sp
 true is returned if the requested key was found. If not, false is returned and \fBiter\fP was exhausted and should now be considered invalid.

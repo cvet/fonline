@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CHANGE_STREAM_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_change_stream_t \- mongoc_change_stream_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CHANGE_STREAM_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_change_stream_t \- mongoc_change_stream_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -44,10 +44,10 @@ typedef struct _mongoc_change_stream_t mongoc_change_stream_t;
 .UNINDENT
 .UNINDENT
 .sp
-\fBmongoc_change_stream_t\fP is a handle to a change stream. A collection
-change stream can be obtained using \fBmongoc_collection_watch\fP\&.
+\fI\%mongoc_change_stream_t\fP is a handle to a change stream. A collection
+change stream can be obtained using \fI\%mongoc_collection_watch()\fP\&.
 .sp
-It is recommended to use a \fBmongoc_change_stream_t\fP and its functions instead of a raw aggregation with a \fB$changeStream\fP stage. For more information see the \fI\%MongoDB Manual Entry on Change Streams\fP\&.
+It is recommended to use a \fI\%mongoc_change_stream_t\fP and its functions instead of a raw aggregation with a \fB$changeStream\fP stage. For more information see the \fI\%MongoDB Manual Entry on Change Streams\fP\&.
 .SH EXAMPLE
 .sp
 example\-collection\-watch.c
@@ -63,7 +63,7 @@ main ()
 {
    bson_t empty = BSON_INITIALIZER;
    const bson_t *doc;
-   bson_t *to_insert = BCON_NEW ("x", BCON_INT32 (1));
+   bson_t *to_insert = BCON_NEW (\(dqx\(dq, BCON_INT32 (1));
    const bson_t *err_doc;
    bson_error_t error;
    const char *uri_string;
@@ -77,15 +77,15 @@ main ()
 
    mongoc_init ();
 
-   uri_string = "mongodb://"
-                "localhost:27017,localhost:27018,localhost:"
-                "27019/db?replicaSet=rs0";
+   uri_string = \(dqmongodb://\(dq
+                \(dqlocalhost:27017,localhost:27018,localhost:\(dq
+                \(dq27019/db?replicaSet=rs0\(dq;
 
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -96,30 +96,30 @@ main ()
       return EXIT_FAILURE;
    }
 
-   coll = mongoc_client_get_collection (client, "db", "coll");
+   coll = mongoc_client_get_collection (client, \(dqdb\(dq, \(dqcoll\(dq);
    stream = mongoc_collection_watch (coll, &empty, NULL);
 
    mongoc_write_concern_set_wmajority (wc, 10000);
    mongoc_write_concern_append (wc, &opts);
    r = mongoc_collection_insert_one (coll, to_insert, &opts, NULL, &error);
    if (!r) {
-      fprintf (stderr, "Error: %s\en", error.message);
+      fprintf (stderr, \(dqError: %s\en\(dq, error.message);
       return EXIT_FAILURE;
    }
 
    while (mongoc_change_stream_next (stream, &doc)) {
       char *as_json = bson_as_relaxed_extended_json (doc, NULL);
-      fprintf (stderr, "Got document: %s\en", as_json);
+      fprintf (stderr, \(dqGot document: %s\en\(dq, as_json);
       bson_free (as_json);
    }
 
    if (mongoc_change_stream_error_document (stream, &error, &err_doc)) {
       if (!bson_empty (err_doc)) {
          fprintf (stderr,
-                  "Server Error: %s\en",
+                  \(dqServer Error: %s\en\(dq,
                   bson_as_relaxed_extended_json (err_doc, NULL));
       } else {
-         fprintf (stderr, "Client Error: %s\en", error.message);
+         fprintf (stderr, \(dqClient Error: %s\en\(dq, error.message);
       }
       return EXIT_FAILURE;
    }
@@ -144,7 +144,7 @@ main ()
 .sp
 All \fBwatch\fP functions accept several options to indicate where a change stream should start returning changes from: \fBresumeAfter\fP, \fBstartAfter\fP, and \fBstartAtOperationTime\fP\&.
 .sp
-All changes returned by \fBmongoc_change_stream_next\fP include a resume token in the \fB_id\fP field. MongoDB 4.2 also includes an additional resume token in each "aggregate" and "getMore" command response, which points to the end of that response\(aqs batch. The current token is automatically cached by libmongoc. In the event of an error, libmongoc attempts to recreate the change stream starting where it left off by passing the cached resume token. libmongoc only attempts to resume once, but client applications can access the cached resume token with \fBmongoc_change_stream_get_resume_token\fP and use it for their own resume logic by passing it as either the \fBresumeAfter\fP or \fBstartAfter\fP option.
+All changes returned by \fI\%mongoc_change_stream_next()\fP include a resume token in the \fB_id\fP field. MongoDB 4.2 also includes an additional resume token in each \(dqaggregate\(dq and \(dqgetMore\(dq command response, which points to the end of that response\(aqs batch. The current token is automatically cached by libmongoc. In the event of an error, libmongoc attempts to recreate the change stream starting where it left off by passing the cached resume token. libmongoc only attempts to resume once, but client applications can access the cached resume token with \fI\%mongoc_change_stream_get_resume_token()\fP and use it for their own resume logic by passing it as either the \fBresumeAfter\fP or \fBstartAfter\fP option.
 .sp
 Additionally, change streams can start returning changes at an operation time by using the \fBstartAtOperationTime\fP field. This can be the timestamp returned in the \fBoperationTime\fP field of a command reply.
 .sp
@@ -162,7 +162,7 @@ example\-resume.c
 
 /* An example implementation of custom resume logic in a change stream.
 * example\-resume starts a client\-wide change stream and persists the resume
-* token in a file "resume\-token.json". On restart, if "resume\-token.json"
+* token in a file \(dqresume\-token.json\(dq. On restart, if \(dqresume\-token.json\(dq
 * exists, the change stream starts watching after the persisted resume token.
 *
 * This behavior allows a user to exit example\-resume, and restart it later
@@ -170,7 +170,7 @@ example\-resume.c
 */
 #include <unistd.h>
 
-static const char *RESUME_TOKEN_PATH = "resume\-token.json";
+static const char *RESUME_TOKEN_PATH = \(dqresume\-token.json\(dq;
 
 static bool
 _save_resume_token (const bson_t *doc)
@@ -183,20 +183,20 @@ _save_resume_token (const bson_t *doc)
    ssize_t r, n_written;
    const bson_value_t *resume_token;
 
-   if (!bson_iter_init_find (&iter, doc, "_id")) {
-      fprintf (stderr, "reply does not contain operationTime.");
+   if (!bson_iter_init_find (&iter, doc, \(dq_id\(dq)) {
+      fprintf (stderr, \(dqreply does not contain operationTime.\(dq);
       return false;
    }
    resume_token = bson_iter_value (&iter);
    /* store the resume token in a document, { resumeAfter: <resume token> }
     * which we can later append easily. */
-   file_stream = fopen (RESUME_TOKEN_PATH, "w+");
+   file_stream = fopen (RESUME_TOKEN_PATH, \(dqw+\(dq);
    if (!file_stream) {
-      fprintf (stderr, "failed to open %s for writing\en", RESUME_TOKEN_PATH);
+      fprintf (stderr, \(dqfailed to open %s for writing\en\(dq, RESUME_TOKEN_PATH);
       return false;
    }
    bson_init (&resume_token_doc);
-   BSON_APPEND_VALUE (&resume_token_doc, "resumeAfter", resume_token);
+   BSON_APPEND_VALUE (&resume_token_doc, \(dqresumeAfter\(dq, resume_token);
    as_json = bson_as_canonical_extended_json (&resume_token_doc, &as_json_len);
    bson_destroy (&resume_token_doc);
    n_written = 0;
@@ -206,7 +206,7 @@ _save_resume_token (const bson_t *doc)
                   as_json_len \- n_written,
                   file_stream);
       if (r == \-1) {
-         fprintf (stderr, "failed to write to %s\en", RESUME_TOKEN_PATH);
+         fprintf (stderr, \(dqfailed to write to %s\en\(dq, RESUME_TOKEN_PATH);
          bson_free (as_json);
          fclose (file_stream);
          return false;
@@ -233,7 +233,7 @@ _load_resume_token (bson_t *opts)
    reader = bson_json_reader_new_from_file (RESUME_TOKEN_PATH, &error);
    if (!reader) {
       fprintf (stderr,
-               "failed to open %s for reading: %s\en",
+               \(dqfailed to open %s for reading: %s\en\(dq,
                RESUME_TOKEN_PATH,
                error.message);
       return false;
@@ -241,13 +241,13 @@ _load_resume_token (bson_t *opts)
 
    bson_init (&doc);
    if (\-1 == bson_json_reader_read (reader, &doc, &error)) {
-      fprintf (stderr, "failed to read doc from %s\en", RESUME_TOKEN_PATH);
+      fprintf (stderr, \(dqfailed to read doc from %s\en\(dq, RESUME_TOKEN_PATH);
       bson_destroy (&doc);
       bson_json_reader_destroy (reader);
       return false;
    }
 
-   printf ("found cached resume token in %s, resuming change stream.\en",
+   printf (\(dqfound cached resume token in %s, resuming change stream.\en\(dq,
            RESUME_TOKEN_PATH);
 
    bson_concat (opts, &doc);
@@ -273,12 +273,12 @@ main ()
                                mongoc_change_stream_next can block. */
 
    mongoc_init ();
-   uri_string = "mongodb://localhost:27017/db?replicaSet=rs0";
+   uri_string = \(dqmongodb://localhost:27017/db?replicaSet=rs0\(dq;
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       goto cleanup;
@@ -292,16 +292,16 @@ main ()
    if (!_load_resume_token (&opts)) {
       goto cleanup;
    }
-   BSON_APPEND_INT64 (&opts, "maxAwaitTimeMS", max_time * 1000);
+   BSON_APPEND_INT64 (&opts, \(dqmaxAwaitTimeMS\(dq, max_time * 1000);
 
-   printf ("listening for changes on the client (max %d seconds).\en", max_time);
+   printf (\(dqlistening for changes on the client (max %d seconds).\en\(dq, max_time);
    stream = mongoc_client_watch (client, &pipeline, &opts);
 
    while (mongoc_change_stream_next (stream, &doc)) {
       char *as_json;
 
       as_json = bson_as_canonical_extended_json (doc, NULL);
-      printf ("change received: %s\en", as_json);
+      printf (\(dqchange received: %s\en\(dq, as_json);
       bson_free (as_json);
       if (!_save_resume_token (doc)) {
          goto cleanup;
@@ -355,12 +355,12 @@ main ()
    bool r;
 
    mongoc_init ();
-   uri_string = "mongodb://localhost:27017/db?replicaSet=rs0";
+   uri_string = \(dqmongodb://localhost:27017/db?replicaSet=rs0\(dq;
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       goto cleanup;
@@ -372,33 +372,33 @@ main ()
    }
 
    /* insert five documents. */
-   coll = mongoc_client_get_collection (client, "db", "coll");
+   coll = mongoc_client_get_collection (client, \(dqdb\(dq, \(dqcoll\(dq);
    for (i = 0; i < 5; i++) {
       bson_t reply;
-      bson_t *insert_cmd = BCON_NEW ("insert",
-                                     "coll",
-                                     "documents",
-                                     "[",
-                                     "{",
-                                     "x",
+      bson_t *insert_cmd = BCON_NEW (\(dqinsert\(dq,
+                                     \(dqcoll\(dq,
+                                     \(dqdocuments\(dq,
+                                     \(dq[\(dq,
+                                     \(dq{\(dq,
+                                     \(dqx\(dq,
                                      BCON_INT64 (i),
-                                     "}",
-                                     "]");
+                                     \(dq}\(dq,
+                                     \(dq]\(dq);
 
       r = mongoc_collection_write_command_with_opts (
          coll, insert_cmd, NULL, &reply, &error);
       bson_destroy (insert_cmd);
       if (!r) {
          bson_destroy (&reply);
-         fprintf (stderr, "failed to insert: %s\en", error.message);
+         fprintf (stderr, \(dqfailed to insert: %s\en\(dq, error.message);
          goto cleanup;
       }
       if (i == 0) {
          /* cache the operation time in the first reply. */
-         if (bson_iter_init_find (&iter, &reply, "operationTime")) {
+         if (bson_iter_init_find (&iter, &reply, \(dqoperationTime\(dq)) {
             bson_value_copy (bson_iter_value (&iter), &cached_operation_time);
          } else {
-            fprintf (stderr, "reply does not contain operationTime.");
+            fprintf (stderr, \(dqreply does not contain operationTime.\(dq);
             bson_destroy (&reply);
             goto cleanup;
          }
@@ -407,17 +407,17 @@ main ()
    }
 
    /* start a change stream at the first returned operationTime. */
-   BSON_APPEND_VALUE (&opts, "startAtOperationTime", &cached_operation_time);
+   BSON_APPEND_VALUE (&opts, \(dqstartAtOperationTime\(dq, &cached_operation_time);
    stream = mongoc_collection_watch (coll, &pipeline, &opts);
 
    /* since the change stream started at the operation time of the first
     * insert, the five inserts are returned. */
-   printf ("listening for changes on db.coll:\en");
+   printf (\(dqlistening for changes on db.coll:\en\(dq);
    while (mongoc_change_stream_next (stream, &doc)) {
       char *as_json;
 
       as_json = bson_as_canonical_extended_json (doc, NULL);
-      printf ("change received: %s\en", as_json);
+      printf (\(dqchange received: %s\en\(dq, as_json);
       bson_free (as_json);
    }
 

@@ -134,10 +134,11 @@ td_to_bson (const mongoc_topology_description_t *td, bson_t *bson)
    bson_t server;
    char str[16];
    const char *key;
+   mongoc_set_t const *servers_set = mc_tpld_servers_const (td);
 
-   for (i = 0; i < td->servers->items_len; i++) {
+   for (i = 0; i < servers_set->items_len; i++) {
       bson_uint32_to_string ((uint32_t) i, &key, str, sizeof str);
-      sd_to_bson (mongoc_set_get_item (td->servers, (int) i), &server);
+      sd_to_bson (mongoc_set_get_item_const (servers_set, (int) i), &server);
       BSON_APPEND_DOCUMENT (&servers, key, &server);
       bson_destroy (&server);
    }
@@ -494,7 +495,9 @@ test_sdam_monitoring_cb (bson_t *test)
          /* Force the topology opening and server opening events. This test
           * doesn't exercise this code path naturally, see below in
           * _test_topology_events for a non-hacky test of this event */
-         _mongoc_topology_description_monitor_opening (&topology->description);
+         mc_tpld_modification tdmod = mc_tpld_modify_begin (topology);
+         _mongoc_topology_description_monitor_opening (tdmod.new_td);
+         mc_tpld_modify_commit (tdmod);
          first_phase = false;
       } else {
          /* clear the stored events. */
@@ -535,12 +538,10 @@ test_sdam_monitoring_cb (bson_t *test)
 static void
 test_all_spec_tests (TestSuite *suite)
 {
-   char resolved[PATH_MAX];
-
-   ASSERT (realpath (JSON_DIR "/server_discovery_and_monitoring/monitoring",
-                     resolved));
-
-   install_json_test_suite (suite, resolved, &test_sdam_monitoring_cb);
+   install_json_test_suite (suite,
+                            JSON_DIR,
+                            "server_discovery_and_monitoring/monitoring",
+                            &test_sdam_monitoring_cb);
 }
 
 static void
@@ -658,6 +659,8 @@ test_topology_events_disabled (void)
 static bool
 responder (request_t *request, void *data)
 {
+   BSON_UNUSED (data);
+
    if (!strcmp (request->command_name, "foo")) {
       mock_server_replies_simple (request, "{'ok': 1}");
       request_destroy (request);
@@ -711,7 +714,7 @@ _test_heartbeat_events (bool pooled, bool succeeded)
       client, "admin", tmp_bson ("{'foo': 1}"), NULL, NULL, &error);
 
    /* topology scanner calls hello once */
-   request = mock_server_receives_legacy_hello (server, NULL);
+   request = mock_server_receives_any_hello (server);
 
    if (succeeded) {
       mock_server_replies (
@@ -720,7 +723,9 @@ _test_heartbeat_events (bool pooled, bool succeeded)
          0,
          0,
          1,
-         "{'ok': 1, 'minWireVersion': 2, 'maxWireVersion': 5}");
+         tmp_str ("{'ok': 1, 'minWireVersion': %d, 'maxWireVersion': %d}",
+                  WIRE_VERSION_MIN,
+                  WIRE_VERSION_MAX));
       request_destroy (request);
    } else {
       mock_server_hangs_up (request);
@@ -729,14 +734,16 @@ _test_heartbeat_events (bool pooled, bool succeeded)
 
    /* pooled client opens new socket, handshakes it by calling hello again */
    if (pooled && succeeded) {
-      request = mock_server_receives_legacy_hello (server, NULL);
+      request = mock_server_receives_any_hello (server);
       mock_server_replies (
          request,
          MONGOC_REPLY_NONE,
          0,
          0,
          1,
-         "{'ok': 1, 'minWireVersion': 2, 'maxWireVersion': 5}");
+         tmp_str ("{'ok': 1, 'minWireVersion': %d, 'maxWireVersion': %d}",
+                  WIRE_VERSION_MIN,
+                  WIRE_VERSION_MAX));
       request_destroy (request);
    }
 
@@ -880,12 +887,16 @@ _test_heartbeat_fails_dns (bool pooled)
 static void
 test_heartbeat_fails_dns_single (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_heartbeat_fails_dns (false);
 }
 
 static void
 test_heartbeat_fails_dns_pooled (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _test_heartbeat_fails_dns (true);
 }
 
@@ -924,12 +935,6 @@ test_no_duplicates (void)
    bson_error_t error;
    future_t *future;
    mongoc_uri_t *uri;
-   char *first_hello_response = "{'ok': 1.0, 'isWritablePrimary': true, "
-                                "'minWireVersion': 0, 'maxWireVersion': 9}";
-   char *second_hello_response = "{'ok': 1.0, 'isWritablePrimary': true, "
-                                 "'minWireVersion': 0, 'maxWireVersion': 9, "
-                                 "'lastWrite': {'lastWriteDate': {'$date': "
-                                 "{'$numberLong': '123'}}, 'opTime': 2}}";
    mongoc_apm_callbacks_t *callbacks;
    duplicates_counter_t duplicates_counter = {0};
    mongoc_server_description_t *sd;
@@ -949,8 +954,14 @@ test_no_duplicates (void)
    client = mongoc_client_pool_pop (pool);
 
    /* Topology scanning thread starts, and sends a hello. */
-   request = mock_server_receives_legacy_hello (server, NULL);
-   mock_server_replies_simple (request, first_hello_response);
+   request = mock_server_receives_any_hello (server);
+   mock_server_replies_simple (request,
+                               tmp_str ("{'ok': 1.0,"
+                                        " 'isWritablePrimary': true, "
+                                        " 'minWireVersion': %d,"
+                                        " 'maxWireVersion': %d}",
+                                        WIRE_VERSION_MIN,
+                                        WIRE_VERSION_4_4));
    request_destroy (request);
 
    /* Perform a ping, which creates a new connection, which performs the
@@ -961,8 +972,18 @@ test_no_duplicates (void)
                                           NULL /* read prefs */,
                                           NULL /* reply */,
                                           &error);
-   request = mock_server_receives_legacy_hello (server, NULL);
-   mock_server_replies_simple (request, second_hello_response);
+   request = mock_server_receives_any_hello (server);
+   mock_server_replies_simple (
+      request,
+      tmp_str (
+         "{'ok': 1.0,"
+         " 'isWritablePrimary': true,"
+         " 'minWireVersion': %d,"
+         " 'maxWireVersion': %d,"
+         " 'lastWrite': {"
+         "   'lastWriteDate': {'$date': {'$numberLong': '123'}}, 'opTime': 2}}",
+         WIRE_VERSION_MIN,
+         WIRE_VERSION_4_4));
    request_destroy (request);
    request = mock_server_receives_msg (
       server, MONGOC_QUERY_NONE, tmp_bson ("{'ping': 1}"));
@@ -1040,7 +1061,8 @@ test_sdam_monitoring_install (TestSuite *suite)
       test_heartbeat_fails_dns_pooled,
       NULL,
       NULL,
-      test_framework_skip_if_offline);
+      test_framework_skip_if_offline,
+      test_framework_skip_if_rhel8_zseries);
    TestSuite_AddMockServerTest (
       suite,
       "/server_discovery_and_monitoring/monitoring/no_duplicates",

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SERVER_DESCRIPTION_HELLO_RESPONSE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_server_description_hello_response \- mongoc_server_description_hello_response()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SERVER_DESCRIPTION_HELLO_RESPONSE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_server_description_hello_response \- mongoc_server_description_hello_response()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,15 +46,15 @@ mongoc_server_description_hello_response (
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdescription\fP: A \fBmongoc_server_description_t\fP\&.
+\fBdescription\fP: A \fI\%mongoc_server_description_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 The client or client pool periodically runs a
-\fI\%"hello"\fP
+\fI\%\(dqhello\(dq\fP
 command on each server, to update its view of the MongoDB deployment. Use
-\fBmongoc_client_get_server_descriptions()\fP and
-\fBmongoc_server_description_hello_response()\fP to get the most recent "hello"
+\fI\%mongoc_client_get_server_descriptions()\fP and
+\fBmongoc_server_description_hello_response()\fP to get the most recent \(dqhello\(dq
 response.
 .SH RETURNS
 .sp

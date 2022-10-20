@@ -61,6 +61,8 @@ _run_command (mongoc_cluster_t *cluster,
    mongoc_cmd_parts_t parts;
    mongoc_server_stream_t *server_stream;
    bool ret;
+   mc_shared_tpld td =
+      mc_tpld_take_ref (BSON_ASSERT_PTR_INLINE (cluster)->client->topology);
 
    mongoc_cmd_parts_init (&parts,
                           cluster->client,
@@ -69,13 +71,8 @@ _run_command (mongoc_cluster_t *cluster,
                           command);
    /* Drivers must not append session ids to auth commands per sessions spec. */
    parts.prohibit_lsid = true;
-   server_stream = _mongoc_cluster_create_server_stream (
-      cluster->client->topology, sd, stream, error);
-   if (!server_stream) {
-      /* error was set by mongoc_topology_description_server_by_id */
-      bson_init (reply);
-      return false;
-   }
+   server_stream = _mongoc_cluster_create_server_stream (td.ptr, sd, stream);
+   mc_tpld_drop_ref (&td);
    ret = mongoc_cluster_run_command_parts (
       cluster, server_stream, &parts, reply, error);
    mongoc_server_stream_cleanup (server_stream);
@@ -516,12 +513,14 @@ _mongoc_aws_credentials_obtain (mongoc_uri_t *uri,
    creds->secret_access_key = NULL;
    creds->session_token = NULL;
 
-   TRACE ("%s", "checking URI for credentials");
-   if (!_obtain_creds_from_uri (creds, uri, error)) {
-      goto fail;
-   }
-   if (!_creds_empty (creds)) {
-      goto succeed;
+   if (uri) {
+      TRACE ("%s", "checking URI for credentials");
+      if (!_obtain_creds_from_uri (creds, uri, error)) {
+         goto fail;
+      }
+      if (!_creds_empty (creds)) {
+         goto succeed;
+      }
    }
 
    TRACE ("%s", "checking environment variables for credentials");
@@ -831,7 +830,7 @@ _client_second (mongoc_cluster_t *cluster,
    char *signature = NULL;
    const char *date = NULL;
    const size_t server_nonce_str_len =
-      COMMON_PREFIX (bson_b64_ntop_calculate_target_size (64));
+      mcommon_b64_ntop_calculate_target_size (64);
    char *server_nonce_str = NULL;
    const char *body = "Action=GetCallerIdentity&Version=2011-06-15";
    bson_t client_payload = BSON_INITIALIZER;
@@ -856,7 +855,7 @@ _client_second (mongoc_cluster_t *cluster,
                            kms_request_get_error (request));
    }
 
-   if (COMMON_PREFIX (bson_b64_ntop) (
+   if (mcommon_b64_ntop (
           server_nonce, 64, server_nonce_str, server_nonce_str_len) == -1) {
       AUTH_ERROR_AND_FAIL ("Failed to parse server nonce");
    }

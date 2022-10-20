@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_NEW_FROM_BUFFER" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_new_from_buffer \- bson_new_from_buffer()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_NEW_FROM_BUFFER" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_new_from_buffer \- bson_new_from_buffer()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,20 +52,20 @@ bson_new_from_buffer (uint8_t **buf,
 .IP \(bu 2
 \fBbuf_len\fP: An out\-pointer to the length of the buffer in bytes.
 .IP \(bu 2
-\fBrealloc_func\fP: Optional \fBbson_realloc_func\fP for reallocating the buffer.
+\fBrealloc_func\fP: Optional \fI\%bson_realloc_func\fP for reallocating the buffer.
 .IP \(bu 2
 \fBrealloc_func_ctx\fP: Optional pointer that will be passed as \fBctx\fP to \fBrealloc_func\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Creates a new \fBbson_t\fP using the data provided.
+Creates a new \fI\%bson_t\fP using the data provided.
 .sp
 The \fBrealloc_func\fP, if provided, is called to resize \fBbuf\fP if the document is later expanded, for example by a call to one of the \fBbson_append\fP functions.
 .sp
 If \fB*buf\fP is initially NULL then it is allocated, using \fBrealloc_func\fP or the default allocator, and initialized with an empty BSON document, and \fB*buf_len\fP is set to 5, the size of an empty document.
 .SH RETURNS
 .sp
-A newly\-allocated \fBbson_t\fP on success, or NULL.
+A newly\-allocated \fI\%bson_t\fP on success, or NULL.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

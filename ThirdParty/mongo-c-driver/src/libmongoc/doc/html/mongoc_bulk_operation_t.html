@@ -3,17 +3,22 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_bulk_operation_t.html"/>
-    <title>mongoc_bulk_operation_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_bulk_operation_t.html"/>
+    <title>mongoc_bulk_operation_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_bulk_operation_delete()" href="mongoc_bulk_operation_delete.html" />
-    <link rel="prev" title="mongoc_auto_encryption_opts_set_extra()" href="mongoc_auto_encryption_opts_set_extra.html" />
+    <link rel="prev" title="mongoc_auto_encryption_opts_set_bypass_query_analysis()" href="mongoc_auto_encryption_opts_set_bypass_query_analysis.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
 
@@ -28,9 +33,9 @@
           <a href="mongoc_bulk_operation_delete.html" title="mongoc_bulk_operation_delete()"
              accesskey="N">next</a></li>
         <li class="right" >
-          <a href="mongoc_auto_encryption_opts_set_extra.html" title="mongoc_auto_encryption_opts_set_extra()"
+          <a href="mongoc_auto_encryption_opts_set_bypass_query_analysis.html" title="mongoc_auto_encryption_opts_set_bypass_query_analysis()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,12 +45,12 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-bulk-operation-t">
-<h1>mongoc_bulk_operation_t<a class="headerlink" href="#mongoc-bulk-operation-t" title="Permalink to this headline">¶</a></h1>
+  <section id="mongoc-bulk-operation-t">
+<h1>mongoc_bulk_operation_t<a class="headerlink" href="#mongoc-bulk-operation-t" title="Permalink to this heading">¶</a></h1>
 <p>Bulk Write Operations</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_mongoc_bulk_operation_t</span> <span class="n">mongoc_bulk_operation_t</span><span class="p">;</span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_mongoc_bulk_operation_t</span><span class="w"> </span><span class="n">mongoc_bulk_operation_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
 <p>The opaque type <code class="docutils literal notranslate"><span class="pre">mongoc_bulk_operation_t</span></code> provides an abstraction for submitting multiple write operations as a single batch.</p>
@@ -60,9 +65,9 @@
 <div class="line"><a class="symbol reference internal" href="bulk.html"><span class="doc">Bulk Write Operations</span></a></div>
 </div>
 </div>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_delete.html">mongoc_bulk_operation_delete()</a></li>
@@ -81,15 +86,17 @@
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_replace_one_with_opts.html">mongoc_bulk_operation_replace_one_with_opts()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_set_bypass_document_validation.html">mongoc_bulk_operation_set_bypass_document_validation()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_set_client_session.html">mongoc_bulk_operation_set_client_session()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_set_comment.html">mongoc_bulk_operation_set_comment()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_set_hint.html">mongoc_bulk_operation_set_hint()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_set_let.html">mongoc_bulk_operation_set_let()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_update.html">mongoc_bulk_operation_update()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_update_many_with_opts.html">mongoc_bulk_operation_update_many_with_opts()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_update_one.html">mongoc_bulk_operation_update_one()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_bulk_operation_update_one_with_opts.html">mongoc_bulk_operation_update_one_with_opts()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -125,6 +132,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -200,7 +208,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

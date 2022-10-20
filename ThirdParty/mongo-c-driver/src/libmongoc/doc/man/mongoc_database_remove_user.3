@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_REMOVE_USER" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_remove_user \- mongoc_database_remove_user()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_REMOVE_USER" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_remove_user \- mongoc_database_remove_user()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,11 +49,11 @@ This function removes the user named \fBusername\fP from \fBdatabase\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdatabase\fP: A \fBmongoc_database_t\fP\&.
+\fBdatabase\fP: A \fI\%mongoc_database_t\fP\&.
 .IP \(bu 2
 \fBusername\fP: A string containing the username of the user to remove.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH ERRORS
 .sp

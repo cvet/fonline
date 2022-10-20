@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/debugging.html"/>
-    <title>Aids for Debugging &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/debugging.html"/>
+    <title>Aids for Debugging &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Using Client-Side Field Level Encryption" href="using_client_side_encryption.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="create-indexes.html" title="Creating Indexes"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="guides.html" accesskey="U">Guides</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,10 +45,10 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="aids-for-debugging">
-<h1>Aids for Debugging<a class="headerlink" href="#aids-for-debugging" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="gdb">
-<h2>GDB<a class="headerlink" href="#gdb" title="Permalink to this headline">¶</a></h2>
+  <section id="aids-for-debugging">
+<h1>Aids for Debugging<a class="headerlink" href="#aids-for-debugging" title="Permalink to this heading">¶</a></h1>
+<section id="gdb">
+<h2>GDB<a class="headerlink" href="#gdb" title="Permalink to this heading">¶</a></h2>
 <p>This repository contains a <code class="docutils literal notranslate"><span class="pre">.gdbinit</span></code> file that contains helper functions to
 aid debugging of data structures. GDB will load this file
 <a class="reference external" href="https://sourceware.org/gdb/onlinedocs/gdb/Auto_002dloading.html">automatically</a> if you have added the directory which contains the <cite>.gdbinit</cite> file to GDB’s
@@ -101,9 +106,9 @@ If you have a local <code class="docutils literal notranslate"><span class="pre"
 <span class="p">}</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="lldb">
-<h2>LLDB<a class="headerlink" href="#lldb" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="lldb">
+<h2>LLDB<a class="headerlink" href="#lldb" title="Permalink to this heading">¶</a></h2>
 <p>This repository also includes a script that customizes LLDB’s standard <code class="docutils literal notranslate"><span class="pre">print</span></code> command to print a <code class="docutils literal notranslate"><span class="pre">bson_t</span></code> or <code class="docutils literal notranslate"><span class="pre">bson_t</span> <span class="pre">*</span></code> as JSON:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(lldb) print b
 (bson_t) $0 = {&quot;x&quot;: 1, &quot;y&quot;: 2}
@@ -132,12 +137,12 @@ If you have a local <code class="docutils literal notranslate"><span class="pre"
 </pre></div>
 </div>
 <p>If you see “bson command installed by lldb_bson” at the beginning of your LLDB session, you’ve installed the script correctly.</p>
-</div>
-<div class="section" id="debug-assertions">
-<h2>Debug assertions<a class="headerlink" href="#debug-assertions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="debug-assertions">
+<h2>Debug assertions<a class="headerlink" href="#debug-assertions" title="Permalink to this heading">¶</a></h2>
 <p>To enable runtime debug assertions, configure with <code class="docutils literal notranslate"><span class="pre">-DENABLE_DEBUG_ASSERTIONS=ON</span></code>.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -201,7 +206,7 @@ If you have a local <code class="docutils literal notranslate"><span class="pre"
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_FIND_AND_MODIFY_OPTS_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_find_and_modify_opts_t \- mongoc_find_and_modify_opts_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_FIND_AND_MODIFY_OPTS_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_find_and_modify_opts_t \- mongoc_find_and_modify_opts_t
 .sp
 find_and_modify abstraction
 .SH SYNOPSIS
@@ -38,7 +38,7 @@ find_and_modify abstraction
 .sp
 It was created to be able to accommodate new arguments to the MongoDB find_and_modify command.
 .sp
-As of MongoDB 3.2, the \fBmongoc_write_concern_t\fP specified on the \fBmongoc_collection_t\fP will be used, if any.
+As of MongoDB 3.2, the \fI\%mongoc_write_concern_t\fP specified on the \fI\%mongoc_collection_t\fP will be used, if any.
 .SH EXAMPLE
 .sp
 flags.c
@@ -59,15 +59,15 @@ fam_flags (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic, the striker */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "profession", "Football player");
-   BSON_APPEND_INT32 (&query, "age", 34);
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqprofession\(dq, \(dqFootball player\(dq);
+   BSON_APPEND_INT32 (&query, \(dqage\(dq, 34);
    BSON_APPEND_INT32 (
-      &query, "goals", (16 + 35 + 23 + 57 + 16 + 14 + 28 + 84) + (1 + 6 + 62));
+      &query, \(dqgoals\(dq, (16 + 35 + 23 + 57 + 16 + 14 + 28 + 84) + (1 + 6 + 62));
 
    /* Add his football position */
-   update = BCON_NEW ("$set", "{", "position", BCON_UTF8 ("striker"), "}");
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqposition\(dq, BCON_UTF8 (\(dqstriker\(dq), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
 
@@ -84,11 +84,11 @@ fam_flags (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -120,12 +120,12 @@ fam_bypass (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic, the striker */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "profession", "Football player");
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqprofession\(dq, \(dqFootball player\(dq);
 
    /* Bump his age */
-   update = BCON_NEW ("$inc", "{", "age", BCON_INT32 (1), "}");
+   update = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqage\(dq, BCON_INT32 (1), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    mongoc_find_and_modify_opts_set_update (opts, update);
@@ -139,11 +139,11 @@ fam_bypass (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -175,11 +175,11 @@ fam_update (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
 
    /* Make him a book author */
-   update = BCON_NEW ("$set", "{", "author", BCON_BOOL (true), "}");
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqauthor\(dq, BCON_BOOL (true), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    /* Note that the document returned is the _previous_ version of the document
@@ -196,11 +196,11 @@ fam_update (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -233,14 +233,14 @@ fam_fields (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic */
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
 
    /* Return his goal tally */
-   BSON_APPEND_INT32 (&fields, "goals", 1);
+   BSON_APPEND_INT32 (&fields, \(dqgoals\(dq, 1);
 
    /* Bump his goal tally */
-   update = BCON_NEW ("$inc", "{", "goals", BCON_INT32 (1), "}");
+   update = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqgoals\(dq, BCON_INT32 (1), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    mongoc_find_and_modify_opts_set_update (opts, update);
@@ -256,11 +256,11 @@ fam_fields (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -294,13 +294,13 @@ fam_sort (mongoc_collection_t *collection)
 
 
    /* Find all users with the lastname Ibrahimovic */
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
 
    /* Sort by age (descending) */
-   BSON_APPEND_INT32 (&sort, "age", \-1);
+   BSON_APPEND_INT32 (&sort, \(dqage\(dq, \-1);
 
    /* Bump his goal tally */
-   update = BCON_NEW ("$set", "{", "oldest", BCON_BOOL (true), "}");
+   update = BCON_NEW (\(dq$set\(dq, \(dq{\(dq, \(dqoldest\(dq, BCON_BOOL (true), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    mongoc_find_and_modify_opts_set_update (opts, update);
@@ -313,11 +313,11 @@ fam_sort (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -352,12 +352,12 @@ fam_opts (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic, the striker */
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "profession", "Football player");
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqprofession\(dq, \(dqFootball player\(dq);
 
    /* Bump his age */
-   update = BCON_NEW ("$inc", "{", "age", BCON_INT32 (1), "}");
+   update = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqage\(dq, BCON_INT32 (1), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    mongoc_find_and_modify_opts_set_update (opts, update);
@@ -372,7 +372,7 @@ fam_opts (mongoc_collection_t *collection)
 
    /* Some future findAndModify option the driver doesn\(aqt support conveniently
     */
-   BSON_APPEND_INT32 (&extra, "futureOption", 42);
+   BSON_APPEND_INT32 (&extra, \(dqfutureOption\(dq, 42);
    mongoc_find_and_modify_opts_append (opts, &extra);
 
    success = mongoc_collection_find_and_modify_with_opts (
@@ -382,11 +382,11 @@ fam_opts (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -415,7 +415,7 @@ main (void)
    mongoc_database_t *database;
    mongoc_client_t *client;
    const char *uri_string =
-      "mongodb://localhost:27017/admin?appname=find\-and\-modify\-opts\-example";
+      \(dqmongodb://localhost:27017/admin?appname=find\-and\-modify\-opts\-example\(dq;
    mongoc_uri_t *uri;
    bson_error_t error;
    bson_t *options;
@@ -425,8 +425,8 @@ main (void)
    uri = mongoc_uri_new_with_error (uri_string, &error);
    if (!uri) {
       fprintf (stderr,
-               "failed to parse URI: %s\en"
-               "error message:       %s\en",
+               \(dqfailed to parse URI: %s\en\(dq
+               \(dqerror message:       %s\en\(dq,
                uri_string,
                error.message);
       return EXIT_FAILURE;
@@ -438,26 +438,26 @@ main (void)
    }
 
    mongoc_client_set_error_api (client, 2);
-   database = mongoc_client_get_database (client, "databaseName");
+   database = mongoc_client_get_database (client, \(dqdatabaseName\(dq);
 
-   options = BCON_NEW ("validator",
-                       "{",
-                       "age",
-                       "{",
-                       "$lte",
+   options = BCON_NEW (\(dqvalidator\(dq,
+                       \(dq{\(dq,
+                       \(dqage\(dq,
+                       \(dq{\(dq,
+                       \(dq$lte\(dq,
                        BCON_INT32 (34),
-                       "}",
-                       "}",
-                       "validationAction",
-                       BCON_UTF8 ("error"),
-                       "validationLevel",
-                       BCON_UTF8 ("moderate"));
+                       \(dq}\(dq,
+                       \(dq}\(dq,
+                       \(dqvalidationAction\(dq,
+                       BCON_UTF8 (\(dqerror\(dq),
+                       \(dqvalidationLevel\(dq,
+                       BCON_UTF8 (\(dqmoderate\(dq));
 
    collection = mongoc_database_create_collection (
-      database, "collectionName", options, &error);
+      database, \(dqcollectionName\(dq, options, &error);
    if (!collection) {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
       return EXIT_FAILURE;
    }
 
@@ -491,93 +491,93 @@ Outputs:
 .nf
 .ft C
 {
-    "lastErrorObject": {
-        "updatedExisting": false,
-        "n": 1,
-        "upserted": {
-            "$oid": "56562a99d13e6d86239c7b00"
+    \(dqlastErrorObject\(dq: {
+        \(dqupdatedExisting\(dq: false,
+        \(dqn\(dq: 1,
+        \(dqupserted\(dq: {
+            \(dq$oid\(dq: \(dq56562a99d13e6d86239c7b00\(dq
         }
     },
-    "value": {
-        "_id": {
-            "$oid": "56562a99d13e6d86239c7b00"
+    \(dqvalue\(dq: {
+        \(dq_id\(dq: {
+            \(dq$oid\(dq: \(dq56562a99d13e6d86239c7b00\(dq
         },
-        "age": 34,
-        "firstname": "Zlatan",
-        "goals": 342,
-        "lastname": "Ibrahimovic",
-        "profession": "Football player",
-        "position": "striker"
+        \(dqage\(dq: 34,
+        \(dqfirstname\(dq: \(dqZlatan\(dq,
+        \(dqgoals\(dq: 342,
+        \(dqlastname\(dq: \(dqIbrahimovic\(dq,
+        \(dqprofession\(dq: \(dqFootball player\(dq,
+        \(dqposition\(dq: \(dqstriker\(dq
     },
-    "ok": 1
+    \(dqok\(dq: 1
 }
 {
-    "lastErrorObject": {
-        "updatedExisting": true,
-        "n": 1
+    \(dqlastErrorObject\(dq: {
+        \(dqupdatedExisting\(dq: true,
+        \(dqn\(dq: 1
     },
-    "value": {
-        "_id": {
-            "$oid": "56562a99d13e6d86239c7b00"
+    \(dqvalue\(dq: {
+        \(dq_id\(dq: {
+            \(dq$oid\(dq: \(dq56562a99d13e6d86239c7b00\(dq
         },
-        "age": 34,
-        "firstname": "Zlatan",
-        "goals": 342,
-        "lastname": "Ibrahimovic",
-        "profession": "Football player",
-        "position": "striker"
+        \(dqage\(dq: 34,
+        \(dqfirstname\(dq: \(dqZlatan\(dq,
+        \(dqgoals\(dq: 342,
+        \(dqlastname\(dq: \(dqIbrahimovic\(dq,
+        \(dqprofession\(dq: \(dqFootball player\(dq,
+        \(dqposition\(dq: \(dqstriker\(dq
     },
-    "ok": 1
+    \(dqok\(dq: 1
 }
 {
-    "lastErrorObject": {
-        "updatedExisting": true,
-        "n": 1
+    \(dqlastErrorObject\(dq: {
+        \(dqupdatedExisting\(dq: true,
+        \(dqn\(dq: 1
     },
-    "value": {
-        "_id": {
-            "$oid": "56562a99d13e6d86239c7b00"
+    \(dqvalue\(dq: {
+        \(dq_id\(dq: {
+            \(dq$oid\(dq: \(dq56562a99d13e6d86239c7b00\(dq
         },
-        "age": 35,
-        "firstname": "Zlatan",
-        "goals": 342,
-        "lastname": "Ibrahimovic",
-        "profession": "Football player",
-        "position": "striker"
+        \(dqage\(dq: 35,
+        \(dqfirstname\(dq: \(dqZlatan\(dq,
+        \(dqgoals\(dq: 342,
+        \(dqlastname\(dq: \(dqIbrahimovic\(dq,
+        \(dqprofession\(dq: \(dqFootball player\(dq,
+        \(dqposition\(dq: \(dqstriker\(dq
     },
-    "ok": 1
+    \(dqok\(dq: 1
 }
 {
-    "lastErrorObject": {
-        "updatedExisting": true,
-        "n": 1
+    \(dqlastErrorObject\(dq: {
+        \(dqupdatedExisting\(dq: true,
+        \(dqn\(dq: 1
     },
-    "value": {
-        "_id": {
-            "$oid": "56562a99d13e6d86239c7b00"
+    \(dqvalue\(dq: {
+        \(dq_id\(dq: {
+            \(dq$oid\(dq: \(dq56562a99d13e6d86239c7b00\(dq
         },
-        "goals": 343
+        \(dqgoals\(dq: 343
     },
-    "ok": 1
+    \(dqok\(dq: 1
 }
 {
-    "lastErrorObject": {
-        "updatedExisting": true,
-        "n": 1
+    \(dqlastErrorObject\(dq: {
+        \(dqupdatedExisting\(dq: true,
+        \(dqn\(dq: 1
     },
-    "value": {
-        "_id": {
-            "$oid": "56562a99d13e6d86239c7b00"
+    \(dqvalue\(dq: {
+        \(dq_id\(dq: {
+            \(dq$oid\(dq: \(dq56562a99d13e6d86239c7b00\(dq
         },
-        "age": 35,
-        "firstname": "Zlatan",
-        "goals": 343,
-        "lastname": "Ibrahimovic",
-        "profession": "Football player",
-        "position": "striker",
-        "author": true
+        \(dqage\(dq: 35,
+        \(dqfirstname\(dq: \(dqZlatan\(dq,
+        \(dqgoals\(dq: 343,
+        \(dqlastname\(dq: \(dqIbrahimovic\(dq,
+        \(dqprofession\(dq: \(dqFootball player\(dq,
+        \(dqposition\(dq: \(dqstriker\(dq,
+        \(dqauthor\(dq: true
     },
-    "ok": 1
+    \(dqok\(dq: 1
 }
 .ft P
 .fi

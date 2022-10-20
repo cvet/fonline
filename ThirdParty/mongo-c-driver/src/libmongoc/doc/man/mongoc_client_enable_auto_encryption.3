@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_ENABLE_AUTO_ENCRYPTION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_enable_auto_encryption \- mongoc_client_enable_auto_encryption()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_ENABLE_AUTO_ENCRYPTION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_enable_auto_encryption \- mongoc_client_enable_auto_encryption()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,21 +45,21 @@ mongoc_client_enable_auto_encryption (mongoc_client_t *client,
 .UNINDENT
 .UNINDENT
 .sp
-Enable automatic client side encryption on a \fBmongoc_client_t\fP\&. Requires libmongoc to be built with support for Client\-Side Field Level Encryption. See the guide for Using Client\-Side Field Level Encryption\&.
+Enable automatic client side encryption on a \fI\%mongoc_client_t\fP\&. Requires libmongoc to be built with support for Client\-Side Field Level Encryption. See the guide for \fI\%Using Client\-Side Field Level Encryption\fP\&.
 .sp
-Automatic encryption is an enterprise only feature that only applies to operations on a collection. Automatic encryption is not supported for operations on a database or view, and operations that are not bypassed will result in error. To bypass automatic encryption for all operations, bypass automatic encryption with \fBmongoc_auto_encryption_opts_set_bypass_auto_encryption()\fP in \fBopts\fP\&.
+Automatic encryption is an enterprise only feature that only applies to operations on a collection. Automatic encryption is not supported for operations on a database or view, and operations that are not bypassed will result in error. To bypass automatic encryption for all operations, bypass automatic encryption with \fI\%mongoc_auto_encryption_opts_set_bypass_auto_encryption()\fP in \fBopts\fP\&.
 .sp
 Automatic encryption requires the authenticated user to have the \fI\%listCollections privilege action\fP\&.
 .sp
 Enabling automatic encryption reduces the maximum message size and may have a negative performance impact.
 .sp
-Only applies to a single\-threaded \fBmongoc_client_t\fP\&. To use with client pools, see \fBmongoc_client_pool_enable_auto_encryption()\fP\&.
+Only applies to a single\-threaded \fI\%mongoc_client_t\fP\&. To use with client pools, see \fI\%mongoc_client_pool_enable_auto_encryption()\fP\&.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
-\fBopts\fP: A required \fBmongoc_auto_encryption_opts_t\fP\&.
+\fBopts\fP: A required \fI\%mongoc_auto_encryption_opts_t\fP\&.
 .IP \(bu 2
 \fBerror\fP: A \fI\%bson_error_t\fP which is set on error.
 .UNINDENT
@@ -71,15 +71,15 @@ True on success. False on error. On error, \fBerror\fP is set.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_auto_encryption_opts_t\fP
+\fI\%mongoc_auto_encryption_opts_t\fP
 .fi
 .sp
 .nf
-\fBmongoc_client_pool_enable_auto_encryption()\fP
+\fI\%mongoc_client_pool_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption for libmongoc
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP for libmongoc
 .fi
 .sp
 .nf

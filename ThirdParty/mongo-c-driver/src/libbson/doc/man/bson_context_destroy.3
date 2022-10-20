@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_CONTEXT_DESTROY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_context_destroy \- bson_context_destroy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_CONTEXT_DESTROY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_context_destroy \- bson_context_destroy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_context_destroy (bson_context_t *context);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcontext\fP: A \fBbson_context_t\fP\&.
+\fBcontext\fP: A \fI\%bson_context_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 The \fBbson_context_destroy()\fP function shall release all resources associated with \fBcontext\fP\&. Does nothing if \fBcontext\fP is NULL.
 .sp
-This should be called when you are no longer using a \fBbson_context_t\fP that you have allocated with \fBbson_context_new()\fP\&.
+This should be called when you are no longer using a \fI\%bson_context_t\fP that you have allocated with \fI\%bson_context_new()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

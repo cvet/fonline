@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_GET_SERVER_STATUS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_get_server_status \- mongoc_client_get_server_status()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_GET_SERVER_STATUS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_get_server_status \- mongoc_client_get_server_status()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,17 +51,17 @@ Queries the server for the current server status. The result is stored in \fBrep
 \fBreply\fP is always initialized, even in the case of failure. Always call \fI\%bson_destroy()\fP to release it.
 .SH DEPRECATED
 .sp
-This helper function is deprecated and should not be used in new code. Run the \fI\%serverStatus\fP command directly with \fBmongoc_client_read_command_with_opts()\fP instead.
+This helper function is deprecated and should not be used in new code. Run the \fI\%serverStatus\fP command directly with \fI\%mongoc_client_read_command_with_opts()\fP instead.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient\fP: A \fBmongoc_client_t\fP\&.
+\fBclient\fP: A \fI\%mongoc_client_t\fP\&.
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP\&.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP\&.
 .IP \(bu 2
 \fBreply\fP: A location for the result \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH ERRORS
 .sp

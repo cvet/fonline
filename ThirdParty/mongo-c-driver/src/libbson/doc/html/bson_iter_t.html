@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/bson_iter_t.html"/>
-    <title>bson_iter_t &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/bson_iter_t.html"/>
+    <title>bson_iter_t &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="bson_iter_array()" href="bson_iter_array.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="bson_strerror_r.html" title="bson_strerror_r()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,12 +45,12 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="bson-iter-t">
-<h1>bson_iter_t<a class="headerlink" href="#bson-iter-t" title="Permalink to this headline">¶</a></h1>
+  <section id="bson-iter-t">
+<h1>bson_iter_t<a class="headerlink" href="#bson-iter-t" title="Permalink to this heading">¶</a></h1>
 <p>BSON Document Iterator</p>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bson/bson.h&gt;</span><span class="cp"></span>
 
 <span class="cp">#define BSON_ITER_HOLDS_DOUBLE(iter) </span><span class="cm">/* ... */</span><span class="cp"></span>
 
@@ -98,19 +103,19 @@
 <span class="cp">#define BSON_ITER_IS_KEY(iter, key) \</span>
 <span class="cp">   (0 == strcmp ((key), bson_iter_key ((iter))))</span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="cm">/*&lt; private &gt;*/</span>
-<span class="p">}</span> <span class="n">bson_iter_t</span><span class="p">;</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="cm">/*&lt; private &gt;*/</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">bson_iter_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p><a class="symbol reference internal" href="#"><span class="doc">bson_iter_t</span></a> is a structure used to iterate through the elements of a <a class="symbol reference internal" href="bson_t.html"><span class="doc">bson_t</span></a>. It is meant to be used on the stack and can be discarded at any time as it contains no external allocation. The contents of the structure should be considered private and may change between releases, however the structure size will not change.</p>
 <p>The <a class="symbol reference internal" href="bson_t.html"><span class="doc">bson_t</span></a> <em>MUST</em> be valid for the lifetime of the iter and it is an error to modify the <a class="symbol reference internal" href="bson_t.html"><span class="doc">bson_t</span></a> while using the iter.</p>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="bson_iter_array.html">bson_iter_array()</a></li>
@@ -164,47 +169,47 @@
 <li class="toctree-l1"><a class="reference internal" href="bson_iter_visit_all.html">bson_iter_visit_all()</a></li>
 </ul>
 </div>
-</div>
-<div class="section" id="examples">
-<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">my_bson_doc</span><span class="p">))</span> <span class="p">{</span>
-   <span class="k">while</span> <span class="p">(</span><span class="n">bson_iter_next</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Found a field named: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">bson_iter_key</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">));</span>
-   <span class="p">}</span>
-<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">my_bson_doc</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_next</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Found a field named: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">bson_iter_key</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">));</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">my_bson_doc</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">bson_iter_find</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="s">&quot;my_field&quot;</span><span class="p">))</span> <span class="p">{</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Found the field named: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">bson_iter_key</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">));</span>
-<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">my_bson_doc</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">bson_iter_find</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;my_field&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Found the field named: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">bson_iter_key</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">));</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
-<span class="n">bson_iter_t</span> <span class="n">sub_iter</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
+<span class="n">bson_iter_t</span><span class="w"> </span><span class="n">sub_iter</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_init_find</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">my_bson_doc</span><span class="p">,</span> <span class="s">&quot;mysubdoc&quot;</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
-    <span class="p">(</span><span class="n">BSON_ITER_HOLDS_DOCUMENT</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">)</span> <span class="o">||</span> <span class="n">BSON_ITER_HOLDS_ARRAY</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">))</span> <span class="o">&amp;&amp;</span>
-    <span class="n">bson_iter_recurse</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">))</span> <span class="p">{</span>
-   <span class="k">while</span> <span class="p">(</span><span class="n">bson_iter_next</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">))</span> <span class="p">{</span>
-      <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;Found key </span><span class="se">\&quot;</span><span class="s">%s</span><span class="se">\&quot;</span><span class="s"> in sub document.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">bson_iter_key</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">));</span>
-   <span class="p">}</span>
-<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_init_find</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">my_bson_doc</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mysubdoc&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"></span>
+<span class="w">    </span><span class="p">(</span><span class="n">BSON_ITER_HOLDS_DOCUMENT</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">BSON_ITER_HOLDS_ARRAY</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"></span>
+<span class="w">    </span><span class="n">bson_iter_recurse</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_next</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Found key </span><span class="se">\&quot;</span><span class="s">%s</span><span class="se">\&quot;</span><span class="s"> in sub document.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">bson_iter_key</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">));</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span> <span class="n">iter</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">bson_iter_t</span><span class="w"> </span><span class="n">iter</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">if</span> <span class="p">(</span><span class="n">bson_iter_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="n">my_doc</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
-    <span class="n">bson_iter_find_descendant</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span> <span class="s">&quot;a.b.c.d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">))</span> <span class="p">{</span>
-   <span class="n">printf</span> <span class="p">(</span><span class="s">&quot;The type of a.b.c.d is: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="n">bson_iter_type</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">));</span>
-<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bson_iter_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="n">my_doc</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"></span>
+<span class="w">    </span><span class="n">bson_iter_find_descendant</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">iter</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;a.b.c.d&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">printf</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;The type of a.b.c.d is: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="n">bson_iter_type</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">sub_iter</span><span class="p">));</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -267,7 +272,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

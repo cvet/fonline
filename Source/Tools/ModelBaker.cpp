@@ -561,7 +561,7 @@ static auto FbxGetElement(T* elements, int index, int* vertices) -> T2
         }
     }
 
-    WriteLog("Unknown mapping mode {} or reference mode {}", elements->GetMappingMode(), elements->GetReferenceMode());
+    WriteLog("Unknown mapping mode {} or reference mode {}", static_cast<int>(elements->GetMappingMode()), static_cast<int>(elements->GetReferenceMode()));
     return elements->GetDirectArray().GetAt(0);
 }
 

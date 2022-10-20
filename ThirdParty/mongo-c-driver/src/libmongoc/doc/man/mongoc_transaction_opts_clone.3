@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_TRANSACTION_OPTS_CLONE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_transaction_opts_clone \- mongoc_transaction_opts_clone()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_TRANSACTION_OPTS_CLONE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_transaction_opts_clone \- mongoc_transaction_opts_clone()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_transaction_opt_t *
-mongoc_transaction_opts_clone (const mongoc_transaction_opt_t *opts);
+mongoc_transaction_opts_clone (const mongoc_transaction_opt_t *opts)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -47,8 +48,11 @@ Create a copy of a transaction options struct.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_transaction_opt_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_transaction_opt_t\fP\&.
 .UNINDENT
+.SH RETURNS
+.sp
+A new \fI\%mongoc_transaction_opt_t\fP that must be freed with \fI\%mongoc_transaction_opts_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

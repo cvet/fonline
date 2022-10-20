@@ -718,7 +718,7 @@ void SpriteManager::DumpAtlases() const
         atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
-    const string dir = _str("{}_{}.{:03}mb", static_cast<uint>(time(nullptr)), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
+    const string dir = _str("{}_{}.{:03}mb", Timer::RealtimeTick(), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
     if (const auto* rt = _rtMain; rt != nullptr) {
         const string fname = _str("{}/Main_{}x{}.tga", dir, rt->MainTex->Width, rt->MainTex->Height);

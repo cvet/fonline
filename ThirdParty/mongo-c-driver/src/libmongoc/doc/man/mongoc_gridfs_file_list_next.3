@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_GRIDFS_FILE_LIST_NEXT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_gridfs_file_list_next \- mongoc_gridfs_file_list_next()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_GRIDFS_FILE_LIST_NEXT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_gridfs_file_list_next \- mongoc_gridfs_file_list_next()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_gridfs_file_t *
-mongoc_gridfs_file_list_next (mongoc_gridfs_file_list_t *list);
+mongoc_gridfs_file_list_next (mongoc_gridfs_file_list_t *list)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,14 +46,14 @@ mongoc_gridfs_file_list_next (mongoc_gridfs_file_list_t *list);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBlist\fP: A \fBmongoc_gridfs_file_list_t\fP\&.
+\fBlist\fP: A \fI\%mongoc_gridfs_file_list_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 This function shall iterate the underlying gridfs file list, returning the next file each iteration. This is a blocking function.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_gridfs_file_t\fP that should be freed with \fBmongoc_gridfs_file_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_gridfs_file_t\fP that should be freed with \fI\%mongoc_gridfs_file_destroy()\fP when no longer in use.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

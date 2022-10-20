@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_SSL_OPT_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_ssl_opt_t \- mongoc_ssl_opt_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_SSL_OPT_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_ssl_opt_t \- mongoc_ssl_opt_t
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -53,25 +53,25 @@ typedef struct {
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This structure is used to set the TLS options for a \fBmongoc_client_t\fP or \fBmongoc_client_pool_t\fP\&.
+This structure is used to set the TLS options for a \fI\%mongoc_client_t\fP or \fI\%mongoc_client_pool_t\fP\&.
 .sp
 Beginning in version 1.2.0, once a pool or client has any TLS options set, all connections use TLS, even if \fBssl=true\fP is omitted from the MongoDB URI. Before, TLS options were ignored unless \fBtls=true\fP was included in the URI.
 .sp
-As of 1.4.0, the \fBmongoc_client_pool_set_ssl_opts\fP and \fBmongoc_client_set_ssl_opts\fP will not only shallow copy the struct, but will also copy the \fBconst char*\fP\&. It is therefore no longer needed to make sure the values remain valid after setting them.
+As of 1.4.0, the \fI\%mongoc_client_pool_set_ssl_opts()\fP and \fI\%mongoc_client_set_ssl_opts()\fP will not only shallow copy the struct, but will also copy the \fBconst char*\fP\&. It is therefore no longer needed to make sure the values remain valid after setting them.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-configuring_tls
+\fI\%Configuring TLS\fP
 .fi
 .sp
 .nf
-mongoc_client_set_ssl_opts
+\fI\%mongoc_client_set_ssl_opts()\fP
 .fi
 .sp
 .nf
-mongoc_client_pool_set_ssl_opts
+\fI\%mongoc_client_pool_set_ssl_opts()\fP
 .fi
 .sp
 .UNINDENT

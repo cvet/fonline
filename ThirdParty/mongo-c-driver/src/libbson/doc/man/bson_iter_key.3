@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_KEY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_key \- bson_iter_key()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_KEY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_key \- bson_iter_key()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ bson_iter_key (const bson_iter_t *iter);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -58,7 +58,7 @@ A string which should not be modified or freed.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBbson_iter_key_len()\fP to retrieve the length of the key in constant time.
+\fI\%bson_iter_key_len()\fP to retrieve the length of the key in constant time.
 .fi
 .sp
 .UNINDENT

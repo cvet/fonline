@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_FIELDS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_find_and_modify_opts_set_fields \- mongoc_find_and_modify_opts_set_fields()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_FIND_AND_MODIFY_OPTS_SET_FIELDS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_find_and_modify_opts_set_fields \- mongoc_find_and_modify_opts_set_fields()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,7 +46,7 @@ mongoc_find_and_modify_opts_set_fields (mongoc_find_and_modify_opts_t *opts,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBopts\fP: A \fBmongoc_find_and_modify_opts_t\fP\&.
+\fBopts\fP: A \fI\%mongoc_find_and_modify_opts_t\fP\&.
 .IP \(bu 2
 \fBfields\fP: A subset of fields to return. Choose which fields to include by appending \fB{fieldname: 1}\fP for each fieldname, or excluding it with \fB{fieldname: 0}\fP\&.
 .UNINDENT
@@ -79,14 +79,14 @@ fam_fields (mongoc_collection_t *collection)
 
 
    /* Find Zlatan Ibrahimovic */
-   BSON_APPEND_UTF8 (&query, "lastname", "Ibrahimovic");
-   BSON_APPEND_UTF8 (&query, "firstname", "Zlatan");
+   BSON_APPEND_UTF8 (&query, \(dqlastname\(dq, \(dqIbrahimovic\(dq);
+   BSON_APPEND_UTF8 (&query, \(dqfirstname\(dq, \(dqZlatan\(dq);
 
    /* Return his goal tally */
-   BSON_APPEND_INT32 (&fields, "goals", 1);
+   BSON_APPEND_INT32 (&fields, \(dqgoals\(dq, 1);
 
    /* Bump his goal tally */
-   update = BCON_NEW ("$inc", "{", "goals", BCON_INT32 (1), "}");
+   update = BCON_NEW (\(dq$inc\(dq, \(dq{\(dq, \(dqgoals\(dq, BCON_INT32 (1), \(dq}\(dq);
 
    opts = mongoc_find_and_modify_opts_new ();
    mongoc_find_and_modify_opts_set_update (opts, update);
@@ -102,11 +102,11 @@ fam_fields (mongoc_collection_t *collection)
       char *str;
 
       str = bson_as_canonical_extended_json (&reply, NULL);
-      printf ("%s\en", str);
+      printf (\(dq%s\en\(dq, str);
       bson_free (str);
    } else {
       fprintf (
-         stderr, "Got error: \e"%s\e" on line %d\en", error.message, __LINE__);
+         stderr, \(dqGot error: \e\(dq%s\e\(dq on line %d\en\(dq, error.message, __LINE__);
    }
 
    bson_destroy (&reply);
@@ -128,11 +128,11 @@ Outputs:
 .nf
 .ft C
 {
-   "lastErrorObject"
-      : {"updatedExisting" : true, "n" : 1},
-        "value"
-        : {"_id" : {"$oid" : "56562a99d13e6d86239c7b00"}, "goals" : 343},
-          "ok" : 1
+   \(dqlastErrorObject\(dq
+      : {\(dqupdatedExisting\(dq : true, \(dqn\(dq : 1},
+        \(dqvalue\(dq
+        : {\(dq_id\(dq : {\(dq$oid\(dq : \(dq56562a99d13e6d86239c7b00\(dq}, \(dqgoals\(dq : 343},
+          \(dqok\(dq : 1
 }
 .ft P
 .fi

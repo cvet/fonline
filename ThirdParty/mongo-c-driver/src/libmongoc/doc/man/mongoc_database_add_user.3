@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_DATABASE_ADD_USER" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_database_add_user \- mongoc_database_add_user()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_DATABASE_ADD_USER" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_database_add_user \- mongoc_database_add_user()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,7 +50,7 @@ mongoc_database_add_user (mongoc_database_t *database,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBdatabase\fP: A \fBmongoc_database_t\fP\&.
+\fBdatabase\fP: A \fI\%mongoc_database_t\fP\&.
 .IP \(bu 2
 \fBusername\fP: The name of the user.
 .IP \(bu 2
@@ -60,7 +60,7 @@ mongoc_database_add_user (mongoc_database_t *database,
 .IP \(bu 2
 \fBcustom_data\fP: A optional \fI\%bson_t\fP for extra data.
 .IP \(bu 2
-\fBerror\fP: A location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: A location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .sp
 This function shall create a new user with access to \fBdatabase\fP\&.

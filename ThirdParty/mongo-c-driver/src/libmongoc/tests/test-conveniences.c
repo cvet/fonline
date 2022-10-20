@@ -60,7 +60,7 @@ test_conveniences_init ()
 
 
 void
-test_conveniences_cleanup ()
+test_conveniences_cleanup (void)
 {
    int i;
    bson_t *doc;
@@ -121,7 +121,8 @@ tmp_bson (const char *json, ...)
       doc = bson_new_from_json ((const uint8_t *) double_quoted, -1, &error);
 
       if (!doc) {
-         fprintf (stderr, "%s\n", error.message);
+         fprintf (
+            stderr, "tmp_bson error %s: parsing: %s\n", error.message, json);
          abort ();
       }
 
@@ -940,7 +941,7 @@ match_bson_with_ctx (const bson_t *doc, const bson_t *pattern, match_ctx_t *ctx)
    bool is_empty_operator;
    bool is_type_operator;
    bool exists;
-   bool empty;
+   bool empty = false;
    bson_type_t bson_type = (bson_type_t) 0;
    bool found;
    bson_iter_t doc_iter;
@@ -1681,6 +1682,8 @@ find_key (void *current, void *key)
 static void
 key_dtor (void *item, void *ctx)
 {
+   BSON_UNUSED (item);
+   BSON_UNUSED (ctx);
    /* mongoc_set_t requires a dtor, there's nothing to destroy */
 }
 

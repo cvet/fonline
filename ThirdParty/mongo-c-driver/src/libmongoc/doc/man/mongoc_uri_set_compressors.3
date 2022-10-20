@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_SET_COMPRESSORS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_set_compressors \- mongoc_uri_set_compressors()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_SET_COMPRESSORS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_set_compressors \- mongoc_uri_set_compressors()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,9 +45,9 @@ mongoc_uri_set_compressors (mongoc_uri_t *uri, const char *compressors);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .IP \(bu 2
-\fBcompressors\fP: A string consisting of one or more comma (,) separated compressors (e.g. "snappy,zlib") or \fBNULL\fP\&. Passing \fBNULL\fP clears any existing compressors set on \fBuri\fP\&.
+\fBcompressors\fP: A string consisting of one or more comma (,) separated compressors (e.g. \(dqsnappy,zlib\(dq) or \fBNULL\fP\&. Passing \fBNULL\fP clears any existing compressors set on \fBuri\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
@@ -62,8 +62,8 @@ Will overwrite any previously set value.
 mongoc_client_t *client;
 mongoc_uri_t *uri;
 
-uri = mongoc_uri_new ("mongodb://localhost/");
-mongoc_uri_set_compressors (uri, "snappy,zlib,zstd");
+uri = mongoc_uri_new (\(dqmongodb://localhost/\(dq);
+mongoc_uri_set_compressors (uri, \(dqsnappy,zlib,zstd\(dq);
 mongoc_client_new_from_uri (uri);
 /* Snappy & zlib & zstd compressors are enabled */
 .ft P
@@ -73,7 +73,7 @@ mongoc_client_new_from_uri (uri);
 .SH RETURNS
 .sp
 Returns false if the option cannot be set, for example if \fBcompressors\fP is not valid UTF\-8.
-Logs a warning to stderr with the MONGOC_WARNING macro
+Logs a warning to stderr with the \fI\%MONGOC_WARNING\fP macro
 if compressor is not available.
 .SH AUTHOR
 MongoDB, Inc

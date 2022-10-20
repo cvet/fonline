@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "EngineBase.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -296,14 +297,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_OpenLink([[maybe_unused]] FOEngineBase* engine, string_view link)
 {
-#if FO_WINDOWS
-#if !FO_UWP
-    ::ShellExecuteW(nullptr, L"open", _str(link).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-#endif
-#elif !FO_IOS
-    int r = system((string("xdg-open ") + string(link)).c_str());
-    UNUSED_VARIABLE(r); // Supress compiler warning
-#endif
+    App->OpenLink(link);
 }
 
 ///# ...

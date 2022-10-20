@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_RESERVE_BUFFER" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_reserve_buffer \- bson_reserve_buffer()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_RESERVE_BUFFER" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_reserve_buffer \- bson_reserve_buffer()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,7 +45,7 @@ bson_reserve_buffer (bson_t *bson, uint32_t size);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: An initialized \fBbson_t\fP\&.
+\fBbson\fP: An initialized \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBsize\fP: The length in bytes of the new buffer.
 .UNINDENT
@@ -53,15 +53,15 @@ bson_reserve_buffer (bson_t *bson, uint32_t size);
 .sp
 Grow the internal buffer of \fBbson\fP to \fBsize\fP and set the document length to \fBsize\fP\&. Useful for eliminating copies when reading BSON bytes from a stream.
 .sp
-First, initialize \fBbson\fP with \fBbson_init\fP or \fBbson_new\fP, then call this function. After it returns, the length of \fBbson\fP is set to \fBsize\fP but its contents are uninitialized memory: you must fill the contents with a BSON document of the correct length before any other operations.
+First, initialize \fBbson\fP with \fI\%bson_init()\fP or \fI\%bson_new()\fP, then call this function. After it returns, the length of \fBbson\fP is set to \fBsize\fP but its contents are uninitialized memory: you must fill the contents with a BSON document of the correct length before any other operations.
 .sp
-The document must be freed with \fBbson_destroy\fP\&.
+The document must be freed with \fI\%bson_destroy()\fP\&.
 .SH RETURNS
 .sp
 A pointer to the internal buffer, which is at least \fBsize\fP bytes, or NULL if the space could not be allocated.
 .SH EXAMPLE
 .sp
-Use \fBbson_reserve_buffer\fP to write a function that takes a \fBbson_t\fP pointer and reads a file into it directly:
+Use \fBbson_reserve_buffer\fP to write a function that takes a \fI\%bson_t\fP pointer and reads a file into it directly:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -77,32 +77,32 @@ read_into (bson_t *bson, FILE *fp)
    long size;
 
    if (fseek (fp, 0L, SEEK_END) < 0) {
-      perror ("Couldn\(aqt get file size");
+      perror (\(dqCouldn\(aqt get file size\(dq);
       return 1;
    }
 
    size = ftell (fp);
    if (size == EOF) {
-      perror ("Couldn\(aqt get file size");
+      perror (\(dqCouldn\(aqt get file size\(dq);
       return 1;
    }
 
    if (size > INT32_MAX) {
-      fprintf (stderr, "File too large\en");
+      fprintf (stderr, \(dqFile too large\en\(dq);
       return 1;
    }
 
    /* reserve buffer space \- bson is temporarily invalid */
    buffer = bson_reserve_buffer (bson, (uint32_t) size);
    if (!buffer) {
-      fprintf (stderr, "Couldn\(aqt reserve %ld bytes", size);
+      fprintf (stderr, \(dqCouldn\(aqt reserve %ld bytes\(dq, size);
       return false;
    }
 
    /* read file directly into the buffer */
    rewind (fp);
    if (fread ((void *) buffer, 1, (size_t) size, fp) < (size_t) size) {
-      perror ("Couldn\(aqt read file");
+      perror (\(dqCouldn\(aqt read file\(dq);
       return false;
    }
 
@@ -118,8 +118,8 @@ main ()
    /* stack\-allocated, initialized bson_t */
    bson_t bson = BSON_INITIALIZER;
 
-   if (!(fp = fopen ("document.bson", "rb"))) {
-      perror ("Couldn\(aqt read file");
+   if (!(fp = fopen (\(dqdocument.bson\(dq, \(dqrb\(dq))) {
+      perror (\(dqCouldn\(aqt read file\(dq);
       return 1;
    }
 
@@ -127,7 +127,7 @@ main ()
    fclose (fp);
 
    json = bson_as_canonical_extended_json (&bson, NULL);
-   printf ("%s\en", json);
+   printf (\(dq%s\en\(dq, json);
 
    bson_free (json);
    bson_destroy (&bson);

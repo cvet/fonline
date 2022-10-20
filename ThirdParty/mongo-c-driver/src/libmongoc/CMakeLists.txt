@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.1)
 
 project (libmongoc C)
 
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/../../build/cmake)
+include (MongoC-Warnings)
 
 include (InstallRequiredSystemLibraries)
 include (CheckStructHasMember)
@@ -45,14 +45,11 @@ if (NOT ENABLE_ZSTD MATCHES "ON|AUTO|OFF")
    message (FATAL_ERROR "ENABLE_ZSTD option must be ON, AUTO, or OFF")
 endif ()
 
-# Disable warnings on bundled zlib source files.
-set_source_files_properties (${ZLIB_SOURCES} PROPERTIES COMPILE_FLAGS -w)
-
 # Copy zconf.h.in to zconf.h; even when using system zlib, the 'dist' target
 # will look for zconf.h in that location.
 configure_file (
-   "${SOURCE_DIR}/src/zlib-1.2.11/zconf.h.in"
-   "${CMAKE_BINARY_DIR}/src/zlib-1.2.11/zconf.h"
+   "${SOURCE_DIR}/src/zlib-1.2.12/zconf.h.in"
+   "${CMAKE_BINARY_DIR}/src/zlib-1.2.12/zconf.h"
    COPYONLY
 )
 set (ZLIB_INCLUDE_DIRS "")
@@ -78,11 +75,22 @@ endif ()
 if ( (ENABLE_ZLIB STREQUAL "BUNDLED")
    OR (ENABLE_ZLIB STREQUAL "AUTO" AND NOT ZLIB_FOUND) )
    message (STATUS "Enabling zlib compression (bundled)")
-   set (SOURCES ${SOURCES} ${ZLIB_SOURCES})
+   add_library (zlib_obj OBJECT "${ZLIB_SOURCES}")
+   set_property (TARGET zlib_obj PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+   # This tells the bundled zlib where to find its generated headers
+   target_include_directories (zlib_obj
+      BEFORE PUBLIC
+      "${SOURCE_DIR}/src/zlib-1.2.12"
+      "${CMAKE_BINARY_DIR}/src/zlib-1.2.12"
+   )
+   # Disable all warnings for compiling Zlib
+   target_compile_options (zlib_obj PRIVATE -w)
+   set (SOURCES ${SOURCES} $<TARGET_OBJECTS:zlib_obj>)
+   # This tells mongoc_shared/mongoc_static where to find generated zlib headers
    set (
       ZLIB_INCLUDE_DIRS
-      "${SOURCE_DIR}/src/zlib-1.2.11"
-      "${CMAKE_BINARY_DIR}/src/zlib-1.2.11"
+      "${SOURCE_DIR}/src/zlib-1.2.12"
+      "${CMAKE_BINARY_DIR}/src/zlib-1.2.12"
    )
 endif ()
 
@@ -91,6 +99,12 @@ if (NOT ENABLE_ZLIB STREQUAL "OFF")
    include (CheckIncludeFiles)
    check_include_files ("unistd.h" HAVE_UNISTD_H)
    check_include_files ("stdarg.h" HAVE_STDARG_H)
+   if (HAVE_UNISTD_H)
+      add_definitions (-DHAVE_UNISTD_H)
+   endif ()
+   if (HAVE_STDARG_H)
+      add_definitions (-DHAVE_STDARG_H)
+   endif ()
    set (MONGOC_ENABLE_COMPRESSION 1)
    set (MONGOC_ENABLE_COMPRESSION_ZLIB 1)
 else ()
@@ -182,8 +196,8 @@ if (NOT ENABLE_SSL STREQUAL OFF)
 endif ()
 
 if (OPENSSL_FOUND)
-   if (WIN32 AND OPENSSL_VERSION GREATER 1.1 AND NOT
-         ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 3.7)
+   if (WIN32 AND OPENSSL_VERSION VERSION_GREATER 1.1 AND
+         ${CMAKE_VERSION} VERSION_LESS 3.7)
       message (FATAL_ERROR "Building against OpenSSL 1.1.0 and later requires CMake 3.7 or later (hint:"
          " You can also compile against Windows Secure Transport with -DENABLE_SSL=WINDOWS")
    endif ()
@@ -343,10 +357,10 @@ set (MONGOC_CC ${CMAKE_C_COMPILER})
 set (MONGOC_USER_SET_CFLAGS ${CMAKE_C_FLAGS})
 set (MONGOC_USER_SET_LDFLAGS ${CMAKE_EXE_LINKER_FLAGS})
 
-set (MONGOC_TRACE 0)
-
 if (ENABLE_TRACING)
    set (MONGOC_TRACE 1)
+else ()
+   set (MONGOC_TRACE 0)
 endif ()
 
 # Sets SNAPPY_LIBRARIES and SNAPPY_INCLUDE_DIRS.
@@ -366,13 +380,16 @@ if (ENABLE_SHM_COUNTERS STREQUAL "AUTO")
    if (UNIX AND NOT APPLE)
       set (ENABLE_SHM_COUNTERS ON)
    endif ()
+   if (APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64")
+      set (ENABLE_SHM_COUNTERS ON)
+   endif ()
 endif ()
 
 if (ENABLE_SHM_COUNTERS STREQUAL "ON")
-   if (APPLE OR NOT UNIX)
+   if (( NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64" AND APPLE ) OR NOT UNIX)
       message (
          FATAL_ERROR
-         "Shared memory performance counters not supported on Mac or Windows")
+	 "Shared memory performance counters only supported on arm64 Mac and Linux")
    endif ()
    set (MONGOC_ENABLE_SHM_COUNTERS 1)
    find_library(RT_LIBRARY rt HINTS /usr/lib32)
@@ -424,10 +441,10 @@ elseif (NOT ENABLE_CLIENT_SIDE_ENCRYPTION STREQUAL OFF)
       find_package (mongocrypt QUIET)
    endif ()
 
-   if (mongocrypt_FOUND AND "${mongocrypt_VERSION}" VERSION_LESS 1.1.0)
-      message ("--   libmongocrypt found at ${LIBMONGOCRYPT_LIBRARY}")
+   if (mongocrypt_FOUND AND "${mongocrypt_VERSION}" VERSION_LESS 1.5.2)
+      message ("--   libmongocrypt found at ${mongocrypt_DIR}")
       message ("--   libmongocrypt version ${mongocrypt_VERSION} found")
-      message ("--   libmongocrypt version 1.1.0 is required to enable Client-Side Field Level Encryption Support.")
+      message ("--   libmongocrypt version 1.5.2 is required to enable Client-Side Field Level Encryption Support.")
       set (REQUIRED_MONGOCRYPT_VERSION_FOUND OFF)
    elseif (mongocrypt_FOUND)
       set (REQUIRED_MONGOCRYPT_VERSION_FOUND ON)
@@ -543,6 +560,7 @@ set (SOURCES ${SOURCES}
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-client-session.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-server-monitor.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-set.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-shared.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-socket.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-buffered.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream.c
@@ -558,6 +576,7 @@ set (SOURCES ${SOURCES}
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-topology-description.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-topology-description-apm.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-topology-scanner.c
+   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-ts-pool.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-uri.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-util.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-version-functions.c
@@ -759,7 +778,7 @@ target_compile_definitions (mongoc_shared
    PRIVATE
       MONGOC_COMPILATION
       ${KMS_MSG_DEFINITIONS}
-      COMMON_PREFIX_=_mongoc_common
+      MCOMMON_NAME_PREFIX=_mongoc_mcommon
 )
 # Several directories in the source and build trees contain headers we would like
 # include via relative reference, but they all end up in the same install path
@@ -781,7 +800,7 @@ endif() #!
 
 if (MONGOC_ENABLE_STATIC_BUILD)
    add_library (mongoc_static STATIC ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
-   target_link_libraries (mongoc_static ${STATIC_LIBRARIES} ${BSON_STATIC_LIBRARIES})
+   target_link_libraries (mongoc_static PUBLIC ${STATIC_LIBRARIES} ${BSON_STATIC_LIBRARIES})
    if (NOT WIN32 AND ENABLE_PIC)
       target_compile_options (mongoc_static PUBLIC -fPIC)
       message ("Adding -fPIC to compilation of mongoc_static components")
@@ -799,7 +818,7 @@ if (MONGOC_ENABLE_STATIC_BUILD)
       PRIVATE
          MONGOC_COMPILATION
          ${KMS_MSG_DEFINITIONS}
-         COMMON_PREFIX_=_mongoc_common
+         MCOMMON_NAME_PREFIX=_mongoc_mcommon
    )
    # Several directories in the source and build trees contain headers we would like
    # include via relative reference, but they all end up in the same install path
@@ -841,35 +860,68 @@ if (ENABLE_SHM_COUNTERS STREQUAL "ON")
    )
 endif ()
 
+cmake_dependent_option (
+   MONGOC_TEST_USE_CRYPT_SHARED "If TRUE, download and use a crypt_shared library for client-side-encryption testing. Otherwise will rely on mongocryptd"
+   TRUE ENABLE_TESTS FALSE
+)
+
+if (MONGOC_TEST_USE_CRYPT_SHARED)
+   find_program (_PYTHON3_EXE NAMES python3 py python)
+   mark_as_advanced (_PYTHON3_EXE)
+   if (NOT _PYTHON3_EXE)
+      message (SEND_ERROR
+         "MONGOC_TEST_USE_CRYPT_SHARED is enabled, but we were unable to find a Python 3 interpreter to use mongodl.py. "
+         "Install a Python 3 or set MONGOC_TEST_USE_CRYPT_SHARED to FALSE"
+      )
+   endif ()
+
+   get_filename_component (crypt_shared_dest "${CMAKE_CURRENT_BINARY_DIR}/mongo_crypt_v1${CMAKE_SHARED_LIBRARY_SUFFIX}" ABSOLUTE)
+   # If updating the "--version" for crypt_shared, update the version in compile-unix.sh to match.
+   add_custom_command (
+      OUTPUT "${crypt_shared_dest}"
+      COMMAND
+         "${_PYTHON3_EXE}" -u "${mongo-c-driver_SOURCE_DIR}/build/mongodl.py"
+            --component crypt_shared
+            --version 6.0.0-rc8
+            --edition enterprise
+            --out "${CMAKE_CURRENT_BINARY_DIR}"
+            --only "**/mongo_crypt_v1.*"
+            --strip-path-components 1
+      COMMENT "Downloading crypt_shared"
+      VERBATIM
+   )
+   add_custom_target (get-crypt_shared ALL DEPENDS "${crypt_shared_dest}")
+endif ()
+
 function (mongoc_add_test test use_shared)
    if (ENABLE_TESTS)
       add_executable (${test} ${ARGN})
-      if (NOT MSVC)
-         # We've tests that test our deprecated api. MSVC 2013 will complain about invalid flag
-         set_source_files_properties (${ARGN} PROPERTIES COMPILE_FLAGS -Wno-deprecated-declarations)
-      else ()
-         target_link_libraries (${test} DbgHelp.dll)
-      endif ()
-      target_include_directories (${test} PRIVATE ${PROJECT_SOURCE_DIR}/tests)
+      target_link_libraries (${test}
+         PRIVATE
+            $<$<C_COMPILER_ID:MSVC>:DbgHelp.dll>
+            $<$<PLATFORM_ID:Windows>:shlwapi>
+            $<$<BOOL:${use_shared}>:mongoc_shared>
+            $<$<NOT:$<BOOL:${use_shared}>>:mongoc_static>
+            ${LIBRARIES}
+            ${RESOLV_LIBRARIES}
+      )
+      # We have tests that test our deprecated api.
+      target_compile_options (${test}
+         PRIVATE $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations>
+      )
+      target_include_directories (${test}
+         PRIVATE
+            ${PROJECT_SOURCE_DIR}/tests
+            ${MONGOC_INTERNAL_INCLUDE_DIRS}
+            $<$<BOOL:${use_shared}>:${BSON_INCLUDE_DIRS}>
+            $<$<NOT:$<BOOL:${use_shared}>>:${BSON_STATIC_INCLUDE_DIRS}>
+      )
       target_compile_definitions (${test}
          PUBLIC
             "MONGOC_COMPILATION"
             "BSON_COMPILATION"
-            "COMMON_PREFIX_=_mongoc_common"
+            "MCOMMON_NAME_PREFIX=_mongoc_mcommon"
       )
-      if (${use_shared})
-         target_link_libraries (${test} mongoc_shared ${LIBRARIES})
-         target_include_directories (${test} PRIVATE ${BSON_INCLUDE_DIRS} ${MONGOC_INTERNAL_INCLUDE_DIRS})
-      else ()
-         target_link_libraries (${test} mongoc_static ${LIBRARIES})
-         target_include_directories (${test} PRIVATE ${BSON_STATIC_INCLUDE_DIRS} ${MONGOC_INTERNAL_INCLUDE_DIRS})
-      endif ()
-      target_link_libraries (${test} ${RESOLV_LIBRARIES})
-      if (WIN32)
-         target_link_libraries (${test} shlwapi)
-      else ()
-         target_link_libraries (${test})
-      endif ()
    endif ()
 endfunction ()
 
@@ -896,6 +948,7 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bson.c
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bcon-basic.c
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bcon-extract.c
+   ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bson-cmp.c
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bson-corpus.c
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bson-error.c
    ${PROJECT_SOURCE_DIR}/../../src/libbson/tests/test-bson-version.c
@@ -939,7 +992,6 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-change-stream.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-client-pool.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-client-session.c
-   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-client-side-encryption.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-client.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-cluster.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-cmd.c
@@ -991,8 +1043,10 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-server-selection.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-server-stream.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-set.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-shared.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-socket.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-speculative-auth.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-ssl.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-stream.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-streamable-hello.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-thread.c
@@ -1002,6 +1056,7 @@ set (test-libmongoc-sources
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-topology-scanner.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-topology.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-transactions.c
+   ${PROJECT_SOURCE_DIR}/tests/test-mongoc-ts-pool.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-uri.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-usleep.c
    ${PROJECT_SOURCE_DIR}/tests/test-mongoc-util.c
@@ -1022,6 +1077,7 @@ set (test-libmongoc-sources
 if (MONGOC_ENABLE_SSL)
    set (test-libmongoc-sources ${test-libmongoc-sources}
       ${PROJECT_SOURCE_DIR}/tests/ssl-test.c
+      ${PROJECT_SOURCE_DIR}/tests/test-mongoc-client-side-encryption.c
       ${PROJECT_SOURCE_DIR}/tests/test-mongoc-stream-tls-error.c
       ${PROJECT_SOURCE_DIR}/tests/test-mongoc-stream-tls.c
       ${PROJECT_SOURCE_DIR}/tests/test-mongoc-x509.c
@@ -1040,12 +1096,6 @@ mongoc_add_test (test-mongoc-gssapi FALSE ${PROJECT_SOURCE_DIR}/tests/test-mongo
 mongoc_add_test (test-mongoc-cache FALSE ${PROJECT_SOURCE_DIR}/tests/test-mongoc-cache.c)
 
 if (ENABLE_TESTS)
-   enable_testing ()
-   add_test (NAME test-libmongoc
-      COMMAND test-libmongoc
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/../..
-   )
-
    # "make test" doesn't compile tests, so we create "make check" which compiles
    # and runs tests: https://gitlab.kitware.com/cmake/cmake/issues/8774
    add_custom_target (check COMMAND ${CMAKE_CTEST_COMMAND} -V
@@ -1106,6 +1156,7 @@ if (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION)
    mongoc_add_example (client-side-encryption-server-schema TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-server-schema.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
    mongoc_add_example (client-side-encryption-explicit TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-explicit.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
    mongoc_add_example (client-side-encryption-auto-decryption TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-auto-decryption.c ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-helpers.c)
+   mongoc_add_example (client-side-encryption-doc-snippets TRUE ${PROJECT_SOURCE_DIR}/examples/client-side-encryption-doc-snippets.c)
 endif ()
 
 file (COPY ${PROJECT_SOURCE_DIR}/tests/binary DESTINATION ${PROJECT_BINARY_DIR}/tests)
@@ -1211,11 +1262,13 @@ include (CMakePackageConfigHelpers)
 set (INCLUDE_INSTALL_DIRS "${MONGOC_HEADER_INSTALL_DIR}")
 set (LIBRARY_INSTALL_DIRS ${CMAKE_INSTALL_LIBDIR})
 
+if(FALSE) #!
 write_basic_package_version_file (
    "${CMAKE_CURRENT_BINARY_DIR}/mongoc/mongoc-${MONGOC_API_VERSION}-config-version.cmake"
    VERSION ${MONGOC_VERSION}
    COMPATIBILITY AnyNewerVersion
 )
+endif() #!
 
 if(FALSE) #!
 export (EXPORT mongoc-targets
@@ -1247,7 +1300,7 @@ install (
       Devel
 )
 
-include (../../build/cmake/MongoCPackage.cmake)
+#! include (../../build/cmake/MongoCPackage.cmake)
 
 if (ENABLE_MAN_PAGES STREQUAL ON OR ENABLE_HTML_DOCS STREQUAL ON)
    find_package (Sphinx REQUIRED)

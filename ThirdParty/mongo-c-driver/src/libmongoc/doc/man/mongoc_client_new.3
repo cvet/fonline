@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_new \- mongoc_client_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_new \- mongoc_client_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,13 +37,13 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_client_t *
-mongoc_client_new (const char *uri_string);
+mongoc_client_new (const char *uri_string) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Creates a new \fBmongoc_client_t\fP using the URI string provided.
+Creates a new \fI\%mongoc_client_t\fP using the URI string provided.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
@@ -51,13 +51,13 @@ Creates a new \fBmongoc_client_t\fP using the URI string provided.
 .UNINDENT
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_client_t\fP if the URI parsed successfully, otherwise \fBNULL\fP\&.
+A newly allocated \fI\%mongoc_client_t\fP that should be freed with \fI\%mongoc_client_destroy()\fP when no longer in use. On error, \fBNULL\fP is returned and an error or warning will be logged.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_new_from_uri()\fP
+\fI\%mongoc_client_new_from_uri()\fP
 .fi
 .sp
 .UNINDENT

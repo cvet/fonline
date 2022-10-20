@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_command.html"/>
-    <title>mongoc_client_command() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_command.html"/>
+    <title>mongoc_client_command() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_client_command_simple()" href="mongoc_client_command_simple.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_client_t.html" title="mongoc_client_t"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_client_t.html" accesskey="U">mongoc_client_t</a> &#187;</li> 
       </ul>
@@ -41,32 +46,33 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-client-command">
-<h1>mongoc_client_command()<a class="headerlink" href="#mongoc-client-command" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_cursor_t</span> <span class="o">*</span>
-<span class="nf">mongoc_client_command</span> <span class="p">(</span><span class="n">mongoc_client_t</span> <span class="o">*</span><span class="n">client</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">db_name</span><span class="p">,</span>
-                       <span class="n">mongoc_query_flags_t</span> <span class="n">flags</span><span class="p">,</span>
-                       <span class="kt">uint32_t</span> <span class="n">skip</span><span class="p">,</span>
-                       <span class="kt">uint32_t</span> <span class="n">limit</span><span class="p">,</span>
-                       <span class="kt">uint32_t</span> <span class="n">batch_size</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">query</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">fields</span><span class="p">,</span>
-                       <span class="k">const</span> <span class="n">mongoc_read_prefs_t</span> <span class="o">*</span><span class="n">read_prefs</span><span class="p">);</span>
+  <section id="mongoc-client-command">
+<h1>mongoc_client_command()<a class="headerlink" href="#mongoc-client-command" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">mongoc_cursor_t</span><span class="w"> </span><span class="o">*</span><span class="w"></span>
+<span class="nf">mongoc_client_command</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_client_t</span><span class="w"> </span><span class="o">*</span><span class="n">client</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">db_name</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="n">mongoc_query_flags_t</span><span class="w"> </span><span class="n">flags</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">skip</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">limit</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">batch_size</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">query</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">fields</span><span class="p">,</span><span class="w"></span>
+<span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="n">mongoc_read_prefs_t</span><span class="w"> </span><span class="o">*</span><span class="n">read_prefs</span><span class="p">)</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_GNUC_WARN_UNUSED_RESULT</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
 <p>This function is superseded by <a class="symbol reference internal" href="mongoc_client_command_with_opts.html"><span class="doc">mongoc_client_command_with_opts()</span></a>, <a class="symbol reference internal" href="mongoc_client_read_command_with_opts.html"><span class="doc">mongoc_client_read_command_with_opts()</span></a>, <a class="symbol reference internal" href="mongoc_client_write_command_with_opts.html"><span class="doc">mongoc_client_write_command_with_opts()</span></a>, and <a class="symbol reference internal" href="mongoc_client_read_write_command_with_opts.html"><span class="doc">mongoc_client_read_write_command_with_opts()</span></a>.</p>
 <p>This function is not considered a retryable read operation.</p>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>This function creates a cursor which will execute the command when <a class="symbol reference internal" href="mongoc_cursor_next.html"><span class="doc">mongoc_cursor_next()</span></a> is called on it. The client’s read preference, read concern, and write concern are not applied to the command, and <a class="symbol reference internal" href="mongoc_cursor_next.html"><span class="doc">mongoc_cursor_next()</span></a> will not check the server response for a write concern error or write concern timeout.</p>
 <p>If <a class="symbol reference internal" href="mongoc_cursor_next.html"><span class="doc">mongoc_cursor_next()</span></a> returns <code class="docutils literal notranslate"><span class="pre">false</span></code>, then retrieve error details with <a class="symbol reference internal" href="mongoc_cursor_error.html"><span class="doc">mongoc_cursor_error()</span></a> or <a class="symbol reference internal" href="mongoc_cursor_error_document.html"><span class="doc">mongoc_cursor_error_document()</span></a>.</p>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">client</span></code>: A <a class="symbol reference internal" href="mongoc_client_t.html"><span class="doc">mongoc_client_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">db_name</span></code>: The name of the database to run the command on.</p></li>
@@ -74,17 +80,17 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">skip</span></code>: Unused.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">limit</span></code>: Unused.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">batch_size</span></code>: Unused.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">query</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the command specification.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">query</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_t</span></code></a> containing the command specification.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fields</span></code>: Unused.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">read_prefs</span></code>: An optional <a class="symbol reference internal" href="mongoc_read_prefs_t.html"><span class="doc">mongoc_read_prefs_t</span></a>. Otherwise, the command uses mode <code class="docutils literal notranslate"><span class="pre">MONGOC_READ_PRIMARY</span></code>.</p></li>
 </ul>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>A <a class="symbol reference internal" href="mongoc_cursor_t.html"><span class="doc">mongoc_cursor_t</span></a>.</p>
 <p>The cursor should be freed with <a class="symbol reference internal" href="mongoc_cursor_destroy.html"><span class="doc">mongoc_cursor_destroy()</span></a>.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -120,6 +126,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -195,7 +202,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

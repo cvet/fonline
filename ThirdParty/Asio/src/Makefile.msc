@@ -115,6 +115,8 @@ PERFORMANCE_TEST_EXES = \
 	tests\performance\server.exe
 
 UNIT_TEST_EXES = \
+	tests\unit\append.exe \
+	tests\unit\as_tuple.exe \
 	tests\unit\associated_allocator.exe \
 	tests\unit\associated_cancellation_slot.exe \
 	tests\unit\associated_executor.exe \
@@ -123,21 +125,28 @@ UNIT_TEST_EXES = \
 	tests\unit\awaitable.exe \
 	tests\unit\basic_datagram_socket.exe \
 	tests\unit\basic_deadline_timer.exe \
+	tests\unit\basic_file.exe \
+	tests\unit\basic_random_access_file.exe \
 	tests\unit\basic_raw_socket.exe \
+	tests\unit\basic_readable_pipe.exe \
 	tests\unit\basic_seq_packet_socket.exe \
 	tests\unit\basic_serial_port.exe \
 	tests\unit\basic_signal_set.exe \
 	tests\unit\basic_socket.exe \
 	tests\unit\basic_socket_acceptor.exe \
+	tests\unit\basic_stream_file.exe \
 	tests\unit\basic_stream_socket.exe \
 	tests\unit\basic_streambuf.exe \
 	tests\unit\basic_waitable_timer.exe \
+	tests\unit\basic_writable_pipe.exe \
+	tests\unit\bind_allocator.exe \
 	tests\unit\bind_cancellation_slot.exe \
 	tests\unit\bind_executor.exe \
 	tests\unit\buffered_read_stream.exe \
 	tests\unit\buffered_stream.exe \
 	tests\unit\buffered_write_stream.exe \
 	tests\unit\buffer.exe \
+	tests\unit\buffer_registration.exe \
 	tests\unit\buffers_iterator.exe \
 	tests\unit\cancellation_signal.exe \
 	tests\unit\cancellation_state.exe \
@@ -146,9 +155,11 @@ UNIT_TEST_EXES = \
 	tests\unit\completion_condition.exe \
 	tests\unit\compose.exe \
 	tests\unit\connect.exe \
+	tests\unit\connect_pipe.exe \
 	tests\unit\coroutine.exe \
 	tests\unit\deadline_timer.exe \
 	tests\unit\defer.exe \
+	tests\unit\deferred.exe \
 	tests\unit\detached.exe \
 	tests\unit\dispatch.exe \
 	tests\unit\error.exe \
@@ -179,6 +190,7 @@ UNIT_TEST_EXES = \
 	tests\unit\execution\submit.exe \
 	tests\unit\executor.exe \
 	tests\unit\executor_work_guard.exe \
+	tests\unit\file_base.exe \
 	tests\unit\generic\basic_endpoint.exe \
 	tests\unit\generic\datagram_protocol.exe \
 	tests\unit\generic\raw_protocol.exe \
@@ -218,10 +230,15 @@ UNIT_TEST_EXES = \
 	tests\unit\packaged_task.exe \
 	tests\unit\placeholders.exe \
 	tests\unit\post.exe \
+	tests\unit\prepend.exe \
+	tests\unit\random_access_file.exe \
 	tests\unit\read.exe \
 	tests\unit\read_at.exe \
 	tests\unit\read_until.exe \
+	tests\unit\readable_pipe.exe \
+	tests\unit\recycling_allocator.exe \
 	tests\unit\redirect_error.exe \
+	tests\unit\registered_buffer.exe \
 	tests\unit\serial_port.exe \
 	tests\unit\serial_port_base.exe \
 	tests\unit\signal_set.exe \
@@ -229,6 +246,7 @@ UNIT_TEST_EXES = \
 	tests\unit\static_thread_pool.exe \
 	tests\unit\steady_timer.exe \
 	tests\unit\strand.exe \
+	tests\unit\stream_file.exe \
 	tests\unit\streambuf.exe \
 	tests\unit\system_context.exe \
 	tests\unit\system_executor.exe \
@@ -258,6 +276,7 @@ UNIT_TEST_EXES = \
 	tests\unit\windows\overlapped_ptr.exe \
 	tests\unit\windows\random_access_handle.exe \
 	tests\unit\windows\stream_handle.exe \
+	tests\unit\writable_pipe.exe \
 	tests\unit\write.exe \
 	tests\unit\write_at.exe
 

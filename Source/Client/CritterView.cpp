@@ -38,28 +38,11 @@
 
 CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef())
 {
+    _name = _str("{} {}", proto->GetName(), id);
 }
 
 void CritterView::Init()
 {
-    if (IsNonEmptyNiceName()) {
-        _nameOnHead = GetNiceName();
-    }
-
-    if (_nameOnHead.empty()) {
-        const auto& lang_pack = _engine->GetCurLang();
-
-        if (GetDialogId() && lang_pack.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(GetDialogId().as_uint())) != 0u) {
-            _nameOnHead = lang_pack.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(GetDialogId().as_uint()));
-        }
-        else if (lang_pack.Msg[TEXTMSG_DLG].Count(STR_NPC_PID_NAME(GetProtoId().as_uint())) != 0u) {
-            _nameOnHead = lang_pack.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(GetProtoId().as_uint()));
-        }
-    }
-
-    if (_nameOnHead.empty()) {
-        _nameOnHead = _str("{}", GetId());
-    }
 }
 
 void CritterView::Finish()
@@ -76,6 +59,11 @@ void CritterView::MarkAsDestroyed()
 
     Entity::MarkAsDestroying();
     Entity::MarkAsDestroyed();
+}
+
+void CritterView::SetName(string_view name)
+{
+    _name = name;
 }
 
 void CritterView::SetPlayer(bool is_player, bool is_chosen)

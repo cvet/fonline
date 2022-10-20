@@ -2,7 +2,7 @@
 // detail/reactive_socket_service_base.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2022 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,7 +18,8 @@
 #include "asio/detail/config.hpp"
 
 #if !defined(ASIO_HAS_IOCP) \
-  && !defined(ASIO_WINDOWS_RUNTIME)
+  && !defined(ASIO_WINDOWS_RUNTIME) \
+  && !defined(ASIO_HAS_IO_URING_AS_DEFAULT)
 
 #include "asio/associated_cancellation_slot.hpp"
 #include "asio/buffer.hpp"
@@ -595,8 +596,7 @@ protected:
 
   // Start the asynchronous connect operation.
   ASIO_DECL void start_connect_op(base_implementation_type& impl,
-      reactor_op* op, bool is_continuation,
-      const socket_addr_type* addr, size_t addrlen);
+      reactor_op* op, bool is_continuation, const void* addr, size_t addrlen);
 
   // Helper class used to implement per-operation cancellation
   class reactor_op_cancellation
@@ -648,5 +648,6 @@ protected:
 
 #endif // !defined(ASIO_HAS_IOCP)
        //   && !defined(ASIO_WINDOWS_RUNTIME)
+       //   && !defined(ASIO_HAS_IO_URING_AS_DEFAULT)
 
 #endif // ASIO_DETAIL_REACTIVE_SOCKET_SERVICE_BASE_HPP

@@ -112,18 +112,18 @@ meaning in this case.
 The *sign* option is only valid for number types, and can be one of the
 following:
 
-+---------+----------------------------------------------------------+
-| Option  | Meaning                                                  |
-+=========+==========================================================+
-| ``'+'`` | indicates that a sign should be used for both            |
-|         | positive as well as negative numbers.                    |
-+---------+----------------------------------------------------------+
-| ``'-'`` | indicates that a sign should be used only for negative   |
-|         | numbers (this is the default behavior).                  |
-+---------+----------------------------------------------------------+
-| space   | indicates that a leading space should be used on         |
-|         | positive numbers, and a minus sign on negative numbers.  |
-+---------+----------------------------------------------------------+
++---------+------------------------------------------------------------+
+| Option  | Meaning                                                    |
++=========+============================================================+
+| ``'+'`` | indicates that a sign should be used for both              |
+|         | nonnegative as well as negative numbers.                   |
++---------+------------------------------------------------------------+
+| ``'-'`` | indicates that a sign should be used only for negative     |
+|         | numbers (this is the default behavior).                    |
++---------+------------------------------------------------------------+
+| space   | indicates that a leading space should be used on           |
+|         | nonnegative numbers, and a minus sign on negative numbers. |
++---------+------------------------------------------------------------+
 
 The ``'#'`` option causes the "alternate form" to be used for the
 conversion.  The alternate form is defined differently for different
@@ -161,7 +161,8 @@ displayed after the decimal point for a floating-point value formatted with
 value formatted with ``'g'`` or ``'G'``.  For non-number types the field
 indicates the maximum field size - in other words, how many characters will be
 used from the field content. The *precision* is not allowed for integer,
-character, Boolean, and pointer values.
+character, Boolean, and pointer values. Note that a C string must be
+null-terminated even if precision is specified.
 
 The ``'L'`` option uses the current locale setting to insert the appropriate
 number separator characters. This option is only valid for numeric types.
@@ -303,7 +304,8 @@ The available presentation types for pointers are:
 Chrono Format Specifications
 ============================
 
-Format specifications for chrono types have the following syntax:
+Format specifications for chrono types and ``std::tm`` have the following
+syntax:
 
 .. productionlist:: sf
    chrono_format_spec: [[`fill`]`align`][`width`]["." `precision`][`chrono_specs`]
@@ -344,12 +346,38 @@ points are:
 |         | command ``%OS`` produces the locale's alternative representation.  |
 +---------+--------------------------------------------------------------------+
 
-Specifiers that have a calendaric component such as `'d'` (the day of month)
+Specifiers that have a calendaric component such as ``'d'`` (the day of month)
 are valid only for ``std::tm`` and not durations or time points.
 
-``std::tm`` uses the system's `strftime
-<https://en.cppreference.com/w/cpp/chrono/c/strftime>`_ so refer to its
-documentation for details on supported conversion specifiers. 
+.. range-specs:
+
+Range Format Specifications
+===========================
+
+Format specifications for range types have the following syntax:
+
+.. productionlist:: sf
+   range_format_spec: [":" [`underlying_spec`]]
+
+The `underlying_spec` is parsed based on the formatter of the range's
+reference type.
+
+By default, a range of characters or strings is printed escaped and quoted. But
+if any `underlying_spec` is provided (even if it is empty), then the characters
+or strings are printed according to the provided specification.
+
+Examples::
+
+  fmt::format("{}", std::vector{10, 20, 30});
+  // Result: [10, 20, 30]
+  fmt::format("{::#x}", std::vector{10, 20, 30});
+  // Result: [0xa, 0x14, 0x13]
+  fmt::format("{}", vector{'h', 'e', 'l', 'l', 'o'});
+  // Result: ['h', 'e', 'l', 'l', 'o']
+  fmt::format("{::}", vector{'h', 'e', 'l', 'l', 'o'});
+  // Result: [h, e, l, l, o]
+  fmt::format("{::d}", vector{'h', 'e', 'l', 'l', 'o'});
+  // Result: [104, 101, 108, 108, 111]
 
 .. _formatexamples:
 
@@ -449,7 +477,7 @@ Using type-specific formatting::
 
 Using the comma as a thousands separator::
 
-   #include <fmt/locale.h>
+   #include <fmt/format.h>
 
    auto s = fmt::format(std::locale("en_US.UTF-8"), "{:L}", 1234567890);
    // s == "1,234,567,890"

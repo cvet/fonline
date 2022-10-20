@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_URI_COPY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_uri_copy \- mongoc_uri_copy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_URI_COPY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_uri_copy \- mongoc_uri_copy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_uri_t *
-mongoc_uri_copy (const mongoc_uri_t *uri);
+mongoc_uri_copy (const mongoc_uri_t *uri) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,14 +45,14 @@ mongoc_uri_copy (const mongoc_uri_t *uri);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 Copies the entire contents of a URI.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_uri_t\fP that should be freed with \fBmongoc_uri_destroy()\fP\&. May return \fBNULL\fP on invalid host.
+A newly allocated \fI\%mongoc_uri_t\fP that should be freed with \fI\%mongoc_uri_destroy()\fP\&. May return \fBNULL\fP on invalid host.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

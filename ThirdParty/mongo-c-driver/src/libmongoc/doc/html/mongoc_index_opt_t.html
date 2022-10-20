@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_index_opt_t.html"/>
-    <title>mongoc_index_opt_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_index_opt_t.html"/>
+    <title>mongoc_index_opt_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_index_opt_get_default()" href="mongoc_index_opt_get_default.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_index_opt_geo_init.html" title="mongoc_index_opt_geo_init()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,72 +45,72 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-index-opt-t">
-<h1>mongoc_index_opt_t<a class="headerlink" href="#mongoc-index-opt-t" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+  <section id="mongoc-index-opt-t">
+<h1>mongoc_index_opt_t<a class="headerlink" href="#mongoc-index-opt-t" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 
-<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
-   <span class="kt">bool</span> <span class="n">is_initialized</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">background</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">unique</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">drop_dups</span><span class="p">;</span>
-   <span class="kt">bool</span> <span class="n">sparse</span><span class="p">;</span>
-   <span class="kt">int32_t</span> <span class="n">expire_after_seconds</span><span class="p">;</span>
-   <span class="kt">int32_t</span> <span class="n">v</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">weights</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">default_language</span><span class="p">;</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">language_override</span><span class="p">;</span>
-   <span class="n">mongoc_index_opt_geo_t</span> <span class="o">*</span><span class="n">geo_options</span><span class="p">;</span>
-   <span class="n">mongoc_index_opt_storage_t</span> <span class="o">*</span><span class="n">storage_options</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">partial_filter_expression</span><span class="p">;</span>
-   <span class="k">const</span> <span class="n">bson_t</span> <span class="o">*</span><span class="n">collation</span><span class="p">;</span>
-   <span class="kt">void</span> <span class="o">*</span><span class="n">padding</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span>
-<span class="p">}</span> <span class="n">mongoc_index_opt_t</span><span class="p">;</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">is_initialized</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">background</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">unique</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">name</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">drop_dups</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">bool</span><span class="w"> </span><span class="n">sparse</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int32_t</span><span class="w"> </span><span class="n">expire_after_seconds</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">int32_t</span><span class="w"> </span><span class="n">v</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">weights</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">default_language</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">language_override</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_index_opt_geo_t</span><span class="w"> </span><span class="o">*</span><span class="n">geo_options</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_index_opt_storage_t</span><span class="w"> </span><span class="o">*</span><span class="n">storage_options</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">partial_filter_expression</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="n">bson_t</span><span class="w"> </span><span class="o">*</span><span class="n">collation</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">padding</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span><span class="w"></span>
+<span class="p">}</span><span class="w"> </span><span class="n">mongoc_index_opt_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="deprecated">
-<h2>Deprecated<a class="headerlink" href="#deprecated" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="deprecated">
+<h2>Deprecated<a class="headerlink" href="#deprecated" title="Permalink to this heading">¶</a></h2>
 <p>This structure is deprecated and should not be used in new code. See <a class="reference internal" href="create-indexes.html"><span class="doc">Creating Indexes</span></a>.</p>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p>This structure contains the options that may be used for tuning a specific index.</p>
 <p>See the <a class="reference external" href="https://docs.mongodb.org/manual/reference/command/createIndexes/">createIndexes documentations</a> in the MongoDB manual for descriptions of individual options.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>dropDups is deprecated as of MongoDB version 3.0.0.  This option is silently ignored by the server and unique index builds using this option will fail if a duplicate value is detected.</p>
 </div>
-</div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-   <span class="n">bson_t</span> <span class="n">keys</span><span class="p">;</span>
-   <span class="n">bson_error_t</span> <span class="n">error</span><span class="p">;</span>
-   <span class="n">mongoc_index_opt_t</span> <span class="n">opt</span><span class="p">;</span>
-   <span class="n">mongoc_index_opt_geo_t</span> <span class="n">geo_opt</span><span class="p">;</span>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_t</span><span class="w"> </span><span class="n">keys</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="n">error</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_index_opt_t</span><span class="w"> </span><span class="n">opt</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_index_opt_geo_t</span><span class="w"> </span><span class="n">geo_opt</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">mongoc_index_opt_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">opt</span><span class="p">);</span>
-   <span class="n">mongoc_index_opt_geo_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">geo_opt</span><span class="p">);</span>
+<span class="w">   </span><span class="n">mongoc_index_opt_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">opt</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_index_opt_geo_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">geo_opt</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">bson_init</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">keys</span><span class="p">);</span>
-   <span class="n">BSON_APPEND_UTF8</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">keys</span><span class="p">,</span> <span class="s">&quot;location&quot;</span><span class="p">,</span> <span class="s">&quot;2d&quot;</span><span class="p">);</span>
+<span class="w">   </span><span class="n">bson_init</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">keys</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">BSON_APPEND_UTF8</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">keys</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;location&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2d&quot;</span><span class="p">);</span><span class="w"></span>
 
-   <span class="n">geo_opt</span><span class="p">.</span><span class="n">twod_location_min</span> <span class="o">=</span> <span class="mi">-123</span><span class="p">;</span>
-   <span class="n">geo_opt</span><span class="p">.</span><span class="n">twod_location_max</span> <span class="o">=</span> <span class="o">+</span><span class="mi">123</span><span class="p">;</span>
-   <span class="n">geo_opt</span><span class="p">.</span><span class="n">twod_bits_precision</span> <span class="o">=</span> <span class="mi">30</span><span class="p">;</span>
-   <span class="n">opt</span><span class="p">.</span><span class="n">geo_options</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">geo_opt</span><span class="p">;</span>
+<span class="w">   </span><span class="n">geo_opt</span><span class="p">.</span><span class="n">twod_location_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-123</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">geo_opt</span><span class="p">.</span><span class="n">twod_location_max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">+</span><span class="mi">123</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">geo_opt</span><span class="p">.</span><span class="n">twod_bits_precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">30</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="n">opt</span><span class="p">.</span><span class="n">geo_options</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">geo_opt</span><span class="p">;</span><span class="w"></span>
 
-   <span class="n">collection</span> <span class="o">=</span> <span class="n">mongoc_client_get_collection</span> <span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s">&quot;test&quot;</span><span class="p">,</span> <span class="s">&quot;geo_test&quot;</span><span class="p">);</span>
-   <span class="k">if</span> <span class="p">(</span><span class="n">mongoc_collection_create_index</span> <span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">keys</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">opt</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">))</span> <span class="p">{</span>
-      <span class="cm">/* Successfully created the geo index */</span>
-   <span class="p">}</span>
-   <span class="n">bson_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">keys</span><span class="p">);</span>
-   <span class="n">mongoc_collection_destroy</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">collection</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="w">   </span><span class="n">collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_client_get_collection</span><span class="w"> </span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;geo_test&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mongoc_collection_create_index</span><span class="w"> </span><span class="p">(</span><span class="n">collection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">keys</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">opt</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="cm">/* Successfully created the geo index */</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">keys</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_collection_destroy</span><span class="w"> </span><span class="p">(</span><span class="o">&amp;</span><span class="n">collection</span><span class="p">);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition seealso">
@@ -117,17 +122,17 @@
 <div class="line"><a class="reference internal" href="mongoc_index_opt_wt_t.html"><span class="doc">mongoc_index_opt_wt_t</span></a></div>
 </div>
 </div>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_index_opt_get_default.html">mongoc_index_opt_get_default()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_index_opt_init.html">mongoc_index_opt_init()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -163,6 +168,7 @@
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -238,7 +244,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

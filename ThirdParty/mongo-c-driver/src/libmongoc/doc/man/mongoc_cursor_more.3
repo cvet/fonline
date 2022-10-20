@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_MORE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_more \- mongoc_cursor_more()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_MORE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_more \- mongoc_cursor_more()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,11 +45,11 @@ mongoc_cursor_more (mongoc_cursor_t *cursor);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcursor\fP: A \fBmongoc_cursor_t\fP\&.
+\fBcursor\fP: A \fI\%mongoc_cursor_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function shall indicate if there is \fIpotentially\fP more data to be read from the cursor. This is only useful with tailable cursors. Use \fBmongoc_cursor_next\fP for regular cursors.
+This function shall indicate if there is \fIpotentially\fP more data to be read from the cursor. This is only useful with tailable cursors. Use \fI\%mongoc_cursor_next()\fP for regular cursors.
 .sp
 Details: \fBmongoc_cursor_more\fP is unreliable because it does not contact the server to see if there are actually more documents in the result set. It simply returns true if the cursor has not begun, or if it has begun and there are buffered documents in the client\-side cursor, or if it has begun and the server has not yet told the cursor it is completely iterated.
 .sp
@@ -62,7 +62,7 @@ true if the cursor has locally\-buffered documents, or if a round\-trip to the s
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Tailable Cursor Example
+\fI\%Tailable Cursor Example\fP
 .fi
 .sp
 .UNINDENT

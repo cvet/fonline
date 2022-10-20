@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_WRITE_CONCERN_IS_DEFAULT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_write_concern_is_default \- mongoc_write_concern_is_default()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_WRITE_CONCERN_IS_DEFAULT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_write_concern_is_default \- mongoc_write_concern_is_default()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,12 +45,12 @@ mongoc_write_concern_is_default (mongoc_write_concern_t *write_concern);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBwrite_concern\fP: A pointer to a \fBmongoc_write_concern_t\fP\&.
+\fBwrite_concern\fP: A pointer to a \fI\%mongoc_write_concern_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Returns true if \fBwrite_concern\fP has not been modified from the default. For example, if no "w" option is set in the MongoDB URI and you have not called \fBmongoc_client_set_write_concern()\fP, then
-\fBmongoc_write_concern_is_default()\fP is true for the write concern returned by \fBmongoc_client_get_write_concern()\fP\&.
+Returns true if \fBwrite_concern\fP has not been modified from the default. For example, if no \(dqw\(dq option is set in the MongoDB URI and you have not called \fI\%mongoc_client_set_write_concern()\fP, then
+\fI\%mongoc_write_concern_is_default()\fP is true for the write concern returned by \fI\%mongoc_client_get_write_concern()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_DECRYPTION_DECRYPT" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_decryption_decrypt \- mongoc_client_decryption_decrypt()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_DECRYPTION_DECRYPT" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_decryption_decrypt \- mongoc_client_decryption_decrypt()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,7 +52,7 @@ Performs explicit decryption.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBclient_encryption\fP: A \fBmongoc_client_encryption_t\fP
+\fBclient_encryption\fP: A \fI\%mongoc_client_encryption_t\fP
 .IP \(bu 2
 \fBciphertext\fP: The ciphertext (a BSON binary with subtype 6) to decrypt.
 .IP \(bu 2
@@ -68,11 +68,11 @@ Returns \fBtrue\fP if successful. Returns \fBfalse\fP and sets \fBerror\fP other
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-\fBmongoc_client_encryption_encrypt()\fP
+\fI\%mongoc_client_encryption_encrypt()\fP
 .fi
 .sp
 .UNINDENT

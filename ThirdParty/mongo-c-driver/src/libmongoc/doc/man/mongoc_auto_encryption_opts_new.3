@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_AUTO_ENCRYPTION_OPTS_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_auto_encryption_opts_new \- mongoc_auto_encryption_opts_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_AUTO_ENCRYPTION_OPTS_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_auto_encryption_opts_new \- mongoc_auto_encryption_opts_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,52 +37,52 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_auto_encryption_opts_t *
-mongoc_auto_encryption_opts_new (void);
+mongoc_auto_encryption_opts_new (void) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-Create a new \fBmongoc_auto_encryption_opts_t\fP\&.
+Create a new \fI\%mongoc_auto_encryption_opts_t\fP\&.
 .sp
 Caller must set the required options:
 .INDENT 0.0
 .IP \(bu 2
-\fBmongoc_auto_encryption_opts_set_keyvault_namespace()\fP
+\fI\%mongoc_auto_encryption_opts_set_keyvault_namespace()\fP
 .IP \(bu 2
-\fBmongoc_auto_encryption_opts_set_kms_providers()\fP
+\fI\%mongoc_auto_encryption_opts_set_kms_providers()\fP
 .UNINDENT
 .sp
 Caller may set optionally set the following:
 .INDENT 0.0
 .IP \(bu 2
-\fBmongoc_auto_encryption_opts_set_keyvault_client()\fP
+\fI\%mongoc_auto_encryption_opts_set_keyvault_client()\fP
 .IP \(bu 2
-\fBmongoc_auto_encryption_opts_set_schema_map()\fP
+\fI\%mongoc_auto_encryption_opts_set_schema_map()\fP
 .IP \(bu 2
-\fBmongoc_auto_encryption_opts_set_bypass_auto_encryption()\fP
+\fI\%mongoc_auto_encryption_opts_set_bypass_auto_encryption()\fP
 .IP \(bu 2
-\fBmongoc_auto_encryption_opts_set_extra()\fP
+\fI\%mongoc_auto_encryption_opts_set_extra()\fP
 .UNINDENT
 .sp
-This options struct is used to enable auto encryption with \fBmongoc_client_enable_auto_encryption()\fP\&.
+This options struct is used to enable auto encryption with \fI\%mongoc_client_enable_auto_encryption()\fP\&.
 .SH RETURNS
 .sp
-A new \fBmongoc_auto_encryption_opts_t\fP, which must be destroyed with \fBmongoc_auto_encryption_opts_destroy()\fP\&.
+A new \fI\%mongoc_auto_encryption_opts_t\fP, which must be destroyed with \fI\%mongoc_auto_encryption_opts_destroy()\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBmongoc_auto_encryption_opts_destroy()\fP
+\fI\%mongoc_auto_encryption_opts_destroy()\fP
 .fi
 .sp
 .nf
-\fBmongoc_client_enable_auto_encryption()\fP
+\fI\%mongoc_client_enable_auto_encryption()\fP
 .fi
 .sp
 .nf
-The guide for Using Client\-Side Field Level Encryption
+The guide for \fI\%Using Client\-Side Field Level Encryption\fP
 .fi
 .sp
 .UNINDENT

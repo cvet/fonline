@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/include-and-link.html"/>
-    <title>Using libbson In Your C Program &#8212; libbson 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/include-and-link.html"/>
+    <title>Using libbson In Your C Program &#8212; libbson 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Creating a BSON Document" href="creating.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="tutorial.html" title="Tutorial"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libbson 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="tutorial.html" accesskey="U">Tutorial</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,10 +45,10 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="using-libbson-in-your-c-program">
-<h1>Using libbson In Your C Program<a class="headerlink" href="#using-libbson-in-your-c-program" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="include-bson-h">
-<h2>Include bson.h<a class="headerlink" href="#include-bson-h" title="Permalink to this headline">¶</a></h2>
+  <section id="using-libbson-in-your-c-program">
+<h1>Using libbson In Your C Program<a class="headerlink" href="#using-libbson-in-your-c-program" title="Permalink to this heading">¶</a></h1>
+<section id="include-bson-h">
+<h2>Include bson.h<a class="headerlink" href="#include-bson-h" title="Permalink to this heading">¶</a></h2>
 <p>All libbson’s functions and types are available in one header file. Simply include <code class="docutils literal notranslate"><span class="pre">bson.h</span></code>:</p>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">hello_bson.c</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
@@ -68,9 +73,9 @@
 </pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="cmake">
-<h2>CMake<a class="headerlink" href="#cmake" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="cmake">
+<h2>CMake<a class="headerlink" href="#cmake" title="Permalink to this heading">¶</a></h2>
 <p>The libbson installation includes a <a class="reference external" href="https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html#config-file-packages">CMake config-file package</a>, so you can use CMake’s <a class="reference external" href="https://cmake.org/cmake/help/latest/command/find_package.html">find_package</a> command to import libbson’s CMake target and link to libbson (as a shared library):</p>
 <div class="literal-block-wrapper docutils container" id="id3">
 <div class="code-block-caption"><span class="caption-text">CMakeLists.txt</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
@@ -92,9 +97,9 @@
 </span><span class="n">target_link_libraries</span> <span class="p">(</span><span class="n">hello_bson</span> <span class="n">PRIVATE</span> <span class="n">mongo</span><span class="p">::</span><span class="n">bson_static</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="pkg-config">
-<h2>pkg-config<a class="headerlink" href="#pkg-config" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="pkg-config">
+<h2>pkg-config<a class="headerlink" href="#pkg-config" title="Permalink to this heading">¶</a></h2>
 <p>If you’re not using CMake, use <a class="reference external" href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a> on the command line to set header and library paths:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>gcc -o hello_bson hello_bson.c $(pkg-config --libs --cflags libbson-1.0)
 </pre></div>
@@ -103,8 +108,8 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>gcc -o hello_bson hello_bson.c $(pkg-config --libs --cflags libbson-static-1.0)
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -153,7 +158,7 @@
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_ITER_INIT_FROM_DATA_AT_OFFSET" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_iter_init_from_data_at_offset \- bson_iter_init_from_data_at_offset()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_ITER_INIT_FROM_DATA_AT_OFFSET" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_iter_init_from_data_at_offset \- bson_iter_init_from_data_at_offset()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -49,38 +49,38 @@ bson_iter_init_from_data_at_offset (bson_iter_t *iter,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBiter\fP: A \fBbson_iter_t\fP\&.
+\fBiter\fP: A \fI\%bson_iter_t\fP\&.
 .IP \(bu 2
 \fBdata\fP: A buffer to initialize with. This is not validated.
 .IP \(bu 2
 \fBlength\fP: The length of \fBdata\fP in bytes. This is not validated.
 .IP \(bu 2
-\fBoffset\fP: The offset of the field to start iterating. This is not validated. This should be an offset previously obtained from \fBbson_iter_offset()\fP\&.
+\fBoffset\fP: The offset of the field to start iterating. This is not validated. This should be an offset previously obtained from \fI\%bson_iter_offset()\fP\&.
 .IP \(bu 2
-\fBkeylen\fP: The string length of the key of the field to start iterating. This is not validated. This should be a length previously obtained from \fBbson_iter_key_len()\fP\&.
+\fBkeylen\fP: The string length of the key of the field to start iterating. This is not validated. This should be a length previously obtained from \fI\%bson_iter_key_len()\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Creates a \fBbson_iter_t\fP and starts iteration on a field at the offset.
+Creates a \fI\%bson_iter_t\fP and starts iteration on a field at the offset.
 .sp
-\fBbson_iter_init_from_data_at_offset\fP is useful for situations where the
-progress of a \fBbson_iter_t\fP must be saved and restored without relying
-on the \fBbson_iter_t\fP data layout. Saving the progress could be
+\fI\%bson_iter_init_from_data_at_offset()\fP is useful for situations where the
+progress of a \fI\%bson_iter_t\fP must be saved and restored without relying
+on the \fI\%bson_iter_t\fP data layout. Saving the progress could be
 accomplished by:
 .INDENT 0.0
 .IP \(bu 2
-Saving the current field\(aqs key length with \fBbson_iter_key_len()\fP
+Saving the current field\(aqs key length with \fI\%bson_iter_key_len()\fP
 .IP \(bu 2
-Saving the current offset with \fBbson_iter_offset()\fP
+Saving the current offset with \fI\%bson_iter_offset()\fP
 .IP \(bu 2
-Saving the data pointer of the iterated \fBbson_t\fP with \fBbson_get_data()\fP
+Saving the data pointer of the iterated \fI\%bson_t\fP with \fI\%bson_get_data()\fP
 .IP \(bu 2
-Saving the data length of the iterated \fBbson_t\fP with the \fBlen\fP struct field
+Saving the data length of the iterated \fI\%bson_t\fP with the \fBlen\fP struct field
 .UNINDENT
 .sp
 Then later, these saved values can be passed to
-\fBbson_iter_init_from_data_at_offset()\fP to reconstruct the
-\fBbson_iter_t\fP in constant time.
+\fI\%bson_iter_init_from_data_at_offset()\fP to reconstruct the
+\fI\%bson_iter_t\fP in constant time.
 .SH RETURNS
 .sp
 Returns true if the iter was successfully initialized.
@@ -89,15 +89,15 @@ Returns true if the iter was successfully initialized.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBbson_iter_key_len()\fP
+\fI\%bson_iter_key_len()\fP
 .fi
 .sp
 .nf
-\fBbson_iter_offset()\fP
+\fI\%bson_iter_offset()\fP
 .fi
 .sp
 .nf
-\fBbson_get_data()\fP
+\fI\%bson_get_data()\fP
 .fi
 .sp
 .UNINDENT

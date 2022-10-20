@@ -205,9 +205,12 @@ _check_mechanism (bool pooled,
 
    server = mock_server_new ();
    mock_server_auto_hello (server,
-                           "{'ok': 1, 'minWireVersion': 3, "
-                           "'maxWireVersion': %d, 'isWritablePrimary': true, "
-                           "'saslSupportedMechs': [%s]}",
+                           "{'ok': 1,"
+                           " 'minWireVersion': %d,"
+                           " 'maxWireVersion': %d,"
+                           " 'isWritablePrimary': true,"
+                           " 'saslSupportedMechs': [%s]}",
+                           WIRE_VERSION_MIN,
                            WIRE_VERSION_MAX,
                            server_mechs ? server_mechs : "");
 
@@ -411,6 +414,8 @@ _test_mongoc_scram_auth (bool pooled)
 static void
 test_mongoc_scram_auth (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    /* Auth spec: "Create three test users, one with only SHA-1, one with only
     * SHA-256 and one with both" */
    _create_scram_users ();
@@ -592,6 +597,8 @@ _test_mongoc_scram_saslprep_auth (bool pooled)
 static void
 test_mongoc_saslprep_auth (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _create_saslprep_users ();
    _test_mongoc_scram_saslprep_auth (false);
    _test_mongoc_scram_saslprep_auth (true);
@@ -615,6 +622,8 @@ _test_mongoc_scram_saslprep_auth_no_icu (bool pooled)
 static void
 test_mongoc_saslprep_auth_no_icu (void *ctx)
 {
+   BSON_UNUSED (ctx);
+
    _create_saslprep_users ();
    _test_mongoc_scram_saslprep_auth_no_icu (false);
    _test_mongoc_scram_saslprep_auth_no_icu (true);
@@ -638,7 +647,6 @@ test_scram_install (TestSuite *suite)
                       NULL /* dtor */,
                       NULL /* ctx */,
                       test_framework_skip_if_no_auth,
-                      test_framework_skip_if_max_wire_version_less_than_6,
                       _skip_if_no_sha256,
                       TestSuite_CheckLive);
    TestSuite_AddFull (suite,
@@ -647,7 +655,6 @@ test_scram_install (TestSuite *suite)
                       NULL /* dtor */,
                       NULL /* ctx */,
                       test_framework_skip_if_no_auth,
-                      test_framework_skip_if_max_wire_version_less_than_6,
                       _skip_if_no_sha256,
                       skip_if_no_icu,
                       TestSuite_CheckLive);
@@ -657,7 +664,6 @@ test_scram_install (TestSuite *suite)
                       NULL /* dtor */,
                       NULL /* ctx */,
                       test_framework_skip_if_no_auth,
-                      test_framework_skip_if_max_wire_version_less_than_6,
                       _skip_if_no_sha256,
                       skip_if_icu,
                       TestSuite_CheckLive);

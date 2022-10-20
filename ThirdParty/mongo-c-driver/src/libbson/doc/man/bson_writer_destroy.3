@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_WRITER_DESTROY" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_writer_destroy \- bson_writer_destroy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_WRITER_DESTROY" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_writer_destroy \- bson_writer_destroy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,11 +45,11 @@ bson_writer_destroy (bson_writer_t *writer);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBwriter\fP: A \fBbson_writer_t\fP\&.
+\fBwriter\fP: A \fI\%bson_writer_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Cleanup after \fBwriter\fP and release any allocated memory. Does nothing if \fBwriter\fP is NULL. Note that the buffer supplied to \fBbson_writer_new()\fP is \fINOT\fP freed from this method. The caller is responsible for that.
+Cleanup after \fBwriter\fP and release any allocated memory. Does nothing if \fBwriter\fP is NULL. Note that the buffer supplied to \fI\%bson_writer_new()\fP is \fINOT\fP freed from this method. The caller is responsible for that.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

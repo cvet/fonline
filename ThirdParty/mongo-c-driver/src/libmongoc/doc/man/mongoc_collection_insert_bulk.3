@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_INSERT_BULK" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_insert_bulk \- mongoc_collection_insert_bulk()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_INSERT_BULK" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_insert_bulk \- mongoc_collection_insert_bulk()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -52,21 +52,21 @@ mongoc_collection_insert_bulk (mongoc_collection_t *collection,
 .sp
 This function is deprecated and should not be used in new code.
 .sp
-Please use \fBmongoc_collection_insert_many()\fP instead.
+Please use \fI\%mongoc_collection_insert_many()\fP instead.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
-\fBflags\fP: A bitwise or of \fBmongoc_insert_flags_t\fP\&.
+\fBflags\fP: A bitwise or of \fI\%mongoc_insert_flags_t\fP\&.
 .IP \(bu 2
 \fBdocuments\fP: An array of \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBn_documents\fP: The number of documents in \fBdocuments\fP\&.
 .IP \(bu 2
-\fBwrite_concern\fP: A \fBmongoc_write_concern_t\fP or \fBNULL\fP\&.
+\fBwrite_concern\fP: A \fI\%mongoc_write_concern_t\fP or \fBNULL\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp

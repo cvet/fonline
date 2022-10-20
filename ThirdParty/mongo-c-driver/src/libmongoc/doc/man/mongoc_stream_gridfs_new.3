@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_STREAM_GRIDFS_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_stream_gridfs_new \- mongoc_stream_gridfs_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_STREAM_GRIDFS_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_stream_gridfs_new \- mongoc_stream_gridfs_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_stream_t *
-mongoc_stream_gridfs_new (mongoc_gridfs_file_t *file);
+mongoc_stream_gridfs_new (mongoc_gridfs_file_t *file)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,17 +46,17 @@ mongoc_stream_gridfs_new (mongoc_gridfs_file_t *file);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBfile\fP: A \fBmongoc_gridfs_file_t\fP\&.
+\fBfile\fP: A \fI\%mongoc_gridfs_file_t\fP\&.
 .UNINDENT
 .sp
-This function shall create a new \fBmongoc_stream_t\fP to read from and write to a GridFS file. GridFS files are created with \fBmongoc_gridfs_create_file\fP or \fBmongoc_gridfs_create_file_from_stream\fP\&.
+This function shall create a new \fI\%mongoc_stream_t\fP to read from and write to a GridFS file. GridFS files are created with \fI\%mongoc_gridfs_create_file()\fP or \fI\%mongoc_gridfs_create_file_from_stream()\fP\&.
 .sp
 This function does not transfer ownership of \fBfile\fP\&. Therefore, \fBfile\fP must remain valid for the lifetime of this stream.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_stream_t\fP if successful, otherwise \fBNULL\fP\&.
+A newly allocated \fI\%mongoc_stream_t\fP if successful, otherwise \fBNULL\fP\&.
 .sp
-Note, the returned stream ignores read and write timeouts passed to \fBmongoc_stream_readv\fP, \fBmongoc_stream_writev\fP, and so on. It uses the "socketTimeoutMS" and "connectTimeoutMS" values from the MongoDB URI.
+Note, the returned stream ignores read and write timeouts passed to \fI\%mongoc_stream_readv()\fP, \fI\%mongoc_stream_writev()\fP, and so on. It uses the \(dqsocketTimeoutMS\(dq and \(dqconnectTimeoutMS\(dq values from the MongoDB URI.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

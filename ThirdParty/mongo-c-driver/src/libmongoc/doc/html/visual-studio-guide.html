@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/visual-studio-guide.html"/>
-    <title>Using libmongoc in a Microsoft Visual Studio project &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/visual-studio-guide.html"/>
+    <title>Using libmongoc in a Microsoft Visual Studio project &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Creating Indexes" href="create-indexes.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="distinct-mapreduce.html" title="“distinct” and “mapReduce”"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="guides.html" accesskey="U">Guides</a> &#187;</li> 
       </ul>
     </div>  
@@ -40,8 +45,8 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="using-libmongoc-in-a-microsoft-visual-studio-project">
-<h1>Using libmongoc in a Microsoft Visual Studio project<a class="headerlink" href="#using-libmongoc-in-a-microsoft-visual-studio-project" title="Permalink to this headline">¶</a></h1>
+  <section id="using-libmongoc-in-a-microsoft-visual-studio-project">
+<h1>Using libmongoc in a Microsoft Visual Studio project<a class="headerlink" href="#using-libmongoc-in-a-microsoft-visual-studio-project" title="Permalink to this heading">¶</a></h1>
 <p><a class="reference internal" href="installing.html#build-on-windows"><span class="std std-ref">Download and install libmongoc on your system</span></a>, then open Visual Studio, select “File→New→Project…”, and create a new Win32 Console Application.</p>
 <img alt="_images/msvc-create-project.png" src="_images/msvc-create-project.png" />
 <p>Remember to switch the platform from 32-bit to 64-bit:</p>
@@ -65,11 +70,11 @@ C:\mongo-c-driver\lib\mongoc-1.0.lib
 </div>
 <img alt="_images/msvc-set-path.png" src="_images/msvc-set-path.png" />
 <p>Finally, include “mongoc/mongoc.h” in your project’s “stdafx.h”:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 </pre></div>
 </div>
-<div class="section" id="static-linking">
-<h2>Static linking<a class="headerlink" href="#static-linking" title="Permalink to this headline">¶</a></h2>
+<section id="static-linking">
+<h2>Static linking<a class="headerlink" href="#static-linking" title="Permalink to this heading">¶</a></h2>
 <p>Following the instructions above, you have dynamically linked your application to the libbson and libmongoc DLLs. This is usually the right choice. If you want to link statically instead, update your “Additional Dependencies” list by removing <code class="docutils literal notranslate"><span class="pre">bson-1.0.lib</span></code> and <code class="docutils literal notranslate"><span class="pre">mongoc-1.0.lib</span></code> and replacing them with these libraries:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>C:\mongo-c-driver\lib\bson-static-1.0.lib
 C:\mongo-c-driver\lib\mongoc-static-1.0.lib
@@ -84,16 +89,16 @@ BCrypt.lib
 <p>Finally, define two preprocessor symbols before including <code class="docutils literal notranslate"><span class="pre">mongoc/mongoc.h</span></code> in your <code class="docutils literal notranslate"><span class="pre">stdafx.h</span></code>:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#define BSON_STATIC</span>
 <span class="cp">#define MONGOC_STATIC</span>
-<span class="cp">#include</span> <span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mongoc/mongoc.h&gt;</span><span class="cp"></span>
 </pre></div>
 </div>
 <p>Making these changes to your project is only required for static linking; for most people, the dynamic-linking instructions above are preferred.</p>
-</div>
-<div class="section" id="next-steps">
-<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Permalink to this heading">¶</a></h2>
 <p>Now you can build and debug applications in Visual Studio that use libbson and libmongoc. Proceed to <a class="reference internal" href="tutorial.html#making-a-connection"><span class="std std-ref">Making a Connection</span></a> in the tutorial to learn how connect to MongoDB and perform operations.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -157,7 +162,7 @@ BCrypt.lib
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

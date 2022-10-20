@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_BULK_OPERATION_EXECUTE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_bulk_operation_execute \- mongoc_bulk_operation_execute()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_BULK_OPERATION_EXECUTE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_bulk_operation_execute \- mongoc_bulk_operation_execute()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,9 +45,9 @@ mongoc_bulk_operation_execute (mongoc_bulk_operation_t *bulk,
 .UNINDENT
 .UNINDENT
 .sp
-This function executes all operations queued into the bulk operation. Unless \fBordered: false\fP was specified in the \fBopts\fP passed to \fBmongoc_collection_create_bulk_operation_with_opts()\fP, then forward progress will be stopped upon the first error.
+This function executes all operations queued into the bulk operation. Unless \fBordered: false\fP was specified in the \fBopts\fP passed to \fI\%mongoc_collection_create_bulk_operation_with_opts()\fP, then forward progress will be stopped upon the first error.
 .sp
-It is only valid to call \fBmongoc_bulk_operation_execute()\fP once. The \fBmongoc_bulk_operation_t\fP must be destroyed afterwards.
+It is only valid to call \fI\%mongoc_bulk_operation_execute()\fP once. The \fBmongoc_bulk_operation_t\fP must be destroyed afterwards.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -58,11 +58,11 @@ It is only valid to call \fBmongoc_bulk_operation_execute()\fP once. The \fBmong
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbulk\fP: A \fBmongoc_bulk_operation_t\fP\&.
+\fBbulk\fP: A \fI\%mongoc_bulk_operation_t\fP\&.
 .IP \(bu 2
 \fBreply\fP: An uninitialized \fI\%bson_t\fP\&.
 .IP \(bu 2
-\fBerror\fP: An optional location for a \fBbson_error_t\fP or \fBNULL\fP\&.
+\fBerror\fP: An optional location for a \fI\%bson_error_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH ERRORS
 .sp
@@ -73,17 +73,17 @@ On success, returns the server id used. On failure, returns 0 and sets \fBerror\
 .sp
 A write concern timeout or write concern error is considered a failure.
 .sp
-The \fBreply\fP document counts operations and collects error information. See Bulk Write Operations for examples.
+The \fBreply\fP document counts operations and collects error information. See \fI\%Bulk Write Operations\fP for examples.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBBulk Write Operations\fP
+\fI\%Bulk Write Operations\fP
 .fi
 .sp
 .nf
-\fBmongoc_bulk_operation_get_hint\fP, which gets the id of the server used even if the operation failed.
+\fI\%mongoc_bulk_operation_get_hint()\fP, which gets the id of the server used even if the operation failed.
 .fi
 .sp
 .UNINDENT

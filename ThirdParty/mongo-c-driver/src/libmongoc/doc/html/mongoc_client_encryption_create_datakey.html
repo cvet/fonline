@@ -3,16 +3,21 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_encryption_create_datakey.html"/>
-    <title>mongoc_client_encryption_create_datakey() &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_client_encryption_create_datakey.html"/>
+    <title>mongoc_client_encryption_create_datakey() &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="mongoc_client_encryption_encrypt()" href="mongoc_client_encryption_encrypt.html" />
+    <link rel="next" title="mongoc_client_encryption_rewrap_many_datakey()" href="mongoc_client_encryption_rewrap_many_datakey.html" />
     <link rel="prev" title="mongoc_client_encryption_destroy()" href="mongoc_client_encryption_destroy.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -25,12 +30,12 @@
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="mongoc_client_encryption_encrypt.html" title="mongoc_client_encryption_encrypt()"
+          <a href="mongoc_client_encryption_rewrap_many_datakey.html" title="mongoc_client_encryption_rewrap_many_datakey()"
              accesskey="N">next</a></li>
         <li class="right" >
           <a href="mongoc_client_encryption_destroy.html" title="mongoc_client_encryption_destroy()"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="mongoc_client_encryption_t.html" accesskey="U">mongoc_client_encryption_t</a> &#187;</li> 
       </ul>
@@ -41,36 +46,35 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-client-encryption-create-datakey">
-<h1>mongoc_client_encryption_create_datakey()<a class="headerlink" href="#mongoc-client-encryption-create-datakey" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span>
-<span class="nf">mongoc_client_encryption_create_datakey</span> <span class="p">(</span>
-   <span class="n">mongoc_client_encryption_t</span> <span class="o">*</span><span class="n">client_encryption</span><span class="p">,</span>
-   <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">kms_provider</span><span class="p">,</span>
-   <span class="n">mongoc_client_encryption_datakey_opts_t</span> <span class="o">*</span><span class="n">opts</span><span class="p">,</span>
-   <span class="n">bson_value_t</span> <span class="o">*</span><span class="n">keyid</span><span class="p">,</span>
-   <span class="n">bson_error_t</span> <span class="o">*</span><span class="n">error</span><span class="p">);</span>
+  <section id="mongoc-client-encryption-create-datakey">
+<h1>mongoc_client_encryption_create_datakey()<a class="headerlink" href="#mongoc-client-encryption-create-datakey" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span><span class="w"></span>
+<span class="nf">mongoc_client_encryption_create_datakey</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_encryption_t</span><span class="w"> </span><span class="o">*</span><span class="n">client_encryption</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">kms_provider</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">mongoc_client_encryption_datakey_opts_t</span><span class="w"> </span><span class="o">*</span><span class="n">opts</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_value_t</span><span class="w"> </span><span class="o">*</span><span class="n">keyid</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">bson_error_t</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-<p>Creates a new key document in the key vault collection and sets <code class="docutils literal notranslate"><span class="pre">keyid</span></code> to the UUID of the
-newly created key if <code class="docutils literal notranslate"><span class="pre">keyid</span></code> is not NULL. The new key can be used to configure automatic encryption (see <a class="symbol reference internal" href="mongoc_client_enable_auto_encryption.html"><span class="doc">mongoc_client_enable_auto_encryption()</span></a> and <a class="symbol reference internal" href="mongoc_client_pool_enable_auto_encryption.html"><span class="doc">mongoc_client_pool_enable_auto_encryption()</span></a>) or for explicit encryption (see <a class="symbol reference internal" href="mongoc_client_encryption_encrypt.html"><span class="doc">mongoc_client_encryption_encrypt()</span></a>).</p>
+<p>Creates a new key document in the key vault collection and sets <code class="docutils literal notranslate"><span class="pre">keyid</span></code> to the UUID of the newly created key if <code class="docutils literal notranslate"><span class="pre">keyid</span></code> is not NULL. The new key can be used to configure automatic encryption (see <a class="symbol reference internal" href="mongoc_client_enable_auto_encryption.html"><span class="doc">mongoc_client_enable_auto_encryption()</span></a> and <a class="symbol reference internal" href="mongoc_client_pool_enable_auto_encryption.html"><span class="doc">mongoc_client_pool_enable_auto_encryption()</span></a>) or for explicit encryption (see <a class="symbol reference internal" href="mongoc_client_encryption_encrypt.html"><span class="doc">mongoc_client_encryption_encrypt()</span></a>).</p>
 <p>The created key document is inserted into the key vault collection (identified via <a class="symbol reference internal" href="mongoc_client_encryption_opts_set_keyvault_namespace.html"><span class="doc">mongoc_client_encryption_opts_set_keyvault_namespace()</span></a>) with majority write concern.</p>
-<p><code class="docutils literal notranslate"><span class="pre">keyid</span></code> is always initialized (even on error). Caller must call <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_value_destroy.html" title="(in libbson v1.19.2)"><code class="docutils literal notranslate"><span class="pre">bson_value_destroy()</span></code></a> on <code class="docutils literal notranslate"><span class="pre">keyid</span></code> to free.</p>
-</div>
-<div class="section" id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">keyid</span></code> is always initialized (even on error). Caller must call <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_value_destroy.html" title="(in libbson v1.23.0)"><code class="docutils literal notranslate"><span class="pre">bson_value_destroy()</span></code></a> on <code class="docutils literal notranslate"><span class="pre">keyid</span></code> to free.</p>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">client_encryption</span></code>: A <a class="symbol reference internal" href="mongoc_client_encryption_t.html"><span class="doc">mongoc_client_encryption_t</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">kms_provider</span></code>: A string identifying the Key Management Service (KMS) provider used to encrypt the datakey (e.g. “aws” or “local”).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">opts</span></code>: A <a class="symbol reference internal" href="mongoc_client_encryption_datakey_opts_t.html"><span class="doc">mongoc_client_encryption_datakey_opts_t</span></a></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">keyid</span></code>: The resulting UUID key ID of the newly created key.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_error_t.html" title="(in libbson v1.19.2)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_error_t</span></code></a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">keyid</span></code>: Optional. An uninitialized <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_value_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_value_t</span></code></a> set to the UUID (BSON binary subtype 0x04) of the newly created key. Must be freed by <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_value_destroy.html" title="(in libbson v1.23.0)"><code class="docutils literal notranslate"><span class="pre">bson_value_destroy()</span></code></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: Optional. A <a class="symbol reference external" href="http://mongoc.org/libbson/current/bson_error_t.html" title="(in libbson v1.23.0)"><code class="xref symbol docutils literal notranslate"><span class="pre">bson_error_t</span></code></a>.</p></li>
 </ul>
-</div>
-<div class="section" id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
 <p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if successful. Returns <code class="docutils literal notranslate"><span class="pre">false</span></code> and sets <code class="docutils literal notranslate"><span class="pre">error</span></code> otherwise.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -78,8 +82,8 @@ newly created key if <code class="docutils literal notranslate"><span class="pre
 <div class="line"><a class="symbol reference internal" href="mongoc_client_encryption_datakey_opts_t.html"><span class="doc">mongoc_client_encryption_datakey_opts_t</span></a></div>
 </div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -115,6 +119,7 @@ newly created key if <code class="docutils literal notranslate"><span class="pre
 <li class="toctree-l2"><a class="reference internal" href="mongoc_change_stream_t.html">mongoc_change_stream_t</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="mongoc_client_encryption_t.html">mongoc_client_encryption_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_datakey_opts_t.html">mongoc_client_encryption_datakey_opts_t</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_rewrap_many_datakey_result_t.html">mongoc_client_encryption_rewrap_many_datakey_result_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_encrypt_opts_t.html">mongoc_client_encryption_encrypt_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_encryption_opts_t.html">mongoc_client_encryption_opts_t</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mongoc_client_pool_t.html">mongoc_client_pool_t</a></li>
@@ -190,7 +195,7 @@ newly created key if <code class="docutils literal notranslate"><span class="pre
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_HAS_FIELD" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_has_field \- bson_has_field()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_HAS_FIELD" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_has_field \- bson_has_field()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -45,13 +45,13 @@ bson_has_field (const bson_t *bson, const char *key);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: A string containing the name of the field to check for.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-Checks to see if key contains an element named \fBkey\fP\&. This also accepts "dotkey" notation such as "a.b.c.d".
+Checks to see if key contains an element named \fBkey\fP\&. This also accepts \(dqdotkey\(dq notation such as \(dqa.b.c.d\(dq.
 .SH RETURNS
 .sp
 true if \fBkey\fP was found within \fBbson\fP; otherwise false.

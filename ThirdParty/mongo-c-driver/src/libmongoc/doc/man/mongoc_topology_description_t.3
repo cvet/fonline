@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_TOPOLOGY_DESCRIPTION_T" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_topology_description_t \- mongoc_topology_description_t
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_TOPOLOGY_DESCRIPTION_T" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_topology_description_t \- mongoc_topology_description_t
 .sp
 Status of MongoDB Servers
 .SH SYNOPSIS
@@ -47,7 +47,7 @@ typedef struct _mongoc_topology_description_t mongoc_topology_description_t;
 \fBmongoc_topology_description_t\fP is an opaque type representing the driver\(aqs knowledge of the MongoDB server or servers it is connected to.
 Its API conforms to the \fI\%SDAM Monitoring Specification\fP\&.
 .sp
-Applications receive a temporary reference to a \fBmongoc_topology_description_t\fP as a parameter to an SDAM Monitoring callback. See Introduction to Application Performance Monitoring\&.
+Applications receive a temporary reference to a \fBmongoc_topology_description_t\fP as a parameter to an SDAM Monitoring callback that must not be destroyed. See \fI\%Introduction to Application Performance Monitoring\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

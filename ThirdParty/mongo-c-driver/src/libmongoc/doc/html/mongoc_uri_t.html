@@ -3,13 +3,18 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta charset="utf-8" /><link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_uri_t.html"/>
-    <title>mongoc_uri_t &#8212; libmongoc 1.19.2</title>
+    <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="canonical" href="http://mongoc.org/libbson/current/mongoc_uri_t.html"/>
+    <title>mongoc_uri_t &#8212; libmongoc 1.23.0</title>
     <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/readable.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="mongoc_uri_copy()" href="mongoc_uri_copy.html" />
@@ -30,7 +35,7 @@
         <li class="right" >
           <a href="mongoc_update_flags_t.html" title="mongoc_update_flags_t"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.19.2</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">libmongoc 1.23.0</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
       </ul>
     </div>  
@@ -39,21 +44,21 @@
       <div class="documentwrapper">
           <div class="body" role="main">
             
-  <div class="section" id="mongoc-uri-t">
-<h1>mongoc_uri_t<a class="headerlink" href="#mongoc-uri-t" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="synopsis">
-<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_mongoc_uri_t</span> <span class="n">mongoc_uri_t</span><span class="p">;</span>
+  <section id="mongoc-uri-t">
+<h1>mongoc_uri_t<a class="headerlink" href="#mongoc-uri-t" title="Permalink to this heading">¶</a></h1>
+<section id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_mongoc_uri_t</span><span class="w"> </span><span class="n">mongoc_uri_t</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="description">
-<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">mongoc_uri_t</span></code> provides an abstraction on top of the MongoDB connection URI format. It provides standardized parsing as well as convenience methods for extracting useful information such as replica hosts or authorization information.</p>
 <p>See <a class="reference external" href="https://docs.mongodb.org/manual/reference/connection-string/">Connection String URI Reference</a> on the MongoDB website for more information.</p>
-</div>
-<div class="section" id="format">
-<h2>Format<a class="headerlink" href="#format" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="format">
+<h2>Format<a class="headerlink" href="#format" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongodb[+srv]://                             &lt;1&gt;
    [username:password@]                      &lt;2&gt;
    host1                                     &lt;3&gt;
@@ -78,14 +83,14 @@
 </div>
 <p>The MongoDB C Driver exposes constants for each supported connection option. These constants make it easier to discover connection options, but their string values can be used as well.</p>
 <p>For example, the following calls are equal.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb://localhost/?&quot;</span> <span class="n">MONGOC_URI_APPNAME</span> <span class="s">&quot;=applicationName&quot;</span><span class="p">);</span>
-<span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb://localhost/?appname=applicationName&quot;</span><span class="p">);</span>
-<span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb://localhost/?appName=applicationName&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://localhost/?&quot;</span><span class="w"> </span><span class="n">MONGOC_URI_APPNAME</span><span class="w"> </span><span class="s">&quot;=applicationName&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://localhost/?appname=applicationName&quot;</span><span class="p">);</span><span class="w"></span>
+<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb://localhost/?appName=applicationName&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="replica-set-example">
-<h2>Replica Set Example<a class="headerlink" href="#replica-set-example" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="replica-set-example">
+<h2>Replica Set Example<a class="headerlink" href="#replica-set-example" title="Permalink to this heading">¶</a></h2>
 <p>To describe a connection to a replica set named ‘test’ with the following mongod hosts:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">db1.example.com</span></code> on port <code class="docutils literal notranslate"><span class="pre">27017</span></code></p></li>
@@ -95,31 +100,25 @@
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mongodb://db1.example.com,db2.example.com:2500/?replicaSet=test
 </pre></div>
 </div>
-</div>
-<div class="section" id="srv-example">
-<h2>SRV Example<a class="headerlink" href="#srv-example" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="srv-example">
+<h2>SRV Example<a class="headerlink" href="#srv-example" title="Permalink to this heading">¶</a></h2>
 <p>If you have configured an <a class="reference external" href="https://www.ietf.org/rfc/rfc2782.txt">SRV record</a> with a name like “_mongodb._tcp.server.example.com” whose records are a list of one or more MongoDB server hostnames, use a connection string like this:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span> <span class="o">=</span> <span class="n">mongoc_uri_new</span> <span class="p">(</span><span class="s">&quot;mongodb+srv://server.example.com/?replicaSet=rs&amp;appName=applicationName&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mongoc_uri_new</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;mongodb+srv://server.example.com/?replicaSet=rs&amp;appName=applicationName&quot;</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 <p>The driver prefixes the service name with “_mongodb._tcp.”, then performs a DNS SRV query to resolve the service name to one or more hostnames. If this query succeeds, the driver performs a DNS TXT query on the service name (without the “_mongodb._tcp” prefix) for additional URI options configured as TXT records.</p>
 <p>On Unix, the MongoDB C Driver relies on libresolv to look up SRV and TXT records. If libresolv is unavailable, then using a “mongodb+srv” URI will cause an error. If your libresolv lacks <code class="docutils literal notranslate"><span class="pre">res_nsearch</span></code> then the driver will fall back to <code class="docutils literal notranslate"><span class="pre">res_search</span></code>, which is not thread-safe.</p>
-</div>
-<div class="section" id="ipv4-and-ipv6">
-<h2>IPv4 and IPv6<a class="headerlink" href="#ipv4-and-ipv6" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="ipv4-and-ipv6">
+<h2>IPv4 and IPv6<a class="headerlink" href="#ipv4-and-ipv6" title="Permalink to this heading">¶</a></h2>
 <p>If connecting to a hostname that has both IPv4 and IPv6 DNS records, the behavior follows <a class="reference external" href="https://www.ietf.org/rfc/rfc6555.txt">RFC-6555</a>. A connection to the IPv6 address is attempted first. If IPv6 fails, then a connection is attempted to the IPv4 address. If the connection attempt to IPv6 does not complete within 250ms, then IPv4 is tried in parallel. Whichever succeeds connection first cancels the other. The successful DNS result is cached for 10 minutes.</p>
 <p>As a consequence, attempts to connect to a mongod only listening on IPv4 may be delayed if there are both A (IPv4) and AAAA (IPv6) DNS records associated with the host.</p>
 <p>To avoid a delay, configure hostnames to match the MongoDB configuration. That is, only create an A record if the mongod is only listening on IPv4.</p>
-</div>
-<div class="section" id="connection-options">
-<h2>Connection Options<a class="headerlink" href="#connection-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connection-options">
+<h2>Connection Options<a class="headerlink" href="#connection-options" title="Permalink to this heading">¶</a></h2>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 12%" />
-<col style="width: 10%" />
-<col style="width: 10%" />
-<col style="width: 69%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -179,18 +178,18 @@ documents are retried.</p></td>
 <td><p>false</p></td>
 <td><p>If true, this indicates the driver is connecting to a MongoDB cluster behind a load balancer.</p></td>
 </tr>
+<tr class="row-even"><td><p>MONGOC_URI_SRVMAXHOSTS</p></td>
+<td><p>srvmaxhosts</p></td>
+<td><p>0</p></td>
+<td><p>If zero, the number of hosts in DNS results is unlimited. If greater than zero, the number of hosts in DNS results is limited to being less than or equal to the given value.</p></td>
+</tr>
 </tbody>
 </table>
 <p>Setting any of the *timeoutMS options above to <code class="docutils literal notranslate"><span class="pre">0</span></code> will be interpreted as “use the default value”.</p>
-</div>
-<div class="section" id="authentication-options">
-<h2>Authentication Options<a class="headerlink" href="#authentication-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="authentication-options">
+<h2>Authentication Options<a class="headerlink" href="#authentication-options" title="Permalink to this heading">¶</a></h2>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 14%" />
-<col style="width: 11%" />
-<col style="width: 74%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -204,7 +203,7 @@ documents are retried.</p></td>
 </tr>
 <tr class="row-odd"><td><p>MONGOC_URI_AUTHMECHANISMPROPERTIES</p></td>
 <td><p>authmechanismproperties</p></td>
-<td><p>Certain authentication mechanisms have additional options that can be configured. These options should be provided as comma separated option_key:option_value pair and provided as authMechanismProperties.</p></td>
+<td><p>Certain authentication mechanisms have additional options that can be configured. These options should be provided as comma separated option_key:option_value pair and provided as authMechanismProperties. Specifying the same option_key multiple times has undefined behavior.</p></td>
 </tr>
 <tr class="row-even"><td><p>MONGOC_URI_AUTHSOURCE</p></td>
 <td><p>authsource</p></td>
@@ -212,14 +211,9 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-<div class="section" id="mechanism-properties">
-<h3>Mechanism Properties<a class="headerlink" href="#mechanism-properties" title="Permalink to this headline">¶</a></h3>
+<section id="mechanism-properties">
+<h3>Mechanism Properties<a class="headerlink" href="#mechanism-properties" title="Permalink to this heading">¶</a></h3>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 14%" />
-<col style="width: 11%" />
-<col style="width: 74%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -237,16 +231,11 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-<div class="section" id="tls-options">
-<span id="id1"></span><h2>TLS Options<a class="headerlink" href="#tls-options" title="Permalink to this headline">¶</a></h2>
+</section>
+</section>
+<section id="tls-options">
+<span id="id1"></span><h2>TLS Options<a class="headerlink" href="#tls-options" title="Permalink to this heading">¶</a></h2>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 33%" />
-<col style="width: 33%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -262,7 +251,7 @@ documents are retried.</p></td>
 <td><p>tlscertificatekeyfile</p></td>
 <td><p>Path to PEM formatted Private Key, with its Public Certificate concatenated at the end.</p></td>
 </tr>
-<tr class="row-even"><td><p>MONGOC_URI_TLSCERTIFICATEKEYPASSWORD</p></td>
+<tr class="row-even"><td><p>MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD</p></td>
 <td><p>tlscertificatekeypassword</p></td>
 <td><p>The password, if any, to use to unlock encrypted Private Key.</p></td>
 </tr>
@@ -293,17 +282,11 @@ documents are retried.</p></td>
 </tbody>
 </table>
 <p>See <a class="reference internal" href="configuring_tls.html"><span class="doc">Configuring TLS</span></a> for details about these options and about building libmongoc with TLS support.</p>
-</div>
-<div class="section" id="deprecated-ssl-options">
-<h2>Deprecated SSL Options<a class="headerlink" href="#deprecated-ssl-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="deprecated-ssl-options">
+<h2>Deprecated SSL Options<a class="headerlink" href="#deprecated-ssl-options" title="Permalink to this heading">¶</a></h2>
 <p>The following options have been deprecated and may be removed from future releases of libmongoc.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 29%" />
-<col style="width: 22%" />
-<col style="width: 27%" />
-<col style="width: 22%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -324,7 +307,7 @@ documents are retried.</p></td>
 </tr>
 <tr class="row-even"><td><p>MONGOC_URI_SSLCLIENTCERTIFICATEKEYPASSWORD</p></td>
 <td><p>sslclientcertificatekeypassword</p></td>
-<td><p>MONGOC_URI_TLSCERTIFICATEKEYPASSWORD</p></td>
+<td><p>MONGOC_URI_TLSCERTIFICATEKEYFILEPASSWORD</p></td>
 <td><p>tlscertificatekeypassword</p></td>
 </tr>
 <tr class="row-odd"><td><p>MONGOC_URI_SSLCERTIFICATEAUTHORITYFILE</p></td>
@@ -344,20 +327,15 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="server-discovery-monitoring-and-selection-options">
-<span id="sdam-uri-options"></span><h2>Server Discovery, Monitoring, and Selection Options<a class="headerlink" href="#server-discovery-monitoring-and-selection-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="server-discovery-monitoring-and-selection-options">
+<span id="sdam-uri-options"></span><h2>Server Discovery, Monitoring, and Selection Options<a class="headerlink" href="#server-discovery-monitoring-and-selection-options" title="Permalink to this heading">¶</a></h2>
 <p>Clients in a <a class="symbol reference internal" href="mongoc_client_pool_t.html"><span class="doc">mongoc_client_pool_t</span></a> share a topology scanner that runs on a background thread. The thread wakes every <code class="docutils literal notranslate"><span class="pre">heartbeatFrequencyMS</span></code> (default 10 seconds) to scan all MongoDB servers in parallel. Whenever an application operation requires a server that is not known–for example, if there is no known primary and your application attempts an insert–the thread rescans all servers every half-second. In this situation the pooled client waits up to <code class="docutils literal notranslate"><span class="pre">serverSelectionTimeoutMS</span></code> (default 30 seconds) for the thread to find a server suitable for the operation, then returns an error with domain <code class="docutils literal notranslate"><span class="pre">MONGOC_ERROR_SERVER_SELECTION</span></code>.</p>
 <p>Technically, the total time an operation may wait while a pooled client scans the topology is controlled both by <code class="docutils literal notranslate"><span class="pre">serverSelectionTimeoutMS</span></code> and <code class="docutils literal notranslate"><span class="pre">connectTimeoutMS</span></code>. The longest wait occurs if the last scan begins just at the end of the selection timeout, and a slow or down server requires the full connection timeout before the client gives up.</p>
 <p>A non-pooled client is single-threaded. Every <code class="docutils literal notranslate"><span class="pre">heartbeatFrequencyMS</span></code>, it blocks the next application operation while it does a parallel scan. This scan takes as long as needed to check the slowest server: roughly <code class="docutils literal notranslate"><span class="pre">connectTimeoutMS</span></code>. Therefore the default <code class="docutils literal notranslate"><span class="pre">heartbeatFrequencyMS</span></code> for single-threaded clients is greater than for pooled clients: 60 seconds.</p>
 <p>By default, single-threaded (non-pooled) clients scan only once when an operation requires a server that is not known. If you attempt an insert and there is no known primary, the client checks all servers once trying to find it, then succeeds or returns an error with domain <code class="docutils literal notranslate"><span class="pre">MONGOC_ERROR_SERVER_SELECTION</span></code>. But if you set <code class="docutils literal notranslate"><span class="pre">serverSelectionTryOnce</span></code> to “false”, the single-threaded client loops, checking all servers every half-second, until <code class="docutils literal notranslate"><span class="pre">serverSelectionTimeoutMS</span></code>.</p>
 <p>The total time an operation may wait for a single-threaded client to scan the topology is determined by <code class="docutils literal notranslate"><span class="pre">connectTimeoutMS</span></code> in the try-once case, or <code class="docutils literal notranslate"><span class="pre">serverSelectionTimeoutMS</span></code> and <code class="docutils literal notranslate"><span class="pre">connectTimeoutMS</span></code> if <code class="docutils literal notranslate"><span class="pre">serverSelectionTryOnce</span></code> is set “false”.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 7%" />
-<col style="width: 5%" />
-<col style="width: 88%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -388,16 +366,11 @@ documents are retried.</p></td>
 </tbody>
 </table>
 <p>Setting any of the *TimeoutMS options above to <code class="docutils literal notranslate"><span class="pre">0</span></code> will be interpreted as “use the default value”.</p>
-</div>
-<div class="section" id="connection-pool-options">
-<span id="id2"></span><h2>Connection Pool Options<a class="headerlink" href="#connection-pool-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="connection-pool-options">
+<span id="id2"></span><h2>Connection Pool Options<a class="headerlink" href="#connection-pool-options" title="Permalink to this heading">¶</a></h2>
 <p>These options govern the behavior of a <a class="symbol reference internal" href="mongoc_client_pool_t.html"><span class="doc">mongoc_client_pool_t</span></a>. They are ignored by a non-pooled <a class="symbol reference internal" href="mongoc_client_t.html"><span class="doc">mongoc_client_t</span></a>.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 13%" />
-<col style="width: 11%" />
-<col style="width: 76%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -427,15 +400,10 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="write-concern-options">
-<span id="mongoc-uri-t-write-concern-options"></span><h2>Write Concern Options<a class="headerlink" href="#write-concern-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="write-concern-options">
+<span id="mongoc-uri-t-write-concern-options"></span><h2>Write Concern Options<a class="headerlink" href="#write-concern-options" title="Permalink to this heading">¶</a></h2>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 8%" />
-<col style="width: 83%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -470,15 +438,10 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="read-concern-options">
-<span id="mongoc-uri-t-read-concern-options"></span><h2>Read Concern Options<a class="headerlink" href="#read-concern-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="read-concern-options">
+<span id="mongoc-uri-t-read-concern-options"></span><h2>Read Concern Options<a class="headerlink" href="#read-concern-options" title="Permalink to this heading">¶</a></h2>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 14%" />
-<col style="width: 11%" />
-<col style="width: 75%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -492,9 +455,9 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="read-preference-options">
-<span id="mongoc-uri-t-read-prefs-options"></span><h2>Read Preference Options<a class="headerlink" href="#read-preference-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="read-preference-options">
+<span id="mongoc-uri-t-read-prefs-options"></span><h2>Read Preference Options<a class="headerlink" href="#read-preference-options" title="Permalink to this heading">¶</a></h2>
 <p>When connected to a replica set, the driver chooses which member to query using the read preference:</p>
 <ol class="arabic simple">
 <li><p>Choose members whose type matches “readPreference”.</p></li>
@@ -502,11 +465,6 @@ documents are retried.</p></td>
 <li><p>From the chosen servers, distribute queries randomly among the server with the fastest round-trip times. These include the server with the fastest time and any whose round-trip time is no more than “localThresholdMS” slower.</p></li>
 </ol>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 17%" />
-<col style="width: 14%" />
-<col style="width: 69%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -544,16 +502,11 @@ documents are retried.</p></td>
 <p class="admonition-title">Note</p>
 <p>When connecting to more than one mongos, libmongoc’s localThresholdMS applies only to the selection of mongos servers. The threshold for selecting among replica set members in shards is controlled by the <a class="reference external" href="https://docs.mongodb.com/manual/reference/program/mongos/#cmdoption-localthreshold">mongos’s localThreshold command line option</a>.</p>
 </div>
-</div>
-<div class="section" id="legacy-options">
-<h2>Legacy Options<a class="headerlink" href="#legacy-options" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="legacy-options">
+<h2>Legacy Options<a class="headerlink" href="#legacy-options" title="Permalink to this heading">¶</a></h2>
 <p>For historical reasons, the following options are available. They should however not be used.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 17%" />
-<col style="width: 14%" />
-<col style="width: 69%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
 <th class="head"><p>Key</p></th>
@@ -567,9 +520,9 @@ documents are retried.</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_copy.html">mongoc_uri_copy()</a></li>
@@ -593,6 +546,8 @@ documents are retried.</p></td>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_service.html">mongoc_uri_get_service()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_ssl.html">mongoc_uri_get_ssl()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_string.html">mongoc_uri_get_string()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_srv_hostname.html">mongoc_uri_get_srv_hostname()</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_srv_service_name.html">mongoc_uri_get_srv_service_name()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_tls.html">mongoc_uri_get_tls()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_username.html">mongoc_uri_get_username()</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_get_write_concern.html">mongoc_uri_get_write_concern()</a></li>
@@ -621,8 +576,8 @@ documents are retried.</p></td>
 <li class="toctree-l1"><a class="reference internal" href="mongoc_uri_unescape.html">mongoc_uri_unescape()</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -631,7 +586,7 @@ documents are retried.</p></td>
     </div>
   <div class="footer">
     &copy; Copyright 2017-present, MongoDB, Inc.
-    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.4.3.
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.1.1.
   </div>
   
   </body>

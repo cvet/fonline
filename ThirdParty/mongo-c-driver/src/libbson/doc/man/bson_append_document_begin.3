@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "BSON_APPEND_DOCUMENT_BEGIN" "3" "Nov 03, 2021" "1.19.2" "libbson"
-.SH NAME
-bson_append_document_begin \- bson_append_document_begin()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "BSON_APPEND_DOCUMENT_BEGIN" "3" "Aug 31, 2022" "1.23.0" "libbson"
+.SH NAME
+bson_append_document_begin \- bson_append_document_begin()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,19 +51,19 @@ bson_append_document_begin (bson_t *bson,
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBbson\fP: A \fBbson_t\fP\&.
+\fBbson\fP: A \fI\%bson_t\fP\&.
 .IP \(bu 2
 \fBkey\fP: An ASCII C string containing the name of the field.
 .IP \(bu 2
 \fBkey_length\fP: The length of \fBkey\fP in bytes, or \-1 to determine the length with \fBstrlen()\fP\&.
 .IP \(bu 2
-\fBchild\fP: An uninitialized \fBbson_t\fP to be initialized as the sub\-document.
+\fBchild\fP: An uninitialized \fI\%bson_t\fP to be initialized as the sub\-document.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-The \fBbson_append_document_begin()\fP function shall begin appending a sub\-document to \fBbson\fP\&. Use \fBchild\fP to add fields to the sub\-document. When completed, call \fBbson_append_document_end()\fP to complete the element.
+The \fI\%bson_append_document_begin()\fP function shall begin appending a sub\-document to \fBbson\fP\&. Use \fBchild\fP to add fields to the sub\-document. When completed, call \fI\%bson_append_document_end()\fP to complete the element.
 .sp
-\fBchild\fP \fIMUST\fP be an uninitialized \fBbson_t\fP to avoid leaking memory.
+\fBchild\fP \fIMUST\fP be an uninitialized \fI\%bson_t\fP to avoid leaking memory.
 .SH RETURNS
 .sp
 Returns \fBtrue\fP if the operation was applied successfully. The function will fail if \fBbson\fP must grow larger than INT32_MAX.

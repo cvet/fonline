@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_READ_PREFS_COPY" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_read_prefs_copy \- mongoc_read_prefs_copy()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_READ_PREFS_COPY" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_read_prefs_copy \- mongoc_read_prefs_copy()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,7 +37,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_read_prefs_t *
-mongoc_read_prefs_copy (const mongoc_read_prefs_t *read_prefs);
+mongoc_read_prefs_copy (const mongoc_read_prefs_t *read_prefs)
+   BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
@@ -45,14 +46,14 @@ mongoc_read_prefs_copy (const mongoc_read_prefs_t *read_prefs);
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP\&.
+\fBread_prefs\fP: A \fI\%mongoc_read_prefs_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
 This function shall deep copy a read preference.
 .SH RETURNS
 .sp
-Returns a newly allocated read preference that should be freed with \fBmongoc_read_prefs_destroy()\fP\&.
+Returns a newly allocated read preference that should be freed with \fI\%mongoc_read_prefs_destroy()\fP\&.
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

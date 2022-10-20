@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_NEW" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_new \- mongoc_client_pool_new()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_NEW" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_new \- mongoc_client_pool_new()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -37,21 +37,31 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .nf
 .ft C
 mongoc_client_pool_t *
-mongoc_client_pool_new (const mongoc_uri_t *uri);
+mongoc_client_pool_new (const mongoc_uri_t *uri) BSON_GNUC_WARN_UNUSED_RESULT;
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
 .sp
-This function creates a new \fBmongoc_client_pool_t\fP using the \fBmongoc_uri_t\fP provided.
+This function creates a new \fI\%mongoc_client_pool_t\fP using the \fI\%mongoc_uri_t\fP provided.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBuri\fP: A \fBmongoc_uri_t\fP\&.
+\fBuri\fP: A \fI\%mongoc_uri_t\fP\&.
 .UNINDENT
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_client_pool_t\fP that should be freed with \fBmongoc_client_pool_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_client_pool_t\fP that should be freed with \fI\%mongoc_client_pool_destroy()\fP when no longer in use. On error, \fBNULL\fP is returned and an error may be logged.
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+.nf
+\fI\%mongoc_client_pool_new_with_error()\fP
+.fi
+.sp
+.UNINDENT
+.UNINDENT
 .SH AUTHOR
 MongoDB, Inc
 .SH COPYRIGHT

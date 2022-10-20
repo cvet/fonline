@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CLIENT_POOL_SET_APM_CALLBACKS" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_client_pool_set_apm_callbacks \- mongoc_client_pool_set_apm_callbacks()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CLIENT_POOL_SET_APM_CALLBACKS" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_client_pool_set_apm_callbacks \- mongoc_client_pool_set_apm_callbacks()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -51,9 +51,9 @@ The \fBcallbacks\fP are copied by the pool and may be destroyed at any time afte
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBpool\fP: A \fBmongoc_client_pool_t\fP\&.
+\fBpool\fP: A \fI\%mongoc_client_pool_t\fP\&.
 .IP \(bu 2
-\fBcallbacks\fP: A \fBmongoc_apm_callbacks_t\fP\&.
+\fBcallbacks\fP: A \fI\%mongoc_apm_callbacks_t\fP\&.
 .IP \(bu 2
 \fBcontext\fP: Optional pointer to include with each event notification.
 .UNINDENT
@@ -62,13 +62,13 @@ The \fBcallbacks\fP are copied by the pool and may be destroyed at any time afte
 Returns true on success. If any arguments are invalid, returns false and logs an error.
 .SH THREAD SAFETY
 .sp
-This function can only be called once on a pool, and must be called before the first call to \fBmongoc_client_pool_pop\fP\&.
+This function can only be called once on a pool, and must be called before the first call to \fI\%mongoc_client_pool_pop()\fP\&.
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
 .INDENT 3.5
 .nf
-Introduction to Application Performance Monitoring
+\fI\%Introduction to Application Performance Monitoring\fP
 .fi
 .sp
 .UNINDENT

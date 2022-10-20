@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_COLLECTION_CREATE_BULK_OPERATION" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_collection_create_bulk_operation \- mongoc_collection_create_bulk_operation()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_COLLECTION_CREATE_BULK_OPERATION" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_collection_create_bulk_operation \- mongoc_collection_create_bulk_operation()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -50,21 +50,21 @@ mongoc_collection_create_bulk_operation (
 .sp
 This function is deprecated and should not be used in new code.
 .sp
-Please use \fBmongoc_collection_create_bulk_operation_with_opts()\fP instead.
+Please use \fI\%mongoc_collection_create_bulk_operation_with_opts()\fP instead.
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+\fBcollection\fP: A \fI\%mongoc_collection_t\fP\&.
 .IP \(bu 2
 \fBordered\fP: If the operations must be performed in order.
 .IP \(bu 2
-\fBwrite_concern\fP: An optional \fBmongoc_write_concern_t\fP or \fBNULL\fP\&.
+\fBwrite_concern\fP: An optional \fI\%mongoc_write_concern_t\fP or \fBNULL\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function shall begin a new bulk operation. After creating this you may call various functions such as \fBmongoc_bulk_operation_update()\fP, \fBmongoc_bulk_operation_insert()\fP and others.
+This function shall begin a new bulk operation. After creating this you may call various functions such as \fI\%mongoc_bulk_operation_update()\fP, \fI\%mongoc_bulk_operation_insert()\fP and others.
 .sp
-After calling \fBmongoc_bulk_operation_execute()\fP the commands will be executed in as large as batches as reasonable by the client.
+After calling \fI\%mongoc_bulk_operation_execute()\fP the commands will be executed in as large as batches as reasonable by the client.
 .sp
 If \fBordered\fP is true, then processing will stop at the first error.
 .sp
@@ -76,7 +76,7 @@ If \fBordered\fP is not true, then the bulk operation will attempt to continue p
 Errors are propagated when executing the bulk operation.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_bulk_operation_t\fP that should be freed with \fBmongoc_bulk_operation_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_bulk_operation_t\fP that should be freed with \fI\%mongoc_bulk_operation_destroy()\fP when no longer in use.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -89,11 +89,11 @@ Failure to handle the result of this function is a programming error.
 .INDENT 0.0
 .INDENT 3.5
 .nf
-\fBBulk Write Operations\fP
+\fI\%Bulk Write Operations\fP
 .fi
 .sp
 .sp
-\fBmongoc_bulk_operation_t\fP
+\fI\%mongoc_bulk_operation_t\fP
 .UNINDENT
 .UNINDENT
 .SH AUTHOR

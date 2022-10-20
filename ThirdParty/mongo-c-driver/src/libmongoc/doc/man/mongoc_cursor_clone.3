@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MONGOC_CURSOR_CLONE" "3" "Nov 03, 2021" "1.19.2" "libmongoc"
-.SH NAME
-mongoc_cursor_clone \- mongoc_cursor_clone()
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "MONGOC_CURSOR_CLONE" "3" "Aug 31, 2022" "1.23.0" "libmongoc"
+.SH NAME
+mongoc_cursor_clone \- mongoc_cursor_clone()
 .SH SYNOPSIS
 .INDENT 0.0
 .INDENT 3.5
@@ -46,14 +46,14 @@ mongoc_cursor_clone (const mongoc_cursor_t *cursor)
 .SH PARAMETERS
 .INDENT 0.0
 .IP \(bu 2
-\fBcursor\fP: A \fBmongoc_cursor_t\fP\&.
+\fBcursor\fP: A \fI\%mongoc_cursor_t\fP\&.
 .UNINDENT
 .SH DESCRIPTION
 .sp
-This function shall create a copy of a \fBmongoc_cursor_t\fP\&. The cloned cursor will be reset to the beginning of the query, and therefore the query will be re\-executed on the MongoDB server when \fBmongoc_cursor_next()\fP is called.
+This function shall create a copy of a \fI\%mongoc_cursor_t\fP\&. The cloned cursor will be reset to the beginning of the query, and therefore the query will be re\-executed on the MongoDB server when \fI\%mongoc_cursor_next()\fP is called.
 .SH RETURNS
 .sp
-A newly allocated \fBmongoc_cursor_t\fP that should be freed with \fBmongoc_cursor_destroy()\fP when no longer in use.
+A newly allocated \fI\%mongoc_cursor_t\fP that should be freed with \fI\%mongoc_cursor_destroy()\fP when no longer in use.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
