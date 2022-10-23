@@ -792,9 +792,9 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 void FOServer::ProcessPlayer(Player* player)
 {
     if (player->Connection->IsHardDisconnected()) {
-        auto* cr = player->GetOwnedCritter();
-
-        cr->DetachPlayer();
+        if (auto* cr = player->GetOwnedCritter(); cr != nullptr) {
+            cr->DetachPlayer();
+        }
 
         OnPlayerLogout.Fire(player);
         EntityMngr.UnregisterEntity(player);
@@ -2096,7 +2096,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         // Try load critter from data base
         if (cr == nullptr && cr_id != 0u) {
             auto cr_doc = DbStorage.Get("PlayerCritters", cr_id);
-            if (!cr_doc.empty() || cr_doc.count("_Proto") == 0u) {
+            if (cr_doc.empty() || cr_doc.count("_Proto") == 0u) {
                 player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
                 player->Connection->GracefulDisconnect();
                 return;
