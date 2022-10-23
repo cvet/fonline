@@ -197,14 +197,9 @@ namespace SPK::FO
         void computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const override;
     };
 
-    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset)
-    {
-    }
+    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset) { }
 
-    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer>
-    {
-        return SPK_NEW(SparkQuadRenderer);
-    }
+    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer> { return SPK_NEW(SparkQuadRenderer); }
 
     void SparkQuadRenderer::Setup(string_view path, ParticleManager& particle_mngr)
     {
@@ -239,10 +234,7 @@ namespace SPK::FO
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV1() * _textureAtlasOffsets[3]);
     }
 
-    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const
-    {
-        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2);
-    }
+    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const { return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2); }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
     {
@@ -351,10 +343,7 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetEffectName() const -> const std::string&
-    {
-        return _effectName;
-    }
+    auto SparkQuadRenderer::GetEffectName() const -> const std::string& { return _effectName; }
 
     void SparkQuadRenderer::SetEffectName(const std::string& name)
     {
@@ -370,10 +359,7 @@ namespace SPK::FO
         }
     }
 
-    auto SparkQuadRenderer::GetTextureName() const -> const std::string&
-    {
-        return _textureName;
-    }
+    auto SparkQuadRenderer::GetTextureName() const -> const std::string& { return _textureName; }
 
     void SparkQuadRenderer::SetTextureName(const std::string& name)
     {
