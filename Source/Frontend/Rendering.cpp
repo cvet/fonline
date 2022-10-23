@@ -102,22 +102,6 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 #undef CHECK_ENTRY
         RUNTIME_ASSERT(false);
     };
-    static auto get_alpha_test = [](string_view s) -> AlphaTestType {
-#define CHECK_ENTRY(name) \
-    if (s == #name) \
-    return AlphaTestType::name
-        CHECK_ENTRY(Disabled);
-        CHECK_ENTRY(Never);
-        CHECK_ENTRY(Always);
-        CHECK_ENTRY(Equal);
-        CHECK_ENTRY(NotEqual);
-        CHECK_ENTRY(Less);
-        CHECK_ENTRY(LessEqual);
-        CHECK_ENTRY(Greater);
-        CHECK_ENTRY(GreaterEqual);
-#undef CHECK_ENTRY
-        RUNTIME_ASSERT(false);
-    };
 
     const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
     const auto blend_equation_default = fofx.GetStr("Effect", "BlendEquation", "FuncAdd");

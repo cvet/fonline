@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: improve particles in 2D
+
 #include "VisualParticles.h"
 #include "Application.h"
 #include "Rendering.h"
@@ -74,7 +76,9 @@ namespace SPK::FO
         RUNTIME_ASSERT(vertices % 4 == 0);
 
         _renderBuf.reset(App->Render.CreateDrawBuffer(false));
+#if FO_ENABLE_3D
         _renderBuf->Vertices3D.resize(vertices);
+#endif
 
         auto& indices = _renderBuf->Indices;
         indices.resize(vertices / 4 * 6);
@@ -97,18 +101,22 @@ namespace SPK::FO
 
     void SparkRenderBuffer::SetNextVertex(const Vector3D& pos, const Color& color)
     {
+#if FO_ENABLE_3D
         auto& v = _renderBuf->Vertices3D[_curVertexIndex++];
 
         v.Position = vec3(pos.x, pos.y, pos.z);
         v.Color = COLOR_RGBA(color.a, color.r, color.g, color.b);
+#endif
     }
 
     void SparkRenderBuffer::SetNextTexCoord(float tu, float tv)
     {
+#if FO_ENABLE_3D
         auto& v = _renderBuf->Vertices3D[_curTexCoordIndex++];
 
         v.TexCoord[0] = tu;
         v.TexCoord[1] = tv;
+#endif
     }
 
     void SparkRenderBuffer::Render(size_t vertices, RenderEffect* effect) const
@@ -117,7 +125,9 @@ namespace SPK::FO
             return;
         }
 
+#if FO_ENABLE_3D
         _renderBuf->Upload(EffectUsage::Model, vertices, vertices / 4 * 6);
+#endif
         effect->DrawBuffer(_renderBuf.get(), 0, vertices / 4 * 6);
     }
 
@@ -187,9 +197,14 @@ namespace SPK::FO
         void computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const override;
     };
 
-    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset) { }
+    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset)
+    {
+    }
 
-    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer> { return SPK_NEW(SparkQuadRenderer); }
+    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer>
+    {
+        return SPK_NEW(SparkQuadRenderer);
+    }
 
     void SparkQuadRenderer::Setup(string_view path, ParticleManager& particle_mngr)
     {
@@ -224,7 +239,10 @@ namespace SPK::FO
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV1() * _textureAtlasOffsets[3]);
     }
 
-    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const { return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2); }
+    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const
+    {
+        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2);
+    }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
     {
@@ -333,21 +351,29 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetEffectName() const -> const std::string& { return _effectName; }
+    auto SparkQuadRenderer::GetEffectName() const -> const std::string&
+    {
+        return _effectName;
+    }
 
     void SparkQuadRenderer::SetEffectName(const std::string& name)
     {
         _effectName = name;
 
         if (!_effectName.empty() && _particleMngr != nullptr) {
+#if FO_ENABLE_3D
             _effect = _particleMngr->_effectMngr.LoadEffect(EffectUsage::Model, _effectName, _path);
+#endif
         }
         else {
             _effect = nullptr;
         }
     }
 
-    auto SparkQuadRenderer::GetTextureName() const -> const std::string& { return _textureName; }
+    auto SparkQuadRenderer::GetTextureName() const -> const std::string&
+    {
+        return _textureName;
+    }
 
     void SparkQuadRenderer::SetTextureName(const std::string& name)
     {

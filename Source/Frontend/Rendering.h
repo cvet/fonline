@@ -123,19 +123,6 @@ enum class BlendEquationType
     Min,
 };
 
-enum class AlphaTestType
-{
-    Disabled,
-    Never,
-    Always,
-    Equal,
-    NotEqual,
-    Less,
-    LessEqual,
-    Greater,
-    GreaterEqual,
-};
-
 struct Vertex2D
 {
     float PosX;
