@@ -403,7 +403,9 @@ void CritterHexView::NextAnim(bool erase_front)
         return;
     }
     if (erase_front) {
-        _animSequence.begin()->ActiveItem->Release();
+        if (_animSequence.begin()->ActiveItem != nullptr) {
+            _animSequence.begin()->ActiveItem->Release();
+        }
         _animSequence.erase(_animSequence.begin());
     }
     if (_animSequence.empty()) {
@@ -570,7 +572,9 @@ auto CritterHexView::IsWalkAnim() const -> bool
 void CritterHexView::ClearAnim()
 {
     for (const auto& anim : _animSequence) {
-        anim.ActiveItem->Release();
+        if (anim.ActiveItem != nullptr) {
+            anim.ActiveItem->Release();
+        }
     }
     _animSequence.clear();
 }

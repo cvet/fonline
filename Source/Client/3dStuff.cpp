@@ -128,16 +128,16 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) :
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings}, //
     _fileSys {file_sys},
     _effectMngr {effect_mngr},
     _gameTime {game_time},
     _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
-    _meshTexCreator {std::move(mesh_tex_creator)},
+    _textureLoader {tex_loader},
     _geometry(settings),
-    _particleMngr(settings, file_sys)
+    _particleMngr(settings, effect_mngr, file_sys, std::move(tex_loader))
 {
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
@@ -231,32 +231,28 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     return nullptr;
 }
 
-auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*
+auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*
 {
     // Skip empty
     if (texture_name.empty()) {
         return nullptr;
     }
 
-    // Try find already loaded texture
-    for (auto&& mesh_tex : _loadedMeshTextures) {
-        if (_str(mesh_tex->Name).compareIgnoreCase(texture_name)) {
-            return mesh_tex->MainTex != nullptr ? mesh_tex.get() : nullptr;
-        }
+    // Create new
+    auto&& [tex, tex_data] = _textureLoader(texture_name, model_path);
+    if (tex == nullptr) {
+        return nullptr;
     }
 
-    // Create new
     auto* mesh_tex = new MeshTexture();
     mesh_tex->Name = texture_name;
-    mesh_tex->ModelPath = model_path;
-    _meshTexCreator(mesh_tex);
-    _loadedMeshTextures.emplace_back(mesh_tex);
-    return mesh_tex->MainTex != nullptr ? mesh_tex : nullptr;
-}
+    mesh_tex->MainTex = tex;
+    mesh_tex->AtlasOffsetData[0] = tex_data[0];
+    mesh_tex->AtlasOffsetData[1] = tex_data[1];
+    mesh_tex->AtlasOffsetData[2] = tex_data[2];
+    mesh_tex->AtlasOffsetData[3] = tex_data[3];
 
-void ModelManager::DestroyTextures()
-{
-    _loadedMeshTextures.clear();
+    return mesh_tex;
 }
 
 auto ModelManager::CreateModel(string_view name) -> ModelInstance*
@@ -1072,8 +1068,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             RenderEffect* effect = nullptr;
 
             // Get effect
-            if (_str(std::get<0>(eff_info)).startsWith("Parent")) // Parent_MeshName
-            {
+            if (_str(std::get<0>(eff_info)).startsWith("Parent")) { // Parent_MeshName
                 if (_parent != nullptr) {
                     const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
                     if (mesh_name[0] == '_') {

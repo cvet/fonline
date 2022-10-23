@@ -315,6 +315,7 @@ private:
     vector<SpriteInfo*> _accumulatorSprInfo {};
     vector<SpriteInfo*> _sprData {};
     MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
+    unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};
     vector<DipData> _dipQueue {};
     RenderDrawBuffer* _spritesDrawBuf {};
     RenderDrawBuffer* _primitiveDrawBuf {};

@@ -74,7 +74,10 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
 
     for (auto it = _loadedAnims.begin(); it != _loadedAnims.end();) {
         if (it->second.ResType == atlas_type) {
-            _sprMngr.DestroyAnyFrames(it->second.Anim);
+            if (it->second.Anim != nullptr) {
+                _sprMngr.DestroyAnyFrames(it->second.Anim);
+            }
+
             it = _loadedAnims.erase(it);
         }
         else {
@@ -87,8 +90,8 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
     }
 
     if (atlas_type == AtlasType::Dynamic) {
-        for (auto& [fst, snd] : _critterFrames) {
-            _sprMngr.DestroyAnyFrames(snd);
+        for (auto&& [id, anim] : _critterFrames) {
+            _sprMngr.DestroyAnyFrames(anim);
         }
         _critterFrames.clear();
     }
@@ -111,7 +114,6 @@ void ResourceManager::ReinitializeDynamicAtlas()
 
 auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 {
-    // Find already loaded
     const auto it = _loadedAnims.find(name);
     if (it != _loadedAnims.end()) {
         return it->second.Anim;
@@ -121,13 +123,11 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
     auto* anim = _sprMngr.LoadAnimation(name, false);
     _sprMngr.PopAtlasType();
 
-    if (anim == nullptr) {
-        return nullptr;
+    if (anim != nullptr) {
+        anim->Name = name;
     }
 
-    anim->Name = name;
-
-    _loadedAnims.insert(std::make_pair(name, LoadedAnim {atlas_type, anim}));
+    _loadedAnims.emplace(name, LoadedAnim {atlas_type, anim});
     return anim;
 }
 

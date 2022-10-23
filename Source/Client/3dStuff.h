@@ -42,9 +42,9 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
-#include "Particles.h"
 #include "Settings.h"
 #include "Timer.h"
+#include "VisualParticles.h"
 
 // Todo: remove unnecessary allocations from 3d
 
@@ -66,7 +66,6 @@ class ModelHierarchy;
 struct MeshTexture
 {
     string Name {};
-    string ModelPath {};
     RenderTexture* MainTex {};
     float AtlasOffsetData[4] {};
 };
@@ -179,10 +178,10 @@ class ModelManager final
     friend class ModelHierarchy;
 
 public:
-    using MeshTextureCreator = std::function<void(MeshTexture*)>;
+    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view, string_view)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
+    ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -193,9 +192,8 @@ public:
 
     [[nodiscard]] auto CreateModel(string_view name) -> ModelInstance*;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
-    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*;
+    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*;
 
-    void DestroyTextures();
     void PreloadModel(string_view name);
 
 private:
@@ -209,13 +207,12 @@ private:
     GameTimer& _gameTime;
     NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
-    MeshTextureCreator _meshTexCreator;
+    TextureLoader _textureLoader;
     GeometryHelper _geometry;
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone>> _loadedModels {};
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
-    vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float _moveTransitionTime {0.25f};

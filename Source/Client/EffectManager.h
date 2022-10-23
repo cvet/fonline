@@ -109,7 +109,7 @@ private:
 
     RenderSettings& _settings;
     FileSystem& _fileSys;
-    vector<unique_ptr<RenderEffect>> _loadedEffects {};
+    unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
     EventUnsubscriber _eventUnsubscriber {};
     bool _nonConstHelper {};
 };

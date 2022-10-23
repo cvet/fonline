@@ -64,7 +64,7 @@ public:
     explicit Direct3D_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
     ~Direct3D_DrawBuffer() override;
 
-    void Upload(EffectUsage usage, size_t custom_vertices_size) override;
+    void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
 
     int VertexBufferSize {};
     int IndexBufferSize {};
@@ -295,7 +295,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            const string vertex_shader_fname = _str("{}.{}.vert.hlsl", name, pass + 1);
+            const string vertex_shader_fname = _str("{}.{}.vert.hlsl", _str(name).eraseFileExtension(), pass + 1);
             string vertex_shader_content = loader(vertex_shader_fname);
             RUNTIME_ASSERT(!vertex_shader_content.empty());
 
@@ -337,6 +337,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                     {"TEXCOORD5", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, Bitangent)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD6", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, BlendWeights)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD7", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex3D, BlendIndices)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD8", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex3D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
                 if (D3DDevice->CreateInputLayout(local_layout, 8, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), &d3d_effect->InputLayout) != S_OK) {
                     throw EffectLoadException("Failed to create Vertex Shader 3D layout", vertex_shader_fname, vertex_shader_content);
@@ -346,10 +347,10 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 #endif
             {
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
-                    {"TEXCOORD0", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, X)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD1", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex2D, Diffuse)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD2", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, TU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD3", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, TUEgg)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD0", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, PosX)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD1", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex2D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD2", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, TexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD3", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, EggTexU)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
                 if (D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), &d3d_effect->InputLayout) != S_OK) {
                     throw EffectLoadException("Failed to create Vertex Shader 2D layout", vertex_shader_fname, vertex_shader_content);
@@ -370,7 +371,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
         // Create the pixel shader
         {
-            const string pixel_shader_fname = _str("{}.{}.frag.hlsl", name, pass + 1);
+            const string pixel_shader_fname = _str("{}.{}.frag.hlsl", _str(name).eraseFileExtension(), pass + 1);
             string pixel_shader_content = loader(pixel_shader_fname);
             RUNTIME_ASSERT(!pixel_shader_content.empty());
 
@@ -540,7 +541,7 @@ Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
 }
 
-void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
+void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
     throw NotImplementedException(LINE_STR);
 }

@@ -379,7 +379,7 @@ void FOClient::MainLoop()
     }
 
     // Network
-    if (_initNetReason != INIT_NET_REASON_NONE) {
+    if (_initNetReason != INIT_NET_REASON_NONE && !_conn.IsConnecting()) {
         _conn.Connect();
     }
 
@@ -581,10 +581,6 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         const auto key_code = ev.KeyDown.Code;
         const auto key_text = ev.KeyDown.Text;
-
-        if (ev.KeyDown.Code == KeyCode::Escape && Keyb.ShiftDwn) {
-            Settings.Quit = true;
-        }
 
         if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = true;
@@ -3467,6 +3463,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             Net_SendLogIn();
         }
         else {
+            RUNTIME_ASSERT(!_conn.IsConnecting());
             _initNetReason = INIT_NET_REASON_LOGIN;
         }
     }
@@ -3478,6 +3475,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             Net_SendCreatePlayer();
         }
         else {
+            RUNTIME_ASSERT(!_conn.IsConnecting());
             _initNetReason = INIT_NET_REASON_REG;
         }
     }
@@ -3485,9 +3483,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         _loginName = "";
         _loginPassword = "";
 
-        if (_initNetReason == INIT_NET_REASON_NONE) {
-            _initNetReason = INIT_NET_REASON_CUSTOM;
-        }
+        RUNTIME_ASSERT(_initNetReason == INIT_NET_REASON_NONE);
+        RUNTIME_ASSERT(!_conn.IsConnected());
+        RUNTIME_ASSERT(!_conn.IsConnecting());
+
+        _initNetReason = INIT_NET_REASON_CUSTOM;
     }
     else if (cmd == "DumpAtlases") {
         SprMngr.DumpAtlases();
