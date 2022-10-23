@@ -247,6 +247,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
 * Common: review all SDL_hints.h entries
 * Common: fix all warnings (especially under clang) and enable threating warnings as errors
+* Common: improve named enums
 * Common: split meanings if int8 and char in code
 * Common: move from 32 bit hashes to 64 bit
 * Common: rename uchar to uint8 and use uint8_t as alias
@@ -260,47 +261,52 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
-* Common: add _hash c-string literal helper
 * Common: fix TRect Width/Height
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
-* Common: remove critter flags
-* Common: remove special OTHER_* params
 * Common: optimize copy() to pass placement storage for value
 * Common: apply scripts strack trace
-* ServerApp: allow instantiate client in separate thread (rendering issues)
+* ServerApp: allow instantiate client in separate thread (fix mt rendering issues)
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
+* 3dStuff: move texcoord offset calculation to gpu
+* 3dStuff: merge all bones in one hierarchy and disable offset copying
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
-* 3dStuff: GetAnim1/GetAnim2 int to uint return type
+* 3dStuff: remove unnecessary allocations from 3d
 * 3dStuff: fix AtlasType referencing in 3dStuff
-* Client: handle mouse wheel
 * Client: run updater if resources changed
-* Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
 * Client: global map critters
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
-* CritterHexView: migrate critter on head text moving in scripts
-* CritterHexView: do same for 2d animations
+* CritterHexView: restore 2D sprite moving
+* CritterHexView: expose text on head offset to some settings
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
+* MapView: optimize, collect separate collection with IsNeedProcess
 * MapView: rework smooth item re-appearing before same item still on map
 * MapView: optimize lighting rebuilding to skip unvisible lights
+* MapView: generate unique entity id
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
-* SpriteManager: restore texture saving
+* SpriteManager: restore ShowSpriteBorders
 * SpriteManager: improve DirectX rendering
 * SpriteManager: maybe restrict fps at 60?
 * SpriteManager: optimize sprite atlas filling
-* SpriteManager: improve client rendering brightness
+* SpriteManager: convert FT_ font flags to enum
+* SpriteManager: fix FT_CENTERY_ENGINE workaround
 * SpriteManager: move fonts stuff to separate module
+* SpriteManager: optimize text formatting - cache previous results
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
+* VisualParticles: improve particles in 2D
+* AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
+* DeferredCalls: improve deferred calls
 * Dialogs: validate script entries, hashes
+* Dialogs: verify DlgScriptFunc
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
@@ -311,66 +317,48 @@ Please follow these instructions to understand how to use this engine by design:
 * Log: delete \n appendix from WriteLog
 * Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
-* MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
-* Properties: SetValueFromData
-* Properties: convert to hstring
+* Properties: validate property name identifier
 * Properties: restore quest variables
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
-* Properties: SetValue for string
-* Properties: GetValue for array
-* Properties: SetValue for array
-* Properties: GetValue for dict
-* Properties: SetValue for dict
-* ProtoManager: rename ProtoManager to ProtoBaker and move to Baker stuff
 * ScriptSystem: remove commented code
 * Settings-Include: rework global Quit setting
+* Settings-Include: move HeadBone to fo3d settings
+* Settings-Include: move LegBones to fo3d settings
+* Settings-Include: move resource files control (include/exclude/pack rules) to cmake
 * Settings: improve editable entry for arrays
-* StringUtils: make isNumber const
 * Application: move all these statics to App class fields
-* Application: fix workaround for strange behaviour of button focus
-* ApplicationHeadless: implement effect CanBatch
+* Application: rework sdl_event.text.text
 * Rendering-Direct3D: pass additional defines to shaders (passed + internal)
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
 * Rendering-OpenGL: map all framebuffer ext functions
-* Rendering-OpenGL: pass additional defines to shaders (passed + internal)
-* Rendering-OpenGL: smooth only if( zoom && *zoom != 1.0f )
+* Rendering-OpenGL: bind time, random, anim
 * Rendering: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
-* AngelScriptScripting-Template: MarshalDict
-* AngelScriptScripting-Template: MarshalBackScalarDict
-* AngelScriptScripting-Template: GetASObjectInfo
+* AngelScriptScripting-Template: GetASObjectInfo add detailed info about object
 * ClientCritterScriptMethods: handle AbstractItem in Animate
+* ClientCritterScriptMethods: call animCallback
 * ClientItemScriptMethods: solve recursion in GetMapPos
-* ClientItemScriptMethods: need attention!
-* CommonGlobalScriptMethods: fix script system
-* MapperGlobalScriptMethods: need attention! (6)
+* CommonGlobalScriptMethods: quad tiles fix (2)
 * MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
-* ServerCritterScriptMethods: handle AbstractItem in Action
-* ServerCritterScriptMethods: handle AbstractItem in Animate
 * AdminPanel: admin panel network to Asio
-* Critter: rename to IsOwnedByPlayer
-* Critter: replace to !IsOwnedByPlayer
-* Critter: move Flags to properties
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
-* DeferredCalls: improve deferred calls
 * EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
+* Location: EntranceScriptBindId
 * Location: encapsulate Location data
-* MapManager: need attention!
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
+* Player: restore automaps
 * Player: allow attach many critters to sigle player
-* Server: move server loop to async processing
-* Server: restore settings
 * Server: disable look distance caching
-* Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
+* Server: verify property data from client
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: restore DialogUseResult
@@ -378,9 +366,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: improve ban system
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
+* ServerDeferredCalls: improve deferred calls
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
 * ImageBaker: swap colors of fo palette once in header
-* Mapper: need attention! (21)
+* Mapper: clone entities
+* Mapper: clone children
+* Mapper: need attention! (3)
+* Mapper: map resizing
 * Mapper: mapper render iface layer
   
 ## Repository structure
