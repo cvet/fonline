@@ -333,8 +333,6 @@ protected:
     BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
     BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
-    AlphaTestType _alphaTest[EFFECT_MAX_PASSES] {};
-    float _alphaTestTreshhold[EFFECT_MAX_PASSES] {};
     bool _depthWrite[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
     bool _isShadow[EFFECT_MAX_PASSES] {};

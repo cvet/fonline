@@ -33,7 +33,6 @@
 
 #include "Rendering.h"
 #include "ConfigFile.h"
-#include "GL/glew.h"
 #include "StringUtils.h"
 
 // clang-format off
@@ -122,7 +121,6 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
     const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
     const auto blend_equation_default = fofx.GetStr("Effect", "BlendEquation", "FuncAdd");
-    const auto alpha_test_default = fofx.GetStr("Effect", "AlphaTest", "Disabled");
     const auto depth_write_default = fofx.GetStr("Effect", "DepthWrite", "True");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
@@ -134,16 +132,6 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
         _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", _str("BlendEquation{}", pass_str), blend_equation_default));
-
-        const auto alpha_test_str = fofx.GetStr("Effect", _str("AlphaTest{}", pass_str), alpha_test_default);
-        if (const auto tok = _str(alpha_test_str).split(' '); tok.size() == 2) {
-            _alphaTest[pass] = get_alpha_test(tok[0]);
-            RUNTIME_ASSERT(_str(tok[1]).isFloat());
-            _alphaTestTreshhold[pass] = _str(tok[1]).toFloat();
-        }
-        else {
-            _alphaTest[pass] = get_alpha_test(alpha_test_str);
-        }
 
         _depthWrite[pass] = _str(fofx.GetStr("Effect", _str("DepthWrite{}", pass_str), depth_write_default)).toBool();
     }

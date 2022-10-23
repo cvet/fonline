@@ -1128,25 +1128,6 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
     throw UnreachablePlaceException(LINE_STR);
 }
 
-static auto ConvertAlphaTest(AlphaTestType name) -> GLenum
-{
-    switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case AlphaTestType::name: \
-        return glname
-        CHECK_ENTRY(Never, GL_NEVER);
-        CHECK_ENTRY(Always, GL_ALWAYS);
-        CHECK_ENTRY(Equal, GL_EQUAL);
-        CHECK_ENTRY(NotEqual, GL_NOTEQUAL);
-        CHECK_ENTRY(Less, GL_LESS);
-        CHECK_ENTRY(LessEqual, GL_LEQUAL);
-        CHECK_ENTRY(Greater, GL_GREATER);
-        CHECK_ENTRY(GreaterEqual, GL_GEQUAL);
-#undef CHECK_ENTRY
-    }
-    throw UnreachablePlaceException(LINE_STR);
-}
-
 OpenGL_Effect::~OpenGL_Effect()
 {
     for (size_t i = 0; i < _passCount; i++) {
@@ -1297,10 +1278,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(ConvertBlendEquation(_blendEquation[pass])));
         }
-        if (_alphaTest[pass] != AlphaTestType::Disabled) {
-            GL(glEnable(GL_ALPHA_TEST));
-            GL(glAlphaFunc(ConvertAlphaTest(_alphaTest[pass]), _alphaTestTreshhold[pass]));
-        }
         if (!_depthWrite[pass]) {
             GL(glDepthMask(GL_FALSE));
         }
@@ -1314,9 +1291,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(GL_FUNC_ADD));
-        }
-        if (_alphaTest[pass] != AlphaTestType::Disabled) {
-            GL(glDisable(GL_ALPHA_TEST));
         }
         if (!_depthWrite[pass]) {
             GL(glDepthMask(GL_TRUE));
