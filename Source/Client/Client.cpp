@@ -431,8 +431,10 @@ void FOClient::MainLoop()
     // Render
     EffectMngr.UpdateEffects(GameTime);
 
-    SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     {
+        SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+        const auto end_scene = ScopeCallback([this]() noexcept { SprMngr.EndScene(); });
+
         // Quake effect
         ProcessScreenEffectQuake();
 
@@ -457,7 +459,6 @@ void FOClient::MainLoop()
 
         ProcessScreenEffectFading();
     }
-    SprMngr.EndScene();
 }
 
 void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
