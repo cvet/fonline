@@ -114,6 +114,10 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
     }
 #endif
 
+#if FO_LINUX && __has_builtin(__builtin_debugtrap)
+    __builtin_debugtrap();
+#endif
+
     return false;
 }
 
