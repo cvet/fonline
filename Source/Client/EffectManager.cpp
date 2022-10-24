@@ -55,10 +55,10 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view 
         }
 
         if (const auto file = _fileSys.ReadFile(path)) {
-            WriteLog("Effect file '{}' not found", path);
             return file.GetStr();
         }
 
+        BreakIntoDebugger();
         WriteLog("Effect file '{}' not found", path);
         return {};
     });
