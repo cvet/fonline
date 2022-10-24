@@ -105,6 +105,7 @@ static void MainEntry(void*)
         catch (const ResourcesOutdatedException&) {
             try {
                 Data->ResourcesSynced = false;
+                Data->Client->Shutdown();
                 Data->Client->Release();
                 Data->Client = nullptr;
             }
@@ -120,6 +121,7 @@ static void MainEntry(void*)
 
             // Recreate client on unhandled error
             try {
+                Data->Client->Shutdown();
                 Data->Client->Release();
                 Data->Client = nullptr;
             }
@@ -193,6 +195,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
+        Data->Client->Shutdown();
         delete Data->Client;
 
         ExitApp(true);

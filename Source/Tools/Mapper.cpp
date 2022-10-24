@@ -751,10 +751,8 @@ void FOMapper::MapperMainLoop()
         CurMap->Process();
     }
 
+    SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
     {
-        SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
-        const auto end_scene = ScopeCallback([this]() noexcept { SprMngr.EndScene(); });
-
         DrawIfaceLayer(0);
         if (CurMap != nullptr) {
             CurMap->DrawMap();
@@ -771,6 +769,7 @@ void FOMapper::MapperMainLoop()
         CurDraw();
         DrawIfaceLayer(5);
     }
+    SprMngr.EndScene();
 }
 
 void FOMapper::RefreshTiles(int tab)
