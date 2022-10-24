@@ -2653,7 +2653,7 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return nullptr;
     }
-    if (CurMap->GetField(hx, hy).Crit != nullptr) {
+    if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
         return nullptr;
     }
 
@@ -2745,13 +2745,13 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         ushort hx = cr->GetHexX();
         ushort hy = cr->GetHexY();
 
-        if (CurMap->GetField(hx, hy).Crit != nullptr) {
+        if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
             auto place_found = false;
             for (uchar d = 0; d < 6; d++) {
                 ushort hx_ = hx;
                 ushort hy_ = hy;
                 Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
-                if (CurMap->GetField(hx_, hy_).Crit == nullptr) {
+                if (CurMap->GetField(hx_, hy_).GetActiveCritter() == nullptr) {
                     hx = hx_;
                     hy = hy_;
                     place_found = true;
@@ -2888,13 +2888,13 @@ void FOMapper::BufferPaste(int, int)
 
         const Entity* owner;
         if (entity_buf.IsCritter) {
-            if (CurMap->GetField(hx, hy).Crit != nullptr) {
+            if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
                 auto place_founded = false;
                 for (int d = 0; d < 6; d++) {
                     ushort hx_ = entity_buf.HexX;
                     ushort hy_ = entity_buf.HexY;
                     Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
-                    if (CurMap->GetField(hx_, hy_).Crit == nullptr) {
+                    if (CurMap->GetField(hx_, hy_).GetActiveCritter() == nullptr) {
                         hx = hx_;
                         hy = hy_;
                         place_founded = true;

@@ -1073,7 +1073,9 @@ void FOClient::Net_OnAddCritter()
     cr->SetAnim2Knockout(anim2_ko);
     cr->SetAnim2Dead(anim2_dead);
     cr->SetPlayer(is_owned_by_player, is_chosen);
-    cr->SetPlayerOffline(is_player_offline);
+    if (is_owned_by_player) {
+        cr->SetPlayerOffline(is_player_offline);
+    }
 
     if (cr->IsChosen()) {
         _chosen = cr;
@@ -1810,11 +1812,6 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeMoveDirAngle(dir_angle);
 
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        const auto& f = CurMap->GetField(hx, hy);
-        if (f.Crit && f.Crit->IsFinishing()) {
-            CurMap->DestroyCritter(f.Crit);
-        }
-
         CurMap->TransitCritter(cr, hx, hy, true);
 
         if (cr->IsChosen()) {
@@ -3380,8 +3377,8 @@ void FOClient::LmapPrepareMap()
             auto& f = CurMap->GetField(static_cast<ushort>(i1), static_cast<ushort>(i2));
             uint cur_color;
 
-            if (f.Crit != nullptr) {
-                cur_color = (f.Crit == chosen ? 0xFF0000FF : 0xFFFF0000);
+            if (const auto* cr = f.GetActiveCritter(); cr != nullptr) {
+                cur_color = (cr == chosen ? 0xFF0000FF : 0xFFFF0000);
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
