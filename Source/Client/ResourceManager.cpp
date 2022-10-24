@@ -446,11 +446,10 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
         return it->second;
     }
 
-    // Load file
-    static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
 
     // Try load fofrm
+    static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
     string spr_name = _str("{}{}{}.fofrm", model_name, frm_ind[anim1], frm_ind[anim2]);
     auto* frames = _sprMngr.LoadAnimation(spr_name, false);
 
@@ -459,6 +458,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
         spr_name = _str("{}{}{}.frm", model_name, frm_ind[anim1], frm_ind[anim2]);
         frames = _sprMngr.LoadAnimation(spr_name, false);
     }
+
     _sprMngr.PopAtlasType();
 
     _critterFrames.insert(std::make_pair(AnimMapId(model_name, anim1, anim2, true), frames));

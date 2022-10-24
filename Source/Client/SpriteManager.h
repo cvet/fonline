@@ -309,7 +309,7 @@ private:
     vector<RenderTarget*> _rt3D {};
     vector<RenderTarget*> _rtStack {};
     vector<unique_ptr<RenderTarget>> _rtAll {};
-    vector<tuple<AtlasType, bool>> _atlasStack {};
+    vector<tuple<AtlasType, bool>> _targetAtlasStack {};
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
     bool _accumulatorActive {};
     vector<SpriteInfo*> _accumulatorSprInfo {};

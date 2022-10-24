@@ -523,12 +523,12 @@ void SpriteManager::PushAtlasType(AtlasType atlas_type)
 
 void SpriteManager::PushAtlasType(AtlasType atlas_type, bool one_image)
 {
-    _atlasStack.emplace_back(atlas_type, one_image);
+    _targetAtlasStack.emplace_back(atlas_type, one_image);
 }
 
 void SpriteManager::PopAtlasType()
 {
-    _atlasStack.pop_back();
+    _targetAtlasStack.pop_back();
 }
 
 void SpriteManager::AccumulateAtlasData()
@@ -562,9 +562,9 @@ auto SpriteManager::IsAccumulateAtlasActive() const -> bool
 auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
 {
     auto atlas = std::make_unique<TextureAtlas>();
-    atlas->Type = std::get<0>(_atlasStack.back());
+    atlas->Type = std::get<0>(_targetAtlasStack.back());
 
-    if (!std::get<1>(_atlasStack.back())) {
+    if (!std::get<1>(_targetAtlasStack.back())) {
         switch (atlas->Type) {
         case AtlasType::Static:
             w = std::min(AppRender::MAX_ATLAS_WIDTH, 4096u);
@@ -598,7 +598,7 @@ auto SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtl
 {
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
-    const auto atlas_type = std::get<0>(_atlasStack.back());
+    const auto atlas_type = std::get<0>(_targetAtlasStack.back());
     const auto w = static_cast<uint>(si->Width + ATLAS_SPRITES_PADDING * 2);
     const auto h = static_cast<uint>(si->Height + ATLAS_SPRITES_PADDING * 2);
 
@@ -738,8 +738,8 @@ void SpriteManager::DumpAtlases() const
 auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint* data) -> uint
 {
     // Get width, height
-    si->DataAtlasType = std::get<0>(_atlasStack.back());
-    si->DataAtlasOneImage = std::get<1>(_atlasStack.back());
+    si->DataAtlasType = std::get<0>(_targetAtlasStack.back());
+    si->DataAtlasOneImage = std::get<1>(_targetAtlasStack.back());
     si->Width = static_cast<ushort>(w);
     si->Height = static_cast<ushort>(h);
 
@@ -825,6 +825,8 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 
 auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*
 {
+    RUNTIME_ASSERT(!_targetAtlasStack.empty());
+
     auto* dummy = use_dummy ? DummyAnimation : nullptr;
 
     if (fname.empty()) {
@@ -942,6 +944,8 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
                 DestroyAnyFrames(anim);
             }
             else {
+                BreakIntoDebugger();
+                WriteLog("Texture '{}' for '{}' not found", name, base_path);
                 _loadedMeshTextures[path] = nullptr;
             }
         }
@@ -1099,7 +1103,7 @@ auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInsta
 
     // Create render sprite
     model->SprId = 0;
-    model->SprAtlasType = static_cast<int>(std::get<0>(_atlasStack.back()));
+    model->SprAtlasType = static_cast<int>(std::get<0>(_targetAtlasStack.back()));
     if (auto_redraw) {
         RefreshModelSprite(model);
         _autoRedrawModel.push_back(model);
