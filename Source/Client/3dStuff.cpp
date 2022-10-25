@@ -1916,6 +1916,8 @@ void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, 
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
+    _drawWidth = _modelMngr._settings.DefaultModelDrawWidth;
+    _drawHeight = _modelMngr._settings.DefaultModelDrawHeight;
 }
 
 auto ModelInformation::Load(string_view name) -> bool

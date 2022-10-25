@@ -184,6 +184,8 @@ FIXED_SETTING(int, FogExtraLength, 0);
 FIXED_SETTING(float, CritterTurnAngle, 100.0f);
 FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
 FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
+FIXED_SETTING(int, DefaultModelDrawWidth, 256);
+FIXED_SETTING(int, DefaultModelDrawHeight, 128);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
