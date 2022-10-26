@@ -1497,17 +1497,12 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(Sprite* prep) const -> IRect
+auto SpriteManager::GetDrawRect(const Sprite* prep) const -> IRect
 {
     const auto id = prep->PSprId != nullptr ? *prep->PSprId : prep->SprId;
-    if (id >= _sprData.size()) {
-        return IRect();
-    }
-
+    RUNTIME_ASSERT(id < _sprData.size());
     const auto* si = _sprData[id];
-    if (si == nullptr) {
-        return IRect();
-    }
+    RUNTIME_ASSERT(si);
 
     auto x = prep->ScrX - si->Width / 2 + si->OffsX + *prep->PScrX;
     auto y = prep->ScrY - si->Height + si->OffsY + *prep->PScrY;
@@ -2207,6 +2202,8 @@ void SpriteManager::BuildFonts()
 
 void SpriteManager::BuildFont(int index)
 {
+    NON_CONST_METHOD_HINT();
+
 #define PIXEL_AT(tex_data, width, x, y) (*((uint*)(tex_data).data() + (y) * (width) + (x)))
 
     auto& font = *_allFonts[index];
@@ -3351,7 +3348,7 @@ auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -
 
 auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
 {
-    auto* font = GetFont(num_font);
+    const auto* font = GetFont(num_font);
     if (font == nullptr) {
         return false;
     }

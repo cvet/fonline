@@ -875,28 +875,35 @@ auto MapView::GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>
 auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
 {
     auto result = IRect();
-    const auto& field = GetField(hx, hy);
 
-    if (field.Critters != nullptr) {
-        for (const auto* cr : *field.Critters) {
-            const auto& r = cr->GetTextRect();
-            result.Left = std::min(result.Left, r.Left);
-            result.Right = std::max(result.Right, r.Right);
-            result.Bottom = std::min(result.Bottom, r.Bottom);
-            result.Top = std::max(result.Top, r.Top);
+    if (const auto& field = GetField(hx, hy); field.IsView) {
+        if (field.Critters != nullptr) {
+            for (const auto* cr : *field.Critters) {
+                if (cr->SprDrawValid) {
+                    const auto r = cr->GetDrawRect();
+                    result.Left = std::min(result.Left, r.Left);
+                    result.Top = std::min(result.Top, r.Top);
+                    result.Right = std::max(result.Right, r.Right);
+                    result.Bottom = std::max(result.Bottom, r.Bottom);
+                }
+            }
         }
-    }
 
-    if (field.Items != nullptr) {
-        for (const auto* item : *field.Items) {
-            const auto* si = _engine->SprMngr.GetSpriteInfo(item->SprId);
-            if (si != nullptr) {
-                const auto w = si->Width - si->OffsX;
-                const auto h = si->Height - si->OffsY;
-                result.Left = std::min(result.Left, -w);
-                result.Right = std::max(result.Right, w);
-                result.Bottom = std::min(result.Bottom, h);
-                result.Top = std::max(result.Top, h + 100);
+        if (field.Items != nullptr) {
+            for (const auto* item : *field.Items) {
+                if (item->SprDrawValid) {
+                    const auto* si = _engine->SprMngr.GetSpriteInfo(item->SprId);
+                    if (si != nullptr) {
+                        const auto l = field.ScrX + _engine->Settings.MapHexWidth / 2 - si->OffsX;
+                        const auto t = field.ScrY + _engine->Settings.MapHexHeight / 2 - si->OffsY;
+                        const auto r = l + si->Width;
+                        const auto b = t + si->Height;
+                        result.Left = std::min(result.Left, l);
+                        result.Top = std::min(result.Top, t);
+                        result.Right = std::max(result.Right, r);
+                        result.Bottom = std::max(result.Bottom, b);
+                    }
+                }
             }
         }
     }
@@ -934,7 +941,9 @@ auto MapView::RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort 
     _items.push_back(item);
 
     if (IsHexToDraw(from_hx, from_hy)) {
-        item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(item), from_hx, from_hy + item->GetDrawOrderOffsetHexY(), (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+        item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(item), from_hx, from_hy + item->GetDrawOrderOffsetHexY(), //
+            _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, //
+            0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
         if (!item->GetIsNoLightInfluence()) {
             item->SprDraw->SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
         }
@@ -1082,7 +1091,9 @@ void MapView::RebuildMap(int rx, int ry)
         if (_isShowTrack && GetHexTrack(nx, ny) != 0) {
             const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameTick()) : _picTrack2->GetCurSprId(_engine->GameTime.GameTick()));
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainTree.AddSprite(DrawOrderType::Track, nx, ny, (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            auto& spr = _mainTree.AddSprite(DrawOrderType::Track, nx, ny, //
+                _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, //
+                spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             field.AddSpriteToChain(&spr);
         }
 
@@ -1090,7 +1101,9 @@ void MapView::RebuildMap(int rx, int ry)
         if (_isShowHex) {
             const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameTick());
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainTree.AddSprite(DrawOrderType::HexGrid, nx, ny, si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            auto& spr = _mainTree.AddSprite(DrawOrderType::HexGrid, nx, ny, //
+                si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, //
+                spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             field.AddSpriteToChain(&spr);
         }
 
@@ -1130,7 +1143,9 @@ void MapView::RebuildMap(int rx, int ry)
                     }
                 }
 
-                auto& spr = _mainTree.AddSprite(EvaluateItemDrawOrder(item), nx, ny + item->GetDrawOrderOffsetHexY(), _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                auto& spr = _mainTree.AddSprite(EvaluateItemDrawOrder(item), nx, ny + item->GetDrawOrderOffsetHexY(), //
+                    _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
+                    0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence()) {
                     spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
                 }
@@ -1146,10 +1161,14 @@ void MapView::RebuildMap(int rx, int ry)
                     continue;
                 }
 
-                auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(cr), nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+                auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(cr), nx, ny, //
+                    _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
+                    0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
                 spr.SetLight(CornerType::EastWest, _hexLight.data(), _maxHexX, _maxHexY);
                 cr->SprDraw = &spr;
-                cr->SetSprRect();
+
+                cr->RefreshOffs();
+                cr->ResetOk();
 
                 auto contour = ContourType::None;
                 if (cr->GetId() == _critterContourCrId) {
@@ -1278,7 +1297,9 @@ void MapView::RebuildMapOffset(int ox, int oy)
         if (_isShowTrack && (GetHexTrack(nx, ny) != 0)) {
             const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameTick()) : _picTrack2->GetCurSprId(_engine->GameTime.GameTick()));
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainTree.InsertSprite(DrawOrderType::Track, nx, ny, _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            auto& spr = _mainTree.InsertSprite(DrawOrderType::Track, nx, ny, //
+                _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, //
+                spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             field.AddSpriteToChain(&spr);
         }
 
@@ -1286,7 +1307,9 @@ void MapView::RebuildMapOffset(int ox, int oy)
         if (_isShowHex) {
             const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameTick());
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainTree.InsertSprite(DrawOrderType::HexGrid, nx, ny, si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            auto& spr = _mainTree.InsertSprite(DrawOrderType::HexGrid, nx, ny, //
+                si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, //
+                spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             field.AddSpriteToChain(&spr);
         }
 
@@ -1326,7 +1349,9 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     }
                 }
 
-                auto& spr = _mainTree.InsertSprite(EvaluateItemDrawOrder(item), nx, ny + item->GetDrawOrderOffsetHexY(), _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                auto& spr = _mainTree.InsertSprite(EvaluateItemDrawOrder(item), nx, ny + item->GetDrawOrderOffsetHexY(), //
+                    _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
+                    0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence()) {
                     spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
                 }
@@ -1342,10 +1367,14 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     continue;
                 }
 
-                auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+                auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, //
+                    _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
+                    0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
                 spr.SetLight(CornerType::EastWest, _hexLight.data(), _maxHexX, _maxHexY);
                 cr->SprDraw = &spr;
-                cr->SetSprRect();
+
+                cr->RefreshOffs();
+                cr->ResetOk();
 
                 auto contour = ContourType::None;
                 if (cr->GetId() == _critterContourCrId) {
@@ -1369,11 +1398,15 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
                 if (_mapperMode) {
                     auto& tiles = GetTiles(nx, ny, false);
-                    auto& spr = _tilesTree.InsertSprite(EvaluateTileDrawOrder(tile), nx, ny, tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
+                    auto& spr = _tilesTree.InsertSprite(EvaluateTileDrawOrder(tile), nx, ny, //
+                        tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, //
+                        spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
                     field.AddSpriteToChain(&spr);
                 }
                 else {
-                    auto& spr = _tilesTree.InsertSprite(EvaluateTileDrawOrder(tile), nx, ny, tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
+                    auto& spr = _tilesTree.InsertSprite(EvaluateTileDrawOrder(tile), nx, ny, //
+                        tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, //
+                        spr_id, nullptr, nullptr, nullptr, nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
                     field.AddSpriteToChain(&spr);
                 }
             }
@@ -1388,12 +1421,16 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
                 if (_mapperMode) {
                     auto& roofs = GetTiles(nx, ny, true);
-                    auto& spr = _roofTree.InsertSprite(EvaluateTileDrawOrder(roof), nx, ny, roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
+                    auto& spr = _roofTree.InsertSprite(EvaluateTileDrawOrder(roof), nx, ny, //
+                        roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, //
+                        spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
                     spr.SetEggAppearence(EggAppearenceType::Always);
                     field.AddSpriteToChain(&spr);
                 }
                 else {
-                    auto& spr = _roofTree.InsertSprite(EvaluateTileDrawOrder(roof), nx, ny, roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
+                    auto& spr = _roofTree.InsertSprite(EvaluateTileDrawOrder(roof), nx, ny, //
+                        roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, //
+                        spr_id, nullptr, nullptr, nullptr, &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
                     spr.SetEggAppearence(EggAppearenceType::Always);
                     field.AddSpriteToChain(&spr);
                 }
@@ -1423,7 +1460,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
     // Critters text rect
     for (auto* cr : _critters) {
-        cr->SetSprRect();
+        cr->RefreshOffs();
     }
 
     // Light
@@ -1951,11 +1988,15 @@ void MapView::RebuildTiles()
 
                 if (_mapperMode) {
                     auto& tiles = GetTiles(hx, hy, false);
-                    auto& spr = _tilesTree.AddSprite(EvaluateTileDrawOrder(tile), hx, hy, tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
+                    auto& spr = _tilesTree.AddSprite(EvaluateTileDrawOrder(tile), hx, hy, //
+                        tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, //
+                        spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
                     field.AddSpriteToChain(&spr);
                 }
                 else {
-                    auto& spr = _tilesTree.AddSprite(EvaluateTileDrawOrder(tile), hx, hy, tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
+                    auto& spr = _tilesTree.AddSprite(EvaluateTileDrawOrder(tile), hx, hy, //
+                        tile.OffsX + _engine->Settings.MapTileOffsX, tile.OffsY + _engine->Settings.MapTileOffsY, &field.ScrX, &field.ScrY, //
+                        spr_id, nullptr, nullptr, nullptr, nullptr, &_engine->EffectMngr.Effects.Tile, nullptr);
                     field.AddSpriteToChain(&spr);
                 }
             }
@@ -2001,12 +2042,16 @@ void MapView::RebuildRoof()
 
                     if (_mapperMode) {
                         auto& roofs = GetTiles(hx, hy, true);
-                        auto& spr = _roofTree.AddSprite(EvaluateTileDrawOrder(roof), hx, hy, roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
+                        auto& spr = _roofTree.AddSprite(EvaluateTileDrawOrder(roof), hx, hy, //
+                            roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, //
+                            spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
                         spr.SetEggAppearence(EggAppearenceType::Always);
                         field.AddSpriteToChain(&spr);
                     }
                     else {
-                        auto& spr = _roofTree.AddSprite(EvaluateTileDrawOrder(roof), hx, hy, roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, spr_id, nullptr, nullptr, nullptr, &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
+                        auto& spr = _roofTree.AddSprite(EvaluateTileDrawOrder(roof), hx, hy, //
+                            roof.OffsX + _engine->Settings.MapRoofOffsX, roof.OffsY + _engine->Settings.MapRoofOffsY, &field.ScrX, &field.ScrY, //
+                            spr_id, nullptr, nullptr, nullptr, &_engine->Settings.RoofAlpha, &_engine->EffectMngr.Effects.Roof, nullptr);
                         spr.SetEggAppearence(EggAppearenceType::Always);
                         field.AddSpriteToChain(&spr);
                     }
@@ -2996,10 +3041,15 @@ void MapView::AddCritterToField(CritterHexView* cr)
     }
 
     if (IsHexToDraw(hx, hy) && cr->Visible) {
-        auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), hx, hy, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+        auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), hx, hy, //
+            _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, //
+            &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, //
+            &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
         spr.SetLight(CornerType::EastWest, _hexLight.data(), _maxHexX, _maxHexY);
         cr->SprDraw = &spr;
-        cr->SetSprRect();
+
+        cr->RefreshOffs();
+        cr->ResetOk();
 
         auto contour = ContourType::None;
         if (cr->GetId() == _critterContourCrId) {
@@ -3405,10 +3455,11 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, b
             continue;
         }
 
-        const auto l = static_cast<int>(static_cast<float>(cr->DRect.Left + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-        const auto r = static_cast<int>(static_cast<float>(cr->DRect.Right + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-        const auto t = static_cast<int>(static_cast<float>(cr->DRect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
-        const auto b = static_cast<int>(static_cast<float>(cr->DRect.Bottom + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
+        const auto rect = cr->GetDrawRect();
+        const auto l = static_cast<int>(static_cast<float>(rect.Left + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+        const auto r = static_cast<int>(static_cast<float>(rect.Right + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+        const auto t = static_cast<int>(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
+        const auto b = static_cast<int>(static_cast<float>(rect.Bottom + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
 
         if (wide_rangle) {
             const auto check_pixel = [this, cr, l, r, t, b](int xx, int yy) -> bool {

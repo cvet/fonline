@@ -812,6 +812,11 @@ void ModelInstance::SetCombatMode(bool enabled)
     _isCombatMode = enabled;
 }
 
+auto ModelInstance::GetViewHeight() const -> int
+{
+    return _modelInfo->_viewHeight;
+}
+
 void ModelInstance::RefreshMoveAnimation()
 {
     if (_moveAnimController == nullptr) {
@@ -1916,6 +1921,7 @@ void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, 
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
+    _viewHeight = _modelMngr._settings.DefaultModelViewHeight;
     _drawWidth = _modelMngr._settings.DefaultModelDrawWidth;
     _drawHeight = _modelMngr._settings.DefaultModelDrawHeight;
 }
@@ -2455,15 +2461,14 @@ auto ModelInformation::Load(string_view name) -> bool
                 _shadowDisabled = true;
             }
             else if (token == "DrawSize") {
-                auto w = 0;
-                auto h = 0;
                 (*istr) >> buf;
-                w = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+                _drawWidth = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                h = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
-
-                _drawWidth = w;
-                _drawHeight = h;
+                _drawHeight = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
+            }
+            else if (token == "ViewHeight") {
+                (*istr) >> buf;
+                _viewHeight = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
             else if (token == "DisableAnimationInterpolation") {
                 disable_animation_interpolation = true;

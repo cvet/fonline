@@ -141,7 +141,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     // Finish fonts
     SprMngr.BuildFonts();
-    SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Connection handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
@@ -1246,7 +1245,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
         break;
     }
 
-    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n'); };
+    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}"); };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr) : nullptr);
 

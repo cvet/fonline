@@ -68,7 +68,7 @@ public:
     [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto GetTextRect() const -> IRect;
+    [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
@@ -89,7 +89,6 @@ public:
     void Process();
     void ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item);
     void ResetOk();
-    void SetSprRect();
     void ClearAnim();
     void SetAnimOffs(int ox, int oy);
     void AddExtraOffs(int ext_ox, int ext_oy);
@@ -109,7 +108,6 @@ public:
     RenderEffect* DrawEffect {};
     bool Visible {true};
     uchar Alpha {};
-    IRect DRect {};
     bool SprDrawValid {};
     Sprite* SprDraw {};
     uint SprId {};
@@ -170,7 +168,6 @@ private:
     uint _finishingTime {};
     bool _fadingEnabled {};
     bool _fadeUp {};
-    IRect _textRect {};
     uint _tickFidget {};
     string _strTextOnHead {};
     uint _tickStartText {};

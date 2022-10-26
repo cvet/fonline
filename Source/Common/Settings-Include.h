@@ -184,7 +184,8 @@ FIXED_SETTING(int, FogExtraLength, 0);
 FIXED_SETTING(float, CritterTurnAngle, 100.0f);
 FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
 FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
-FIXED_SETTING(int, DefaultModelDrawWidth, 256);
+FIXED_SETTING(int, DefaultModelViewHeight, 0);
+FIXED_SETTING(int, DefaultModelDrawWidth, 128);
 FIXED_SETTING(int, DefaultModelDrawHeight, 128);
 SETTING_GROUP_END();
 
@@ -219,6 +220,7 @@ VARIABLE_SETTING(bool, ShowPlayerNames, false);
 VARIABLE_SETTING(bool, ShowNpcNames, false);
 VARIABLE_SETTING(bool, ShowCritId, false);
 VARIABLE_SETTING(bool, ShowGroups, true);
+FIXED_SETTING(int, NameOffset, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

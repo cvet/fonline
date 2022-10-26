@@ -167,7 +167,7 @@ auto Keyboard::IsInvalidChar(string_view str, uint flags, uint& length) const ->
 {
     const auto ucs = utf8::Decode(str, &length);
     if (!utf8::IsValid(ucs)) {
-        return false;
+        return true;
     }
 
     if (length == 1) {

@@ -254,6 +254,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> uint;
     [[nodiscard]] auto IsCombatMode() const -> bool;
+    [[nodiscard]] auto GetViewHeight() const -> int;
 
     void SetupFrame();
     void StartMeshGeneration();
@@ -422,6 +423,7 @@ private:
     bool _shadowDisabled {};
     uint _drawWidth {};
     uint _drawHeight {};
+    int _viewHeight {};
     hstring _rotationBone {};
 };
 
