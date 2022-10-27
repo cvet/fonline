@@ -100,6 +100,39 @@ auto IsRunInDebugger() -> bool
 {
 #if FO_WINDOWS
     return ::IsDebuggerPresent() != FALSE;
+
+#elif FO_LINUX
+    static bool run_in_debugger;
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        const auto status_fd = ::open("/proc/self/status", O_RDONLY);
+        if (status_fd == -1) {
+            return;
+        }
+
+        char buf[4096] = {0};
+        const auto num_read = ::read(status_fd, buf, sizeof(buf) - 1);
+        ::close(status_fd);
+        if (num_read <= 0) {
+            return;
+        }
+
+        const auto* tracer_pid_str = ::strstr(buf, "TracerPid:");
+        if (tracer_pid_str == nullptr) {
+            return;
+        }
+
+        for (const char* s = tracer_pid_str + "TracerPid:"_len; s <= buf + num_read; ++s) {
+            if (::isspace(*s) == 0) {
+                run_in_debugger = ::isdigit(*s) != 0 && *s != '0';
+                break;
+            }
+        }
+    });
+
+    return run_in_debugger;
+
 #else
     return false;
 #endif
@@ -107,16 +140,19 @@ auto IsRunInDebugger() -> bool
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 {
+    if (IsRunInDebugger()) {
 #if FO_WINDOWS
-    if (::IsDebuggerPresent() != FALSE) {
         ::DebugBreak();
         return true;
+#elif FO_LINUX
+#if __has_builtin(__builtin_debugtrap)
+        __builtin_debugtrap();
+#else
+        ::raise(SIGTRAP);
+#endif
+        return true;
+#endif
     }
-#endif
-
-#if FO_LINUX && __has_builtin(__builtin_debugtrap)
-    __builtin_debugtrap();
-#endif
 
     return false;
 }

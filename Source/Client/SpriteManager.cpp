@@ -572,7 +572,7 @@ auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
             break;
         case AtlasType::Dynamic:
             w = std::min(AppRender::MAX_ATLAS_WIDTH, 2048u);
-            h = std::max(AppRender::MAX_ATLAS_HEIGHT, 8192u);
+            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192u);
             break;
         case AtlasType::MeshTextures:
             w = std::min(AppRender::MAX_ATLAS_WIDTH, 1024u);
