@@ -181,22 +181,32 @@ int main(int argc, char** argv)
                         pos = path.find('.', pos != string::npos ? pos : 0);
                         return pos != string::npos ? string(path.substr(0, pos)) : string(path);
                     };
+                    const auto make_output_path = [](string_view path) -> string {
+                        if (_str(path).startsWith("art/critters/")) {
+                            return _str("art/critters/{}", _str(path.substr("art/critters/"_len)).lower()).str();
+                        }
+                        return string(path);
+                    };
 
                     if (!is_raw_only) {
                         const auto bake_checker = [&](const FileHeader& file_header) -> bool {
-                            resource_names.emplace(file_header.GetPath());
-                            pack_resource_names.emplace(exclude_all_ext(file_header.GetPath()));
+                            const auto output_path = make_output_path(file_header.GetPath());
+
+                            resource_names.emplace(output_path);
+                            pack_resource_names.emplace(exclude_all_ext(output_path));
 
                             if (!settings.ForceBakering) {
-                                return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(MakeOutputPath(_str("{}/{}", pack_name, file_header.GetPath())));
+                                return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(MakeOutputPath(_str(pack_name).combinePath(output_path)));
                             }
                             else {
                                 return true;
                             }
                         };
 
-                        const auto write_data = [&pack_name, &baked_files](string_view path, const_span<uchar> baked_data) {
-                            auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("{}/{}", pack_name, path)), true);
+                        const auto write_data = [&](string_view path, const_span<uchar> baked_data) {
+                            const auto output_path = make_output_path(path);
+
+                            auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(_str(pack_name).combinePath(output_path)), true);
                             RUNTIME_ASSERT(res_file);
                             const auto res_file_write_ok = res_file.Write(baked_data);
                             RUNTIME_ASSERT(res_file_write_ok);
@@ -220,20 +230,21 @@ int main(int argc, char** argv)
                     resources.ResetCounter();
                     while (resources.MoveNext()) {
                         auto file_header = resources.GetCurFileHeader();
+                        const auto output_path = make_output_path(file_header.GetPath());
 
                         // Skip not necessary files
                         if (!is_raw_only) {
-                            const auto ext = _str(file_header.GetPath()).getFileExtension().str();
+                            const auto ext = _str(output_path).getFileExtension().str();
                             const auto& base_exts = settings.BakeExtraFileExtensions;
                             if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
                                 continue;
                             }
                         }
 
-                        resource_names.emplace(file_header.GetPath());
-                        pack_resource_names.emplace(exclude_all_ext(file_header.GetPath()));
+                        resource_names.emplace(output_path);
+                        pack_resource_names.emplace(exclude_all_ext(output_path));
 
-                        const auto path_in_pack = _str(pack_name).combinePath(file_header.GetPath()).str();
+                        const auto path_in_pack = _str(pack_name).combinePath(output_path).str();
 
                         if (!settings.ForceBakering && DiskFileSystem::GetWriteTime(MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
                             continue;
