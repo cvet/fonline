@@ -39,6 +39,10 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
+#if FO_MAC
+#include <sys/sysctl.h>
+#endif
+
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
 #if __has_include(<libunwind.h>)
@@ -98,44 +102,47 @@ auto GetStackTrace() -> string
 
 auto IsRunInDebugger() -> bool
 {
+    static bool run_in_debugger = false;
+
 #if FO_WINDOWS
-    return ::IsDebuggerPresent() != FALSE;
+    static std::once_flag once;
+    std::call_once(once, [] { run_in_debugger = ::IsDebuggerPresent() != FALSE; });
 
 #elif FO_LINUX
-    static bool run_in_debugger;
-
     static std::once_flag once;
     std::call_once(once, [] {
         const auto status_fd = ::open("/proc/self/status", O_RDONLY);
-        if (status_fd == -1) {
-            return;
-        }
-
-        char buf[4096] = {0};
-        const auto num_read = ::read(status_fd, buf, sizeof(buf) - 1);
-        ::close(status_fd);
-        if (num_read <= 0) {
-            return;
-        }
-
-        const auto* tracer_pid_str = ::strstr(buf, "TracerPid:");
-        if (tracer_pid_str == nullptr) {
-            return;
-        }
-
-        for (const char* s = tracer_pid_str + "TracerPid:"_len; s <= buf + num_read; ++s) {
-            if (::isspace(*s) == 0) {
-                run_in_debugger = ::isdigit(*s) != 0 && *s != '0';
-                break;
+        if (status_fd != -1) {
+            char buf[4096] = {0};
+            const auto num_read = ::read(status_fd, buf, sizeof(buf) - 1);
+            ::close(status_fd);
+            if (num_read > 0) {
+                const auto* tracer_pid_str = ::strstr(buf, "TracerPid:");
+                if (tracer_pid_str != nullptr) {
+                    for (const char* s = tracer_pid_str + "TracerPid:"_len; s <= buf + num_read; ++s) {
+                        if (::isspace(*s) == 0) {
+                            run_in_debugger = ::isdigit(*s) != 0 && *s != '0';
+                            break;
+                        }
+                    }
+                }
             }
         }
     });
 
-    return run_in_debugger;
-
-#else
-    return false;
+#elif FO_MAC
+    static std::once_flag once;
+    std::call_once(once, [] {
+        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+        struct kinfo_proc info = {};
+        size_t size = sizeof(info);
+        if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
+            run_in_debugger = (info.kp_proc.p_flag & P_TRACED) != 0;
+        }
+    });
 #endif
+
+    return run_in_debugger;
 }
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
@@ -150,6 +157,9 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 #else
         ::raise(SIGTRAP);
 #endif
+        return true;
+#elif FO_MAC
+        __builtin_debugtrap();
         return true;
 #endif
     }
