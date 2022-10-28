@@ -416,7 +416,12 @@ void FOMapper::ProcessMapperInput()
                     IntVisible = !IntVisible;
                     break;
                 case KeyCode::F8:
-                    Settings.MouseScroll = !Settings.MouseScroll;
+                    if (Settings.Fullscreen) {
+                        Settings.FullscreenMouseScroll = !Settings.FullscreenMouseScroll;
+                    }
+                    else {
+                        Settings.WindowedMouseScroll = !Settings.WindowedMouseScroll;
+                    }
                     break;
                 case KeyCode::F9:
                     ObjVisible = !ObjVisible;
@@ -427,14 +432,14 @@ void FOMapper::ProcessMapperInput()
 
                 // Fullscreen
                 case KeyCode::F11:
-                    if (!Settings.FullScreen) {
+                    if (!Settings.Fullscreen) {
                         if (SprMngr.EnableFullscreen()) {
-                            Settings.FullScreen = true;
+                            Settings.Fullscreen = true;
                         }
                     }
                     else {
                         if (SprMngr.DisableFullscreen()) {
-                            Settings.FullScreen = false;
+                            Settings.Fullscreen = false;
                         }
                     }
                     // SprMngr.RefreshViewport();

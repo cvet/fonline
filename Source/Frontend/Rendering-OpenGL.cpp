@@ -851,7 +851,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         screen_size = true;
     }
 
-    if (screen_size && settings.FullScreen) {
+    if (screen_size && settings.Fullscreen) {
         // Preserve aspect ratio in fullscreen mode
         float native_aspect = (float)w / h;
         float aspect = (float)settings.ScreenWidth / settings.ScreenHeight;
