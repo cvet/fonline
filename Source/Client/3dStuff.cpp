@@ -149,6 +149,7 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, Effec
     }
 
     _headBone = GetBoneHashedString(settings.HeadBone);
+
     for (const auto& bone_name : settings.LegBones) {
         _legBones.emplace(GetBoneHashedString(bone_name));
     }

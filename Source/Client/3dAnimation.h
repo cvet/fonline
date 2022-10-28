@@ -153,7 +153,7 @@ private:
     void Interpolate(vec3& v1, const vec3& v2, float factor) const;
 
     template<class T>
-    void FindSrtValue(float time, const vector<float>& times, const vector<T>& values, T& result)
+    void FindSrtValue(const float time, const vector<float>& times, const vector<T>& values, T& result)
     {
         for (size_t n = 0; n < times.size(); n++) {
             if (n + 1 < times.size()) {

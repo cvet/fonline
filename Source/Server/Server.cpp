@@ -1991,6 +1991,8 @@ void FOServer::Process_Login(Player* unlogined_player)
         player = unlogined_player;
         EntityMngr.RegisterEntity(player, player_id);
         player->SetName(name);
+
+        OnPlayerInit.Fire(player);
     }
     else {
         player_reconnected = true;

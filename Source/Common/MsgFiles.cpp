@@ -412,8 +412,6 @@ void LanguagePack::ParseTexts(FileSystem& file_sys, NameResolver& name_resolver,
                     if (!Msg[i].LoadFromString(msg_file.GetStr(), name_resolver)) {
                         throw LanguagePackException("Invalid text file", msg_file.GetPath());
                     }
-
-                    WriteLog("Loaded {} texts for language '{}' from '{}'", Msg[i].GetSize(), lang_name, msg_file.GetPath());
                 }
             }
         }
