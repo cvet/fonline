@@ -100,17 +100,16 @@ auto GetStackTrace() -> string
 #endif
 }
 
+static bool RunInDebugger = false;
+static std::once_flag RunInDebuggerOnce;
+
 auto IsRunInDebugger() -> bool
 {
-    static bool run_in_debugger = false;
-
 #if FO_WINDOWS
-    static std::once_flag once;
-    std::call_once(once, [] { run_in_debugger = ::IsDebuggerPresent() != FALSE; });
+    std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
 
 #elif FO_LINUX
-    static std::once_flag once;
-    std::call_once(once, [] {
+    std::call_once(RunInDebuggerOnce, [] {
         const auto status_fd = ::open("/proc/self/status", O_RDONLY);
         if (status_fd != -1) {
             char buf[4096] = {0};
@@ -121,7 +120,7 @@ auto IsRunInDebugger() -> bool
                 if (tracer_pid_str != nullptr) {
                     for (const char* s = tracer_pid_str + "TracerPid:"_len; s <= buf + num_read; ++s) {
                         if (::isspace(*s) == 0) {
-                            run_in_debugger = ::isdigit(*s) != 0 && *s != '0';
+                            RunInDebugger = ::isdigit(*s) != 0 && *s != '0';
                             break;
                         }
                     }
@@ -131,18 +130,20 @@ auto IsRunInDebugger() -> bool
     });
 
 #elif FO_MAC
-    static std::once_flag once;
-    std::call_once(once, [] {
+    std::call_once(RunInDebuggerOnce, [] {
         int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
         struct kinfo_proc info = {};
         size_t size = sizeof(info);
         if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
-            run_in_debugger = (info.kp_proc.p_flag & P_TRACED) != 0;
+            RunInDebugger = (info.kp_proc.p_flag & P_TRACED) != 0;
         }
     });
+
+#else
+    UNUSED_VARIABLE(RunInDebuggerOnce);
 #endif
 
-    return run_in_debugger;
+    return RunInDebugger;
 }
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
