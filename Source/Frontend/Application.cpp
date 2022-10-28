@@ -448,7 +448,7 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
             Settings.ScreenHeight = 768;
             Settings.ScreenWidth = std::lround(static_cast<float>(Settings.ScreenHeight) * ratio);
 
-            Settings.FullScreen = true;
+            Settings.Fullscreen = true;
         }
 
 #if FO_WEB
@@ -630,7 +630,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
     }
 #endif
 
-    if (Settings.FullScreen) {
+    if (Settings.Fullscreen) {
         window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 

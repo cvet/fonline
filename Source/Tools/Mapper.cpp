@@ -306,7 +306,7 @@ void FOMapper::ProcessMapperInput()
 {
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
-    if (Settings.MouseScroll) {
+    if ((Settings.Fullscreen && Settings.FullscreenMouseScroll) || (!Settings.Fullscreen && Settings.WindowedMouseScroll)) {
         if (Settings.MouseX >= Settings.ScreenWidth - 1) {
             Settings.ScrollMouseRight = true;
         }

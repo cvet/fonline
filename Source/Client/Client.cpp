@@ -3496,14 +3496,14 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         CurMap->SwitchShowHex();
     }
     else if (cmd == "SwitchFullscreen") {
-        if (!Settings.FullScreen) {
+        if (!Settings.Fullscreen) {
             if (SprMngr.EnableFullscreen()) {
-                Settings.FullScreen = true;
+                Settings.Fullscreen = true;
             }
         }
         else {
             if (SprMngr.DisableFullscreen()) {
-                Settings.FullScreen = false;
+                Settings.Fullscreen = false;
 
                 if (_windowResolutionDiffX != 0 || _windowResolutionDiffY != 0) {
                     const auto [x, y] = SprMngr.GetWindowPosition();
@@ -3600,7 +3600,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Settings.ScreenHeight = h;
         SprMngr.SetWindowSize(w, h);
 
-        if (!Settings.FullScreen) {
+        if (!Settings.Fullscreen) {
             const auto [x, y] = SprMngr.GetWindowPosition();
             SprMngr.SetWindowPosition(x - diff_w / 2, y - diff_h / 2);
         }
