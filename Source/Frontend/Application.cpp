@@ -893,6 +893,9 @@ void Application::BeginFrame()
         Settings.ScreenWidth = display_w;
         Settings.ScreenHeight = display_h;
         MainWindow._onWindowSizeChangedDispatcher();
+
+        // Refresh viewport
+        Render.SetRenderTarget(nullptr);
     }
 
     // Setup time step
