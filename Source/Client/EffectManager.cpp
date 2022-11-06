@@ -36,7 +36,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys) : _settings {settings}, _fileSys {file_sys}
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
 }
 
@@ -49,12 +49,12 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view 
     // Load new
     auto* effect = App->Render.CreateEffect(usage, name, [this, &base_path](string_view path) -> string {
         if (!base_path.empty()) {
-            if (const auto file = _fileSys.ReadFile(_str(base_path).extractDir().combinePath(path))) {
+            if (const auto file = _resources.ReadFile(_str(base_path).extractDir().combinePath(path))) {
                 return file.GetStr();
             }
         }
 
-        if (const auto file = _fileSys.ReadFile(path)) {
+        if (const auto file = _resources.ReadFile(path)) {
             return file.GetStr();
         }
 

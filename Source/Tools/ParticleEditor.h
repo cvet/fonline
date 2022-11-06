@@ -31,13 +31,28 @@
 // SOFTWARE.
 //
 
-#include "BaseBaker.h"
-#include "Log.h"
+#pragma once
 
-BaseBaker::BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    _settings {settings}, //
-    _allFiles {all_files},
-    _bakeChecker {std::move(bake_checker)},
-    _writeData {std::move(write_data)}
+#include "Common.h"
+
+#include "Editor.h"
+
+class ParticleEditor : public EditorAssetView
 {
-}
+public:
+    ParticleEditor(string_view asset_path, FOEditor& editor);
+    ParticleEditor(const ParticleEditor&) = delete;
+    ParticleEditor(ParticleEditor&&) noexcept = default;
+    auto operator=(const ParticleEditor&) = delete;
+    auto operator=(ParticleEditor&&) noexcept = delete;
+    ~ParticleEditor() override;
+
+protected:
+    void OnDraw() override;
+
+    struct Impl;
+    unique_ptr<Impl> _impl;
+    std::chrono::time_point<std::chrono::steady_clock> _frameStart {};
+    float _speed {1.0f};
+    bool _autoReplay {};
+};

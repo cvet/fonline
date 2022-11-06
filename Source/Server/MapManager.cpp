@@ -93,7 +93,7 @@ void MapManager::LoadFromResources()
 {
     RUNTIME_ASSERT(_staticMaps.empty());
 
-    auto map_files = _engine->FileSys.FilterFiles("fomapb");
+    auto map_files = _engine->Resources.FilterFiles("fomapb");
     while (map_files.MoveNext()) {
         auto map_file = map_files.GetCurFile();
         auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});

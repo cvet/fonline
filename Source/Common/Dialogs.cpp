@@ -111,7 +111,7 @@ void DialogManager::LoadFromResources()
 {
     auto errors = 0;
 
-    auto files = _engine->FileSys.FilterFiles("fodlg");
+    auto files = _engine->Resources.FilterFiles("fodlg");
     while (files.MoveNext()) {
         try {
             auto file = files.GetCurFile();

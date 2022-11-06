@@ -412,7 +412,7 @@ void MapView::EnableMapperMode()
 
 void MapView::LoadStaticData()
 {
-    const auto file = _engine->FileSys.ReadFile(_str("{}.fomapb2", GetProtoId()));
+    const auto file = _engine->Resources.ReadFile(_str("{}.fomapb2", GetProtoId()));
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
     }

@@ -784,14 +784,14 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
     // Refresh texture
     if (data != nullptr) {
         auto* tex = atlas->MainTex;
-        tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
+        tex->UpdateTextureRegion(IRect(x, y, x + w, y + h), data);
 
         // 1px border for correct linear interpolation
         // Top
-        tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
+        tex->UpdateTextureRegion(IRect(x, y - 1, x + w, y), data);
 
         // Bottom
-        tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
+        tex->UpdateTextureRegion(IRect(x, y + h, x + w, y + h + 1), data + (h - 1) * w);
 
         // Left
         for (uint i = 0; i < h; i++) {
@@ -799,7 +799,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[h + 1] = _borderBuf[h];
-        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), _borderBuf.data());
+        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + h + 1), _borderBuf.data());
 
         // Right
         for (uint i = 0; i < h; i++) {
@@ -807,7 +807,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[h + 1] = _borderBuf[h];
-        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), _borderBuf.data());
+        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w + 1, y + h + 1), _borderBuf.data());
     }
 
     // Invalidate last pixel color picking
@@ -2275,7 +2275,7 @@ void SpriteManager::BuildFont(int index)
             }
         }
 
-        const auto r = IRect(normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1);
+        const auto r = IRect(normal_ox, normal_oy, normal_ox + si->Width, normal_oy + si->Height);
         si->Atlas->MainTex->UpdateTextureRegion(r, data_normal.data());
     }
 
@@ -2297,7 +2297,7 @@ void SpriteManager::BuildFont(int index)
             }
         }
 
-        const auto r_bordered = IRect(bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1);
+        const auto r_bordered = IRect(bordered_ox, bordered_oy, bordered_ox + si_bordered->Width, bordered_oy + si_bordered->Height);
         si_bordered->Atlas->MainTex->UpdateTextureRegion(r_bordered, data_bordered.data());
 
         // Fix texture coordinates on bordered texture

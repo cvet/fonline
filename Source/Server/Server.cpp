@@ -61,16 +61,16 @@ FOServer::FOServer(GlobalSettings& settings) :
 {
     WriteLog("Start server");
 
-    FileSys.AddDataSource(Settings.EmbeddedResources);
-    FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+    Resources.AddDataSource(Settings.EmbeddedResources);
+    Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
 
     for (const auto& entry : Settings.ServerResourceEntries) {
-        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
 
 #if !FO_SINGLEPLAYER
@@ -237,7 +237,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         auto writer = DataWriter(_updateFilesDesc);
 
         const auto add_sync_file = [&writer, this](string_view path) {
-            const auto file = FileSys.ReadFile(path);
+            const auto file = Resources.ReadFile(path);
             if (!file) {
                 throw ServerInitException("Resource pack for client not found", path);
             }

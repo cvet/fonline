@@ -2973,16 +2973,16 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     engine->ShutDownAndRelease();
 #else
 #if COMPILER_VALIDATION_MODE
-    game_engine->FileSys.AddDataSource(_str(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
+    game_engine->Resources.AddDataSource(_str(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
 #endif
 #if SERVER_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("ServerRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("ClientRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("ClientRootModule.fosb");
 #elif SINGLE_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("SingleRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("MapperRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("MapperRootModule.fosb");
 #endif
     RUNTIME_ASSERT(script_file);
     RestoreRootModule(engine, {script_file.GetBuf(), script_file.GetSize()});

@@ -531,7 +531,7 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
         RUNTIME_ASSERT(bytes_per_pixel == 4);
 
         auto* font_tex = ActiveRenderer->CreateTexture(width, height, true, false);
-        font_tex->UpdateTextureRegion(IRect(0, 0, width - 1, height - 1), reinterpret_cast<const uint*>(pixels));
+        font_tex->UpdateTextureRegion(IRect(0, 0, width, height), reinterpret_cast<const uint*>(pixels));
         io.Fonts->TexID = font_tex;
 
         // Default effect

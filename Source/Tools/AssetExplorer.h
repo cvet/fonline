@@ -35,28 +35,20 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
-#include "Settings.h"
+#include "Editor.h"
 
-class BaseBaker
+class AssetExplorer : public EditorView
 {
 public:
-    using BakeCheckerCallback = std::function<bool(const FileHeader&)>;
-    using WriteDataCallback = std::function<void(string_view, const_span<uchar>)>;
-
-    BaseBaker() = delete;
-    BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    BaseBaker(const BaseBaker&) = delete;
-    BaseBaker(BaseBaker&&) noexcept = default;
-    auto operator=(const BaseBaker&) = delete;
-    auto operator=(BaseBaker&&) noexcept = delete;
-    virtual ~BaseBaker() = default;
-
-    virtual void AutoBake() = 0;
+    explicit AssetExplorer(FOEditor& editor);
+    AssetExplorer(const AssetExplorer&) = delete;
+    AssetExplorer(AssetExplorer&&) noexcept = default;
+    auto operator=(const AssetExplorer&) = delete;
+    auto operator=(AssetExplorer&&) noexcept = delete;
 
 protected:
-    GeometrySettings& _settings;
-    FileCollection& _allFiles;
-    BakeCheckerCallback _bakeChecker;
-    WriteDataCallback _writeData;
+    void OnPreDraw() override;
+    void OnDraw() override;
+
+    void DrawSection(const string& section_name, string_view file_ext) const;
 };

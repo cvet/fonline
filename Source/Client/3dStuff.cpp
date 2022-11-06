@@ -1729,11 +1729,11 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
         if (_animPosPeriod > 0.0f) {
             _animPosProc = new_track_pos / _animPosPeriod;
             if (_animPosProc >= 1.0f) {
-                _animPosProc = fmod(_animPosProc, 1.0f);
+                _animPosProc = std::fmod(_animPosProc, 1.0f);
             }
             _animPosTime = new_track_pos;
             if (_animPosTime >= _animPosPeriod) {
-                _animPosTime = fmod(_animPosTime, _animPosPeriod);
+                _animPosTime = std::fmod(_animPosTime, _animPosPeriod);
             }
         }
     }

@@ -60,7 +60,7 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Common_Game_IsResourcePresent([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
 {
-    return !!engine->FileSys.ReadFile(resourcePath);
+    return !!engine->Resources.ReadFile(resourcePath);
 }
 
 ///# ...
@@ -69,7 +69,7 @@
 ///@ ExportMethod
 [[maybe_unused]] string Common_Game_ReadResource([[maybe_unused]] FOEngineBase* engine, string_view resourcePath)
 {
-    return engine->FileSys.ReadFileText(resourcePath);
+    return engine->Resources.ReadFileText(resourcePath);
 }
 
 static void PrintLog(string& log, bool last_call, const std::function<void(string_view)>& log_callback)

@@ -501,7 +501,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
     }
 
     delete root_bone;
-    for (auto& loaded_animation : loaded_animations) {
+    for (auto* loaded_animation : loaded_animations) {
         delete loaded_animation;
     }
 
@@ -511,16 +511,16 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 static void FixTexCoord(float& x, float& y)
 {
     if (x < 0.0f) {
-        x = 1.0f - fmodf(-x, 1.0f);
+        x = 1.0f - std::fmodf(-x, 1.0f);
     }
     else if (x > 1.0f) {
-        x = fmodf(x, 1.0f);
+        x = std::fmodf(x, 1.0f);
     }
     if (y < 0.0f) {
-        y = 1.0f - fmodf(-y, 1.0f);
+        y = 1.0f - std::fmodf(-y, 1.0f);
     }
     else if (y > 1.0f) {
-        y = fmodf(y, 1.0f);
+        y = std::fmodf(y, 1.0f);
     }
 }
 
@@ -753,7 +753,10 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 
 static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 {
-    return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
+    return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), //
+        static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), //
+        static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), //
+        static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
 }
 
 #else

@@ -31,44 +31,44 @@
 // SOFTWARE.
 //
 
-#pragma once
-
 #include "Common.h"
 
-#if FO_ENABLE_3D
+#include "Application.h"
+#include "Editor.h"
+#include "Log.h"
+#include "Settings.h"
+#include "Version-Include.h"
 
-#include "Baker.h"
-#include "FileSystem.h"
+#if !FO_TESTING_APP
+#include "SDL_main.h"
+#endif
 
-DECLARE_EXCEPTION(ModelBakerException);
-
-#if FO_HAVE_FBXSDK
-namespace fbxsdk
+#if !FO_TESTING_APP
+extern "C" int main(int argc, char** argv) // Handled by SDL
+#else
+[[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
+#endif
 {
-    class FbxManager;
-} // namespace fbxsdk
-#endif
+    try {
+        InitApp(argc, argv, "Editor");
 
-class ModelBaker final : public BaseBaker
-{
-public:
-    ModelBaker() = delete;
-    ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    ModelBaker(const ModelBaker&) = delete;
-    ModelBaker(ModelBaker&&) noexcept = default;
-    auto operator=(const ModelBaker&) = delete;
-    auto operator=(ModelBaker&&) noexcept = delete;
-    ~ModelBaker() override;
+        WriteLog("Starting Editor {}...", FO_GAME_VERSION);
 
-    void AutoBake() override;
+        auto* editor = new FOEditor(App->Settings);
 
-private:
-    [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;
+        while (!App->Settings.Quit) {
+            App->BeginFrame();
 
-    int _errors {};
-#if FO_HAVE_FBXSDK
-    fbxsdk::FbxManager* _fbxManager {};
-#endif
-};
+            editor->MainLoop();
 
-#endif
+            App->EndFrame();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+        }
+
+        ExitApp(true);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
+}

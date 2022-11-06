@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-#include "BaseBaker.h"
+#include "Baker.h"
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(EffectBakerException);
@@ -43,7 +43,7 @@ DECLARE_EXCEPTION(EffectBakerException);
 namespace glslang
 {
     class TIntermediate;
-} // namespace glslang
+}
 
 class EffectBaker final : public BaseBaker
 {

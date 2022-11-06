@@ -163,7 +163,7 @@ void FOMapper::InitIface()
 {
     WriteLog("Init interface");
 
-    const auto config_content = FileSys.ReadFileText("mapper_default.ini");
+    const auto config_content = Resources.ReadFileText("mapper_default.ini");
 
     IfaceIni.reset(new ConfigFile("mapper_default.ini", config_content));
     const auto& ini = *IfaceIni;
@@ -811,7 +811,7 @@ void FOMapper::RefreshTiles(int tab)
         bool include_subdirs = ttab.TileSubDirs[t];
 
         vector<string> tiles;
-        auto tile_files = FileSys.FilterFiles("", path, include_subdirs);
+        auto tile_files = Resources.FilterFiles("", path, include_subdirs);
         while (tile_files.MoveNext()) {
             tiles.emplace_back(tile_files.GetCurFileHeader().GetPath());
         }

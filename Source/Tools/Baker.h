@@ -35,40 +35,56 @@
 
 #include "Common.h"
 
-#if FO_ENABLE_3D
-
-#include "Baker.h"
 #include "FileSystem.h"
+#include "Settings.h"
 
-DECLARE_EXCEPTION(ModelBakerException);
+DECLARE_EXCEPTION(ProtoValidationException);
 
-#if FO_HAVE_FBXSDK
-namespace fbxsdk
-{
-    class FbxManager;
-} // namespace fbxsdk
-#endif
+class Properties;
+class ScriptSystem;
 
-class ModelBaker final : public BaseBaker
+class BaseBaker
 {
 public:
-    ModelBaker() = delete;
-    ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    ModelBaker(const ModelBaker&) = delete;
-    ModelBaker(ModelBaker&&) noexcept = default;
-    auto operator=(const ModelBaker&) = delete;
-    auto operator=(ModelBaker&&) noexcept = delete;
-    ~ModelBaker() override;
+    using BakeCheckerCallback = std::function<bool(const FileHeader&)>;
+    using WriteDataCallback = std::function<void(string_view, const_span<uchar>)>;
 
-    void AutoBake() override;
+    BaseBaker() = delete;
+    BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    BaseBaker(const BaseBaker&) = delete;
+    BaseBaker(BaseBaker&&) noexcept = default;
+    auto operator=(const BaseBaker&) = delete;
+    auto operator=(BaseBaker&&) noexcept = delete;
+    virtual ~BaseBaker() = default;
 
-private:
-    [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;
+    virtual void AutoBake() = 0;
 
-    int _errors {};
-#if FO_HAVE_FBXSDK
-    fbxsdk::FbxManager* _fbxManager {};
-#endif
+protected:
+    GeometrySettings& _settings;
+    FileCollection& _allFiles;
+    BakeCheckerCallback _bakeChecker;
+    WriteDataCallback _writeData;
 };
 
-#endif
+/*class BakerFileSystem : public FileSystem
+{
+    
+};*/
+
+class Baker
+{
+public:
+    explicit Baker(GlobalSettings& settings);
+    Baker(const Baker&) = delete;
+    Baker(Baker&&) noexcept = default;
+    auto operator=(const Baker&) = delete;
+    auto operator=(Baker&&) noexcept = delete;
+
+    void BakeAll();
+
+private:
+    [[nodiscard]] auto MakeOutputPath(string_view path) const -> string;
+    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
+
+    GlobalSettings& _settings;
+};

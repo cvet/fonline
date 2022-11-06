@@ -868,8 +868,8 @@ struct TRect
     }
 
     [[nodiscard]] auto IsZero() const -> bool { return !Left && !Top && !Right && !Bottom; }
-    [[nodiscard]] auto Width() const -> T { return Right - Left + 1; } // Todo: fix TRect Width/Height
-    [[nodiscard]] auto Height() const -> T { return Bottom - Top + 1; }
+    [[nodiscard]] auto Width() const -> T { return Right - Left; }
+    [[nodiscard]] auto Height() const -> T { return Bottom - Top; }
     [[nodiscard]] auto CenterX() const -> T { return Left + Width() / 2; }
     [[nodiscard]] auto CenterY() const -> T { return Top + Height() / 2; }
 

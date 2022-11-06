@@ -89,15 +89,14 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(RenderSettings& settings, FileSystem& file_sys);
+    EffectManager(RenderSettings& settings, FileSystem& resources);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
     auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    [[nodiscard]] auto LoadEffect(EffectUsage usage, string_view name, string_view base_path) -> RenderEffect*;
-
+    auto LoadEffect(EffectUsage usage, string_view name, string_view base_path) -> RenderEffect*;
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void UpdateEffects(const GameTimer& game_time);
@@ -108,8 +107,7 @@ private:
     void PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time);
 
     RenderSettings& _settings;
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
-    EventUnsubscriber _eventUnsubscriber {};
     bool _nonConstHelper {};
 };

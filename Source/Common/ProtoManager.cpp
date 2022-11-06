@@ -328,7 +328,7 @@ void ProtoManager::LoadFromResources()
         break;
     }
 
-    const auto protos_file = _engine->FileSys.ReadFile(protos_fname);
+    const auto protos_file = _engine->Resources.ReadFile(protos_fname);
     if (!protos_file) {
         throw ProtoManagerException("Protos binary file not found", protos_fname);
     }
