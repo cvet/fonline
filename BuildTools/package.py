@@ -17,7 +17,7 @@ parser.add_argument('-devname', dest='devname', required=True, help='Dev game na
 parser.add_argument('-nicename', dest='nicename', required=True, help='Representable game name')
 parser.add_argument('-authorname', dest='authorname', required=True, help='Author name')
 parser.add_argument('-gameversion', dest='gameversion', required=True, help='Game version')
-parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single', 'Mapper'], help='package target type')
+parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single', 'Editor', 'Mapper'], help='package target type')
 parser.add_argument('-platform', dest='platform', required=True, choices=['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
 parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
 # Windows: win32 win64
@@ -127,26 +127,30 @@ def makeTar(name, path, mode):
 def build():
 	# Make packs
 	resourceEntries = []
-	resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
 	if args.target == 'Server':
+		resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
 		resourceEntries += [['Protos', '*.foprob']]
 		resourceEntries += [['AngelScript', '*.fosb']]
 		resourceEntries += [['Dialogs', '*.fodlg']]
 		resourceEntries += [['Maps', '*.fomapb*']]
 		resourceEntries += [['Texts', '*.fotxtb']]
 	elif args.target == 'Client':
+		resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
 		resourceEntries += [['Protos', 'ClientProtos.foprob']]
 		resourceEntries += [['AngelScript', 'ClientRootModule.fosb']]
 		resourceEntries += [['Maps', '*.fomapb2']]
 		resourceEntries += [['Texts', '*.fotxtb']]
 	elif args.target == 'Mapper':
+		resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
 		resourceEntries += [['Protos', '*.foprob']]
 		resourceEntries += [['AngelScript', '*.fosb']]
+	elif args.target == 'Editor':
+		pass
 	else:
 		assert False
 	
 	for pack in set(args.respack):
-		if not ([1 for t in ['Server', 'Client', 'Single', 'Mapper'] if t in pack] and args.target not in pack):
+		if not ([1 for t in ['Server', 'Client', 'Single', 'Editor', 'Mapper'] if t in pack] and args.target not in pack):
 			assert pack not in [p[0] for p in resourceEntries] and pack != 'Configs', 'Used reserved pack name'
 			resourceEntries += [[pack, '**']]
 	
