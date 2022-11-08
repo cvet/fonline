@@ -44,6 +44,7 @@ jobs:
         - win64-server
         - win32-single
         - win64-single
+        - win64-editor
         - win64-mapper
         - win64-ascompiler
         - win64-baker
@@ -68,6 +69,8 @@ jobs:
         - android-arm-single
         - android-arm64-single
         - web-single
+        - linux-editor
+        - linux-gcc-editor
         - linux-mapper
         - linux-gcc-mapper
         - linux-ascompiler
