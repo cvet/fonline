@@ -54,6 +54,9 @@ if [%1] == [win32-client] (
     set BUILD_TARGET=FONLINE_BUILD_SINGLE
     set BUILD_ARCH=x64
     set BUILD_TOOLSET=ClangCL
+) else if [%1] == [win64-editor] (
+    set BUILD_TARGET=FONLINE_BUILD_EDITOR
+    set BUILD_ARCH=x64
 ) else if [%1] == [win64-mapper] (
     set BUILD_TARGET=FONLINE_BUILD_MAPPER
     set BUILD_ARCH=x64

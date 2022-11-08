@@ -60,6 +60,13 @@ elif [ "$1" = "mac-single" ]; then
 elif [ "$1" = "ios-single" ]; then
     TARGET=ios
     BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_UNIT_TESTS=0"
+elif [ "$1" = "linux-editor" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_EDITOR=1 -DFONLINE_UNIT_TESTS=0 -DCMAKE_BUILD_TYPE=Debug"
+elif [ "$1" = "linux-gcc-editor" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_EDITOR=1 -DFONLINE_UNIT_TESTS=0 -DCMAKE_BUILD_TYPE=Debug"
+    USE_GCC=1
 elif [ "$1" = "linux-mapper" ]; then
     TARGET=linux
     BUILD_TARGET="-DFONLINE_BUILD_MAPPER=1 -DFONLINE_UNIT_TESTS=0 -DCMAKE_BUILD_TYPE=Debug"
