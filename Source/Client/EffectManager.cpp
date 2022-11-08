@@ -34,36 +34,29 @@
 #include "EffectManager.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "StringUtils.h"
 
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
 }
 
-auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view base_path) -> RenderEffect*
+auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*
 {
-    if (const auto it = _loadedEffects.find(string(name)); it != _loadedEffects.end()) {
+    if (const auto it = _loadedEffects.find(string(path)); it != _loadedEffects.end()) {
         return it->second.get();
     }
 
     // Load new
-    auto* effect = App->Render.CreateEffect(usage, name, [this, &base_path](string_view path) -> string {
-        if (!base_path.empty()) {
-            if (const auto file = _resources.ReadFile(_str(base_path).extractDir().combinePath(path))) {
-                return file.GetStr();
-            }
-        }
-
-        if (const auto file = _resources.ReadFile(path)) {
+    auto* effect = App->Render.CreateEffect(usage, path, [this](string_view path2) -> string {
+        if (const auto file = _resources.ReadFile(path2)) {
             return file.GetStr();
         }
 
         BreakIntoDebugger();
-        WriteLog("Effect file '{}' not found", path);
+        WriteLog("Effect file '{}' not found", path2);
         return {};
     });
 
-    _loadedEffects.emplace(name, unique_ptr<RenderEffect>(effect));
+    _loadedEffects.emplace(path, unique_ptr<RenderEffect>(effect));
     return effect;
 }
 
@@ -97,8 +90,8 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     }
 }
 
-#define LOAD_DEFAULT_EFFECT(effect_handle, effect_usage, effect_name) \
-    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_usage, effect_name, ""))) \
+#define LOAD_DEFAULT_EFFECT(effect_handle, effect_usage, effect_path) \
+    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_usage, effect_path))) \
     effect_errors++
 
 void EffectManager::LoadMinimalEffects()

@@ -53,7 +53,7 @@ class ModelBaker final : public BaseBaker
 {
 public:
     ModelBaker() = delete;
-    ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ModelBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ModelBaker(const ModelBaker&) = delete;
     ModelBaker(ModelBaker&&) noexcept = default;
     auto operator=(const ModelBaker&) = delete;

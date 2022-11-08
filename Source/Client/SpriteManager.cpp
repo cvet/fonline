@@ -118,7 +118,7 @@ auto AnyFrames::GetDir(uint dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {file_sys}, _effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {resources}, _effectMngr {effect_mngr}
 {
     _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
@@ -927,26 +927,24 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 {
     RUNTIME_ASSERT(!_modelMngr);
 
-    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view name, string_view base_path) {
+    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view path) {
         auto result = pair<RenderTexture*, FRect>();
 
-        const auto path = _str(base_path).extractDir().combinePath(name).str();
-
-        if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
+        if (const auto it = _loadedMeshTextures.find(string(path)); it == _loadedMeshTextures.end()) {
             PushAtlasType(AtlasType::MeshTextures);
             auto* anim = LoadAnimation(path, false);
             PopAtlasType();
 
             if (anim != nullptr) {
                 const auto* si = GetSpriteInfo(anim->Ind[0]);
-                _loadedMeshTextures[path] = si;
+                _loadedMeshTextures[string(path)] = si;
                 result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
                 DestroyAnyFrames(anim);
             }
             else {
                 BreakIntoDebugger();
-                WriteLog("Texture '{}' for '{}' not found", name, base_path);
-                _loadedMeshTextures[path] = nullptr;
+                WriteLog("Texture '{}' not found", path);
+                _loadedMeshTextures[string(path)] = nullptr;
             }
         }
         else if (const auto* si = it->second; si != nullptr) {

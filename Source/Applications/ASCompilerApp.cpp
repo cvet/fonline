@@ -41,21 +41,21 @@
 #if !FO_SINGLEPLAYER
 struct ASCompiler_ServerScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& file_sys);
+    void InitAngelScriptScripting(FileSystem& resources);
 };
 struct ASCompiler_ClientScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& file_sys);
+    void InitAngelScriptScripting(FileSystem& resources);
 };
 #else
 struct ASCompiler_SingleScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& file_sys);
+    void InitAngelScriptScripting(FileSystem& resources);
 };
 #endif
 struct ASCompiler_MapperScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(FileSystem& file_sys);
+    void InitAngelScriptScripting(FileSystem& resources);
 };
 
 unordered_set<string> CompilerPassedMessages;
@@ -78,16 +78,16 @@ int main(int argc, char** argv)
 #endif
         auto mapper_failed = false;
 
-        FileSystem file_sys;
+        FileSystem resources;
         for (const auto& dir : App->Settings.BakeContentEntries) {
-            file_sys.AddDataSource(dir, DataSourceType::DirRoot);
+            resources.AddDataSource(dir, DataSourceType::DirRoot);
         }
 
 #if !FO_SINGLEPLAYER
         WriteLog("Compile server scripts");
 
         try {
-            ASCompiler_ServerScriptSystem().InitAngelScriptScripting(file_sys);
+            ASCompiler_ServerScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
         WriteLog("Compile client scripts");
 
         try {
-            ASCompiler_ClientScriptSystem().InitAngelScriptScripting(file_sys);
+            ASCompiler_ClientScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
         WriteLog("Compile game scripts");
 
         try {
-            ASCompiler_SingleScriptSystem().InitAngelScriptScripting(file_sys);
+            ASCompiler_SingleScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
         WriteLog("Compile mapper scripts");
 
         try {
-            ASCompiler_MapperScriptSystem().InitAngelScriptScripting(file_sys);
+            ASCompiler_MapperScriptSystem().InitAngelScriptScripting(resources);
         }
         catch (std::exception& ex) {
             if (CompilerPassedMessages.empty()) {

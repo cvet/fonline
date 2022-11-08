@@ -49,10 +49,10 @@ struct ParticleSystem::Impl
     SPK::Ref<SPK::System> BaseSystem {};
 };
 
-ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& file_sys, TextureLoader tex_loader) :
+ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, TextureLoader tex_loader) :
     _settings {settings}, //
     _effectMngr {effect_mngr},
-    _fileSys {file_sys},
+    _resources {resources},
     _textureLoader {std::move(tex_loader)}
 {
     static std::once_flag once;
@@ -68,7 +68,7 @@ auto ParticleManager::CreateParticles(string_view name) -> unique_ptr<ParticleSy
     SPK::Ref<SPK::System> base_system;
 
     if (const auto it = _ipml->BaseSystems.find(string(name)); it == _ipml->BaseSystems.end()) {
-        if (const auto file = _fileSys.ReadFile(name)) {
+        if (const auto file = _resources.ReadFile(name)) {
             base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", reinterpret_cast<const char*>(file.GetBuf()), static_cast<unsigned>(file.GetSize()));
         }
 

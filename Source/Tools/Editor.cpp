@@ -128,26 +128,7 @@ FOEditor::FOEditor(GlobalSettings& settings) : Settings {settings}
         InputResources.AddDataSource(res_splitted[1]);
     }
 
-    BakedResources.AddDataSource(Settings.EmbeddedResources);
-    BakedResources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
-    for (const auto& entry : Settings.ServerResourceEntries) {
-        BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
-    }
-    BakedResources.AddDataSource(Settings.EmbeddedResources);
-    BakedResources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
-    BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
-    for (const auto& entry : Settings.ClientResourceEntries) {
-        BakedResources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
-    }
+    BakedResources.AddDataSource(std::make_unique<BakerDataSource>(InputResources, settings));
 
     _newViews.emplace_back(std::make_unique<AssetExplorer>(*this));
 }

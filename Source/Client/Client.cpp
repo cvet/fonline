@@ -952,8 +952,8 @@ void FOClient::Net_OnUpdateFilesResponse()
         const auto hash = reader.Read<uint>();
 
         // Check hash
-        if (_fileSys.ReadFileHeader(fname)) {
-            const auto file_hash = _fileSys.ReadFileText(_str("{}.hash", fname));
+        if (_resources.ReadFileHeader(fname)) {
+            const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
             if (file_hash.empty()) {
                 // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
             }

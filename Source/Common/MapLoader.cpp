@@ -32,7 +32,7 @@
 //
 
 #include "MapLoader.h"
-#include "GenericUtils.h"
+#include "ConfigFile.h"
 #include "StringUtils.h"
 
 // Todo: restore supporting of the map old text format

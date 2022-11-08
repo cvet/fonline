@@ -96,7 +96,7 @@ public:
     auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    auto LoadEffect(EffectUsage usage, string_view name, string_view base_path) -> RenderEffect*;
+    auto LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*;
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void UpdateEffects(const GameTimer& game_time);

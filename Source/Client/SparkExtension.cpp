@@ -34,6 +34,7 @@
 // Todo: improve particles in 2D
 
 #include "SparkExtension.h"
+#include "StringUtils.h"
 #include "VisualParticles.h"
 
 namespace SPK::FO
@@ -99,14 +100,9 @@ namespace SPK::FO
         effect->DrawBuffer(_renderBuf.get(), 0, vertices / 4 * 6);
     }
 
-    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset)
-    {
-    }
+    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset) { }
 
-    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer>
-    {
-        return SPK_NEW(SparkQuadRenderer);
-    }
+    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer> { return SPK_NEW(SparkQuadRenderer); }
 
     void SparkQuadRenderer::Setup(string_view path, ParticleManager& particle_mngr)
     {
@@ -141,10 +137,7 @@ namespace SPK::FO
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV1() * _textureAtlasOffsets[3]);
     }
 
-    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const
-    {
-        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2);
-    }
+    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const { return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2); }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
     {
@@ -253,10 +246,7 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetEffectName() const -> const string&
-    {
-        return _effectName;
-    }
+    auto SparkQuadRenderer::GetEffectName() const -> const string& { return _effectName; }
 
     void SparkQuadRenderer::SetEffectName(const string& name)
     {
@@ -264,7 +254,7 @@ namespace SPK::FO
 
         if (!_effectName.empty() && _particleMngr != nullptr) {
 #if FO_ENABLE_3D
-            _effect = _particleMngr->_effectMngr.LoadEffect(EffectUsage::Model, _effectName, _path);
+            _effect = _particleMngr->_effectMngr.LoadEffect(EffectUsage::Model, _effectName);
 #endif
         }
         else {
@@ -272,17 +262,15 @@ namespace SPK::FO
         }
     }
 
-    auto SparkQuadRenderer::GetTextureName() const -> const string&
-    {
-        return _textureName;
-    }
+    auto SparkQuadRenderer::GetTextureName() const -> const string& { return _textureName; }
 
     void SparkQuadRenderer::SetTextureName(const string& name)
     {
         _textureName = name;
 
         if (!_textureName.empty() && _particleMngr != nullptr) {
-            auto&& [tex, tex_data] = _particleMngr->_textureLoader(_textureName, _path);
+            const auto tex_path = _str(_path).extractDir().combinePath(_textureName);
+            auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffsets = tex_data;
         }

@@ -49,7 +49,7 @@ class EffectBaker final : public BaseBaker
 {
 public:
     EffectBaker() = delete;
-    EffectBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     EffectBaker(const EffectBaker&) = delete;
     EffectBaker(EffectBaker&&) noexcept = default;
     auto operator=(const EffectBaker&) = delete;

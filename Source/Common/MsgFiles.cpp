@@ -392,13 +392,13 @@ auto FOMsg::GetMsgType(string_view type_name) -> int
     return -1;
 }
 
-void LanguagePack::ParseTexts(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name)
+void LanguagePack::ParseTexts(FileSystem& resources, NameResolver& name_resolver, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
-    auto msg_files = file_sys.FilterFiles("fotxt");
+    auto msg_files = resources.FilterFiles("fotxt");
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
 
@@ -432,13 +432,13 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
     }
 }
 
-void LanguagePack::LoadTexts(FileSystem& file_sys, string_view lang_name)
+void LanguagePack::LoadTexts(FileSystem& resources, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
-    auto msg_files = file_sys.FilterFiles("fotxtb", "", false);
+    auto msg_files = resources.FilterFiles("fotxtb");
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
 

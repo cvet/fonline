@@ -1769,6 +1769,7 @@ if( FONLINE_BUILD_EDITOR )
 		target_link_libraries( ${FO_DEV_NAME}_Editor "ASCompilerLib" )
 	endif()
 	WriteBuildHash( ${FO_DEV_NAME}_Editor )
+	CopyFbxSdkLib( ${FO_DEV_NAME}_Editor )
 endif()
 
 if( FONLINE_BUILD_MAPPER )

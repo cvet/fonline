@@ -195,7 +195,7 @@ FIXED_SETTING(int, StartYear, 2000);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakerSettings, virtual DummySettings);
+SETTING_GROUP(BakerSettings, virtual GeometrySettings);
 VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);

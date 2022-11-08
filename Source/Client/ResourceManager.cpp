@@ -41,14 +41,14 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
+ResourceManager::ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _resources {resources}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
 {
 }
 
 void ResourceManager::IndexFiles()
 {
     for (const auto* splash_ext : {"rix", "png", "jpg"}) {
-        auto splashes = _fileSys.FilterFiles(splash_ext, "Splash/", true);
+        auto splashes = _resources.FilterFiles(splash_ext, "Splash/", true);
         while (splashes.MoveNext()) {
             auto file_header = splashes.GetCurFileHeader();
             if (std::find(_splashNames.begin(), _splashNames.end(), file_header.GetPath()) == _splashNames.end()) {
@@ -58,7 +58,7 @@ void ResourceManager::IndexFiles()
     }
 
     for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
-        auto sounds = _fileSys.FilterFiles(sound_ext, "", true);
+        auto sounds = _resources.FilterFiles(sound_ext);
         while (sounds.MoveNext()) {
             auto file_header = sounds.GetCurFileHeader();
             _soundNames.emplace(_str("{}", file_header.GetName()).lower().str(), file_header.GetPath());

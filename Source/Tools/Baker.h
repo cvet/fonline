@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "DataSource.h"
 #include "FileSystem.h"
 #include "Settings.h"
 
@@ -50,7 +51,7 @@ public:
     using WriteDataCallback = std::function<void(string_view, const_span<uchar>)>;
 
     BaseBaker() = delete;
-    BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    BaseBaker(BakerSettings& settings, FileCollection&& files, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = default;
     auto operator=(const BaseBaker&) = delete;
@@ -60,18 +61,13 @@ public:
     virtual void AutoBake() = 0;
 
 protected:
-    GeometrySettings& _settings;
-    FileCollection& _allFiles;
+    BakerSettings& _settings;
+    FileCollection _files;
     BakeCheckerCallback _bakeChecker;
     WriteDataCallback _writeData;
 };
 
-/*class BakerFileSystem : public FileSystem
-{
-    
-};*/
-
-class Baker
+class Baker final
 {
 public:
     explicit Baker(GlobalSettings& settings);
@@ -86,5 +82,30 @@ private:
     [[nodiscard]] auto MakeOutputPath(string_view path) const -> string;
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
 
-    GlobalSettings& _settings;
+    BakerSettings& _settings;
+    GlobalSettings& _globalSettings;
+};
+
+class BakerDataSource final : public DataSource
+{
+public:
+    BakerDataSource(FileSystem& input_resources, BakerSettings& settings);
+    BakerDataSource(const BakerDataSource&) = delete;
+    BakerDataSource(BakerDataSource&&) noexcept = default;
+    auto operator=(const BakerDataSource&) = delete;
+    auto operator=(BakerDataSource&&) noexcept = delete;
+    ~BakerDataSource() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return "Baker"; }
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
+    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
+
+private:
+    [[nodiscard]] auto FindFile(const string& path) const -> File*;
+
+    FileSystem& _inputResources;
+    BakerSettings& _settings;
+    mutable unordered_map<string, unique_ptr<File>> _bakedFiles {};
 };

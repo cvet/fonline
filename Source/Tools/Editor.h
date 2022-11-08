@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "Baker.h"
 #include "FileSystem.h"
 #include "Settings.h"
 

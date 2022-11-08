@@ -311,6 +311,7 @@ DECLARE_EXCEPTION(AssertationException);
 DECLARE_EXCEPTION(UnreachablePlaceException);
 DECLARE_EXCEPTION(NotSupportedException);
 DECLARE_EXCEPTION(NotImplementedException);
+DECLARE_EXCEPTION(InvalidCallException);
 DECLARE_EXCEPTION(NotEnabled3DException);
 
 // Event system

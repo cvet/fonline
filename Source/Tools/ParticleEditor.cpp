@@ -124,11 +124,8 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : Edito
     _impl = std::make_unique<Impl>();
     _impl->EffectMngr = std::make_unique<EffectManager>(_editor.Settings, _editor.BakedResources);
 
-    _impl->ParticleMngr = std::make_unique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, [&editor, this](string_view path, string_view base_path) -> pair<RenderTexture*, FRect> {
+    _impl->ParticleMngr = std::make_unique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
         auto file = editor.BakedResources.ReadFile(path);
-        if (!file) {
-            file = editor.BakedResources.ReadFile(_str(base_path).extractDir().combinePath(path));
-        }
         RUNTIME_ASSERT(file);
 
         const auto check_number = file.GetUChar();

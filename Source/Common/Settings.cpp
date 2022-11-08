@@ -33,8 +33,8 @@
 
 #include "Settings.h"
 #include "AnyData.h"
+#include "ConfigFile.h"
 #include "DiskFileSystem.h"
-#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
