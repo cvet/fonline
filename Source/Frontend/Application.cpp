@@ -535,13 +535,17 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
         io.Fonts->TexID = font_tex;
 
         // Default effect
-        FileSystem base_fs;
-        base_fs.AddDataSource(Settings.EmbeddedResources);
-        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [&base_fs](string_view path) -> string {
-            const auto file = base_fs.ReadFile(path);
-            RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
-            return file.GetStr();
-        });
+        if (Settings.EmbeddedResources != "$Disabled") {
+            FileSystem base_fs;
+            base_fs.AddDataSource(Settings.EmbeddedResources);
+            if (base_fs.ReadFileHeader("Effects/ImGui_Default.fofx")) {
+                _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [&base_fs](string_view path) -> string {
+                    const auto file = base_fs.ReadFile(path);
+                    RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
+                    return file.GetStr();
+                });
+            }
+        }
 
         _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
     }
@@ -561,6 +565,11 @@ void Application::HideCursor()
     NON_CONST_METHOD_HINT();
 
     SDL_ShowCursor(SDL_DISABLE);
+}
+
+void Application::SetImGuiEffect(RenderEffect* effect)
+{
+    _imguiEffect = effect;
 }
 
 #if FO_IOS
@@ -951,7 +960,7 @@ void Application::EndFrame()
     const auto fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
     const auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
-    if (fb_width > 0 && fb_height > 0) {
+    if (_imguiEffect != nullptr && _imguiDrawBuf != nullptr && fb_width > 0 && fb_height > 0) {
         const auto l = draw_data->DisplayPos.x;
         const auto r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
         const auto t = draw_data->DisplayPos.y;

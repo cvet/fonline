@@ -66,6 +66,23 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
     return result;
 }
 
+class DummySpace final : public DataSource
+{
+public:
+    DummySpace() = default;
+    DummySpace(const DummySpace&) = delete;
+    DummySpace(DummySpace&&) noexcept = default;
+    auto operator=(const DummySpace&) = delete;
+    auto operator=(DummySpace&&) noexcept = delete;
+    ~DummySpace() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return "Dummy"; }
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override { return false; }
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override { return nullptr; }
+    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return {}; }
+};
+
 class NonCachedDir final : public DataSource
 {
 public:
@@ -217,7 +234,10 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     if (path.front() == '$') {
         RUNTIME_ASSERT(type == DataSourceType::Default);
 
-        if (path == "$Embedded") {
+        if (path == "$Disabled") {
+            return std::make_unique<DummySpace>();
+        }
+        else if (path == "$Embedded") {
             return std::make_unique<ZipFile>(path);
         }
         else if (path == "$AndroidAssets") {

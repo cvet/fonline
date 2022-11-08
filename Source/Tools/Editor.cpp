@@ -130,6 +130,14 @@ FOEditor::FOEditor(GlobalSettings& settings) : Settings {settings}
 
     BakedResources.AddDataSource(std::make_unique<BakerDataSource>(InputResources, settings));
 
+    auto* imgui_effect = App->Render.CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [this](string_view path) -> string {
+        const auto file = BakedResources.ReadFile(path);
+        RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
+        return file.GetStr();
+    });
+    RUNTIME_ASSERT(imgui_effect);
+    App->SetImGuiEffect(imgui_effect);
+
     _newViews.emplace_back(std::make_unique<AssetExplorer>(*this));
 }
 

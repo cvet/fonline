@@ -848,7 +848,7 @@ list( APPEND FO_COMMON_LIBS "fmt" )
 DisableLibWarnings( fmt )
 
 # LibreSSL
-if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
+if( ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
 	StatusMessage( "+ LibreSSL" )
 	set( FO_LIBRESSL_DIR "ThirdParty/LibreSSL" )
 	set( LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE )
@@ -867,7 +867,7 @@ if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND 
 endif()
 
 # Asio & Websockets
-if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT ANDROID AND NOT FO_SINGLEPLAYER )
+if( ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT ANDROID AND NOT FO_SINGLEPLAYER )
 	StatusMessage( "+ Asio" )
 	set( FO_ASIO_DIR "ThirdParty/Asio" )
 	include_directories( "${FO_ASIO_DIR}/include" )
@@ -882,7 +882,7 @@ else()
 endif()
 
 # MongoDB & Bson
-if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLINE_BUILD_SINGLE )
+if( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLINE_BUILD_SINGLE )
 	StatusMessage( "+ Bson" )
 	set( FO_MONGODB_DIR "ThirdParty/mongo-c-driver" )
 
@@ -897,7 +897,7 @@ if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLI
 	set( ENABLE_ZLIB OFF CACHE STRING "Forced by FOnline" FORCE )
 	set( MONGO_USE_CCACHE OFF CACHE STRING "Forced by FOnline" FORCE )
 
-	if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
+	if( ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
 		StatusMessage( "+ MongoDB" )
 		set( ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE )
 		add_compile_definitions( FO_HAVE_MONGO=1 )
@@ -2016,14 +2016,17 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 		list( APPEND bakeResourceEntries "-BakeResourceEntries \"+${packName},${packEntry}\"" )
 	endforeach()
 
-	function( CreateSimpleExternalCommand cmdName program )
+	function( CreateSimpleExternalCommand cmdName program doPause )
 		cmake_path( RELATIVE_PATH program BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE program )
 
 		set( FO_GEN_FILE_CONTENT "${prolog}\"${program}\"" )
 		foreach( arg ${ARGN} )
 			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n${arg}" )
 		endforeach()
-		set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n\n${pause}" )
+
+		if( doPause )
+			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n\n${pause}" )
+		endif()
 
 		configure_file( "BuildTools/blank.cmake" "${FONLINE_OUTPUT_PATH}/${cmdName}.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ )
 	endfunction()
@@ -2049,18 +2052,18 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 	endfunction()
 
 	if( FONLINE_BUILD_ASCOMPILER )
-		CreateSimpleExternalCommand( CompileScripts "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_ASCompiler" ${bakeResourceEntries} )
+		CreateSimpleExternalCommand( CompileScripts "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_ASCompiler" YES ${bakeResourceEntries} )
 	endif()
 	if( FONLINE_BUILD_BAKER )
-		CreateSimpleExternalCommand( BakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering False" ${bakeResourceEntries} )
-		CreateSimpleExternalCommand( ForceBakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering True" ${bakeResourceEntries} )
+		CreateSimpleExternalCommand( BakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" YES "-ForceBakering False" ${bakeResourceEntries} )
+		CreateSimpleExternalCommand( ForceBakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" YES "-ForceBakering True" ${bakeResourceEntries} )
 	endif()
 
 	if( FONLINE_BUILD_EDITOR )
-		CreateBakeredExternalCommand( Editor "${FONLINE_OUTPUT_PATH}/Binaries/Editor-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Editor" ${bakeResourceEntries} )
+		CreateSimpleExternalCommand( Editor "${FONLINE_OUTPUT_PATH}/Binaries/Editor-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Editor" NO "-ExternalConfig \"Configs/Default.focfg\"" "-EmbeddedResources \"\$Disabled\"" ${bakeResourceEntries} )
 	endif()
 	if( FONLINE_BUILD_MAPPER )
-		CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" )
 	endif()
 
 	foreach( config ${FO_CONFIGS} )
