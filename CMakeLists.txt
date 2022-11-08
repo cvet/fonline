@@ -2060,7 +2060,7 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 	endif()
 
 	if( FONLINE_BUILD_EDITOR )
-		CreateSimpleExternalCommand( Editor "${FONLINE_OUTPUT_PATH}/Binaries/Editor-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Editor" NO "-ExternalConfig \"Configs/Default.focfg\"" "-EmbeddedResources \"\$Disabled\"" ${bakeResourceEntries} )
+		CreateSimpleExternalCommand( Editor "${FONLINE_OUTPUT_PATH}/Binaries/Editor-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Editor" NO "-ExternalConfig \"Configs/Default.focfg\"" "-EmbeddedResources \"@Disabled\"" ${bakeResourceEntries} )
 	endif()
 	if( FONLINE_BUILD_MAPPER )
 		CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )

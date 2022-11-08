@@ -535,7 +535,7 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
         io.Fonts->TexID = font_tex;
 
         // Default effect
-        if (Settings.EmbeddedResources != "$Disabled") {
+        if (Settings.EmbeddedResources != "@Disabled") {
             FileSystem base_fs;
             base_fs.AddDataSource(Settings.EmbeddedResources);
             if (base_fs.ReadFileHeader("Effects/ImGui_Default.fofx")) {

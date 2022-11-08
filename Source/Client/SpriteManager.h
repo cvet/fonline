@@ -300,7 +300,7 @@ private:
 
     RenderSettings& _settings;
     AppWindow* _window;
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     EffectManager& _effectMngr;
     EventUnsubscriber _eventUnsubscriber {};
     RenderTarget* _rtMain {};

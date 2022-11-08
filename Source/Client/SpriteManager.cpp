@@ -118,7 +118,7 @@ auto AnyFrames::GetDir(uint dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {resources}, _effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _resources {resources}, _effectMngr {effect_mngr}
 {
     _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
@@ -856,7 +856,7 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrame
 
 auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 {
-    auto file = _fileSys.ReadFile(fname);
+    auto file = _resources.ReadFile(fname);
     if (!file) {
         return nullptr;
     }
@@ -927,7 +927,7 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 {
     RUNTIME_ASSERT(!_modelMngr);
 
-    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view path) {
+    _modelMngr = std::make_unique<ModelManager>(_settings, _resources, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view path) {
         auto result = pair<RenderTexture*, FRect>();
 
         if (const auto it = _loadedMeshTextures.find(string(path)); it == _loadedMeshTextures.end()) {
@@ -2327,7 +2327,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Load font data
     string fname = _str("Fonts/{}.fofnt", font_name);
-    auto file = _fileSys.ReadFile(fname);
+    auto file = _resources.ReadFile(fname);
     if (!file) {
         WriteLog("File '{}' not found", fname);
         return false;
@@ -2477,7 +2477,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     }
 
     FontData font {_effectMngr.Effects.Font};
-    auto file = _fileSys.ReadFile(_str("Fonts/{}.fnt", font_name));
+    auto file = _resources.ReadFile(_str("Fonts/{}.fnt", font_name));
     if (!file) {
         WriteLog("Font file '{}.fnt' not found", font_name);
         return false;

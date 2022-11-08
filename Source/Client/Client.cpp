@@ -74,7 +74,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 #if FO_IOS
     Resources.AddDataSource("../../Documents");
 #elif FO_ANDROID
-    Resources.AddDataSource("$AndroidAssets");
+    Resources.AddDataSource("@AndroidAssets");
     // AddDataSource(SDL_AndroidGetInternalStoragePath());
     // AddDataSource(SDL_AndroidGetExternalStoragePath());
 #elif FO_WEB

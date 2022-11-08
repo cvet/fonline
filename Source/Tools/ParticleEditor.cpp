@@ -697,7 +697,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInterp
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj)
 {
     auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", graph.size())) {
+    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", static_cast<int>(graph.size()))) {
         int delIndex = -1;
         int index = 0;
 
@@ -752,7 +752,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj)
 {
     auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", graph.size())) {
+    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", static_cast<int>(graph.size()))) {
         int delIndex = -1;
         int index = 0;
 
@@ -1166,7 +1166,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 // Helpers
 void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::function<size_t()> get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw)
 {
-    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, get_size())) {
+    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, static_cast<int>(get_size()))) {
         int delIndex = -1;
 
         for (size_t i = 0; i < get_size(); i++) {

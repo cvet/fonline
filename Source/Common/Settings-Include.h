@@ -53,7 +53,7 @@ SETTING_GROUP(FileSystemSettings, virtual DummySettings);
 FIXED_SETTING(string, ResourcesDir, "Data");
 FIXED_SETTING(vector<string>, ClientResourceEntries);
 FIXED_SETTING(vector<string>, ServerResourceEntries);
-FIXED_SETTING(string, EmbeddedResources, "$Embedded");
+FIXED_SETTING(string, EmbeddedResources, "@Embedded");
 FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
 

@@ -511,16 +511,16 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 static void FixTexCoord(float& x, float& y)
 {
     if (x < 0.0f) {
-        x = 1.0f - std::fmodf(-x, 1.0f);
+        x = 1.0f - std::fmod(-x, 1.0f);
     }
     else if (x > 1.0f) {
-        x = std::fmodf(x, 1.0f);
+        x = std::fmod(x, 1.0f);
     }
     if (y < 0.0f) {
-        y = 1.0f - std::fmodf(-y, 1.0f);
+        y = 1.0f - std::fmod(-y, 1.0f);
     }
     else if (y > 1.0f) {
-        y = std::fmodf(y, 1.0f);
+        y = std::fmod(y, 1.0f);
     }
 }
 

@@ -52,7 +52,7 @@ protected:
 
     struct Impl;
     unique_ptr<Impl> _impl;
-    std::chrono::time_point<std::chrono::steady_clock> _frameStart {};
+    std::chrono::time_point<std::chrono::high_resolution_clock> _frameStart {};
     float _speed {1.0f};
     bool _autoReplay {};
 };

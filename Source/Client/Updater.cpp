@@ -43,12 +43,12 @@
 
 static const string UPDATE_TEMP_FILE = "Update.fobin";
 
-Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _fileSys), _sprMngr(_settings, window, _fileSys, _effectMngr)
+Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _resources), _sprMngr(_settings, window, _resources, _effectMngr)
 {
     _startTick = Timer::RealtimeTick();
 
-    _fileSys.AddDataSource(_settings.EmbeddedResources);
-    _fileSys.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
+    _resources.AddDataSource(_settings.EmbeddedResources);
+    _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
 
     _effectMngr.LoadMinimalEffects();
 
@@ -214,8 +214,8 @@ void Updater::Net_OnUpdateFilesResponse()
         const auto hash = reader.Read<uint>();
 
         // Check hash
-        if (_fileSys.ReadFileHeader(fname)) {
-            const auto file_hash = _fileSys.ReadFileText(_str("{}.hash", fname));
+        if (_resources.ReadFileHeader(fname)) {
+            const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
             if (file_hash.empty()) {
                 // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
             }

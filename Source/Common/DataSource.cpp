@@ -221,7 +221,7 @@ private:
     };
     using IndexMap = unordered_map<string, FileEntry>;
 
-    string _packName {"$AndroidAssets"};
+    string _packName {"@AndroidAssets"};
     IndexMap _filesTree {};
     FileNameVec _filesTreeNames {};
 };
@@ -231,16 +231,16 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     RUNTIME_ASSERT(!path.empty());
 
     // Special entries
-    if (path.front() == '$') {
+    if (path.front() == '@') {
         RUNTIME_ASSERT(type == DataSourceType::Default);
 
-        if (path == "$Disabled") {
+        if (path == "@Disabled") {
             return std::make_unique<DummySpace>();
         }
-        else if (path == "$Embedded") {
+        else if (path == "@Embedded") {
             return std::make_unique<ZipFile>(path);
         }
-        else if (path == "$AndroidAssets") {
+        else if (path == "@AndroidAssets") {
             return std::make_unique<AndroidAssets>();
         }
 
@@ -729,7 +729,7 @@ ZipFile::ZipFile(string_view fname)
         };
 
         ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
-            if (string(filename) == "$Embedded") {
+            if (string(filename) == "@Embedded") {
                 static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
                 auto default_array = true;
                 for (size_t i = 0; i < 1 && default_array; i++) {
