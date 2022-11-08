@@ -125,10 +125,13 @@ enum class BlendEquationType
 
 struct Vertex2D
 {
-    float X, Y;
-    uint Diffuse;
-    float TU, TV;
-    float TUEgg, TVEgg;
+    float PosX;
+    float PosY;
+    uint Color;
+    float TexU;
+    float TexV;
+    float EggTexU;
+    float EggTexV;
 };
 static_assert(std::is_standard_layout_v<Vertex2D>);
 static_assert(sizeof(Vertex2D) == 28);
@@ -144,9 +147,10 @@ struct Vertex3D
     vec3 Bitangent;
     float BlendWeights[BONES_PER_VERTEX];
     float BlendIndices[BONES_PER_VERTEX];
+    uint Color;
 };
 static_assert(std::is_standard_layout_v<Vertex3D>);
-static_assert(sizeof(Vertex3D) == 96);
+static_assert(sizeof(Vertex3D) == 100);
 #endif
 
 class RenderTexture : public RefCounter
@@ -180,7 +184,7 @@ public:
     auto operator=(const RenderDrawBuffer&) = delete;
     auto operator=(RenderDrawBuffer&&) noexcept = delete;
 
-    virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1)) = 0;
+    virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1), size_t custom_indices_size = static_cast<size_t>(-1)) = 0;
 
     const bool IsStatic;
 
@@ -316,6 +320,7 @@ protected:
     BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
     BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
+    bool _depthWrite[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
     bool _isShadow[EFFECT_MAX_PASSES] {};
 #endif

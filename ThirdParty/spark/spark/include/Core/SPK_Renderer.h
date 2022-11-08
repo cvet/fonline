@@ -30,13 +30,6 @@ namespace SPK
 	class Group;
 	class Vector3D;
 
-	enum BlendMode
-	{
-		BLEND_MODE_NONE,
-		BLEND_MODE_ALPHA,
-		BLEND_MODE_ADD,
-	};
-
 	enum RenderingOption
 	{
 		RENDERING_OPTION_ALPHA_TEST = 1 << 0,
@@ -91,7 +84,6 @@ namespace SPK
 		virtual  void enableRenderingOption(RenderingOption option,bool enable);
 		virtual  void setAlphaTestThreshold(float alphaThreshold);
 		void setActive(bool active);
-		virtual void setBlendMode(BlendMode blendMode) = 0;
 		
 		/////////////
 		// Getters //

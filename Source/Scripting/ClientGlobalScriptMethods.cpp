@@ -348,7 +348,7 @@
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
 {
     vector<CritterHexView*> critters;
-    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
+    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
     return vec_downcast<CritterView*>(critters);
 }
 
@@ -371,7 +371,7 @@
     vector<CritterHexView*> critters;
     pair<ushort, ushort> block = {};
     pair<ushort, ushort> pre_block = {};
-    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, &block, &pre_block, nullptr, true);
+    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, &block, &pre_block, nullptr, true);
     preBlockHx = pre_block.first;
     preBlockHy = pre_block.second;
     blockHx = block.first;
@@ -391,7 +391,7 @@
 {
     pair<ushort, ushort> pre_block = {};
     pair<ushort, ushort> block = {};
-    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
+    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
 }

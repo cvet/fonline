@@ -362,7 +362,7 @@ void ModelAnimationController::AdvanceTime(float time)
     }
 
     // Track animation
-    for (uint i = 0, j = static_cast<uint>(_tracks.size()); i < j; i++) {
+    for (size_t i = 0; i < _tracks.size(); i++) {
         auto& track = _tracks[i];
 
         for (auto& o : *_outputs) {
@@ -373,21 +373,21 @@ void ModelAnimationController::AdvanceTime(float time)
             continue;
         }
 
-        for (uint k = 0, l = static_cast<uint>(track.Anim->_boneOutputs.size()); k < l; k++) {
-            if (track.AnimOutput[k] == nullptr) {
+        for (size_t j = 0; j < track.Anim->_boneOutputs.size(); j++) {
+            if (track.AnimOutput[j] == nullptr) {
                 continue;
             }
 
-            auto& o = track.Anim->_boneOutputs[k];
+            const auto& o = track.Anim->_boneOutputs[j];
 
-            auto t = fmod(track.Position * track.Anim->_ticksPerSecond, track.Anim->_durationTicks);
+            const auto t = std::fmod(track.Position * track.Anim->_ticksPerSecond, track.Anim->_durationTicks);
 
-            FindSrtValue<vec3>(t, o.ScaleTime, o.ScaleValue, track.AnimOutput[k]->Scale[i]);
-            FindSrtValue<quaternion>(t, o.RotationTime, o.RotationValue, track.AnimOutput[k]->Rotation[i]);
-            FindSrtValue<vec3>(t, o.TranslationTime, o.TranslationValue, track.AnimOutput[k]->Translation[i]);
+            FindSrtValue<vec3>(t, o.ScaleTime, o.ScaleValue, track.AnimOutput[j]->Scale[i]);
+            FindSrtValue<quaternion>(t, o.RotationTime, o.RotationValue, track.AnimOutput[j]->Rotation[i]);
+            FindSrtValue<vec3>(t, o.TranslationTime, o.TranslationValue, track.AnimOutput[j]->Translation[i]);
 
-            track.AnimOutput[k]->Valid[i] = true;
-            track.AnimOutput[k]->Factor[i] = track.Weight;
+            track.AnimOutput[j]->Valid[i] = true;
+            track.AnimOutput[j]->Factor[i] = track.Weight;
         }
     }
 
@@ -408,14 +408,14 @@ void ModelAnimationController::AdvanceTime(float time)
             *o.Matrix = mt * mr * ms;
         }
         else {
-            for (uint k = 0, l = static_cast<uint>(_tracks.size()); k < l; k++) {
-                if (o.Valid[k]) {
+            for (size_t i = 0; i < _tracks.size(); i++) {
+                if (o.Valid[i]) {
                     mat44 ms;
                     mat44 mr;
                     mat44 mt;
-                    mat44::Scaling(o.Scale[k], ms);
-                    mr = mat44(o.Rotation[k].GetMatrix());
-                    mat44::Translation(o.Translation[k], mt);
+                    mat44::Scaling(o.Scale[i], ms);
+                    mr = mat44(o.Rotation[i].GetMatrix());
+                    mat44::Translation(o.Translation[i], mt);
                     *o.Matrix = mt * mr * ms;
                     break;
                 }

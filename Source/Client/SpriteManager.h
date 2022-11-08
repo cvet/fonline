@@ -213,7 +213,7 @@ public:
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
     [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
-    [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> IRect;
+    [[nodiscard]] auto GetDrawRect(const Sprite* prep) const -> IRect;
     [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
@@ -309,12 +309,13 @@ private:
     vector<RenderTarget*> _rt3D {};
     vector<RenderTarget*> _rtStack {};
     vector<unique_ptr<RenderTarget>> _rtAll {};
-    vector<tuple<AtlasType, bool>> _atlasStack {};
+    vector<tuple<AtlasType, bool>> _targetAtlasStack {};
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
     bool _accumulatorActive {};
     vector<SpriteInfo*> _accumulatorSprInfo {};
     vector<SpriteInfo*> _sprData {};
     MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
+    unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};
     vector<DipData> _dipQueue {};
     RenderDrawBuffer* _spritesDrawBuf {};
     RenderDrawBuffer* _primitiveDrawBuf {};

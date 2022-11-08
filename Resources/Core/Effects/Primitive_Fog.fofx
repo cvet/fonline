@@ -1,6 +1,6 @@
 [Effect]
-BlendFunc_Pass1 = One One
-BlendEquation_Pass1 = Max
+BlendFunc = One One
+BlendEquation = Max
 
 [ShaderCommon]
 const float FogBordersPower = 1.8;

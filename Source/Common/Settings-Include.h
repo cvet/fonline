@@ -176,7 +176,7 @@ VARIABLE_SETTING(bool, RenderDebug, false);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-VARIABLE_SETTING(bool, FullScreen, false);
+VARIABLE_SETTING(bool, Fullscreen, false);
 VARIABLE_SETTING(int, Brightness, 0);
 VARIABLE_SETTING(uint, FPS, 0);
 VARIABLE_SETTING(int, FixedFPS, 100);
@@ -184,6 +184,9 @@ FIXED_SETTING(int, FogExtraLength, 0);
 FIXED_SETTING(float, CritterTurnAngle, 100.0f);
 FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
 FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
+FIXED_SETTING(int, DefaultModelViewHeight, 0);
+FIXED_SETTING(int, DefaultModelDrawWidth, 128);
+FIXED_SETTING(int, DefaultModelDrawHeight, 128);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -197,7 +200,7 @@ VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "xml"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -217,6 +220,7 @@ VARIABLE_SETTING(bool, ShowPlayerNames, false);
 VARIABLE_SETTING(bool, ShowNpcNames, false);
 VARIABLE_SETTING(bool, ShowCritId, false);
 VARIABLE_SETTING(bool, ShowGroups, true);
+FIXED_SETTING(int, NameOffset, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -232,7 +236,8 @@ FIXED_SETTING(uint, ChosenLightColor, 0);
 FIXED_SETTING(uchar, ChosenLightDistance, 4);
 FIXED_SETTING(int, ChosenLightIntensity, 2500);
 FIXED_SETTING(uchar, ChosenLightFlags, 0);
-VARIABLE_SETTING(bool, MouseScroll, true);
+VARIABLE_SETTING(bool, FullscreenMouseScroll, true);
+VARIABLE_SETTING(bool, WindowedMouseScroll, false);
 VARIABLE_SETTING(bool, ScrollCheck, true);
 VARIABLE_SETTING(bool, ScrollKeybLeft, false);
 VARIABLE_SETTING(bool, ScrollKeybRight, false);

@@ -144,10 +144,15 @@
 
 // Todo: improve named enums
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+// ReSharper disable once CppInconsistentNaming
 inline auto format_as(T v)
 {
     return fmt::underlying(v);
 }
+
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
 
 // WinAPI implicitly included in WinRT so add it globally for macro undefining
 #if FO_UWP
@@ -1033,8 +1038,6 @@ static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr uint FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
-static constexpr auto DEFAULT_3D_DRAW_WIDTH = 256;
-static constexpr auto DEFAULT_3D_DRAW_HEIGHT = 128;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
 static constexpr auto FONT_DEFAULT = 5;

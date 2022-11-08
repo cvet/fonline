@@ -35,17 +35,26 @@
 
 #include "Common.h"
 
+#include "EffectManager.h"
 #include "FileSystem.h"
 #include "Settings.h"
+
+namespace SPK::FO
+{
+    class SparkQuadRenderer;
+}
 
 class ParticleSystem;
 
 class ParticleManager final
 {
     friend class ParticleSystem;
+    friend class SPK::FO::SparkQuadRenderer;
 
 public:
-    ParticleManager(RenderSettings& settings, FileSystem& file_sys);
+    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view, string_view)>;
+
+    ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& file_sys, TextureLoader tex_loader);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;
@@ -58,7 +67,9 @@ private:
     struct ParticleManagerData;
     ParticleManagerData* _data {};
     RenderSettings& _settings;
+    EffectManager& _effectMngr;
     FileSystem& _fileSys;
+    TextureLoader _textureLoader;
 };
 
 class ParticleSystem final

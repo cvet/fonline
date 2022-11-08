@@ -141,7 +141,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     // Finish fonts
     SprMngr.BuildFonts();
-    SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Connection handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
@@ -273,6 +272,7 @@ FOClient::~FOClient()
 
 void FOClient::Shutdown()
 {
+    App->Render.SetRenderTarget(nullptr);
     _conn.Disconnect();
 }
 
@@ -379,7 +379,7 @@ void FOClient::MainLoop()
     }
 
     // Network
-    if (_initNetReason != INIT_NET_REASON_NONE) {
+    if (_initNetReason != INIT_NET_REASON_NONE && !_conn.IsConnecting()) {
         _conn.Connect();
     }
 
@@ -581,10 +581,6 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         const auto key_code = ev.KeyDown.Code;
         const auto key_text = ev.KeyDown.Text;
-
-        if (ev.KeyDown.Code == KeyCode::Escape && Keyb.ShiftDwn) {
-            Settings.Quit = true;
-        }
 
         if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = true;
@@ -1077,7 +1073,9 @@ void FOClient::Net_OnAddCritter()
     cr->SetAnim2Knockout(anim2_ko);
     cr->SetAnim2Dead(anim2_dead);
     cr->SetPlayer(is_owned_by_player, is_chosen);
-    cr->SetPlayerOffline(is_player_offline);
+    if (is_owned_by_player) {
+        cr->SetPlayerOffline(is_player_offline);
+    }
 
     if (cr->IsChosen()) {
         _chosen = cr;
@@ -1247,7 +1245,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
         break;
     }
 
-    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n'); };
+    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}"); };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr) : nullptr);
 
@@ -1814,11 +1812,6 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeMoveDirAngle(dir_angle);
 
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        const auto& f = CurMap->GetField(hx, hy);
-        if (f.Crit && f.Crit->IsFinishing()) {
-            CurMap->DestroyCritter(f.Crit);
-        }
-
         CurMap->TransitCritter(cr, hx, hy, true);
 
         if (cr->IsChosen()) {
@@ -3384,8 +3377,8 @@ void FOClient::LmapPrepareMap()
             auto& f = CurMap->GetField(static_cast<ushort>(i1), static_cast<ushort>(i2));
             uint cur_color;
 
-            if (f.Crit != nullptr) {
-                cur_color = (f.Crit == chosen ? 0xFF0000FF : 0xFFFF0000);
+            if (const auto* cr = f.GetActiveCritter(); cr != nullptr) {
+                cur_color = (cr == chosen ? 0xFF0000FF : 0xFFFF0000);
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
@@ -3467,6 +3460,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             Net_SendLogIn();
         }
         else {
+            RUNTIME_ASSERT(!_conn.IsConnecting());
             _initNetReason = INIT_NET_REASON_LOGIN;
         }
     }
@@ -3478,6 +3472,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             Net_SendCreatePlayer();
         }
         else {
+            RUNTIME_ASSERT(!_conn.IsConnecting());
             _initNetReason = INIT_NET_REASON_REG;
         }
     }
@@ -3485,9 +3480,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         _loginName = "";
         _loginPassword = "";
 
-        if (_initNetReason == INIT_NET_REASON_NONE) {
-            _initNetReason = INIT_NET_REASON_CUSTOM;
-        }
+        RUNTIME_ASSERT(_initNetReason == INIT_NET_REASON_NONE);
+        RUNTIME_ASSERT(!_conn.IsConnected());
+        RUNTIME_ASSERT(!_conn.IsConnecting());
+
+        _initNetReason = INIT_NET_REASON_CUSTOM;
     }
     else if (cmd == "DumpAtlases") {
         SprMngr.DumpAtlases();
@@ -3499,14 +3496,14 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         CurMap->SwitchShowHex();
     }
     else if (cmd == "SwitchFullscreen") {
-        if (!Settings.FullScreen) {
+        if (!Settings.Fullscreen) {
             if (SprMngr.EnableFullscreen()) {
-                Settings.FullScreen = true;
+                Settings.Fullscreen = true;
             }
         }
         else {
             if (SprMngr.DisableFullscreen()) {
-                Settings.FullScreen = false;
+                Settings.Fullscreen = false;
 
                 if (_windowResolutionDiffX != 0 || _windowResolutionDiffY != 0) {
                     const auto [x, y] = SprMngr.GetWindowPosition();
@@ -3603,7 +3600,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Settings.ScreenHeight = h;
         SprMngr.SetWindowSize(w, h);
 
-        if (!Settings.FullScreen) {
+        if (!Settings.Fullscreen) {
             const auto [x, y] = SprMngr.GetWindowPosition();
             SprMngr.SetWindowPosition(x - diff_w / 2, y - diff_h / 2);
         }

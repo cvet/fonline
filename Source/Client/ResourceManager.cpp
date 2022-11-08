@@ -74,7 +74,10 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
 
     for (auto it = _loadedAnims.begin(); it != _loadedAnims.end();) {
         if (it->second.ResType == atlas_type) {
-            _sprMngr.DestroyAnyFrames(it->second.Anim);
+            if (it->second.Anim != nullptr) {
+                _sprMngr.DestroyAnyFrames(it->second.Anim);
+            }
+
             it = _loadedAnims.erase(it);
         }
         else {
@@ -87,8 +90,8 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
     }
 
     if (atlas_type == AtlasType::Dynamic) {
-        for (auto& [fst, snd] : _critterFrames) {
-            _sprMngr.DestroyAnyFrames(snd);
+        for (auto&& [id, anim] : _critterFrames) {
+            _sprMngr.DestroyAnyFrames(anim);
         }
         _critterFrames.clear();
     }
@@ -111,7 +114,6 @@ void ResourceManager::ReinitializeDynamicAtlas()
 
 auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 {
-    // Find already loaded
     const auto it = _loadedAnims.find(name);
     if (it != _loadedAnims.end()) {
         return it->second.Anim;
@@ -121,13 +123,11 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
     auto* anim = _sprMngr.LoadAnimation(name, false);
     _sprMngr.PopAtlasType();
 
-    if (anim == nullptr) {
-        return nullptr;
+    if (anim != nullptr) {
+        anim->Name = name;
     }
 
-    anim->Name = name;
-
-    _loadedAnims.insert(std::make_pair(name, LoadedAnim {atlas_type, anim}));
+    _loadedAnims.emplace(name, LoadedAnim {atlas_type, anim});
     return anim;
 }
 
@@ -446,11 +446,10 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
         return it->second;
     }
 
-    // Load file
-    static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
 
     // Try load fofrm
+    static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
     string spr_name = _str("{}{}{}.fofrm", model_name, frm_ind[anim1], frm_ind[anim2]);
     auto* frames = _sprMngr.LoadAnimation(spr_name, false);
 
@@ -459,6 +458,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
         spr_name = _str("{}{}{}.frm", model_name, frm_ind[anim1], frm_ind[anim2]);
         frames = _sprMngr.LoadAnimation(spr_name, false);
     }
+
     _sprMngr.PopAtlasType();
 
     _critterFrames.insert(std::make_pair(AnimMapId(model_name, anim1, anim2, true), frames));

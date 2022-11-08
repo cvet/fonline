@@ -105,6 +105,7 @@ static void MainEntry(void*)
         catch (const ResourcesOutdatedException&) {
             try {
                 Data->ResourcesSynced = false;
+                Data->Client->Shutdown();
                 Data->Client->Release();
                 Data->Client = nullptr;
             }
@@ -120,6 +121,7 @@ static void MainEntry(void*)
 
             // Recreate client on unhandled error
             try {
+                Data->Client->Shutdown();
                 Data->Client->Release();
                 Data->Client = nullptr;
             }
@@ -180,7 +182,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     const auto need_elapsed = 1000.0 / static_cast<double>(App->Settings.FixedFPS);
                     if (need_elapsed > elapsed) {
                         const auto sleep = need_elapsed - elapsed + balance;
-                        balance = fmod(sleep, 1.0);
+                        balance = std::fmod(sleep, 1.0);
                         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
                     }
                 }
@@ -193,6 +195,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
+        Data->Client->Shutdown();
         delete Data->Client;
 
         ExitApp(true);

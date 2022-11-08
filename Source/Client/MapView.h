@@ -120,6 +120,7 @@ public:
     auto operator=(Field&&) noexcept = delete;
     ~Field();
 
+    [[nodiscard]] auto GetActiveCritter() -> CritterHexView*;
     [[nodiscard]] auto GetTilesCount(bool is_roof) -> uint;
     [[nodiscard]] auto GetTile(uint index, bool is_roof) -> Tile&;
 
@@ -127,20 +128,19 @@ public:
     void AddItem(ItemHexView* item, ItemHexView* block_lines_item);
     void EraseItem(ItemHexView* item, ItemHexView* block_lines_item);
     void EraseTile(uint index, bool is_roof);
-    void AddDeadCrit(CritterHexView* cr);
-    void EraseDeadCrit(CritterHexView* cr);
+    void AddCritter(CritterHexView* cr);
+    void EraseCritter(CritterHexView* cr);
     void ProcessCache();
     void AddSpriteToChain(Sprite* spr);
     void UnvalidateSpriteChain() const;
 
     bool IsView {};
-    Sprite* SpriteChain {};
-    CritterHexView* Crit {};
-    vector<CritterHexView*>* DeadCrits {};
     int ScrX {};
     int ScrY {};
+    Sprite* SpriteChain {};
     AnyFrames* SimplyTile[2] {};
     vector<Tile>* Tiles[2] {};
+    vector<CritterHexView*>* Critters {};
     vector<ItemHexView*>* Items {};
     vector<ItemHexView*>* BlockLinesItems {};
     short RoofNum {};
@@ -199,7 +199,7 @@ public:
     auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
     auto TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<uchar>& steps, int quad_dir) -> bool;
-    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterHexView* find_cr, bool find_cr_safe, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
+    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
     void SwitchShowTrack();
@@ -229,7 +229,7 @@ public:
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, ushort hx, ushort hy);
-    auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly) -> bool;
+    void TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly);
     void DestroyCritter(CritterHexView* cr);
 
     void SetCritterContour(uint crid, ContourType contour);

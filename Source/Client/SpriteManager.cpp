@@ -355,25 +355,25 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
-        vbuf[pos].X = 0.0f;
-        vbuf[pos].Y = h;
-        vbuf[pos].TU = 0.0f;
-        vbuf[pos++].TV = 0.0f;
+        vbuf[pos].PosX = 0.0f;
+        vbuf[pos].PosY = h;
+        vbuf[pos].TexU = 0.0f;
+        vbuf[pos++].TexV = 0.0f;
 
-        vbuf[pos].X = 0.0f;
-        vbuf[pos].Y = 0.0f;
-        vbuf[pos].TU = 0.0f;
-        vbuf[pos++].TV = 1.0f;
+        vbuf[pos].PosX = 0.0f;
+        vbuf[pos].PosY = 0.0f;
+        vbuf[pos].TexU = 0.0f;
+        vbuf[pos++].TexV = 1.0f;
 
-        vbuf[pos].X = w;
-        vbuf[pos].Y = 0.0f;
-        vbuf[pos].TU = 1.0f;
-        vbuf[pos++].TV = 1.0f;
+        vbuf[pos].PosX = w;
+        vbuf[pos].PosY = 0.0f;
+        vbuf[pos].TexU = 1.0f;
+        vbuf[pos++].TexV = 1.0f;
 
-        vbuf[pos].X = w;
-        vbuf[pos].Y = h;
-        vbuf[pos].TU = 1.0f;
-        vbuf[pos].TV = 0.0f;
+        vbuf[pos].PosX = w;
+        vbuf[pos].PosY = h;
+        vbuf[pos].TexU = 1.0f;
+        vbuf[pos].TexV = 0.0f;
     }
     else {
         const FRect regionf = region_from != nullptr ? *region_from : IRect(0, 0, rt->MainTex->Width, rt->MainTex->Height);
@@ -384,25 +384,25 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
-        vbuf[pos].X = regiont.Left;
-        vbuf[pos].Y = regiont.Bottom;
-        vbuf[pos].TU = regionf.Left / wf;
-        vbuf[pos++].TV = 1.0f - regionf.Bottom / hf;
+        vbuf[pos].PosX = regiont.Left;
+        vbuf[pos].PosY = regiont.Bottom;
+        vbuf[pos].TexU = regionf.Left / wf;
+        vbuf[pos++].TexV = 1.0f - regionf.Bottom / hf;
 
-        vbuf[pos].X = regiont.Left;
-        vbuf[pos].Y = regiont.Top;
-        vbuf[pos].TU = regionf.Left / wf;
-        vbuf[pos++].TV = 1.0f - regionf.Top / hf;
+        vbuf[pos].PosX = regiont.Left;
+        vbuf[pos].PosY = regiont.Top;
+        vbuf[pos].TexU = regionf.Left / wf;
+        vbuf[pos++].TexV = 1.0f - regionf.Top / hf;
 
-        vbuf[pos].X = regiont.Right;
-        vbuf[pos].Y = regiont.Top;
-        vbuf[pos].TU = regionf.Right / wf;
-        vbuf[pos++].TV = 1.0f - regionf.Top / hf;
+        vbuf[pos].PosX = regiont.Right;
+        vbuf[pos].PosY = regiont.Top;
+        vbuf[pos].TexU = regionf.Right / wf;
+        vbuf[pos++].TexV = 1.0f - regionf.Top / hf;
 
-        vbuf[pos].X = regiont.Right;
-        vbuf[pos].Y = regiont.Bottom;
-        vbuf[pos].TU = regionf.Right / wf;
-        vbuf[pos].TV = 1.0f - regionf.Bottom / hf;
+        vbuf[pos].PosX = regiont.Right;
+        vbuf[pos].PosY = regiont.Bottom;
+        vbuf[pos].TexU = regionf.Right / wf;
+        vbuf[pos].TexV = 1.0f - regionf.Bottom / hf;
     }
 
     auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
@@ -523,12 +523,12 @@ void SpriteManager::PushAtlasType(AtlasType atlas_type)
 
 void SpriteManager::PushAtlasType(AtlasType atlas_type, bool one_image)
 {
-    _atlasStack.emplace_back(atlas_type, one_image);
+    _targetAtlasStack.emplace_back(atlas_type, one_image);
 }
 
 void SpriteManager::PopAtlasType()
 {
-    _atlasStack.pop_back();
+    _targetAtlasStack.pop_back();
 }
 
 void SpriteManager::AccumulateAtlasData()
@@ -562,9 +562,9 @@ auto SpriteManager::IsAccumulateAtlasActive() const -> bool
 auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
 {
     auto atlas = std::make_unique<TextureAtlas>();
-    atlas->Type = std::get<0>(_atlasStack.back());
+    atlas->Type = std::get<0>(_targetAtlasStack.back());
 
-    if (!std::get<1>(_atlasStack.back())) {
+    if (!std::get<1>(_targetAtlasStack.back())) {
         switch (atlas->Type) {
         case AtlasType::Static:
             w = std::min(AppRender::MAX_ATLAS_WIDTH, 4096u);
@@ -572,7 +572,7 @@ auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
             break;
         case AtlasType::Dynamic:
             w = std::min(AppRender::MAX_ATLAS_WIDTH, 2048u);
-            h = std::max(AppRender::MAX_ATLAS_HEIGHT, 8192u);
+            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192u);
             break;
         case AtlasType::MeshTextures:
             w = std::min(AppRender::MAX_ATLAS_WIDTH, 1024u);
@@ -598,7 +598,7 @@ auto SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtl
 {
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
-    const auto atlas_type = std::get<0>(_atlasStack.back());
+    const auto atlas_type = std::get<0>(_targetAtlasStack.back());
     const auto w = static_cast<uint>(si->Width + ATLAS_SPRITES_PADDING * 2);
     const auto h = static_cast<uint>(si->Height + ATLAS_SPRITES_PADDING * 2);
 
@@ -738,8 +738,8 @@ void SpriteManager::DumpAtlases() const
 auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint* data) -> uint
 {
     // Get width, height
-    si->DataAtlasType = std::get<0>(_atlasStack.back());
-    si->DataAtlasOneImage = std::get<1>(_atlasStack.back());
+    si->DataAtlasType = std::get<0>(_targetAtlasStack.back());
+    si->DataAtlasOneImage = std::get<1>(_targetAtlasStack.back());
     si->Width = static_cast<ushort>(w);
     si->Height = static_cast<ushort>(h);
 
@@ -825,6 +825,8 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 
 auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*
 {
+    RUNTIME_ASSERT(!_targetAtlasStack.empty());
+
     auto* dummy = use_dummy ? DummyAnimation : nullptr;
 
     if (fname.empty()) {
@@ -925,20 +927,33 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 {
     RUNTIME_ASSERT(!_modelMngr);
 
-    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
-        PushAtlasType(AtlasType::MeshTextures);
-        auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false);
-        PopAtlasType();
+    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view name, string_view base_path) {
+        auto result = pair<RenderTexture*, FRect>();
 
-        if (anim != nullptr) {
-            const auto* si = GetSpriteInfo(anim->Ind[0]);
-            mesh_tex->MainTex = si->Atlas->MainTex;
-            mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
-            mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
-            mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
-            mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
-            DestroyAnyFrames(anim);
+        const auto path = _str(base_path).extractDir().combinePath(name).str();
+
+        if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
+            PushAtlasType(AtlasType::MeshTextures);
+            auto* anim = LoadAnimation(path, false);
+            PopAtlasType();
+
+            if (anim != nullptr) {
+                const auto* si = GetSpriteInfo(anim->Ind[0]);
+                _loadedMeshTextures[path] = si;
+                result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
+                DestroyAnyFrames(anim);
+            }
+            else {
+                BreakIntoDebugger();
+                WriteLog("Texture '{}' for '{}' not found", name, base_path);
+                _loadedMeshTextures[path] = nullptr;
+            }
         }
+        else if (const auto* si = it->second; si != nullptr) {
+            result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
+        }
+
+        return result;
     });
 }
 
@@ -1088,7 +1103,7 @@ auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInsta
 
     // Create render sprite
     model->SprId = 0;
-    model->SprAtlasType = static_cast<int>(std::get<0>(_atlasStack.back()));
+    model->SprAtlasType = static_cast<int>(std::get<0>(_targetAtlasStack.back()));
     if (auto_redraw) {
         RefreshModelSprite(model);
         _autoRedrawModel.push_back(model);
@@ -1245,29 +1260,29 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     auto& vbuf = _spritesDrawBuf->Vertices2D;
     auto pos = _curDrawQuad * 4;
 
-    vbuf[pos].X = static_cast<float>(x);
-    vbuf[pos].Y = static_cast<float>(y + si->Height);
-    vbuf[pos].TU = si->SprRect.Left;
-    vbuf[pos].TV = si->SprRect.Bottom;
-    vbuf[pos++].Diffuse = color;
+    vbuf[pos].PosX = static_cast<float>(x);
+    vbuf[pos].PosY = static_cast<float>(y + si->Height);
+    vbuf[pos].TexU = si->SprRect.Left;
+    vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos++].Color = color;
 
-    vbuf[pos].X = static_cast<float>(x);
-    vbuf[pos].Y = static_cast<float>(y);
-    vbuf[pos].TU = si->SprRect.Left;
-    vbuf[pos].TV = si->SprRect.Top;
-    vbuf[pos++].Diffuse = color;
+    vbuf[pos].PosX = static_cast<float>(x);
+    vbuf[pos].PosY = static_cast<float>(y);
+    vbuf[pos].TexU = si->SprRect.Left;
+    vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos++].Color = color;
 
-    vbuf[pos].X = static_cast<float>(x + si->Width);
-    vbuf[pos].Y = static_cast<float>(y);
-    vbuf[pos].TU = si->SprRect.Right;
-    vbuf[pos].TV = si->SprRect.Top;
-    vbuf[pos++].Diffuse = color;
+    vbuf[pos].PosX = static_cast<float>(x + si->Width);
+    vbuf[pos].PosY = static_cast<float>(y);
+    vbuf[pos].TexU = si->SprRect.Right;
+    vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos++].Color = color;
 
-    vbuf[pos].X = static_cast<float>(x + si->Width);
-    vbuf[pos].Y = static_cast<float>(y + si->Height);
-    vbuf[pos].TU = si->SprRect.Right;
-    vbuf[pos].TV = si->SprRect.Bottom;
-    vbuf[pos].Diffuse = color;
+    vbuf[pos].PosX = static_cast<float>(x + si->Width);
+    vbuf[pos].PosY = static_cast<float>(y + si->Height);
+    vbuf[pos].TexU = si->SprRect.Right;
+    vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos].Color = color;
 
     if (++_curDrawQuad == _maxDrawQuad) {
         Flush();
@@ -1337,29 +1352,29 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     auto& vbuf = _spritesDrawBuf->Vertices2D;
     auto pos = _curDrawQuad * 4;
 
-    vbuf[pos].X = xf;
-    vbuf[pos].Y = yf + hf;
-    vbuf[pos].TU = si->SprRect.Left;
-    vbuf[pos].TV = si->SprRect.Bottom;
-    vbuf[pos++].Diffuse = color;
+    vbuf[pos].PosX = xf;
+    vbuf[pos].PosY = yf + hf;
+    vbuf[pos].TexU = si->SprRect.Left;
+    vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos++].Color = color;
 
-    vbuf[pos].X = xf;
-    vbuf[pos].Y = yf;
-    vbuf[pos].TU = si->SprRect.Left;
-    vbuf[pos].TV = si->SprRect.Top;
-    vbuf[pos++].Diffuse = color;
+    vbuf[pos].PosX = xf;
+    vbuf[pos].PosY = yf;
+    vbuf[pos].TexU = si->SprRect.Left;
+    vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos++].Color = color;
 
-    vbuf[pos].X = xf + wf;
-    vbuf[pos].Y = yf;
-    vbuf[pos].TU = si->SprRect.Right;
-    vbuf[pos].TV = si->SprRect.Top;
-    vbuf[pos++].Diffuse = color;
+    vbuf[pos].PosX = xf + wf;
+    vbuf[pos].PosY = yf;
+    vbuf[pos].TexU = si->SprRect.Right;
+    vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos++].Color = color;
 
-    vbuf[pos].X = xf + wf;
-    vbuf[pos].Y = yf + hf;
-    vbuf[pos].TU = si->SprRect.Right;
-    vbuf[pos].TV = si->SprRect.Bottom;
-    vbuf[pos].Diffuse = color;
+    vbuf[pos].PosX = xf + wf;
+    vbuf[pos].PosY = yf + hf;
+    vbuf[pos].TexU = si->SprRect.Right;
+    vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos].Color = color;
 
     if (++_curDrawQuad == _maxDrawQuad) {
         Flush();
@@ -1429,29 +1444,29 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
             auto& vbuf = _spritesDrawBuf->Vertices2D;
             auto pos = _curDrawQuad * 4;
 
-            vbuf[pos].X = xx;
-            vbuf[pos].Y = yy + local_height;
-            vbuf[pos].TU = si->SprRect.Left;
-            vbuf[pos].TV = local_bottom;
-            vbuf[pos++].Diffuse = color;
+            vbuf[pos].PosX = xx;
+            vbuf[pos].PosY = yy + local_height;
+            vbuf[pos].TexU = si->SprRect.Left;
+            vbuf[pos].TexV = local_bottom;
+            vbuf[pos++].Color = color;
 
-            vbuf[pos].X = xx;
-            vbuf[pos].Y = yy;
-            vbuf[pos].TU = si->SprRect.Left;
-            vbuf[pos].TV = si->SprRect.Top;
-            vbuf[pos++].Diffuse = color;
+            vbuf[pos].PosX = xx;
+            vbuf[pos].PosY = yy;
+            vbuf[pos].TexU = si->SprRect.Left;
+            vbuf[pos].TexV = si->SprRect.Top;
+            vbuf[pos++].Color = color;
 
-            vbuf[pos].X = xx + local_width;
-            vbuf[pos].Y = yy;
-            vbuf[pos].TU = local_right;
-            vbuf[pos].TV = si->SprRect.Top;
-            vbuf[pos++].Diffuse = color;
+            vbuf[pos].PosX = xx + local_width;
+            vbuf[pos].PosY = yy;
+            vbuf[pos].TexU = local_right;
+            vbuf[pos].TexV = si->SprRect.Top;
+            vbuf[pos++].Color = color;
 
-            vbuf[pos].X = xx + local_width;
-            vbuf[pos].Y = yy + local_height;
-            vbuf[pos].TU = local_right;
-            vbuf[pos].TV = local_bottom;
-            vbuf[pos].Diffuse = color;
+            vbuf[pos].PosX = xx + local_width;
+            vbuf[pos].PosY = yy + local_height;
+            vbuf[pos].TexU = local_right;
+            vbuf[pos].TexV = local_bottom;
+            vbuf[pos].Color = color;
 
             if (++_curDrawQuad == _maxDrawQuad) {
                 Flush();
@@ -1482,17 +1497,12 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(Sprite* prep) const -> IRect
+auto SpriteManager::GetDrawRect(const Sprite* prep) const -> IRect
 {
     const auto id = prep->PSprId != nullptr ? *prep->PSprId : prep->SprId;
-    if (id >= _sprData.size()) {
-        return IRect();
-    }
-
+    RUNTIME_ASSERT(id < _sprData.size());
     const auto* si = _sprData[id];
-    if (si == nullptr) {
-        return IRect();
-    }
+    RUNTIME_ASSERT(si);
 
     auto x = prep->ScrX - si->Width / 2 + si->OffsX + *prep->PScrX;
     auto y = prep->ScrY - si->Height + si->OffsY + *prep->PScrY;
@@ -1707,14 +1717,14 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
                 auto& vbuf = _spritesDrawBuf->Vertices2D;
                 const auto pos = _curDrawQuad * 4;
 
-                vbuf[pos + 0].TUEgg = x1_f / _eggAtlasWidth;
-                vbuf[pos + 0].TVEgg = y2_f / _eggAtlasHeight;
-                vbuf[pos + 1].TUEgg = x1_f / _eggAtlasWidth;
-                vbuf[pos + 1].TVEgg = y1_f / _eggAtlasHeight;
-                vbuf[pos + 2].TUEgg = x2_f / _eggAtlasWidth;
-                vbuf[pos + 2].TVEgg = y1_f / _eggAtlasHeight;
-                vbuf[pos + 3].TUEgg = x2_f / _eggAtlasWidth;
-                vbuf[pos + 3].TVEgg = y2_f / _eggAtlasHeight;
+                vbuf[pos + 0].EggTexU = x1_f / _eggAtlasWidth;
+                vbuf[pos + 0].EggTexV = y2_f / _eggAtlasHeight;
+                vbuf[pos + 1].EggTexU = x1_f / _eggAtlasWidth;
+                vbuf[pos + 1].EggTexV = y1_f / _eggAtlasHeight;
+                vbuf[pos + 2].EggTexU = x2_f / _eggAtlasWidth;
+                vbuf[pos + 2].EggTexV = y1_f / _eggAtlasHeight;
+                vbuf[pos + 3].EggTexU = x2_f / _eggAtlasWidth;
+                vbuf[pos + 3].EggTexV = y2_f / _eggAtlasHeight;
 
                 egg_added = true;
             }
@@ -1744,36 +1754,36 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         auto& vbuf = _spritesDrawBuf->Vertices2D;
         auto pos = _curDrawQuad * 4;
 
-        vbuf[pos].X = xf;
-        vbuf[pos].Y = yf + hf;
-        vbuf[pos].TU = si->SprRect.Left;
-        vbuf[pos].TV = si->SprRect.Bottom;
-        vbuf[pos++].Diffuse = color_l;
+        vbuf[pos].PosX = xf;
+        vbuf[pos].PosY = yf + hf;
+        vbuf[pos].TexU = si->SprRect.Left;
+        vbuf[pos].TexV = si->SprRect.Bottom;
+        vbuf[pos++].Color = color_l;
 
-        vbuf[pos].X = xf;
-        vbuf[pos].Y = yf;
-        vbuf[pos].TU = si->SprRect.Left;
-        vbuf[pos].TV = si->SprRect.Top;
-        vbuf[pos++].Diffuse = color_l;
+        vbuf[pos].PosX = xf;
+        vbuf[pos].PosY = yf;
+        vbuf[pos].TexU = si->SprRect.Left;
+        vbuf[pos].TexV = si->SprRect.Top;
+        vbuf[pos++].Color = color_l;
 
-        vbuf[pos].X = xf + wf;
-        vbuf[pos].Y = yf;
-        vbuf[pos].TU = si->SprRect.Right;
-        vbuf[pos].TV = si->SprRect.Top;
-        vbuf[pos++].Diffuse = color_r;
+        vbuf[pos].PosX = xf + wf;
+        vbuf[pos].PosY = yf;
+        vbuf[pos].TexU = si->SprRect.Right;
+        vbuf[pos].TexV = si->SprRect.Top;
+        vbuf[pos++].Color = color_r;
 
-        vbuf[pos].X = xf + wf;
-        vbuf[pos].Y = yf + hf;
-        vbuf[pos].TU = si->SprRect.Right;
-        vbuf[pos].TV = si->SprRect.Bottom;
-        vbuf[pos++].Diffuse = color_r;
+        vbuf[pos].PosX = xf + wf;
+        vbuf[pos].PosY = yf + hf;
+        vbuf[pos].TexU = si->SprRect.Right;
+        vbuf[pos].TexV = si->SprRect.Bottom;
+        vbuf[pos++].Color = color_r;
 
         // Set default texture coordinates for egg texture
-        if (!egg_added && vbuf[pos - 1].TUEgg != -1.0f) {
-            vbuf[pos - 1].TUEgg = -1.0f;
-            vbuf[pos - 2].TUEgg = -1.0f;
-            vbuf[pos - 3].TUEgg = -1.0f;
-            vbuf[pos - 4].TUEgg = -1.0f;
+        if (!egg_added && vbuf[pos - 1].EggTexU != -1.0f) {
+            vbuf[pos - 1].EggTexU = -1.0f;
+            vbuf[pos - 2].EggTexU = -1.0f;
+            vbuf[pos - 3].EggTexU = -1.0f;
+            vbuf[pos - 4].EggTexU = -1.0f;
         }
 
         // Draw
@@ -1955,12 +1965,12 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         }
 
         std::memset(&_primitiveDrawBuf->Vertices2D[i], 0, sizeof(Vertex2D));
-        _primitiveDrawBuf->Vertices2D[i].X = x;
-        _primitiveDrawBuf->Vertices2D[i].Y = y;
+        _primitiveDrawBuf->Vertices2D[i].PosX = x;
+        _primitiveDrawBuf->Vertices2D[i].PosY = y;
         uint color = point.PointColor;
         color = ApplyColorBrightness(color, _settings.Brightness);
         color = COLOR_SWAP_RB(color);
-        _primitiveDrawBuf->Vertices2D[i].Diffuse = color;
+        _primitiveDrawBuf->Vertices2D[i].Color = color;
     }
 
     _primitiveDrawBuf->PrimType = prim;
@@ -2051,25 +2061,25 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
-        vbuf[pos].X = bordersf.Left;
-        vbuf[pos].Y = mid_height - bordersf.Bottom;
-        vbuf[pos].TU = sr.Left;
-        vbuf[pos++].TV = sr.Bottom;
+        vbuf[pos].PosX = bordersf.Left;
+        vbuf[pos].PosY = mid_height - bordersf.Bottom;
+        vbuf[pos].TexU = sr.Left;
+        vbuf[pos++].TexV = sr.Bottom;
 
-        vbuf[pos].X = bordersf.Left;
-        vbuf[pos].Y = mid_height - bordersf.Top;
-        vbuf[pos].TU = sr.Left;
-        vbuf[pos++].TV = sr.Top;
+        vbuf[pos].PosX = bordersf.Left;
+        vbuf[pos].PosY = mid_height - bordersf.Top;
+        vbuf[pos].TexU = sr.Left;
+        vbuf[pos++].TexV = sr.Top;
 
-        vbuf[pos].X = bordersf.Right;
-        vbuf[pos].Y = mid_height - bordersf.Top;
-        vbuf[pos].TU = sr.Right;
-        vbuf[pos++].TV = sr.Top;
+        vbuf[pos].PosX = bordersf.Right;
+        vbuf[pos].PosY = mid_height - bordersf.Top;
+        vbuf[pos].TexU = sr.Right;
+        vbuf[pos++].TexV = sr.Top;
 
-        vbuf[pos].X = bordersf.Right;
-        vbuf[pos].Y = mid_height - bordersf.Bottom;
-        vbuf[pos].TU = sr.Right;
-        vbuf[pos].TV = sr.Bottom;
+        vbuf[pos].PosX = bordersf.Right;
+        vbuf[pos].PosY = mid_height - bordersf.Bottom;
+        vbuf[pos].TexU = sr.Right;
+        vbuf[pos].TexV = sr.Bottom;
 
         _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
         _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
@@ -2112,29 +2122,29 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     auto& vbuf = _contourDrawBuf->Vertices2D;
     auto pos = 0;
 
-    vbuf[pos].X = bordersf.Left;
-    vbuf[pos].Y = bordersf.Bottom;
-    vbuf[pos].TU = textureuv.Left;
-    vbuf[pos].TV = textureuv.Bottom;
-    vbuf[pos++].Diffuse = contour_color;
+    vbuf[pos].PosX = bordersf.Left;
+    vbuf[pos].PosY = bordersf.Bottom;
+    vbuf[pos].TexU = textureuv.Left;
+    vbuf[pos].TexV = textureuv.Bottom;
+    vbuf[pos++].Color = contour_color;
 
-    vbuf[pos].X = bordersf.Left;
-    vbuf[pos].Y = bordersf.Top;
-    vbuf[pos].TU = textureuv.Left;
-    vbuf[pos].TV = textureuv.Top;
-    vbuf[pos++].Diffuse = contour_color;
+    vbuf[pos].PosX = bordersf.Left;
+    vbuf[pos].PosY = bordersf.Top;
+    vbuf[pos].TexU = textureuv.Left;
+    vbuf[pos].TexV = textureuv.Top;
+    vbuf[pos++].Color = contour_color;
 
-    vbuf[pos].X = bordersf.Right;
-    vbuf[pos].Y = bordersf.Top;
-    vbuf[pos].TU = textureuv.Right;
-    vbuf[pos].TV = textureuv.Top;
-    vbuf[pos++].Diffuse = contour_color;
+    vbuf[pos].PosX = bordersf.Right;
+    vbuf[pos].PosY = bordersf.Top;
+    vbuf[pos].TexU = textureuv.Right;
+    vbuf[pos].TexV = textureuv.Top;
+    vbuf[pos++].Color = contour_color;
 
-    vbuf[pos].X = bordersf.Right;
-    vbuf[pos].Y = bordersf.Bottom;
-    vbuf[pos].TU = textureuv.Right;
-    vbuf[pos].TV = textureuv.Bottom;
-    vbuf[pos].Diffuse = contour_color;
+    vbuf[pos].PosX = bordersf.Right;
+    vbuf[pos].PosY = bordersf.Bottom;
+    vbuf[pos].TexU = textureuv.Right;
+    vbuf[pos].TexV = textureuv.Bottom;
+    vbuf[pos].Color = contour_color;
 
     auto& border_buf = _effectMngr.Effects.Contour->BorderBuf->SpriteBorder;
     border_buf[0] = sprite_border[0];
@@ -2192,6 +2202,8 @@ void SpriteManager::BuildFonts()
 
 void SpriteManager::BuildFont(int index)
 {
+    NON_CONST_METHOD_HINT();
+
 #define PIXEL_AT(tex_data, width, x, y) (*((uint*)(tex_data).data() + (y) * (width) + (x)))
 
     auto& font = *_allFonts[index];
@@ -3184,29 +3196,29 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             auto& vbuf = _spritesDrawBuf->Vertices2D;
             auto pos = _curDrawQuad * 4;
 
-            vbuf[pos].X = static_cast<float>(x);
-            vbuf[pos].Y = static_cast<float>(y + h);
-            vbuf[pos].TU = x1;
-            vbuf[pos].TV = y2;
-            vbuf[pos++].Diffuse = color;
+            vbuf[pos].PosX = static_cast<float>(x);
+            vbuf[pos].PosY = static_cast<float>(y + h);
+            vbuf[pos].TexU = x1;
+            vbuf[pos].TexV = y2;
+            vbuf[pos++].Color = color;
 
-            vbuf[pos].X = static_cast<float>(x);
-            vbuf[pos].Y = static_cast<float>(y);
-            vbuf[pos].TU = x1;
-            vbuf[pos].TV = y1;
-            vbuf[pos++].Diffuse = color;
+            vbuf[pos].PosX = static_cast<float>(x);
+            vbuf[pos].PosY = static_cast<float>(y);
+            vbuf[pos].TexU = x1;
+            vbuf[pos].TexV = y1;
+            vbuf[pos++].Color = color;
 
-            vbuf[pos].X = static_cast<float>(x + w);
-            vbuf[pos].Y = static_cast<float>(y);
-            vbuf[pos].TU = x2;
-            vbuf[pos].TV = y1;
-            vbuf[pos++].Diffuse = color;
+            vbuf[pos].PosX = static_cast<float>(x + w);
+            vbuf[pos].PosY = static_cast<float>(y);
+            vbuf[pos].TexU = x2;
+            vbuf[pos].TexV = y1;
+            vbuf[pos++].Color = color;
 
-            vbuf[pos].X = static_cast<float>(x + w);
-            vbuf[pos].Y = static_cast<float>(y + h);
-            vbuf[pos].TU = x2;
-            vbuf[pos].TV = y2;
-            vbuf[pos].Diffuse = color;
+            vbuf[pos].PosX = static_cast<float>(x + w);
+            vbuf[pos].PosY = static_cast<float>(y + h);
+            vbuf[pos].TexU = x2;
+            vbuf[pos].TexV = y2;
+            vbuf[pos].Color = color;
 
             if (++_curDrawQuad == _maxDrawQuad) {
                 _dipQueue.push_back({texture, font->DrawEffect, 1});
@@ -3336,7 +3348,7 @@ auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -
 
 auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
 {
-    auto* font = GetFont(num_font);
+    const auto* font = GetFont(num_font);
     if (font == nullptr) {
         return false;
     }

@@ -448,7 +448,7 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
             Settings.ScreenHeight = 768;
             Settings.ScreenWidth = std::lround(static_cast<float>(Settings.ScreenHeight) * ratio);
 
-            Settings.FullScreen = true;
+            Settings.Fullscreen = true;
         }
 
 #if FO_WEB
@@ -537,8 +537,8 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
         // Default effect
         FileSystem base_fs;
         base_fs.AddDataSource(Settings.EmbeddedResources);
-        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "ImGui_Default", [&base_fs](string_view path) -> string {
-            const auto file = base_fs.ReadFile(_str("Effects/{}", path));
+        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default.fofx", [&base_fs](string_view path) -> string {
+            const auto file = base_fs.ReadFile(path);
             RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
             return file.GetStr();
         });
@@ -630,7 +630,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
     }
 #endif
 
-    if (Settings.FullScreen) {
+    if (Settings.Fullscreen) {
         window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 
@@ -750,6 +750,10 @@ void Application::BeginFrame()
                 ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
                 ev.Text = ""; // Todo: rework sdl_event.text.text
                 EventsQueue->emplace_back(ev);
+
+                if (ev.Code == KeyCode::Escape && io.KeyShift) {
+                    Settings.Quit = true;
+                }
             }
             else {
                 InputEvent::KeyUpEvent ev;
@@ -889,6 +893,9 @@ void Application::BeginFrame()
         Settings.ScreenWidth = display_w;
         Settings.ScreenHeight = display_h;
         MainWindow._onWindowSizeChangedDispatcher();
+
+        // Refresh viewport
+        Render.SetRenderTarget(nullptr);
     }
 
     // Setup time step
@@ -970,11 +977,11 @@ void Application::EndFrame()
             for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
                 auto& v = _imguiDrawBuf->Vertices2D[i];
                 const auto& iv = cmd_list->VtxBuffer[i];
-                v.X = iv.pos.x;
-                v.Y = iv.pos.y;
-                v.TU = iv.uv.x;
-                v.TV = iv.uv.y;
-                v.Diffuse = iv.col;
+                v.PosX = iv.pos.x;
+                v.PosY = iv.pos.y;
+                v.TexU = iv.uv.x;
+                v.TexV = iv.uv.y;
+                v.Color = iv.col;
             }
 
             _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);

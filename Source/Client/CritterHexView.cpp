@@ -403,7 +403,9 @@ void CritterHexView::NextAnim(bool erase_front)
         return;
     }
     if (erase_front) {
-        _animSequence.begin()->ActiveItem->Release();
+        if (_animSequence.begin()->ActiveItem != nullptr) {
+            _animSequence.begin()->ActiveItem->Release();
+        }
         _animSequence.erase(_animSequence.begin());
     }
     if (_animSequence.empty()) {
@@ -570,7 +572,9 @@ auto CritterHexView::IsWalkAnim() const -> bool
 void CritterHexView::ClearAnim()
 {
     for (const auto& anim : _animSequence) {
-        anim.ActiveItem->Release();
+        if (anim.ActiveItem != nullptr) {
+            anim.ActiveItem->Release();
+        }
     }
     _animSequence.clear();
 }
@@ -944,12 +948,8 @@ void CritterHexView::ProcessMoving()
             const auto cur_hy = GetHexY();
             const auto moved = (cur_hx != old_hx || cur_hy != old_hy);
 
-            if (moved) {
-                ResetOk();
-
-                if (IsChosen()) {
-                    _map->RebuildFog();
-                }
+            if (moved && IsChosen()) {
+                _map->RebuildFog();
             }
 
             // Evaluate current position
@@ -1016,30 +1016,11 @@ void CritterHexView::ProcessMoving()
     }
 }
 
-void CritterHexView::SetSprRect()
+auto CritterHexView::GetDrawRect() const -> IRect
 {
-    if (SprDrawValid) {
-        const auto old = DRect;
+    RUNTIME_ASSERT(SprDrawValid);
 
-        DRect = _engine->SprMngr.GetDrawRect(SprDraw);
-
-        _textRect.Left += DRect.Left - old.Left;
-        _textRect.Right += DRect.Left - old.Left;
-        _textRect.Top += DRect.Top - old.Top;
-        _textRect.Bottom += DRect.Top - old.Top;
-
-        if (IsChosen()) {
-            _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
-        }
-    }
-}
-
-auto CritterHexView::GetTextRect() const -> IRect
-{
-    if (SprDrawValid) {
-        return _textRect;
-    }
-    return {};
+    return _engine->SprMngr.GetDrawRect(SprDraw);
 }
 
 void CritterHexView::SetAnimOffs(int ox, int oy)
@@ -1071,18 +1052,6 @@ void CritterHexView::RefreshOffs()
     SprOy = static_cast<short>(GetHexOffsY() + _oyExtI + _oyAnim);
 
     if (SprDrawValid) {
-        DRect = _engine->SprMngr.GetDrawRect(SprDraw);
-
-        _textRect = DRect;
-
-#if FO_ENABLE_3D
-        if (_model != nullptr) {
-            // Todo: expose text on head offset to some settings
-            // _textRect.Top += _engine->SprMngr.GetSpriteInfo(SprId)->Height / 6;
-            _textRect.Top = _textRect.Bottom - 100;
-        }
-#endif
-
         if (IsChosen()) {
             _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
         }
@@ -1107,10 +1076,27 @@ void CritterHexView::SetText(string_view str, uint color, uint text_delay)
 
 void CritterHexView::GetNameTextPos(int& x, int& y) const
 {
-    const auto tr = GetTextRect();
-    const auto tr_half_width = tr.Width() / 2;
-    x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f);
-    y = static_cast<int>(static_cast<float>(tr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f) + GetNameOffset();
+    if (SprDrawValid) {
+        const auto dr = GetDrawRect();
+        const auto dr_half_width = dr.Width() / 2;
+        x = iround(static_cast<float>(dr.Left + dr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+
+#if FO_ENABLE_3D
+        if (const auto view_height = _model != nullptr ? _model->GetViewHeight() : 0; view_height != 0) {
+            auto&& [draw_width, draw_height] = _model->GetDrawSize();
+            y = iround(static_cast<float>(dr.Bottom - static_cast<int>(draw_height / 4) - view_height + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
+        }
+        else
+#endif
+        {
+            y = iround(static_cast<float>(dr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
+        }
+    }
+    else {
+        // Offscreen
+        x = -1000;
+        y = -1000;
+    }
 }
 
 void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const
@@ -1143,9 +1129,9 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
 
     GetNameTextPos(x, y);
 
-    if (_engine->SprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
-        x += 100 - w / 2;
-        y += 70 - h;
+    if (_engine->SprMngr.GetTextInfo(200, 200, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
+        x -= w / 2;
+        y -= h;
     }
 }
 
@@ -1164,7 +1150,7 @@ void CritterHexView::DrawTextOnHead()
         int x = 0;
         int y = 0;
         GetNameTextPos(x, y);
-        const auto r = IRect(x, y, x + 200, y + 70);
+        const auto r = IRect(x - 100, y - 200, x + 100, y);
 
         string str;
         uint color;

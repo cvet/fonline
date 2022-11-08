@@ -26,20 +26,6 @@
 
 namespace SPK
 {
-	/**
-	* @enum TexturingMode
-	* @brief Constants defining the way to apply texture over the particles
-	*/
-	enum TextureMode
-	{
-		TEXTURE_MODE_NONE,	/**< Constant telling no texturing is used */
-		TEXTURE_MODE_2D,	/**< Constant telling a 2D texture is used */
-		TEXTURE_MODE_2D_NO_ALPHA,	/**< Constant telling a 2D texture is used */
-		TEXTURE_MODE_2D_ONLY_ALPHA,	/**< Constant telling a 2D texture is used */
-		TEXTURE_MODE_3D,	/**< Constant telling a 3D texture is used */
-	};
-
-
 	/** @brief Base Interface for rendering particles with quads */
 	class SPK_PREFIX QuadRenderBehavior
 	{
@@ -55,20 +41,6 @@ namespace SPK
 		/////////////
 		// Setters //
 		/////////////
-
-		/**
-		* @brief Sets the texturing mode for this GLQuadRenderer
-		*
-		* The texturing mode defines whether or not to apply a texture
-		* and if so which type of texture to apply (2D,3D or atlas).<br>
-		* <br>
-		* Note that the validity of the texturing mode depends on the rendering API below.<br>
-		* The method returns true if the rendering mode can be set, false if it cannot
-		*
-		* @param mode : the texturing mode of this GLQuadRenderer
-		* @return true if the rendering mode can be set, false if it cannot
-		*/
-		virtual  bool setTexturingMode(TextureMode mode);
 
 		/**
 		* @brief Sets the cut of the texture
@@ -115,12 +87,6 @@ namespace SPK
 		/////////////
 
 		/**
-		* @brief Gets the texturing mode of this GLQuadRenderer
-		* @return the texturing mode of this GLQuadRenderer
-		*/
-		TextureMode getTexturingMode() const;
-
-		/**
 		* @brief Gets the atlas dimension on the X axis
 		*
 		* See setAtlasDimensions(size_t,size_t) for more information
@@ -151,8 +117,6 @@ namespace SPK
 		float getScaleY() const;
 
 	protected :
-
-		TextureMode texturingMode;
 
 		float scaleX;
 		float scaleY;
@@ -191,21 +155,10 @@ namespace SPK
 	};
 
 
-	inline bool QuadRenderBehavior::setTexturingMode(TextureMode mode)
-	{
-		texturingMode = mode;
-		return true;
-	}
-
 	inline void QuadRenderBehavior::setScale(float scaleX,float scaleY)
 	{
 		this->scaleX = scaleX;
 		this->scaleY = scaleY;
-	}
-
-	inline TextureMode QuadRenderBehavior::getTexturingMode() const
-	{
-		return texturingMode;
 	}
 
 	inline size_t QuadRenderBehavior::getAtlasDimensionX() const

@@ -52,9 +52,8 @@ RenderDrawBuffer::RenderDrawBuffer(bool is_static) : IsStatic {is_static}
 
 RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
 {
-    const auto fname = _str("{}.fofx", name);
-    const auto content = loader(fname);
-    const auto fofx = ConfigFile(fname, content, nullptr, ConfigFileOption::CollectContent);
+    const auto content = loader(name);
+    const auto fofx = ConfigFile(name, content, nullptr, ConfigFileOption::CollectContent);
     RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
@@ -104,14 +103,20 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         RUNTIME_ASSERT(false);
     };
 
+    const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
+    const auto blend_equation_default = fofx.GetStr("Effect", "BlendEquation", "FuncAdd");
+    const auto depth_write_default = fofx.GetStr("Effect", "DepthWrite", "True");
+
     for (size_t pass = 0; pass < _passCount; pass++) {
-        auto blend_func = _str(fofx.GetStr("Effect", _str("BlendFunc_Pass{}", pass + 1), "")).split(' ');
-        if (blend_func.size() != 2) {
-            blend_func = {"SrcAlpha", "InvSrcAlpha"};
-        }
+        const auto pass_str = _str("_Pass{}", pass + 1).str();
+
+        auto blend_func = _str(fofx.GetStr("Effect", _str("BlendFunc{}", pass_str), blend_func_default)).split(' ');
+        RUNTIME_ASSERT(blend_func.size() == 2);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
-        _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", _str("BlendEquation_Pass{}", pass + 1), "FuncAdd"));
+        _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", _str("BlendEquation{}", pass_str), blend_equation_default));
+
+        _depthWrite[pass] = _str(fofx.GetStr("Effect", _str("DepthWrite{}", pass_str), depth_write_default)).toBool();
     }
 }

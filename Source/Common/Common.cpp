@@ -39,6 +39,10 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
+#if FO_MAC
+#include <sys/sysctl.h>
+#endif
+
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 #if !FO_WINDOWS
 #if __has_include(<libunwind.h>)
@@ -96,23 +100,70 @@ auto GetStackTrace() -> string
 #endif
 }
 
+static bool RunInDebugger = false;
+static std::once_flag RunInDebuggerOnce;
+
 auto IsRunInDebugger() -> bool
 {
 #if FO_WINDOWS
-    return ::IsDebuggerPresent() != FALSE;
+    std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
+
+#elif FO_LINUX
+    std::call_once(RunInDebuggerOnce, [] {
+        const auto status_fd = ::open("/proc/self/status", O_RDONLY);
+        if (status_fd != -1) {
+            char buf[4096] = {0};
+            const auto num_read = ::read(status_fd, buf, sizeof(buf) - 1);
+            ::close(status_fd);
+            if (num_read > 0) {
+                const auto* tracer_pid_str = ::strstr(buf, "TracerPid:");
+                if (tracer_pid_str != nullptr) {
+                    for (const char* s = tracer_pid_str + "TracerPid:"_len; s <= buf + num_read; ++s) {
+                        if (::isspace(*s) == 0) {
+                            RunInDebugger = ::isdigit(*s) != 0 && *s != '0';
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+#elif FO_MAC
+    std::call_once(RunInDebuggerOnce, [] {
+        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+        struct kinfo_proc info = {};
+        size_t size = sizeof(info);
+        if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
+            RunInDebugger = (info.kp_proc.p_flag & P_TRACED) != 0;
+        }
+    });
+
 #else
-    return false;
+    UNUSED_VARIABLE(RunInDebuggerOnce);
 #endif
+
+    return RunInDebugger;
 }
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 {
+    if (IsRunInDebugger()) {
 #if FO_WINDOWS
-    if (::IsDebuggerPresent() != FALSE) {
         ::DebugBreak();
         return true;
-    }
+#elif FO_LINUX
+#if __has_builtin(__builtin_debugtrap)
+        __builtin_debugtrap();
+#else
+        ::raise(SIGTRAP);
 #endif
+        return true;
+#elif FO_MAC
+        __builtin_debugtrap();
+        return true;
+#endif
+    }
 
     return false;
 }

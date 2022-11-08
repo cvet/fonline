@@ -11,7 +11,7 @@ CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
-PACKAGE_MANAGER="sudo apt-get -qq -y -o DPkg::Lock::Timeout=300"
+PACKAGE_MANAGER="sudo apt-get -qq -y -o DPkg::Lock::Timeout=-1"
 
 function install_common_packages()
 {

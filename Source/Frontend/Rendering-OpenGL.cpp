@@ -215,7 +215,7 @@ public:
     explicit OpenGL_DrawBuffer(bool is_static);
     ~OpenGL_DrawBuffer() override;
 
-    void Upload(EffectUsage usage, size_t custom_vertices_size) override;
+    void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
 
     GLuint VertexArrObj {};
     GLuint VertexBufObj {};
@@ -414,8 +414,8 @@ void OpenGL_Renderer::Present()
     SDL_GL_SwapWindow(SdlWindow);
 #endif
 
-    if (RenderDebug && glGetError() != GL_NO_ERROR) {
-        throw RenderingException("Unknown place of OpenGL error");
+    if (const auto err = glGetError(); err != GL_NO_ERROR) {
+        throw RenderingException("OpenGL error", err);
     }
 }
 
@@ -474,10 +474,10 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             ext = "glsl-es";
         }
 
-        const string vert_fname = _str("{}.{}.vert.{}", name, pass + 1, ext);
+        const string vert_fname = _str("{}.{}.vert.{}", _str(name).eraseFileExtension(), pass + 1, ext);
         string vert_content = loader(vert_fname);
         RUNTIME_ASSERT(!vert_content.empty());
-        const string frag_fname = _str("{}.{}.frag.{}", name, pass + 1, ext);
+        const string frag_fname = _str("{}.{}.frag.{}", _str(name).eraseFileExtension(), pass + 1, ext);
         string frag_content = loader(frag_fname);
         RUNTIME_ASSERT(!frag_content.empty());
 
@@ -500,7 +500,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 auto* str = new GLchar[len];
                 int chars = 0;
-                glGetShaderInfoLog(shader, len, &chars, str);
+                GL(glGetShaderInfoLog(shader, len, &chars, str));
                 result.assign(str, len);
                 delete[] str;
             }
@@ -514,7 +514,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 auto* str = new GLchar[len];
                 int chars = 0;
-                glGetProgramInfoLog(program, len, &chars, str);
+                GL(glGetProgramInfoLog(program, len, &chars, str));
                 result.assign(str, len);
                 delete[] str;
             }
@@ -851,7 +851,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
         screen_size = true;
     }
 
-    if (screen_size && settings.FullScreen) {
+    if (screen_size && settings.Fullscreen) {
         // Preserve aspect ratio in fullscreen mode
         float native_aspect = (float)w / h;
         float aspect = (float)settings.ScreenWidth / settings.ScreenHeight;
@@ -925,7 +925,8 @@ static void EnableVertAtribs(EffectUsage usage)
         GL(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Bitangent))));
         GL(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendWeights))));
         GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
-        for (uint i = 0; i <= 7; i++) {
+        GL(glVertexAttribPointer(8, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Color))));
+        for (uint i = 0; i <= 8; i++) {
             GL(glEnableVertexAttribArray(i));
         }
 
@@ -933,10 +934,10 @@ static void EnableVertAtribs(EffectUsage usage)
     }
 #endif
 
-    GL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, X))));
-    GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Diffuse))));
-    GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TU))));
-    GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TUEgg))));
+    GL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, PosX))));
+    GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Color))));
+    GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TexU))));
+    GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, EggTexU))));
     for (uint i = 0; i <= 3; i++) {
         GL(glEnableVertexAttribArray(i));
     }
@@ -978,7 +979,7 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
     }
 }
 
-void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
+void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -1067,8 +1068,10 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
 
     // Fill index buffer
     if (need_upload_indices) {
+        const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? Indices.size() : custom_indices_size;
+
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, Indices.size() * sizeof(ushort), Indices.data(), buf_type));
+        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(ushort), Indices.data(), buf_type));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
 
@@ -1275,6 +1278,9 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(ConvertBlendEquation(_blendEquation[pass])));
         }
+        if (!_depthWrite[pass]) {
+            GL(glDepthMask(GL_FALSE));
+        }
 
         // Todo: bind time, random, anim
 
@@ -1285,6 +1291,9 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
         if (_blendEquation[pass] != BlendEquationType::FuncAdd) {
             GL(glBlendEquation(GL_FUNC_ADD));
+        }
+        if (!_depthWrite[pass]) {
+            GL(glDepthMask(GL_TRUE));
         }
     }
 

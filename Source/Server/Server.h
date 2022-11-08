@@ -109,6 +109,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
+    ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
