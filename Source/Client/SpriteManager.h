@@ -335,10 +335,6 @@ private:
     int _eggY {};
     const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
-    int _eggSprWidth {};
-    int _eggSprHeight {};
-    float _eggAtlasWidth {};
-    float _eggAtlasHeight {};
     vector<uint> _borderBuf {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D

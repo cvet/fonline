@@ -1526,14 +1526,9 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 
     DestroyAnyFrames(egg_frames);
 
-    _eggSprWidth = _sprEgg->Width;
-    _eggSprHeight = _sprEgg->Height;
-    _eggAtlasWidth = static_cast<float>(App->Render.MAX_ATLAS_WIDTH);
-    _eggAtlasHeight = static_cast<float>(App->Render.MAX_ATLAS_HEIGHT);
-
     const auto x = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
     const auto y = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
-    _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _eggSprWidth, _eggSprHeight);
+    _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _sprEgg->Width, _sprEgg->Height);
 }
 
 auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool
@@ -1695,17 +1690,18 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Egg process
         auto egg_added = false;
+
         if (use_egg && CheckEggAppearence(spr->HexX, spr->HexY, spr->EggAppearence)) {
             auto x1 = x - ex;
             auto y1 = y - ey;
             auto x2 = x1 + si->Width;
             auto y2 = y1 + si->Height;
 
-            if (!(x1 >= _eggSprWidth || y1 >= _eggSprHeight || x2 < 0 || y2 < 0)) {
+            if (!(x1 >= _sprEgg->Width || y1 >= _sprEgg->Height || x2 < 0 || y2 < 0)) {
                 x1 = std::max(x1, 0);
                 y1 = std::max(y1, 0);
-                x2 = std::min(x2, _eggSprWidth);
-                y2 = std::min(y2, _eggSprHeight);
+                x2 = std::min(x2, static_cast<int>(_sprEgg->Width));
+                y2 = std::min(y2, static_cast<int>(_sprEgg->Height));
 
                 const auto x1_f = static_cast<float>(x1 + ATLAS_SPRITES_PADDING);
                 const auto x2_f = static_cast<float>(x2 + ATLAS_SPRITES_PADDING);
@@ -1715,14 +1711,17 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
                 auto& vbuf = _spritesDrawBuf->Vertices2D;
                 const auto pos = _curDrawQuad * 4;
 
-                vbuf[pos + 0].EggTexU = x1_f / _eggAtlasWidth;
-                vbuf[pos + 0].EggTexV = y2_f / _eggAtlasHeight;
-                vbuf[pos + 1].EggTexU = x1_f / _eggAtlasWidth;
-                vbuf[pos + 1].EggTexV = y1_f / _eggAtlasHeight;
-                vbuf[pos + 2].EggTexU = x2_f / _eggAtlasWidth;
-                vbuf[pos + 2].EggTexV = y1_f / _eggAtlasHeight;
-                vbuf[pos + 3].EggTexU = x2_f / _eggAtlasWidth;
-                vbuf[pos + 3].EggTexV = y2_f / _eggAtlasHeight;
+                const auto egg_atlas_width = static_cast<float>(_sprEgg->Atlas->Width);
+                const auto egg_atlas_height = static_cast<float>(_sprEgg->Atlas->Height);
+
+                vbuf[pos + 0].EggTexU = x1_f / egg_atlas_width;
+                vbuf[pos + 0].EggTexV = y2_f / egg_atlas_height;
+                vbuf[pos + 1].EggTexU = x1_f / egg_atlas_width;
+                vbuf[pos + 1].EggTexV = y1_f / egg_atlas_height;
+                vbuf[pos + 2].EggTexU = x2_f / egg_atlas_width;
+                vbuf[pos + 2].EggTexV = y1_f / egg_atlas_height;
+                vbuf[pos + 3].EggTexU = x2_f / egg_atlas_width;
+                vbuf[pos + 3].EggTexV = y2_f / egg_atlas_height;
 
                 egg_added = true;
             }
@@ -1890,14 +1889,16 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
     auto ox = pix_x - static_cast<int>(static_cast<float>(ex) / _settings.SpritesZoom);
     auto oy = pix_y - static_cast<int>(static_cast<float>(ey) / _settings.SpritesZoom);
 
-    if (ox < 0 || oy < 0 || ox >= static_cast<int>(static_cast<float>(_eggSprWidth) / _settings.SpritesZoom) || oy >= static_cast<int>(static_cast<float>(_eggSprHeight) / _settings.SpritesZoom)) {
+    if (ox < 0 || oy < 0 || //
+        ox >= static_cast<int>(static_cast<float>(_sprEgg->Width) / _settings.SpritesZoom) || //
+        oy >= static_cast<int>(static_cast<float>(_sprEgg->Height) / _settings.SpritesZoom)) {
         return false;
     }
 
     ox = static_cast<int>(static_cast<float>(ox) * _settings.SpritesZoom);
     oy = static_cast<int>(static_cast<float>(oy) * _settings.SpritesZoom);
 
-    const auto egg_color = _eggData.at(oy * _eggSprWidth + ox);
+    const auto egg_color = _eggData.at(oy * _sprEgg->Width + ox);
     return (egg_color >> 24) < 127;
 }
 
