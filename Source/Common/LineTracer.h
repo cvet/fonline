@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-#include "GeometryHelper.h"
+class GeometryHelper;
 
 class LineTracer final
 {

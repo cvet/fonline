@@ -1024,7 +1024,7 @@
     if (client->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (dir >= client->Settings.MapDirCount) {
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
     if (steps == 0u) {

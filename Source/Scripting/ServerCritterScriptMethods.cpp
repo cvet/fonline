@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "GenericUtils.h"
-#include "GeometryHelper.h"
 #include "Server.h"
 #include "StringUtils.h"
 #include "TwoBitMask.h"
@@ -119,14 +118,14 @@
     }
 
     if (hx != self->GetHexX() || hy != self->GetHexY()) {
-        if (dir < self->GetEngine()->Settings.MapDirCount && self->GetDir() != dir) {
+        if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
             self->ChangeDir(dir);
         }
         if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, 0, true)) {
             throw ScriptException("Transit fail");
         }
     }
-    else if (dir < self->GetEngine()->Settings.MapDirCount && self->GetDir() != dir) {
+    else if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
         self->ChangeDir(dir);
         self->Send_Dir(self);
         self->Broadcast_Dir();
@@ -149,7 +148,7 @@
     }
 
     auto dir_ = dir;
-    if (dir_ >= self->GetEngine()->Settings.MapDirCount) {
+    if (dir_ >= GameSettings::MAP_DIR_COUNT) {
         dir_ = 0;
     }
 
@@ -277,7 +276,7 @@
     }
 
     auto dir_ = dir;
-    if (dir_ >= self->GetEngine()->Settings.MapDirCount) {
+    if (dir_ >= GameSettings::MAP_DIR_COUNT) {
         dir_ = self->GetDir();
     }
 
@@ -362,7 +361,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetDir(Critter* self, uchar dir)
 {
-    if (dir >= self->GetEngine()->Settings.MapDirCount) {
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid direction arg");
     }
 

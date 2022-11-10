@@ -33,6 +33,8 @@
 
 #include "LineTracer.h"
 
+#include "GeometryHelper.h"
+
 constexpr auto BIAS_FLOAT = 0.02f;
 
 LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _geometry {geometry}
@@ -40,17 +42,17 @@ LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx
     _maxHx = maxhx;
     _maxHy = maxhy;
 
-    if (!_geometry.IsHexagonal()) {
-        _dir = atan2(static_cast<float>(ty - hy), static_cast<float>(tx - hx)) + angle;
-        _dx = cos(_dir);
-        _dy = sin(_dir);
+    if constexpr (GameSettings::SQUARE_GEOMETRY) {
+        _dir = std::atan2(static_cast<float>(ty - hy), static_cast<float>(tx - hx)) + angle;
+        _dx = std::cos(_dir);
+        _dy = std::sin(_dir);
 
-        if (fabs(_dx) > fabs(_dy)) {
-            _dy /= fabs(_dx);
+        if (std::fabs(_dx) > std::fabs(_dy)) {
+            _dy /= std::fabs(_dx);
             _dx = _dx > 0 ? 1.0f : -1.0f;
         }
         else {
-            _dx /= fabs(_dy);
+            _dx /= std::fabs(_dy);
             _dy = _dy > 0 ? 1.0f : -1.0f;
         }
 
@@ -61,7 +63,7 @@ LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx
         const auto nx = 3.0f * (static_cast<float>(tx) - static_cast<float>(hx));
         const auto ny = (static_cast<float>(ty) - static_cast<float>(hy)) * SQRT3_X2_FLOAT - (static_cast<float>(tx & 1) - static_cast<float>(hx & 1)) * SQRT3_FLOAT;
 
-        _dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx);
+        _dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
 
         if (angle != 0.0f) {
             _dir += angle;
@@ -102,8 +104,8 @@ LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx
             _x2 -= _x1;
             _y2 -= _y1;
 
-            const auto xp = cos(angle / RAD_TO_DEG_FLOAT) * _x2 - sin(angle / RAD_TO_DEG_FLOAT) * _y2;
-            const auto yp = sin(angle / RAD_TO_DEG_FLOAT) * _x2 + cos(angle / RAD_TO_DEG_FLOAT) * _y2;
+            const auto xp = std::cos(angle / RAD_TO_DEG_FLOAT) * _x2 - std::sin(angle / RAD_TO_DEG_FLOAT) * _y2;
+            const auto yp = std::sin(angle / RAD_TO_DEG_FLOAT) * _x2 + std::cos(angle / RAD_TO_DEG_FLOAT) * _y2;
 
             _x2 = _x1 + xp;
             _y2 = _y1 + yp;
@@ -161,9 +163,9 @@ void LineTracer::GetNextSquare(ushort& cx, ushort& cy)
 void LineTracer::NormalizeDir()
 {
     if (_dir <= 0.0f) {
-        _dir = 360.0f - fmod(-_dir, 360.0f);
+        _dir = 360.0f - std::fmod(-_dir, 360.0f);
     }
     else if (_dir >= 0.0f) {
-        _dir = fmod(_dir, 360.0f);
+        _dir = std::fmod(_dir, 360.0f);
     }
 }

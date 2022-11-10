@@ -41,7 +41,6 @@
 #include "Entity.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
-#include "GeometryHelper.h"
 #include "ItemHexView.h"
 #include "MapLoader.h"
 #include "ProtoManager.h"

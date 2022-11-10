@@ -40,7 +40,7 @@ GeometryHelper::GeometryHelper(GeometrySettings& settings) : _settings {settings
 GeometryHelper::~GeometryHelper()
 {
     if (_sxEven != nullptr) {
-        if (_settings.MapHexagonal) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             delete[] _sxEven;
             delete[] _syEven;
             delete[] _sxOdd;
@@ -53,16 +53,11 @@ GeometryHelper::~GeometryHelper()
     }
 }
 
-auto GeometryHelper::IsHexagonal() const -> bool
-{
-    return _settings.MapHexagonal;
-}
-
 void GeometryHelper::InitializeHexOffsets() const
 {
-    const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * _settings.MapDirCount;
+    const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
 
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         _sxEven = new short[size];
         _syEven = new short[size];
         _sxOdd = new short[size];
@@ -150,7 +145,7 @@ void GeometryHelper::InitializeHexOffsets() const
 
 auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) const -> uint
 {
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const auto dx = x1 > x2 ? x1 - x2 : x2 - x1;
 
         if ((x1 & 1) == 0) {
@@ -171,15 +166,16 @@ auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) const -> uint
         const auto rx = y1 - y2 - (dx + 1) / 2;
         return dx + (rx > 0 ? rx : 0);
     }
-
-    const auto dx = std::abs(x2 - x1);
-    const auto dy = std::abs(y2 - y1);
-    return std::max(dx, dy);
+    else {
+        const auto dx = std::abs(x2 - x1);
+        const auto dy = std::abs(y2 - y1);
+        return std::max(dx, dy);
+    }
 }
 
 auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uchar
 {
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         if ((x1 & 1) != 0) {
             if (x1 > x2 && y1 > y2) {
                 return 0;
@@ -252,7 +248,7 @@ auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uchar
 
 auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uchar
 {
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const auto hx = static_cast<float>(x1);
         const auto hy = static_cast<float>(y1);
         const auto tx = static_cast<float>(x2);
@@ -277,38 +273,41 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uchar
         if (dir >= 300.0f) {
             return 1;
         }
+
         return 0;
     }
+    else {
+        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1));
 
-    const auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1));
+        if (dir >= 22.5f && dir < 67.5f) {
+            return 7;
+        }
+        if (dir >= 67.5f && dir < 112.5f) {
+            return 0;
+        }
+        if (dir >= 112.5f && dir < 157.5f) {
+            return 1;
+        }
+        if (dir >= 157.5f && dir < 202.5f) {
+            return 2;
+        }
+        if (dir >= 202.5f && dir < 247.5f) {
+            return 3;
+        }
+        if (dir >= 247.5f && dir < 292.5f) {
+            return 4;
+        }
+        if (dir >= 292.5f && dir < 337.5f) {
+            return 5;
+        }
 
-    if (dir >= 22.5f && dir < 67.5f) {
-        return 7;
+        return 6;
     }
-    if (dir >= 67.5f && dir < 112.5f) {
-        return 0;
-    }
-    if (dir >= 112.5f && dir < 157.5f) {
-        return 1;
-    }
-    if (dir >= 157.5f && dir < 202.5f) {
-        return 2;
-    }
-    if (dir >= 202.5f && dir < 247.5f) {
-        return 3;
-    }
-    if (dir >= 247.5f && dir < 292.5f) {
-        return 4;
-    }
-    if (dir >= 292.5f && dir < 337.5f) {
-        return 5;
-    }
-    return 6;
 }
 
 auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar
 {
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const auto hx = static_cast<float>(x1);
         const auto hy = static_cast<float>(y1);
         const auto tx = static_cast<float>(x2);
@@ -339,40 +338,43 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) con
         if (dir >= 300.0f) {
             return 1;
         }
+
         return 0;
     }
+    else {
+        auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1)) + offset;
 
-    auto dir = 180.0f + RAD_TO_DEG_FLOAT * atan2(static_cast<float>(x2 - x1), static_cast<float>(y2 - y1)) + offset;
+        if (dir < 0.0f) {
+            dir = 360.0f - fmod(-dir, 360.0f);
+        }
+        else if (dir >= 360.0f) {
+            dir = fmod(dir, 360.0f);
+        }
 
-    if (dir < 0.0f) {
-        dir = 360.0f - fmod(-dir, 360.0f);
-    }
-    else if (dir >= 360.0f) {
-        dir = fmod(dir, 360.0f);
-    }
+        if (dir >= 22.5f && dir < 67.5f) {
+            return 7;
+        }
+        if (dir >= 67.5f && dir < 112.5f) {
+            return 0;
+        }
+        if (dir >= 112.5f && dir < 157.5f) {
+            return 1;
+        }
+        if (dir >= 157.5f && dir < 202.5f) {
+            return 2;
+        }
+        if (dir >= 202.5f && dir < 247.5f) {
+            return 3;
+        }
+        if (dir >= 247.5f && dir < 292.5f) {
+            return 4;
+        }
+        if (dir >= 292.5f && dir < 337.5f) {
+            return 5;
+        }
 
-    if (dir >= 22.5f && dir < 67.5f) {
-        return 7;
+        return 6;
     }
-    if (dir >= 67.5f && dir < 112.5f) {
-        return 0;
-    }
-    if (dir >= 112.5f && dir < 157.5f) {
-        return 1;
-    }
-    if (dir >= 157.5f && dir < 202.5f) {
-        return 2;
-    }
-    if (dir >= 202.5f && dir < 247.5f) {
-        return 3;
-    }
-    if (dir >= 247.5f && dir < 292.5f) {
-        return 4;
-    }
-    if (dir >= 292.5f && dir < 337.5f) {
-        return 5;
-    }
-    return 6;
 }
 
 auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) const -> float
@@ -446,7 +448,7 @@ auto GeometryHelper::GetYProj() const -> float
 
 auto GeometryHelper::DirToAngle(uchar dir) const -> short
 {
-    if (IsHexagonal()) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         return static_cast<short>(150 - dir * 60);
     }
     else {
@@ -456,7 +458,7 @@ auto GeometryHelper::DirToAngle(uchar dir) const -> short
 
 auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
 {
-    if (IsHexagonal()) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         return static_cast<uchar>(NormalizeAngle(dir_angle) / 60);
     }
     else {
@@ -479,7 +481,7 @@ auto GeometryHelper::CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint 
 
 auto GeometryHelper::ReverseDir(uchar dir) const -> uchar
 {
-    return static_cast<uchar>((dir + _settings.MapDirCount / 2) % _settings.MapDirCount);
+    return static_cast<uchar>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
 auto GeometryHelper::MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool
@@ -503,7 +505,7 @@ auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxh
 
 void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
 {
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         switch (dir) {
         case 0:
             hx--;
@@ -588,7 +590,7 @@ auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const short*, const 
 
 auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>
 {
-    if (_settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         auto dx = to_hx - from_hx;
         const auto dy = to_hy - from_hy;
 
@@ -629,7 +631,7 @@ void GeometryHelper::ForEachBlockLines(const vector<uchar>& lines, ushort hx, us
         const auto dir = lines[i * 2];
         const auto steps = lines[i * 2 + 1];
 
-        if (dir >= _settings.MapDirCount || steps == 0u || steps > 9u) {
+        if (dir >= GameSettings::MAP_DIR_COUNT || steps == 0u || steps > 9u) {
             continue;
         }
 

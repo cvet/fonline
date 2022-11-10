@@ -340,7 +340,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
     _speedAdjustBase = 1.0f;
     _speedAdjustCur = 1.0f;
     _speedAdjustLink = 1.0f;
-    _lookDirAngle = _modelMngr._geometry.IsHexagonal() ? 150.0f : 135.0f;
+    _lookDirAngle = GameSettings::HEXAGONAL_GEOMETRY ? 150.0f : 135.0f;
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;

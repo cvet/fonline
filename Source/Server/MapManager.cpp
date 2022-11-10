@@ -735,7 +735,7 @@ void MapManager::TraceBullet(TraceData& trace)
         }
 
         uchar dir;
-        if (_engine->Settings.MapHexagonal) {
+        if constexpr  (GameSettings::HEXAGONAL_GEOMETRY) {
             dir = line_tracer.GetNextHex(cx, cy);
         }
         else {
@@ -828,7 +828,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         auto [rsx, rsy] = _engine->Geometry.GetHexOffsets((input.ToHexX % 2) != 0);
 
         auto i = 0;
-        for (; i < _engine->Settings.MapDirCount; i++, rsx++, rsy++) {
+        for (; i < GameSettings::MAP_DIR_COUNT; i++, rsx++, rsy++) {
             const auto xx = static_cast<int>(input.ToHexX + *rsx);
             const auto yy = static_cast<int>(input.ToHexY + *rsy);
             if (xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy) {
@@ -842,7 +842,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             }
         }
 
-        if (i == _engine->Settings.MapDirCount) {
+        if (i == GameSettings::MAP_DIR_COUNT) {
             output.Result = FindPathOutput::ResultType::HexBusyRing;
             return output;
         }
@@ -892,7 +892,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
             const auto [sx, sy] = _engine->Geometry.GetHexOffsets((cx & 1) != 0);
 
-            for (auto j = 0; j < _engine->Settings.MapDirCount; j++) {
+            for (auto j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 const auto nxi = cx + sx[j];
                 const auto nyi = cy + sy[j];
                 if (nxi < 0 || nyi < 0 || nxi >= maxhx || nyi >= maxhy) {
@@ -1567,7 +1567,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     uint vis;
     const auto look_base_self = view_cr->GetLookDistance();
     const int dir_self = view_cr->GetDir();
-    const auto dirs_count = _engine->Settings.MapDirCount;
+    const auto dirs_count = GameSettings::MAP_DIR_COUNT;
     const auto show_cr_dist1 = view_cr->GetShowCritterDist1();
     const auto show_cr_dist2 = view_cr->GetShowCritterDist2();
     const auto show_cr_dist3 = view_cr->GetShowCritterDist3();
@@ -1943,7 +1943,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
 void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir)
 {
     // Critters
-    const auto dirs_count = _engine->Settings.MapDirCount;
+    const auto dirs_count = GameSettings::MAP_DIR_COUNT;
     for (auto* cr : map->GetCritters()) {
         if (cr == view_cr) {
             continue;

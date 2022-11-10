@@ -52,7 +52,7 @@
 class BakerEngine : public FOEngineBase
 {
 public:
-    BakerEngine(GlobalSettings& settings, PropertiesRelationType props_relation) : FOEngineBase(settings, props_relation)
+    explicit BakerEngine(PropertiesRelationType props_relation) : FOEngineBase(_dummySettings, props_relation)
     {
         extern void Baker_RegisterData(FOEngineBase*);
         Baker_RegisterData(this);
@@ -63,6 +63,9 @@ public:
         extern auto Baker_GetRestoreInfo()->vector<uchar>;
         return Baker_GetRestoreInfo();
     }
+
+private:
+    GlobalSettings _dummySettings {};
 };
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
@@ -114,7 +117,7 @@ BaseBaker::BaseBaker(BakerSettings& settings, FileCollection&& files, BakeChecke
     RUNTIME_ASSERT(_writeData);
 }
 
-Baker::Baker(GlobalSettings& settings) : _settings {settings}, _globalSettings {settings}
+Baker::Baker(BakerSettings& settings) : _settings {settings}
 {
 }
 
@@ -297,7 +300,7 @@ void Baker::BakeAll()
 
         RUNTIME_ASSERT(!_settings.BakeContentEntries.empty());
 
-        auto baker_engine = BakerEngine(_globalSettings, PropertiesRelationType::BothRelative);
+        auto baker_engine = BakerEngine(PropertiesRelationType::BothRelative);
 
         for (const auto& dir : _settings.BakeContentEntries) {
             WriteLog("Add content entry {}", dir);
@@ -612,12 +615,12 @@ void Baker::BakeAll()
                 }
 
                 WriteLog("Process server protos");
-                auto server_engine = BakerEngine(_globalSettings, PropertiesRelationType::ServerRelative);
+                auto server_engine = BakerEngine(PropertiesRelationType::ServerRelative);
                 auto server_proto_mngr = ProtoManager(&server_engine);
                 server_proto_mngr.ParseProtos(baker_engine.Resources);
 
                 WriteLog("Process client protos");
-                auto client_engine = BakerEngine(_globalSettings, PropertiesRelationType::ClientRelative);
+                auto client_engine = BakerEngine(PropertiesRelationType::ClientRelative);
                 auto client_proto_mngr = ProtoManager(&client_engine);
                 client_proto_mngr.ParseProtos(baker_engine.Resources);
 

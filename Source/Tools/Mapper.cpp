@@ -2441,7 +2441,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hy = item->GetHexY();
             }
 
-            if (Settings.MapHexagonal) {
+            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
@@ -2464,7 +2464,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         for (auto& stile : SelectedTile) {
             int hx = stile.HexX;
             int hy = stile.HexY;
-            if (Settings.MapHexagonal) {
+            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
@@ -2513,7 +2513,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hy = item->GetHexY();
             }
 
-            if (Settings.MapHexagonal) {
+            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
@@ -2567,7 +2567,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         else {
             int hx = stile.HexX;
             int hy = stile.HexY;
-            if (Settings.MapHexagonal) {
+            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
@@ -3092,7 +3092,7 @@ void FOMapper::CurMMouseDown()
 {
     if (SelectedEntities.empty()) {
         NpcDir++;
-        if (NpcDir >= Settings.MapDirCount) {
+        if (NpcDir >= GameSettings::MAP_DIR_COUNT) {
             NpcDir = 0;
         }
 
@@ -3101,11 +3101,11 @@ void FOMapper::CurMMouseDown()
     else {
         for (auto* entity : SelectedEntities) {
             if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                auto dir = cr->GetDir() + 1;
-                if (dir >= Settings.MapDirCount) {
-                    dir = 0;
+                uint dir = cr->GetDir() + 1u;
+                if (dir >= GameSettings::MAP_DIR_COUNT) {
+                    dir = 0u;
                 }
-                cr->ChangeDir(dir);
+                cr->ChangeDir(static_cast<uchar>(dir));
             }
         }
     }

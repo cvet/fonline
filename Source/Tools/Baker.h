@@ -70,7 +70,7 @@ protected:
 class Baker final
 {
 public:
-    explicit Baker(GlobalSettings& settings);
+    explicit Baker(BakerSettings& settings);
     Baker(const Baker&) = delete;
     Baker(Baker&&) noexcept = default;
     auto operator=(const Baker&) = delete;
@@ -83,7 +83,6 @@ private:
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
 
     BakerSettings& _settings;
-    GlobalSettings& _globalSettings;
 };
 
 class BakerDataSource final : public DataSource

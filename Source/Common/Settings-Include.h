@@ -141,7 +141,8 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
-FIXED_SETTING(bool, MapHexagonal, true); // true - hexagonal, false - square
+FIXED_SETTING(bool, MapHexagonal);
+FIXED_SETTING(bool, MapSquare);
 FIXED_SETTING(int, MapDirCount);
 FIXED_SETTING(int, MapHexWidth, 32); // hex/square width
 FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
@@ -195,7 +196,7 @@ FIXED_SETTING(int, StartYear, 2000);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakerSettings, virtual GeometrySettings);
+SETTING_GROUP(BakerSettings, virtual DummySettings);
 VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
@@ -259,7 +260,7 @@ VARIABLE_SETTING(bool, HideCursor, false);
 VARIABLE_SETTING(bool, ShowMoveCursor, false);
 SETTING_GROUP_END();
 
-///@ ExportSettings Common Auto
+///@ ExportSettings Common
 SETTING_GROUP(PlatformSettings, virtual DummySettings);
 FIXED_SETTING(bool, WebBuild);
 FIXED_SETTING(bool, WindowsBuild);

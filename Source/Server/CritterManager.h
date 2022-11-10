@@ -37,7 +37,6 @@
 
 #include "Critter.h"
 #include "Entity.h"
-#include "GeometryHelper.h"
 #include "Item.h"
 #include "Map.h"
 #include "Player.h"

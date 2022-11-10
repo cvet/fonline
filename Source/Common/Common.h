@@ -1277,6 +1277,22 @@ enum class MovingState : uchar
     TraceFailed = 11,
 };
 
+// Generic fixed game settings
+struct GameSettings
+{
+#if FO_GEOMETRY == 1
+    static constexpr bool HEXAGONAL_GEOMETRY = true;
+    static constexpr bool SQUARE_GEOMETRY = false;
+    static constexpr uint MAP_DIR_COUNT = 6;
+#elif FO_GEOMETRY == 2
+    static constexpr bool HEXAGONAL_GEOMETRY = false;
+    static constexpr bool SQUARE_GEOMETRY = true;
+    static constexpr uint MAP_DIR_COUNT = 8;
+#else
+#error FO_GEOMETRY not specified
+#endif
+};
+
 // Uses
 #define USE_PRIMARY (0)
 #define USE_SECONDARY (1)

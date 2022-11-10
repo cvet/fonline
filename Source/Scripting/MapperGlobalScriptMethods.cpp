@@ -35,7 +35,6 @@
 
 #include "FileSystem.h"
 #include "GenericUtils.h"
-#include "GeometryHelper.h"
 #include "Log.h"
 #include "Mapper.h"
 #include "StringUtils.h"

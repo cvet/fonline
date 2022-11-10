@@ -2085,7 +2085,7 @@ void FOClient::Net_OnEffect()
     const auto [sx, sy] = Geometry.GetHexOffsets((hx % 2) != 0);
     const auto maxhx = CurMap->GetWidth();
     const auto maxhy = CurMap->GetHeight();
-    const auto count = GenericUtils::NumericalNumber(radius) * Settings.MapDirCount;
+    const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (uint i = 0; i < count; i++) {
         const auto ex = static_cast<short>(hx) + sx[i];

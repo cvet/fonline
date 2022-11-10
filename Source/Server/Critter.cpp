@@ -275,7 +275,7 @@ auto Critter::CountIdVisItem(uint item_id) const -> bool
 
 void Critter::ChangeDir(uchar dir)
 {
-    const auto normalized_dir = static_cast<uchar>(dir % _engine->Settings.MapDirCount);
+    const auto normalized_dir = static_cast<uchar>(dir % GameSettings::MAP_DIR_COUNT);
 
     if (normalized_dir == GetDir()) {
         return;

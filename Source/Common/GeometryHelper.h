@@ -50,7 +50,6 @@ public:
     auto operator=(GeometryHelper&&) -> GeometryHelper& = delete;
     ~GeometryHelper();
 
-    [[nodiscard]] auto IsHexagonal() const -> bool;
     [[nodiscard]] auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
     [[nodiscard]] auto GetNearDir(int x1, int y1, int x2, int y2) const -> uchar;
     [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2) const -> uchar;

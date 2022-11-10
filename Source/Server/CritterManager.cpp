@@ -215,8 +215,8 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
-    if (dir >= _engine->Settings.MapDirCount) {
-        dir = static_cast<uchar>(GenericUtils::Random(0u, _engine->Settings.MapDirCount - 1u));
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
+        dir = static_cast<uchar>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
     }
     cr->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
     cr->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
