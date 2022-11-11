@@ -119,9 +119,8 @@ struct ParticleEditor::Impl
     bool Changed {};
 };
 
-ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : EditorAssetView("Particle Editor", editor, asset_path)
+ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : EditorAssetView("Particle Editor", editor, asset_path), _impl {std::make_unique<Impl>()}
 {
-    _impl = std::make_unique<Impl>();
     _impl->EffectMngr = std::make_unique<EffectManager>(_editor.Settings, _editor.BakedResources);
 
     _impl->ParticleMngr = std::make_unique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
