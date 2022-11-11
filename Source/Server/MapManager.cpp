@@ -735,7 +735,7 @@ void MapManager::TraceBullet(TraceData& trace)
         }
 
         uchar dir;
-        if constexpr  (GameSettings::HEXAGONAL_GEOMETRY) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             dir = line_tracer.GetNextHex(cx, cy);
         }
         else {
