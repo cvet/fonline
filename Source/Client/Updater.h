@@ -78,7 +78,7 @@ private:
 
     ClientSettings& _settings;
     ServerConnection _conn;
-    FileSystem _fileSys {};
+    FileSystem _resources {};
     EffectManager _effectMngr;
     SpriteManager _sprMngr;
     double _startTick {};

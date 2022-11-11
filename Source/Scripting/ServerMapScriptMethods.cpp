@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "GenericUtils.h"
-#include "GeometryHelper.h"
 #include "Server.h"
 #include "StringUtils.h"
 
@@ -1252,7 +1251,7 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Map_MoveHexByDir(Map* self, ushort& hx, ushort& hy, uchar dir, uint steps)
 {
-    if (dir >= self->GetEngine()->Settings.MapDirCount) {
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
     if (steps == 0u) {
@@ -1290,7 +1289,7 @@
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
-    if (dir >= self->GetEngine()->Settings.MapDirCount) {
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
 

@@ -33,6 +33,7 @@
 
 #include "Dialogs.h"
 #include "Application.h"
+#include "ConfigFile.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
 
@@ -111,7 +112,7 @@ void DialogManager::LoadFromResources()
 {
     auto errors = 0;
 
-    auto files = _engine->FileSys.FilterFiles("fodlg");
+    auto files = _engine->Resources.FilterFiles("fodlg");
     while (files.MoveNext()) {
         try {
             auto file = files.GetCurFile();

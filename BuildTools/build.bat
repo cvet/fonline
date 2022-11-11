@@ -43,6 +43,8 @@ if [%2] == [client] (
     set BUILD_TARGET=FONLINE_BUILD_SERVER
 ) else if [%2] == [single] (
     set BUILD_TARGET=FONLINE_BUILD_SINGLE
+) else if [%2] == [editor] (
+    set BUILD_TARGET=FONLINE_BUILD_EDITOR
 ) else if [%2] == [mapper] (
     set BUILD_TARGET=FONLINE_BUILD_MAPPER
 ) else if [%2] == [ascompiler] (
@@ -50,7 +52,9 @@ if [%2] == [client] (
 ) else if [%2] == [baker] (
     set BUILD_TARGET=FONLINE_BUILD_BAKER
 ) else if [%2] == [toolset] (
-    set BUILD_TARGET="-DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
+    set BUILD_TARGET="FONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER"
+) else if [%2] == [full] (
+    set BUILD_TARGET="FONLINE_BUILD_CLIENT=1 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLE=1 -DFONLINE_BUILD_EDITOR=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER"
 ) else (
     echo Invalid build argument
     exit /b 1

@@ -103,9 +103,9 @@ public:
     auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
     ~LanguagePack() = default;
 
-    void ParseTexts(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name);
+    void ParseTexts(FileSystem& resources, NameResolver& name_resolver, string_view lang_name);
     void SaveTextsToDisk(string_view dir) const;
-    void LoadTexts(FileSystem& file_sys, string_view lang_name);
+    void LoadTexts(FileSystem& resources, string_view lang_name);
 
     string Name {};
     uint NameCode {};

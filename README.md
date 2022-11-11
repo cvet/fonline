@@ -20,7 +20,6 @@
   * [Tutorial](#tutorial)
 - [Work in progress](#work-in-progress)
   * [Roadmap](#roadmap)
-  * [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
   * [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
 - [Repository structure](#repository-structure)
 - [Frequently Asked Questions](frequently-asked-questions)
@@ -103,7 +102,6 @@ List of tools for Windows operating system *(some optional)*:
 * [Python](https://python.org) - needed for additional game code generation
 * [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
 * [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com) - just build tools without full IDE
-* [Visual Studio Code](https://code.visualstudio.com) - IDE for Windows with supporting of our engine management
 * [WiX Toolset](https://wixtoolset.org) - building installation packages (like .msi)
 
 List of tools for Mac operating system:
@@ -178,27 +176,12 @@ Please follow these instructions to understand how to use this engine by design:
 
 **Futher releases:**
 
-* Visual Studio Code extension *(see separate section below)*
 * Improve more unit tests and gain code coverage to at least 80%
 * C#/Mono scripting layer
 * DirectX rendering with Universal Windows Platform
 * Singleplayer mode
 * Particle system
 * Metal rendering for macOS/iOS
-
-### Roadmap for Visual Studio Code extension
-
-* Integrate mapper for editing .fomap
-* Integrate dialog editor for editing .fodlg
-* Integrate some property grid for protos editing
-* Integrate server
-* Integrate client
-* Improve viewers for supported graphic formats (frm, spr, png, fofrm and etc)
-* Add supporting of AngelScript language (highlight, auto-completion)
-* Improve debugging of code (core and scripting)
-* Improve debugging of game logic (like run game on this map with these scripts)
-* Integrate gui editor for editing .fogui
-* Add snippets for common tasks (like create map, create script, create proto)
 
 ### Todo list *(generated from source code)*
 

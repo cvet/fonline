@@ -163,9 +163,9 @@ struct BaseEntity : Entity
 };
 
 #if COMPILER_VALIDATION_MODE
-#define INIT_ARGS FileSystem &file_sys, FOEngineBase **out_engine
+#define INIT_ARGS FileSystem &resources, FOEngineBase **out_engine
 #else
-#define INIT_ARGS FileSystem& file_sys
+#define INIT_ARGS FileSystem& resources
 #endif
 
 struct SCRIPTING_CLASS : public ScriptSystem
@@ -2582,7 +2582,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 }
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys);
+static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources);
 #else
 static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin);
 #endif
@@ -2969,20 +2969,20 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-    CompileRootModule(engine, file_sys);
+    CompileRootModule(engine, resources);
     engine->ShutDownAndRelease();
 #else
 #if COMPILER_VALIDATION_MODE
-    game_engine->FileSys.AddDataSource(_str(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
+    game_engine->Resources.AddDataSource(_str(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
 #endif
 #if SERVER_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("ServerRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("ClientRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("ClientRootModule.fosb");
 #elif SINGLE_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("SingleRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
-    File script_file = game_engine->FileSys.ReadFile("MapperRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("MapperRootModule.fosb");
 #endif
     RUNTIME_ASSERT(script_file);
     RestoreRootModule(engine, {script_file.GetBuf(), script_file.GetSize()});
@@ -3203,7 +3203,7 @@ private:
 };
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
+static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
 {
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
 
@@ -3248,7 +3248,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
         int _includeDeep {};
     };
 
-    auto script_files = file_sys.FilterFiles("fos");
+    auto script_files = resources.FilterFiles("fos");
 
     map<string, string> final_script_files;
     vector<tuple<int, string, string>> final_script_files_order;

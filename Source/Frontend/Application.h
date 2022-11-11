@@ -345,6 +345,7 @@ public:
 
     void OpenLink(string_view link);
     void HideCursor();
+    void SetImGuiEffect(RenderEffect* effect);
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
 #endif

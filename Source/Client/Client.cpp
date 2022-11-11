@@ -47,38 +47,38 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
     ProtoMngr(this),
-    EffectMngr(Settings, FileSys),
-    SprMngr(Settings, window, FileSys, EffectMngr),
-    ResMngr(FileSys, SprMngr, *this),
-    SndMngr(Settings, FileSys),
+    EffectMngr(Settings, Resources),
+    SprMngr(Settings, window, Resources, EffectMngr),
+    ResMngr(Resources, SprMngr, *this),
+    SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
     Cache(_str(Settings.ResourcesDir).combinePath("Cache.fobin")),
     ClientDeferredCalls(this),
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
-    FileSys.AddDataSource(Settings.EmbeddedResources);
-    FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+    Resources.AddDataSource(Settings.EmbeddedResources);
+    Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
 
     for (const auto& entry : Settings.ClientResourceEntries) {
-        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
 
 #if FO_IOS
-    FileSys.AddDataSource("../../Documents");
+    Resources.AddDataSource("../../Documents");
 #elif FO_ANDROID
-    FileSys.AddDataSource("$AndroidAssets");
+    Resources.AddDataSource("@AndroidAssets");
     // AddDataSource(SDL_AndroidGetInternalStoragePath());
     // AddDataSource(SDL_AndroidGetExternalStoragePath());
 #elif FO_WEB
-    FileSys.AddDataSource("PersistentData");
+    Resources.AddDataSource("PersistentData");
 #endif
 
     ResMngr.IndexFiles();
@@ -89,7 +89,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
     // Language Packs
-    _curLang.LoadTexts(FileSys, Settings.Language);
+    _curLang.LoadTexts(Resources, Settings.Language);
 
     // Init 3d subsystem
 #if FO_ENABLE_3D
@@ -111,7 +111,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     }
 
 #if !FO_SINGLEPLAYER
-    if (const auto restore_info = FileSys.ReadFile("RestoreInfo.fobin")) {
+    if (const auto restore_info = Resources.ReadFile("RestoreInfo.fobin")) {
         extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
         Client_RegisterData(this, restore_info.GetData());
     }
@@ -952,8 +952,8 @@ void FOClient::Net_OnUpdateFilesResponse()
         const auto hash = reader.Read<uint>();
 
         // Check hash
-        if (_fileSys.ReadFileHeader(fname)) {
-            const auto file_hash = _fileSys.ReadFileText(_str("{}.hash", fname));
+        if (_resources.ReadFileHeader(fname)) {
+            const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
             if (file_hash.empty()) {
                 // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
             }
@@ -2085,7 +2085,7 @@ void FOClient::Net_OnEffect()
     const auto [sx, sy] = Geometry.GetHexOffsets((hx % 2) != 0);
     const auto maxhx = CurMap->GetWidth();
     const auto maxhy = CurMap->GetHeight();
-    const auto count = GenericUtils::NumericalNumber(radius) * Settings.MapDirCount;
+    const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (uint i = 0; i < count; i++) {
         const auto ex = static_cast<short>(hx) + sx[i];
@@ -3587,7 +3587,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SetLanguage" && args.size() >= 2) {
         if (args[1].length() == 4) {
-            _curLang.LoadTexts(FileSys, args[1]);
+            _curLang.LoadTexts(Resources, args[1]);
         }
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {

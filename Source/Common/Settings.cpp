@@ -33,8 +33,8 @@
 
 #include "Settings.h"
 #include "AnyData.h"
+#include "ConfigFile.h"
 #include "DiskFileSystem.h"
-#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
@@ -437,7 +437,9 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     }
 #endif
 
-    const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
+    const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
+    const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
+    const_cast<int&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
     const_cast<bool&>(DebugBuild) = true;

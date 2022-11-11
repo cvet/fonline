@@ -35,35 +35,24 @@
 
 #include "Common.h"
 
-#include "Baker.h"
-#include "FileSystem.h"
+#include "Editor.h"
 
-DECLARE_EXCEPTION(EffectBakerException);
-
-namespace glslang
-{
-    class TIntermediate;
-}
-
-class EffectBaker final : public BaseBaker
+class ParticleEditor : public EditorAssetView
 {
 public:
-    EffectBaker() = delete;
-    EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    EffectBaker(const EffectBaker&) = delete;
-    EffectBaker(EffectBaker&&) noexcept = default;
-    auto operator=(const EffectBaker&) = delete;
-    auto operator=(EffectBaker&&) noexcept = delete;
-    ~EffectBaker() override;
+    ParticleEditor(string_view asset_path, FOEditor& editor);
+    ParticleEditor(const ParticleEditor&) = delete;
+    ParticleEditor(ParticleEditor&&) noexcept = default;
+    auto operator=(const ParticleEditor&) = delete;
+    auto operator=(ParticleEditor&&) noexcept = delete;
+    ~ParticleEditor() override;
 
-    void AutoBake() override;
+protected:
+    void OnDraw() override;
 
-private:
-    void BakeShaderProgram(string_view fname, string_view content);
-    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
-
-    int _errors {};
-#if FO_ASYNC_BAKE
-    std::mutex _bakedFilesLocker;
-#endif
+    struct Impl;
+    unique_ptr<Impl> _impl;
+    std::chrono::time_point<std::chrono::high_resolution_clock> _frameStart {};
+    float _speed {1.0f};
+    bool _autoReplay {};
 };

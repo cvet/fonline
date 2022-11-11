@@ -37,7 +37,7 @@
 
 #if FO_ENABLE_3D
 
-#include "BaseBaker.h"
+#include "Baker.h"
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(ModelBakerException);
@@ -53,7 +53,7 @@ class ModelBaker final : public BaseBaker
 {
 public:
     ModelBaker() = delete;
-    ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ModelBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ModelBaker(const ModelBaker&) = delete;
     ModelBaker(ModelBaker&&) noexcept = default;
     auto operator=(const ModelBaker&) = delete;

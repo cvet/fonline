@@ -7,6 +7,7 @@ set( FONLINE_OUTPUT_PATH "${CMAKE_BINARY_DIR}" CACHE PATH "Common output path" )
 set( FONLINE_BUILD_CLIENT OFF CACHE BOOL "Build Multiplayer client binaries" )
 set( FONLINE_BUILD_SERVER OFF CACHE BOOL "Build Multiplayer server binaries" )
 set( FONLINE_BUILD_SINGLE OFF CACHE BOOL "Build Singleplayer binaries" )
+set( FONLINE_BUILD_EDITOR OFF CACHE BOOL "Build Editor binaries" )
 set( FONLINE_BUILD_MAPPER OFF CACHE BOOL "Build Mapper binaries" )
 set( FONLINE_BUILD_ASCOMPILER OFF CACHE BOOL "Build AngelScript compiler" )
 set( FONLINE_BUILD_BAKER OFF CACHE BOOL "Build Baker binaries" )
@@ -56,6 +57,7 @@ set( FO_GIT_HASH_RESULT "" )
 set( FO_GIT_DIFF_RESULT "" )
 set( FO_GIT_HASH "" )
 set( FO_HEADLESS_ONLY YES )
+set( FO_SETUP_CALLED NO )
 set( FO_DEV_NAME "FOnline" )
 set( FO_NICE_NAME "FOnline" )
 set( FO_AUTHOR_NAME "FOnline" )
@@ -65,12 +67,14 @@ set( FO_ENABLE_3D YES )
 set( FO_NATIVE_SCRIPTING NO )
 set( FO_ANGELSCRIPT_SCRIPTING ${FONLINE_BUILD_ASCOMPILER} )
 set( FO_MONO_SCRIPTING NO )
+set( FO_GEOMETRY 0 )
 set( FO_OS "" )
 set( FO_OS_UPPER "" )
 set( FO_BUILD_LIBRARY NO )
 set( FO_CLIENT_OUTPUT "" )
 set( FO_SERVER_OUTPUT "" )
 set( FO_SINGLE_OUTPUT "" )
+set( FO_EDITOR_OUTPUT "" )
 set( FO_MAPPER_OUTPUT "" )
 set( FO_ASCOMPILER_OUTPUT "" )
 set( FO_BAKER_OUTPUT "" )
@@ -130,6 +134,7 @@ set( FO_CLIENT_BASE_SOURCE "" )
 set( FO_SERVER_SOURCE "" )
 set( FO_CLIENT_SOURCE "" )
 set( FO_SINGLE_SOURCE "" )
+set( FO_EDITOR_SOURCE "" )
 set( FO_MAPPER_SOURCE "" )
 set( FO_ASCOMPILER_SOURCE "" )
 set( FO_BAKER_SOURCE "" )
@@ -151,6 +156,7 @@ set( FO_CODEGEN_OUTPUT "" )
 set( FO_COMMON_NATIVE_SOURCE "" )
 set( FO_SERVER_NATIVE_SOURCE "" )
 set( FO_CLIENT_NATIVE_SOURCE "" )
+set( FO_EDITOR_NATIVE_SOURCE "" )
 set( FO_MAPPER_NATIVE_SOURCE "" )
 set( FO_MONO_ASSEMBLIES "" )
 set( FO_MONO_SOURCE "" )
@@ -207,7 +213,7 @@ add_compile_definitions( $<$<NOT:$<CONFIG:Debug>>:NDEBUG> )
 add_compile_definitions( $<$<NOT:$<CONFIG:Debug>>:FO_DEBUG=0> )
 
 # Headless configuration (without video/audio/input)
-if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_MAPPER )
+if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_EDITOR OR FONLINE_BUILD_MAPPER )
 	set( FO_HEADLESS_ONLY NO )
 else()
 	set( FO_HEADLESS_ONLY YES )
@@ -415,11 +421,11 @@ elseif( PS4 )
 	add_compile_options( $<$<CONFIG:Debug>:-O0> )
 	add_compile_options( $<$<NOT:$<CONFIG:Debug>>:-O2> )
 else()
-	AbortMessage( "Unknown OS!" )
+	AbortMessage( "Unknown OS" )
 endif()
 
 string( TOUPPER "${FO_OS}" FO_OS_UPPER )
-add_compile_definitions( FO_${FO_OS_UPPER} )
+add_compile_definitions( FO_${FO_OS_UPPER}=1 )
 
 # Information about CPU architecture
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
@@ -435,6 +441,7 @@ StatusMessage( "Output path: ${FONLINE_OUTPUT_PATH}" )
 set( FO_CLIENT_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_SERVER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_SINGLE_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Single-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
+set( FO_EDITOR_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Editor-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_MAPPER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_ASCOMPILER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_BAKER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
@@ -458,10 +465,12 @@ macro( ResolveContributedFiles )
 endmacro()
 
 macro( SetupGame )
+	# Todo: make sure that all parameters specified (no defaults)
 	set( allowedCommands "DEV_NAME" "NICE_NAME" "AUTHOR_NAME" "GAME_VERSION"
 		"SINGLEPLAYER" "ENABLE_3D" "NATIVE_SCRIPTING" "ANGELSCRIPT_SCRIPTING" "MONO_SCRIPTING"
-		"DEBUGGING_CONFIG" "MAPPER_CONFIG" "GENERATE_ANGELSCRIPT_CONTENT" )
+		"DEBUGGING_CONFIG" "MAPPER_CONFIG" "GENERATE_ANGELSCRIPT_CONTENT" "GEOMETRY" )
 	unset( opt )
+	set( FO_SETUP_CALLED YES )
 	foreach( arg ${ARGN} )
 		if( NOT opt )
 			set( opt ${arg} )
@@ -473,10 +482,19 @@ macro( SetupGame )
 				ResolveContributedFiles( ${arg} )
 				set( arg "${result}" )
 			endif()
+			if( "${opt}" STREQUAL "GEOMETRY" )
+				if( "${arg}" STREQUAL "HEXAGONAL" )
+					set( arg 1 )
+				elseif( "${arg}" STREQUAL "SQUARE" )
+					set( arg 2 )
+				else()
+					AbortMessage( "Invalid setup GEOMETRY value = ${arg}" )
+				endif()
+			endif()
 			StatusMessage( "+ ${opt}: ${arg}" )
 			set( FO_${opt} ${arg} )
 		else()
-			AbortMessage( "Invalid SetupGame option ${opt} = ${arg}" )
+			AbortMessage( "Invalid setup option ${opt} = ${arg}" )
 		endif()
 		unset( opt )
 	endforeach()
@@ -595,6 +613,13 @@ if( NOT FONLINE_CMAKE_CONTRIBUTION STREQUAL "" )
 		StatusMessage( "+ ${inc}" )
 		include( ${inc} )
 	endforeach()
+	if( NOT FO_SETUP_CALLED )
+		AbortMessage( "SetupGame call missed" )
+	endif()
+else()
+	# Engine validation
+	StatusMessage( "No contribution file specified" )
+	set( FO_GEOMETRY 1 ) # Stub for correct compilation
 endif()
 
 # Core contribution
@@ -618,20 +643,20 @@ if( NOT ${FO_FORCE_ENABLE_3D} STREQUAL "" )
 endif()
 
 # Configuration checks
-if( FONLINE_CODE_COVERAGE AND ( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS ) )
-	AbortMessage( "Code coverge build can not be mixed with other builds!" )
+if( FONLINE_CODE_COVERAGE AND ( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS ) )
+	AbortMessage( "Code coverge build can not be mixed with other builds" )
 endif()
 if( FONLINE_BUILD_SINGLE AND ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_CLIENT ) )
-	AbortMessage( "Singleplayer/Multiplayer configuration mismatch!" )
+	AbortMessage( "Singleplayer/Multiplayer configuration mismatch" )
 endif()
 if( FO_SINGLEPLAYER AND ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_CLIENT ) )
-	AbortMessage( "No client or server builds in singleplayer mode!" )
+	AbortMessage( "No client or server builds in singleplayer mode" )
 endif()
 if( NOT FO_SINGLEPLAYER AND FONLINE_BUILD_SINGLE )
-	AbortMessage( "No single build in multiplayer mode!" )
+	AbortMessage( "No single build in multiplayer mode" )
 endif()
 if( FONLINE_BUILD_ASCOMPILER AND NOT FO_ANGELSCRIPT_SCRIPTING )
-	AbortMessage( "AngelScript compiler build can not be without AngelScript scripting enabled!" )
+	AbortMessage( "AngelScript compiler build can not be without AngelScript scripting enabled" )
 endif()
 
 # Global defines
@@ -640,6 +665,7 @@ add_compile_definitions( FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}> )
 add_compile_definitions( FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}> )
 add_compile_definitions( FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}> )
 add_compile_definitions( FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}> )
+add_compile_definitions( FO_GEOMETRY=${FO_GEOMETRY} )
 
 # Compiler options
 set( CMAKE_CXX_STANDARD 17 )
@@ -711,7 +737,7 @@ list( APPEND FO_COMMON_LIBS "zlibstatic" )
 DisableLibWarnings( zlibstatic )
 
 # PNG
-if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+if( FONLINE_BUILD_BAKER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ PNG" )
 	set( FO_PNG_DIR "ThirdParty/PNG" )
 	set( SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE )
@@ -796,11 +822,11 @@ include_directories( "ThirdParty/AssimpMath" )
 
 # Fbx SDK
 if( FO_ENABLE_3D )
-	if( FONLINE_BUILD_BAKER AND NOT ( ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) AND CMAKE_SIZEOF_VOID_P EQUAL 8 ) )
+	if( ( FONLINE_BUILD_BAKER OR FONLINE_BUILD_EDITOR ) AND NOT ( ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) AND CMAKE_SIZEOF_VOID_P EQUAL 8 ) )
 		AbortMessage( "Using of FBX SDK for non 64 bit Linux & Windows builds is not supported" )
 	endif()
 
-	if( ( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) AND CMAKE_SIZEOF_VOID_P EQUAL 8 )
+	if( ( FONLINE_BUILD_BAKER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) AND CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		StatusMessage( "+ Fbx SDK" )
 
 		set( FO_FBXSDK_DIR "ThirdParty/fbxsdk" )
@@ -843,7 +869,7 @@ list( APPEND FO_COMMON_LIBS "fmt" )
 DisableLibWarnings( fmt )
 
 # LibreSSL
-if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
+if( ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
 	StatusMessage( "+ LibreSSL" )
 	set( FO_LIBRESSL_DIR "ThirdParty/LibreSSL" )
 	set( LIBRESSL_SKIP_INSTALL ON CACHE BOOL "Forced by FOnline" FORCE )
@@ -862,7 +888,7 @@ if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND 
 endif()
 
 # Asio & Websockets
-if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT ANDROID AND NOT FO_SINGLEPLAYER )
+if( ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT ANDROID AND NOT FO_SINGLEPLAYER )
 	StatusMessage( "+ Asio" )
 	set( FO_ASIO_DIR "ThirdParty/Asio" )
 	include_directories( "${FO_ASIO_DIR}/include" )
@@ -877,7 +903,7 @@ else()
 endif()
 
 # MongoDB & Bson
-if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLINE_BUILD_SINGLE )
+if( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLINE_BUILD_SINGLE )
 	StatusMessage( "+ Bson" )
 	set( FO_MONGODB_DIR "ThirdParty/mongo-c-driver" )
 
@@ -892,7 +918,7 @@ if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLI
 	set( ENABLE_ZLIB OFF CACHE STRING "Forced by FOnline" FORCE )
 	set( MONGO_USE_CCACHE OFF CACHE STRING "Forced by FOnline" FORCE )
 
-	if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
+	if( ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT FO_SINGLEPLAYER )
 		StatusMessage( "+ MongoDB" )
 		set( ENABLE_MONGOC ON CACHE STRING "Forced by FOnline" FORCE )
 		add_compile_definitions( FO_HAVE_MONGO=1 )
@@ -986,7 +1012,7 @@ list( APPEND FO_CLIENT_LIBS "SPARK_Core" "PugiXML" )
 DisableLibWarnings( SPARK_Core PugiXML )
 
 # glslang & SPIRV-Cross
-if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+if( FONLINE_BUILD_BAKER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ glslang" )
 	set( FO_GLSLANG_DIR "ThirdParty/glslang" )
 	set( BUILD_EXTERNAL OFF CACHE BOOL "Forced by FOnline" FORCE )
@@ -1265,6 +1291,8 @@ list( APPEND FO_CLIENT_BASE_SOURCE
 	"Source/Client/Updater.h"
 	"Source/Client/VisualParticles.cpp"
 	"Source/Client/VisualParticles.h"
+	"Source/Client/SparkExtension.cpp"
+	"Source/Client/SparkExtension.h"
 	"Source/Scripting/ClientGlobalScriptMethods.cpp"
 	"Source/Scripting/ClientPlayerScriptMethods.cpp"
 	"Source/Scripting/ClientItemScriptMethods.cpp"
@@ -1302,6 +1330,24 @@ else()
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
 endif()
 
+list( APPEND FO_EDITOR_SOURCE
+	"Source/Tools/Editor.h"
+	"Source/Tools/Editor.cpp"
+	"Source/Tools/AssetExplorer.h"
+	"Source/Tools/AssetExplorer.cpp"
+	# "Source/Tools/DialogEditor.h"
+	# "Source/Tools/DialogEditor.cpp"
+	# "Source/Tools/InterfaceEditor.h"
+	# "Source/Tools/InterfaceEditor.cpp"
+	# "Source/Tools/ProtoEditor.h"
+	# "Source/Tools/ProtoEditor.cpp"
+	# "Source/Tools/ModelEditor.h"
+	# "Source/Tools/ModelEditor.cpp"
+	# "Source/Tools/EffectEditor.h"
+	# "Source/Tools/EffectEditor.cpp"
+	"Source/Tools/ParticleEditor.h"
+	"Source/Tools/ParticleEditor.cpp" )
+
 list( APPEND FO_MAPPER_SOURCE
 	"Source/Tools/Mapper.h"
 	"Source/Tools/Mapper.cpp"
@@ -1313,8 +1359,8 @@ list( APPEND FO_MAPPER_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp" )
 
 list( APPEND FO_BAKER_SOURCE
-	"Source/Tools/BaseBaker.h"
-	"Source/Tools/BaseBaker.cpp"
+	"Source/Tools/Baker.h"
+	"Source/Tools/Baker.cpp"
 	"Source/Tools/EffectBaker.h"
 	"Source/Tools/EffectBaker.cpp"
 	"Source/Tools/F2Palette-Include.h"
@@ -1559,7 +1605,7 @@ list( APPEND FO_COMMANDS_GROUP "ForceCodeGeneration" )
 # Core libs
 StatusMessage( "Core libs:" )
 
-if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ AppHeadless" )
 	add_library( AppHeadless STATIC
 		"Source/Frontend/Application.h"
@@ -1588,7 +1634,7 @@ if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONL
 	list( APPEND FO_CORE_LIBS_GROUP "CommonLib" )
 endif()
 
-if( NOT FO_SINGLEPLAYER AND ( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
+if( NOT FO_SINGLEPLAYER AND ( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_EDITOR OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
 	StatusMessage( "+ ClientLib" )
 	add_library( ClientLib STATIC ${FO_CLIENT_SOURCE} )
 	add_dependencies( ClientLib CodeGeneration )
@@ -1596,7 +1642,7 @@ if( NOT FO_SINGLEPLAYER AND ( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_MAPPER OR FO
 	list( APPEND FO_CORE_LIBS_GROUP "ClientLib" )
 endif()
 
-if( NOT FO_SINGLEPLAYER AND ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
+if( NOT FO_SINGLEPLAYER AND ( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
 	StatusMessage( "+ ServerLib" )
 	add_library( ServerLib STATIC ${FO_SERVER_SOURCE} )
 	add_dependencies( ServerLib CodeGeneration )
@@ -1604,7 +1650,7 @@ if( NOT FO_SINGLEPLAYER AND ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONL
 	list( APPEND FO_CORE_LIBS_GROUP "ServerLib" )
 endif()
 
-if( FO_SINGLEPLAYER AND ( FONLINE_BUILD_SINGLE OR FONLINE_BUILD_MAPPER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
+if( FO_SINGLEPLAYER AND ( FONLINE_BUILD_SINGLE OR FONLINE_BUILD_EDITOR OR FONLINE_BUILD_MAPPER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
 	StatusMessage( "+ SingleLib" )
 	add_library( SingleLib STATIC ${FO_SINGLE_SOURCE} )
 	add_dependencies( SingleLib CodeGeneration )
@@ -1612,7 +1658,7 @@ if( FO_SINGLEPLAYER AND ( FONLINE_BUILD_SINGLE OR FONLINE_BUILD_MAPPER OR FONLIN
 	list( APPEND FO_CORE_LIBS_GROUP "SingleLib" )
 endif()
 
-if( FONLINE_BUILD_MAPPER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+if( FONLINE_BUILD_MAPPER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ MapperLib" )
 	add_library( MapperLib STATIC ${FO_MAPPER_SOURCE} )
 	add_dependencies( MapperLib CodeGeneration )
@@ -1620,7 +1666,7 @@ if( FONLINE_BUILD_MAPPER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	list( APPEND FO_CORE_LIBS_GROUP "MapperLib" )
 endif()
 
-if( FO_ANGELSCRIPT_SCRIPTING AND ( FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
+if( FO_ANGELSCRIPT_SCRIPTING AND ( FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) )
 	StatusMessage( "+ ASCompilerLib" )
 	add_library( ASCompilerLib STATIC ${FO_ASCOMPILER_SOURCE} )
 	add_dependencies( ASCompilerLib CodeGeneration )
@@ -1628,7 +1674,7 @@ if( FO_ANGELSCRIPT_SCRIPTING AND ( FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAK
 	list( APPEND FO_CORE_LIBS_GROUP "ASCompilerLib" )
 endif()
 
-if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+if( FONLINE_BUILD_BAKER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ BakerLib" )
 	add_library( BakerLib STATIC ${FO_BAKER_SOURCE} )
 	add_dependencies( BakerLib CodeGeneration )
@@ -1637,10 +1683,18 @@ if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	list( APPEND FO_CORE_LIBS_GROUP "BakerLib" )
 endif()
 
+if( FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+	StatusMessage( "+ EditorLib" )
+	add_library( EditorLib STATIC ${FO_EDITOR_SOURCE} )
+	add_dependencies( EditorLib CodeGeneration )
+	target_link_libraries( EditorLib CommonLib )
+	list( APPEND FO_CORE_LIBS_GROUP "EditorLib" )
+endif()
+
 # Applications
 StatusMessage( "Applications:" )
 
-if( FONLINE_BUILD_CLIENT )
+if( NOT FO_SINGLEPLAYER AND FONLINE_BUILD_CLIENT )
 	if( NOT FO_BUILD_LIBRARY )
 		StatusMessage( "+ ${FO_DEV_NAME}_Client" )
 		list( APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Client" )
@@ -1660,7 +1714,7 @@ if( FONLINE_BUILD_CLIENT )
 	WriteBuildHash( ${FO_DEV_NAME}_Client )
 endif()
 
-if( FONLINE_BUILD_SERVER )
+if( NOT FO_SINGLEPLAYER AND FONLINE_BUILD_SERVER )
 	StatusMessage( "+ ${FO_DEV_NAME}_Server" )
 	list( APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Server" )
 	add_executable( ${FO_DEV_NAME}_Server WIN32 "Source/Applications/ServerApp.cpp" "Resources/Default.rc" )
@@ -1700,7 +1754,7 @@ if( FONLINE_BUILD_SERVER )
 	endif()
 endif()
 
-if( FONLINE_BUILD_SINGLE )
+if( FO_SINGLEPLAYER AND FONLINE_BUILD_SINGLE )
 	if( NOT FO_BUILD_LIBRARY )
 		StatusMessage( "+ ${FO_DEV_NAME}" )
 		list( APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}" )
@@ -1717,6 +1771,26 @@ if( FONLINE_BUILD_SINGLE )
 	set_target_properties( ${FO_DEV_NAME} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0" )
 	target_link_libraries( ${FO_DEV_NAME} "AppFrontend" "SingleLib" )
 	WriteBuildHash( ${FO_DEV_NAME} )
+endif()
+
+if( FONLINE_BUILD_EDITOR )
+	StatusMessage( "+ ${FO_DEV_NAME}_Editor" )
+	list( APPEND FO_APPLICATIONS_GROUP "${FO_DEV_NAME}_Editor" )
+	add_executable( ${FO_DEV_NAME}_Editor WIN32 "Source/Applications/EditorApp.cpp" "Resources/Default.rc" )
+	set_target_properties( ${FO_DEV_NAME}_Editor PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_EDITOR_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH} )
+	set_target_properties( ${FO_DEV_NAME}_Editor PROPERTIES OUTPUT_NAME "${FO_DEV_NAME}_Editor" )
+	set_target_properties( ${FO_DEV_NAME}_Editor PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0" )
+	target_link_libraries( ${FO_DEV_NAME}_Editor "AppFrontend" "EditorLib" "MapperLib" "BakerLib" )
+	if( NOT FO_SINGLEPLAYER )
+		target_link_libraries( ${FO_DEV_NAME}_Editor "ClientLib" "ServerLib" )
+	else()
+		target_link_libraries( ${FO_DEV_NAME}_Editor "SingleLib" )
+	endif()
+	if( FO_ANGELSCRIPT_SCRIPTING )
+		target_link_libraries( ${FO_DEV_NAME}_Editor "ASCompilerLib" )
+	endif()
+	WriteBuildHash( ${FO_DEV_NAME}_Editor )
+	CopyFbxSdkLib( ${FO_DEV_NAME}_Editor )
 endif()
 
 if( FONLINE_BUILD_MAPPER )
@@ -1770,13 +1844,14 @@ if( FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 		add_executable( ${target}
 			"Source/Applications/TestingApp.cpp"
 			${FO_TESTS_SOURCE}
+			"Source/Applications/EditorApp.cpp"
 			"Source/Applications/MapperApp.cpp"
 			"Source/Applications/BakerApp.cpp" )
 		add_dependencies( ${target} CodeGeneration )
 		set_target_properties( ${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_TESTS_OUTPUT} )
 		set_target_properties( ${target} PROPERTIES OUTPUT_NAME ${target} )
 		set_target_properties( ${target} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=1" )
-		target_link_libraries( ${target} "AppHeadless" "BakerLib" "MapperLib" "${FO_TESTING_LIBS}" )
+		target_link_libraries( ${target} "AppHeadless" "BakerLib" "EditorLib" "MapperLib" "${FO_TESTING_LIBS}" )
 		if( NOT FO_SINGLEPLAYER )
 			target_sources( ${target} PRIVATE
 				"Source/Applications/ServerApp.cpp"
@@ -1962,14 +2037,22 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 		list( APPEND bakeResourceEntries "-BakeResourceEntries \"+${packName},${packEntry}\"" )
 	endforeach()
 
-	function( CreateSimpleExternalCommand cmdName program )
+	function( CreateSimpleExternalCommand cmdName program doPause )
 		cmake_path( RELATIVE_PATH program BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE program )
 
-		set( FO_GEN_FILE_CONTENT "${prolog}\"${program}\"" )
+		if( doPause )
+			set( FO_GEN_FILE_CONTENT "${prolog}\"${program}\"" )
+		else()
+			set( FO_GEN_FILE_CONTENT "${prolog}${start}\"${program}\"" )
+		endif()
+
 		foreach( arg ${ARGN} )
 			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n${arg}" )
 		endforeach()
-		set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n\n${pause}" )
+
+		if( doPause )
+			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n\n${pause}" )
+		endif()
 
 		configure_file( "BuildTools/blank.cmake" "${FONLINE_OUTPUT_PATH}/${cmdName}.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ )
 	endfunction()
@@ -1994,18 +2077,29 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 		configure_file( "BuildTools/blank.cmake" "${FONLINE_OUTPUT_PATH}/${cmdName}.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ )
 	endfunction()
 
-	CreateSimpleExternalCommand( CompileScripts "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_ASCompiler" ${bakeResourceEntries} )
-	CreateSimpleExternalCommand( BakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering False" ${bakeResourceEntries} )
-	CreateSimpleExternalCommand( ForceBakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering True" ${bakeResourceEntries} )
+	if( FONLINE_BUILD_ASCOMPILER )
+		CreateSimpleExternalCommand( CompileScripts "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_ASCompiler" YES ${bakeResourceEntries} )
+	endif()
+	if( FONLINE_BUILD_BAKER )
+		CreateSimpleExternalCommand( BakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" YES "-ForceBakering False" ${bakeResourceEntries} )
+		CreateSimpleExternalCommand( ForceBakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" YES "-ForceBakering True" ${bakeResourceEntries} )
+	endif()
 
-	CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+	if( FONLINE_BUILD_EDITOR )
+		CreateSimpleExternalCommand( Editor "${FONLINE_OUTPUT_PATH}/Binaries/Editor-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Editor" NO "-EmbeddedResources \"@Disabled\"" ${bakeResourceEntries} )
+	endif()
+	if( FONLINE_BUILD_MAPPER )
+		CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+	endif()
+
 	foreach( config ${FO_CONFIGS} )
-		CreateBakeredExternalCommand( Server-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
-		CreateBakeredExternalCommand( Client-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/Client_${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		if( FONLINE_BUILD_SERVER )
+			CreateBakeredExternalCommand( Server-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		endif()
+		if( FONLINE_BUILD_CLIENT )
+			CreateBakeredExternalCommand( Client-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/Client_${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		endif()
 	endforeach()
-
-	# Todo:
-	# Profiler InterfaceEditor DialogEditor...
 endif()
 
 # Setup targets grouping

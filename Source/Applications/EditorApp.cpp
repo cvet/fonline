@@ -31,39 +31,44 @@
 // SOFTWARE.
 //
 
-#pragma once
-
 #include "Common.h"
 
-#include "Baker.h"
-#include "FileSystem.h"
+#include "Application.h"
+#include "Editor.h"
+#include "Log.h"
+#include "Settings.h"
+#include "Version-Include.h"
 
-DECLARE_EXCEPTION(EffectBakerException);
-
-namespace glslang
-{
-    class TIntermediate;
-}
-
-class EffectBaker final : public BaseBaker
-{
-public:
-    EffectBaker() = delete;
-    EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    EffectBaker(const EffectBaker&) = delete;
-    EffectBaker(EffectBaker&&) noexcept = default;
-    auto operator=(const EffectBaker&) = delete;
-    auto operator=(EffectBaker&&) noexcept = delete;
-    ~EffectBaker() override;
-
-    void AutoBake() override;
-
-private:
-    void BakeShaderProgram(string_view fname, string_view content);
-    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
-
-    int _errors {};
-#if FO_ASYNC_BAKE
-    std::mutex _bakedFilesLocker;
+#if !FO_TESTING_APP
+#include "SDL_main.h"
 #endif
-};
+
+#if !FO_TESTING_APP
+extern "C" int main(int argc, char** argv) // Handled by SDL
+#else
+[[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
+#endif
+{
+    try {
+        InitApp(argc, argv, "Editor");
+
+        WriteLog("Starting Editor {}...", FO_GAME_VERSION);
+
+        auto* editor = new FOEditor(App->Settings);
+
+        while (!App->Settings.Quit) {
+            App->BeginFrame();
+
+            editor->MainLoop();
+
+            App->EndFrame();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+        }
+
+        ExitApp(true);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
+}

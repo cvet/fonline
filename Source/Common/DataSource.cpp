@@ -40,23 +40,6 @@
 
 #include "minizip/unzip.h"
 
-class DataSource::Impl
-{
-public:
-    Impl() = default;
-    Impl(const Impl&) = delete;
-    Impl(Impl&&) noexcept = default;
-    auto operator=(const Impl&) = delete;
-    auto operator=(Impl&&) noexcept = delete;
-    virtual ~Impl() = default;
-
-    [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
-    [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
-    [[nodiscard]] virtual auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool = 0;
-    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> = 0;
-    [[nodiscard]] virtual auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> = 0;
-};
-
 using FileNameVec = vector<string>;
 
 static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, bool include_subdirs, string_view ext) -> vector<string>
@@ -83,7 +66,24 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
     return result;
 }
 
-class NonCachedDir final : public DataSource::Impl
+class DummySpace final : public DataSource
+{
+public:
+    DummySpace() = default;
+    DummySpace(const DummySpace&) = delete;
+    DummySpace(DummySpace&&) noexcept = default;
+    auto operator=(const DummySpace&) = delete;
+    auto operator=(DummySpace&&) noexcept = delete;
+    ~DummySpace() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return "Dummy"; }
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override { return false; }
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override { return nullptr; }
+    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return {}; }
+};
+
+class NonCachedDir final : public DataSource
 {
 public:
     explicit NonCachedDir(string_view fname);
@@ -96,14 +96,14 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
     string _basePath {};
 };
 
-class CachedDir final : public DataSource::Impl
+class CachedDir final : public DataSource
 {
 public:
     CachedDir(string_view fname, bool recursive);
@@ -116,7 +116,7 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
@@ -133,7 +133,7 @@ private:
     string _basePath {};
 };
 
-class FalloutDat final : public DataSource::Impl
+class FalloutDat final : public DataSource
 {
 public:
     explicit FalloutDat(string_view fname);
@@ -146,7 +146,7 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
@@ -163,7 +163,7 @@ private:
     mutable vector<uchar> _readBuf {};
 };
 
-class ZipFile final : public DataSource::Impl
+class ZipFile final : public DataSource
 {
 public:
     explicit ZipFile(string_view fname);
@@ -176,7 +176,7 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
@@ -196,7 +196,7 @@ private:
     uint64 _writeTime {};
 };
 
-class AndroidAssets final : public DataSource::Impl
+class AndroidAssets final : public DataSource
 {
 public:
     AndroidAssets();
@@ -209,7 +209,7 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
@@ -221,26 +221,27 @@ private:
     };
     using IndexMap = unordered_map<string, FileEntry>;
 
-    string _packName {"$AndroidAssets"};
+    string _packName {"@AndroidAssets"};
     IndexMap _filesTree {};
     FileNameVec _filesTreeNames {};
 };
 
-DataSource::DataSource(string_view path, DataSourceType type)
+auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<DataSource>
 {
     RUNTIME_ASSERT(!path.empty());
 
     // Special entries
-    if (path.front() == '$') {
+    if (path.front() == '@') {
         RUNTIME_ASSERT(type == DataSourceType::Default);
 
-        if (path == "$Embedded") {
-            _pImpl = std::make_unique<ZipFile>(path);
-            return;
+        if (path == "@Disabled") {
+            return std::make_unique<DummySpace>();
         }
-        else if (path == "$AndroidAssets") {
-            _pImpl = std::make_unique<AndroidAssets>();
-            return;
+        else if (path == "@Embedded") {
+            return std::make_unique<ZipFile>(path);
+        }
+        else if (path == "@AndroidAssets") {
+            return std::make_unique<AndroidAssets>();
         }
 
         throw DataSourceException("Invalid magic path", path, type);
@@ -252,14 +253,12 @@ DataSource::DataSource(string_view path, DataSourceType type)
             WriteLog(LogType::Warning, "Directory '{}' not found", path);
         }
 
-        _pImpl = std::make_unique<CachedDir>(path, false);
-        return;
+        return std::make_unique<CachedDir>(path, false);
     }
 
     // Raw view
     if (DiskFileSystem::IsDir(path)) {
-        _pImpl = std::make_unique<CachedDir>(path, true);
-        return;
+        return std::make_unique<CachedDir>(path, true);
     }
 
     // Packed view
@@ -271,59 +270,25 @@ DataSource::DataSource(string_view path, DataSourceType type)
     if (is_file_present(path)) {
         const string ext = _str(path).getFileExtension();
         if (ext == "dat") {
-            _pImpl = std::make_unique<FalloutDat>(path);
-            return;
+            return std::make_unique<FalloutDat>(path);
         }
         else if (ext == "zip" || ext == "bos") {
-            _pImpl = std::make_unique<ZipFile>(path);
-            return;
+            return std::make_unique<ZipFile>(path);
         }
 
         throw DataSourceException("Unknown file extension", ext, path, type);
     }
     else if (is_file_present(_str("{}.zip", path))) {
-        _pImpl = std::make_unique<ZipFile>(_str("{}.zip", path));
-        return;
+        return std::make_unique<ZipFile>(_str("{}.zip", path));
     }
     else if (is_file_present(_str("{}.bos", path))) {
-        _pImpl = std::make_unique<ZipFile>(_str("{}.bos", path));
-        return;
+        return std::make_unique<ZipFile>(_str("{}.bos", path));
     }
     else if (is_file_present(_str("{}.dat", path))) {
-        _pImpl = std::make_unique<FalloutDat>(_str("{}.dat", path));
-        return;
+        return std::make_unique<FalloutDat>(_str("{}.dat", path));
     }
 
     throw DataSourceException("Data pack not found", path, type);
-}
-
-DataSource::~DataSource() = default;
-DataSource::DataSource(DataSource&&) noexcept = default;
-auto DataSource::operator=(DataSource&&) noexcept -> DataSource& = default;
-
-auto DataSource::IsDiskDir() const -> bool
-{
-    return _pImpl->IsDiskDir();
-}
-
-auto DataSource::GetPackName() const -> string_view
-{
-    return _pImpl->GetPackName();
-}
-
-auto DataSource::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
-{
-    return _pImpl->IsFilePresent(path, size, write_time);
-}
-
-auto DataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
-{
-    return _pImpl->OpenFile(path, size, write_time);
-}
-
-auto DataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
-{
-    return _pImpl->GetFileNames(path, include_subdirs, ext);
 }
 
 NonCachedDir::NonCachedDir(string_view fname)
@@ -345,7 +310,7 @@ auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_t
     return true;
 }
 
-auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
     auto file = DiskFileSystem::OpenFile(_str("{}{}", _basePath, path), false);
     if (!file) {
@@ -409,7 +374,7 @@ auto CachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_time
     return true;
 }
 
-auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
     const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
@@ -620,7 +585,7 @@ auto FalloutDat::IsFilePresent(string_view path, size_t& size, uint64& write_tim
     return true;
 }
 
-auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
     const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
@@ -764,7 +729,7 @@ ZipFile::ZipFile(string_view fname)
         };
 
         ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
-            if (string(filename) == "$Embedded") {
+            if (string(filename) == "@Embedded") {
                 static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
                 auto default_array = true;
                 for (size_t i = 0; i < 1 && default_array; i++) {
@@ -906,7 +871,7 @@ auto ZipFile::IsFilePresent(string_view path, size_t& size, uint64& write_time) 
     return true;
 }
 
-auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
     const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
@@ -991,7 +956,7 @@ auto AndroidAssets::IsFilePresent(string_view path, size_t& size, uint64& write_
     return true;
 }
 
-auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
     const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {

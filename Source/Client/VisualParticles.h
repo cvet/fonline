@@ -37,11 +37,17 @@
 
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "Rendering.h"
 #include "Settings.h"
 
-namespace SPK::FO
+namespace SPK
 {
-    class SparkQuadRenderer;
+    class System;
+
+    namespace FO
+    {
+        class SparkQuadRenderer;
+    }
 }
 
 class ParticleSystem;
@@ -52,9 +58,9 @@ class ParticleManager final
     friend class SPK::FO::SparkQuadRenderer;
 
 public:
-    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view, string_view)>;
+    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
 
-    ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& file_sys, TextureLoader tex_loader);
+    ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, TextureLoader tex_loader);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;
@@ -64,12 +70,14 @@ public:
     [[nodiscard]] auto CreateParticles(string_view name) -> unique_ptr<ParticleSystem>;
 
 private:
-    struct ParticleManagerData;
-    ParticleManagerData* _data {};
+    struct Impl;
+    unique_ptr<Impl> _ipml {};
     RenderSettings& _settings;
     EffectManager& _effectMngr;
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     TextureLoader _textureLoader;
+    mat44 _projMat {};
+    mat44 _viewMat {};
 };
 
 class ParticleSystem final
@@ -84,15 +92,20 @@ public:
     ~ParticleSystem();
 
     [[nodiscard]] auto IsActive() const -> bool;
+    [[nodiscard]] auto GetElapsedTime() const -> float;
+    [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
 
+    void Respawn();
     void Update(float dt, const mat44& world, const vec3& pos_offest, float look_dir, const vec3& view_offset);
     void Draw(const mat44& proj, const vec3& view_offset) const;
+    void SetBaseSystem(SPK::System* system);
 
 private:
     explicit ParticleSystem(ParticleManager& particle_mngr);
 
-    struct ParticleSystemData;
-    ParticleSystemData* _data {};
+    struct Impl;
+    unique_ptr<Impl> _impl {};
     ParticleManager& _particleMngr;
+    double _elapsedTime {};
     bool _nonConstHelper {};
 };

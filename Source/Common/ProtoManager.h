@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&;
     [[nodiscard]] auto GetAllProtos() const -> vector<const ProtoEntity*>;
 
-    void ParseProtos(FileSystem& file_sys);
+    void ParseProtos(FileSystem& resources);
     void LoadFromResources();
 
 private:

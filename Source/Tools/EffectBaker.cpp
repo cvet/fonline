@@ -153,7 +153,7 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
         /* .generalConstantMatrixVectorIndexing = */ true,
     }};
 
-EffectBaker::EffectBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
+EffectBaker::EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
     glslang::InitializeProcess();
 }
@@ -171,9 +171,9 @@ void EffectBaker::AutoBake()
     vector<std::future<void>> futs;
 #endif
 
-    _allFiles.ResetCounter();
-    while (_allFiles.MoveNext()) {
-        auto file_header = _allFiles.GetCurFileHeader();
+    _files.ResetCounter();
+    while (_files.MoveNext()) {
+        auto file_header = _files.GetCurFileHeader();
 
         string ext = _str(file_header.GetPath()).getFileExtension();
         if (ext != "fofx") {
@@ -190,12 +190,12 @@ void EffectBaker::AutoBake()
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            if (!_bakeChecker(file_header)) {
+            if (_bakeChecker && !_bakeChecker(file_header)) {
                 continue;
             }
         }
 
-        auto file = _allFiles.GetCurFile();
+        auto file = _files.GetCurFile();
         string content = file.GetStr();
 
 #if FO_ASYNC_BAKE

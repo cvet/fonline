@@ -77,7 +77,7 @@ public:
     GeometryHelper Geometry;
     GameTimer GameTime;
     ScriptSystem* ScriptSys {};
-    FileSystem FileSys {};
+    FileSystem Resources {};
 
 protected:
     FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation);

@@ -128,16 +128,16 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings}, //
-    _fileSys {file_sys},
+    _resources {resources},
     _effectMngr {effect_mngr},
     _gameTime {game_time},
     _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _geometry(settings),
-    _particleMngr(settings, effect_mngr, file_sys, std::move(tex_loader))
+    _particleMngr(settings, effect_mngr, resources, std::move(tex_loader))
 {
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
@@ -177,7 +177,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     _processedFiles.emplace(name_hashed);
 
     // Load file data
-    const auto file = _fileSys.ReadFile(fname);
+    const auto file = _resources.ReadFile(fname);
     if (!file) {
         WriteLog("3d file '{}' not found", fname);
         return nullptr;
@@ -240,13 +240,14 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     // Create new
-    auto&& [tex, tex_data] = _textureLoader(texture_name, model_path);
+    const auto tex_path = _str(model_path).extractDir().combinePath(texture_name);
+    auto&& [tex, tex_data] = _textureLoader(tex_path);
     if (tex == nullptr) {
         return nullptr;
     }
 
     auto* mesh_tex = new MeshTexture();
-    mesh_tex->Name = texture_name;
+    mesh_tex->Name = _nameResolver.ToHashedString(texture_name);
     mesh_tex->MainTex = tex;
     mesh_tex->AtlasOffsetData[0] = tex_data[0];
     mesh_tex->AtlasOffsetData[1] = tex_data[1];
@@ -339,7 +340,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
     _speedAdjustBase = 1.0f;
     _speedAdjustCur = 1.0f;
     _speedAdjustLink = 1.0f;
-    _lookDirAngle = _modelMngr._geometry.IsHexagonal() ? 150.0f : 135.0f;
+    _lookDirAngle = GameSettings::HEXAGONAL_GEOMETRY ? 150.0f : 135.0f;
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
@@ -1729,11 +1730,11 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
         if (_animPosPeriod > 0.0f) {
             _animPosProc = new_track_pos / _animPosPeriod;
             if (_animPosProc >= 1.0f) {
-                _animPosProc = fmod(_animPosProc, 1.0f);
+                _animPosProc = std::fmod(_animPosProc, 1.0f);
             }
             _animPosTime = new_track_pos;
             if (_animPosTime >= _animPosPeriod) {
-                _animPosTime = fmod(_animPosTime, _animPosPeriod);
+                _animPosTime = std::fmod(_animPosTime, _animPosPeriod);
             }
         }
     }
@@ -1937,7 +1938,7 @@ auto ModelInformation::Load(string_view name) -> bool
     // Load fonline 3d file
     if (ext == "fo3d") {
         // Load main fo3d file
-        auto fo3d = _modelMngr._fileSys.ReadFile(name);
+        auto fo3d = _modelMngr._resources.ReadFile(name);
         if (!fo3d) {
             return false;
         }
@@ -2023,7 +2024,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 // Include file path
                 string fname = _str(name).extractDir().combinePath(templates[0]);
-                auto fo3d_ex = _modelMngr._fileSys.ReadFile(fname);
+                auto fo3d_ex = _modelMngr._resources.ReadFile(fname);
                 if (!fo3d_ex) {
                     WriteLog("Include file '{}' not found", fname);
                     continue;
@@ -2803,7 +2804,7 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     NON_CONST_METHOD_HINT();
 
-    auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name, _fileName);
+    auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name);
     if (effect == nullptr) {
         WriteLog("Can't load effect '{}'", name);
     }

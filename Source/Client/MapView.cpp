@@ -412,7 +412,7 @@ void MapView::EnableMapperMode()
 
 void MapView::LoadStaticData()
 {
-    const auto file = _engine->FileSys.ReadFile(_str("{}.fomapb2", GetProtoId()));
+    const auto file = _engine->Resources.ReadFile(_str("{}.fomapb2", GetProtoId()));
     if (!file) {
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
@@ -493,7 +493,7 @@ void MapView::LoadStaticData()
         for (const auto hy : xrange(_maxHexY)) {
             auto& field = GetField(hx, hy);
             if (field.Flags.ScrollBlock) {
-                for (const auto dir : xrange(_engine->Settings.MapDirCount)) {
+                for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
                     auto hx_ = hx;
                     auto hy_ = hy;
                     _engine->Geometry.MoveHexByDir(hx_, hy_, static_cast<uchar>(dir), _maxHexX, _maxHexY);
@@ -1794,11 +1794,11 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
 
     _lightPointsCount++;
     if (_lightPoints.size() < _lightPointsCount) {
-        _lightPoints.push_back(vector<PrimitivePoint>());
+        _lightPoints.emplace_back();
     }
     auto& points = _lightPoints[_lightPointsCount - 1];
     points.clear();
-    points.reserve(3 + dist * _engine->Settings.MapDirCount);
+    points.reserve(3 + dist * GameSettings::MAP_DIR_COUNT);
     points.push_back({base_x, base_y, color, ls.OffsX, ls.OffsY}); // Center of light
 
     int hx_far = hx;
@@ -1807,14 +1807,14 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
     ushort last_hx = -1;
     ushort last_hy = -1;
 
-    for (auto i = 0, ii = (_engine->Settings.MapHexagonal ? 6 : 4); i < ii; i++) {
-        const auto dir = static_cast<uchar>(_engine->Settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+    for (auto i = 0, ii = (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i < ii; i++) {
+        const auto dir = static_cast<uchar>(GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
-        for (auto j = 0, jj = (_engine->Settings.MapHexagonal ? dist : dist * 2); j < jj; j++) {
+        for (auto j = 0, jj = (GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2); j < jj; j++) {
             if (seek_start) {
                 // Move to start position
                 for (auto l = 0; l < dist; l++) {
-                    _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, _engine->Settings.MapHexagonal ? 0 : 7);
+                    _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
                 }
                 seek_start = false;
                 j = -1;
@@ -2202,7 +2202,7 @@ void MapView::InitView(int cx, int cy)
 {
     NON_CONST_METHOD_HINT();
 
-    if (_engine->Settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Get center offset
         const auto hw = GetViewWidth() / 2 + _wRight;
         const auto hv = GetViewHeight() / 2 + _hTop;
@@ -2564,14 +2564,14 @@ void MapView::PrepareFogToDraw()
             const auto maxhx = GetWidth();
             const auto maxhy = GetHeight();
             auto seek_start = true;
-            for (auto i = 0; i < (_engine->Settings.MapHexagonal ? 6 : 4); i++) {
-                const auto dir = (_engine->Settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+            for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
+                const auto dir = (GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
-                for (uint j = 0, jj = (_engine->Settings.MapHexagonal ? dist : dist * 2); j < jj; j++) {
+                for (uint j = 0, jj = (GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2); j < jj; j++) {
                     if (seek_start) {
                         // Move to start position
                         for (uint l = 0; l < dist; l++) {
-                            _engine->Geometry.MoveHexByDirUnsafe(hx, hy, _engine->Settings.MapHexagonal ? 0 : 7);
+                            _engine->Geometry.MoveHexByDirUnsafe(hx, hy, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
                         }
                         seek_start = false;
                         j = -1;
@@ -2586,8 +2586,8 @@ void MapView::PrepareFogToDraw()
                     if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
                         const int dir_ = _engine->Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
                         auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
-                        if (ii > static_cast<int>(_engine->Settings.MapDirCount / 2)) {
-                            ii = _engine->Settings.MapDirCount - ii;
+                        if (ii > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
+                            ii = GameSettings::MAP_DIR_COUNT - ii;
                         }
                         const auto dist_ = dist - dist * _engine->Settings.LookDir[ii] / 100;
                         pair<ushort, ushort> block = {};
@@ -2919,7 +2919,8 @@ auto MapView::ScrollCheck(int xmod, int ymod) -> bool
     };
 
     int dirs[8] = {0, 5, 2, 3, 4, -1, 1, -1}; // Hexagonal
-    if (!_engine->Settings.MapHexagonal) {
+
+    if constexpr (GameSettings::SQUARE_GEOMETRY) {
         dirs[0] = 7; // Square
         dirs[1] = -1;
         dirs[2] = 3;
@@ -2930,7 +2931,7 @@ auto MapView::ScrollCheck(int xmod, int ymod) -> bool
         dirs[7] = -1;
     }
 
-    if (_engine->Settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 5) || ScrollCheckPos(positions_right, 5, 0))) {
             return true; // Up
         }
@@ -2968,7 +2969,7 @@ auto MapView::ScrollCheck(int xmod, int ymod) -> bool
             i++;
         }
 
-        if (_engine->Settings.MapHexagonal) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 5) || ScrollCheckPos(positions_right, 5, 0))) {
                 return true; // Up
             }
@@ -3270,7 +3271,7 @@ void MapView::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
     if (multihex != 0u) {
         auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
-        for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * _engine->Settings.MapDirCount; i < j; i++) {
+        for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
             const auto cx = static_cast<short>(hx) + sx[i];
             const auto cy = static_cast<short>(hy) + sy[i];
             if (cx >= 0 && cy >= 0 && cx < _maxHexX && cy < _maxHexY) {
@@ -3304,13 +3305,13 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
                 if (_picHexMask != nullptr) {
                     const auto r = (_engine->SprMngr.GetPixColor(_picHexMask->Ind[0], static_cast<int>(xf - x_), static_cast<int>(yf - y_), true) & 0x00FF0000) >> 16;
                     if (r == 50) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 5u : 6u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
                     }
                     else if (r == 100) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 0u);
                     }
                     else if (r == 150) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 3u : 4u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 3u : 4u);
                     }
                     else if (r == 200) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 2u);
@@ -3554,7 +3555,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
 
             const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
-            for (const auto j : xrange(_engine->Settings.MapDirCount)) {
+            for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
                 auto nx = hx + sx[j];
                 auto ny = hy + sy[j];
                 if (nx < 0 || ny < 0 || nx >= _maxHexX || ny >= _maxHexY || GRID_AT(nx, ny)) {
@@ -3583,10 +3584,10 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     }
 
                     // Clock wise hexes
-                    auto is_square_corner = (!_engine->Settings.MapHexagonal && (j % 2) != 0);
+                    auto is_square_corner = (!GameSettings::HEXAGONAL_GEOMETRY && (j % 2) != 0);
                     auto steps_count = (is_square_corner ? mh * 2 : mh);
                     auto not_passed = false;
-                    auto dir_ = (_engine->Settings.MapHexagonal ? ((j + 2) % 6) : ((j + 2) % 8));
+                    auto dir_ = (GameSettings::HEXAGONAL_GEOMETRY ? ((j + 2) % 6) : ((j + 2) % 8));
                     if (is_square_corner) {
                         dir_ = (dir_ + 1) % 8;
                     }
@@ -3602,7 +3603,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     }
 
                     // Counter clock wise hexes
-                    dir_ = (_engine->Settings.MapHexagonal ? (j + 4) % 6 : (j + 6) % 8);
+                    dir_ = (GameSettings::HEXAGONAL_GEOMETRY ? (j + 4) % 6 : (j + 6) % 8);
                     if (is_square_corner) {
                         dir_ = (dir_ + 7) % 8;
                     }
@@ -3900,7 +3901,7 @@ auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist,
     LineTracer line_tracer(_engine->Geometry, hx, hy, tx, ty, _maxHexX, _maxHexY, angle);
 
     for (uint i = 0; i < dist; i++) {
-        if (_engine->Settings.MapHexagonal) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             line_tracer.GetNextHex(cx, cy);
         }
         else {
@@ -3984,7 +3985,7 @@ void MapView::FindSetCenter(int cx, int cy)
         }
     };
 
-    if (_engine->Settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         find_set_center_dir({0, 5}, ih); // Up
         find_set_center_dir({3, 2}, ih); // Down
         find_set_center_dir({1, -1}, iw); // Right
@@ -4223,7 +4224,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushor
 
     vector<pair<ushort, ushort>> hexes;
 
-    if (_engine->Settings.MapHexagonal) {
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         auto [x, y] = _engine->Geometry.GetHexInterval(rect.Left, rect.Top, rect.Right, rect.Bottom);
         x = -x;
 

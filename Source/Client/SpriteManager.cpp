@@ -118,7 +118,7 @@ auto AnyFrames::GetDir(uint dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {file_sys}, _effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _resources {resources}, _effectMngr {effect_mngr}
 {
     _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
@@ -784,14 +784,14 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
     // Refresh texture
     if (data != nullptr) {
         auto* tex = atlas->MainTex;
-        tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
+        tex->UpdateTextureRegion(IRect(x, y, x + w, y + h), data);
 
         // 1px border for correct linear interpolation
         // Top
-        tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
+        tex->UpdateTextureRegion(IRect(x, y - 1, x + w, y), data);
 
         // Bottom
-        tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
+        tex->UpdateTextureRegion(IRect(x, y + h, x + w, y + h + 1), data + (h - 1) * w);
 
         // Left
         for (uint i = 0; i < h; i++) {
@@ -799,7 +799,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[h + 1] = _borderBuf[h];
-        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), _borderBuf.data());
+        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + h + 1), _borderBuf.data());
 
         // Right
         for (uint i = 0; i < h; i++) {
@@ -807,7 +807,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[h + 1] = _borderBuf[h];
-        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), _borderBuf.data());
+        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w + 1, y + h + 1), _borderBuf.data());
     }
 
     // Invalidate last pixel color picking
@@ -856,7 +856,7 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrame
 
 auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 {
-    auto file = _fileSys.ReadFile(fname);
+    auto file = _resources.ReadFile(fname);
     if (!file) {
         return nullptr;
     }
@@ -927,26 +927,24 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 {
     RUNTIME_ASSERT(!_modelMngr);
 
-    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view name, string_view base_path) {
+    _modelMngr = std::make_unique<ModelManager>(_settings, _resources, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view path) {
         auto result = pair<RenderTexture*, FRect>();
 
-        const auto path = _str(base_path).extractDir().combinePath(name).str();
-
-        if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
+        if (const auto it = _loadedMeshTextures.find(string(path)); it == _loadedMeshTextures.end()) {
             PushAtlasType(AtlasType::MeshTextures);
             auto* anim = LoadAnimation(path, false);
             PopAtlasType();
 
             if (anim != nullptr) {
                 const auto* si = GetSpriteInfo(anim->Ind[0]);
-                _loadedMeshTextures[path] = si;
+                _loadedMeshTextures[string(path)] = si;
                 result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
                 DestroyAnyFrames(anim);
             }
             else {
                 BreakIntoDebugger();
-                WriteLog("Texture '{}' for '{}' not found", name, base_path);
-                _loadedMeshTextures[path] = nullptr;
+                WriteLog("Texture '{}' not found", path);
+                _loadedMeshTextures[string(path)] = nullptr;
             }
         }
         else if (const auto* si = it->second; si != nullptr) {
@@ -1528,14 +1526,9 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 
     DestroyAnyFrames(egg_frames);
 
-    _eggSprWidth = _sprEgg->Width;
-    _eggSprHeight = _sprEgg->Height;
-    _eggAtlasWidth = static_cast<float>(App->Render.MAX_ATLAS_WIDTH);
-    _eggAtlasHeight = static_cast<float>(App->Render.MAX_ATLAS_HEIGHT);
-
     const auto x = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
     const auto y = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
-    _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _eggSprWidth, _eggSprHeight);
+    _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _sprEgg->Width, _sprEgg->Height);
 }
 
 auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool
@@ -1697,17 +1690,18 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Egg process
         auto egg_added = false;
+
         if (use_egg && CheckEggAppearence(spr->HexX, spr->HexY, spr->EggAppearence)) {
             auto x1 = x - ex;
             auto y1 = y - ey;
             auto x2 = x1 + si->Width;
             auto y2 = y1 + si->Height;
 
-            if (!(x1 >= _eggSprWidth || y1 >= _eggSprHeight || x2 < 0 || y2 < 0)) {
+            if (!(x1 >= _sprEgg->Width || y1 >= _sprEgg->Height || x2 < 0 || y2 < 0)) {
                 x1 = std::max(x1, 0);
                 y1 = std::max(y1, 0);
-                x2 = std::min(x2, _eggSprWidth);
-                y2 = std::min(y2, _eggSprHeight);
+                x2 = std::min(x2, static_cast<int>(_sprEgg->Width));
+                y2 = std::min(y2, static_cast<int>(_sprEgg->Height));
 
                 const auto x1_f = static_cast<float>(x1 + ATLAS_SPRITES_PADDING);
                 const auto x2_f = static_cast<float>(x2 + ATLAS_SPRITES_PADDING);
@@ -1717,14 +1711,17 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
                 auto& vbuf = _spritesDrawBuf->Vertices2D;
                 const auto pos = _curDrawQuad * 4;
 
-                vbuf[pos + 0].EggTexU = x1_f / _eggAtlasWidth;
-                vbuf[pos + 0].EggTexV = y2_f / _eggAtlasHeight;
-                vbuf[pos + 1].EggTexU = x1_f / _eggAtlasWidth;
-                vbuf[pos + 1].EggTexV = y1_f / _eggAtlasHeight;
-                vbuf[pos + 2].EggTexU = x2_f / _eggAtlasWidth;
-                vbuf[pos + 2].EggTexV = y1_f / _eggAtlasHeight;
-                vbuf[pos + 3].EggTexU = x2_f / _eggAtlasWidth;
-                vbuf[pos + 3].EggTexV = y2_f / _eggAtlasHeight;
+                const auto egg_atlas_width = static_cast<float>(_sprEgg->Atlas->Width);
+                const auto egg_atlas_height = static_cast<float>(_sprEgg->Atlas->Height);
+
+                vbuf[pos + 0].EggTexU = x1_f / egg_atlas_width;
+                vbuf[pos + 0].EggTexV = y2_f / egg_atlas_height;
+                vbuf[pos + 1].EggTexU = x1_f / egg_atlas_width;
+                vbuf[pos + 1].EggTexV = y1_f / egg_atlas_height;
+                vbuf[pos + 2].EggTexU = x2_f / egg_atlas_width;
+                vbuf[pos + 2].EggTexV = y1_f / egg_atlas_height;
+                vbuf[pos + 3].EggTexU = x2_f / egg_atlas_width;
+                vbuf[pos + 3].EggTexV = y2_f / egg_atlas_height;
 
                 egg_added = true;
             }
@@ -1892,14 +1889,16 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
     auto ox = pix_x - static_cast<int>(static_cast<float>(ex) / _settings.SpritesZoom);
     auto oy = pix_y - static_cast<int>(static_cast<float>(ey) / _settings.SpritesZoom);
 
-    if (ox < 0 || oy < 0 || ox >= static_cast<int>(static_cast<float>(_eggSprWidth) / _settings.SpritesZoom) || oy >= static_cast<int>(static_cast<float>(_eggSprHeight) / _settings.SpritesZoom)) {
+    if (ox < 0 || oy < 0 || //
+        ox >= static_cast<int>(static_cast<float>(_sprEgg->Width) / _settings.SpritesZoom) || //
+        oy >= static_cast<int>(static_cast<float>(_sprEgg->Height) / _settings.SpritesZoom)) {
         return false;
     }
 
     ox = static_cast<int>(static_cast<float>(ox) * _settings.SpritesZoom);
     oy = static_cast<int>(static_cast<float>(oy) * _settings.SpritesZoom);
 
-    const auto egg_color = _eggData.at(oy * _eggSprWidth + ox);
+    const auto egg_color = _eggData.at(oy * _sprEgg->Width + ox);
     return (egg_color >> 24) < 127;
 }
 
@@ -2275,7 +2274,7 @@ void SpriteManager::BuildFont(int index)
             }
         }
 
-        const auto r = IRect(normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1);
+        const auto r = IRect(normal_ox, normal_oy, normal_ox + si->Width, normal_oy + si->Height);
         si->Atlas->MainTex->UpdateTextureRegion(r, data_normal.data());
     }
 
@@ -2297,7 +2296,7 @@ void SpriteManager::BuildFont(int index)
             }
         }
 
-        const auto r_bordered = IRect(bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1);
+        const auto r_bordered = IRect(bordered_ox, bordered_oy, bordered_ox + si_bordered->Width, bordered_oy + si_bordered->Height);
         si_bordered->Atlas->MainTex->UpdateTextureRegion(r_bordered, data_bordered.data());
 
         // Fix texture coordinates on bordered texture
@@ -2329,7 +2328,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Load font data
     string fname = _str("Fonts/{}.fofnt", font_name);
-    auto file = _fileSys.ReadFile(fname);
+    auto file = _resources.ReadFile(fname);
     if (!file) {
         WriteLog("File '{}' not found", fname);
         return false;
@@ -2479,7 +2478,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     }
 
     FontData font {_effectMngr.Effects.Font};
-    auto file = _fileSys.ReadFile(_str("Fonts/{}.fnt", font_name));
+    auto file = _resources.ReadFile(_str("Fonts/{}.fnt", font_name));
     if (!file) {
         WriteLog("Font file '{}.fnt' not found", font_name);
         return false;

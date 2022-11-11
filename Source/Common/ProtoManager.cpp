@@ -32,9 +32,8 @@
 //
 
 #include "ProtoManager.h"
+#include "ConfigFile.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
-#include "Log.h"
 #include "StringUtils.h"
 
 template<class T>
@@ -122,10 +121,10 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
+static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
 {
     // Collect data
-    auto files = file_sys.FilterFiles(ext);
+    auto files = resources.FilterFiles(ext);
     map<hstring, map<string, string>> files_protos;
     map<hstring, map<string, map<string, string>>> files_texts;
     while (files.MoveNext()) {
@@ -290,12 +289,12 @@ ProtoManager::ProtoManager(FOEngineBase* engine) : _engine {engine}
 {
 }
 
-void ProtoManager::ParseProtos(FileSystem& file_sys)
+void ProtoManager::ParseProtos(FileSystem& resources)
 {
-    ParseProtosExt<ProtoItem>(file_sys, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtosExt<ProtoCritter>(file_sys, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtosExt<ProtoMap>(file_sys, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtosExt<ProtoLocation>(file_sys, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
+    ParseProtosExt<ProtoItem>(resources, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtosExt<ProtoCritter>(resources, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtosExt<ProtoMap>(resources, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtosExt<ProtoLocation>(resources, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto&& [pid, proto] : _itemProtos) {
@@ -328,7 +327,7 @@ void ProtoManager::LoadFromResources()
         break;
     }
 
-    const auto protos_file = _engine->FileSys.ReadFile(protos_fname);
+    const auto protos_file = _engine->Resources.ReadFile(protos_fname);
     if (!protos_file) {
         throw ProtoManagerException("Protos binary file not found", protos_fname);
     }

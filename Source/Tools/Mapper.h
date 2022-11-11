@@ -37,11 +37,11 @@
 
 #include "CacheStorage.h"
 #include "Client.h"
+#include "ConfigFile.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
-#include "GeometryHelper.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"

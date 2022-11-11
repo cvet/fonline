@@ -191,7 +191,7 @@ struct AnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
+ModelBaker::ModelBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
 #if FO_HAVE_FBXSDK
     _fbxManager = FbxManager::Create();
@@ -219,20 +219,20 @@ void ModelBaker::AutoBake()
 {
     _errors = 0;
 
-    _allFiles.ResetCounter();
-    while (_allFiles.MoveNext()) {
-        auto file_header = _allFiles.GetCurFileHeader();
+    _files.ResetCounter();
+    while (_files.MoveNext()) {
+        auto file_header = _files.GetCurFileHeader();
 
         string ext = _str(file_header.GetPath()).getFileExtension();
         if (!(ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
 
-        if (!_bakeChecker(file_header)) {
+        if (_bakeChecker && !_bakeChecker(file_header)) {
             continue;
         }
 
-        auto file = _allFiles.GetCurFile();
+        auto file = _files.GetCurFile();
 
         try {
             if (ext == "fo3d") {
@@ -501,7 +501,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
     }
 
     delete root_bone;
-    for (auto& loaded_animation : loaded_animations) {
+    for (auto* loaded_animation : loaded_animations) {
         delete loaded_animation;
     }
 
@@ -511,16 +511,16 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 static void FixTexCoord(float& x, float& y)
 {
     if (x < 0.0f) {
-        x = 1.0f - fmodf(-x, 1.0f);
+        x = 1.0f - std::fmod(-x, 1.0f);
     }
     else if (x > 1.0f) {
-        x = fmodf(x, 1.0f);
+        x = std::fmod(x, 1.0f);
     }
     if (y < 0.0f) {
-        y = 1.0f - fmodf(-y, 1.0f);
+        y = 1.0f - std::fmod(-y, 1.0f);
     }
     else if (y > 1.0f) {
-        y = fmodf(y, 1.0f);
+        y = std::fmod(y, 1.0f);
     }
 }
 
@@ -753,7 +753,10 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 
 static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 {
-    return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
+    return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), //
+        static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), //
+        static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), //
+        static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
 }
 
 #else

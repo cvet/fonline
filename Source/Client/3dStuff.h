@@ -65,7 +65,7 @@ class ModelHierarchy;
 
 struct MeshTexture
 {
-    string Name {};
+    hstring Name {};
     RenderTexture* MainTex {};
     float AtlasOffsetData[4] {};
 };
@@ -178,10 +178,10 @@ class ModelManager final
     friend class ModelHierarchy;
 
 public:
-    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view, string_view)>;
+    using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -202,7 +202,7 @@ private:
     [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
 
     RenderSettings& _settings;
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
     NameResolver& _nameResolver;

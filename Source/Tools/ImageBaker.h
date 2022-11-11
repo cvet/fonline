@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-#include "BaseBaker.h"
+#include "Baker.h"
 #include "FileSystem.h"
 #include "Settings.h"
 
@@ -45,13 +45,14 @@ class ImageBaker final : public BaseBaker
 {
 public:
     ImageBaker() = delete;
-    explicit ImageBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
+    ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ImageBaker(const ImageBaker&) = delete;
     ImageBaker(ImageBaker&&) noexcept = default;
     auto operator=(const ImageBaker&) = delete;
     auto operator=(ImageBaker&&) noexcept = delete;
     ~ImageBaker() override = default;
 
+    static auto IsImageExt(string_view ext) -> bool;
     void AutoBake() override;
 
 private:

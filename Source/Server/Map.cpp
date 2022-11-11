@@ -118,7 +118,7 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
     const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
     auto hx_ = static_cast<short>(hx);
     auto hy_ = static_cast<short>(hy);
-    const auto max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * _engine->Settings.MapDirCount);
+    const auto max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT);
 
     auto pos = -1;
     while (true) {
@@ -648,7 +648,7 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
 
     // Neighbors
     const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
-    const auto count = GenericUtils::NumericalNumber(radius) * _engine->Settings.MapDirCount;
+    const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
     const auto maxhx = GetWidth();
     const auto maxhy = GetHeight();
 
@@ -720,7 +720,7 @@ void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 
         if (multihex != 0u) {
             const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
-            const auto count = GenericUtils::NumericalNumber(multihex) * _engine->Settings.MapDirCount;
+            const auto count = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
             const auto maxhx = GetWidth();
             const auto maxhy = GetHeight();
 
@@ -754,7 +754,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 
         if (multihex > 0) {
             const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
-            const auto count = GenericUtils::NumericalNumber(multihex) * _engine->Settings.MapDirCount;
+            const auto count = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT;
             const auto maxhx = GetWidth();
             const auto maxhy = GetHeight();
 

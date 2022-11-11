@@ -31,13 +31,24 @@
 // SOFTWARE.
 //
 
-#include "BaseBaker.h"
-#include "Log.h"
+#pragma once
 
-BaseBaker::BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    _settings {settings}, //
-    _allFiles {all_files},
-    _bakeChecker {std::move(bake_checker)},
-    _writeData {std::move(write_data)}
+#include "Common.h"
+
+#include "Editor.h"
+
+class AssetExplorer : public EditorView
 {
-}
+public:
+    explicit AssetExplorer(FOEditor& editor);
+    AssetExplorer(const AssetExplorer&) = delete;
+    AssetExplorer(AssetExplorer&&) noexcept = default;
+    auto operator=(const AssetExplorer&) = delete;
+    auto operator=(AssetExplorer&&) noexcept = delete;
+
+protected:
+    void OnPreDraw() override;
+    void OnDraw() override;
+
+    void DrawSection(const string& section_name, string_view file_ext) const;
+};

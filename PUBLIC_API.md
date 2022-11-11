@@ -18,10 +18,6 @@ If some thing is not described neither in included or not included then it's lik
 In articles below described what is public api include to itself.  
 What is not included or just planned to including will described in the end of this document.
 
-### Visual Studio Code extension
-
-...
-
 ### Build scripts
 
 * `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
@@ -37,7 +33,7 @@ Other scripts and files in `BuildTools` dir are not part of reliable public API.
 ### Environment variables
 
 These environment variables affected only on build scripts described above.  
-They settled up automatically if you use Visual Studio Code FOnline extension but if you use scripts manually then you must set at least `FO_CMAKE_CONTRIBUTION` before run scripts.
+You must set at least `FO_CMAKE_CONTRIBUTION` before run scripts.
 
 `FO_WORKSPACE (default: Workspace)`
 

@@ -35,18 +35,15 @@
 
 #include "Common.h"
 
-#include "ConfigFile.h"
 #include "DataSource.h"
 
 DECLARE_EXCEPTION(FileSystemExeption);
 
 class FileHeader
 {
-    friend class FileSystem;
-    friend class FileCollection;
-    friend class File;
-
 public:
+    FileHeader() = default;
+    FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
@@ -54,16 +51,15 @@ public:
     explicit operator bool() const;
     ~FileHeader() = default;
 
-    [[nodiscard]] auto GetName() const -> string_view;
-    [[nodiscard]] auto GetPath() const -> string_view;
+    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetPath() const -> const string&;
     [[nodiscard]] auto GetFullPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
+    [[nodiscard]] auto GetDataSource() const -> DataSource*;
+    [[nodiscard]] auto Duplicate() const -> FileHeader;
 
 protected:
-    FileHeader() = default;
-    FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds);
-
     bool _isLoaded {};
     string _fileName {};
     string _filePath {};
@@ -74,12 +70,10 @@ protected:
 
 class File final : public FileHeader
 {
-    friend class FileSystem;
-    friend class FileCollection;
-
 public:
     File() = default;
-    explicit File(const vector<uchar>& buf);
+    File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uchar>&& buf);
+    File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uchar> buf, bool make_copy);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -113,17 +107,15 @@ public:
     void GoBack(size_t offs);
 
 private:
-    File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<uchar>&& buf);
-
-    unique_del_ptr<uchar> _fileBuf {};
+    unique_del_ptr<const uchar> _fileBuf {};
     size_t _curPos {};
 };
 
 class FileCollection final
 {
-    friend class FileSystem;
-
 public:
+    explicit FileCollection(initializer_list<FileHeader> files);
+    explicit FileCollection(vector<FileHeader> files);
     FileCollection(const FileCollection&) = delete;
     FileCollection(FileCollection&&) noexcept = default;
     auto operator=(const FileCollection&) = delete;
@@ -136,13 +128,10 @@ public:
     [[nodiscard]] auto FindFileByPath(string_view path) const -> File;
     [[nodiscard]] auto GetFilesCount() const -> size_t;
 
-    [[nodiscard]] auto MoveNext() -> bool;
-
+    auto MoveNext() -> bool;
     void ResetCounter();
 
 private:
-    explicit FileCollection(vector<FileHeader> files);
-
     vector<FileHeader> _allFiles {};
     int _curFileIndex {-1};
     mutable unordered_map<string, size_t> _nameToIndex {};
@@ -157,17 +146,17 @@ public:
     FileSystem(FileSystem&&) noexcept = default;
     auto operator=(const FileSystem&) = delete;
     auto operator=(FileSystem&&) noexcept = delete;
-    ~FileSystem() = default;
 
-    [[nodiscard]] auto FilterFiles(string_view ext) -> FileCollection;
-    [[nodiscard]] auto FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection;
-    [[nodiscard]] auto ReadFile(string_view path) -> File;
-    [[nodiscard]] auto ReadFileText(string_view path) -> string;
-    [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
+    [[nodiscard]] auto GetAllFiles() const -> FileCollection;
+    [[nodiscard]] auto FilterFiles(string_view ext, string_view dir = "", bool include_subdirs = true) const -> FileCollection;
+    [[nodiscard]] auto ReadFile(string_view path) const -> File;
+    [[nodiscard]] auto ReadFileText(string_view path) const -> string;
+    [[nodiscard]] auto ReadFileHeader(string_view path) const -> FileHeader;
 
     void AddDataSource(string_view path, DataSourceType type = DataSourceType::Default);
+    void AddDataSource(unique_ptr<DataSource> data_source);
 
 private:
     string _rootPath {};
-    vector<DataSource> _dataSources {};
+    vector<unique_ptr<DataSource>> _dataSources {};
 };

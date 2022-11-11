@@ -43,25 +43,21 @@ enum class DataSourceType
     DirRoot,
 };
 
-class DataSource final
+class DataSource
 {
 public:
-    class Impl;
-
-    DataSource() = delete;
-    DataSource(string_view path, DataSourceType type);
+    DataSource() = default;
     DataSource(const DataSource&) = delete;
-    DataSource(DataSource&&) noexcept;
+    DataSource(DataSource&&) noexcept = default;
     auto operator=(const DataSource&) = delete;
-    auto operator=(DataSource&&) noexcept -> DataSource&;
-    ~DataSource();
+    auto operator=(DataSource&&) noexcept = delete;
+    virtual ~DataSource() = default;
 
-    [[nodiscard]] auto IsDiskDir() const -> bool;
-    [[nodiscard]] auto GetPackName() const -> string_view;
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>;
-    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>;
+    static auto Create(string_view path, DataSourceType type) -> unique_ptr<DataSource>;
 
-private:
-    unique_ptr<Impl> _pImpl {};
+    [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
+    [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
+    [[nodiscard]] virtual auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool = 0;
+    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> = 0;
+    [[nodiscard]] virtual auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> = 0;
 };

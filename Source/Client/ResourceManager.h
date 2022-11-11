@@ -42,7 +42,7 @@ class ResourceManager final
 {
 public:
     ResourceManager() = delete;
-    ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver);
+    ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver);
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) noexcept = delete;
     auto operator=(const ResourceManager&) = delete;
@@ -82,7 +82,7 @@ private:
     void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     SpriteManager& _sprMngr;
     AnimationResolver& _animNameResolver;
     map<uint, string> _namesHash {};

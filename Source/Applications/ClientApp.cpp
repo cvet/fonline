@@ -125,8 +125,8 @@ static void MainEntry(void*)
                 Data->Client->Release();
                 Data->Client = nullptr;
             }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
+            catch (const std::exception& ex2) {
+                ReportExceptionAndExit(ex2);
             }
         }
 
@@ -170,6 +170,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
+        auto balance = 0.0;
+
         while (!App->Settings.Quit) {
             const auto start_loop = Timer::RealtimeTick();
 
@@ -177,7 +179,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             if (!App->Settings.VSync && App->Settings.FixedFPS != 0) {
                 if (App->Settings.FixedFPS > 0) {
-                    static auto balance = 0.0;
                     const auto elapsed = Timer::RealtimeTick() - start_loop;
                     const auto need_elapsed = 1000.0 / static_cast<double>(App->Settings.FixedFPS);
                     if (need_elapsed > elapsed) {

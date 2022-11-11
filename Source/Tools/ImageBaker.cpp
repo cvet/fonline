@@ -33,6 +33,7 @@
 
 #include "ImageBaker.h"
 #include "Application.h"
+#include "ConfigFile.h"
 #include "F2Palette-Include.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
@@ -46,7 +47,7 @@
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
 static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*;
 
-ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
+ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
     // Swap palette R&B
     // Todo: swap colors of fo palette once in header
@@ -56,6 +57,11 @@ ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files, Ba
             std::swap(FoPalette[i], FoPalette[i + 2]);
         }
     });
+}
+
+auto ImageBaker::IsImageExt(string_view ext) -> bool
+{
+    return ext == "fofrm" || ext == "frm" || ext == "fr0" || ext == "rix" || ext == "art" || ext == "zar" || ext == "til" || ext == "mos" || ext == "bam" || ext == "png" || ext == "tga";
 }
 
 void ImageBaker::AutoBake()
@@ -81,20 +87,20 @@ void ImageBaker::AutoBake()
 
 void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 {
-    _allFiles.ResetCounter();
-    while (_allFiles.MoveNext()) {
-        auto file_header = _allFiles.GetCurFileHeader();
+    _files.ResetCounter();
+    while (_files.MoveNext()) {
+        auto file_header = _files.GetCurFileHeader();
 
         string ext = _str(file_header.GetPath()).getFileExtension();
         if (target_ext != ext) {
             continue;
         }
 
-        if (!_bakeChecker(file_header)) {
+        if (_bakeChecker && !_bakeChecker(file_header)) {
             continue;
         }
 
-        auto file = _allFiles.GetCurFile();
+        auto file = _files.GetCurFile();
 
         try {
             auto collection = loader(file_header.GetPath(), "", file);
@@ -117,7 +123,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     auto writer = DataWriter(data);
 
     constexpr auto check_number = static_cast<uchar>(42);
-    const auto dirs = static_cast<uchar>(collection.HaveDirs ? _settings.MapDirCount : 1);
+    const auto dirs = static_cast<uchar>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
 
     writer.Write<uchar>(check_number);
     writer.Write<ushort>(collection.SequenceSize);
@@ -171,7 +177,7 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
             return it->second;
         }
 
-        temp_storage = _allFiles.FindFileByPath(fname);
+        temp_storage = _files.FindFileByPath(fname);
 
         const auto need_cache = temp_storage && ext == "spr";
         if (need_cache) {
@@ -250,7 +256,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
 
     collection.EffectName = fofrm.GetStr("", "effect");
 
-    for (const auto dir : xrange(_settings.MapDirCount)) {
+    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         vector<tuple<FrameCollection, int, int>> sub_collections;
         sub_collections.reserve(10);
 
@@ -352,11 +358,11 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
     collection.SequenceSize = frm_num;
     collection.AnimTicks = 1000 / frm_fps * frm_num;
 
-    for (const auto dir : xrange(_settings.MapDirCount)) {
+    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
 
         auto dir_frm = dir;
-        if (!_settings.MapHexagonal) {
+        if constexpr (GameSettings::SQUARE_GEOMETRY) {
             if (dir >= 3) {
                 dir_frm--;
             }
@@ -386,7 +392,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<uint*>(FoPalette);
         uint palette_entry[256];
-        auto fm_palette = _allFiles.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
+        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uchar r = fm_palette.GetUChar() * 4;
@@ -591,11 +597,11 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
     collection.AnimTicks = 1000 / frm_fps * frm_num;
     collection.NewExtension = "frm";
 
-    for (const auto dir : xrange(_settings.MapDirCount)) {
+    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
 
         auto dir_frm = dir;
-        if (!_settings.MapHexagonal) {
+        if constexpr (GameSettings::SQUARE_GEOMETRY) {
             if (dir >= 3) {
                 dir_frm--;
             }
@@ -606,7 +612,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
 
         if (dir_frm != 0) {
             string next_fname = _str("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
-            file = _allFiles.FindFileByPath(next_fname);
+            file = _files.FindFileByPath(next_fname);
             if (!file) {
                 if (dir > 1) {
                     throw ImageBakerException("FRX file not found", next_fname);
@@ -630,7 +636,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
         // Make palette
         auto* palette = reinterpret_cast<uint*>(FoPalette);
         uint palette_entry[256];
-        auto fm_palette = _allFiles.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
+        auto fm_palette = _files.FindFileByPath(_str(fname).eraseFileExtension() + ".pal");
         if (fm_palette) {
             for (auto& i : palette_entry) {
                 uchar r = fm_palette.GetUChar() * 4;
@@ -980,11 +986,11 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     collection.AnimTicks = static_cast<ushort>(1000u / frm_fps * frm_count_anim);
     collection.HaveDirs = (header.RotationCount == 8);
 
-    for (const auto dir : xrange(_settings.MapDirCount)) {
+    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
 
         auto dir_art = dir;
-        if (_settings.MapHexagonal) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             switch (dir_art) {
             case 0:
                 dir_art = 1;
@@ -1123,9 +1129,9 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
 
     FrameCollection collection;
 
-    for (const auto dir : xrange(_settings.MapDirCount)) {
+    for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
         auto dir_spr = dir;
-        if (_settings.MapHexagonal) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             switch (dir_spr) {
             case 0:
                 dir_spr = 2;
@@ -1325,7 +1331,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
             std::memcpy(data.data(), file.GetCurBuf(), data_len);
         }
 
-        File fm_images(data);
+        auto fm_images = File("", "", 0u, nullptr, data, false);
 
         // Read palette
         typedef uint Palette[256];
@@ -1769,7 +1775,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
             throw ImageBakerException("Can't unpack MOS file", fname);
         }
 
-        file = File(data);
+        file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
         if (!_str(head).startsWith("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
@@ -1781,7 +1787,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     const uint h = file.GetLEUShort(); // Height (pixels)
     const uint col = file.GetLEUShort(); // Columns (blocks)
     const uint row = file.GetLEUShort(); // Rows (blocks)
-    auto block_size = file.GetLEUInt(); // Block size (pixels)
+    const auto block_size = file.GetLEUInt(); // Block size (pixels)
     UNUSED_VARIABLE(block_size);
     const auto palette_offset = file.GetLEUInt(); // Offset (from start of file) to palettes
     const auto tiles_offset = palette_offset + col * row * 256 * 4;
@@ -1886,7 +1892,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
             throw ImageBakerException("Cab't unpack BAM file", fname);
         }
 
-        file = File(data);
+        file = File("", "", 0u, nullptr, data, true);
         file.CopyData(head, 8);
         if (!_str(head).startsWith("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);

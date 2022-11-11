@@ -196,7 +196,7 @@ class SpriteManager final
 {
 public:
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr);
+    SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -300,7 +300,7 @@ private:
 
     RenderSettings& _settings;
     AppWindow* _window;
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     EffectManager& _effectMngr;
     EventUnsubscriber _eventUnsubscriber {};
     RenderTarget* _rtMain {};
@@ -335,10 +335,6 @@ private:
     int _eggY {};
     const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
-    int _eggSprWidth {};
-    int _eggSprHeight {};
-    float _eggAtlasWidth {};
-    float _eggAtlasHeight {};
     vector<uint> _borderBuf {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D

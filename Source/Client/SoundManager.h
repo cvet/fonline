@@ -42,7 +42,7 @@ class SoundManager final
 {
 public:
     SoundManager() = delete;
-    SoundManager(AudioSettings& settings, FileSystem& file_sys);
+    SoundManager(AudioSettings& settings, FileSystem& resources);
     SoundManager(const SoundManager&) = delete;
     SoundManager(SoundManager&&) noexcept = delete;
     auto operator=(const SoundManager&) = delete;
@@ -70,7 +70,7 @@ private:
     auto StreamOgg(Sound* sound) -> bool;
 
     AudioSettings& _settings;
-    FileSystem& _fileSys;
+    FileSystem& _resources;
     bool _isActive {};
     uint _streamingPortion {};
     SoundVec _soundsActive {};

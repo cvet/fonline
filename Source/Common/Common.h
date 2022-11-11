@@ -311,6 +311,7 @@ DECLARE_EXCEPTION(AssertationException);
 DECLARE_EXCEPTION(UnreachablePlaceException);
 DECLARE_EXCEPTION(NotSupportedException);
 DECLARE_EXCEPTION(NotImplementedException);
+DECLARE_EXCEPTION(InvalidCallException);
 DECLARE_EXCEPTION(NotEnabled3DException);
 
 // Event system
@@ -868,8 +869,8 @@ struct TRect
     }
 
     [[nodiscard]] auto IsZero() const -> bool { return !Left && !Top && !Right && !Bottom; }
-    [[nodiscard]] auto Width() const -> T { return Right - Left + 1; } // Todo: fix TRect Width/Height
-    [[nodiscard]] auto Height() const -> T { return Bottom - Top + 1; }
+    [[nodiscard]] auto Width() const -> T { return Right - Left; }
+    [[nodiscard]] auto Height() const -> T { return Bottom - Top; }
     [[nodiscard]] auto CenterX() const -> T { return Left + Width() / 2; }
     [[nodiscard]] auto CenterY() const -> T { return Top + Height() / 2; }
 
@@ -1274,6 +1275,22 @@ enum class MovingState : uchar
     HexBusyRing = 9,
     Deadlock = 10,
     TraceFailed = 11,
+};
+
+// Generic fixed game settings
+struct GameSettings
+{
+#if FO_GEOMETRY == 1
+    static constexpr bool HEXAGONAL_GEOMETRY = true;
+    static constexpr bool SQUARE_GEOMETRY = false;
+    static constexpr uint MAP_DIR_COUNT = 6;
+#elif FO_GEOMETRY == 2
+    static constexpr bool HEXAGONAL_GEOMETRY = false;
+    static constexpr bool SQUARE_GEOMETRY = true;
+    static constexpr uint MAP_DIR_COUNT = 8;
+#else
+#error FO_GEOMETRY not specified
+#endif
 };
 
 // Uses

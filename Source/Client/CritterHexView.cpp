@@ -35,7 +35,6 @@
 #include "Client.h"
 #include "EffectManager.h"
 #include "GenericUtils.h"
-#include "GeometryHelper.h"
 #include "ItemView.h"
 #include "MapView.h"
 #include "ResourceManager.h"
@@ -148,7 +147,7 @@ auto CritterHexView::GetAttackDist() -> uint
 // Todo: restore 2D sprite moving
 /*void CritterHexView::Move(uchar dir)
 {
-    if (dir >= _engine->Settings.MapDirCount || GetIsNoRotate()) {
+    if (dir >= GameSettings::MAP_DIR_COUNT || GetIsNoRotate()) {
         dir = 0;
     }
 

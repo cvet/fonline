@@ -38,7 +38,6 @@
 #include "Critter.h"
 #include "Entity.h"
 #include "FileSystem.h"
-#include "GeometryHelper.h"
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"

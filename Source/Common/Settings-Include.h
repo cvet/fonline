@@ -53,7 +53,7 @@ SETTING_GROUP(FileSystemSettings, virtual DummySettings);
 FIXED_SETTING(string, ResourcesDir, "Data");
 FIXED_SETTING(vector<string>, ClientResourceEntries);
 FIXED_SETTING(vector<string>, ServerResourceEntries);
-FIXED_SETTING(string, EmbeddedResources, "$Embedded");
+FIXED_SETTING(string, EmbeddedResources, "@Embedded");
 FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
 
@@ -141,7 +141,8 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
-FIXED_SETTING(bool, MapHexagonal, true); // true - hexagonal, false - square
+FIXED_SETTING(bool, MapHexagonal);
+FIXED_SETTING(bool, MapSquare);
 FIXED_SETTING(int, MapDirCount);
 FIXED_SETTING(int, MapHexWidth, 32); // hex/square width
 FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
@@ -160,14 +161,13 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
-FIXED_SETTING(string, WindowName, "FOnline");
 FIXED_SETTING(uint, Animation3dSmoothTime, 150);
 FIXED_SETTING(uint, Animation3dFPS, 30);
 FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
 FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
 VARIABLE_SETTING(bool, NullRenderer, false);
-VARIABLE_SETTING(bool, ForceOpenGL, false);
+VARIABLE_SETTING(bool, ForceOpenGL, true);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
 VARIABLE_SETTING(bool, ForceGNM, false);
@@ -200,7 +200,7 @@ VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "xml"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -259,7 +259,7 @@ VARIABLE_SETTING(bool, HideCursor, false);
 VARIABLE_SETTING(bool, ShowMoveCursor, false);
 SETTING_GROUP_END();
 
-///@ ExportSettings Common Auto
+///@ ExportSettings Common
 SETTING_GROUP(PlatformSettings, virtual DummySettings);
 FIXED_SETTING(bool, WebBuild);
 FIXED_SETTING(bool, WindowsBuild);

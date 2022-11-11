@@ -206,7 +206,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 }
                 if (ImGui::Button("Save log", control_btn_size)) {
                     const auto dt = Timer::GetCurrentDateTime();
-                    const string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                    const string log_name = _str("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
                     DiskFileSystem::OpenFile(log_name, true).Write(log_buffer);
                 }
 

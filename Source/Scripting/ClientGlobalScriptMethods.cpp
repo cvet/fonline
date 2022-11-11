@@ -1024,7 +1024,7 @@
     if (client->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (dir >= client->Settings.MapDirCount) {
+    if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
     if (steps == 0u) {
@@ -1135,14 +1135,14 @@
 ///# ...
 ///# param effectType ...
 ///# param effectSubtype ...
-///# param effectName ...
+///# param effectPath ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectName)
+[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectPath)
 {
     const auto reload_effect = [&](RenderEffect* def_effect) {
-        if (!effectName.empty()) {
-            auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectName, "");
+        if (!effectPath.empty()) {
+            auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectPath);
             if (!effect) {
                 throw ScriptException("Effect not found or have some errors, see log file");
             }

@@ -171,6 +171,11 @@ void Application::HideCursor()
 {
 }
 
+void Application::SetImGuiEffect(RenderEffect* effect)
+{
+    UNUSED_VARIABLE(effect);
+}
+
 auto Application::GetName() const -> string_view
 {
     return _name;
