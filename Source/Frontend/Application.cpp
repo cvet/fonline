@@ -653,7 +653,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
         win_pos = SDL_WINDOWPOS_CENTERED;
     }
 
-    auto* sdl_window = SDL_CreateWindow(Settings.WindowName.c_str(), win_pos, win_pos, width, height, window_create_flags);
+    auto* sdl_window = SDL_CreateWindow(FO_GAME_VERSION, win_pos, win_pos, width, height, window_create_flags);
     if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }

@@ -65,8 +65,9 @@ public:
     }
 
 private:
-    GlobalSettings _dummySettings {};
+    static GlobalSettings _dummySettings;
 };
+GlobalSettings BakerEngine::_dummySettings {};
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
