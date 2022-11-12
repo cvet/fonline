@@ -169,15 +169,17 @@ auto Map::FindPlaceOnMap(ushort hx, ushort hy, Critter* cr, uint radius) const -
 
 void Map::AddCritter(Critter* cr)
 {
-    RUNTIME_ASSERT(std::find(_mapCritters.begin(), _mapCritters.end(), cr) == _mapCritters.end());
+    RUNTIME_ASSERT(_crittersMap.count(cr->GetId()) == 0);
+
+    _crittersMap.emplace(cr->GetId(), cr);
+    _critters.push_back(cr);
 
     if (cr->IsOwnedByPlayer()) {
-        _mapPlayerCritters.push_back(cr);
+        _playerCritters.push_back(cr);
     }
     if (cr->IsNpc()) {
-        _mapNonPlayerCritters.push_back(cr);
+        _nonPlayerCritters.push_back(cr);
     }
-    _mapCritters.push_back(cr);
 
     SetFlagCritter(cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead());
 
@@ -186,21 +188,28 @@ void Map::AddCritter(Critter* cr)
 
 void Map::EraseCritter(Critter* cr)
 {
-    // Erase critter from collections
-    if (cr->IsOwnedByPlayer()) {
-        const auto it = std::find(_mapPlayerCritters.begin(), _mapPlayerCritters.end(), cr);
-        RUNTIME_ASSERT(it != _mapPlayerCritters.end());
-        _mapPlayerCritters.erase(it);
-    }
-    else {
-        const auto it = std::find(_mapNonPlayerCritters.begin(), _mapNonPlayerCritters.end(), cr);
-        RUNTIME_ASSERT(it != _mapNonPlayerCritters.end());
-        _mapNonPlayerCritters.erase(it);
+    {
+        const auto it = _crittersMap.find(cr->GetId());
+        RUNTIME_ASSERT(it != _crittersMap.end());
+        _crittersMap.erase(it);
     }
 
-    const auto it = std::find(_mapCritters.begin(), _mapCritters.end(), cr);
-    RUNTIME_ASSERT(it != _mapCritters.end());
-    _mapCritters.erase(it);
+    {
+        const auto it = std::find(_critters.begin(), _critters.end(), cr);
+        RUNTIME_ASSERT(it != _critters.end());
+        _critters.erase(it);
+    }
+
+    if (cr->IsOwnedByPlayer()) {
+        const auto it = std::find(_playerCritters.begin(), _playerCritters.end(), cr);
+        RUNTIME_ASSERT(it != _playerCritters.end());
+        _playerCritters.erase(it);
+    }
+    else {
+        const auto it = std::find(_nonPlayerCritters.begin(), _nonPlayerCritters.end(), cr);
+        RUNTIME_ASSERT(it != _nonPlayerCritters.end());
+        _nonPlayerCritters.erase(it);
+    }
 
     cr->SetTimeoutBattle(0);
 }
@@ -253,16 +262,16 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
 void Map::SetItem(Item* item, ushort hx, ushort hy)
 {
-    RUNTIME_ASSERT(!_mapItemsById.count(item->GetId()));
+    RUNTIME_ASSERT(!_itemsMap.count(item->GetId()));
 
     item->SetOwnership(ItemOwnership::MapHex);
     item->SetMapId(GetId());
     item->SetHexX(hx);
     item->SetHexY(hy);
 
-    _mapItems.push_back(item);
-    _mapItemsById.insert(std::make_pair(item->GetId(), item));
-    _mapItemsByHex.insert(std::make_pair(hy << 16 | hx, vector<Item*>())).first->second.push_back(item);
+    _items.push_back(item);
+    _itemsMap.insert(std::make_pair(item->GetId(), item));
+    _itemsByHex.emplace(tuple {hx, hy}, vector<Item*>()).first->second.push_back(item);
 
     if (item->GetIsGeck()) {
         _mapLocation->GeckCount++;
@@ -278,24 +287,24 @@ void Map::SetItem(Item* item, ushort hx, ushort hy)
 void Map::EraseItem(uint item_id)
 {
     RUNTIME_ASSERT(item_id);
-    const auto it = _mapItemsById.find(item_id);
-    RUNTIME_ASSERT(it != _mapItemsById.end());
+    const auto it = _itemsMap.find(item_id);
+    RUNTIME_ASSERT(it != _itemsMap.end());
     auto* item = it->second;
-    _mapItemsById.erase(it);
+    _itemsMap.erase(it);
 
-    const auto it_all = std::find(_mapItems.begin(), _mapItems.end(), item);
-    RUNTIME_ASSERT(it_all != _mapItems.end());
-    _mapItems.erase(it_all);
+    const auto it_all = std::find(_items.begin(), _items.end(), item);
+    RUNTIME_ASSERT(it_all != _items.end());
+    _items.erase(it_all);
 
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
-    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
-    RUNTIME_ASSERT(it_hex_all != _mapItemsByHex.end());
+    const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
+    RUNTIME_ASSERT(it_hex_all != _itemsByHex.end());
     const auto it_hex = std::find(it_hex_all->second.begin(), it_hex_all->second.end(), item);
     RUNTIME_ASSERT(it_hex != it_hex_all->second.end());
     it_hex_all->second.erase(it_hex);
     if (it_hex_all->second.empty()) {
-        _mapItemsByHex.erase(it_hex_all);
+        _itemsByHex.erase(it_hex_all);
     }
 
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -399,7 +408,7 @@ void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _mapPlayerCritters) {
+    for (auto* cr : _playerCritters) {
         if (cr->CountIdVisItem(item->GetId())) {
             cr->Send_AnimateItem(item, from_frm, to_frm);
         }
@@ -408,14 +417,14 @@ void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 
 auto Map::GetItem(uint item_id) -> Item*
 {
-    const auto it = _mapItemsById.find(item_id);
-    return it != _mapItemsById.end() ? it->second : nullptr;
+    const auto it = _itemsMap.find(item_id);
+    return it != _itemsMap.end() ? it->second : nullptr;
 }
 
 auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*
 {
-    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
-    if (it_hex_all != _mapItemsByHex.end()) {
+    const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
+    if (it_hex_all != _itemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetIsHidden() && picker->CountIdVisItem(item->GetId())))) {
                 return item;
@@ -428,8 +437,8 @@ auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) ->
 
 auto Map::GetItemGag(ushort hx, ushort hy) -> Item*
 {
-    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
-    if (it_hex_all != _mapItemsByHex.end()) {
+    const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
+    if (it_hex_all != _itemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             if (item->GetIsGag()) {
                 return item;
@@ -443,15 +452,15 @@ auto Map::GetItems() -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 
-    return _mapItems;
+    return _items;
 }
 
 auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
 {
     vector<Item*> items;
 
-    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
-    if (it_hex_all != _mapItemsByHex.end()) {
+    const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
+    if (it_hex_all != _itemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             items.push_back(item);
         }
@@ -465,7 +474,7 @@ auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vecto
     NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
-    for (auto* item : _mapItems) {
+    for (auto* item : _items) {
         if ((!pid || item->GetProtoId() == pid) && _engine->Geometry.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
@@ -478,7 +487,7 @@ auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
     NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
-    for (auto* item : _mapItems) {
+    for (auto* item : _items) {
         if (!pid || item->GetProtoId() == pid) {
             items.push_back(item);
         }
@@ -489,8 +498,8 @@ auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 auto Map::GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>
 {
     vector<Item*> traps;
-    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
-    if (it_hex_all != _mapItemsByHex.end()) {
+    const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
+    if (it_hex_all != _itemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             if (item->GetIsTrap() || item->GetIsTrigger()) {
                 traps.push_back(item);
@@ -514,7 +523,7 @@ auto Map::IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item)
 void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 {
     _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
-        _mapBlockLinesByHex.insert(std::make_pair((hy2 << 16) | hx2, vector<Item*>())).first->second.push_back(item);
+        _blockLinesByHex.emplace(tuple {hx2, hy2}, vector<Item*>()).first->second.push_back(item);
         RecacheHexFlags(hx2, hy2);
     });
 }
@@ -522,15 +531,15 @@ void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
 {
     _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
-        auto it_hex_all_bl = _mapBlockLinesByHex.find((hy2 << 16) | hx2);
-        RUNTIME_ASSERT(it_hex_all_bl != _mapBlockLinesByHex.end());
+        auto it_hex_all_bl = _blockLinesByHex.find(tuple {hx2, hy2});
+        RUNTIME_ASSERT(it_hex_all_bl != _blockLinesByHex.end());
 
         auto it_hex_bl = std::find(it_hex_all_bl->second.begin(), it_hex_all_bl->second.end(), item);
         RUNTIME_ASSERT(it_hex_bl != it_hex_all_bl->second.end());
 
         it_hex_all_bl->second.erase(it_hex_bl);
         if (it_hex_all_bl->second.empty()) {
-            _mapBlockLinesByHex.erase(it_hex_all_bl);
+            _blockLinesByHex.erase(it_hex_all_bl);
         }
 
         RecacheHexFlags(hx2, hy2);
@@ -550,8 +559,8 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
     auto is_trap = false;
     auto is_trigger = false;
 
-    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
-    if (it_hex_all != _mapItemsByHex.end()) {
+    const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
+    if (it_hex_all != _itemsByHex.end()) {
         for (const auto* item : it_hex_all->second) {
             if (!is_block && !item->GetIsNoBlock()) {
                 is_block = true;
@@ -575,8 +584,8 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
     }
 
     if (!is_block && !is_nrake) {
-        const auto it_hex_all_bl = _mapBlockLinesByHex.find(hy << 16 | hx);
-        if (it_hex_all_bl != _mapBlockLinesByHex.end()) {
+        const auto it_hex_all_bl = _blockLinesByHex.find(tuple {hx, hy});
+        if (it_hex_all_bl != _blockLinesByHex.end()) {
             is_block = true;
 
             for (const auto* item : it_hex_all_bl->second) {
@@ -739,7 +748,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 {
     if (dead) {
         uint dead_count = 0;
-        for (const auto* cr : _mapCritters) {
+        for (const auto* cr : _critters) {
             if (cr->GetHexX() == hx && cr->GetHexY() == hy && cr->IsDead()) {
                 dead_count++;
             }
@@ -769,14 +778,12 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
     }
 }
 
-auto Map::GetCritter(uint crid) -> Critter*
+auto Map::GetCritter(uint cr_id) -> Critter*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _mapCritters) {
-        if (cr->GetId() == crid) {
-            return cr;
-        }
+    if (const auto it = _crittersMap.find(cr_id); it != _crittersMap.end()) {
+        return it->second;
     }
     return nullptr;
 }
@@ -789,7 +796,7 @@ auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
         return nullptr;
     }
 
-    for (auto* cr : _mapCritters) {
+    for (auto* cr : _critters) {
         if (cr->IsDead() == dead) {
             const auto mh = cr->GetMultihex();
             if (mh == 0u) {
@@ -812,9 +819,9 @@ auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find
     NON_CONST_METHOD_HINT();
 
     vector<Critter*> critters;
-    critters.reserve(_mapCritters.size());
+    critters.reserve(_critters.size());
 
-    for (auto* cr : _mapCritters) {
+    for (auto* cr : _critters) {
         if (cr->CheckFind(find_type) && _engine->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
             critters.push_back(cr);
         }
@@ -826,58 +833,58 @@ auto Map::GetCritters() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    return _mapCritters;
+    return _critters;
 }
 
 auto Map::GetPlayers() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    return _mapPlayerCritters;
+    return _playerCritters;
 }
 
 auto Map::GetNpcs() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    return _mapNonPlayerCritters;
+    return _nonPlayerCritters;
 }
 
 auto Map::GetCrittersRaw() -> vector<Critter*>&
 {
-    return _mapCritters;
+    return _critters;
 }
 
 auto Map::GetPlayersRaw() -> vector<Critter*>&
 {
-    return _mapPlayerCritters;
+    return _playerCritters;
 }
 
 auto Map::GetNpcsRaw() -> vector<Critter*>&
 {
-    return _mapNonPlayerCritters;
+    return _nonPlayerCritters;
 }
 
 auto Map::GetCrittersCount() const -> uint
 {
-    return static_cast<uint>(_mapCritters.size());
+    return static_cast<uint>(_critters.size());
 }
 
 auto Map::GetPlayersCount() const -> uint
 {
-    return static_cast<uint>(_mapPlayerCritters.size());
+    return static_cast<uint>(_playerCritters.size());
 }
 
 auto Map::GetNpcsCount() const -> uint
 {
-    return static_cast<uint>(_mapNonPlayerCritters.size());
+    return static_cast<uint>(_nonPlayerCritters.size());
 }
 
 void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _mapPlayerCritters) {
+    for (auto* cr : _playerCritters) {
         if (_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->LookCacheValue + radius)) {
             cr->Send_Effect(eff_pid, hx, hy, radius);
         }
@@ -888,7 +895,7 @@ void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort fr
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* cr : _mapPlayerCritters) {
+    for (auto* cr : _playerCritters) {
         if (GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->LookCacheValue, from_hx, from_hy, to_hx, to_hy)) {
             cr->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
         }
@@ -903,7 +910,7 @@ void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsaf
         return;
     }
 
-    for (auto* cr : _mapPlayerCritters) {
+    for (auto* cr : _playerCritters) {
         if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapText(hx, hy, color, text, unsafe_text);
         }
@@ -918,7 +925,7 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
         return;
     }
 
-    for (auto* cr : _mapPlayerCritters) {
+    for (auto* cr : _playerCritters) {
         if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsg(hx, hy, color, text_msg, num_str);
         }
@@ -933,7 +940,7 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
         return;
     }
 
-    for (auto* cr : _mapPlayerCritters) {
+    for (auto* cr : _playerCritters) {
         if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems);
         }

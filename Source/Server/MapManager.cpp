@@ -381,26 +381,26 @@ void MapManager::GenerateMapContent(Map* map)
 
 void MapManager::DeleteMapContent(Map* map)
 {
-    while (!map->_mapCritters.empty() || !map->_mapItems.empty()) {
+    while (!map->_critters.empty() || !map->_items.empty()) {
         // Transit players to global map
         KickPlayersToGlobalMap(map);
 
         // Delete npc
-        auto del_npcs = map->_mapNonPlayerCritters;
+        auto del_npcs = map->_nonPlayerCritters;
         for (auto* del_npc : del_npcs) {
             _engine->CrMngr.DeleteCritter(del_npc);
         }
 
         // Delete items
-        auto del_items = map->_mapItems;
+        auto del_items = map->_items;
         for (auto* del_item : del_items) {
             _engine->ItemMngr.DeleteItem(del_item);
         }
     }
 
-    RUNTIME_ASSERT(map->_mapItemsById.empty());
-    RUNTIME_ASSERT(map->_mapItemsByHex.empty());
-    RUNTIME_ASSERT(map->_mapBlockLinesByHex.empty());
+    RUNTIME_ASSERT(map->_itemsMap.empty());
+    RUNTIME_ASSERT(map->_itemsByHex.empty());
+    RUNTIME_ASSERT(map->_blockLinesByHex.empty());
 }
 
 auto MapManager::GetLocationAndMapsStatistics() const -> string

@@ -95,7 +95,6 @@ struct FindPathInput
     uint Multihex {};
     uint Cut {};
     uint TraceDist {};
-    bool IsRun {};
     bool CheckCritter {};
     bool CheckGagItems {};
     Critter* TraceCr {};

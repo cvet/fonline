@@ -187,6 +187,8 @@ FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
 FIXED_SETTING(int, DefaultModelViewHeight, 0);
 FIXED_SETTING(int, DefaultModelDrawWidth, 128);
 FIXED_SETTING(int, DefaultModelDrawHeight, 128);
+FIXED_SETTING(uint, AnimWalkSpeed, 80);
+FIXED_SETTING(uint, AnimRunSpeed, 160);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

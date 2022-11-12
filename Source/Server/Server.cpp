@@ -2228,7 +2228,8 @@ void FOServer::Process_Move(Player* player)
 {
     uint msg_len;
     uint map_id;
-    bool is_run;
+    uint cr_id;
+    ushort speed;
     ushort start_hx;
     ushort start_hy;
     ushort steps_count;
@@ -2240,7 +2241,8 @@ void FOServer::Process_Move(Player* player)
 
     player->Connection->Bin >> msg_len;
     player->Connection->Bin >> map_id;
-    player->Connection->Bin >> is_run;
+    player->Connection->Bin >> cr_id;
+    player->Connection->Bin >> speed;
     player->Connection->Bin >> start_hx;
     player->Connection->Bin >> start_hy;
     player->Connection->Bin >> steps_count;
@@ -2258,16 +2260,34 @@ void FOServer::Process_Move(Player* player)
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    Critter* cr = player->GetOwnedCritter();
-
-    if (map_id != cr->GetMapId()) {
-        return;
-    }
-    if (cr->GetIsNoMove() || (is_run && cr->GetIsNoRun())) {
+    auto* map = MapMngr.GetMap(map_id);
+    if (map == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
-    MoveCritter(cr, is_run, start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
+    Critter* cr = map->GetCritter(cr_id);
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    if (speed == 0) {
+        BreakIntoDebugger();
+        player->Send_Position(cr);
+        return;
+    }
+
+    // Todo: validate moving steps programmaticaly
+
+    uint checked_speed = speed;
+    if (!OnPlayerCheckMove.Fire(player, cr, checked_speed)) {
+        BreakIntoDebugger();
+        player->Send_Position(cr);
+        return;
+    }
+
+    MoveCritter(cr, static_cast<ushort>(checked_speed), start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
 }
 
 void FOServer::Process_StopMove(Player* player)
@@ -2275,6 +2295,7 @@ void FOServer::Process_StopMove(Player* player)
     NON_CONST_METHOD_HINT();
 
     uint map_id;
+    uint cr_id;
     ushort start_hx;
     ushort start_hy;
     short hex_ox;
@@ -2282,6 +2303,7 @@ void FOServer::Process_StopMove(Player* player)
     short dir_angle;
 
     player->Connection->Bin >> map_id;
+    player->Connection->Bin >> cr_id;
     player->Connection->Bin >> start_hx;
     player->Connection->Bin >> start_hy;
     player->Connection->Bin >> hex_ox;
@@ -2290,9 +2312,22 @@ void FOServer::Process_StopMove(Player* player)
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    Critter* cr = player->GetOwnedCritter();
+    auto* map = MapMngr.GetMap(map_id);
+    if (map == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
 
-    if (map_id != cr->GetMapId()) {
+    Critter* cr = map->GetCritter(cr_id);
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    uint zero_speed = 0;
+    if (!OnPlayerCheckMove.Fire(player, cr, zero_speed)) {
+        BreakIntoDebugger();
+        player->Send_Position(cr);
         return;
     }
 
@@ -2775,16 +2810,6 @@ void FOServer::ProcessMove(Critter* cr)
 {
     // Moving
     if (cr->IsMoving()) {
-        if (cr->Moving.IsRunning && cr->GetIsHide()) {
-            cr->SetIsHide(false);
-        }
-
-        // bool is_run = cr->IsRunning;
-        // if (is_run && cr->GetIsNoRun())
-        //    return false;
-        // if (!is_run && cr->GetIsNoWalk())
-        //    return false;
-
         auto* map = MapMngr.GetMap(cr->GetMapId());
         if (map != nullptr && cr->IsAlive()) {
             ProcessMoveBySteps(cr, map);
@@ -2849,7 +2874,6 @@ void FOServer::ProcessMove(Critter* cr)
             find_input.FromHexY = cr->GetHexY();
             find_input.ToHexX = hx;
             find_input.ToHexY = hy;
-            find_input.IsRun = cr->TargetMoving.IsRun;
             find_input.Multihex = cr->GetMultihex();
             find_input.Cut = cut;
             find_input.TraceDist = trace_dist;
@@ -2857,11 +2881,7 @@ void FOServer::ProcessMove(Critter* cr)
             find_input.CheckCritter = true;
             find_input.CheckGagItems = true;
 
-            if (find_input.IsRun && cr->GetIsNoRun()) {
-                find_input.IsRun = false;
-            }
-
-            if (cr->GetIsNoMove()) {
+            if (cr->TargetMoving.Speed == 0) {
                 cr->TargetMoving.State = MovingState::CantMove;
                 return;
             }
@@ -2933,7 +2953,7 @@ void FOServer::ProcessMove(Critter* cr)
 
             // Success
             cr->TargetMoving.State = MovingState::Success;
-            MoveCritter(cr, !cr->GetIsNoRun(), cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
+            MoveCritter(cr, cr->TargetMoving.Speed, cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
         }
     }
 }
@@ -3092,7 +3112,7 @@ label_Done:
     }
 }
 
-void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
+void FOServer::MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
 {
     cr->ClearMove();
 
@@ -3101,7 +3121,7 @@ void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort sta
         return;
     }
 
-    cr->Moving.IsRunning = is_run;
+    cr->Moving.Speed = speed;
     cr->Moving.StartTick = GameTime.FrameTick();
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
@@ -3115,7 +3135,8 @@ void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort sta
     cr->Moving.WholeTime = 0.0f;
     cr->Moving.WholeDist = 0.0f;
 
-    const auto base_move_speed = static_cast<float>(cr->Moving.IsRunning ? cr->GetRunSpeed() : cr->GetWalkSpeed());
+    RUNTIME_ASSERT(cr->Moving.Speed > 0);
+    const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
     auto control_step_begin = 0;
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {

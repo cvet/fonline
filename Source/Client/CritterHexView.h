@@ -98,7 +98,6 @@ public:
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void NextAnim(bool erase_front);
-    void RefreshSpeed();
     void RefreshCombatMode();
     void ClearMove();
 #if FO_ENABLE_3D
@@ -117,7 +116,7 @@ public:
 
     struct
     {
-        bool IsRunning {};
+        ushort Speed {};
         vector<uchar> Steps {};
         vector<ushort> ControlSteps {};
         uint StartTick {};

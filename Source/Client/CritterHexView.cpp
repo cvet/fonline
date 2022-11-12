@@ -68,7 +68,6 @@ void CritterHexView::Init()
     RefreshModel();
 #endif
 
-    RefreshSpeed();
     AnimateStay();
     RefreshOffs();
     SetFade(true);
@@ -281,25 +280,6 @@ auto CritterHexView::GetAttackDist() -> uint
     }
 }*/
 
-void CritterHexView::RefreshSpeed()
-{
-    NON_CONST_METHOD_HINT();
-
-#if FO_ENABLE_3D
-    if (_model != nullptr) {
-        auto scale_factor = static_cast<float>(GetScaleFactor());
-        if (scale_factor == 0.0f) {
-            scale_factor = 1.0f;
-        }
-        else {
-            scale_factor /= 1000.0f;
-        }
-
-        _model->SetMoveSpeed(static_cast<float>(GetWalkSpeed()) / 80.0f / scale_factor, static_cast<float>(GetRunSpeed()) / 160.0f / scale_factor);
-    }
-#endif
-}
-
 void CritterHexView::RefreshCombatMode()
 {
 #if FO_ENABLE_3D
@@ -326,6 +306,7 @@ void CritterHexView::ClearMove()
     Moving.ControlSteps = {};
     Moving.StartTick = {};
     Moving.OffsetTick = {};
+    Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
     Moving.EndHexX = {};
@@ -490,25 +471,20 @@ void CritterHexView::AnimateStay()
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
+        const auto scale_factor = GetScaleFactor();
+        const auto scale = scale_factor != 0 ? static_cast<float>(scale_factor) / 1000.0f : 1.0f;
+
+        _model->SetScale(scale, scale, scale);
+
         if (IsMoving()) {
-            _model->SetMoving(true, Moving.IsRunning);
+            _model->SetMoving(true, static_cast<uint>(static_cast<float>(Moving.Speed) / scale));
 
-            anim2 = Moving.IsRunning ? ANIM2_RUN : ANIM2_WALK;
-
-            if (GetIsHide()) {
-                anim2 = Moving.IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
-            }
+            anim2 = ANIM2_WALK;
         }
         else {
-            _model->SetMoving(false, Moving.IsRunning);
+            _model->SetMoving(false);
 
             anim2 = GetAnim2();
-        }
-
-        const auto scale_factor = GetScaleFactor();
-        if (scale_factor != 0) {
-            const auto scale = static_cast<float>(scale_factor) / 1000.0f;
-            _model->SetScale(scale, scale, scale);
         }
 
         if (!_model->ResolveAnimation(anim1, anim2)) {

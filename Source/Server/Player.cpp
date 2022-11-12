@@ -267,7 +267,7 @@ void Player::Send_Move(Critter* from_cr)
     NON_CONST_METHOD_HINT();
 
     if (!from_cr->Moving.Steps.empty()) {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(uint) * 2 + sizeof(bool) + sizeof(ushort) * 2 + //
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(uint) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
             static_cast<uint>(sizeof(uchar) * from_cr->Moving.Steps.size()) + static_cast<uint>(sizeof(ushort) * from_cr->Moving.ControlSteps.size()) + sizeof(char) * 2;
 
         CONNECTION_OUTPUT_BEGIN(Connection);
@@ -276,7 +276,7 @@ void Player::Send_Move(Critter* from_cr)
         Connection->Bout << from_cr->GetId();
         Connection->Bout << static_cast<uint>(std::ceil(from_cr->Moving.WholeTime));
         Connection->Bout << _engine->GameTime.FrameTick() - from_cr->Moving.StartTick;
-        Connection->Bout << from_cr->Moving.IsRunning;
+        Connection->Bout << from_cr->Moving.Speed;
         Connection->Bout << from_cr->Moving.StartHexX;
         Connection->Bout << from_cr->Moving.StartHexY;
         Connection->Bout << static_cast<ushort>(from_cr->Moving.Steps.size());

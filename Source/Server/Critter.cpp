@@ -126,6 +126,7 @@ void Critter::ClearMove()
     Moving.Steps = {};
     Moving.ControlSteps = {};
     Moving.StartTick = {};
+    Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
     Moving.EndHexX = {};

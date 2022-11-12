@@ -135,6 +135,8 @@ public:
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, string> params);
 
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed);
+
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
     ///@ ExportEvent
@@ -304,8 +306,8 @@ protected:
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
-    void Net_SendMove();
-    void Net_SendStopMove();
+    void Net_SendMove(CritterHexView* cr);
+    void Net_SendStopMove(CritterHexView* cr);
     void Net_SendPing(uchar ping);
 
     void Net_OnConnect(bool success);
@@ -364,7 +366,6 @@ protected:
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value);
     void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value);

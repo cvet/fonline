@@ -247,14 +247,14 @@ public:
         ushort HexX {};
         ushort HexY {};
         uint Cut {};
-        bool IsRun {};
+        ushort Speed {};
         uint TraceDist {};
         uint GagEntityId {};
     } TargetMoving {};
 
     struct
     {
-        bool IsRunning {};
+        ushort Speed {};
         uint Uid {};
         vector<uchar> Steps {};
         vector<ushort> ControlSteps {};

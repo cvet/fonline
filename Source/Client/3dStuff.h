@@ -269,8 +269,7 @@ public:
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(int ox, int oy);
-    void SetMoving(bool enabled, bool is_run);
-    void SetMoveSpeed(float walk_factor, float run_factor);
+    void SetMoving(bool enabled, uint speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticles(string_view particles_name, hstring bone_name, vec3 move);
 
@@ -352,14 +351,13 @@ private:
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
     bool _isMoving {};
-    bool _isRunning {};
     bool _isMovingBack {};
     int _curMovingAnim {-1};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};
-    float _walkSpeedFactor {1.0f};
-    float _runSpeedFactor {1.0f};
+    float _movingSpeedFactor {};
+    bool _isRunning {};
     bool _noRotate {};
     float _deferredLookDirAngle {};
     vector<ModelParticleSystem> _particleSystems {};

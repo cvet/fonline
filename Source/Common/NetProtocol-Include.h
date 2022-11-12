@@ -291,7 +291,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Params:
 // uint msg_len
 // uint map_id
-// bool is_run
+// uint cr_id
+// ushort speed
 // ushort start_hx
 // ushort start_hy
 // ushort steps_count
@@ -303,11 +304,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_STOP_MOVE MAKE_NETMSG_HEADER(46)
-#define NETMSG_SEND_STOP_MOVE_SIZE (sizeof(uint) + sizeof(uint) * 2 + sizeof(ushort) * 2)
+#define NETMSG_SEND_STOP_MOVE_SIZE (sizeof(uint) + sizeof(uint) * 3 + sizeof(ushort) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint map_id
+// uint cr_id
 // ushort hx
 // ushort hy
 // short hex_ox
@@ -323,7 +325,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint cr_id
 // uint whole_time
 // uint offset_time
-// bool is_run
+// ushort speed
 // ushort start_hx
 // ushort start_hy
 // ushort steps_count

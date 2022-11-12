@@ -790,18 +790,28 @@ void ModelInstance::MoveModel(int ox, int oy)
     _forceRedraw = true;
 }
 
-void ModelInstance::SetMoving(bool enabled, bool is_run)
+void ModelInstance::SetMoving(bool enabled, uint speed)
 {
     _isMoving = enabled;
-    _isRunning = is_run;
+
+    if (_isMoving) {
+        RUNTIME_ASSERT(speed > 0);
+
+        const auto walk_speed = _modelMngr._settings.AnimWalkSpeed;
+        const auto run_speed = _modelMngr._settings.AnimRunSpeed;
+        RUNTIME_ASSERT(run_speed >= walk_speed);
+
+        if (speed < walk_speed + (run_speed - walk_speed) / 2) {
+            _isRunning = false;
+            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(walk_speed);
+        }
+        else {
+            _isRunning = true;
+            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(run_speed);
+        }
+    }
 
     RefreshMoveAnimation();
-}
-
-void ModelInstance::SetMoveSpeed(float walk_factor, float run_factor)
-{
-    _walkSpeedFactor = walk_factor;
-    _runSpeedFactor = run_factor;
 }
 
 auto ModelInstance::IsCombatMode() const -> bool
@@ -874,7 +884,7 @@ void ModelInstance::RefreshMoveAnimation()
     _curMovingAnim = index;
 
     if (_isMoving) {
-        speed *= _isRunning ? _runSpeedFactor : _walkSpeedFactor;
+        speed *= _movingSpeedFactor;
     }
 
     constexpr float smooth_time = 0.0001f;
