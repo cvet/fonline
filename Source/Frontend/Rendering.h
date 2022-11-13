@@ -76,11 +76,7 @@ enum class RenderType
 enum class EffectUsage
 {
     ImGui,
-    Font,
-    MapSprite,
-    Interface,
-    Flush,
-    Contour,
+    QuadSprite,
     Primitive,
 #if FO_ENABLE_3D
     Model,

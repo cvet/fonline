@@ -584,17 +584,9 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         }
 #endif
 
-        if (!opengl_effect->BorderBuf) {
-            if (usage == EffectUsage::Contour) {
-                opengl_effect->BorderBuf = RenderEffect::BorderBuffer();
-            }
-        }
-
         if (!opengl_effect->MapSpriteBuf) {
-            if (usage == EffectUsage::MapSprite) {
-                if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
-                    opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
-                }
+            if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
+                opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
             }
         }
 
@@ -1023,11 +1015,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
             // Nothing, indices generated manually
             need_upload_indices = true;
         } break;
-        case EffectUsage::Font:
-        case EffectUsage::MapSprite:
-        case EffectUsage::Interface:
-        case EffectUsage::Flush:
-        case EffectUsage::Contour: {
+        case EffectUsage::QuadSprite: {
             // Sprite quad
             RUNTIME_ASSERT(upload_vertices % 4 == 0);
             auto& indices = Indices;

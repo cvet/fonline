@@ -1205,13 +1205,13 @@ void SpriteManager::Flush()
         return;
     }
 
-    _spritesDrawBuf->Upload(_dipQueue.front().SourceEffect->Usage, _curDrawQuad * 4);
+    _spritesDrawBuf->Upload(EffectUsage::QuadSprite, _curDrawQuad * 4);
 
     EnableScissor();
 
     size_t pos = 0;
     for (const auto& dip : _dipQueue) {
-        RUNTIME_ASSERT(dip.SourceEffect->Usage == _dipQueue.front().SourceEffect->Usage);
+        RUNTIME_ASSERT(dip.SourceEffect->Usage == EffectUsage::QuadSprite);
 
         dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
 
@@ -2013,7 +2013,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     }
 
     auto borders = IRect(x - 1, y - 1, x + si->Width + 1, y + si->Height + 1);
-    const auto* texture = si->Atlas->MainTex;
+    auto* texture = si->Atlas->MainTex;
     FRect textureuv;
     FRect sprite_border;
 
@@ -2145,6 +2145,10 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     vbuf[pos].TexV = textureuv.Bottom;
     vbuf[pos].Color = contour_color;
 
+    if (!_effectMngr.Effects.Contour->BorderBuf) {
+        _effectMngr.Effects.Contour->BorderBuf = RenderEffect::BorderBuffer();
+    }
+
     auto& border_buf = _effectMngr.Effects.Contour->BorderBuf->SpriteBorder;
     border_buf[0] = sprite_border[0];
     border_buf[1] = sprite_border[1];
@@ -2152,7 +2156,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     border_buf[3] = sprite_border[3];
 
     _contourDrawBuf->Upload(_effectMngr.Effects.Contour->Usage);
-    _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf);
+    _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
 
     PopRenderTarget();
     _contoursAdded = true;
