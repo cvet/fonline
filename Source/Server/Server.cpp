@@ -2339,14 +2339,36 @@ void FOServer::Process_Dir(Player* player)
 {
     NON_CONST_METHOD_HINT();
 
-    Critter* cr = player->GetOwnedCritter();
+    uint map_id;
+    uint cr_id;
+    short dir_angle;
 
-    short dir_angle = 0;
+    player->Connection->Bin >> map_id;
+    player->Connection->Bin >> cr_id;
     player->Connection->Bin >> dir_angle;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    cr->ChangeDirAngle(dir_angle);
+    auto* map = MapMngr.GetMap(map_id);
+    if (map == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    Critter* cr = map->GetCritter(cr_id);
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    short checked_dir_angle = dir_angle;
+    if (!OnPlayerCheckDir.Fire(player, cr, checked_dir_angle)) {
+        BreakIntoDebugger();
+        player->Send_Dir(cr);
+        return;
+    }
+
+    cr->ChangeDirAngle(checked_dir_angle);
     cr->Broadcast_Dir();
 }
 

@@ -534,3 +534,25 @@
 
     self->GetEngine()->CritterMoveTo(hex_cr, -1, 0);
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_ChangeDir(CritterView* self, uchar dir)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterLookTo(hex_cr, dir);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_ChangeDirAngle(CritterView* self, short dirAngle)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterLookTo(hex_cr, dirAngle);
+}

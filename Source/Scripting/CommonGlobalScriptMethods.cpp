@@ -375,8 +375,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uchar Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, short dirAngle)
 {
-    // Todo: quad tiles fix
-    return static_cast<uchar>(dirAngle / 60);
+    return engine->Geometry.AngleToDir(dirAngle);
 }
 
 ///# ...
@@ -385,8 +384,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] short Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uchar dir)
 {
-    // Todo: quad tiles fix
-    return static_cast<short>(static_cast<int>(dir) * 60 + 30);
+    return engine->Geometry.DirToAngle(dir);
 }
 
 ///# ...

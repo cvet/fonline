@@ -136,6 +136,7 @@ public:
     void RunScreenScript(bool show, int screen, map<string, string> params);
 
     void CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed);
+    void CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
@@ -305,7 +306,7 @@ protected:
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendText(string_view send_str, uchar how_say);
-    void Net_SendDir();
+    void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
     void Net_SendPing(uchar ping);

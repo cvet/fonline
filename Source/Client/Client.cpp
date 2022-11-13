@@ -746,19 +746,20 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
     _conn.OutBuf << str;
 }
 
-void FOClient::Net_SendDir()
+void FOClient::Net_SendDir(CritterHexView* cr)
 {
-    const auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        return;
-    }
+    NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_DIR;
-    _conn.OutBuf << chosen->GetDirAngle();
+    _conn.OutBuf << CurMap->GetId();
+    _conn.OutBuf << cr->GetId();
+    _conn.OutBuf << cr->GetDirAngle();
 }
 
 void FOClient::Net_SendMove(CritterHexView* cr)
 {
+    NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(!cr->Moving.Steps.empty());
 
     if (cr->Moving.Steps.size() > 500) {
@@ -3683,16 +3684,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "DrawWait") {
         WaitDraw();
     }
-    else if (cmd == "ChangeDir" && args.size() == 2) {
-        auto dir = _str(args[1]).toInt();
-        GetMapChosen()->ChangeDir(static_cast<uchar>(dir));
-        Net_SendDir();
-    }
-    else if (cmd == "ChangeDirAngle" && args.size() == 2) {
-        int dir_angle = _str(args[1]).toInt();
-        GetMapChosen()->ChangeLookDirAngle(dir_angle);
-        Net_SendDir();
-    }
     else if (cmd == "MoveItem" && args.size() == 5) {
         auto item_count = _str(args[1]).toUInt();
         auto item_id = _str(args[2]).toUInt();
@@ -3772,8 +3763,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Settings.Quit = true;
     }
     else {
-        throw ScriptException("Invalid custom call command");
+        throw ScriptException("Invalid custom call command", cmd, args.size());
     }
+
     return "";
 }
 
@@ -3901,4 +3893,16 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
         cr->AnimateStay();
         Net_SendStopMove(cr);
     }
+}
+
+void FOClient::CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle)
+{
+    if (dir_or_angle.index() == 0) {
+        cr->ChangeDir(std::get<0>(dir_or_angle));
+    }
+    else if (dir_or_angle.index() == 1) {
+        cr->ChangeLookDirAngle(std::get<1>(dir_or_angle));
+    }
+
+    Net_SendDir(cr);
 }

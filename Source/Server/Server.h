@@ -113,6 +113,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerCheckDir, Player* /*player*/, Critter* /*cr*/, short& /*dirAngle*/);
+    ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);

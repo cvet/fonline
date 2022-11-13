@@ -269,10 +269,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 
 #define NETMSG_DIR MAKE_NETMSG_HEADER(41)
-#define NETMSG_DIR_SIZE (sizeof(uint) + sizeof(short))
+#define NETMSG_DIR_SIZE (sizeof(uint) + sizeof(uint) * 2 + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
+// uint map_id
+// uint cr_id
 // short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
