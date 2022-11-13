@@ -1981,8 +1981,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         }
         else {
             auto* actual_entity = dynamic_cast<T*>(entity);
-            RUNTIME_ASSERT(actual_entity);
-            ctx->SetArgObject(0, actual_entity);
+            ctx->SetArgObject(0, actual_entity); // May be null for protos
         }
 
         if (func->GetParamCount() == 2) {
