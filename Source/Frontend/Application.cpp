@@ -1212,12 +1212,19 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
     if (ActiveRendererType != RenderType::Null) {
+        App->Settings.MouseX = x;
+        App->Settings.MouseY = y;
+
+        SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
+
         if (relative_to != nullptr) {
             SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), x, y);
         }
         else {
             SDL_WarpMouseGlobal(x, y);
         }
+
+        SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
     }
 }
 

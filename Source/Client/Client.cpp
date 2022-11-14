@@ -559,8 +559,6 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
-    std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
-
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
         while (App->Input.PollEvent(ev)) {
@@ -3515,35 +3513,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //    _drawShootBorders = set;
         //    CurMap->RebuildFog();
         // }
-    }
-    else if (cmd == "SetMousePos" && args.size() == 4) {
-        /*int x = _str(args[1]).toInt();
-        int y = _str(args[2]).toInt();
-        bool motion = _str(args[3]).toBool();
-        if (motion)
-        {
-            SprMngr.SetMousePosition(x, y);
-        }
-        else
-        {
-            SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
-            SprMngr.SetMousePosition(x, y);
-            SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
-            Settings.MouseX = Settings.LastMouseX = x;
-            Settings.MouseY = Settings.LastMouseY = y;
-        }*/
-    }
-    else if (cmd == "MouseMove" && args.size() == 2) {
-        /*bool enabled = _str(args[1]).toBool();
-        if (enabled)
-            SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
-        else
-            SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);*/
-    }
-    else if (cmd == "SetCursorPos") {
-        if (CurMap != nullptr) {
-            CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, true);
-        }
     }
     else if (cmd == "NetDisconnect") {
         _conn.Disconnect();

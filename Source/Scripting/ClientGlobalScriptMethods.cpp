@@ -2196,15 +2196,9 @@
         return false;
     }
 
-    const auto old_x = client->Settings.MouseX;
-    const auto old_y = client->Settings.MouseY;
-    client->Settings.MouseX = x;
-    client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
     const auto result = client->CurMap->GetHexAtScreenPos(x, y, hx_, hy_, nullptr, nullptr);
-    client->Settings.MouseX = old_x;
-    client->Settings.MouseY = old_y;
     if (result) {
         hx = hx_;
         hy = hy_;
@@ -2228,15 +2222,9 @@
         return false;
     }
 
-    const auto old_x = client->Settings.MouseX;
-    const auto old_y = client->Settings.MouseY;
-    client->Settings.MouseX = x;
-    client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
     const auto result = client->CurMap->GetHexAtScreenPos(x, y, hx_, hy_, &ox, &oy);
-    client->Settings.MouseX = old_x;
-    client->Settings.MouseY = old_y;
     if (result) {
         hx = hx_;
         hy = hy_;
@@ -2466,4 +2454,10 @@
     }
 
     client->Cache.SetString(CONFIG_NAME, cfg_user);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, int x, int y)
+{
+    client->SprMngr.SetMousePosition(x, y);
 }
