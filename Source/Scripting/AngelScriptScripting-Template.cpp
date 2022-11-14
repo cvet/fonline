@@ -2919,14 +2919,16 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
                 AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", reg_name, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
 
-                if (is_has_abstract) {
-                    AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Abstract{}{}Component", reg_name, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
-                }
-                if (is_has_protos) {
-                    AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Proto{}{}Component", reg_name, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
-                }
-                if (is_has_statics) {
-                    AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Static{}{}Component", reg_name, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
+                    if (is_has_abstract) {
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Abstract{}{}Component", reg_name, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                    }
+                    if (is_has_protos) {
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Proto{}{}Component", reg_name, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                    }
+                    if (is_has_statics) {
+                        AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Static{}{}Component", reg_name, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
+                    }
                 }
             }
 

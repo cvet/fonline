@@ -1147,9 +1147,16 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             prop->_propNameAliases.push_back(flags[i + 2]);
             i += 2;
         }
+        else if (flags[i] == "NullGetterForProto") {
+            prop->_isNullGetterForProto = true;
+        }
         else {
             throw PropertyRegistrationException("Invalid property flag", prop->_propName, flags[i]);
         }
+    }
+
+    if (prop->_isNullGetterForProto && !prop->IsVirtual()) {
+        throw PropertyRegistrationException("Invalid property configuration - NullGetterForProto for non-virtual property", prop->_propName);
     }
 
     if (prop->_dataType == Property::DataType::Array) {

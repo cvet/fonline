@@ -175,6 +175,7 @@ public:
     [[nodiscard]] auto IsReadOnly() const -> bool { return _isReadOnly; }
     [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
     [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
+    [[nodiscard]] auto IsNullGetterForProto() const -> bool { return _isNullGetterForProto; }
 
     [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
     [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
@@ -253,6 +254,7 @@ private:
     double _maxValueF {};
     bool _isTemporary {};
     bool _isHistorical {};
+    bool _isNullGetterForProto {};
     ushort _regIndex {};
     uint _podDataOffset {};
     uint _complexDataIndex {};
