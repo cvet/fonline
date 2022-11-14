@@ -618,7 +618,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
         OnMouseMove.Fire(delta_x, delta_y);
     }
     else if (ev.Type == InputEvent::EventType::MouseDownEvent) {
-        OnMouseDown.Fire(ev.MouseUp.Button);
+        OnMouseDown.Fire(ev.MouseDown.Button);
     }
     else if (ev.Type == InputEvent::EventType::MouseUpEvent) {
         OnMouseUp.Fire(ev.MouseUp.Button);
