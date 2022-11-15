@@ -416,8 +416,8 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
 auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
 {
     // Try find in last picks
-    for (auto& pix : rt->LastPixelPicks) {
-        if (std::get<0>(pix) != 0 && std::get<1>(pix) != 0) {
+    for (auto&& pix : rt->LastPixelPicks) {
+        if (std::get<0>(pix) == x && std::get<1>(pix) == y) {
             return std::get<2>(pix);
         }
     }

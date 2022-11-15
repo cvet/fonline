@@ -47,7 +47,7 @@
 #include "Sprites.h"
 
 static constexpr auto ANY_FRAMES_POOL_SIZE = 2000;
-static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
+static constexpr auto MAX_STORED_PIXEL_PICKS = 1000;
 static constexpr auto MAX_FRAMES = 50;
 
 // Font flags
