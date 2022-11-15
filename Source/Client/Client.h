@@ -290,7 +290,6 @@ protected:
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
     void ProcessAutoLogin();
-    void ProcessGlobalMap();
     void ProcessInputEvents();
     void TryExit();
     void FlashGameWindow();

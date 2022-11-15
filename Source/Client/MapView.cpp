@@ -752,7 +752,7 @@ void MapView::AddItemInternal(ItemHexView* item)
 
     AddItemToField(item);
 
-    if (!ProcessHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true)) {
+    if (!MeasureHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true)) {
         auto& field = GetField(hx, hy);
 
         if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
@@ -1948,7 +1948,7 @@ auto MapView::ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool
 {
     const auto ox = (is_roof ? _engine->Settings.MapRoofOffsX : _engine->Settings.MapTileOffsX) + tile.OffsX;
     const auto oy = (is_roof ? _engine->Settings.MapRoofOffsY : _engine->Settings.MapTileOffsY) + tile.OffsY;
-    return ProcessHexBorders(tile.Anim->GetSprId(0), ox, oy, false);
+    return MeasureHexBorders(tile.Anim->GetSprId(0), ox, oy, false);
 }
 
 void MapView::RebuildTiles()
@@ -2123,12 +2123,12 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
     return !(top > zoomed_screen_height || bottom < 0 || left > zoomed_screen_width || right < 0);
 }
 
-void MapView::ProcessHexBorders(const ItemHexView* item)
+void MapView::MeasureHexBorders(const ItemHexView* item)
 {
-    ProcessHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true);
+    MeasureHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true);
 }
 
-auto MapView::ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool
+auto MapView::MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool
 {
     const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
     if (si == nullptr) {
@@ -4007,6 +4007,14 @@ void MapView::FindSetCenter(int cx, int cy)
     }
 
     RebuildMap(hx, hy);
+}
+
+void MapView::SetShootBorders(bool enabled)
+{
+    if (_drawShootBorders != enabled) {
+        _drawShootBorders = enabled;
+        RebuildFog();
+    }
 }
 
 auto MapView::GetDayTime() const -> int

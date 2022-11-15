@@ -2461,3 +2461,13 @@
 {
     client->SprMngr.SetMousePosition(x, y);
 }
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetShootBorders(FOClient* client, bool enabled)
+{
+    if (client->CurMap == nullptr) {
+        throw ScriptException("Map is not loaded");
+    }
+
+    client->CurMap->SetShootBorders(enabled);
+}

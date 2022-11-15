@@ -56,12 +56,7 @@
     return cloned_item;
 }
 
-///# ...
-///# param hx ...
-///# param hy ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Item_GetMapPos(ItemView* self, ushort& hx, ushort& hy)
+static void ItemGetMapPos(ItemView* self, ushort& hx, ushort& hy)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -70,9 +65,10 @@
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         const auto* cr = self->GetEngine()->CurMap->GetCritter(self->GetCritterId());
-        if (!cr) {
-            throw ScriptException("CritterCl accessory, CritterCl not found");
+        if (cr == nullptr) {
+            throw ScriptException("Invalid critter ownership, critter not found");
         }
+
         hx = cr->GetHexX();
         hy = cr->GetHexY();
     } break;
@@ -82,22 +78,33 @@
     } break;
     case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
-            throw ScriptException("Container accessory, crosslinks");
+            throw ScriptException("Invalid container ownership, crosslinks");
         }
 
-        ItemView* cont = self->GetEngine()->CurMap->GetItem(self->GetContainerId());
-        if (!cont) {
-            throw ScriptException("Container accessory, container not found");
+        auto* cont = self->GetEngine()->CurMap->GetItem(self->GetContainerId());
+        if (cont == nullptr) {
+            throw ScriptException("Invalid container ownership, container not found");
         }
 
-        // return Item_GetMapPosition(cont, hx, hy); // Todo: solve recursion in GetMapPos
-        throw NotImplementedException(LINE_STR);
+        // Look recursively
+        ItemGetMapPos(cont, hx, hy);
     } break;
     default:
-        throw ScriptException("Unknown accessory");
+        throw ScriptException("Invalid item ownership");
+    }
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, ushort& hx, ushort& hy)
+{
+    if (self->GetEngine()->CurMap == nullptr) {
+        throw ScriptException("Map is not loaded");
     }
 
-    return true;
+    ItemGetMapPos(self, hx, hy);
 }
 
 ///# ...

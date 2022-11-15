@@ -195,9 +195,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2, AbstractItem* actionItem)
 {
-    // Todo: handle AbstractItem in Animate
-    // self->Animate(anim1, anim2, actionItem);
-    throw NotImplementedException(LINE_STR);
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->Animate(anim1, anim2, actionItem);
 }
 
 ///# ...

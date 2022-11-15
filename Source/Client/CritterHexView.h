@@ -83,11 +83,11 @@ public:
     void ChangeDirAngle(int dir_angle);
     void ChangeLookDirAngle(int dir_angle);
     void ChangeMoveDirAngle(int dir_angle);
-    void Animate(uint anim1, uint anim2, ItemView* item);
+    void Animate(uint anim1, uint anim2, Entity* context_item);
     void AnimateStay();
-    void Action(int action, int action_ext, ItemView* item, bool local_call);
+    void Action(int action, int action_ext, Entity* context_item, bool local_call);
     void Process();
-    void ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item);
+    void ProcessAnim(bool animate_stay, uint anim1, uint anim2, Entity* context_item);
     void ResetOk();
     void ClearAnim();
     void SetAnimOffs(int ox, int oy);
@@ -144,7 +144,7 @@ private:
         uint EndFrm {};
         uint IndAnim1 {};
         uint IndAnim2 {};
-        ItemView* ActiveItem {};
+        Entity* ContextItem {};
     };
 
 #if FO_ENABLE_3D

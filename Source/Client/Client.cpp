@@ -417,10 +417,6 @@ void FOClient::MainLoop()
     OnLoop.Fire();
 #endif
 
-    if (IsMainScreen(SCREEN_GLOBAL_MAP)) {
-        ProcessGlobalMap();
-    }
-
     if (CurMap != nullptr) {
         CurMap->Process();
     }
@@ -2715,12 +2711,6 @@ void FOClient::SetDayTime(bool refresh)
     }
 }
 
-void FOClient::ProcessGlobalMap()
-{
-    // Todo: global map critters
-    throw NotImplementedException(LINE_STR);
-}
-
 void FOClient::TryExit()
 {
     const auto active = GetActiveScreen(nullptr);
@@ -3076,7 +3066,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, const
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->SetAnimOffs();
-        item->GetMap()->ProcessHexBorders(item);
+        item->GetMap()->MeasureHexBorders(item);
     }
 }
 

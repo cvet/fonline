@@ -113,7 +113,7 @@ auto CritterHexView::GetFadeAlpha() -> uchar
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
 {
-    return IsAnim() ? _animSequence.data() : nullptr;
+    return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
 auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
@@ -319,9 +319,9 @@ void CritterHexView::ClearMove()
     Moving.EndOy = {};
 }
 
-void CritterHexView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
+void CritterHexView::Action(int action, int action_ext, Entity* context_item, bool local_call /* = true */)
 {
-    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, item);
+    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, context_item);
 
     switch (action) {
     case ACTION_KNOCKOUT:
@@ -382,12 +382,14 @@ void CritterHexView::NextAnim(bool erase_front)
     if (_animSequence.empty()) {
         return;
     }
+
     if (erase_front) {
-        if (_animSequence.begin()->ActiveItem != nullptr) {
-            _animSequence.begin()->ActiveItem->Release();
+        if (_animSequence.begin()->ContextItem != nullptr) {
+            _animSequence.begin()->ContextItem->Release();
         }
         _animSequence.erase(_animSequence.begin());
     }
+
     if (_animSequence.empty()) {
         return;
     }
@@ -405,7 +407,7 @@ void CritterHexView::NextAnim(bool erase_front)
     }
 #endif
 
-    ProcessAnim(false, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
+    ProcessAnim(false, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ContextItem);
 
     _lastEndSpr = cr_anim.EndFrm;
     _curSpr = cr_anim.BeginFrm;
@@ -422,20 +424,32 @@ void CritterHexView::NextAnim(bool erase_front)
     SetAnimOffs(ox, oy);
 }
 
-void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
+void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
 {
     const auto dir = GetDir();
     if (anim1 == 0u) {
         anim1 = GetAnim1();
     }
-    if (item != nullptr) {
-        item = item->CreateRefClone();
+
+    Entity* fixed_context_item = nullptr;
+
+    if (context_item != nullptr) {
+        if (const auto* item = dynamic_cast<ItemView*>(context_item); item != nullptr) {
+            fixed_context_item = item->CreateRefClone();
+        }
+        else if (auto* proto = dynamic_cast<ProtoItem*>(context_item); proto != nullptr) {
+            fixed_context_item = proto;
+            proto->AddRef();
+        }
+        else {
+            throw UnreachablePlaceException("Invalid context item");
+        }
     }
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(anim1, anim2)) {
-            _animSequence.push_back({nullptr, 0, 0, 0, anim1, anim2, item});
+            _animSequence.push_back(CritterAnim {nullptr, 0, 0, 0, anim1, anim2, fixed_context_item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -458,7 +472,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
         return;
     }
 
-    _animSequence.push_back({anim, anim->Ticks, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, item});
+    _animSequence.push_back(CritterAnim {anim, anim->Ticks, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, fixed_context_item});
     if (_animSequence.size() == 1) {
         NextAnim(false);
     }
@@ -547,8 +561,8 @@ auto CritterHexView::IsWalkAnim() const -> bool
 void CritterHexView::ClearAnim()
 {
     for (const auto& anim : _animSequence) {
-        if (anim.ActiveItem != nullptr) {
-            anim.ActiveItem->Release();
+        if (anim.ContextItem != nullptr) {
+            anim.ContextItem->Release();
         }
     }
     _animSequence.clear();
@@ -604,9 +618,9 @@ auto CritterHexView::GetAnim2() const -> uint
     return ANIM2_IDLE;
 }
 
-void CritterHexView::ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item)
+void CritterHexView::ProcessAnim(bool animate_stay, uint anim1, uint anim2, Entity* context_item)
 {
-    _engine->OnCritterAnimationProcess.Fire(animate_stay, this, anim1, anim2, item);
+    _engine->OnCritterAnimationProcess.Fire(animate_stay, this, anim1, anim2, context_item);
 }
 
 auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool

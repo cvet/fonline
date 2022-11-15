@@ -209,11 +209,12 @@ public:
     void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void ProcessHexBorders(const ItemHexView* item);
+    void MeasureHexBorders(const ItemHexView* item);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
+    void SetShootBorders(bool enabled);
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -324,7 +325,7 @@ private:
     void PrepareFogToDraw();
     void InitView(int cx, int cy);
     void ResizeView();
-    auto ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
+    auto MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
     auto ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool;
 
     // Lighting
