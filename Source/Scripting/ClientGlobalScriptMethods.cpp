@@ -121,16 +121,27 @@
 [[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     if (cr1 == nullptr) {
-        throw ScriptException("Critter1 arg is null");
+        throw ScriptException("Critter 1 arg is null");
     }
     if (cr2 == nullptr) {
-        throw ScriptException("Critter2 arg is null");
+        throw ScriptException("Critter 2 arg is null");
     }
-    if (cr1->GetMapId() != cr2->GetMapId()) {
+
+    const auto* hex_cr1 = dynamic_cast<CritterHexView*>(cr1);
+    if (hex_cr1 == nullptr) {
+        throw ScriptException("Critter 1 is not on map");
+    }
+
+    const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
+    if (hex_cr2 == nullptr) {
+        throw ScriptException("Critter 2 is not on map");
+    }
+
+    if (hex_cr1->GetMap()->GetId() != hex_cr2->GetMap()->GetId()) {
         throw ScriptException("Critters different maps");
     }
 
-    return client->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    return client->Geometry.DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
 }
 
 ///# ...
@@ -166,9 +177,6 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetChosen(FOClient* client)
 {
-    if (client->GetChosen() && client->GetChosen()->IsDestroyed()) {
-        return nullptr;
-    }
     return client->GetChosen();
 }
 
@@ -1143,7 +1151,7 @@
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectPath.empty()) {
             auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectPath);
-            if (!effect) {
+            if (effect == nullptr) {
                 throw ScriptException("Effect not found or have some errors, see log file");
             }
             return effect;
@@ -1155,13 +1163,13 @@
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
         auto* item = client->CurMap->GetItem(static_cast<uint>(effectSubtype));
-        if (item) {
+        if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
         auto* cr = client->CurMap->GetCritter(static_cast<uint>(effectSubtype));
-        if (cr) {
+        if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
     }
@@ -2068,8 +2076,8 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    IRect from(std::clamp(x, 0, client->Settings.ScreenWidth), std::clamp(y, 0, client->Settings.ScreenHeight), std::clamp(x + w, 0, client->Settings.ScreenWidth), std::clamp(y + h, 0, client->Settings.ScreenHeight));
-    auto to = from;
+    const auto from = IRect(std::clamp(x, 0, client->Settings.ScreenWidth), std::clamp(y, 0, client->Settings.ScreenHeight), std::clamp(x + w, 0, client->Settings.ScreenWidth), std::clamp(y + h, 0, client->Settings.ScreenHeight));
+    const auto to = IRect(from);
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
@@ -2105,8 +2113,8 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    IRect from(std::clamp(fromX, 0, client->Settings.ScreenWidth), std::clamp(fromY, 0, client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
-    IRect to(std::clamp(toX, 0, client->Settings.ScreenWidth), std::clamp(toY, 0, client->Settings.ScreenHeight), std::clamp(toX + toW, 0, client->Settings.ScreenWidth), std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
+    const auto from = IRect(std::clamp(fromX, 0, client->Settings.ScreenWidth), std::clamp(fromY, 0, client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
+    const auto to = IRect(std::clamp(toX, 0, client->Settings.ScreenWidth), std::clamp(toY, 0, client->Settings.ScreenHeight), std::clamp(toX + toW, 0, client->Settings.ScreenWidth), std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
