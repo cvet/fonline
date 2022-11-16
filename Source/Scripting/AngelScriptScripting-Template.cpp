@@ -483,6 +483,10 @@ struct SCRIPTING_CLASS::AngelScriptImpl
             ctx = ctx_data->Parent;
         }
 
+        if (!result.empty() && result.back() == '\n') {
+            result.resize(result.size() - 1);
+        }
+
         return result;
     }
 

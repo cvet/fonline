@@ -98,7 +98,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-    {
+    if (!IsRunInDebugger()) {
         [[maybe_unused]] static backward::SignalHandling sh;
         assert(sh.loaded());
     }
@@ -126,32 +126,6 @@ void ExitApp(bool success)
     std::quick_exit(code);
 #else
     std::exit(code);
-#endif
-}
-
-void ReportExceptionAndExit(const std::exception& ex)
-{
-    WriteLog(LogType::Error, "{}", ex.what());
-
-    if (!BreakIntoDebugger(ex.what())) {
-        CreateDumpMessage("FatalException", ex.what());
-        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
-    }
-
-    WriteLog(LogType::Error, "Shutdown!");
-    ExitApp(false);
-}
-
-void ReportExceptionAndContinue(const std::exception& ex)
-{
-    WriteLog(LogType::Error, "{}", ex.what());
-
-    if (BreakIntoDebugger(ex.what())) {
-        return;
-    }
-
-#if FO_DEBUG
-    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
 #endif
 }
 
@@ -1363,7 +1337,7 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
     auto verb_message = string(message);
 
     if (!traceback.empty()) {
-        verb_message += _str("\n{}", traceback);
+        verb_message += _str("\n\n{}", traceback);
     }
 
     SDL_MessageBoxButtonData copy_button;

@@ -264,10 +264,20 @@ extern auto GetStackTrace() -> string;
 extern auto IsRunInDebugger() -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
+extern void ReportExceptionAndContinue(const std::exception& ex);
+extern void ShowExceptionMessageBox(bool enabled);
+
+class ExceptionInfo
+{
+public:
+    virtual ~ExceptionInfo() = default;
+    [[nodiscard]] virtual auto GetStackTrace() const noexcept -> const string& = 0;
+};
 
 // Todo: pass name to exceptions context args
 #define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public std::exception \
+    class exception_name : public std::exception, public ExceptionInfo \
     { \
     public: \
         exception_name() = delete; \
@@ -287,13 +297,14 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
                 for (auto& param : _exceptionParams) \
                     _exceptionMessage.append("\n  - ").append(param); \
             } \
-            _exceptionMessage.append("\n"); \
-            _exceptionMessage.append(GetStackTrace()); \
+            _stackTrace = ::GetStackTrace(); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
+        [[nodiscard]] auto GetStackTrace() const noexcept -> const string& override { return _stackTrace; } \
 \
     private: \
         string _exceptionMessage {}; \
+        string _stackTrace {}; \
         vector<string> _exceptionParams {}; \
     }
 

@@ -50,6 +50,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
+        ShowExceptionMessageBox(true);
         InitApp(argc, argv, "Editor");
 
         WriteLog("Starting Editor {}...", FO_GAME_VERSION);

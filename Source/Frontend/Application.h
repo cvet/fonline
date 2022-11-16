@@ -399,6 +399,3 @@ public:
 extern Application* App;
 extern void InitApp(int argc, char** argv, string_view name_appendix);
 [[noreturn]] extern void ExitApp(bool success);
-
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
-extern void ReportExceptionAndContinue(const std::exception& ex);

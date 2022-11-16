@@ -110,32 +110,6 @@ void ExitApp(bool success)
 #endif
 }
 
-void ReportExceptionAndExit(const std::exception& ex)
-{
-    WriteLog(LogType::Error, "\n{}\n", ex.what());
-
-    if (!BreakIntoDebugger(ex.what())) {
-        CreateDumpMessage("FatalException", ex.what());
-        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
-    }
-
-    WriteLog(LogType::Error, "Shutdown!");
-    ExitApp(false);
-}
-
-void ReportExceptionAndContinue(const std::exception& ex)
-{
-    WriteLog(LogType::Error, "\n{}\n", ex.what());
-
-    if (BreakIntoDebugger(ex.what())) {
-        return;
-    }
-
-#if FO_DEBUG
-    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
-#endif
-}
-
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
     UNUSED_VARIABLE(other);

@@ -32,6 +32,7 @@
 //
 
 #include "Common.h"
+#include "Application.h"
 #include "DiskFileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
@@ -57,6 +58,8 @@
 #endif
 #endif
 
+static bool ExceptionMessageBox = false;
+
 hstring::entry hstring::_zeroEntry;
 
 map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
@@ -78,9 +81,72 @@ void DeleteGlobalData()
         DeleteGlobalDataCallbacks[i]();
     }
 }
+void ReportExceptionAndExit(const std::exception& ex)
+{
+    WriteLog(LogType::Error, "{}", ex.what());
+
+    const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+
+    if (ex_info != nullptr) {
+        WriteLog(LogType::Error, "{}", ex_info->GetStackTrace());
+    }
+
+    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace());
+    WriteLog(LogType::Error, "Shutdown!");
+
+    if (BreakIntoDebugger(ex.what())) {
+        ExitApp(false);
+    }
+
+    CreateDumpMessage("FatalException", ex.what());
+
+    if (ex_info != nullptr) {
+        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetStackTrace());
+    }
+    else {
+        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+    }
+
+    ExitApp(false);
+}
+
+void ReportExceptionAndContinue(const std::exception& ex)
+{
+    WriteLog(LogType::Error, "{}", ex.what());
+
+    const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+
+    if (ex_info != nullptr) {
+        WriteLog(LogType::Error, "{}", ex_info->GetStackTrace());
+    }
+
+    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace());
+
+    if (BreakIntoDebugger(ex.what())) {
+        return;
+    }
+
+    if (ExceptionMessageBox) {
+        if (ex_info != nullptr) {
+            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetStackTrace());
+        }
+        else {
+            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+        }
+    }
+}
+
+void ShowExceptionMessageBox(bool enabled)
+{
+    ExceptionMessageBox = enabled;
+}
 
 auto GetStackTrace() -> string
 {
+    if (IsRunInDebugger()) {
+        return "Stack trace: Disabled (debugger detected)";
+    }
+
     // Todo: apply scripts strack trace
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC

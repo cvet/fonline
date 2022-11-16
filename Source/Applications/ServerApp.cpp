@@ -176,6 +176,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
+                        ShowExceptionMessageBox(true);
                         try {
                             auto* client = new FOClient(App->Settings, &App->MainWindow, false);
                             Data->Clients.emplace_back(client);
@@ -184,6 +185,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         catch (const std::exception& ex) {
                             ReportExceptionAndContinue(ex);
                         }
+                        ShowExceptionMessageBox(false);
                     }
 
                     if (ImGui::Button("Create dump", control_btn_size)) {
@@ -245,12 +247,14 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Clients loop
             for (auto* client : Data->Clients) {
+                ShowExceptionMessageBox(true);
                 try {
                     client->MainLoop();
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+                ShowExceptionMessageBox(false);
             }
 
             App->EndFrame();
