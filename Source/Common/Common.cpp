@@ -88,10 +88,10 @@ void ReportExceptionAndExit(const std::exception& ex)
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}", ex_info->GetStackTrace());
+        WriteLog(LogType::Error, "{}", ex_info->GetVerbStackTrace());
     }
 
-    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace());
+    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace(true));
     WriteLog(LogType::Error, "Shutdown!");
 
     if (BreakIntoDebugger(ex.what())) {
@@ -101,10 +101,10 @@ void ReportExceptionAndExit(const std::exception& ex)
     CreateDumpMessage("FatalException", ex.what());
 
     if (ex_info != nullptr) {
-        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetStackTrace());
+        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetBriefStackTrace());
     }
     else {
-        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace(false)));
     }
 
     ExitApp(false);
@@ -117,10 +117,10 @@ void ReportExceptionAndContinue(const std::exception& ex)
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}", ex_info->GetStackTrace());
+        WriteLog(LogType::Error, "{}", ex_info->GetVerbStackTrace());
     }
 
-    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace());
+    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace(true));
 
     if (BreakIntoDebugger(ex.what())) {
         return;
@@ -128,10 +128,10 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
     if (ExceptionMessageBox) {
         if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetStackTrace());
+            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetBriefStackTrace());
         }
         else {
-            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace(false)));
         }
     }
 }
@@ -141,10 +141,10 @@ void ShowExceptionMessageBox(bool enabled)
     ExceptionMessageBox = enabled;
 }
 
-auto GetStackTrace() -> string
+auto GetStackTrace(bool verb) -> string
 {
     if (IsRunInDebugger()) {
-        return "Stack trace: Disabled (debugger detected)";
+        return "Stack trace disabled (debugger detected)";
     }
 
     // Todo: apply scripts strack trace
@@ -152,17 +152,49 @@ auto GetStackTrace() -> string
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     backward::TraceResolver resolver;
     backward::StackTrace st;
-    st.load_here();
+    st.load_here(42);
     st.skip_n_firsts(2);
-    backward::Printer printer;
-    printer.snippet = false;
+
     std::stringstream ss;
-    printer.print(st, ss);
+
+    if (verb) {
+        backward::Printer printer;
+        printer.snippet = false;
+        printer.print(st, ss);
+    }
+    else {
+        ss << "Stack trace (most recent call first):\n";
+
+        for (size_t i = 0; i < st.size(); ++i) {
+            backward::ResolvedTrace trace = resolver.resolve(st[i]);
+
+            auto obj_func = trace.object_function;
+            if (obj_func.length() > 100) {
+                obj_func.resize(97);
+                obj_func.append("...");
+            }
+
+            auto file_name = _str(trace.source.filename).extractFileName().str();
+            if (!file_name.empty()) {
+                file_name.append(" ");
+            }
+
+            file_name += _str("{}", trace.source.line).str();
+
+            ss << "- " << obj_func << " (" << file_name << ")\n";
+        }
+    }
+
     auto st_str = ss.str();
-    return st_str.back() == '\n' ? st_str.substr(0, st_str.size() - 1) : st_str;
+
+    if (!st_str.empty() && st_str.back() == '\n') {
+        st_str.pop_back();
+    }
+
+    return st_str;
 #else
 
-    return "Stack trace: Not supported";
+    return "Stack trace not supported";
 #endif
 }
 
@@ -236,7 +268,7 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 
 void CreateDumpMessage(string_view appendix, string_view message)
 {
-    const auto traceback = GetStackTrace();
+    const auto traceback = GetStackTrace(true);
     const auto dt = Timer::GetCurrentDateTime();
     const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 

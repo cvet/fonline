@@ -484,7 +484,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         }
 
         if (!result.empty() && result.back() == '\n') {
-            result.resize(result.size() - 1);
+            result.pop_back();
         }
 
         return result;

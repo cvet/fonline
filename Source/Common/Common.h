@@ -260,7 +260,7 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 // ReSharper restore CppInconsistentNaming
 
 // Engine exception handling
-extern auto GetStackTrace() -> string;
+extern auto GetStackTrace(bool verb) -> string;
 extern auto IsRunInDebugger() -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
@@ -272,7 +272,8 @@ class ExceptionInfo
 {
 public:
     virtual ~ExceptionInfo() = default;
-    [[nodiscard]] virtual auto GetStackTrace() const noexcept -> const string& = 0;
+    [[nodiscard]] virtual auto GetVerbStackTrace() const noexcept -> const string& = 0;
+    [[nodiscard]] virtual auto GetBriefStackTrace() const noexcept -> const string& = 0;
 };
 
 // Todo: pass name to exceptions context args
@@ -297,14 +298,17 @@ public:
                 for (auto& param : _exceptionParams) \
                     _exceptionMessage.append("\n  - ").append(param); \
             } \
-            _stackTrace = ::GetStackTrace(); \
+            _verbStackTrace = GetStackTrace(true); \
+            _briefStackTrace = GetStackTrace(false); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
-        [[nodiscard]] auto GetStackTrace() const noexcept -> const string& override { return _stackTrace; } \
+        [[nodiscard]] auto GetVerbStackTrace() const noexcept -> const string& override { return _verbStackTrace; } \
+        [[nodiscard]] auto GetBriefStackTrace() const noexcept -> const string& override { return _briefStackTrace; } \
 \
     private: \
         string _exceptionMessage {}; \
-        string _stackTrace {}; \
+        string _verbStackTrace {}; \
+        string _briefStackTrace {}; \
         vector<string> _exceptionParams {}; \
     }
 
