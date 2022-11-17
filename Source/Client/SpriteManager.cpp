@@ -720,11 +720,17 @@ void SpriteManager::DumpAtlases() const
 
     const string dir = _str("{}_{}.{:03}mb", Timer::RealtimeTick(), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
-    if (const auto* rt = _rtMain; rt != nullptr) {
-        const string fname = _str("{}/Main_{}x{}.tga", dir, rt->MainTex->Width, rt->MainTex->Height);
-        auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
-        WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
-    }
+    const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
+        if (rt != nullptr) {
+            const string fname = _str("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Width, rt->MainTex->Height);
+            auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
+            WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
+        }
+    };
+
+    write_rt("Main", _rtMain);
+    write_rt("Contours", _rtContours);
+    write_rt("ContoursMid", _rtContoursMid);
 
     auto cnt = 0;
     for (auto&& atlas : _allAtlases) {
@@ -1831,8 +1837,24 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         // Process contour effect
-        if (collect_contours) {
-            CollectContour(x, y, si, spr);
+        if (collect_contours && spr->Contour != ContourType::None) {
+            uint contour_color = 0xFF0000FF;
+
+            switch (spr->Contour) {
+            case ContourType::Red:
+                contour_color = 0xFFAF0000;
+                break;
+            case ContourType::Yellow:
+                contour_color = 0x00AFAF00;
+                break;
+            case ContourType::Custom:
+                contour_color = spr->ContourColor;
+                break;
+            default:
+                break;
+            }
+
+            CollectContour(x, y, si, contour_color);
         }
     }
 
@@ -2003,12 +2025,15 @@ void SpriteManager::DrawContours()
     }
 }
 
-void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr)
+void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint contour_color)
 {
-    if (spr->Contour == ContourType::None) {
-        return;
-    }
-    if (_rtContours == nullptr || _rtContoursMid == nullptr || _effectMngr.Effects.Contour == nullptr) {
+#if FO_ENABLE_3D
+    auto* border_effect = si->UsedForModel ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
+#else
+    auto* border_effect = _effectMngr.Effects.ContourSprite;
+#endif
+
+    if (border_effect == nullptr || _rtContours == nullptr || _rtContoursMid == nullptr) {
         return;
     }
 
@@ -2025,7 +2050,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
 
     if (_settings.SpritesZoom == 1.0f) {
 #if FO_ENABLE_3D
-        if (si->Model != nullptr) {
+        if (si->UsedForModel) {
             const auto& sr = si->SprRect;
             textureuv = sr;
             sprite_border = sr;
@@ -2098,19 +2123,6 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
         sprite_border = textureuv;
     }
 
-    uint contour_color;
-    if (spr->Contour == ContourType::Red) {
-        contour_color = 0xFFAF0000;
-    }
-    else if (spr->Contour == ContourType::Yellow) {
-        contour_color = 0x00AFAF00; // Disable flashing by passing alpha == 0.0
-    }
-    else if (spr->Contour == ContourType::Custom) {
-        contour_color = spr->ContourColor;
-    }
-    else {
-        contour_color = 0xFFAFAFAF;
-    }
     contour_color = ApplyColorBrightness(contour_color, _settings.Brightness);
     contour_color = COLOR_SWAP_RB(contour_color);
 
@@ -2145,18 +2157,18 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     vbuf[pos].TexV = textureuv.Bottom;
     vbuf[pos].Color = contour_color;
 
-    if (!_effectMngr.Effects.Contour->BorderBuf) {
-        _effectMngr.Effects.Contour->BorderBuf = RenderEffect::BorderBuffer();
+    if (!border_effect->BorderBuf) {
+        border_effect->BorderBuf = RenderEffect::BorderBuffer();
     }
 
-    auto& border_buf = _effectMngr.Effects.Contour->BorderBuf->SpriteBorder;
+    auto& border_buf = border_effect->BorderBuf->SpriteBorder;
     border_buf[0] = sprite_border[0];
     border_buf[1] = sprite_border[1];
     border_buf[2] = sprite_border[2];
     border_buf[3] = sprite_border[3];
 
-    _contourDrawBuf->Upload(_effectMngr.Effects.Contour->Usage);
-    _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
+    _contourDrawBuf->Upload(border_effect->Usage);
+    border_effect->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
 
     PopRenderTarget();
     _contoursAdded = true;

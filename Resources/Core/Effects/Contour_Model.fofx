@@ -22,8 +22,6 @@ void main(void)
 [FragmentShader Pass1]
 layout(binding = 0) uniform sampler2D ColorMap;
 uniform vec4 ColorMapSize;
-uniform float ColorMapWidth;
-uniform float ColorMapHeight;
 uniform vec4 SpriteBorder;
 uniform float TimeGame;
 
@@ -93,8 +91,6 @@ void main(void)
 [FragmentShader Pass2]
 layout(binding = 0) uniform sampler2D ColorMap;
 uniform vec4 ColorMapSize;
-uniform float ColorMapWidth;
-uniform float ColorMapHeight;
 uniform vec4 SpriteBorder;
 uniform float TimeGame;
 

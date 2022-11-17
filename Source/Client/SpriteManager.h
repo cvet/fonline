@@ -291,7 +291,7 @@ private:
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
-    void CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr);
+    void CollectContour(int x, int y, const SpriteInfo* si, uint contour_color);
 #if FO_ENABLE_3D
     void RenderModel(ModelInstance* model);
 #endif
