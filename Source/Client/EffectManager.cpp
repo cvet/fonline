@@ -128,14 +128,17 @@ void EffectManager::LoadDefaultEffects()
     LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::QuadSprite, "Effects/Flush_Light.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::QuadSprite, "Effects/Flush_Fog.fofx");
 #if FO_ENABLE_3D
-    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, EffectUsage::Model, "Effects/3D_Skinned.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.SkinnedModel, EffectUsage::Model, "Effects/3D_Skinned.fofx");
 #endif
 
     if (effect_errors != 0) {
         throw EffectManagerException("Default effects not loaded");
     }
 
-    LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.ContourSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
+#if FO_ENABLE_3D
+    LOAD_DEFAULT_EFFECT(Effects.ContourModelSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
+#endif
 }
 
 #undef LOAD_DEFAULT_EFFECT

@@ -1827,7 +1827,7 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 
 void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
 {
-    auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.Skinned3d;
+    auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
     effect->ProjBuf = RenderEffect::ProjBuffer();
     std::memcpy(effect->ProjBuf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));

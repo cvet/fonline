@@ -1192,7 +1192,7 @@
 
 #if FO_ENABLE_3D
     if (eff_type & static_cast<uint>(EffectType::SkinnedMesh)) {
-        client->EffectMngr.Effects.Skinned3d = reload_effect(client->EffectMngr.Effects.Skinned3dDefault);
+        client->EffectMngr.Effects.SkinnedModel = reload_effect(client->EffectMngr.Effects.SkinnedModelDefault);
     }
 #endif
 
@@ -1200,7 +1200,7 @@
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::Contour)) {
-        client->EffectMngr.Effects.Contour = reload_effect(client->EffectMngr.Effects.ContourDefault);
+        client->EffectMngr.Effects.ContourSprite = reload_effect(client->EffectMngr.Effects.ContourSpriteDefault);
     }
 
     if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype == -1) {
