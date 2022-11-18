@@ -1210,11 +1210,8 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             }
         }
 
-        if (Location_ColorMap[pass] != -1) {
-            if (main_tex == nullptr) {
-                throw RenderingException("Trying to draw effect that required texture", Name);
-            }
-
+        // Todo: set dummy texture if not found
+        if (Location_ColorMap[pass] != -1 && main_tex != nullptr) {
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
             GL(glUniform1i(Location_ColorMap[pass], 0));
 
@@ -1223,11 +1220,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             }
         }
 
-        if (Location_EggMap[pass] != -1) {
-            if (EggTex == nullptr) {
-                throw RenderingException("Trying to draw effect that required egg texture", Name);
-            }
-
+        if (Location_EggMap[pass] != -1 && EggTex != nullptr) {
             GL(glActiveTexture(GL_TEXTURE1));
             GL(glBindTexture(GL_TEXTURE_2D, static_cast<OpenGL_Texture*>(EggTex)->TexId));
             GL(glUniform1i(Location_EggMap[pass], 1));

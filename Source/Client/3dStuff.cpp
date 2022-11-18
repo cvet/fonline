@@ -1832,7 +1832,7 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     effect->ProjBuf = RenderEffect::ProjBuffer();
     std::memcpy(effect->ProjBuf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
-    effect->MainTex = combined_mesh->Textures[0]->MainTex;
+    effect->MainTex = combined_mesh->Textures[0] != nullptr ? combined_mesh->Textures[0]->MainTex : nullptr;
 
     if (effect->MainTexBuf) {
         std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
@@ -1855,9 +1855,14 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
 
     if (effect->CustomTexBuf) {
         for (auto i = 0; i < EFFECT_TEXTURES; i++) {
-            effect->CustomTex[i] = combined_mesh->Textures[i]->MainTex;
-            std::memcpy(&effect->CustomTexBuf->AtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
-            std::memcpy(&effect->CustomTexBuf->Size[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+            if (combined_mesh->Textures[i] != nullptr) {
+                effect->CustomTex[i] = combined_mesh->Textures[i]->MainTex;
+                std::memcpy(&effect->CustomTexBuf->AtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
+                std::memcpy(&effect->CustomTexBuf->Size[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+            }
+            else {
+                effect->CustomTex[i] = nullptr;
+            }
         }
     }
 
