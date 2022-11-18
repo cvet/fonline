@@ -933,7 +933,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             dict->Set((void*)&hkey, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)&hkey, (void*)&value);
+                            dict->Set((void*)&hkey, (void*)value);
                         }
                     }
                     else {
@@ -942,7 +942,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             dict->Set((void*)key, (void*)&hvalue);
                         }
                         else {
-                            dict->Set((void*)key, (void*)&value);
+                            dict->Set((void*)key, (void*)value);
                         }
                     }
                 }
