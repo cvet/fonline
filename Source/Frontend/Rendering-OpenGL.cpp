@@ -182,16 +182,18 @@ public:
         return result;
     }
 
-    [[nodiscard]] auto GetTextureRegion(int x, int y, uint w, uint h) -> vector<uint> override
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override
     {
-        RUNTIME_ASSERT(w && h);
-        const auto size = w * h;
+        RUNTIME_ASSERT(width > 0);
+        RUNTIME_ASSERT(height > 0);
+
+        const auto size = width * height;
         vector<uint> result(size);
 
         GLint prev_fbo;
         GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-        GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
+        GL(glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
         return result;
@@ -382,14 +384,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
     GLint max_viewport_size[2];
     GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-    auto atlas_w = std::min(static_cast<uint>(max_texture_size), AppRender::MAX_ATLAS_SIZE);
+    auto atlas_w = std::min(max_texture_size, AppRender::MAX_ATLAS_SIZE);
     auto atlas_h = atlas_w;
-    atlas_w = std::min(static_cast<uint>(max_viewport_size[0]), atlas_w);
-    atlas_h = std::min(static_cast<uint>(max_viewport_size[1]), atlas_h);
+    atlas_w = std::min(max_viewport_size[0], atlas_w);
+    atlas_h = std::min(max_viewport_size[1], atlas_h);
     RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    const_cast<uint&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<uint&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -419,7 +421,7 @@ void OpenGL_Renderer::Present()
     }
 }
 
-auto OpenGL_Renderer::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     auto&& opengl_tex = std::make_unique<OpenGL_Texture>(width, height, linear_filtered, with_depth);
 
@@ -809,8 +811,8 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    uint w;
-    uint h;
+    int w;
+    int h;
 
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
@@ -894,10 +896,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool s
     }
 }
 
-void OpenGL_Renderer::EnableScissor(int x, int y, uint w, uint h)
+void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 {
     GL(glEnable(GL_SCISSOR_TEST));
-    GL(glScissor(x, y, w, h));
+    GL(glScissor(x, y, width, height));
 }
 
 void OpenGL_Renderer::DisableScissor()

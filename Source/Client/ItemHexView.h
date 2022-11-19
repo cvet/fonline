@@ -45,8 +45,8 @@ class ItemHexView final : public ItemView
 public:
     ItemHexView() = delete;
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props);
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -88,8 +88,8 @@ public:
     void SetHideAnim();
 
     uint SprId {};
-    short ScrX {};
-    short ScrY {};
+    int ScrX {};
+    int ScrY {};
     int* HexScrX {};
     int* HexScrY {};
     uchar Alpha {};
@@ -98,8 +98,6 @@ public:
     Sprite* SprDraw {};
     Sprite* SprTemp {};
     RenderEffect* DrawEffect {};
-    float EffOffsX {};
-    float EffOffsY {};
     vector<pair<ushort, ushort>> EffSteps {};
 
 private:

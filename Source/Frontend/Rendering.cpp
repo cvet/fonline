@@ -35,13 +35,15 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-RenderTexture::RenderTexture(uint width, uint height, bool linear_filtered, bool with_depth) :
+RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth) :
     Width {width}, //
     Height {height},
     SizeData {static_cast<float>(width), static_cast<float>(height), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height)},
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
+    RUNTIME_ASSERT(width > 0);
+    RUNTIME_ASSERT(height > 0);
 }
 
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) : IsStatic {is_static}

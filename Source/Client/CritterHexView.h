@@ -64,8 +64,6 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsWalkAnim() const -> bool;
-    [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetDrawRect() const -> IRect;
@@ -87,18 +85,14 @@ public:
     void AnimateStay();
     void Action(int action, int action_ext, Entity* context_item, bool local_call);
     void Process();
-    void ProcessAnim(bool animate_stay, uint anim1, uint anim2, Entity* context_item);
     void ResetOk();
     void ClearAnim();
-    void SetAnimOffs(int ox, int oy);
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
     void SetText(string_view str, uint color, uint text_delay);
     void DrawTextOnHead();
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
-    void NextAnim(bool erase_front);
-    void RefreshCombatMode();
     void ClearMove();
 #if FO_ENABLE_3D
     void RefreshModel();
@@ -110,8 +104,8 @@ public:
     bool SprDrawValid {};
     Sprite* SprDraw {};
     uint SprId {};
-    short SprOx {};
-    short SprOy {};
+    int SprOx {};
+    int SprOy {};
     uint FadingTick {};
 
     struct
@@ -155,12 +149,13 @@ private:
 
     void SetFade(bool fade_up);
     void ProcessMoving();
+    void NextAnim(bool erase_front);
+    void SetAnimSpr(const AnyFrames* anim, uint frm_index);
 
     MapView* _map;
     bool _needReset {};
     uint _resetTick {};
-    uint _curSpr {};
-    uint _lastEndSpr {};
+    uint _curFrmIndex {};
     uint _animStartTick {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
@@ -174,10 +169,8 @@ private:
     uint _textOnHeadColor {COLOR_TEXT};
     int _oxAnim {};
     int _oyAnim {};
-    int _oxExtI {};
-    int _oyExtI {};
-    float _oxExtF {};
-    float _oyExtF {};
+    float _oxExt {};
+    float _oyExt {};
     float _oxExtSpeed {};
     float _oyExtSpeed {};
     uint _offsExtNextTick {};

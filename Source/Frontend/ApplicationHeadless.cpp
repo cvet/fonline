@@ -58,12 +58,12 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-static const uint MAX_ATLAS_WIDTH_ = 1024;
-static const uint MAX_ATLAS_HEIGHT_ = 1024;
-static const uint MAX_BONES_ = 32;
-const uint& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
-const uint& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
-const uint& AppRender::MAX_BONES {MAX_BONES_};
+static const int MAX_ATLAS_WIDTH_ = 1024;
+static const int MAX_ATLAS_HEIGHT_ = 1024;
+static const int MAX_BONES_ = 32;
+const int& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
+const int& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
+const int& AppRender::MAX_BONES {MAX_BONES_};
 const int AppAudio::AUDIO_FORMAT_U8 = 0;
 const int AppAudio::AUDIO_FORMAT_S16 = 1;
 
@@ -251,7 +251,7 @@ void AppWindow::Destroy()
 {
 }
 
-auto AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
@@ -278,12 +278,12 @@ void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil
     UNUSED_VARIABLE(stencil);
 }
 
-void AppRender::EnableScissor(int x, int y, uint w, uint h)
+void AppRender::EnableScissor(int x, int y, int width, int height)
 {
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
-    UNUSED_VARIABLE(w);
-    UNUSED_VARIABLE(h);
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
 }
 
 void AppRender::DisableScissor()
@@ -299,6 +299,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
+    UNUSED_VARIABLE(usage);
     UNUSED_VARIABLE(name);
     UNUSED_VARIABLE(file_loader);
 

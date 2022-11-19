@@ -3693,9 +3693,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto hy = _str(args[2]).toUInt();
         CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
     }
-    else if (cmd == "RebuildLookBorders") {
-        CurMap->RebuildFog();
-    }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
         auto alpha = _str(args[1]).toInt();
 
@@ -3737,8 +3734,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
     bool try_move = false;
     ushort hx = 0;
     ushort hy = 0;
-    short ox = 0;
-    short oy = 0;
+    int ox = 0;
+    int oy = 0;
     vector<uchar> steps;
     vector<ushort> control_steps;
 

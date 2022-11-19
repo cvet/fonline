@@ -256,20 +256,20 @@ class AppRender final
     friend class Application;
 
 public:
-    static constexpr uint MAX_ATLAS_SIZE = 8192;
-    static constexpr uint MIN_ATLAS_SIZE = 2048;
-    static const uint& MAX_ATLAS_WIDTH;
-    static const uint& MAX_ATLAS_HEIGHT;
-    static const uint& MAX_BONES;
+    static constexpr int MAX_ATLAS_SIZE = 8192;
+    static constexpr int MIN_ATLAS_SIZE = 2048;
+    static const int& MAX_ATLAS_WIDTH;
+    static const int& MAX_ATLAS_HEIGHT;
+    static const int& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
+    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
-    void EnableScissor(int x, int y, uint w, uint h);
+    void EnableScissor(int x, int y, int width, int height);
     void DisableScissor();
 
 private:

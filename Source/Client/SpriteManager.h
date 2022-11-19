@@ -102,8 +102,8 @@ struct RenderTarget
     unique_ptr<RenderTexture> MainTex {};
     RenderEffect* CustomDrawEffect {};
     SizeType Size {};
-    uint BaseWidth {};
-    uint BaseHeight {};
+    int BaseWidth {};
+    int BaseHeight {};
     vector<tuple<int, int, uint>> LastPixelPicks {};
 };
 
@@ -111,13 +111,13 @@ struct TextureAtlas
 {
     struct SpaceNode
     {
-        SpaceNode(int x, int y, uint w, uint h);
-        auto FindPosition(uint w, uint h, int& x, int& y) -> bool;
+        SpaceNode(int x, int y, int width, int height);
+        auto FindPosition(int width, int height, int& x, int& y) -> bool;
 
         int PosX {};
         int PosY {};
-        uint Width {};
-        uint Height {};
+        int Width {};
+        int Height {};
         bool Busy {};
         unique_ptr<SpaceNode> Child1 {};
         unique_ptr<SpaceNode> Child2 {};
@@ -126,24 +126,24 @@ struct TextureAtlas
     AtlasType Type {};
     RenderTarget* RTarg {};
     RenderTexture* MainTex {};
-    uint Width {};
-    uint Height {};
+    int Width {};
+    int Height {};
     unique_ptr<SpaceNode> RootNode {};
     int CurX {};
     int CurY {};
-    uint LineMaxH {};
-    uint LineCurH {};
-    uint LineW {};
+    int LineMaxH {};
+    int LineCurH {};
+    int LineW {};
 };
 
 struct SpriteInfo
 {
     TextureAtlas* Atlas {};
     FRect SprRect {};
-    ushort Width {};
-    ushort Height {};
-    short OffsX {};
-    short OffsY {};
+    int Width {};
+    int Height {};
+    int OffsX {};
+    int OffsY {};
     RenderEffect* DrawEffect {};
     uint* AccData {};
     AtlasType DataAtlasType {};
@@ -157,15 +157,13 @@ struct SpriteInfo
 struct AnyFrames
 {
     [[nodiscard]] auto GetSprId(uint num_frm = 0u) const -> uint;
-    [[nodiscard]] auto GetNextX(uint num_frm) const -> short;
-    [[nodiscard]] auto GetNextY(uint num_frm) const -> short;
     [[nodiscard]] auto GetCurSprId(uint tick) const -> uint;
     [[nodiscard]] auto GetCurSprIndex(uint tick) const -> uint;
     [[nodiscard]] auto GetDir(uint dir) -> AnyFrames*;
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids
-    short NextX[MAX_FRAMES] {};
-    short NextY[MAX_FRAMES] {};
+    int NextX[MAX_FRAMES] {};
+    int NextY[MAX_FRAMES] {};
     uint CntFrm {};
     uint Ticks {}; // Time of playing animation
     uint Anim1 {};
@@ -180,8 +178,8 @@ struct PrimitivePoint
     int PointX {};
     int PointY {};
     uint PointColor {};
-    short* PointOffsX {};
-    short* PointOffsY {};
+    int* PointOffsX {};
+    int* PointOffsY {};
 };
 static_assert(std::is_standard_layout_v<PrimitivePoint>);
 
@@ -207,7 +205,7 @@ public:
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, uint width, uint height, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
     [[nodiscard]] auto GetSpritesTreeColor() const -> uint { return _spritesTreeColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
@@ -278,9 +276,9 @@ public:
     AnyFrames* DummyAnimation {};
 
 private:
-    [[nodiscard]] auto CreateAtlas(uint w, uint h) -> TextureAtlas*;
-    [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
-    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint* data) -> uint;
+    [[nodiscard]] auto CreateAtlas(int request_width, int request_height) -> TextureAtlas*;
+    [[nodiscard]] auto FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
+    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint;
     [[nodiscard]] auto Load2dAnimation(string_view fname) -> AnyFrames*;
 #if FO_ENABLE_3D
     [[nodiscard]] auto Load3dAnimation(string_view fname) -> AnyFrames*;

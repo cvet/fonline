@@ -76,10 +76,10 @@ struct LightSource
     uchar Distance {};
     uchar Flags {};
     int Intensity {};
-    short* OffsX {};
-    short* OffsY {};
-    short LastOffsX {};
-    short LastOffsY {};
+    int* OffsX {};
+    int* OffsY {};
+    int LastOffsX {};
+    int LastOffsY {};
 };
 
 struct FindPathResult
@@ -197,7 +197,7 @@ public:
 
     auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
-    auto TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<uchar>& steps, int quad_dir) -> bool;
+    auto TraceMoveWay(ushort& hx, ushort& hy, int& ox, int& oy, vector<uchar>& steps, int quad_dir) -> bool;
     auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
@@ -376,8 +376,8 @@ private:
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
     RenderTarget* _rtFog {};
-    uint _rtScreenOx {};
-    uint _rtScreenOy {};
+    int _rtScreenOx {};
+    int _rtScreenOy {};
 
     int _screenHexX {};
     int _screenHexY {};
@@ -389,10 +389,10 @@ private:
     int _hVisible {};
     vector<ViewField> _viewField {};
 
-    short* _fogOffsX {};
-    short* _fogOffsY {};
-    short _fogLastOffsX {};
-    short _fogLastOffsY {};
+    int* _fogOffsX {};
+    int* _fogOffsY {};
+    int _fogLastOffsX {};
+    int _fogLastOffsY {};
     bool _fogForceRerender {};
     bool _rebuildFog {};
     bool _drawLookBorders {true};

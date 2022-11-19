@@ -3004,7 +3004,8 @@ void FOMapper::CurDraw()
             if (si != nullptr) {
                 const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
                 const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / Settings.SpritesZoom), static_cast<int>(y / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(static_cast<float>(x) / Settings.SpritesZoom), static_cast<int>(static_cast<float>(y) / Settings.SpritesZoom), //
+                    static_cast<int>(static_cast<float>(si->Width) / Settings.SpritesZoom), static_cast<int>(static_cast<float>(si->Height) / Settings.SpritesZoom), true, false, 0);
             }
         }
         else if (IsTileMode() && !CurTileNames->empty()) {

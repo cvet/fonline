@@ -77,12 +77,12 @@ static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
 static AppAudio::AudioStreamCallback* AudioStreamWriter {};
 
-static uint MaxAtlasWidth {};
-static uint MaxAtlasHeight {};
-static uint MaxBones {};
-const uint& AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
-const uint& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
-const uint& AppRender::MAX_BONES {MaxBones};
+static int MaxAtlasWidth {};
+static int MaxAtlasHeight {};
+static int MaxBones {};
+const int& AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
+const int& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
+const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
@@ -1132,7 +1132,7 @@ void AppWindow::Destroy()
     }
 }
 
-auto AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
 }
@@ -1153,9 +1153,9 @@ void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
-void AppRender::EnableScissor(int x, int y, uint w, uint h)
+void AppRender::EnableScissor(int x, int y, int width, int height)
 {
-    ActiveRenderer->EnableScissor(x, y, w, h);
+    ActiveRenderer->EnableScissor(x, y, width, height);
 }
 
 void AppRender::DisableScissor()

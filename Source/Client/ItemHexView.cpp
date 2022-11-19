@@ -52,7 +52,7 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Pr
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
 {
     RUNTIME_ASSERT(props_data);
     RestoreData(*props_data);
@@ -60,7 +60,7 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<v
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y) : ItemHexView(map, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y) : ItemHexView(map, id, proto)
 {
     if (props_data != nullptr) {
         RestoreData(*props_data);
@@ -159,17 +159,30 @@ void ItemHexView::Process()
                 speed = 1.0f;
             }
 
-            EffOffsX += _effSx * dt * speed;
-            EffOffsY += _effSy * dt * speed;
             _effCurX += _effSx * dt * speed;
             _effCurY += _effSy * dt * speed;
 
             SetAnimOffs();
+
             _effLastTick = _engine->GameTime.GameTick();
 
-            if (GenericUtils::DistSqrt(static_cast<int>(_effCurX), static_cast<int>(_effCurY), _effStartX, _effStartY) >= _effDist) {
+            if (GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY) >= _effDist) {
                 Finish();
             }
+        }
+
+        auto&& [step_hx, step_hy] = GetEffectStep();
+        if (GetHexX() != step_hx || GetHexY() != step_hy) {
+            const auto hx = GetHexX();
+            const auto hy = GetHexY();
+
+            const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, step_hx, step_hy);
+            _effCurX -= static_cast<float>(x);
+            _effCurY -= static_cast<float>(y);
+
+            SetAnimOffs();
+
+            _map->MoveItem(this, step_hx, step_hy);
         }
     }
 
@@ -197,8 +210,8 @@ void ItemHexView::SetEffect(float sx, float sy, uint dist, int dir)
     _effDist = dist;
     _effStartX = ScrX;
     _effStartY = ScrY;
-    _effCurX = ScrX;
-    _effCurY = ScrY;
+    _effCurX = static_cast<float>(ScrX);
+    _effCurY = static_cast<float>(ScrY);
     _effDir = dir;
     _effLastTick = _engine->GameTime.GameTick();
     _isEffect = true;
@@ -213,7 +226,7 @@ void ItemHexView::SetEffect(float sx, float sy, uint dist, int dir)
 
 auto ItemHexView::GetEffectStep() const -> pair<ushort, ushort>
 {
-    auto dist = GenericUtils::DistSqrt(static_cast<int>(_effCurX), static_cast<int>(_effCurY), _effStartX, _effStartY);
+    auto dist = GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY);
     if (dist > _effDist) {
         dist = _effDist;
     }
@@ -382,13 +395,13 @@ void ItemHexView::SetAnimOffs()
     ScrY = GetOffsetY();
 
     for (const auto i : xrange(_curSpr + 1u)) {
-        ScrX = static_cast<short>(ScrX + Anim->NextX[i]);
-        ScrY = static_cast<short>(ScrY + Anim->NextY[i]);
+        ScrX += Anim->NextX[i];
+        ScrY += Anim->NextY[i];
     }
 
     if (IsDynamicEffect()) {
-        ScrX = static_cast<short>(ScrX + static_cast<short>(EffOffsX));
-        ScrY = static_cast<short>(ScrY + static_cast<short>(EffOffsY));
+        ScrX += iround(_effCurX);
+        ScrY += iround(_effCurY);
     }
 }
 

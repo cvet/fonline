@@ -317,8 +317,8 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
     _tilesTree(engine->SprMngr, _spritesPool),
     _roofTree(engine->SprMngr, _spritesPool)
 {
-    _rtScreenOx = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
-    _rtScreenOy = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
+    _rtScreenOx = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
+    _rtScreenOy = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
     _rtMap = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
     _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
@@ -552,41 +552,6 @@ void MapView::Process()
             // Todo: optimize, collect separate collection with IsNeedProcess
             item->Process();
 
-            if (item->IsDynamicEffect() && !item->IsFinishing()) {
-                auto&& [step_hx, step_hy] = item->GetEffectStep();
-                if (item->GetHexX() != step_hx || item->GetHexY() != step_hy) {
-                    const auto hx = item->GetHexX();
-                    const auto hy = item->GetHexY();
-
-                    const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, step_hx, step_hy);
-                    item->EffOffsX -= static_cast<float>(x);
-                    item->EffOffsY -= static_cast<float>(y);
-
-                    RemoveItemFromField(item);
-                    item->SetHexX(step_hx);
-                    item->SetHexY(step_hy);
-                    AddItemToField(item);
-
-                    auto& field = GetField(step_hx, step_hy);
-
-                    if (item->SprDrawValid) {
-                        item->SprDraw->Unvalidate();
-                    }
-
-                    if (IsHexToDraw(step_hx, step_hy)) {
-                        item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(item), step_hx, step_hy + item->GetDrawOrderOffsetHexY(), //
-                            (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), //
-                            &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
-                        if (!item->GetIsNoLightInfluence()) {
-                            item->SprDraw->SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
-                        }
-                        field.AddSpriteToChain(item->SprDraw);
-                    }
-
-                    item->SetAnimOffs();
-                }
-            }
-
             if (item->IsFinished()) {
                 item_to_delete.emplace_back(item);
             }
@@ -786,6 +751,22 @@ void MapView::MoveItem(ItemHexView* item, ushort hx, ushort hy)
     item->SetHexX(hx);
     item->SetHexY(hy);
     AddItemToField(item);
+
+    auto& field = GetField(hx, hy);
+
+    if (item->SprDrawValid) {
+        item->SprDraw->Unvalidate();
+    }
+
+    if (IsHexToDraw(hx, hy)) {
+        item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(item), hx, hy + item->GetDrawOrderOffsetHexY(), //
+            (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), //
+            &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+        if (!item->GetIsNoLightInfluence()) {
+            item->SprDraw->SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
+        }
+        field.AddSpriteToChain(item->SprDraw);
+    }
 }
 
 void MapView::DestroyItem(ItemHexView* item)
@@ -1835,8 +1816,8 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
             }
 
             if (hx_ != last_hx || hy_ != last_hy) {
-                short* ox = nullptr;
-                short* oy = nullptr;
+                int* ox = nullptr;
+                int* oy = nullptr;
                 if (static_cast<int>(hx_) != hx_far || static_cast<int>(hy_) != hy_far) {
                     int a = alpha - _engine->Geometry.DistGame(hx, hy, hx_, hy_) * alpha / dist;
                     a = std::clamp(a, 0, alpha);
@@ -2114,12 +2095,12 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
         return false;
     }
 
-    const auto top = oy + si->OffsY - si->Height - (_engine->Settings.MapHexLineHeight * 2);
-    const auto bottom = oy + si->OffsY + (_engine->Settings.MapHexLineHeight * 2);
+    const auto top = oy + si->OffsY - si->Height - _engine->Settings.MapHexLineHeight * 2;
+    const auto bottom = oy + si->OffsY + _engine->Settings.MapHexLineHeight * 2;
     const auto left = ox + si->OffsX - si->Width / 2 - _engine->Settings.MapHexWidth;
     const auto right = ox + si->OffsX + si->Width / 2 + _engine->Settings.MapHexWidth;
-    const auto zoomed_screen_height = static_cast<int>(std::ceil(static_cast<float>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * _engine->Settings.SpritesZoom));
-    const auto zoomed_screen_width = static_cast<int>(std::ceil(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom));
+    const auto zoomed_screen_height = iround(std::ceil(static_cast<float>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * _engine->Settings.SpritesZoom));
+    const auto zoomed_screen_width = iround(std::ceil(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom));
     return !(top > zoomed_screen_height || bottom < 0 || left > zoomed_screen_width || right < 0);
 }
 
@@ -2135,12 +2116,12 @@ auto MapView::MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) ->
         return false;
     }
 
-    auto top = si->OffsY + oy - _hTop * _engine->Settings.MapHexLineHeight + (_engine->Settings.MapHexLineHeight * 2);
+    auto top = si->OffsY + oy - _hTop * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2;
     if (top < 0) {
         top = 0;
     }
 
-    auto bottom = si->Height - si->OffsY - oy - _hBottom * _engine->Settings.MapHexLineHeight + (_engine->Settings.MapHexLineHeight * 2);
+    auto bottom = si->Height - si->OffsY - oy - _hBottom * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2;
     if (bottom < 0) {
         bottom = 0;
     }
@@ -2166,8 +2147,10 @@ auto MapView::MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) ->
             ResizeView();
             RefreshMap();
         }
+
         return true;
     }
+
     return false;
 }
 
@@ -2219,10 +2202,10 @@ void MapView::InitView(int cx, int cy)
         cx -= abs(vw);
         cy -= abs(vh);
 
-        auto xa = -(_wRight * _engine->Settings.MapHexWidth);
-        auto xb = -(_engine->Settings.MapHexWidth / 2) - (_wRight * _engine->Settings.MapHexWidth);
+        const auto xa = -(_wRight * _engine->Settings.MapHexWidth);
+        const auto xb = -(_engine->Settings.MapHexWidth / 2) - (_wRight * _engine->Settings.MapHexWidth);
         auto oy = -_engine->Settings.MapHexLineHeight * _hTop;
-        const auto wx = static_cast<int>(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom);
+        const auto wx = iround(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom);
 
         for (auto yv = 0; yv < _hVisible; yv++) {
             auto hx = cx + yv / 2 + (yv & 1);
@@ -2246,8 +2229,10 @@ void MapView::InitView(int cx, int cy)
                     hy--;
                 }
                 hx++;
+
                 ox += _engine->Settings.MapHexWidth;
             }
+
             oy += _engine->Settings.MapHexLineHeight;
         }
     }
@@ -2261,7 +2246,7 @@ void MapView::InitView(int cx, int cy)
         auto xa = -_engine->Settings.MapHexWidth * _wRight;
         auto xb = -_engine->Settings.MapHexWidth * _wRight - _engine->Settings.MapHexWidth / 2;
         auto y = -_engine->Settings.MapHexLineHeight * _hTop;
-        const auto wx = static_cast<int>(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom);
+        const auto wx = iround(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom);
 
         // Initialize field
         for (auto j = 0; j < _hVisible; j++) {
@@ -2391,8 +2376,8 @@ void MapView::DrawMap()
     PrepareFogToDraw();
 
     // Prerendered offsets
-    const auto ox = static_cast<int>(_rtScreenOx) - static_cast<int>(std::round(static_cast<float>(_engine->Settings.ScrOx) / _engine->Settings.SpritesZoom));
-    const auto oy = static_cast<int>(_rtScreenOy) - static_cast<int>(std::round(static_cast<float>(_engine->Settings.ScrOy) / _engine->Settings.SpritesZoom));
+    const auto ox = _rtScreenOx - iround(static_cast<float>(_engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+    const auto oy = _rtScreenOy - iround(static_cast<float>(_engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
     const auto prerendered_rect = IRect(ox, oy, ox + _engine->Settings.ScreenWidth, oy + (_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight));
 
     // Separate render target
@@ -2645,8 +2630,8 @@ void MapView::PrepareFogToDraw()
 
             _fogOffsX = chosen != nullptr ? &chosen->SprOx : nullptr;
             _fogOffsY = chosen != nullptr ? &chosen->SprOy : nullptr;
-            _fogLastOffsX = static_cast<short>(_fogOffsX != nullptr ? *_fogOffsX : 0);
-            _fogLastOffsY = static_cast<short>(_fogOffsY != nullptr ? *_fogOffsY : 0);
+            _fogLastOffsX = _fogOffsX != nullptr ? *_fogOffsX : 0;
+            _fogLastOffsY = _fogOffsY != nullptr ? *_fogOffsY : 0;
             _fogForceRerender = true;
         }
     }
@@ -3390,10 +3375,10 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*
             continue;
         }
 
-        const auto l = static_cast<int>((*item->HexScrX + item->ScrX + si->OffsX + (_engine->Settings.MapHexWidth / 2) + _engine->Settings.ScrOx - si->Width / 2) / _engine->Settings.SpritesZoom);
-        const auto r = static_cast<int>((*item->HexScrX + item->ScrX + si->OffsX + (_engine->Settings.MapHexWidth / 2) + _engine->Settings.ScrOx + si->Width / 2) / _engine->Settings.SpritesZoom);
-        const auto t = static_cast<int>((*item->HexScrY + item->ScrY + si->OffsY + (_engine->Settings.MapHexHeight / 2) + _engine->Settings.ScrOy - si->Height) / _engine->Settings.SpritesZoom);
-        const auto b = static_cast<int>((*item->HexScrY + item->ScrY + si->OffsY + (_engine->Settings.MapHexHeight / 2) + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
+        const auto l = iround(static_cast<float>(*item->HexScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx - si->Width / 2) / _engine->Settings.SpritesZoom);
+        const auto r = iround(static_cast<float>(*item->HexScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx + si->Width / 2) / _engine->Settings.SpritesZoom);
+        const auto t = iround(static_cast<float>(*item->HexScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy - si->Height) / _engine->Settings.SpritesZoom);
+        const auto b = iround(static_cast<float>(*item->HexScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
 
         if (x >= l && x <= r && y >= t && y <= b) {
             auto* spr = item->SprDraw->GetIntersected(x - l, y - t);
@@ -3759,53 +3744,73 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
 
     FindPathResult result;
 
-    ushort trace_hx = start_x;
-    ushort trace_hy = start_y;
+    if (_engine->Settings.MapFreeMovement) {
+        ushort trace_hx = start_x;
+        ushort trace_hy = start_y;
 
-    while (true) {
-        ushort trace_tx = end_x;
-        ushort trace_ty = end_y;
+        while (true) {
+            ushort trace_tx = end_x;
+            ushort trace_ty = end_y;
 
-        for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
-            LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, _maxHexX, _maxHexY, 0.0f);
-            ushort next_hx = trace_hx;
-            ushort next_hy = trace_hy;
-            vector<uchar> direct_steps;
-            bool failed = false;
+            for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
+                LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, _maxHexX, _maxHexY, 0.0f);
+                ushort next_hx = trace_hx;
+                ushort next_hy = trace_hy;
+                vector<uchar> direct_steps;
+                bool failed = false;
 
-            while (true) {
-                uchar dir = tracer.GetNextHex(next_hx, next_hy);
-                direct_steps.push_back(dir);
+                while (true) {
+                    uchar dir = tracer.GetNextHex(next_hx, next_hy);
+                    direct_steps.push_back(dir);
 
-                if (next_hx == trace_tx && next_hy == trace_ty) {
-                    break;
+                    if (next_hx == trace_tx && next_hy == trace_ty) {
+                        break;
+                    }
+
+                    if (GRID_AT(next_hx, next_hy) <= 0) {
+                        failed = true;
+                        break;
+                    }
                 }
 
-                if (GRID_AT(next_hx, next_hy) <= 0) {
-                    failed = true;
+                if (failed) {
+                    RUNTIME_ASSERT(i > 0);
+                    _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), _maxHexX, _maxHexY);
+                    continue;
+                }
+
+                for (const auto& ds : direct_steps) {
+                    result.Steps.push_back(ds);
+                }
+
+                result.ControlSteps.emplace_back(static_cast<ushort>(result.Steps.size()));
+
+                trace_hx = trace_tx;
+                trace_hy = trace_ty;
+                break;
+            }
+
+            if (trace_tx == end_x && trace_ty == end_y) {
+                break;
+            }
+        }
+    }
+    else {
+        for (size_t i = 0; i < raw_steps.size(); i++) {
+            const auto cur_dir = raw_steps[i];
+            result.Steps.push_back(cur_dir);
+
+            for (size_t j = i + 1; j < raw_steps.size(); j++) {
+                if (raw_steps[j] == cur_dir) {
+                    result.Steps.push_back(cur_dir);
+                    i++;
+                }
+                else {
                     break;
                 }
-            }
-
-            if (failed) {
-                RUNTIME_ASSERT(i > 0);
-                _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), _maxHexX, _maxHexY);
-                continue;
-            }
-
-            for (const auto& ds : direct_steps) {
-                result.Steps.push_back(ds);
             }
 
             result.ControlSteps.emplace_back(static_cast<ushort>(result.Steps.size()));
-
-            trace_hx = trace_tx;
-            trace_hy = trace_ty;
-            break;
-        }
-
-        if (trace_tx == end_x && trace_ty == end_y) {
-            break;
         }
     }
 
@@ -3822,7 +3827,7 @@ bool MapView::CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort
     return !!FindPath(cr, start_x, start_y, end_x, end_y, cut);
 }
 
-bool MapView::TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<uchar>& steps, int quad_dir)
+bool MapView::TraceMoveWay(ushort& hx, ushort& hy, int& ox, int& oy, vector<uchar>& steps, int quad_dir)
 {
     ox = 0;
     oy = 0;
@@ -3849,7 +3854,7 @@ bool MapView::TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<
     const auto try_move2 = [&try_move, &ox](uchar dir1, uchar dir2) {
         if (try_move(dir1)) {
             if (!try_move(dir2)) {
-                ox = static_cast<short>(dir1 == 0 ? -16 : 16);
+                ox = dir1 == 0 ? -16 : 16;
                 return false;
             }
             return true;
@@ -3857,7 +3862,7 @@ bool MapView::TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<
 
         if (try_move(dir2)) {
             if (!try_move(dir1)) {
-                ox = static_cast<short>(dir2 == 5 ? 16 : -16);
+                ox = dir2 == 5 ? 16 : -16;
                 return false;
             }
             return true;
