@@ -575,20 +575,14 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT() \
-    void AddRef() \
-    { \
-        ++RefCounter; \
-    } \
+    void AddRef() { ++RefCounter; } \
     void Release() \
     { \
         if (--RefCounter == 0) { \
             delete this; \
         } \
     } \
-    int RefCounter \
-    { \
-        1 \
-    }
+    int RefCounter { 1 }
 
 // Ref counted objects scope holder
 template<typename T>
