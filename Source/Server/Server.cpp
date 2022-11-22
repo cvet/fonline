@@ -471,7 +471,6 @@ void FOServer::MainLoop()
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
-                player->Connection->HardDisconnect();
             }
         }
 
@@ -497,7 +496,6 @@ void FOServer::MainLoop()
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
-                player->Connection->HardDisconnect();
             }
         }
 
