@@ -236,47 +236,60 @@ void Field::ProcessCache()
     Flags.IsWall = false;
     Flags.IsWallTransp = false;
     Flags.IsScen = false;
-    Flags.IsNotPassed = Flags.IsMultihex || GetActiveCritter() != nullptr;
-    Flags.IsNotRaked = false;
-    Flags.IsNoLight = false;
+    Flags.IsMoveBlocked = Flags.IsMultihex;
+    Flags.IsShootBlocked = false;
+    Flags.IsLightBlocked = false;
     Flags.ScrollBlock = false;
     Corner = CornerType::NorthSouth;
 
+    if (Critters != nullptr) {
+        for (const auto* cr : *Critters) {
+            if (!Flags.IsMoveBlocked && !cr->IsDead()) {
+                Flags.IsMoveBlocked = true;
+            }
+        }
+    }
+
     if (Items != nullptr) {
         for (const auto* item : *Items) {
-            if (item->IsWall()) {
+            if (!Flags.IsWall && item->IsWall()) {
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->GetIsLightThru();
 
                 Corner = item->GetCorner();
             }
-            else if (item->IsScenery()) {
+            else if (!Flags.IsScen && item->IsScenery()) {
                 Flags.IsScen = true;
+
+                if (!Flags.IsWall) {
+                    Corner = item->GetCorner();
+                }
             }
 
-            if (!item->GetIsNoBlock()) {
-                Flags.IsNotPassed = true;
+            if (!Flags.IsMoveBlocked && !item->GetIsNoBlock()) {
+                Flags.IsMoveBlocked = true;
             }
-            if (!item->GetIsShootThru()) {
-                Flags.IsNotRaked = true;
+            if (!Flags.IsShootBlocked && !item->GetIsShootThru()) {
+                Flags.IsShootBlocked = true;
             }
-            if (item->GetIsScrollBlock()) {
+            if (!Flags.ScrollBlock && item->GetIsScrollBlock()) {
                 Flags.ScrollBlock = true;
             }
-            if (!item->GetIsLightThru()) {
-                Flags.IsNoLight = true;
+            if (!Flags.IsLightBlocked && !item->GetIsLightThru()) {
+                Flags.IsLightBlocked = true;
             }
         }
     }
 
     if (BlockLinesItems != nullptr) {
         for (const auto* item : *BlockLinesItems) {
-            Flags.IsNotPassed = true;
-            if (!item->GetIsShootThru()) {
-                Flags.IsNotRaked = true;
+            Flags.IsMoveBlocked = true;
+
+            if (!Flags.IsShootBlocked && !item->GetIsShootThru()) {
+                Flags.IsShootBlocked = true;
             }
-            if (!item->GetIsLightThru()) {
-                Flags.IsNoLight = true;
+            if (!Flags.IsLightBlocked && !item->GetIsLightThru()) {
+                Flags.IsLightBlocked = true;
             }
         }
     }
@@ -495,7 +508,7 @@ void MapView::LoadStaticData()
                     auto hx_ = hx;
                     auto hy_ = hy;
                     _engine->Geometry.MoveHexByDir(hx_, hy_, static_cast<uchar>(dir), _maxHexX, _maxHexY);
-                    GetField(hx_, hy_).Flags.IsNotPassed = true;
+                    GetField(hx_, hy_).Flags.IsMoveBlocked = true;
                 }
             }
         }
@@ -936,7 +949,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
         const auto cy = cr->GetHexY();
         const auto mh = cr->GetMultihex();
 
-        if ((cx == hx && cy == hy) || (field.Flags.IsNotPassed && (mh == 0u || !_engine->Geometry.CheckDist(cx, cy, hx, hy, mh)))) {
+        if ((cx == hx && cy == hy) || (field.Flags.IsMoveBlocked && (mh == 0u || !_engine->Geometry.CheckDist(cx, cy, hx, hy, mh)))) {
             _drawCursorX = -1;
         }
         else {
@@ -1655,7 +1668,7 @@ void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy,
         if (ox != 0) {
             // Left side
             ox = old_curx1_i + ox;
-            if (ox < 0 || ox >= _maxHexX || GetField(ox, old_cury1_i).Flags.IsNoLight) {
+            if (ox < 0 || ox >= _maxHexX || GetField(ox, old_cury1_i).Flags.IsLightBlocked) {
                 hx = (ox < 0 || ox >= _maxHexX ? old_curx1_i : ox);
                 hy = old_cury1_i;
                 if (can_mark) {
@@ -1669,7 +1682,7 @@ void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy,
 
             // Right side
             oy = old_cury1_i + oy;
-            if (oy < 0 || oy >= _maxHexY || GetField(old_curx1_i, oy).Flags.IsNoLight) {
+            if (oy < 0 || oy >= _maxHexY || GetField(old_curx1_i, oy).Flags.IsLightBlocked) {
                 hx = old_curx1_i;
                 hy = (oy < 0 || oy >= _maxHexY ? old_cury1_i : oy);
                 if (can_mark) {
@@ -1683,7 +1696,7 @@ void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy,
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= _maxHexX || cury1_i < 0 || cury1_i >= _maxHexY || GetField(curx1_i, cury1_i).Flags.IsNoLight) {
+        if (curx1_i < 0 || curx1_i >= _maxHexX || cury1_i < 0 || cury1_i >= _maxHexY || GetField(curx1_i, cury1_i).Flags.IsLightBlocked) {
             hx = (curx1_i < 0 || curx1_i >= _maxHexX ? old_curx1_i : curx1_i);
             hy = (cury1_i < 0 || cury1_i >= _maxHexY ? old_cury1_i : cury1_i);
             if (can_mark) {
@@ -3533,7 +3546,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                 GRID_AT(nx, ny) = -1;
 
                 if (mh == 0u) {
-                    if (GetField(static_cast<ushort>(nx), static_cast<ushort>(ny)).Flags.IsNotPassed) {
+                    if (GetField(static_cast<ushort>(nx), static_cast<ushort>(ny)).Flags.IsMoveBlocked) {
                         continue;
                     }
                 }
@@ -3547,7 +3560,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     if (nx_ < 0 || ny_ < 0 || nx_ >= _maxHexX || ny_ >= _maxHexY) {
                         continue;
                     }
-                    if (GetField(static_cast<ushort>(nx_), static_cast<ushort>(ny_)).Flags.IsNotPassed) {
+                    if (GetField(static_cast<ushort>(nx_), static_cast<ushort>(ny_)).Flags.IsMoveBlocked) {
                         continue;
                     }
 
@@ -3564,7 +3577,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     auto ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
                         _engine->Geometry.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uchar>(dir_));
-                        not_passed = GetField(static_cast<ushort>(nx_2), static_cast<ushort>(ny_2)).Flags.IsNotPassed;
+                        not_passed = GetField(static_cast<ushort>(nx_2), static_cast<ushort>(ny_2)).Flags.IsMoveBlocked;
                     }
                     if (not_passed) {
                         continue;
@@ -3580,7 +3593,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
                         _engine->Geometry.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uchar>(dir_));
-                        not_passed = GetField(static_cast<ushort>(nx_2), static_cast<ushort>(ny_2)).Flags.IsNotPassed;
+                        not_passed = GetField(static_cast<ushort>(nx_2), static_cast<ushort>(ny_2)).Flags.IsMoveBlocked;
                     }
                     if (not_passed) {
                         continue;
@@ -3824,7 +3837,7 @@ bool MapView::TraceMoveWay(ushort& hx, ushort& hy, int& ox, int& oy, vector<ucha
         }
 
         const auto& f = GetField(check_hx, check_hy);
-        if (f.Flags.IsNotPassed) {
+        if (f.Flags.IsMoveBlocked) {
             return false;
         }
 
@@ -3905,7 +3918,7 @@ auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist,
             continue;
         }
 
-        if (check_passed && GetField(cx, cy).Flags.IsNotRaked) {
+        if (check_passed && GetField(cx, cy).Flags.IsShootBlocked) {
             break;
         }
         if (critters != nullptr) {
@@ -4347,10 +4360,10 @@ void MapView::MarkPassedHexes()
 
             track = 0;
 
-            if (field.Flags.IsNotPassed) {
+            if (field.Flags.IsMoveBlocked) {
                 track = 2;
             }
-            if (field.Flags.IsNotRaked) {
+            if (field.Flags.IsShootBlocked) {
                 track = 1;
             }
         }

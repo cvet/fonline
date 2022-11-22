@@ -365,13 +365,13 @@ protected:
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
-    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetCritterModelName(Entity* entity, const Property* prop);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop);
+    void OnSetItemFlags(Entity* entity, const Property* prop);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop);
+    void OnSetItemPicMap(Entity* entity, const Property* prop);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
+    void OnSetItemOpened(Entity* entity, const Property* prop);
 
     void AnimProcess();
 

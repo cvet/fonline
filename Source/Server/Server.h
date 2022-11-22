@@ -243,12 +243,12 @@ private:
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemChangeView(Entity* entity, const Property* prop);
+    void OnSetItemRecacheHex(Entity* entity, const Property* prop);
+    void OnSetItemBlockLines(Entity* entity, const Property* prop);
+    void OnSetItemIsGeck(Entity* entity, const Property* prop);
+    void OnSetItemIsRadio(Entity* entity, const Property* prop);
+    void OnSetItemOpened(Entity* entity, const Property* prop);
 
     void ProcessCritter(Critter* cr);
     void ProcessMove(Critter* cr);

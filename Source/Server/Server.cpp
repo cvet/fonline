@@ -197,20 +197,24 @@ FOServer::FOServer(GlobalSettings& settings) :
             const auto* prop = registrator->GetByIndex(prop_index);
             prop->AddSetter(std::move(callback));
         };
+        const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
+            const auto* prop = registrator->GetByIndex(prop_index);
+            prop->AddPostSetter(std::move(callback));
+        };
 
         set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemBlockLines(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsGeck(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsRadio(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
     DlgMngr.LoadFromResources();
@@ -2693,7 +2697,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     NON_CONST_METHOD_HINT();
     UNUSED_VARIABLE(prop);
 
-    auto* item = dynamic_cast<Item*>(entity);
+    const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
     const auto old_count = entity->GetProperties().GetValue<uint>(prop);
     if (static_cast<int>(new_count) > 0 && (item->GetStackable() || new_count == 1)) {
@@ -2701,7 +2705,6 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
         ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
     }
     else {
-        item->SetCount(old_count);
         if (!item->GetStackable()) {
             throw GenericException("Trying to change count of not stackable item");
         }
@@ -2710,7 +2713,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
@@ -2727,8 +2730,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto* cr = CrMngr.GetCritter(item->GetCritterId());
         if (cr != nullptr) {
-            const auto value = *static_cast<const bool*>(new_value);
-            if (value) {
+            if (item->GetIsHidden()) {
                 cr->Send_EraseItem(item);
             }
             else {
@@ -2739,10 +2741,9 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
 
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
@@ -2755,10 +2756,8 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
-
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2770,25 +2769,23 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 {
-    auto* item = dynamic_cast<Item*>(entity);
-    const auto value = *static_cast<const bool*>(new_value);
+    const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
-            map->GetLocation()->GeckCount += (value ? 1 : -1);
+            map->GetLocation()->GeckCount += item->GetIsGeck() ? 1 : -1;
         }
     }
 }
 
-void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 {
     auto* item = dynamic_cast<Item*>(entity);
-    const auto value = *static_cast<const bool*>(new_value);
 
-    if (value) {
+    if (item->GetIsRadio()) {
         ItemMngr.RegisterRadio(item);
     }
     else {
@@ -2796,13 +2793,12 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void
     }
 }
 
-void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     auto* item = dynamic_cast<Item*>(entity);
-    const auto new_opened = *static_cast<const bool*>(new_value);
 
     if (item->GetIsCanOpen()) {
-        if (new_opened) {
+        if (item->GetOpened()) {
             item->SetIsLightThru(true);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {

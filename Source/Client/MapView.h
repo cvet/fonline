@@ -37,18 +37,13 @@
 
 #include "ClientEntity.h"
 #include "CritterHexView.h"
-#include "EffectManager.h"
 #include "Entity.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "ItemHexView.h"
 #include "MapLoader.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "Settings.h"
 #include "SpriteManager.h"
 #include "Sprites.h"
-#include "Timer.h"
 
 DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -98,7 +93,6 @@ public:
         short OffsY {};
         uchar Layer {};
     };
-    using TileVec = vector<Tile>;
 
     struct FlagsType
     {
@@ -106,9 +100,9 @@ public:
         bool IsWall : 1;
         bool IsWallTransp : 1;
         bool IsScen : 1;
-        bool IsNotPassed : 1;
-        bool IsNotRaked : 1;
-        bool IsNoLight : 1;
+        bool IsMoveBlocked : 1;
+        bool IsShootBlocked : 1;
+        bool IsLightBlocked : 1;
         bool IsMultihex : 1;
     };
 
