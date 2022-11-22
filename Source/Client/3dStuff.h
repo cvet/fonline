@@ -249,7 +249,7 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
+    [[nodiscard]] auto GetDrawSize() const -> tuple<int, int>;
     [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> uint;
@@ -419,8 +419,8 @@ private:
     int _renderAnimProcTo {100};
     int _renderAnimDir {};
     bool _shadowDisabled {};
-    uint _drawWidth {};
-    uint _drawHeight {};
+    int _drawWidth {};
+    int _drawHeight {};
     int _viewHeight {};
     hstring _rotationBone {};
 };

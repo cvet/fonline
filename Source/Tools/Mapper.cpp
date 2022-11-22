@@ -1399,7 +1399,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
             if (entity->GetPropertiesForEdit().LoadPropertyFromText(prop, ObjCurLineValue)) {
                 if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
                     if (prop == hex_item->GetPropertyOffsetX() || prop == hex_item->GetPropertyOffsetY()) {
-                        hex_item->SetAnimOffs();
+                        hex_item->RefreshOffs();
                     }
                     if (prop == hex_item->GetPropertyPicMap()) {
                         hex_item->RefreshAnim();

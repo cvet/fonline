@@ -137,6 +137,7 @@ VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
 FIXED_SETTING(bool, HideNativeCursor, false);
+FIXED_SETTING(uint, FadingDuration, 1000);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

@@ -51,15 +51,6 @@ CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto)
     SetModelLayers(layers);
 }
 
-CritterHexView::~CritterHexView()
-{
-#if FO_ENABLE_3D
-    if (_model != nullptr) {
-        _engine->SprMngr.FreeModel(_model);
-    }
-#endif
-}
-
 void CritterHexView::Init()
 {
     CritterView::Init();
@@ -94,7 +85,7 @@ auto CritterHexView::IsFinished() const -> bool
 void CritterHexView::SetFade(bool fade_up)
 {
     const auto tick = _engine->GameTime.GameTick();
-    FadingTick = tick + FADING_PERIOD - (FadingTick > tick ? FadingTick - tick : 0);
+    FadingTick = tick + _engine->Settings.FadingDuration - (FadingTick > tick ? FadingTick - tick : 0);
     _fadeUp = fade_up;
     _fadingEnabled = true;
 }
@@ -102,7 +93,7 @@ void CritterHexView::SetFade(bool fade_up)
 auto CritterHexView::GetFadeAlpha() -> uchar
 {
     const auto tick = _engine->GameTime.GameTick();
-    const auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0u);
+    const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTick > tick ? FadingTick - tick : 0u);
     if (fading_proc == 100u) {
         _fadingEnabled = false;
     }
@@ -340,7 +331,7 @@ void CritterHexView::AnimateStay()
             anim2 = ANIM2_IDLE;
         }
 
-        ProcessAnim(false, anim1, anim2, nullptr);
+        _engine->OnCritterAnimationProcess.Fire(true, this, anim1, anim2, nullptr);
 
         if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
             _model->SetAnimation(anim1, anim2, GetModelLayersData(), 0);
@@ -473,21 +464,14 @@ auto CritterHexView::GetModelLayersData() const -> const int*
 
 void CritterHexView::RefreshModel()
 {
-    // Release previous
-    if (_model != nullptr) {
-        _engine->SprMngr.FreeModel(_model);
-        _model = nullptr;
-    }
+    _model = nullptr;
 
-    // Load new
     const string ext = _str(GetModelName()).getFileExtension();
     if (ext == "fo3d") {
         _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-        auto* model = _engine->SprMngr.LoadModel(GetModelName(), true);
-        if (model != nullptr) {
-            _model = model;
-
+        _model = _engine->SprMngr.LoadModel(GetModelName(), true);
+        if (_model) {
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
 
@@ -787,6 +771,7 @@ void CritterHexView::ProcessMoving()
             if (_model != nullptr) {
                 ChangeMoveDirAngle(static_cast<int>(dir_angle));
             }
+            else
 #endif
             {
                 ChangeDir(_engine->Geometry.AngleToDir(static_cast<short>(dir_angle)));

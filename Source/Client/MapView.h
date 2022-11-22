@@ -238,7 +238,7 @@ public:
 
     // Items
     auto AddItem(uint id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
-    auto AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data) -> ItemHexView*;
+    auto AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*;
     auto GetItem(uint id) -> ItemHexView*;
@@ -263,7 +263,7 @@ public:
     void SetSkipRoof(ushort hx, ushort hy);
     void MarkRoofNum(int hxi, int hyi, short num);
 
-    auto RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
+    auto RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
 
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);

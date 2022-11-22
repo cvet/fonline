@@ -1100,24 +1100,35 @@ void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
     DrawSprite(model->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color);
 }
 
-auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*
+auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> unique_del_ptr<ModelInstance>
 {
     RUNTIME_ASSERT(_modelMngr);
 
-    // Fill data
     auto* model = _modelMngr->CreateModel(fname);
     if (model == nullptr) {
         return nullptr;
     }
 
-    // Create render sprite
     model->SprId = 0;
     model->SprAtlasType = static_cast<int>(std::get<0>(_targetAtlasStack.back()));
+
     if (auto_redraw) {
         RefreshModelSprite(model);
         _autoRedrawModel.push_back(model);
     }
-    return model;
+
+    return {model, [this](auto* del_model) {
+                const auto it = std::find(_autoRedrawModel.begin(), _autoRedrawModel.end(), del_model);
+                if (it != _autoRedrawModel.end()) {
+                    _autoRedrawModel.erase(it);
+                }
+
+                if (del_model->SprId != 0u) {
+                    _sprData[del_model->SprId]->Model = nullptr;
+                }
+
+                delete del_model;
+            }};
 }
 
 void SpriteManager::RefreshModelSprite(ModelInstance* model)
@@ -1158,23 +1169,6 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
     // Cross links
     model->SprId = index;
     _sprData[index]->Model = model;
-}
-
-void SpriteManager::FreeModel(ModelInstance* model)
-{
-    RUNTIME_ASSERT(_modelMngr);
-    RUNTIME_ASSERT(model);
-
-    const auto it = std::find(_autoRedrawModel.begin(), _autoRedrawModel.end(), model);
-    if (it != _autoRedrawModel.end()) {
-        _autoRedrawModel.erase(it);
-    }
-
-    if (model->SprId != 0u) {
-        _sprData[model->SprId]->Model = nullptr;
-    }
-
-    delete model;
 }
 #endif
 

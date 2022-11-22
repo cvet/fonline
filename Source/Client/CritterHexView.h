@@ -53,7 +53,7 @@ public:
     CritterHexView(CritterHexView&&) noexcept = delete;
     auto operator=(const CritterHexView&) = delete;
     auto operator=(CritterHexView&&) noexcept = delete;
-    ~CritterHexView() override;
+    ~CritterHexView() override = default;
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
@@ -70,7 +70,7 @@ public:
     [[nodiscard]] auto GetAttackDist() -> uint;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
 #endif
 
     void Init() override;
@@ -98,14 +98,15 @@ public:
     void RefreshModel();
 #endif
 
-    RenderEffect* DrawEffect {};
-    bool Visible {true};
-    uchar Alpha {};
-    bool SprDrawValid {};
-    Sprite* SprDraw {};
     uint SprId {};
     int SprOx {};
     int SprOy {};
+    uchar Alpha {};
+
+    RenderEffect* DrawEffect {};
+    bool Visible {true};
+    Sprite* SprDraw {};
+    bool SprDrawValid {};
     uint FadingTick {};
 
     struct
@@ -153,20 +154,26 @@ private:
     void SetAnimSpr(const AnyFrames* anim, uint frm_index);
 
     MapView* _map;
+
     bool _needReset {};
     uint _resetTick {};
+
     uint _curFrmIndex {};
     uint _animStartTick {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
+
     uint _finishingTime {};
     bool _fadingEnabled {};
     bool _fadeUp {};
+
     uint _tickFidget {};
+
     string _strTextOnHead {};
     uint _tickStartText {};
     uint _tickTextDelay {};
     uint _textOnHeadColor {COLOR_TEXT};
+
     int _oxAnim {};
     int _oyAnim {};
     float _oxExt {};
@@ -174,7 +181,8 @@ private:
     float _oxExtSpeed {};
     float _oyExtSpeed {};
     uint _offsExtNextTick {};
+
 #if FO_ENABLE_3D
-    ModelInstance* _model {};
+    unique_del_ptr<ModelInstance> _model {};
 #endif
 };

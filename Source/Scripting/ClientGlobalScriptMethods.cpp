@@ -1905,11 +1905,9 @@
         return;
     }
 
-    auto*& model = client->DrawCritterModel[instance];
-    if (model == nullptr || client->DrawCritterModelCrType[instance] != modelName) {
-        if (model != nullptr) {
-            client->SprMngr.FreeModel(model);
-        }
+    auto&& model = client->DrawCritterModel[instance];
+    if (!model || client->DrawCritterModelCrType[instance] != modelName) {
+        model = nullptr;
 
         client->SprMngr.PushAtlasType(AtlasType::Dynamic);
         model = client->SprMngr.LoadModel(modelName, false);
@@ -1917,7 +1915,7 @@
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;
 
-        if (model == nullptr) {
+        if (!model) {
             client->DrawCritterModelFailedToLoad[instance] = true;
             return;
         }
@@ -1957,7 +1955,7 @@
     model->SetSpeed(speed);
     model->SetAnimation(anim1, anim2, client->DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
-    client->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), model, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), model.get(), COLOR_SCRIPT_SPRITE(color));
 
     if (count > 13) {
         client->SprMngr.PopScissor();

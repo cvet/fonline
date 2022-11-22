@@ -547,23 +547,23 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
     if (_critterModels.count(model_name) != 0u) {
         _critterModels[model_name]->SetDir(dir, false);
         _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
-        return _critterModels[model_name];
+        return _critterModels[model_name].get();
     }
 
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    auto* model = _sprMngr.LoadModel(model_name, true);
+    auto&& model = _sprMngr.LoadModel(model_name, true);
     _sprMngr.PopAtlasType();
 
-    if (model == nullptr) {
+    if (!model) {
         return nullptr;
     }
-
-    _critterModels[model_name] = model;
 
     model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
     model->SetDir(dir, false);
     model->StartMeshGeneration();
-    return model;
+
+    _critterModels[model_name] = std::move(model);
+    return _critterModels[model_name].get();
 }
 #endif
 

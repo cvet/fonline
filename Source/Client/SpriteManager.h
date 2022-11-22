@@ -221,7 +221,7 @@ public:
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
     [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*;
+    [[nodiscard]] auto LoadModel(string_view fname, bool auto_redraw) -> unique_del_ptr<ModelInstance>;
 #endif
 
     void SetWindowSize(int w, int h);
@@ -269,7 +269,6 @@ public:
     void Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
     void Preload3dModel(string_view model_name);
     void RefreshModelSprite(ModelInstance* model);
-    void FreeModel(ModelInstance* model);
     void Draw3d(int x, int y, ModelInstance* model, uint color);
 #endif
 

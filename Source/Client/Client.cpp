@@ -2061,7 +2061,7 @@ void FOClient::Net_OnEffect()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     // Base hex effect
-    CurMap->RunEffect(eff_pid, hx, hy, hx, hy);
+    CurMap->RunEffectItem(eff_pid, hx, hy, hx, hy);
 
     // Radius hexes effect
     if (radius > MAX_HEX_OFFSET) {
@@ -2077,7 +2077,7 @@ void FOClient::Net_OnEffect()
         const auto ex = static_cast<short>(hx) + sx[i];
         const auto ey = static_cast<short>(hy) + sy[i];
         if (ex >= 0 && ey >= 0 && ex < maxhx && ey < maxhy) {
-            CurMap->RunEffect(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
+            CurMap->RunEffectItem(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
         }
     }
 }
@@ -2118,7 +2118,7 @@ void FOClient::Net_OnFlyEffect()
         eff_cr2_hy = cr2->GetHexY();
     }
 
-    if (!CurMap->RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
+    if (!CurMap->RunEffectItem(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
         WriteLog("Run effect '{}' failed", eff_pid);
     }
 }
@@ -3065,7 +3065,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, const
     UNUSED_VARIABLE(new_value);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        item->SetAnimOffs();
+        item->RefreshOffs();
         item->GetMap()->MeasureHexBorders(item);
     }
 }

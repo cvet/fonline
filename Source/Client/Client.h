@@ -242,7 +242,7 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
-    vector<ModelInstance*> DrawCritterModel {};
+    vector<unique_del_ptr<ModelInstance>> DrawCritterModel {};
 #endif
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};

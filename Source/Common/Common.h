@@ -293,10 +293,8 @@ public:
         { \
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
-            if (!_exceptionParams.empty()) { \
-                _exceptionMessage.append("\n  Context args:"); \
-                for (auto& param : _exceptionParams) \
-                    _exceptionMessage.append("\n  - ").append(param); \
+            for (auto& param : _exceptionParams) { \
+                _exceptionMessage.append("\n  - ").append(param); \
             } \
             _verbStackTrace = GetStackTrace(true); \
             _briefStackTrace = GetStackTrace(false); \
@@ -577,14 +575,20 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT() \
-    void AddRef() { ++RefCounter; } \
+    void AddRef() \
+    { \
+        ++RefCounter; \
+    } \
     void Release() \
     { \
         if (--RefCounter == 0) { \
             delete this; \
         } \
     } \
-    int RefCounter { 1 }
+    int RefCounter \
+    { \
+        1 \
+    }
 
 // Ref counted objects scope holder
 template<typename T>
@@ -1051,7 +1055,6 @@ struct fmt::formatter<hstring>
 static constexpr auto CONFIG_NAME = "FOnline.cfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
-static constexpr uint FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;

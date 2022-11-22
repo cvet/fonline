@@ -372,11 +372,11 @@ void ModelInstance::SetupFrame()
 
     const auto draw_size_scale = std::max(std::max(_matScaleBase.a1, _matScaleBase.b2), _matScaleBase.c3);
     const auto draw_size_scale2 = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
-    draw_width = static_cast<uint>(static_cast<float>(draw_width) * draw_size_scale * draw_size_scale2);
-    draw_height = static_cast<uint>(static_cast<float>(draw_height) * draw_size_scale * draw_size_scale2);
+    draw_width = iround(static_cast<float>(draw_width) * draw_size_scale * draw_size_scale2);
+    draw_height = iround(static_cast<float>(draw_height) * draw_size_scale * draw_size_scale2);
 
-    _frameWidth = static_cast<int>(draw_width) * FRAME_SCALE;
-    _frameHeight = static_cast<int>(draw_height) * FRAME_SCALE;
+    _frameWidth = draw_width * FRAME_SCALE;
+    _frameHeight = draw_height * FRAME_SCALE;
 
     _frameWidthF = static_cast<float>(_frameWidth);
     _frameHeightF = static_cast<float>(_frameHeight);
@@ -393,7 +393,7 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
     const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
     vec3 out;
     MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
-    return {static_cast<int>(std::round(out.x / static_cast<float>(FRAME_SCALE))), static_cast<int>(std::round(out.y / static_cast<float>(FRAME_SCALE)))};
+    return {iround(out.x / static_cast<float>(FRAME_SCALE)), iround(out.y / static_cast<float>(FRAME_SCALE))};
 }
 
 auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
@@ -965,7 +965,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
     return tuple {period, proc_from, proc_to, dir};
 }
 
-auto ModelInstance::GetDrawSize() const -> tuple<uint, uint>
+auto ModelInstance::GetDrawSize() const -> tuple<int, int>
 {
     return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
 }
