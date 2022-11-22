@@ -141,6 +141,7 @@ static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
 static mat44 ProjectionMatrixColMaj {};
+static RenderTexture* DummyTexture {};
 
 // ReSharper disable CppInconsistentNaming
 static bool OGL_version_2_0 {};
@@ -408,6 +409,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     MatrixHelper::MatrixOrtho(ProjectionMatrixColMaj[0], 0.0f, static_cast<float>(settings.ScreenWidth), static_cast<float>(settings.ScreenHeight), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
+
+    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
+    DummyTexture = CreateTexture(1, 1, false, false);
+    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 }
 
 void OpenGL_Renderer::Present()
@@ -1190,7 +1195,8 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         EnableVertAtribs(Usage);
     }
 
-    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (CustomTex[0] != nullptr ? CustomTex[0] : MainTex));
+    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (CustomTex[0] != nullptr ? CustomTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+    const auto* egg_tex = EggTex != nullptr ? EggTex : DummyTexture;
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
@@ -1212,8 +1218,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             }
         }
 
-        // Todo: set dummy texture if not found
-        if (Location_ColorMap[pass] != -1 && main_tex != nullptr) {
+        if (Location_ColorMap[pass] != -1) {
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
             GL(glUniform1i(Location_ColorMap[pass], 0));
 
@@ -1222,14 +1227,14 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             }
         }
 
-        if (Location_EggMap[pass] != -1 && EggTex != nullptr) {
+        if (Location_EggMap[pass] != -1) {
             GL(glActiveTexture(GL_TEXTURE1));
-            GL(glBindTexture(GL_TEXTURE_2D, static_cast<OpenGL_Texture*>(EggTex)->TexId));
+            GL(glBindTexture(GL_TEXTURE_2D, static_cast<const OpenGL_Texture*>(egg_tex)->TexId));
             GL(glUniform1i(Location_EggMap[pass], 1));
             GL(glActiveTexture(GL_TEXTURE0));
 
             if (Location_EggMapSize[pass] != -1) {
-                GL(glUniform4fv(Location_EggMapSize[pass], 1, EggTex->SizeData));
+                GL(glUniform4fv(Location_EggMapSize[pass], 1, egg_tex->SizeData));
             }
         }
 
