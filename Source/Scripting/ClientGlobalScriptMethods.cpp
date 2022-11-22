@@ -2285,7 +2285,7 @@
 
     auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, false);
     if (cr == nullptr && wideRange) {
-        cr = client->CurMap->GetCritterAtScreenPos(x, y, false, true);
+        cr = client->CurMap->GetCritterAtScreenPos(x, y, true, true);
     }
     return cr;
 }
@@ -2342,7 +2342,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !client->CurMap->GetField(hx, hy).Flags.IsNotPassed;
+    return !client->CurMap->GetField(hx, hy).Flags.IsMoveBlocked;
 }
 
 ///# ...
@@ -2359,7 +2359,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !client->CurMap->GetField(hx, hy).Flags.IsNotRaked;
+    return !client->CurMap->GetField(hx, hy).Flags.IsShootBlocked;
 }
 
 ///# ...
