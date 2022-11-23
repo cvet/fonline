@@ -299,6 +299,9 @@ void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_fi
         tex_height += _settings.ScreenHeight - _settings.ScreenHudHeight;
     }
 
+    tex_width = std::max(tex_width, 1);
+    tex_height = std::max(tex_height, 1);
+
     RUNTIME_ASSERT(tex_width > 0);
     RUNTIME_ASSERT(tex_height > 0);
 
