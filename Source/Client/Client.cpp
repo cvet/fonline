@@ -2346,27 +2346,25 @@ void FOClient::Net_OnChosenTalk()
 
     auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
     FormatTags(str, GetChosen(), npc, lexems);
-    auto text_to_script = str;
-    vector<string> answers_to_script;
+    const auto text_to_script = str;
+    string answers_to_script;
     for (const auto answers_text : answers_texts) {
         str = _curLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
         FormatTags(str, GetChosen(), npc, lexems);
-        answers_to_script.push_back(str);
+        answers_to_script += string(!answers_to_script.empty() ? "\n" : "") + str;
     }
 
     _conn.InBuf >> talk_time;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
-    dict->Set("TalkerIsNpc", &is_npc, asTYPEID_BOOL);
-    dict->Set("TalkerId", &talk_id, asTYPEID_UINT32);
-    dict->Set("Text", &text_to_script, ScriptSys.GetEngine()->GetTypeIdByDecl("string"));
-    dict->Set("Answers", &answers_to_script, ScriptSys.GetEngine()->GetTypeIdByDecl("string[]@"));
-    dict->Set("TalkTime", &talk_time, asTYPEID_UINT32);
-    ShowScreen(SCREEN__DIALOG, dict);
-    answers_to_script->Release();
-    dict->Release();*/
+    map<string, string> params;
+    params["TalkerIsNpc"] = _str("{}", is_npc);
+    params["TalkerId"] = _str("{}", talk_id);
+    params["Text"] = _str("{}", text_to_script);
+    params["Answers"] = _str("{}", answers_to_script);
+    params["TalkTime"] = _str("{}", talk_time);
+    ShowScreen(SCREEN_DIALOG, params);
 }
 
 void FOClient::Net_OnTimeSync()
@@ -2673,11 +2671,10 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
     CurMap->RebuildLight();
 
-    /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
-    dict->Set("LocationId", &loc_id, asTYPEID_UINT32);
-    dict->Set("LocationEntrance", &loc_ent, asTYPEID_UINT32);
-    ShowScreen(SCREEN__TOWN_VIEW, dict);
-    dict->Release();*/
+    map<string, string> params;
+    params["LocationId"] = _str("{}", loc_id);
+    params["LocationEntrance"] = _str("{}", loc_ent);
+    ShowScreen(SCREEN_TOWN_VIEW, params);
 }
 
 void FOClient::Net_OnRemoteCall()

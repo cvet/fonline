@@ -73,6 +73,7 @@ constexpr auto SCREEN_GAME = 2;
 constexpr auto SCREEN_GLOBAL_MAP = 3;
 constexpr auto SCREEN_WAIT = 4;
 constexpr auto SCREEN_DIALOG = 6; // Secondary screens
+constexpr auto SCREEN_TOWN_VIEW = 9;
 
 // Connection reason
 constexpr auto INIT_NET_REASON_NONE = 0;

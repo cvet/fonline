@@ -3686,6 +3686,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         CrMngr.CloseTalk(cl);
     }
 
+    hstring selected_dlg_pack_id = dlg_pack_id;
     DialogPack* dialog_pack;
     vector<Dialog>* dialogs;
 
@@ -3695,13 +3696,13 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
             return;
         }
 
-        if (dlg_pack_id) {
+        if (!selected_dlg_pack_id) {
             const auto npc_dlg_id = npc->GetDialogId();
-            if (npc_dlg_id) {
+            if (!npc_dlg_id) {
                 return;
             }
 
-            dlg_pack_id = npc_dlg_id;
+            selected_dlg_pack_id = npc_dlg_id;
         }
 
         if (!ignore_distance) {
@@ -3757,7 +3758,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
             return;
         }
 
-        dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
+        dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
         if (dialogs == nullptr || dialogs->empty()) {
             return;
@@ -3781,7 +3782,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
             return;
         }
 
-        dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
+        dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
         if (dialogs == nullptr || dialogs->empty()) {
             WriteLog("No dialogs, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
@@ -3841,7 +3842,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         cl->Talk.TalkHexY = hy;
     }
 
-    cl->Talk.DialogPackId = dlg_pack_id;
+    cl->Talk.DialogPackId = selected_dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
     cl->Talk.StartTick = GameTime.GameTick();
     cl->Talk.TalkTime = Settings.DlgTalkMaxTime;

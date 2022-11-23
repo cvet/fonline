@@ -276,6 +276,5 @@ private:
     bool _playerDetached {};
     uint _playerDetachTick {};
     vector<Item*> _invItems {};
-    TalkData _talk {};
     uint _talkNextTick {};
 };

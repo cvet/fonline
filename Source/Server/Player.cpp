@@ -658,9 +658,9 @@ void Player::Send_Talk()
 
     RUNTIME_ASSERT(_ownedCr);
 
-    const auto close = _ownedCr->_talk.Type == TalkType::None;
-    const auto is_npc = static_cast<uchar>(_ownedCr->_talk.Type == TalkType::Critter);
-    const auto talk_id = (is_npc != 0u ? _ownedCr->_talk.CritterId : _ownedCr->_talk.DialogPackId.as_uint());
+    const auto close = _ownedCr->Talk.Type == TalkType::None;
+    const auto is_npc = static_cast<uchar>(_ownedCr->Talk.Type == TalkType::Critter);
+    const auto talk_id = (is_npc != 0u ? _ownedCr->Talk.CritterId : _ownedCr->Talk.DialogPackId.as_uint());
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(talk_id) + sizeof(uchar);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -674,12 +674,12 @@ void Player::Send_Talk()
         Connection->Bout << static_cast<uchar>(0);
     }
     else {
-        const auto all_answers = static_cast<uchar>(_ownedCr->_talk.CurDialog.Answers.size());
-        msg_len += sizeof(uint) + sizeof(uint) * all_answers + sizeof(uint) + sizeof(ushort) + static_cast<uint>(_ownedCr->_talk.Lexems.length());
+        const auto all_answers = static_cast<uchar>(_ownedCr->Talk.CurDialog.Answers.size());
+        msg_len += sizeof(uint) + sizeof(uint) * all_answers + sizeof(uint) + sizeof(ushort) + static_cast<uint>(_ownedCr->Talk.Lexems.length());
 
-        auto talk_time = _ownedCr->_talk.TalkTime;
+        auto talk_time = _ownedCr->Talk.TalkTime;
         if (talk_time != 0u) {
-            const auto diff = _engine->GameTime.GameTick() - _ownedCr->_talk.StartTick;
+            const auto diff = _engine->GameTime.GameTick() - _ownedCr->Talk.StartTick;
             talk_time = diff < talk_time ? talk_time - diff : 1;
         }
 
@@ -687,12 +687,12 @@ void Player::Send_Talk()
         Connection->Bout << is_npc;
         Connection->Bout << talk_id;
         Connection->Bout << all_answers;
-        Connection->Bout << static_cast<ushort>(_ownedCr->_talk.Lexems.length()); // Lexems length
-        if (_ownedCr->_talk.Lexems.length() != 0u) {
-            Connection->Bout.Push(_ownedCr->_talk.Lexems.c_str(), static_cast<uint>(_ownedCr->_talk.Lexems.length())); // Lexems string
+        Connection->Bout << static_cast<ushort>(_ownedCr->Talk.Lexems.length()); // Lexems length
+        if (_ownedCr->Talk.Lexems.length() != 0u) {
+            Connection->Bout.Push(_ownedCr->Talk.Lexems.c_str(), static_cast<uint>(_ownedCr->Talk.Lexems.length())); // Lexems string
         }
-        Connection->Bout << _ownedCr->_talk.CurDialog.TextId; // Main text_id
-        for (auto& answer : _ownedCr->_talk.CurDialog.Answers) {
+        Connection->Bout << _ownedCr->Talk.CurDialog.TextId; // Main text_id
+        for (auto& answer : _ownedCr->Talk.CurDialog.Answers) {
             Connection->Bout << answer.TextId; // Answers text_id
         }
         Connection->Bout << talk_time; // Talk time
