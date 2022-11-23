@@ -1056,9 +1056,13 @@
 ///# param duration ...
 ///# param identifier ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFuncName<uint, Critter, int, uint&> func, uint duration, int identifier)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, uint duration, int identifier)
 {
-    self->AddTimeEvent(func, 0, duration, identifier);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    self->AddTimeEvent(func.GetName(), 0, duration, identifier);
 }
 
 ///# ...
@@ -1067,9 +1071,13 @@
 ///# param identifier ...
 ///# param rate ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFuncName<uint, Critter, int, uint&> func, uint duration, int identifier, uint rate)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, uint duration, int identifier, uint rate)
 {
-    self->AddTimeEvent(func, rate, duration, identifier);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    self->AddTimeEvent(func.GetName(), rate, duration, identifier);
 }
 
 ///# ...

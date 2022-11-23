@@ -364,10 +364,10 @@ def parseTags():
             return 'callback.' + unifiedTypeToMetaType(t[9:])
         if t.startswith('ObjInfo-'):
             return t.replace('-', '.')
-        if t.startswith('ScriptFuncName-'):
-            fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFuncName-'):].split('|') if a]
+        if t.startswith('ScriptFunc-'):
+            fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFunc-'):].split('|') if a]
             genericFuncdefs.add('|'.join(fd))
-            return 'ScriptFuncName.' + '|'.join(fd) + '|'
+            return 'ScriptFunc.' + '|'.join(fd) + '|'
         if t.endswith('&'):
             return unifiedTypeToMetaType(t[:-1]) + '.ref'
         if '=>' in t:
@@ -379,6 +379,16 @@ def parseTags():
         return t
 
     def engineTypeToUnifiedType(t):
+        typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
+            'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
+            'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
+            'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
+            'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
+            'bool': 'bool', 'bool&': 'bool&', 'hstring': 'hstring', 'hstring&': 'hstring&', 'void': 'void',
+            'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
+            'char*': 'int8&', 'uchar*': 'uint8&', 'short*': 'int16&', 'ushort*': 'uint16&',
+            'int*': 'int&', 'uint*': 'uint&', 'int64*': 'int64&', 'uint64*': 'uint64&',
+            'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'hstring*': 'hstring&', 'string*': 'string&'}        
         if t.startswith('InitFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'init-' + r
@@ -390,9 +400,9 @@ def parseTags():
             return 'predicate-' + r
         elif t.startswith('ObjInfo<'):
             return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
-        elif t.startswith('ScriptFuncName<'):
+        elif t.startswith('ScriptFunc<'):
             fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
-            return 'ScriptFuncName-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
+            return 'ScriptFunc-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
         elif t.find('map<') != -1:
             tt = t[t.find('<') + 1:t.rfind('>')].split(',', 1)
             r = engineTypeToUnifiedType(tt[0].strip()) + '=>' + engineTypeToUnifiedType(tt[1].strip())
@@ -406,7 +416,7 @@ def parseTags():
             return r
         elif t in validTypes:
             return t
-        elif t[-1] == '*':
+        elif t[-1] == '*' and t not in typeMap:
             tt = t[:-1]
             if tt in userObjects or tt in entityRelatives:
                 return tt
@@ -417,17 +427,8 @@ def parseTags():
                 return 'Entity'
             assert False, tt
         else:
-            def mapType(t):
-                typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
-                        'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                        'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
-                        'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
-                        'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
-                        'bool': 'bool', 'bool&': 'bool&', 'hstring': 'hstring', 'hstring&': 'hstring&', 'void': 'void',
-                        'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string'}
-                assert t in typeMap, 'Invalid engine type ' + t
-                return typeMap[t]
-            return mapType(t)
+            assert t in typeMap, 'Invalid engine type ' + t
+            return typeMap[t]
 
     def engineTypeToMetaType(t):
         ut = engineTypeToUnifiedType(t)
@@ -1221,7 +1222,7 @@ def getEntityFromTarget(target):
         return 'ClientEntity*'
     return 'Entity*'
 
-def metaTypeToEngineType(t, target, passIn):
+def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
     tt = t.split('.')
     if tt[0] == 'dict':
         d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
@@ -1239,8 +1240,8 @@ def metaTypeToEngineType(t, target, passIn):
         r = 'PredicateFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
     elif tt[0] == 'ObjInfo':
         return 'ObjInfo<' + tt[1] + '>'
-    elif tt[0] == 'ScriptFuncName':
-        return 'ScriptFuncName<' + ', '.join([metaTypeToEngineType(a, target, False) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
+    elif tt[0] == 'ScriptFunc':
+        return 'ScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
     elif tt[0] == 'Entity':
         return getEntityFromTarget(target)
     elif tt[0] in gameEntities:
@@ -1263,7 +1264,7 @@ def metaTypeToEngineType(t, target, passIn):
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
-        r += '&'
+        r += '&' if not refAsPtr else '*'
     elif passIn:
         if r == 'string':
             r = 'string_view'
@@ -1614,7 +1615,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 r = 'int'
             elif tt[0] == 'ObjInfo':
                 return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
-            elif tt[0] == 'ScriptFuncName':
+            elif tt[0] == 'ScriptFunc':
                 return 'asIScriptFunction*'
             else:
                 def mapType(t):
@@ -1659,7 +1660,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 r = tt[0] + getHandle()
             elif tt[0] == 'ObjInfo':
                 return '?&in'
-            elif tt[0] == 'ScriptFuncName':
+            elif tt[0] == 'ScriptFunc':
                 assert not isRet
                 assert len(tt) > 1, 'Invalid generic function'
                 return 'Generic_' + '.'.join(tt[1:]).replace('|', '_').replace('.', '_') + 'Func@+'
@@ -1675,8 +1676,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         ', ' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'arr':
                 return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
-            elif tt[0] in ['init', 'predicate', 'callback', 'ScriptFuncName']:
+            elif tt[0] in ['init', 'predicate', 'callback']:
                 return 'GetASFuncName(' + v + ', *self->GetEngine())'
+            elif tt[0] == 'ScriptFunc':
+                return 'GetASScriptFunc<' + ', '.join([metaTypeToEngineType(a, target, False, refAsPtr=True) for a in '.'.join(tt[1:]).split('|') if a]) + '>(' + v + ', GET_SCRIPT_SYS_FROM_SELF())'
             elif tt[0] == 'ObjInfo':
                 return 'GetASObjectInfo(' + v + 'Ptr, ' + v + ')'
             elif tt[0] in engineEnums:

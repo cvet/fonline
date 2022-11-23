@@ -56,63 +56,83 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
 {
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
 {
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
@@ -1103,7 +1123,7 @@
 ///# param func ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFuncName<void, Critter, string> func)
+[[maybe_unused]] void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFunc<void, Critter*, string> func)
 {
     /*uint func_id = server->ScriptSys.BindByFunc(func, false);
     if (!func_id)

@@ -76,8 +76,6 @@ template<typename T>
 using CallbackFunc = hstring;
 template<typename T>
 using PredicateFunc = hstring;
-template<typename...>
-using ScriptFuncName = hstring;
 template<int N>
 using ObjInfo = string_view;
 
@@ -90,48 +88,49 @@ class ProtoLocation;
 
 using AbstractItem = Entity;
 
-struct GenericScriptFunc
+struct ScriptFuncDesc
 {
     hstring Name {};
     string Declaration {};
+    const type_info* RetType {};
     vector<const type_info*> ArgsType {};
     bool CallSupported {};
-    const type_info* RetType {};
     std::function<bool(initializer_list<void*>, void*)> Call {};
+    bool Delegate {};
 };
 
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {
-    friend class ScriptSystem;
-
 public:
     ScriptFunc() = default;
+    explicit ScriptFunc(ScriptFuncDesc* f) : _func {f} { }
     [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
-    [[nodiscard]] auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, &_ret) : false; }
+    [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
+    [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
     [[nodiscard]] auto GetResult() -> TRet { return _ret; }
 
-private:
-    explicit ScriptFunc(GenericScriptFunc* f) : _func {f} { }
+    auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, &_ret) : false; }
 
-    GenericScriptFunc* _func {};
+private:
+    ScriptFuncDesc* _func {};
     TRet _ret {};
 };
 
 template<typename... Args>
 class ScriptFunc<void, Args...> final
 {
-    friend class ScriptSystem;
-
 public:
     ScriptFunc() = default;
+    explicit ScriptFunc(ScriptFuncDesc* f) : _func {f} { }
     [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
-    [[nodiscard]] auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, nullptr) : false; }
+    [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
+    [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
+
+    auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, nullptr) : false; }
 
 private:
-    explicit ScriptFunc(GenericScriptFunc* f) : _func {f} { }
-
-    GenericScriptFunc* _func {};
+    ScriptFuncDesc* _func {};
 };
 
 class ScriptSystem
@@ -180,11 +179,11 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
+    [[nodiscard]] auto ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
 
     vector<std::function<void()>> _loopCallbacks {};
-    std::unordered_multimap<hstring, GenericScriptFunc> _funcMap {};
-    vector<GenericScriptFunc*> _initFunc {};
+    std::unordered_multimap<hstring, ScriptFuncDesc> _funcMap {};
+    vector<ScriptFuncDesc*> _initFunc {};
     unordered_map<uint, std::function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };
