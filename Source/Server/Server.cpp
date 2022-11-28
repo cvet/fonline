@@ -3518,22 +3518,18 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
                 break;
             }
 
-            // Todo: restore DialogUseResult
-            UNUSED_VARIABLE(prop_registrator);
-            throw NotImplementedException(LINE_STR);
-            /*const auto* prop = prop_registrator->GetByIndex(index);
-            int val = 0;
-            CScriptDict* dict = nullptr;
-            if (result.Type == DR_PROP_CRITTER_DICT)
-            {
-                if (!slave)
-                    continue;
+            int val;
 
-                dict = (CScriptDict*)prop->GetValue<void*>(master);
+            if (result.Type == DR_PROP_CRITTER_DICT) {
+                if (slave == nullptr) {
+                    continue;
+                }
+
                 uint slave_id = slave->GetId();
-                void* pvalue = dict->GetDefault(&slave_id, nullptr);
-                if (pvalue)
-                {
+
+                throw NotImplementedException(LINE_STR);
+                /*void* pvalue = dict->GetDefault(&slave_id, nullptr);
+                if (pvalue) {
                     int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
                     if (value_type_id == asTYPEID_BOOL)
                         val = (int)*(bool*)pvalue ? 1 : 0;
@@ -3559,15 +3555,13 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
                         val = (int)*(double*)pvalue;
                     else
                         RUNTIME_ASSERT(false);
-                }
+                }*/
             }
-            else
-            {
-                val = prop->GetPODValueAsInt(entity);
+            else {
+                val = entity->GetProperties().GetValueAsInt(static_cast<int>(result.ParamIndex));
             }
 
-            switch (result.Op)
-            {
+            switch (result.Op) {
             case '+':
                 val += result.Value;
                 break;
@@ -3587,9 +3581,9 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
                 break;
             }
 
-            if (result.Type == DR_PROP_CRITTER_DICT)
-            {
-                uint64 buf = 0;
+            if (result.Type == DR_PROP_CRITTER_DICT) {
+                throw NotImplementedException(LINE_STR);
+                /*uint64 buf = 0;
                 void* pvalue = &buf;
                 int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
                 if (value_type_id == asTYPEID_BOOL)
@@ -3620,12 +3614,11 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
                 uint slave_id = slave->GetId();
                 dict->Set(&slave_id, pvalue);
                 prop->SetValue<void*>(entity, dict);
-                dict->Release();
+                dict->Release();*/
             }
-            else
-            {
-                prop->SetPODValueAsInt(entity, val);
-            }*/
+            else {
+                entity->GetPropertiesForEdit().SetValueAsInt(static_cast<int>(result.ParamIndex), val);
+            }
         }
             continue;
         case DR_ITEM: {

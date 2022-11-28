@@ -4372,13 +4372,23 @@ void MapView::MarkPassedHexes()
     RefreshMap();
 }
 
-auto MapView::GenerateEntityId() -> uint
+auto MapView::GetTempEntityId() const -> uint
 {
     RUNTIME_ASSERT(_mapperMode);
 
-    // Todo: generate unique entity id
-    throw NotImplementedException(LINE_STR);
-    return 0u;
+    auto max_id = static_cast<uint>(-1);
+
+    for (const auto* cr : _critters) {
+        RUNTIME_ASSERT(cr->GetId() != 0u);
+        max_id = std::min(cr->GetId(), max_id);
+    }
+    for (const auto* item : _items) {
+        RUNTIME_ASSERT(item->GetId() != 0u);
+        max_id = std::min(item->GetId(), max_id);
+    }
+
+    RUNTIME_ASSERT(max_id > 0x7FFFFFFF);
+    return max_id - 1;
 }
 
 auto MapView::SaveToText() const -> string

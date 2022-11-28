@@ -279,7 +279,7 @@ public:
     void ClearIgnorePids();
     void MarkPassedHexes();
 
-    auto GenerateEntityId() -> uint;
+    auto GetTempEntityId() const -> uint;
 
     auto SaveToText() const -> string;
 

@@ -2700,10 +2700,10 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
 
     if (owner != nullptr) {
         if (auto* cr = dynamic_cast<CritterHexView*>(owner); cr != nullptr) {
-            item = cr->AddItem(cr->GetMap()->GenerateEntityId(), proto_item, 0u, {});
+            item = cr->AddItem(cr->GetMap()->GetTempEntityId(), proto_item, 0u, {});
         }
         if (auto* cont = dynamic_cast<ItemHexView*>(owner); cont != nullptr) {
-            item = cont->AddInnerItem(cont->GetMap()->GenerateEntityId(), proto_item, 0u, {});
+            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto_item, 0u, {});
         }
     }
     else {
@@ -2769,10 +2769,10 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         }
 
         // Todo: clone entities
-        owner = CurMap->AddCritter(CurMap->GenerateEntityId(), dynamic_cast<const ProtoCritter*>(cr->GetProto()), hx, hy, {});
+        owner = CurMap->AddCritter(CurMap->GetTempEntityId(), dynamic_cast<const ProtoCritter*>(cr->GetProto()), hx, hy, {});
     }
     else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        owner = CurMap->AddItem(CurMap->GenerateEntityId(), item->GetProtoId(), item->GetHexX(), item->GetHexY(), true, nullptr);
+        owner = CurMap->AddItem(CurMap->GetTempEntityId(), item->GetProtoId(), item->GetHexX(), item->GetHexY(), true, nullptr);
     }
     else {
         return nullptr;

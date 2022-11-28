@@ -354,12 +354,18 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     // Map framebuffer_object_ext to framebuffer_object
     if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object)) {
+        WriteLog("Map framebuffer_object_ext pointers");
         OGL_framebuffer_object = true;
-        // glGenFramebuffers = glGenFramebuffersEXT;
-        // glBindFramebuffer = glBindFramebufferEXT;
-        // glFramebufferTexture2D = glFramebufferTexture2DEXT;
-        // Todo: map all framebuffer ext functions
-        throw NotImplementedException(LINE_STR);
+        glGenFramebuffers = glGenFramebuffersEXT;
+        glGenRenderbuffers = glGenRenderbuffersEXT;
+        glBindFramebuffer = glBindFramebufferEXT;
+        glBindRenderbuffer = glBindRenderbufferEXT;
+        glDeleteFramebuffers = glDeleteFramebuffersEXT;
+        glDeleteRenderbuffers = glDeleteRenderbuffersEXT;
+        glFramebufferTexture2D = glFramebufferTexture2DEXT;
+        glFramebufferRenderbuffer = glFramebufferRenderbufferEXT;
+        glRenderbufferStorage = glRenderbufferStorageEXT;
+        glCheckFramebufferStatus = glCheckFramebufferStatusEXT;
     }
 
     // Render states
