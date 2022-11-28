@@ -246,6 +246,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
 
             // Clients loop
+            if (ImGui::IsAnyItemHovered()) {
+                App->Input.ClearEvents();
+            }
+
             for (auto* client : Data->Clients) {
                 ShowExceptionMessageBox(true);
                 try {

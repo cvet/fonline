@@ -1212,6 +1212,11 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
     return false;
 }
 
+void AppInput::ClearEvents()
+{
+    EventsQueue->clear();
+}
+
 void AppInput::PushEvent(const InputEvent& ev)
 {
     NextFrameEventsQueue->push_back(ev);

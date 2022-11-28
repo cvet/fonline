@@ -288,6 +288,7 @@ public:
 
     [[nodiscard]] auto PollEvent(InputEvent& ev) -> bool;
 
+    void ClearEvents();
     void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& ev);
     void SetClipboardText(string_view text);

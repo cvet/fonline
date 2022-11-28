@@ -326,6 +326,10 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
     return false;
 }
 
+void AppInput::ClearEvents()
+{
+}
+
 void AppInput::PushEvent(const InputEvent& ev)
 {
     UNUSED_VARIABLE(ev);
