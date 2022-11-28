@@ -3706,9 +3706,9 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if (cl->Talk.CurDialog.DlgScriptFunc) {
+    if (cl->Talk.CurDialog.DlgScriptFuncName) {
         cl->Talk.Locked = true;
-        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFunc, cl, npc, cl->Talk.Lexems)) {
+        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFuncName, cl, npc, cl->Talk.Lexems)) {
             // Nop
         }
         cl->Talk.Locked = false;
@@ -3836,7 +3836,7 @@ void FOServer::Process_Dialog(Player* player)
             [[fallthrough]];
         case DIALOG_BARTER:
         label_Barter:
-            if (cur_dialog->DlgScriptFunc) {
+            if (cur_dialog->DlgScriptFuncName) {
                 cr->Send_TextMsg(npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
                 return;
             }
@@ -3896,9 +3896,9 @@ void FOServer::Process_Dialog(Player* player)
 
     // Get lexems
     cr->Talk.Lexems.clear();
-    if (cr->Talk.CurDialog.DlgScriptFunc) {
+    if (cr->Talk.CurDialog.DlgScriptFuncName) {
         cr->Talk.Locked = true;
-        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, npc, cr->Talk.Lexems)) {
+        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFuncName, cr, npc, cr->Talk.Lexems)) {
             // Nop
         }
         cr->Talk.Locked = false;
@@ -3972,31 +3972,105 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint
     return item;
 }
 
-auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool
+auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool
 {
-    /*int bind_id = (int)demand.ParamId;
-    ScriptSys.PrepareContext(bind_id, master->GetName());
-    ScriptSys.SetArgEntity(master);
-    ScriptSys.SetArgEntity(slave);
-    for (int i = 0; i < demand.ValuesCount; i++)
-        ScriptSys.SetArgUInt(demand.ValueExt[i]);
-    if (ScriptSys.RunPrepared())
-        return ScriptSys.GetReturnedBool();*/
-    return false;
+    NON_CONST_METHOD_HINT();
+
+    bool result;
+
+    switch (demand.ValuesCount) {
+    case 0:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName, master, slave, result) && result;
+    case 1:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
+    case 2:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
+    case 3:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
+    case 4:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
+    case 5:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
+    default:
+        throw UnreachablePlaceException(LINE_STR);
+    }
 }
 
-auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter* /*slave*/) -> uint
+auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint
 {
-    /*int bind_id = (int)result.ParamId;
-    ScriptSys.PrepareContext(
-        bind_id, _str("Critter '{}', func '{}'", master->GetName(), ScriptSys.GetBindFuncName(bind_id)));
-    ScriptSys.SetArgEntity(master);
-    ScriptSys.SetArgEntity(slave);
-    for (int i = 0; i < result.ValuesCount; i++)
-        ScriptSys.SetArgUInt(result.ValueExt[i]);
-    if (ScriptSys.RunPrepared() && result.RetValue)
-        return ScriptSys.GetReturnedUInt();*/
-    return 0;
+    NON_CONST_METHOD_HINT();
+
+    switch (result.ValuesCount) {
+    case 0:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+            return func(master, slave) ? func.GetResult() : 0u;
+        }
+        break;
+    case 1:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 2:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 3:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 4:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 5:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0u;
+        }
+        break;
+    default:
+        throw UnreachablePlaceException(LINE_STR);
+    }
+
+    switch (result.ValuesCount) {
+    case 0:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName, master, slave)) {
+            return 0u;
+        }
+        break;
+    case 1:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
+            return 0u;
+        }
+        break;
+    case 2:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
+            return 0u;
+        }
+        break;
+    case 3:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
+            return 0u;
+        }
+        break;
+    case 4:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
+            return 0u;
+        }
+        break;
+    case 5:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
+            return 0u;
+        }
+        break;
+    default:
+        throw UnreachablePlaceException(LINE_STR);
+    }
+
+    return 0u;
 }
 
 auto FOServer::MakePlayerId(string_view player_name) const -> uint

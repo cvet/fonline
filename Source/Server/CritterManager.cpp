@@ -505,9 +505,9 @@ void CritterManager::CloseTalk(Critter* cr)
             }
         }
 
-        if (cr->Talk.CurDialog.DlgScriptFunc) {
+        if (cr->Talk.CurDialog.DlgScriptFuncName) {
             cr->Talk.Locked = true;
-            if (!_engine->ScriptSys->CallFunc<void, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, talker)) {
+            if (!_engine->ScriptSys->CallFunc<void, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFuncName, cr, talker)) {
                 // Nop
             }
             cr->Talk.Locked = false;

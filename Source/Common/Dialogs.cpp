@@ -121,11 +121,6 @@ void DialogManager::LoadFromResources()
     }
 }
 
-void DialogManager::ValidateDialogs()
-{
-    // Todo: validate script entries, hashes
-}
-
 void DialogManager::AddDialog(DialogPack* pack)
 {
     if (_dialogPacks.count(pack->PackId) != 0u) {
@@ -272,7 +267,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
         current_dialog.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
-        current_dialog.DlgScriptFunc = _engine->ToHashedString(script);
+        current_dialog.DlgScriptFuncName = _engine->ToHashedString(script);
         current_dialog.NoShuffle = ((flags & 1) == 1);
 
         // Read answers
@@ -365,7 +360,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     return pack.release();
 }
 
-auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
+auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq*
 {
     NON_CONST_METHOD_HINT();
 
@@ -479,7 +474,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
             input >> value_str;
             script_val[4] = _engine->ResolveGenericValue(value_str);
         }
-        if (values_count > 5) {
+        if (values_count < 0 || values_count > 5) {
             throw DialogParseException("Invalid values count", values_count);
         }
     } break;
@@ -495,12 +490,12 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     }
 
     // Fill
-    auto* result = new DemandResult();
+    auto* result = new DialogAnswerReq();
     result->Type = type;
     result->Who = who;
     result->ParamIndex = id_index;
     result->ParamHash = id_hash;
-    result->ParamFuncName = script_name;
+    result->AnswerScriptFuncName = _engine->ToHashedString(script_name);
     result->Op = oper;
     result->ValuesCount = static_cast<uchar>(values_count);
     result->NoRecheck = no_recheck;

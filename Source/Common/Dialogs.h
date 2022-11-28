@@ -67,13 +67,13 @@ static constexpr uchar DR_WHO_NONE = 0;
 static constexpr uchar DR_WHO_PLAYER = 1;
 static constexpr uchar DR_WHO_NPC = 2;
 
-struct DemandResult
+struct DialogAnswerReq
 {
     uchar Type {DR_NONE};
     uchar Who {DR_WHO_NONE};
     uint ParamIndex {};
     hstring ParamHash {};
-    string ParamFuncName {};
+    hstring AnswerScriptFuncName {};
     bool NoRecheck {};
     bool RetValue {};
     char Op {};
@@ -86,8 +86,8 @@ struct DialogAnswer
 {
     uint Link {};
     uint TextId {};
-    vector<DemandResult> Demands {};
-    vector<DemandResult> Results {};
+    vector<DialogAnswerReq> Demands {};
+    vector<DialogAnswerReq> Results {};
 };
 
 struct Dialog
@@ -96,7 +96,7 @@ struct Dialog
     uint TextId {};
     vector<DialogAnswer> Answers {};
     bool NoShuffle {};
-    hstring DlgScriptFunc {}; // Todo: verify DlgScriptFunc
+    hstring DlgScriptFuncName {};
 };
 
 struct DialogPack
@@ -145,7 +145,6 @@ public:
     [[nodiscard]] auto GetDialogs() -> vector<DialogPack*>;
 
     void LoadFromResources();
-    void ValidateDialogs();
 
 private:
     [[nodiscard]] auto GetDrType(string_view str) -> uchar;
@@ -154,7 +153,7 @@ private:
 
     [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     void AddDialog(DialogPack* pack);
-    [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
+    [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq*;
 
     FOEngineBase* _engine;
     map<hstring, unique_ptr<DialogPack>> _dialogPacks {};
