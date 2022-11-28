@@ -128,7 +128,8 @@ void ItemHexView::Process()
             _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
         }
         else {
-            const auto cur_spr = _begFrm + (_endFrm - _begFrm + (_begFrm < _endFrm ? 1 : -1)) * anim_proc / 100;
+            const auto cur_spr = lerp(_begFrm, _endFrm, static_cast<float>(anim_proc) / 100.0f);
+            RUNTIME_ASSERT((cur_spr >= _begFrm && cur_spr <= _endFrm) || (cur_spr >= _endFrm && cur_spr <= _begFrm));
             if (_curFrm != cur_spr) {
                 SetSpr(cur_spr);
             }

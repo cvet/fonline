@@ -1431,6 +1431,24 @@ constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
     return result;
 }
 
+template<typename T, typename U = std::decay_t<T>>
+constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t)
+{
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
+}
+
+template<typename T, typename U = std::decay_t<T>>
+constexpr std::enable_if_t<std::is_integral_v<U> && std::is_signed_v<U>, U> lerp(T v1, T v2, float t)
+{
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + static_cast<U>((v2 - v1) * t));
+}
+
+template<typename T, typename U = std::decay_t<T>>
+constexpr std::enable_if_t<std::is_integral_v<U> && std::is_unsigned_v<U>, U> lerp(T v1, T v2, float t)
+{
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
+}
+
 template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 constexpr auto iround(T value) -> int
 {
