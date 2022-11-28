@@ -81,18 +81,9 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
         type = DR_PROP_MAP;
     }
 
-    if (type == DR_PROP_CRITTER && prop->IsDict()) {
-        type = DR_PROP_CRITTER_DICT;
-        if (prop->GetDictKeyTypeName() != "uint") {
-            throw DialogParseException("DR property Dict must have 'uint' in key", str);
-        }
+    if (!prop->IsPlainData()) {
+        throw DialogParseException("DR property is not plain data type", str);
     }
-    else {
-        if (!prop->IsPlainData()) {
-            throw DialogParseException("DR property is not PlainData type", str);
-        }
-    }
-
     if (prop->IsDisabled()) {
         throw DialogParseException("DR property is disabled", str);
     }

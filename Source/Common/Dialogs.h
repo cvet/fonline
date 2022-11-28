@@ -54,7 +54,6 @@ static constexpr ushort DIALOG_BARTER = 0xFFE2;
 static constexpr uchar DR_NONE = 0;
 static constexpr uchar DR_PROP_GLOBAL = 1;
 static constexpr uchar DR_PROP_CRITTER = 2;
-static constexpr uchar DR_PROP_CRITTER_DICT = 3;
 static constexpr uchar DR_PROP_ITEM = 4;
 static constexpr uchar DR_PROP_LOCATION = 5;
 static constexpr uchar DR_PROP_MAP = 6;

@@ -164,6 +164,11 @@ public:
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
     [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
 
+    [[nodiscard]] auto IsInt() const -> bool { return _isInt; }
+    [[nodiscard]] auto IsSignedInt() const -> bool { return _isSignedInt; }
+    [[nodiscard]] auto IsFloat() const -> bool { return _isFloat; }
+    [[nodiscard]] auto IsBool() const -> bool { return _isBool; }
+
     [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
     [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }

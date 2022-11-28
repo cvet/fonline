@@ -3272,84 +3272,33 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer
         switch (demand.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
-        case DR_PROP_CRITTER_DICT:
         case DR_PROP_ITEM:
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
-            Entity* entity = nullptr;
-            const PropertyRegistrator* prop_registrator = nullptr;
+            const Entity* entity = nullptr;
+
             if (demand.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
-            }
-            else if (demand.Type == DR_PROP_CRITTER_DICT) {
-                entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME);
             }
+
             if (entity == nullptr) {
                 break;
             }
 
-            const auto* prop = prop_registrator->GetByIndex(demand.ParamIndex);
-            auto val = 0;
-            if (demand.Type == DR_PROP_CRITTER_DICT) {
-                if (slave == nullptr) {
-                    break;
-                }
-
-                /*CScriptDict* dict = (CScriptDict*)prop->GetValue<void*>(entity);
-                uint slave_id = slave->GetId();
-                void* pvalue = dict->GetDefault(&slave_id, nullptr);
-                dict->Release();
-                if (pvalue)
-                {
-                    int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
-                    if (value_type_id == asTYPEID_BOOL)
-                        val = (int)*(bool*)pvalue ? 1 : 0;
-                    else if (value_type_id == asTYPEID_INT8)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT16)
-                        val = (int)*(short*)pvalue;
-                    else if (value_type_id == asTYPEID_INT32)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT64)
-                        val = (int)*(int64*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT8)
-                        val = (int)*(uchar*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT16)
-                        val = (int)*(ushort*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT32)
-                        val = (int)*(uint*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT64)
-                        val = (int)*(uint64*)pvalue;
-                    else if (value_type_id == asTYPEID_FLOAT)
-                        val = (int)*(float*)pvalue;
-                    else if (value_type_id == asTYPEID_DOUBLE)
-                        val = (int)*(double*)pvalue;
-                    else
-                        RUNTIME_ASSERT(false);
-                }*/
-            }
-            else {
-                val = entity->GetProperties().GetPlainDataValueAsInt(prop);
-            }
+            const auto val = entity->GetProperties().GetValueAsInt(static_cast<int>(demand.ParamIndex));
 
             switch (demand.Op) {
             case '>':
@@ -3483,83 +3432,33 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
         switch (result.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
-        case DR_PROP_CRITTER_DICT:
         case DR_PROP_ITEM:
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
             Entity* entity = nullptr;
-            const PropertyRegistrator* prop_registrator = nullptr;
+
             if (result.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
-            }
-            else if (result.Type == DR_PROP_CRITTER_DICT) {
-                entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME);
             }
+
             if (entity == nullptr) {
                 break;
             }
 
-            int val;
-
-            if (result.Type == DR_PROP_CRITTER_DICT) {
-                if (slave == nullptr) {
-                    continue;
-                }
-
-                uint slave_id = slave->GetId();
-
-                throw NotImplementedException(LINE_STR);
-                /*void* pvalue = dict->GetDefault(&slave_id, nullptr);
-                if (pvalue) {
-                    int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
-                    if (value_type_id == asTYPEID_BOOL)
-                        val = (int)*(bool*)pvalue ? 1 : 0;
-                    else if (value_type_id == asTYPEID_INT8)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT16)
-                        val = (int)*(short*)pvalue;
-                    else if (value_type_id == asTYPEID_INT32)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT64)
-                        val = (int)*(int64*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT8)
-                        val = (int)*(uchar*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT16)
-                        val = (int)*(ushort*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT32)
-                        val = (int)*(uint*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT64)
-                        val = (int)*(uint64*)pvalue;
-                    else if (value_type_id == asTYPEID_FLOAT)
-                        val = (int)*(float*)pvalue;
-                    else if (value_type_id == asTYPEID_DOUBLE)
-                        val = (int)*(double*)pvalue;
-                    else
-                        RUNTIME_ASSERT(false);
-                }*/
-            }
-            else {
-                val = entity->GetProperties().GetValueAsInt(static_cast<int>(result.ParamIndex));
-            }
+            auto val = entity->GetProperties().GetValueAsInt(static_cast<int>(result.ParamIndex));
 
             switch (result.Op) {
             case '+':
@@ -3581,44 +3480,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
                 break;
             }
 
-            if (result.Type == DR_PROP_CRITTER_DICT) {
-                throw NotImplementedException(LINE_STR);
-                /*uint64 buf = 0;
-                void* pvalue = &buf;
-                int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
-                if (value_type_id == asTYPEID_BOOL)
-                    *(bool*)pvalue = val != 0;
-                else if (value_type_id == asTYPEID_INT8)
-                    *(char*)pvalue = (char)val;
-                else if (value_type_id == asTYPEID_INT16)
-                    *(short*)pvalue = (short)val;
-                else if (value_type_id == asTYPEID_INT32)
-                    *(int*)pvalue = (int)val;
-                else if (value_type_id == asTYPEID_INT64)
-                    *(int64*)pvalue = (int64)val;
-                else if (value_type_id == asTYPEID_UINT8)
-                    *(uchar*)pvalue = (uchar)val;
-                else if (value_type_id == asTYPEID_UINT16)
-                    *(ushort*)pvalue = (ushort)val;
-                else if (value_type_id == asTYPEID_UINT32)
-                    *(uint*)pvalue = (uint)val;
-                else if (value_type_id == asTYPEID_UINT64)
-                    *(uint64*)pvalue = (uint64)val;
-                else if (value_type_id == asTYPEID_FLOAT)
-                    *(float*)pvalue = (float)val;
-                else if (value_type_id == asTYPEID_DOUBLE)
-                    *(double*)pvalue = (double)val;
-                else
-                    RUNTIME_ASSERT(false);
-
-                uint slave_id = slave->GetId();
-                dict->Set(&slave_id, pvalue);
-                prop->SetValue<void*>(entity, dict);
-                dict->Release();*/
-            }
-            else {
-                entity->GetPropertiesForEdit().SetValueAsInt(static_cast<int>(result.ParamIndex), val);
-            }
+            entity->GetPropertiesForEdit().SetValueAsInt(static_cast<int>(result.ParamIndex), val);
         }
             continue;
         case DR_ITEM: {
