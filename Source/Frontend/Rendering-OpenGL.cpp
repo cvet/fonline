@@ -255,6 +255,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     ForceGlslEsProfile = settings.ForceGlslEsProfile;
     SdlWindow = static_cast<SDL_Window*>(window);
 
+    // Create context
 #if !FO_WEB
     GlContext = SDL_GL_CreateContext(SdlWindow);
     RUNTIME_ASSERT_STR(GlContext, _str("OpenGL context not created, error '{}'", SDL_GetError()));
@@ -353,6 +354,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #undef CHECK_EXTENSION
 
     // Map framebuffer_object_ext to framebuffer_object
+#if !FO_OPENGL_ES
     if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object)) {
         WriteLog("Map framebuffer_object_ext pointers");
         OGL_framebuffer_object = true;
@@ -367,6 +369,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         glRenderbufferStorage = glRenderbufferStorageEXT;
         glCheckFramebufferStatus = glCheckFramebufferStatusEXT;
     }
+#endif
 
     // Render states
     GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
