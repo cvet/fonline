@@ -83,16 +83,14 @@ void DeleteGlobalData()
 }
 void ReportExceptionAndExit(const std::exception& ex)
 {
-    WriteLog(LogType::Error, "{}", ex.what());
-
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}", ex_info->GetVerbStackTrace());
+        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}\nShutdown!", ex.what(), ex_info->GetVerbStackTrace(), GetStackTrace(true));
     }
-
-    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace(true));
-    WriteLog(LogType::Error, "Shutdown!");
+    else {
+        WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace(true));
+    }
 
     if (BreakIntoDebugger(ex.what())) {
         ExitApp(false);
@@ -112,15 +110,14 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
-    WriteLog(LogType::Error, "{}", ex.what());
-
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}", ex_info->GetVerbStackTrace());
+        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}", ex.what(), ex_info != nullptr ? ex_info->GetVerbStackTrace() : "", GetStackTrace(true));
     }
-
-    WriteLog(LogType::Error, "Catched at: {}", GetStackTrace(true));
+    else {
+        WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace(true));
+    }
 
     if (BreakIntoDebugger(ex.what())) {
         return;

@@ -73,11 +73,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp(argc, argv, "Server");
 
-        string log_buffer;
-        SetLogCallback("ServerApp", [&log_buffer](auto str) {
-            log_buffer += str;
-            if (log_buffer.size() > 10000000) {
-                log_buffer = log_buffer.substr(log_buffer.size() - 50000000);
+        list<vector<string>> log_buffer;
+        SetLogCallback("ServerApp", [&log_buffer](string_view str) {
+            if (auto&& lines = _str(str).split('\n'); !lines.empty()) {
+                log_buffer.emplace_back(std::move(lines));
             }
         });
 
@@ -192,9 +191,16 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         CreateDumpMessage("ManualDump", "Manual");
                     }
                     if (ImGui::Button("Save log", control_btn_size)) {
+                        string log_lines;
+                        for (auto&& lines : log_buffer) {
+                            for (auto&& line : lines) {
+                                log_lines += line + '\n';
+                            }
+                        }
+
                         const auto dt = Timer::GetCurrentDateTime();
                         const string log_name = _str("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-                        DiskFileSystem::OpenFile(log_name, true).Write(log_buffer);
+                        DiskFileSystem::OpenFile(log_name, true).Write(log_lines);
                     }
 
                     if (!App->Settings.Quit) {
@@ -238,8 +244,13 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
-                    if (!log_buffer.empty()) {
-                        ImGui::TextUnformatted(log_buffer.c_str(), log_buffer.c_str() + log_buffer.size());
+                    for (auto&& lines : log_buffer) {
+                        if (ImGui::TreeNodeEx(lines.front().c_str(), (lines.size() < 2 ? ImGuiTreeNodeFlags_Leaf : 0) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                            for (size_t i = 1; i < lines.size(); i++) {
+                                ImGui::TextUnformatted(lines[i].c_str(), lines[i].c_str() + lines[i].size());
+                            }
+                            ImGui::TreePop();
+                        }
                     }
                 }
                 ImGui::End();
