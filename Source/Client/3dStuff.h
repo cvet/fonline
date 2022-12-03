@@ -313,8 +313,6 @@ private:
     ModelManager& _modelMngr;
     int _frameWidth {};
     int _frameHeight {};
-    float _frameWidthF {};
-    float _frameHeightF {};
     mat44 _frameProjRowMaj {};
     mat44 _frameProjColMaj {};
     uint _curAnim1 {};

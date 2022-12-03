@@ -150,10 +150,11 @@ void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest
         return;
     }
 
-    _elapsedTime += dt;
+    _elapsedTime += static_cast<double>(dt);
 
     mat44 pos_offset_mat;
     mat44::Translation(pos_offest, pos_offset_mat);
+
     mat44 view_offset_mat;
     mat44::Translation(view_offset, view_offset_mat);
 
@@ -166,12 +167,10 @@ void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest
         mat44 result_pos_pos_mat;
         mat44::Translation(result_pos_pos, result_pos_pos_mat);
 
-        mat44 cam_rot_mat;
-        mat44::RotationX(_particleMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, cam_rot_mat);
         mat44 look_dir_mat;
         mat44::RotationY((look_dir - 90.0f) * PI_FLOAT / 180.0f, look_dir_mat);
 
-        mat44 result_pos_mat = result_pos_pos_mat * cam_rot_mat * look_dir_mat;
+        mat44 result_pos_mat = result_pos_pos_mat * look_dir_mat;
 
         _impl->System->getTransform().set(result_pos_mat.Transpose()[0]);
     }
@@ -189,14 +188,19 @@ void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest
     _impl->System->updateParticles(dt);
 }
 
-void ParticleSystem::Draw(const mat44& proj, const vec3& view_offset) const
+void ParticleSystem::Draw(const mat44& proj, const vec3& view_offset, float cam_rot) const
 {
     if (!_impl->System->isActive()) {
         return;
     }
 
-    mat44 view;
-    mat44::Translation({-view_offset.x, -view_offset.y, -view_offset.z}, view);
+    mat44 view_offset_mat;
+    mat44::Translation({-view_offset.x, -view_offset.y, -view_offset.z}, view_offset_mat);
+
+    mat44 cam_rot_mat;
+    mat44::RotationX(cam_rot * PI_FLOAT / 180.0f, cam_rot_mat);
+
+    mat44 view = view_offset_mat * cam_rot_mat;
     view.Transpose();
 
     _particleMngr._projMat = view * proj;

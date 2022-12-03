@@ -378,12 +378,11 @@ void ModelInstance::SetupFrame()
     _frameWidth = draw_width * FRAME_SCALE;
     _frameHeight = draw_height * FRAME_SCALE;
 
-    _frameWidthF = static_cast<float>(_frameWidth);
-    _frameHeightF = static_cast<float>(_frameHeight);
-
     // Projection
-    const auto k = static_cast<float>(_frameHeight) / 768.0f;
-    MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, 18.65f * k * _frameWidthF / _frameHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    const auto frame_ratio = static_cast<float>(_frameWidth) / static_cast<float>(_frameHeight);
+    const auto proj_height = static_cast<float>(_frameHeight) / 768.0f * 18.65f;
+    const auto proj_width = proj_height * frame_ratio;
+    MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProjRowMaj;
     _frameProjColMaj.Transpose();
 }
@@ -402,7 +401,7 @@ auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
     const auto xf = static_cast<float>(x) * static_cast<float>(FRAME_SCALE);
     const auto yf = static_cast<float>(y) * static_cast<float>(FRAME_SCALE);
     vec3 out;
-    MatrixHelper::MatrixUnproject(xf, _frameHeightF - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    MatrixHelper::MatrixUnproject(xf, static_cast<float>(_frameHeight) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }
@@ -1882,7 +1881,7 @@ void ModelInstance::DrawAllParticles()
     NON_CONST_METHOD_HINT();
 
     for (auto&& particle_system : _particleSystems) {
-        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset);
+        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset, _modelMngr._settings.MapCameraAngle);
     }
 
     for (auto* child : _children) {

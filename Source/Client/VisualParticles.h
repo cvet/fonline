@@ -97,7 +97,7 @@ public:
 
     void Respawn();
     void Update(float dt, const mat44& world, const vec3& pos_offest, float look_dir, const vec3& view_offset);
-    void Draw(const mat44& proj, const vec3& view_offset) const;
+    void Draw(const mat44& proj, const vec3& view_offset, float cam_rot) const;
     void SetBaseSystem(SPK::System* system);
 
 private:
