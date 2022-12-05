@@ -58,7 +58,7 @@ void EditorView::Draw()
     }
 
     bool opened = true;
-    if (ImGui::Begin(GetViewName().c_str(), &opened, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin(GetViewName().c_str(), &opened, ImGuiWindowFlags_NoCollapse)) {
         OnDraw();
     }
     ImGui::End();

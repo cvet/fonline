@@ -158,6 +158,7 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : Edito
     }
 
     _cameraAngle = _editor.Settings.MapCameraAngle;
+    _projFactor = _editor.Settings.ModelProjFactor;
     _dirAngle = 0.0f;
 
     _frameStart = std::chrono::high_resolution_clock::now();
@@ -174,7 +175,7 @@ void ParticleEditor::OnDraw()
 
     _impl->Changed = false;
 
-    if (ImGui::BeginChild("Info", {0.0f, 350.0f})) {
+    if (ImGui::BeginChild("Info", {0.0f, static_cast<float>(_frameHeight + 220)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
@@ -184,8 +185,11 @@ void ParticleEditor::OnDraw()
         ImGui::Text("Elapsed: %.2f", static_cast<double>(_impl->Particles->GetElapsedTime()));
         ImGui::SameLine();
         ImGui::SliderFloat("##Speed", &_speed, 0.0f, 5.0f);
+        ImGui::SliderInt("Frame width", &_frameWidth, 1, 1000);
+        ImGui::SliderInt("Frame height", &_frameHeight, 1, 1000);
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
         ImGui::SliderFloat("Camera angle", &_cameraAngle, 1.0f, 89.0f);
+        ImGui::SliderFloat("Proj factor", &_projFactor, 0.1f, 100.0f);
 
         if (ImGui::Button("Respawn")) {
             _impl->Particles->Respawn();
@@ -225,10 +229,10 @@ void ParticleEditor::OnDraw()
         _impl->Particles->Respawn();
     }
 
-    const auto frame_width = 200.0f;
-    const auto frame_height = 200.0f;
+    const auto frame_width = static_cast<float>(_frameWidth);
+    const auto frame_height = static_cast<float>(_frameHeight);
     const auto frame_ratio = frame_width / frame_height;
-    const auto proj_height = frame_height / 768.0f * 18.65f;
+    const auto proj_height = frame_height * (1.0f / _projFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     mat44 proj;
@@ -256,7 +260,7 @@ void ParticleEditor::OnDraw()
 
     auto pos = ImGui::GetWindowPos();
     pos.x += 120.0f;
-    pos.y += 165.0f;
+    pos.y += 240.0f;
 
     const auto border_col = ImGui::ColorConvertFloat4ToU32({1.0f, 0.0f, 0.0f, 1.0f});
 

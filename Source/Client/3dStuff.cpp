@@ -380,7 +380,7 @@ void ModelInstance::SetupFrame()
 
     // Projection
     const auto frame_ratio = static_cast<float>(_frameWidth) / static_cast<float>(_frameHeight);
-    const auto proj_height = static_cast<float>(_frameHeight) / 768.0f * 18.65f;
+    const auto proj_height = static_cast<float>(_frameHeight) * (1.0f / _modelMngr._settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
     MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProjRowMaj;

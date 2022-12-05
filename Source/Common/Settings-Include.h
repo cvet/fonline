@@ -190,6 +190,7 @@ FIXED_SETTING(int, DefaultModelDrawWidth, 128);
 FIXED_SETTING(int, DefaultModelDrawHeight, 128);
 FIXED_SETTING(uint, AnimWalkSpeed, 80);
 FIXED_SETTING(uint, AnimRunSpeed, 160);
+FIXED_SETTING(float, ModelProjFactor, 40.0f);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
