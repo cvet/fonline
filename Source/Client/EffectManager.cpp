@@ -139,6 +139,8 @@ void EffectManager::LoadDefaultEffects()
 #if FO_ENABLE_3D
     LOAD_DEFAULT_EFFECT(Effects.ContourModelSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
 #endif
+
+    UNUSED_VARIABLE(effect_errors);
 }
 
 #undef LOAD_DEFAULT_EFFECT
