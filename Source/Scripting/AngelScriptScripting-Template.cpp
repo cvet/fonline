@@ -740,6 +740,10 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(uint64*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint64*>(ptr)); }},
         {type_index(typeid(float*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<float*>(ptr)); }},
         {type_index(typeid(double*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
+        {type_index(typeid(hstring)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
+        {type_index(typeid(string)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
+        {type_index(typeid(hstring*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<hstring*>(ptr)); }},
+        {type_index(typeid(string*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<string*>(ptr)); }},
 #if SERVER_SCRIPTING
         {type_index(typeid(Player*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
         {type_index(typeid(Item*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
@@ -3018,8 +3022,25 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         auto* mod = engine->GetModuleByIndex(0);
 
         const auto as_type_to_type_info = [engine](int type_id, asDWORD flags, bool is_ret) -> const std::type_info* {
+#define CHECK_CLASS(class_name, real_class) \
+    if (string_view(type_info->GetName()) == class_name) { \
+        return &typeid(real_class); \
+    } \
+    if (is_array && type_info->GetSubType() != nullptr && string_view(type_info->GetSubType()->GetName()) == class_name) { \
+        return &typeid(vector<real_class>); \
+    }
+#define CHECK_POD_ARRAY(as_type, type) \
+    if (is_array && type_info->GetSubTypeId() == as_type) { \
+        return &typeid(vector<type>); \
+    }
+            auto* type_info = engine->GetTypeInfoById(type_id);
+            const auto is_array = type_info != nullptr && string_view(type_info->GetName()) == "array";
+
             if (const auto is_ref = (flags & asTM_INOUTREF) != 0) {
                 if (is_ret) {
+                    return nullptr;
+                }
+                if (is_array) {
                     return nullptr;
                 }
 
@@ -3049,6 +3070,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 default:
                     break;
                 }
+
+                CHECK_CLASS("string", string*);
+                CHECK_CLASS("hstring", hstring*);
 
                 return nullptr;
             }
@@ -3083,37 +3107,23 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 break;
             }
 
-            if (is_ret) {
-                return nullptr;
-            }
+            CHECK_CLASS("string", string);
+            CHECK_CLASS("hstring", hstring);
 
             if ((type_id & asTYPEID_OBJHANDLE) != 0) {
-#define CHECK_CLASS(entity_name, real_class) \
-    if (string_view(type_info->GetName()) == entity_name) { \
-        return &typeid(real_class*); \
-    } \
-    if (is_array && type_info->GetSubType() != nullptr && string_view(type_info->GetSubType()->GetName()) == entity_name) { \
-        return &typeid(vector<real_class*>); \
-    }
-#define CHECK_POD_ARRAY(as_type, type) \
-    if (is_array && type_info->GetSubTypeId() == as_type) { \
-        return &typeid(vector<type>); \
-    }
-                auto* type_info = engine->GetTypeInfoById(type_id);
-                const auto is_array = string_view(type_info->GetName()) == "array";
 #if SERVER_SCRIPTING
-                CHECK_CLASS("Player", Player);
-                CHECK_CLASS("Item", Item);
-                CHECK_CLASS("StaticItem", StaticItem);
-                CHECK_CLASS("Critter", Critter);
-                CHECK_CLASS("Map", Map);
-                CHECK_CLASS("Location", Location);
+                CHECK_CLASS("Player", Player*);
+                CHECK_CLASS("Item", Item*);
+                CHECK_CLASS("StaticItem", StaticItem*);
+                CHECK_CLASS("Critter", Critter*);
+                CHECK_CLASS("Map", Map*);
+                CHECK_CLASS("Location", Location*);
 #else
-                CHECK_CLASS("Player", PlayerView);
-                CHECK_CLASS("Item", ItemView);
-                CHECK_CLASS("Critter", CritterView);
-                CHECK_CLASS("Map", MapView);
-                CHECK_CLASS("Location", LocationView);
+                CHECK_CLASS("Player", PlayerView*);
+                CHECK_CLASS("Item", ItemView*);
+                CHECK_CLASS("Critter", CritterView*);
+                CHECK_CLASS("Map", MapView*);
+                CHECK_CLASS("Location", LocationView*);
 #endif
                 CHECK_POD_ARRAY(asTYPEID_BOOL, bool);
                 CHECK_POD_ARRAY(asTYPEID_INT8, char);
@@ -3126,11 +3136,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 CHECK_POD_ARRAY(asTYPEID_UINT64, uint64);
                 CHECK_POD_ARRAY(asTYPEID_FLOAT, float);
                 CHECK_POD_ARRAY(asTYPEID_DOUBLE, double);
-#undef CHECK_CLASS
-#undef CHECK_POD_ARRAY
             }
 
             return nullptr;
+
+#undef CHECK_CLASS
+#undef CHECK_POD_ARRAY
         };
 
         for (asUINT i = 0; i < mod->GetFunctionCount(); i++) {

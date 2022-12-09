@@ -715,7 +715,19 @@ private:
 
 public:
     template<typename T>
-    void Register(Property::AccessType access, string_view name, const vector<string>& flags)
+    void Register(Property::AccessType access, string_view name, const vector<string_view>& flags)
+    {
+        RegisterEx<T>(access, name, flags);
+    }
+
+    template<typename T>
+    void Register(Property::AccessType access, string_view name, const initializer_list<string_view>& flags)
+    {
+        RegisterEx<T>(access, name, {flags.begin(), flags.end()});
+    }
+
+    template<typename T>
+    void RegisterEx(Property::AccessType access, string_view name, const const_span<string_view>& flags)
     {
         auto* prop = new Property(this);
 
@@ -820,7 +832,7 @@ public:
 
         prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
 
-        AppendProperty(prop, flags);
+        AppendProperty(prop, {flags.begin(), flags.end()});
     }
 
 private:
@@ -894,5 +906,5 @@ private:
         static constexpr auto IS_DICT_OF_ARRAY = false;
     };
 
-    void AppendProperty(Property* prop, const vector<string>& flags);
+    void AppendProperty(Property* prop, const const_span<string_view>& flags);
 };

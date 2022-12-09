@@ -1009,7 +1009,7 @@ auto PropertyRegistrator::GetComponents() const -> const unordered_set<hstring>&
     return _registeredComponents;
 }
 
-void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& flags)
+void PropertyRegistrator::AppendProperty(Property* prop, const const_span<string_view>& flags)
 {
     // Todo: validate property name identifier
 
@@ -1072,7 +1072,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             check_next_param();
 
             const auto& group = flags[i + 2];
-            if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
+            if (const auto it = _propertyGroups.find(string(group)); it != _propertyGroups.end()) {
                 it->second.push_back(prop);
             }
             else {
@@ -1144,7 +1144,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         }
         else if (flags[i] == "Alias") {
             check_next_param();
-            prop->_propNameAliases.push_back(flags[i + 2]);
+            prop->_propNameAliases.emplace_back(flags[i + 2]);
             i += 2;
         }
         else if (flags[i] == "NullGetterForProto") {
