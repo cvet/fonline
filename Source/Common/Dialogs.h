@@ -75,7 +75,6 @@ struct DialogAnswerReq
     hstring ParamHash {};
     hstring AnswerScriptFuncName {};
     bool NoRecheck {};
-    bool RetValue {};
     char Op {};
     uchar ValuesCount {};
     int Value {};
@@ -151,9 +150,9 @@ private:
     [[nodiscard]] auto GetWho(char who) -> uchar;
     [[nodiscard]] auto CheckOper(char oper) -> bool;
 
-    [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
+    auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
+    auto LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq;
     void AddDialog(DialogPack* pack);
-    [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq*;
 
     FOEngineBase* _engine;
     map<hstring, unique_ptr<DialogPack>> _dialogPacks {};

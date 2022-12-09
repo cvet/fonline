@@ -861,9 +861,9 @@ void Baker::BakeAll()
             for (auto* dlg_pack : dialog_mngr.GetDialogs()) {
                 for (auto&& dlg : dlg_pack->Dialogs) {
                     if (dlg.DlgScriptFuncName) {
-                        if (!validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*>(dlg.DlgScriptFuncName) && //
-                            !validation_engine->ScriptSys->FindFunc<string, Critter*, Critter*>(dlg.DlgScriptFuncName)) {
-                            WriteLog("Dialog {} invalid function {} in line {}", dlg_pack->PackName, dlg.DlgScriptFuncName, dlg.Id);
+                        if (!validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
+                            !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
+                            WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
                             dlg_errors++;
                         }
                     }
@@ -877,7 +877,7 @@ void Baker::BakeAll()
                                     (demand.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName)) || //
                                     (demand.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName)) || //
                                     (demand.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName))) {
-                                    WriteLog("Dialog {} answer demand invalid function {} in line {}", dlg_pack->PackName, demand.AnswerScriptFuncName, answer.Link);
+                                    WriteLog("Dialog {} answer demand invalid function {}", dlg_pack->PackName, demand.AnswerScriptFuncName);
                                     dlg_errors++;
                                 }
                             }
@@ -906,7 +906,7 @@ void Baker::BakeAll()
                                 }
 
                                 if (not_found_count != 1) {
-                                    WriteLog("Dialog {} answer result invalid function {} in line {}", dlg_pack->PackName, result.AnswerScriptFuncName, answer.Link);
+                                    WriteLog("Dialog {} answer result invalid function {}", dlg_pack->PackName, result.AnswerScriptFuncName);
                                     dlg_errors++;
                                 }
                             }

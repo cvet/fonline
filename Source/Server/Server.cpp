@@ -3647,25 +3647,25 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Predialogue installations
     auto it_d = dialogs->begin();
-    auto go_dialog = uint(-1);
+    auto go_dialog = static_cast<uint>(-1);
     auto it_a = (*it_d).Answers.begin();
     for (; it_a != (*it_d).Answers.end(); ++it_a) {
         if (DialogCheckDemand(npc, cl, *it_a, false)) {
             go_dialog = (*it_a).Link;
         }
-        if (go_dialog != uint(-1)) {
+        if (go_dialog != static_cast<uint>(-1)) {
             break;
         }
     }
 
-    if (go_dialog == uint(-1)) {
+    if (go_dialog == static_cast<uint>(-1)) {
         return;
     }
 
     // Use result
     const auto force_dialog = DialogUseResult(npc, cl, (*it_a));
     if (force_dialog != 0u) {
-        if (force_dialog == uint(-1)) {
+        if (force_dialog == static_cast<uint>(-1)) {
             return;
         }
         go_dialog = force_dialog;
@@ -3706,12 +3706,25 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Get lexems
     cl->Talk.Lexems.clear();
+
     if (cl->Talk.CurDialog.DlgScriptFuncName) {
+        auto failed = false;
+
         cl->Talk.Locked = true;
-        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFuncName, cl, npc, cl->Talk.Lexems)) {
-            // Nop
+        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+            failed = true;
+        }
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+            failed = true;
         }
         cl->Talk.Locked = false;
+
+        if (failed) {
+            CrMngr.CloseTalk(cl);
+            cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            WriteLog("Dialog generation failed, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
+            return;
+        }
     }
 
     // On head text
@@ -3897,11 +3910,23 @@ void FOServer::Process_Dialog(Player* player)
     // Get lexems
     cr->Talk.Lexems.clear();
     if (cr->Talk.CurDialog.DlgScriptFuncName) {
+        auto failed = false;
+
         cr->Talk.Locked = true;
-        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFuncName, cr, npc, cr->Talk.Lexems)) {
-            // Nop
+        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, npc, &cr->Talk.Lexems)) {
+            failed = true;
+        }
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, npc, &cr->Talk.Lexems)) {
+            failed = true;
         }
         cr->Talk.Locked = false;
+
+        if (failed) {
+            CrMngr.CloseTalk(cr);
+            cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            WriteLog("Dialog generation failed, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
+            return;
+        }
     }
 
     // On head text

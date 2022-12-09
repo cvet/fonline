@@ -507,8 +507,12 @@ void CritterManager::CloseTalk(Critter* cr)
 
         if (cr->Talk.CurDialog.DlgScriptFuncName) {
             cr->Talk.Locked = true;
-            if (!_engine->ScriptSys->CallFunc<void, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFuncName, cr, talker)) {
-                // Nop
+            string close = "*";
+            if (auto func = _engine->ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
+                func(cr, talker, &close);
+            }
+            if (auto func = _engine->ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
+                func(cr, talker, &close);
             }
             cr->Talk.Locked = false;
         }
