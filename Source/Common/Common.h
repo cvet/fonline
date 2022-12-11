@@ -260,14 +260,25 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 // ReSharper restore CppInconsistentNaming
 
 // Engine exception handling
-extern auto GetStackTrace() -> string;
+extern auto GetStackTrace(bool verb) -> string;
 extern auto IsRunInDebugger() -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
+extern void ReportExceptionAndContinue(const std::exception& ex);
+extern void ShowExceptionMessageBox(bool enabled);
+
+class ExceptionInfo
+{
+public:
+    virtual ~ExceptionInfo() = default;
+    [[nodiscard]] virtual auto GetVerbStackTrace() const noexcept -> const string& = 0;
+    [[nodiscard]] virtual auto GetBriefStackTrace() const noexcept -> const string& = 0;
+};
 
 // Todo: pass name to exceptions context args
 #define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public std::exception \
+    class exception_name : public std::exception, public ExceptionInfo \
     { \
     public: \
         exception_name() = delete; \
@@ -282,18 +293,20 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
         { \
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
-            if (!_exceptionParams.empty()) { \
-                _exceptionMessage.append("\n  Context args:"); \
-                for (auto& param : _exceptionParams) \
-                    _exceptionMessage.append("\n  - ").append(param); \
+            for (auto& param : _exceptionParams) { \
+                _exceptionMessage.append("\n  - ").append(param); \
             } \
-            _exceptionMessage.append("\n"); \
-            _exceptionMessage.append(GetStackTrace()); \
+            _verbStackTrace = GetStackTrace(true); \
+            _briefStackTrace = GetStackTrace(false); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
+        [[nodiscard]] auto GetVerbStackTrace() const noexcept -> const string& override { return _verbStackTrace; } \
+        [[nodiscard]] auto GetBriefStackTrace() const noexcept -> const string& override { return _briefStackTrace; } \
 \
     private: \
         string _exceptionMessage {}; \
+        string _verbStackTrace {}; \
+        string _briefStackTrace {}; \
         vector<string> _exceptionParams {}; \
     }
 
@@ -1036,7 +1049,6 @@ struct fmt::formatter<hstring>
 static constexpr auto CONFIG_NAME = "FOnline.cfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
-static constexpr uint FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;
@@ -1417,6 +1429,24 @@ constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
         result.emplace_back(static_cast<T>(v));
     }
     return result;
+}
+
+template<typename T, typename U = std::decay_t<T>>
+constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t)
+{
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + (v2 - v1) * t);
+}
+
+template<typename T, typename U = std::decay_t<T>>
+constexpr std::enable_if_t<std::is_integral_v<U> && std::is_signed_v<U>, U> lerp(T v1, T v2, float t)
+{
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : v1 + static_cast<U>((v2 - v1) * t));
+}
+
+template<typename T, typename U = std::decay_t<T>>
+constexpr std::enable_if_t<std::is_integral_v<U> && std::is_unsigned_v<U>, U> lerp(T v1, T v2, float t)
+{
+    return (t <= 0.0f) ? v1 : ((t >= 1.0f) ? v2 : static_cast<U>(v1 * (1 - t) + v2 * t));
 }
 
 template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>

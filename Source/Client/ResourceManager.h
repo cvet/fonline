@@ -93,6 +93,6 @@ private:
     AnyFrames* _splash {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
-    map<hstring, ModelInstance*> _critterModels {};
+    unordered_map<hstring, unique_del_ptr<ModelInstance>> _critterModels {};
 #endif
 };

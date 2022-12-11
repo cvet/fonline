@@ -5175,11 +5175,15 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		func(&gen);
 	}
+	catch (const std::exception& ex) // (FOnline Patch)
+	{
+		SetException(ex.what());
+	}
 	catch (...)
 	{
 		// Convert the exception to a script exception so the VM can 
 		// properly report the error to the application and then clean up
-		SetException(TXT_EXCEPTION_CAUGHT);
+		SetException("Unknown exception");
 	}
 #endif
 	m_callingSystemFunction = 0;

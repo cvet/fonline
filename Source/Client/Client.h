@@ -73,6 +73,7 @@ constexpr auto SCREEN_GAME = 2;
 constexpr auto SCREEN_GLOBAL_MAP = 3;
 constexpr auto SCREEN_WAIT = 4;
 constexpr auto SCREEN_DIALOG = 6; // Secondary screens
+constexpr auto SCREEN_TOWN_VIEW = 9;
 
 // Connection reason
 constexpr auto INIT_NET_REASON_NONE = 0;
@@ -134,6 +135,9 @@ public:
     auto GetActiveScreen(vector<int>* screens) -> int;
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, string> params);
+
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed);
+    void CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
@@ -239,7 +243,7 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
-    vector<ModelInstance*> DrawCritterModel {};
+    vector<unique_del_ptr<ModelInstance>> DrawCritterModel {};
 #endif
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
@@ -287,7 +291,6 @@ protected:
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
     void ProcessAutoLogin();
-    void ProcessGlobalMap();
     void ProcessInputEvents();
     void TryExit();
     void FlashGameWindow();
@@ -303,9 +306,9 @@ protected:
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendText(string_view send_str, uchar how_say);
-    void Net_SendDir();
-    void Net_SendMove();
-    void Net_SendStopMove();
+    void Net_SendDir(CritterHexView* cr);
+    void Net_SendMove(CritterHexView* cr);
+    void Net_SendStopMove(CritterHexView* cr);
     void Net_SendPing(uchar ping);
 
     void Net_OnConnect(bool success);
@@ -363,14 +366,13 @@ protected:
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
-    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetCritterModelName(Entity* entity, const Property* prop);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop);
+    void OnSetItemFlags(Entity* entity, const Property* prop);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop);
+    void OnSetItemPicMap(Entity* entity, const Property* prop);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
+    void OnSetItemOpened(Entity* entity, const Property* prop);
 
     void AnimProcess();
 

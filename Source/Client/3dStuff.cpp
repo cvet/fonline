@@ -372,18 +372,17 @@ void ModelInstance::SetupFrame()
 
     const auto draw_size_scale = std::max(std::max(_matScaleBase.a1, _matScaleBase.b2), _matScaleBase.c3);
     const auto draw_size_scale2 = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
-    draw_width = static_cast<uint>(static_cast<float>(draw_width) * draw_size_scale * draw_size_scale2);
-    draw_height = static_cast<uint>(static_cast<float>(draw_height) * draw_size_scale * draw_size_scale2);
+    draw_width = iround(static_cast<float>(draw_width) * draw_size_scale * draw_size_scale2);
+    draw_height = iround(static_cast<float>(draw_height) * draw_size_scale * draw_size_scale2);
 
-    _frameWidth = static_cast<int>(draw_width) * FRAME_SCALE;
-    _frameHeight = static_cast<int>(draw_height) * FRAME_SCALE;
-
-    _frameWidthF = static_cast<float>(_frameWidth);
-    _frameHeightF = static_cast<float>(_frameHeight);
+    _frameWidth = draw_width * FRAME_SCALE;
+    _frameHeight = draw_height * FRAME_SCALE;
 
     // Projection
-    const auto k = static_cast<float>(_frameHeight) / 768.0f;
-    MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, 18.65f * k * _frameWidthF / _frameHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    const auto frame_ratio = static_cast<float>(_frameWidth) / static_cast<float>(_frameHeight);
+    const auto proj_height = static_cast<float>(_frameHeight) * (1.0f / _modelMngr._settings.ModelProjFactor);
+    const auto proj_width = proj_height * frame_ratio;
+    MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProjRowMaj;
     _frameProjColMaj.Transpose();
 }
@@ -393,7 +392,7 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
     const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
     vec3 out;
     MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
-    return {static_cast<int>(std::round(out.x / static_cast<float>(FRAME_SCALE))), static_cast<int>(std::round(out.y / static_cast<float>(FRAME_SCALE)))};
+    return {iround(out.x / static_cast<float>(FRAME_SCALE)), iround(out.y / static_cast<float>(FRAME_SCALE))};
 }
 
 auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
@@ -402,7 +401,7 @@ auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
     const auto xf = static_cast<float>(x) * static_cast<float>(FRAME_SCALE);
     const auto yf = static_cast<float>(y) * static_cast<float>(FRAME_SCALE);
     vec3 out;
-    MatrixHelper::MatrixUnproject(xf, _frameHeightF - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    MatrixHelper::MatrixUnproject(xf, static_cast<float>(_frameHeight) - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     out.z = 0.0f;
     return out;
 }
@@ -790,18 +789,28 @@ void ModelInstance::MoveModel(int ox, int oy)
     _forceRedraw = true;
 }
 
-void ModelInstance::SetMoving(bool enabled, bool is_run)
+void ModelInstance::SetMoving(bool enabled, uint speed)
 {
     _isMoving = enabled;
-    _isRunning = is_run;
+
+    if (_isMoving) {
+        RUNTIME_ASSERT(speed > 0);
+
+        const auto walk_speed = _modelMngr._settings.AnimWalkSpeed;
+        const auto run_speed = _modelMngr._settings.AnimRunSpeed;
+        RUNTIME_ASSERT(run_speed >= walk_speed);
+
+        if (speed < walk_speed + (run_speed - walk_speed) / 2) {
+            _isRunning = false;
+            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(walk_speed);
+        }
+        else {
+            _isRunning = true;
+            _movingSpeedFactor = static_cast<float>(speed) / static_cast<float>(run_speed);
+        }
+    }
 
     RefreshMoveAnimation();
-}
-
-void ModelInstance::SetMoveSpeed(float walk_factor, float run_factor)
-{
-    _walkSpeedFactor = walk_factor;
-    _runSpeedFactor = run_factor;
 }
 
 auto ModelInstance::IsCombatMode() const -> bool
@@ -874,7 +883,7 @@ void ModelInstance::RefreshMoveAnimation()
     _curMovingAnim = index;
 
     if (_isMoving) {
-        speed *= _isRunning ? _runSpeedFactor : _walkSpeedFactor;
+        speed *= _movingSpeedFactor;
     }
 
     constexpr float smooth_time = 0.0001f;
@@ -955,7 +964,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
     return tuple {period, proc_from, proc_to, dir};
 }
 
-auto ModelInstance::GetDrawSize() const -> tuple<uint, uint>
+auto ModelInstance::GetDrawSize() const -> tuple<int, int>
 {
     return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
 }
@@ -1817,12 +1826,12 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 
 void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
 {
-    auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.Skinned3d;
+    auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
     effect->ProjBuf = RenderEffect::ProjBuffer();
     std::memcpy(effect->ProjBuf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
-    effect->MainTex = combined_mesh->Textures[0]->MainTex;
+    effect->MainTex = combined_mesh->Textures[0] != nullptr ? combined_mesh->Textures[0]->MainTex : nullptr;
 
     if (effect->MainTexBuf) {
         std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
@@ -1845,9 +1854,14 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
 
     if (effect->CustomTexBuf) {
         for (auto i = 0; i < EFFECT_TEXTURES; i++) {
-            effect->CustomTex[i] = combined_mesh->Textures[i]->MainTex;
-            std::memcpy(&effect->CustomTexBuf->AtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
-            std::memcpy(&effect->CustomTexBuf->Size[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+            if (combined_mesh->Textures[i] != nullptr) {
+                effect->CustomTex[i] = combined_mesh->Textures[i]->MainTex;
+                std::memcpy(&effect->CustomTexBuf->AtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
+                std::memcpy(&effect->CustomTexBuf->Size[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+            }
+            else {
+                effect->CustomTex[i] = nullptr;
+            }
         }
     }
 
@@ -1867,7 +1881,7 @@ void ModelInstance::DrawAllParticles()
     NON_CONST_METHOD_HINT();
 
     for (auto&& particle_system : _particleSystems) {
-        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset);
+        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset, _modelMngr._settings.MapCameraAngle);
     }
 
     for (auto* child : _children) {

@@ -256,10 +256,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(VirtualPublic, uint, WalkSpeed);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(VirtualPublic, uint, RunSpeed);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, MapId);
@@ -365,10 +361,6 @@ public:
     ENTITY_PROPERTY(Protected, bool, IsGeck);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, bool, IsNoMove);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, bool, IsNoRun);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoTalk);
     ///@ ExportProperty

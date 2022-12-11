@@ -37,18 +37,13 @@
 
 #include "ClientEntity.h"
 #include "CritterHexView.h"
-#include "EffectManager.h"
 #include "Entity.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "ItemHexView.h"
 #include "MapLoader.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "Settings.h"
 #include "SpriteManager.h"
 #include "Sprites.h"
-#include "Timer.h"
 
 DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -76,10 +71,10 @@ struct LightSource
     uchar Distance {};
     uchar Flags {};
     int Intensity {};
-    short* OffsX {};
-    short* OffsY {};
-    short LastOffsX {};
-    short LastOffsY {};
+    int* OffsX {};
+    int* OffsY {};
+    int LastOffsX {};
+    int LastOffsY {};
 };
 
 struct FindPathResult
@@ -98,7 +93,6 @@ public:
         short OffsY {};
         uchar Layer {};
     };
-    using TileVec = vector<Tile>;
 
     struct FlagsType
     {
@@ -106,9 +100,9 @@ public:
         bool IsWall : 1;
         bool IsWallTransp : 1;
         bool IsScen : 1;
-        bool IsNotPassed : 1;
-        bool IsNotRaked : 1;
-        bool IsNoLight : 1;
+        bool IsMoveBlocked : 1;
+        bool IsShootBlocked : 1;
+        bool IsLightBlocked : 1;
         bool IsMultihex : 1;
     };
 
@@ -197,7 +191,7 @@ public:
 
     auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
-    auto TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<uchar>& steps, int quad_dir) -> bool;
+    auto TraceMoveWay(ushort& hx, ushort& hy, int& ox, int& oy, vector<uchar>& steps, int quad_dir) -> bool;
     auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
@@ -209,11 +203,12 @@ public:
     void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void ProcessHexBorders(const ItemHexView* item);
+    void MeasureHexBorders(const ItemHexView* item);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
+    void SetShootBorders(bool enabled);
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -237,7 +232,7 @@ public:
 
     // Items
     auto AddItem(uint id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
-    auto AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data) -> ItemHexView*;
+    auto AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*;
     auto GetItem(uint id) -> ItemHexView*;
@@ -262,7 +257,7 @@ public:
     void SetSkipRoof(ushort hx, ushort hy);
     void MarkRoofNum(int hxi, int hyi, short num);
 
-    auto RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
+    auto RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
 
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);
@@ -284,7 +279,7 @@ public:
     void ClearIgnorePids();
     void MarkPassedHexes();
 
-    auto GenerateEntityId() -> uint;
+    auto GetTempEntityId() const -> uint;
 
     auto SaveToText() const -> string;
 
@@ -324,7 +319,7 @@ private:
     void PrepareFogToDraw();
     void InitView(int cx, int cy);
     void ResizeView();
-    auto ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
+    auto MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
     auto ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool;
 
     // Lighting
@@ -375,8 +370,8 @@ private:
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
     RenderTarget* _rtFog {};
-    uint _rtScreenOx {};
-    uint _rtScreenOy {};
+    int _rtScreenOx {};
+    int _rtScreenOy {};
 
     int _screenHexX {};
     int _screenHexY {};
@@ -388,10 +383,10 @@ private:
     int _hVisible {};
     vector<ViewField> _viewField {};
 
-    short* _fogOffsX {};
-    short* _fogOffsY {};
-    short _fogLastOffsX {};
-    short _fogLastOffsY {};
+    int* _fogOffsX {};
+    int* _fogOffsY {};
+    int _fogLastOffsX {};
+    int _fogLastOffsY {};
     bool _fogForceRerender {};
     bool _rebuildFog {};
     bool _drawLookBorders {true};

@@ -449,10 +449,10 @@ auto GeometryHelper::GetYProj() const -> float
 auto GeometryHelper::DirToAngle(uchar dir) const -> short
 {
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return static_cast<short>(150 - dir * 60);
+        return static_cast<short>(dir * 60 + 30);
     }
     else {
-        return static_cast<short>(135 - dir * 45);
+        return static_cast<short>(dir * 45 + 45);
     }
 }
 
@@ -462,7 +462,7 @@ auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
         return static_cast<uchar>(NormalizeAngle(dir_angle) / 60);
     }
     else {
-        return static_cast<uchar>(NormalizeAngle(dir_angle) / 45);
+        return static_cast<uchar>(NormalizeAngle(static_cast<short>(dir_angle - 45 / 2)) / 45);
     }
 }
 

@@ -53,10 +53,14 @@ public:
     ~ServerDeferredCallManager() override = default;
 
     void LoadDeferredCalls();
-    auto AddSavedDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> uint;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint;
 
 private:
-    auto GetNextId() -> uint override;
+    auto ApplyDeferredCall(uint delay, DeferredCall& call) -> uint override;
     void OnDeferredCallRemoved(const DeferredCall& call) override;
 
     FOServer* _serverEngine;

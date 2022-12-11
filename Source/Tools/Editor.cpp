@@ -58,7 +58,7 @@ void EditorView::Draw()
     }
 
     bool opened = true;
-    if (ImGui::Begin(GetViewName().c_str(), &opened, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin(GetViewName().c_str(), &opened, ImGuiWindowFlags_NoCollapse)) {
         OnDraw();
     }
     ImGui::End();
@@ -96,8 +96,8 @@ auto EditorAssetView::IsChanged() const -> bool
 
 void EditorAssetView::OnPreDraw()
 {
-    ImGui::SetNextWindowPos({300.0f, 0.0f}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({500.0f, static_cast<float>(std::get<1>(App->MainWindow.GetSize()))}, ImGuiCond_Always);
+    ImGui::SetNextWindowPos({300.0f, 0.0f}, ImGuiCond_Once);
+    ImGui::SetNextWindowSize({500.0f, static_cast<float>(std::get<1>(App->MainWindow.GetSize()))}, ImGuiCond_Once);
 }
 
 void EditorAssetView::OnDraw()

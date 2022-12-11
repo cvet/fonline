@@ -45,8 +45,8 @@ class ItemHexView final : public ItemView
 public:
     ItemHexView() = delete;
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props);
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -63,7 +63,6 @@ public:
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
-    [[nodiscard]] auto GetEffectStep() const -> pair<ushort, ushort>;
 
     void RefreshAnim();
     void RestoreAlpha() { Alpha = _maxAlpha; }
@@ -72,7 +71,7 @@ public:
     void Finish();
     void StopFinishing();
     void Process();
-    void SetEffect(float sx, float sy, uint dist, int dir);
+    void SetEffect(ushort to_hx, ushort to_hy);
     void SkipFade();
     void StartAnimate();
     void StopAnimate();
@@ -82,25 +81,19 @@ public:
     void SetSprStart();
     void SetSprEnd();
     void SetSpr(uint num_spr);
-    void SetAnimOffs();
+    void RefreshOffs();
     void SetStayAnim();
     void SetShowAnim();
     void SetHideAnim();
 
     uint SprId {};
-    short ScrX {};
-    short ScrY {};
-    int* HexScrX {};
-    int* HexScrY {};
+    int ScrX {};
+    int ScrY {};
     uchar Alpha {};
-    AnyFrames* Anim {};
-    bool SprDrawValid {};
-    Sprite* SprDraw {};
-    Sprite* SprTemp {};
+
     RenderEffect* DrawEffect {};
-    float EffOffsX {};
-    float EffOffsY {};
-    vector<pair<ushort, ushort>> EffSteps {};
+    Sprite* SprDraw {};
+    bool SprDrawValid {};
 
 private:
     ItemHexView(MapView* map, uint id, const ProtoItem* proto);
@@ -109,17 +102,18 @@ private:
     void SetFade(bool fade_up);
 
     MapView* _map;
-    uint _curSpr {};
-    uint _begSpr {};
-    uint _endSpr {};
-    uint _animBegSpr {};
-    uint _animEndSpr {};
+
+    AnyFrames* _anim {};
+    uint _curFrm {};
+    uint _begFrm {};
+    uint _endFrm {};
+    uint _animBegFrm {};
+    uint _animEndFrm {};
     uint _animTick {};
     uchar _maxAlpha {0xFF};
     bool _isAnimated {};
     uint _animNextTick {};
-    bool _finishing {};
-    uint _finishingTime {};
+
     bool _isEffect {};
     float _effSx {};
     float _effSy {};
@@ -130,7 +124,12 @@ private:
     uint _effDist {};
     uint _effLastTick {};
     int _effDir {};
+    vector<pair<ushort, ushort>> _effSteps {};
+
     bool _fading {};
-    uint _fadingTick {};
+    uint _fadingEndTick {};
     bool _fadeUp {};
+
+    bool _finishing {};
+    uint _finishingTime {};
 };

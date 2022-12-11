@@ -126,6 +126,7 @@ void Critter::ClearMove()
     Moving.Steps = {};
     Moving.ControlSteps = {};
     Moving.StartTick = {};
+    Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
     Moving.EndHexX = {};
@@ -654,14 +655,14 @@ auto Critter::IsTransferTimeouts(bool send) -> bool
 
 auto Critter::IsTalking() const -> bool
 {
-    return _talk.Type != TalkType::None;
+    return Talk.Type != TalkType::None;
 }
 
 auto Critter::GetTalkedPlayers() const -> uint
 {
     auto talk = 0u;
     for (const auto* cr : VisCr) {
-        if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId()) {
+        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
             talk++;
         }
     }
@@ -671,7 +672,7 @@ auto Critter::GetTalkedPlayers() const -> uint
 auto Critter::IsTalkedPlayers() const -> bool
 {
     for (const auto* cr : VisCr) {
-        if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId()) {
+        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
             return true;
         }
     }
@@ -682,7 +683,7 @@ auto Critter::GetBarterPlayers() const -> uint
 {
     auto barter = 0u;
     for (const auto* cr : VisCr) {
-        if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId() && cr->_talk.Barter) {
+        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId() && cr->Talk.Barter) {
             barter++;
         }
     }

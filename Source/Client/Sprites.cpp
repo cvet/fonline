@@ -288,7 +288,7 @@ auto Sprites::RootSprite() -> Sprite*
     return _rootSprite;
 }
 
-auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     _spriteCount++;
 
@@ -393,12 +393,12 @@ auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, usho
     return *spr;
 }
 
-auto Sprites::AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     // Find place
     uint pos;

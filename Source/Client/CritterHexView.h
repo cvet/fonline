@@ -53,7 +53,7 @@ public:
     CritterHexView(CritterHexView&&) noexcept = delete;
     auto operator=(const CritterHexView&) = delete;
     auto operator=(CritterHexView&&) noexcept = delete;
-    ~CritterHexView() override;
+    ~CritterHexView() override = default;
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
@@ -64,15 +64,13 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsWalkAnim() const -> bool;
-    [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetDrawRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
 #endif
 
     void Init() override;
@@ -83,41 +81,37 @@ public:
     void ChangeDirAngle(int dir_angle);
     void ChangeLookDirAngle(int dir_angle);
     void ChangeMoveDirAngle(int dir_angle);
-    void Animate(uint anim1, uint anim2, ItemView* item);
+    void Animate(uint anim1, uint anim2, Entity* context_item);
     void AnimateStay();
-    void Action(int action, int action_ext, ItemView* item, bool local_call);
+    void Action(int action, int action_ext, Entity* context_item, bool local_call);
     void Process();
-    void ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item);
     void ResetOk();
     void ClearAnim();
-    void SetAnimOffs(int ox, int oy);
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
     void SetText(string_view str, uint color, uint text_delay);
     void DrawTextOnHead();
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
-    void NextAnim(bool erase_front);
-    void RefreshSpeed();
-    void RefreshCombatMode();
     void ClearMove();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
 
+    uint SprId {};
+    int SprOx {};
+    int SprOy {};
+    uchar Alpha {};
+
     RenderEffect* DrawEffect {};
     bool Visible {true};
-    uchar Alpha {};
-    bool SprDrawValid {};
     Sprite* SprDraw {};
-    uint SprId {};
-    short SprOx {};
-    short SprOy {};
+    bool SprDrawValid {};
     uint FadingTick {};
 
     struct
     {
-        bool IsRunning {};
+        ushort Speed {};
         vector<uchar> Steps {};
         vector<ushort> ControlSteps {};
         uint StartTick {};
@@ -145,7 +139,7 @@ private:
         uint EndFrm {};
         uint IndAnim1 {};
         uint IndAnim2 {};
-        ItemView* ActiveItem {};
+        Entity* ContextItem {};
     };
 
 #if FO_ENABLE_3D
@@ -156,33 +150,39 @@ private:
 
     void SetFade(bool fade_up);
     void ProcessMoving();
+    void NextAnim(bool erase_front);
+    void SetAnimSpr(const AnyFrames* anim, uint frm_index);
 
     MapView* _map;
+
     bool _needReset {};
     uint _resetTick {};
-    uint _curSpr {};
-    uint _lastEndSpr {};
+
+    uint _curFrmIndex {};
     uint _animStartTick {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
+
     uint _finishingTime {};
     bool _fadingEnabled {};
     bool _fadeUp {};
+
     uint _tickFidget {};
+
     string _strTextOnHead {};
     uint _tickStartText {};
     uint _tickTextDelay {};
     uint _textOnHeadColor {COLOR_TEXT};
+
     int _oxAnim {};
     int _oyAnim {};
-    int _oxExtI {};
-    int _oyExtI {};
-    float _oxExtF {};
-    float _oyExtF {};
+    float _oxExt {};
+    float _oyExt {};
     float _oxExtSpeed {};
     float _oyExtSpeed {};
     uint _offsExtNextTick {};
+
 #if FO_ENABLE_3D
-    ModelInstance* _model {};
+    unique_del_ptr<ModelInstance> _model {};
 #endif
 };

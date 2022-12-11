@@ -119,7 +119,7 @@ class FixedDropMenu : Gui::IDropMenu
         if (Pressed) {
             if (offsetX != 0 || offsetY != 0) {
                 PressedOffsetY += offsetY;
-                Game.CustomCall("SetMousePos " + (Settings.MouseX - offsetX) + " " + (Settings.MouseY - offsetY) + " false");
+                Game.SetMousePos(Settings.MouseX - offsetX, Settings.MouseY - offsetY);
             }
             return true;
         }

@@ -49,7 +49,7 @@ public:
     Direct3D_Texture(uint width, uint height, bool linear_filtered, bool with_depth) : RenderTexture(width, height, linear_filtered, with_depth) { }
     ~Direct3D_Texture() override;
     [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, uint w, uint h) -> vector<uint> override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override;
     void UpdateTextureRegion(const IRect& r, const uint* data) override;
 
     ID3D11Texture2D* TexHandle {};
@@ -243,7 +243,7 @@ void Direct3D_Renderer::Present()
     RUNTIME_ASSERT(swap_chain == S_OK);
 }
 
-auto Direct3D_Renderer::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     auto&& d3d_tex = std::make_unique<Direct3D_Texture>(width, height, linear_filtered, with_depth);
 
@@ -488,7 +488,7 @@ void Direct3D_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool
     }
 }
 
-void Direct3D_Renderer::EnableScissor(int x, int y, uint w, uint h)
+void Direct3D_Renderer::EnableScissor(int x, int y, int width, int height)
 {
     throw NotImplementedException(LINE_STR);
 }
@@ -520,10 +520,12 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
     return 0;
 }
 
-auto Direct3D_Texture::GetTextureRegion(int x, int y, uint w, uint h) -> vector<uint>
+auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) -> vector<uint>
 {
-    RUNTIME_ASSERT(w && h);
-    const auto size = w * h;
+    RUNTIME_ASSERT(width > 0);
+    RUNTIME_ASSERT(height > 0);
+
+    const auto size = width * height;
     vector<uint> result(size);
 
     throw NotImplementedException(LINE_STR);

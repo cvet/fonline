@@ -37,7 +37,7 @@
 
 #include "Editor.h"
 
-class AssetExplorer : public EditorView
+class AssetExplorer final : public EditorView
 {
 public:
     explicit AssetExplorer(FOEditor& editor);
@@ -46,7 +46,7 @@ public:
     auto operator=(const AssetExplorer&) = delete;
     auto operator=(AssetExplorer&&) noexcept = delete;
 
-protected:
+private:
     void OnPreDraw() override;
     void OnDraw() override;
 

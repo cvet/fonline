@@ -88,6 +88,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
+        ShowExceptionMessageBox(true);
         InitApp(argc, argv, "Mapper");
 
         WriteLog("Starting Mapper {}...", FO_GAME_VERSION);

@@ -51,15 +51,6 @@ CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto)
     SetModelLayers(layers);
 }
 
-CritterHexView::~CritterHexView()
-{
-#if FO_ENABLE_3D
-    if (_model != nullptr) {
-        _engine->SprMngr.FreeModel(_model);
-    }
-#endif
-}
-
 void CritterHexView::Init()
 {
     CritterView::Init();
@@ -68,7 +59,6 @@ void CritterHexView::Init()
     RefreshModel();
 #endif
 
-    RefreshSpeed();
     AnimateStay();
     RefreshOffs();
     SetFade(true);
@@ -95,7 +85,7 @@ auto CritterHexView::IsFinished() const -> bool
 void CritterHexView::SetFade(bool fade_up)
 {
     const auto tick = _engine->GameTime.GameTick();
-    FadingTick = tick + FADING_PERIOD - (FadingTick > tick ? FadingTick - tick : 0);
+    FadingTick = tick + _engine->Settings.FadingDuration - (FadingTick > tick ? FadingTick - tick : 0);
     _fadeUp = fade_up;
     _fadingEnabled = true;
 }
@@ -103,7 +93,7 @@ void CritterHexView::SetFade(bool fade_up)
 auto CritterHexView::GetFadeAlpha() -> uchar
 {
     const auto tick = _engine->GameTime.GameTick();
-    const auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0u);
+    const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTick > tick ? FadingTick - tick : 0u);
     if (fading_proc == 100u) {
         _fadingEnabled = false;
     }
@@ -114,7 +104,7 @@ auto CritterHexView::GetFadeAlpha() -> uchar
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
 {
-    return IsAnim() ? _animSequence.data() : nullptr;
+    return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
 auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
@@ -144,188 +134,13 @@ auto CritterHexView::GetAttackDist() -> uint
     return dist;
 }
 
-// Todo: restore 2D sprite moving
-/*void CritterHexView::Move(uchar dir)
-{
-    if (dir >= GameSettings::MAP_DIR_COUNT || GetIsNoRotate()) {
-        dir = 0;
-    }
-
-    SetDir(dir);
-
-    const auto time_move = 1000 * 32 / (IsRunning ? GetRunSpeed() : GetWalkSpeed());
-
-    TickStart(time_move);
-    _animStartTick = _engine->GameTime.GameTick();
-
-#if FO_ENABLE_3D
-    if (_model != nullptr) {
-        auto anim1 = GetAnim1();
-        uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
-        if (GetIsHide()) {
-            anim2 = IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
-        }
-
-        if (const auto model_anim = _model->EvaluateAnimation()) {
-            anim1 = std::get<0>(*model_anim);
-            anim2 = std::get<1>(*model_anim);
-        }
-
-        _model->SetDir(dir);
-
-        ClearAnim();
-        _animSequence.push_back({nullptr, time_move, 0, 0, true, dir + 1, anim1, anim2, nullptr});
-        NextAnim(false);
-
-        const auto [ox, oy] = GetWalkHexOffsets(dir);
-        ChangeOffs(ox, oy, true);
-
-        return;
-    }
-#endif
-
-    if (_str(GetModelName()).startsWith("art/critters/")) {
-        const auto anim1 = IsRunning ? ANIM1_UNARMED : GetAnim1();
-        const uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
-        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
-        if (anim == nullptr) {
-            anim = _engine->ResMngr.CritterDefaultAnim;
-        }
-
-        uint step;
-        uint beg_spr;
-        uint end_spr;
-
-        _curSpr = _lastEndSpr;
-
-        if (!IsRunning) {
-            const auto s0 = 4u;
-            const auto s1 = 8u;
-
-            if (_curSpr == s0 - 1u) {
-                beg_spr = s0;
-                end_spr = s1 - 1;
-                step = 2;
-            }
-            else {
-                beg_spr = 0;
-                end_spr = s0 - 1;
-                step = 1;
-            }
-        }
-        else {
-            switch (_curSpr) {
-            default:
-            case 0:
-                beg_spr = 0;
-                end_spr = 1;
-                step = 1;
-                break;
-            case 1:
-                beg_spr = 2;
-                end_spr = 3;
-                step = 2;
-                break;
-            case 3:
-                beg_spr = 4;
-                end_spr = 6;
-                step = 3;
-                break;
-            case 6:
-                beg_spr = 7;
-                end_spr = anim->CntFrm - 1;
-                step = 4;
-                break;
-            }
-        }
-
-        ClearAnim();
-        _animSequence.push_back({anim, time_move, beg_spr, end_spr, true, 0, anim1, anim2, nullptr});
-        NextAnim(false);
-
-        for (uint i = 0; i < step; i++) {
-            auto [ox, oy] = GetWalkHexOffsets(dir);
-            ChangeOffs(ox, oy, true);
-        }
-    }
-    else {
-        const auto anim1 = GetAnim1();
-        uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
-        if (GetIsHide()) {
-            anim2 = IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
-        }
-
-        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
-        if (anim == nullptr) {
-            anim = _engine->ResMngr.CritterDefaultAnim;
-        }
-
-        auto m1 = 0;
-        if (m1 <= 0) {
-            m1 = 5;
-        }
-        auto m2 = 0;
-        if (m2 <= 0) {
-            m2 = 2;
-        }
-
-        const auto beg_spr = _lastEndSpr + 1;
-        const auto end_spr = beg_spr + (IsRunning ? m2 : m1);
-
-        ClearAnim();
-        _animSequence.push_back({anim, time_move, beg_spr, end_spr, true, dir + 1, anim1, anim2, nullptr});
-        NextAnim(false);
-
-        const auto [ox, oy] = GetWalkHexOffsets(dir);
-        ChangeOffs(ox, oy, true);
-    }
-}*/
-
-void CritterHexView::RefreshSpeed()
-{
-    NON_CONST_METHOD_HINT();
-
-#if FO_ENABLE_3D
-    if (_model != nullptr) {
-        auto scale_factor = static_cast<float>(GetScaleFactor());
-        if (scale_factor == 0.0f) {
-            scale_factor = 1.0f;
-        }
-        else {
-            scale_factor /= 1000.0f;
-        }
-
-        _model->SetMoveSpeed(static_cast<float>(GetWalkSpeed()) / 80.0f / scale_factor, static_cast<float>(GetRunSpeed()) / 160.0f / scale_factor);
-    }
-#endif
-}
-
-void CritterHexView::RefreshCombatMode()
-{
-#if FO_ENABLE_3D
-    const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond();
-
-    if (is_combat != _model->IsCombatMode()) {
-        if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
-            if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
-                Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
-            }
-            else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
-                Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
-            }
-        }
-
-        _model->SetCombatMode(is_combat);
-    }
-#endif
-}
-
 void CritterHexView::ClearMove()
 {
     Moving.Steps = {};
     Moving.ControlSteps = {};
     Moving.StartTick = {};
     Moving.OffsetTick = {};
+    Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
     Moving.EndHexX = {};
@@ -338,9 +153,9 @@ void CritterHexView::ClearMove()
     Moving.EndOy = {};
 }
 
-void CritterHexView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
+void CritterHexView::Action(int action, int action_ext, Entity* context_item, bool local_call /* = true */)
 {
-    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, item);
+    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, context_item);
 
     switch (action) {
     case ACTION_KNOCKOUT:
@@ -401,60 +216,61 @@ void CritterHexView::NextAnim(bool erase_front)
     if (_animSequence.empty()) {
         return;
     }
+
     if (erase_front) {
-        if (_animSequence.begin()->ActiveItem != nullptr) {
-            _animSequence.begin()->ActiveItem->Release();
+        if (_animSequence.begin()->ContextItem != nullptr) {
+            _animSequence.begin()->ContextItem->Release();
         }
         _animSequence.erase(_animSequence.begin());
     }
+
     if (_animSequence.empty()) {
         return;
     }
 
-    const auto& cr_anim = _animSequence[0];
     _animStartTick = _engine->GameTime.GameTick();
+
+    const auto& cr_anim = _animSequence.front();
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        SetAnimOffs(0, 0);
-
         _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetModelLayersData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
-
-        return;
     }
+    else
 #endif
+    {
+        _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ContextItem);
 
-    ProcessAnim(false, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
-
-    _lastEndSpr = cr_anim.EndFrm;
-    _curSpr = cr_anim.BeginFrm;
-
-    SprId = cr_anim.Anim->GetSprId(_curSpr);
-
-    short ox = 0;
-    short oy = 0;
-    for (const auto i : xrange(_curSpr % cr_anim.Anim->CntFrm + 1u)) {
-        ox = static_cast<short>(ox + cr_anim.Anim->NextX[i]);
-        oy = static_cast<short>(oy + cr_anim.Anim->NextY[i]);
+        SetAnimSpr(cr_anim.Anim, cr_anim.BeginFrm);
     }
-
-    SetAnimOffs(ox, oy);
 }
 
-void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
+void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
 {
     const auto dir = GetDir();
     if (anim1 == 0u) {
         anim1 = GetAnim1();
     }
-    if (item != nullptr) {
-        item = item->CreateRefClone();
+
+    Entity* fixed_context_item = nullptr;
+
+    if (context_item != nullptr) {
+        if (const auto* item = dynamic_cast<ItemView*>(context_item); item != nullptr) {
+            fixed_context_item = item->CreateRefClone();
+        }
+        else if (auto* proto = dynamic_cast<ProtoItem*>(context_item); proto != nullptr) {
+            fixed_context_item = proto;
+            proto->AddRef();
+        }
+        else {
+            throw UnreachablePlaceException("Invalid context item");
+        }
     }
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(anim1, anim2)) {
-            _animSequence.push_back({nullptr, 0, 0, 0, anim1, anim2, item});
+            _animSequence.push_back(CritterAnim {nullptr, 0, 0, 0, anim1, anim2, fixed_context_item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -464,51 +280,50 @@ void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
                 AnimateStay();
             }
         }
-
-        return;
     }
+    else
 #endif
-
-    auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
-    if (anim == nullptr) {
-        if (!IsAnim()) {
-            AnimateStay();
+    {
+        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
+        if (anim != nullptr) {
+            _animSequence.push_back(CritterAnim {anim, anim->Ticks, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, fixed_context_item});
+            if (_animSequence.size() == 1) {
+                NextAnim(false);
+            }
         }
-        return;
-    }
-
-    _animSequence.push_back({anim, anim->Ticks, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, item});
-    if (_animSequence.size() == 1) {
-        NextAnim(false);
+        else {
+            if (!IsAnim()) {
+                AnimateStay();
+            }
+        }
     }
 }
 
 void CritterHexView::AnimateStay()
 {
+    ClearAnim();
+
+    _animStartTick = _engine->GameTime.GameTick();
+
     auto anim1 = GetAnim1();
     auto anim2 = GetAnim2();
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
+        const auto scale_factor = GetScaleFactor();
+        const auto scale = scale_factor != 0 ? static_cast<float>(scale_factor) / 1000.0f : 1.0f;
+
+        _model->SetScale(scale, scale, scale);
+
         if (IsMoving()) {
-            _model->SetMoving(true, Moving.IsRunning);
+            _model->SetMoving(true, static_cast<uint>(static_cast<float>(Moving.Speed) / scale));
 
-            anim2 = Moving.IsRunning ? ANIM2_RUN : ANIM2_WALK;
-
-            if (GetIsHide()) {
-                anim2 = Moving.IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
-            }
+            anim2 = ANIM2_WALK;
         }
         else {
-            _model->SetMoving(false, Moving.IsRunning);
+            _model->SetMoving(false);
 
             anim2 = GetAnim2();
-        }
-
-        const auto scale_factor = GetScaleFactor();
-        if (scale_factor != 0) {
-            const auto scale = static_cast<float>(scale_factor) / 1000.0f;
-            _model->SetScale(scale, scale, scale);
         }
 
         if (!_model->ResolveAnimation(anim1, anim2)) {
@@ -516,7 +331,7 @@ void CritterHexView::AnimateStay()
             anim2 = ANIM2_IDLE;
         }
 
-        ProcessAnim(false, anim1, anim2, nullptr);
+        _engine->OnCritterAnimationProcess.Fire(true, this, anim1, anim2, nullptr);
 
         if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
             _model->SetAnimation(anim1, anim2, GetModelLayersData(), 0);
@@ -524,55 +339,50 @@ void CritterHexView::AnimateStay()
         else {
             _model->SetAnimation(anim1, anim2, GetModelLayersData(), ANIMATION_STAY | ANIMATION_PERIOD(100));
         }
-
-        return;
     }
+    else
 #endif
+    {
+        if (IsMoving()) {
+            const auto walk_speed = _engine->Settings.AnimWalkSpeed;
+            const auto run_speed = _engine->Settings.AnimRunSpeed;
+            RUNTIME_ASSERT(run_speed >= walk_speed);
 
-    auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir());
-    if (anim == nullptr) {
-        anim = _engine->ResMngr.CritterDefaultAnim;
-    }
-
-    if (_stayAnim.Anim != anim) {
-        ProcessAnim(true, anim1, anim2, nullptr);
-
-        _stayAnim.Anim = anim;
-        _stayAnim.AnimTick = anim->Ticks;
-        _stayAnim.BeginFrm = 0;
-        _stayAnim.EndFrm = anim->CntFrm - 1;
-        if (GetCond() == CritterCondition::Dead) {
-            _stayAnim.BeginFrm = _stayAnim.EndFrm;
+            if (Moving.Speed < walk_speed + (run_speed - walk_speed) / 2) {
+                anim2 = ANIM2_WALK;
+            }
+            else {
+                anim2 = ANIM2_RUN;
+            }
         }
-        _curSpr = _stayAnim.BeginFrm;
+
+        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir());
+        if (anim == nullptr) {
+            anim = _engine->ResMngr.CritterDefaultAnim;
+        }
+
+        if (_stayAnim.Anim != anim) {
+            _engine->OnCritterAnimationProcess.Fire(true, this, anim1, anim2, nullptr);
+
+            _stayAnim.Anim = anim;
+            _stayAnim.AnimTick = anim->Ticks;
+            _stayAnim.BeginFrm = 0;
+            _stayAnim.EndFrm = anim->CntFrm - 1;
+
+            if (GetCond() == CritterCondition::Dead) {
+                _stayAnim.BeginFrm = _stayAnim.EndFrm;
+            }
+        }
+
+        SetAnimSpr(anim, _stayAnim.BeginFrm);
     }
-
-    SprId = anim->GetSprId(_curSpr);
-
-    int ox = 0;
-    int oy = 0;
-    for (const auto i : xrange(_curSpr % anim->CntFrm + 1u)) {
-        ox += anim->NextX[i];
-        oy += anim->NextY[i];
-    }
-
-    SetAnimOffs(ox, oy);
-}
-
-auto CritterHexView::IsWalkAnim() const -> bool
-{
-    if (!_animSequence.empty()) {
-        const auto anim2 = _animSequence.front().IndAnim2;
-        return anim2 == ANIM2_WALK || anim2 == ANIM2_RUN || anim2 == ANIM2_LIMP || anim2 == ANIM2_PANIC_RUN;
-    }
-    return false;
 }
 
 void CritterHexView::ClearAnim()
 {
     for (const auto& anim : _animSequence) {
-        if (anim.ActiveItem != nullptr) {
-            anim.ActiveItem->Release();
+        if (anim.ContextItem != nullptr) {
+            anim.ContextItem->Release();
         }
     }
     _animSequence.clear();
@@ -628,11 +438,6 @@ auto CritterHexView::GetAnim2() const -> uint
     return ANIM2_IDLE;
 }
 
-void CritterHexView::ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item)
-{
-    _engine->OnCritterAnimationProcess.Fire(animate_stay, this, anim1, anim2, item);
-}
-
 auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 {
     if (anim1 == 0u) {
@@ -659,21 +464,14 @@ auto CritterHexView::GetModelLayersData() const -> const int*
 
 void CritterHexView::RefreshModel()
 {
-    // Release previous
-    if (_model != nullptr) {
-        _engine->SprMngr.FreeModel(_model);
-        _model = nullptr;
-    }
+    _model = nullptr;
 
-    // Load new
     const string ext = _str(GetModelName()).getFileExtension();
     if (ext == "fo3d") {
         _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-        auto* model = _engine->SprMngr.LoadModel(GetModelName(), true);
-        if (model != nullptr) {
-            _model = model;
-
+        _model = _engine->SprMngr.LoadModel(GetModelName(), true);
+        if (_model) {
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
 
@@ -744,7 +542,6 @@ void CritterHexView::Process()
         ProcessMoving();
     }
 
-    // Fading
     if (_fadingEnabled) {
         Alpha = GetFadeAlpha();
     }
@@ -753,94 +550,54 @@ void CritterHexView::Process()
     if (_offsExtNextTick != 0u && _engine->GameTime.GameTick() >= _offsExtNextTick) {
         _offsExtNextTick = _engine->GameTime.GameTick() + 30;
 
-        const auto dist = GenericUtils::DistSqrt(0, 0, _oxExtI, _oyExtI);
+        const auto dist = GenericUtils::DistSqrt(0, 0, iround(_oxExt), iround(_oyExt));
         const auto dist_div = dist / 10u;
         auto mul = static_cast<float>(dist_div);
         if (mul < 1.0f) {
             mul = 1.0f;
         }
 
-        _oxExtF += _oxExtSpeed * mul;
-        _oyExtF += _oyExtSpeed * mul;
-        _oxExtI = static_cast<short>(_oxExtF);
-        _oyExtI = static_cast<short>(_oyExtF);
+        _oxExt += _oxExtSpeed * mul;
+        _oyExt += _oyExtSpeed * mul;
 
-        if (GenericUtils::DistSqrt(0, 0, _oxExtI, _oyExtI) > dist) {
+        if (GenericUtils::DistSqrt(0, 0, iround(_oxExt), iround(_oyExt)) > dist) {
             _offsExtNextTick = 0;
-            _oxExtI = 0;
-            _oyExtI = 0;
+            _oxExt = 0.0f;
+            _oyExt = 0.0f;
         }
 
         RefreshOffs();
     }
 
     // Animation
-    const auto& cr_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
-    auto anim_proc = (_engine->GameTime.GameTick() - _animStartTick) * 100u / (cr_anim.AnimTick != 0u ? cr_anim.AnimTick : 1u);
-    if (anim_proc >= 100u) {
-        if (!_animSequence.empty()) {
-            anim_proc = 100u;
-        }
-        else {
-            anim_proc %= 100u;
-        }
-    }
+    const auto& cur_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
+    const auto anim_proc = (_engine->GameTime.GameTick() - _animStartTick) * 100 / (cur_anim.AnimTick != 0 ? cur_anim.AnimTick : 100);
 
     // Change frames
 #if FO_ENABLE_3D
-    const auto is_no_model = _model == nullptr;
-#else
-    constexpr auto is_no_model = true;
+    if (_model == nullptr)
 #endif
-    if (is_no_model && anim_proc < 100u) {
-        const auto cur_spr = cr_anim.BeginFrm + (cr_anim.EndFrm - cr_anim.BeginFrm + 1u) * anim_proc / 100u;
-        if (cur_spr != _curSpr) {
-            // Change frame
-            const auto old_spr = _curSpr;
-            _curSpr = cur_spr;
-            SprId = cr_anim.Anim->GetSprId(_curSpr);
-
-            // Change offsets
-            short ox = 0;
-            short oy = 0;
-
-            for (uint i = 0, j = old_spr % cr_anim.Anim->CntFrm; i <= j; i++) {
-                ox = static_cast<short>(ox - cr_anim.Anim->NextX[i]);
-                oy = static_cast<short>(oy - cr_anim.Anim->NextY[i]);
-            }
-            for (uint i = 0, j = cur_spr % cr_anim.Anim->CntFrm; i <= j; i++) {
-                ox = static_cast<short>(ox + cr_anim.Anim->NextX[i]);
-                oy = static_cast<short>(oy + cr_anim.Anim->NextY[i]);
-            }
-
-            SetAnimOffs(ox, oy);
+    {
+        const auto frm_proc = !_animSequence.empty() ? std::min(anim_proc, 99u) : anim_proc % 100;
+        const auto frm_index = cur_anim.BeginFrm + (cur_anim.EndFrm - cur_anim.BeginFrm + 1) * frm_proc / 100;
+        if (frm_index != _curFrmIndex) {
+            SetAnimSpr(cur_anim.Anim, frm_index);
         }
     }
 
     if (!_animSequence.empty()) {
-        // Move offsets
-        if (false) {
-            // auto&& [ox, oy] = GetWalkHexOffsets(static_cast<uchar>(cr_anim.DirOffs - 1));
-            // SetOffs(static_cast<short>(ox - ox * anim_proc / 100), static_cast<short>(oy - oy * anim_proc / 100), true);
-
-            if (anim_proc >= 100u) {
-                NextAnim(true);
-            }
-        }
-        else {
 #if FO_ENABLE_3D
-            if (_model != nullptr && !_model->IsAnimationPlaying()) {
-                NextAnim(true);
-            }
-            else if (_model == nullptr && anim_proc >= 100u) {
-                NextAnim(true);
-            }
-#else
-            if (anim_proc >= 100u) {
-                NextAnim(true);
-            }
-#endif
+        if (_model != nullptr && !_model->IsAnimationPlaying()) {
+            NextAnim(true);
         }
+        else if (_model == nullptr && anim_proc >= 100u) {
+            NextAnim(true);
+        }
+#else
+        if (anim_proc >= 100u) {
+            NextAnim(true);
+        }
+#endif
 
         if (_animSequence.empty()) {
             AnimateStay();
@@ -848,6 +605,7 @@ void CritterHexView::Process()
     }
 
     // Fidget animation
+    // Todo: fidget animation to scripts
     if (_engine->GameTime.GameTick() >= _tickFidget) {
 #if FO_ENABLE_3D
         const auto is_combat_mode = _model != nullptr && _model->IsCombatMode();
@@ -855,14 +613,30 @@ void CritterHexView::Process()
         constexpr auto is_combat_mode = false;
 #endif
 
-        if (_animSequence.empty() && GetCond() == CritterCondition::Alive && !IsMoving() && is_combat_mode) {
+        if (_animSequence.empty() && GetCond() == CritterCondition::Alive && !IsMoving() && !is_combat_mode) {
             Action(ACTION_FIDGET, 0, nullptr, false);
         }
 
         _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2);
     }
 
-    RefreshCombatMode();
+    // Combat mode
+#if FO_ENABLE_3D
+    const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond();
+
+    if (is_combat != _model->IsCombatMode()) {
+        if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
+            if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
+                Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
+            }
+            else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
+                Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
+            }
+        }
+
+        _model->SetCombatMode(is_combat);
+    }
+#endif
 }
 
 void CritterHexView::ProcessMoving()
@@ -969,8 +743,8 @@ void CritterHexView::ProcessMoving()
             mx -= static_cast<float>(cr_ox);
             my -= static_cast<float>(cr_oy);
 
-            const auto mxi = static_cast<short>(std::round(mx));
-            const auto myi = static_cast<short>(std::round(my));
+            const auto mxi = static_cast<short>(iround(mx));
+            const auto myi = static_cast<short>(iround(my));
             if (moved || GetHexOffsX() != mxi || GetHexOffsY() != myi) {
 #if FO_ENABLE_3D
                 if (_model != nullptr) {
@@ -992,7 +766,16 @@ void CritterHexView::ProcessMoving()
 
             // Evaluate dir angle
             const auto dir_angle = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
-            ChangeMoveDirAngle(static_cast<int>(dir_angle));
+
+#if FO_ENABLE_3D
+            if (_model != nullptr) {
+                ChangeMoveDirAngle(static_cast<int>(dir_angle));
+            }
+            else
+#endif
+            {
+                ChangeDir(_engine->Geometry.AngleToDir(static_cast<short>(dir_angle)));
+            }
 
             done = true;
         }
@@ -1022,24 +805,37 @@ auto CritterHexView::GetDrawRect() const -> IRect
     return _engine->SprMngr.GetDrawRect(SprDraw);
 }
 
-void CritterHexView::SetAnimOffs(int ox, int oy)
+void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
 {
-    _oxAnim = ox;
-    _oyAnim = oy;
+    _curFrmIndex = frm_index;
+
+    SprId = anim->GetSprId(_curFrmIndex);
+
+    _oxAnim = 0;
+    _oyAnim = 0;
+
+    if (anim->Anim2 == ANIM2_WALK || anim->Anim2 == ANIM2_RUN) {
+        // ...
+    }
+    else {
+        for (const auto i : xrange(_curFrmIndex + 1u)) {
+            _oxAnim += anim->NextX[i];
+            _oyAnim += anim->NextY[i];
+        }
+    }
 
     RefreshOffs();
 }
 
 void CritterHexView::AddExtraOffs(int ext_ox, int ext_oy)
 {
-    _oxExtI += ext_ox;
-    _oyExtI += ext_oy;
-    _oxExtF = static_cast<float>(_oxExtI);
-    _oyExtF = static_cast<float>(_oyExtI);
+    _oxExt += static_cast<float>(ext_ox);
+    _oyExt += static_cast<float>(ext_oy);
 
-    std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsCoords(0, 0, _oxExtI, _oyExtI);
+    std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsCoords(0, 0, iround(_oxExt), iround(_oyExt));
     _oxExtSpeed = -_oxExtSpeed;
     _oyExtSpeed = -_oyExtSpeed;
+
     _offsExtNextTick = _engine->GameTime.GameTick() + 30;
 
     RefreshOffs();
@@ -1047,22 +843,14 @@ void CritterHexView::AddExtraOffs(int ext_ox, int ext_oy)
 
 void CritterHexView::RefreshOffs()
 {
-    SprOx = static_cast<short>(GetHexOffsX() + _oxExtI + _oxAnim);
-    SprOy = static_cast<short>(GetHexOffsY() + _oyExtI + _oyAnim);
+    SprOx = GetHexOffsX() + iround(_oxExt) + _oxAnim;
+    SprOy = GetHexOffsY() + iround(_oyExt) + _oyAnim;
 
     if (SprDrawValid) {
         if (IsChosen()) {
             _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
         }
     }
-}
-
-auto CritterHexView::GetWalkHexOffsets(uchar dir) const -> tuple<short, short>
-{
-    auto hx = 1;
-    auto hy = 1;
-    _engine->Geometry.MoveHexByDirUnsafe(hx, hy, dir);
-    return _engine->Geometry.GetHexInterval(hx, hy, 1, 1);
 }
 
 void CritterHexView::SetText(string_view str, uint color, uint text_delay)

@@ -197,20 +197,24 @@ FOServer::FOServer(GlobalSettings& settings) :
             const auto* prop = registrator->GetByIndex(prop_index);
             prop->AddSetter(std::move(callback));
         };
+        const auto set_post_setter = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
+            const auto* prop = registrator->GetByIndex(prop_index);
+            prop->AddPostSetter(std::move(callback));
+        };
 
         set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemBlockLines(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsGeck(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsRadio(entity, prop, data.GetPtrAs<void>()); });
-        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemChangeView(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemRecacheHex(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemBlockLines(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsGeck(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemIsRadio(entity, prop); });
+        set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
     DlgMngr.LoadFromResources();
@@ -471,7 +475,6 @@ void FOServer::MainLoop()
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
-                player->Connection->HardDisconnect();
             }
         }
 
@@ -497,7 +500,6 @@ void FOServer::MainLoop()
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
-                player->Connection->HardDisconnect();
             }
         }
 
@@ -2228,7 +2230,8 @@ void FOServer::Process_Move(Player* player)
 {
     uint msg_len;
     uint map_id;
-    bool is_run;
+    uint cr_id;
+    ushort speed;
     ushort start_hx;
     ushort start_hy;
     ushort steps_count;
@@ -2240,7 +2243,8 @@ void FOServer::Process_Move(Player* player)
 
     player->Connection->Bin >> msg_len;
     player->Connection->Bin >> map_id;
-    player->Connection->Bin >> is_run;
+    player->Connection->Bin >> cr_id;
+    player->Connection->Bin >> speed;
     player->Connection->Bin >> start_hx;
     player->Connection->Bin >> start_hy;
     player->Connection->Bin >> steps_count;
@@ -2258,16 +2262,34 @@ void FOServer::Process_Move(Player* player)
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    Critter* cr = player->GetOwnedCritter();
-
-    if (map_id != cr->GetMapId()) {
-        return;
-    }
-    if (cr->GetIsNoMove() || (is_run && cr->GetIsNoRun())) {
+    auto* map = MapMngr.GetMap(map_id);
+    if (map == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
-    MoveCritter(cr, is_run, start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
+    Critter* cr = map->GetCritter(cr_id);
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    if (speed == 0) {
+        BreakIntoDebugger();
+        player->Send_Position(cr);
+        return;
+    }
+
+    // Todo: validate moving steps programmaticaly
+
+    uint checked_speed = speed;
+    if (!OnPlayerCheckMove.Fire(player, cr, checked_speed)) {
+        BreakIntoDebugger();
+        player->Send_Position(cr);
+        return;
+    }
+
+    MoveCritter(cr, static_cast<ushort>(checked_speed), start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
 }
 
 void FOServer::Process_StopMove(Player* player)
@@ -2275,6 +2297,7 @@ void FOServer::Process_StopMove(Player* player)
     NON_CONST_METHOD_HINT();
 
     uint map_id;
+    uint cr_id;
     ushort start_hx;
     ushort start_hy;
     short hex_ox;
@@ -2282,6 +2305,7 @@ void FOServer::Process_StopMove(Player* player)
     short dir_angle;
 
     player->Connection->Bin >> map_id;
+    player->Connection->Bin >> cr_id;
     player->Connection->Bin >> start_hx;
     player->Connection->Bin >> start_hy;
     player->Connection->Bin >> hex_ox;
@@ -2290,9 +2314,22 @@ void FOServer::Process_StopMove(Player* player)
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    Critter* cr = player->GetOwnedCritter();
+    auto* map = MapMngr.GetMap(map_id);
+    if (map == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
 
-    if (map_id != cr->GetMapId()) {
+    Critter* cr = map->GetCritter(cr_id);
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    uint zero_speed = 0;
+    if (!OnPlayerCheckMove.Fire(player, cr, zero_speed)) {
+        BreakIntoDebugger();
+        player->Send_Position(cr);
         return;
     }
 
@@ -2304,14 +2341,36 @@ void FOServer::Process_Dir(Player* player)
 {
     NON_CONST_METHOD_HINT();
 
-    Critter* cr = player->GetOwnedCritter();
+    uint map_id;
+    uint cr_id;
+    short dir_angle;
 
-    short dir_angle = 0;
+    player->Connection->Bin >> map_id;
+    player->Connection->Bin >> cr_id;
     player->Connection->Bin >> dir_angle;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    cr->ChangeDirAngle(dir_angle);
+    auto* map = MapMngr.GetMap(map_id);
+    if (map == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    Critter* cr = map->GetCritter(cr_id);
+    if (cr == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    short checked_dir_angle = dir_angle;
+    if (!OnPlayerCheckDir.Fire(player, cr, checked_dir_angle)) {
+        BreakIntoDebugger();
+        player->Send_Dir(cr);
+        return;
+    }
+
+    cr->ChangeDirAngle(checked_dir_angle);
     cr->Broadcast_Dir();
 }
 
@@ -2638,7 +2697,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     NON_CONST_METHOD_HINT();
     UNUSED_VARIABLE(prop);
 
-    auto* item = dynamic_cast<Item*>(entity);
+    const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
     const auto old_count = entity->GetProperties().GetValue<uint>(prop);
     if (static_cast<int>(new_count) > 0 && (item->GetStackable() || new_count == 1)) {
@@ -2646,7 +2705,6 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
         ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
     }
     else {
-        item->SetCount(old_count);
         if (!item->GetStackable()) {
             throw GenericException("Trying to change count of not stackable item");
         }
@@ -2655,7 +2713,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
@@ -2672,8 +2730,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto* cr = CrMngr.GetCritter(item->GetCritterId());
         if (cr != nullptr) {
-            const auto value = *static_cast<const bool*>(new_value);
-            if (value) {
+            if (item->GetIsHidden()) {
                 cr->Send_EraseItem(item);
             }
             else {
@@ -2684,10 +2741,9 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
 
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
@@ -2700,10 +2756,8 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
-
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2715,25 +2769,23 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 {
-    auto* item = dynamic_cast<Item*>(entity);
-    const auto value = *static_cast<const bool*>(new_value);
+    const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
-            map->GetLocation()->GeckCount += (value ? 1 : -1);
+            map->GetLocation()->GeckCount += item->GetIsGeck() ? 1 : -1;
         }
     }
 }
 
-void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 {
     auto* item = dynamic_cast<Item*>(entity);
-    const auto value = *static_cast<const bool*>(new_value);
 
-    if (value) {
+    if (item->GetIsRadio()) {
         ItemMngr.RegisterRadio(item);
     }
     else {
@@ -2741,13 +2793,12 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void
     }
 }
 
-void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     auto* item = dynamic_cast<Item*>(entity);
-    const auto new_opened = *static_cast<const bool*>(new_value);
 
     if (item->GetIsCanOpen()) {
-        if (new_opened) {
+        if (item->GetOpened()) {
             item->SetIsLightThru(true);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2775,16 +2826,6 @@ void FOServer::ProcessMove(Critter* cr)
 {
     // Moving
     if (cr->IsMoving()) {
-        if (cr->Moving.IsRunning && cr->GetIsHide()) {
-            cr->SetIsHide(false);
-        }
-
-        // bool is_run = cr->IsRunning;
-        // if (is_run && cr->GetIsNoRun())
-        //    return false;
-        // if (!is_run && cr->GetIsNoWalk())
-        //    return false;
-
         auto* map = MapMngr.GetMap(cr->GetMapId());
         if (map != nullptr && cr->IsAlive()) {
             ProcessMoveBySteps(cr, map);
@@ -2849,7 +2890,6 @@ void FOServer::ProcessMove(Critter* cr)
             find_input.FromHexY = cr->GetHexY();
             find_input.ToHexX = hx;
             find_input.ToHexY = hy;
-            find_input.IsRun = cr->TargetMoving.IsRun;
             find_input.Multihex = cr->GetMultihex();
             find_input.Cut = cut;
             find_input.TraceDist = trace_dist;
@@ -2857,11 +2897,7 @@ void FOServer::ProcessMove(Critter* cr)
             find_input.CheckCritter = true;
             find_input.CheckGagItems = true;
 
-            if (find_input.IsRun && cr->GetIsNoRun()) {
-                find_input.IsRun = false;
-            }
-
-            if (cr->GetIsNoMove()) {
+            if (cr->TargetMoving.Speed == 0) {
                 cr->TargetMoving.State = MovingState::CantMove;
                 return;
             }
@@ -2933,7 +2969,7 @@ void FOServer::ProcessMove(Critter* cr)
 
             // Success
             cr->TargetMoving.State = MovingState::Success;
-            MoveCritter(cr, !cr->GetIsNoRun(), cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
+            MoveCritter(cr, cr->TargetMoving.Speed, cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
         }
     }
 }
@@ -3092,7 +3128,7 @@ label_Done:
     }
 }
 
-void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
+void FOServer::MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
 {
     cr->ClearMove();
 
@@ -3101,7 +3137,7 @@ void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort sta
         return;
     }
 
-    cr->Moving.IsRunning = is_run;
+    cr->Moving.Speed = speed;
     cr->Moving.StartTick = GameTime.FrameTick();
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
@@ -3115,7 +3151,8 @@ void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort sta
     cr->Moving.WholeTime = 0.0f;
     cr->Moving.WholeDist = 0.0f;
 
-    const auto base_move_speed = static_cast<float>(cr->Moving.IsRunning ? cr->GetRunSpeed() : cr->GetWalkSpeed());
+    RUNTIME_ASSERT(cr->Moving.Speed > 0);
+    const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
     auto control_step_begin = 0;
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
@@ -3235,84 +3272,33 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer
         switch (demand.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
-        case DR_PROP_CRITTER_DICT:
         case DR_PROP_ITEM:
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
-            Entity* entity = nullptr;
-            const PropertyRegistrator* prop_registrator = nullptr;
+            const Entity* entity = nullptr;
+
             if (demand.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
-            }
-            else if (demand.Type == DR_PROP_CRITTER_DICT) {
-                entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME);
             }
+
             if (entity == nullptr) {
                 break;
             }
 
-            const auto* prop = prop_registrator->GetByIndex(demand.ParamIndex);
-            auto val = 0;
-            if (demand.Type == DR_PROP_CRITTER_DICT) {
-                if (slave == nullptr) {
-                    break;
-                }
-
-                /*CScriptDict* dict = (CScriptDict*)prop->GetValue<void*>(entity);
-                uint slave_id = slave->GetId();
-                void* pvalue = dict->GetDefault(&slave_id, nullptr);
-                dict->Release();
-                if (pvalue)
-                {
-                    int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
-                    if (value_type_id == asTYPEID_BOOL)
-                        val = (int)*(bool*)pvalue ? 1 : 0;
-                    else if (value_type_id == asTYPEID_INT8)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT16)
-                        val = (int)*(short*)pvalue;
-                    else if (value_type_id == asTYPEID_INT32)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT64)
-                        val = (int)*(int64*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT8)
-                        val = (int)*(uchar*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT16)
-                        val = (int)*(ushort*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT32)
-                        val = (int)*(uint*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT64)
-                        val = (int)*(uint64*)pvalue;
-                    else if (value_type_id == asTYPEID_FLOAT)
-                        val = (int)*(float*)pvalue;
-                    else if (value_type_id == asTYPEID_DOUBLE)
-                        val = (int)*(double*)pvalue;
-                    else
-                        RUNTIME_ASSERT(false);
-                }*/
-            }
-            else {
-                val = entity->GetProperties().GetPlainDataValueAsInt(prop);
-            }
+            const auto val = entity->GetProperties().GetValueAsInt(static_cast<int>(demand.ParamIndex));
 
             switch (demand.Op) {
             case '>':
@@ -3446,91 +3432,35 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
         switch (result.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
-        case DR_PROP_CRITTER_DICT:
         case DR_PROP_ITEM:
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
             Entity* entity = nullptr;
-            const PropertyRegistrator* prop_registrator = nullptr;
+
             if (result.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
-            }
-            else if (result.Type == DR_PROP_CRITTER_DICT) {
-                entity = master;
-                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME);
             }
+
             if (entity == nullptr) {
                 break;
             }
 
-            // Todo: restore DialogUseResult
-            UNUSED_VARIABLE(prop_registrator);
-            throw NotImplementedException(LINE_STR);
-            /*const auto* prop = prop_registrator->GetByIndex(index);
-            int val = 0;
-            CScriptDict* dict = nullptr;
-            if (result.Type == DR_PROP_CRITTER_DICT)
-            {
-                if (!slave)
-                    continue;
+            auto val = entity->GetProperties().GetValueAsInt(static_cast<int>(result.ParamIndex));
 
-                dict = (CScriptDict*)prop->GetValue<void*>(master);
-                uint slave_id = slave->GetId();
-                void* pvalue = dict->GetDefault(&slave_id, nullptr);
-                if (pvalue)
-                {
-                    int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
-                    if (value_type_id == asTYPEID_BOOL)
-                        val = (int)*(bool*)pvalue ? 1 : 0;
-                    else if (value_type_id == asTYPEID_INT8)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT16)
-                        val = (int)*(short*)pvalue;
-                    else if (value_type_id == asTYPEID_INT32)
-                        val = (int)*(char*)pvalue;
-                    else if (value_type_id == asTYPEID_INT64)
-                        val = (int)*(int64*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT8)
-                        val = (int)*(uchar*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT16)
-                        val = (int)*(ushort*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT32)
-                        val = (int)*(uint*)pvalue;
-                    else if (value_type_id == asTYPEID_UINT64)
-                        val = (int)*(uint64*)pvalue;
-                    else if (value_type_id == asTYPEID_FLOAT)
-                        val = (int)*(float*)pvalue;
-                    else if (value_type_id == asTYPEID_DOUBLE)
-                        val = (int)*(double*)pvalue;
-                    else
-                        RUNTIME_ASSERT(false);
-                }
-            }
-            else
-            {
-                val = prop->GetPODValueAsInt(entity);
-            }
-
-            switch (result.Op)
-            {
+            switch (result.Op) {
             case '+':
                 val += result.Value;
                 break;
@@ -3550,45 +3480,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
                 break;
             }
 
-            if (result.Type == DR_PROP_CRITTER_DICT)
-            {
-                uint64 buf = 0;
-                void* pvalue = &buf;
-                int value_type_id = prop->GetASObjectType()->GetSubTypeId(1);
-                if (value_type_id == asTYPEID_BOOL)
-                    *(bool*)pvalue = val != 0;
-                else if (value_type_id == asTYPEID_INT8)
-                    *(char*)pvalue = (char)val;
-                else if (value_type_id == asTYPEID_INT16)
-                    *(short*)pvalue = (short)val;
-                else if (value_type_id == asTYPEID_INT32)
-                    *(int*)pvalue = (int)val;
-                else if (value_type_id == asTYPEID_INT64)
-                    *(int64*)pvalue = (int64)val;
-                else if (value_type_id == asTYPEID_UINT8)
-                    *(uchar*)pvalue = (uchar)val;
-                else if (value_type_id == asTYPEID_UINT16)
-                    *(ushort*)pvalue = (ushort)val;
-                else if (value_type_id == asTYPEID_UINT32)
-                    *(uint*)pvalue = (uint)val;
-                else if (value_type_id == asTYPEID_UINT64)
-                    *(uint64*)pvalue = (uint64)val;
-                else if (value_type_id == asTYPEID_FLOAT)
-                    *(float*)pvalue = (float)val;
-                else if (value_type_id == asTYPEID_DOUBLE)
-                    *(double*)pvalue = (double)val;
-                else
-                    RUNTIME_ASSERT(false);
-
-                uint slave_id = slave->GetId();
-                dict->Set(&slave_id, pvalue);
-                prop->SetValue<void*>(entity, dict);
-                dict->Release();
-            }
-            else
-            {
-                prop->SetPODValueAsInt(entity, val);
-            }*/
+            entity->GetPropertiesForEdit().SetValueAsInt(static_cast<int>(result.ParamIndex), val);
         }
             continue;
         case DR_ITEM: {
@@ -3649,6 +3541,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         CrMngr.CloseTalk(cl);
     }
 
+    hstring selected_dlg_pack_id = dlg_pack_id;
     DialogPack* dialog_pack;
     vector<Dialog>* dialogs;
 
@@ -3658,13 +3551,13 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
             return;
         }
 
-        if (dlg_pack_id) {
+        if (!selected_dlg_pack_id) {
             const auto npc_dlg_id = npc->GetDialogId();
-            if (npc_dlg_id) {
+            if (!npc_dlg_id) {
                 return;
             }
 
-            dlg_pack_id = npc_dlg_id;
+            selected_dlg_pack_id = npc_dlg_id;
         }
 
         if (!ignore_distance) {
@@ -3720,7 +3613,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
             return;
         }
 
-        dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
+        dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
         if (dialogs == nullptr || dialogs->empty()) {
             return;
@@ -3744,7 +3637,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
             return;
         }
 
-        dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
+        dialog_pack = DlgMngr.GetDialog(selected_dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
         if (dialogs == nullptr || dialogs->empty()) {
             WriteLog("No dialogs, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
@@ -3754,25 +3647,25 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Predialogue installations
     auto it_d = dialogs->begin();
-    auto go_dialog = uint(-1);
+    auto go_dialog = static_cast<uint>(-1);
     auto it_a = (*it_d).Answers.begin();
     for (; it_a != (*it_d).Answers.end(); ++it_a) {
         if (DialogCheckDemand(npc, cl, *it_a, false)) {
             go_dialog = (*it_a).Link;
         }
-        if (go_dialog != uint(-1)) {
+        if (go_dialog != static_cast<uint>(-1)) {
             break;
         }
     }
 
-    if (go_dialog == uint(-1)) {
+    if (go_dialog == static_cast<uint>(-1)) {
         return;
     }
 
     // Use result
     const auto force_dialog = DialogUseResult(npc, cl, (*it_a));
     if (force_dialog != 0u) {
-        if (force_dialog == uint(-1)) {
+        if (force_dialog == static_cast<uint>(-1)) {
             return;
         }
         go_dialog = force_dialog;
@@ -3804,7 +3697,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         cl->Talk.TalkHexY = hy;
     }
 
-    cl->Talk.DialogPackId = dlg_pack_id;
+    cl->Talk.DialogPackId = selected_dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
     cl->Talk.StartTick = GameTime.GameTick();
     cl->Talk.TalkTime = Settings.DlgTalkMaxTime;
@@ -3813,12 +3706,25 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if (cl->Talk.CurDialog.DlgScriptFunc) {
+
+    if (cl->Talk.CurDialog.DlgScriptFuncName) {
+        auto failed = false;
+
         cl->Talk.Locked = true;
-        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFunc, cl, npc, cl->Talk.Lexems)) {
-            // Nop
+        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+            failed = true;
+        }
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cl->Talk.CurDialog.DlgScriptFuncName); func && !func(cl, npc, &cl->Talk.Lexems)) {
+            failed = true;
         }
         cl->Talk.Locked = false;
+
+        if (failed) {
+            CrMngr.CloseTalk(cl);
+            cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            WriteLog("Dialog generation failed, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
+            return;
+        }
     }
 
     // On head text
@@ -3943,7 +3849,7 @@ void FOServer::Process_Dialog(Player* player)
             [[fallthrough]];
         case DIALOG_BARTER:
         label_Barter:
-            if (cur_dialog->DlgScriptFunc) {
+            if (cur_dialog->DlgScriptFuncName) {
                 cr->Send_TextMsg(npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
                 return;
             }
@@ -4003,12 +3909,24 @@ void FOServer::Process_Dialog(Player* player)
 
     // Get lexems
     cr->Talk.Lexems.clear();
-    if (cr->Talk.CurDialog.DlgScriptFunc) {
+    if (cr->Talk.CurDialog.DlgScriptFuncName) {
+        auto failed = false;
+
         cr->Talk.Locked = true;
-        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, npc, cr->Talk.Lexems)) {
-            // Nop
+        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, npc, &cr->Talk.Lexems)) {
+            failed = true;
+        }
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, npc, &cr->Talk.Lexems)) {
+            failed = true;
         }
         cr->Talk.Locked = false;
+
+        if (failed) {
+            CrMngr.CloseTalk(cr);
+            cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
+            WriteLog("Dialog generation failed, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
+            return;
+        }
     }
 
     // On head text
@@ -4079,31 +3997,105 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint
     return item;
 }
 
-auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool
+auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool
 {
-    /*int bind_id = (int)demand.ParamId;
-    ScriptSys.PrepareContext(bind_id, master->GetName());
-    ScriptSys.SetArgEntity(master);
-    ScriptSys.SetArgEntity(slave);
-    for (int i = 0; i < demand.ValuesCount; i++)
-        ScriptSys.SetArgUInt(demand.ValueExt[i]);
-    if (ScriptSys.RunPrepared())
-        return ScriptSys.GetReturnedBool();*/
-    return false;
+    NON_CONST_METHOD_HINT();
+
+    bool result;
+
+    switch (demand.ValuesCount) {
+    case 0:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName, master, slave, result) && result;
+    case 1:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], result) && result;
+    case 2:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], result) && result;
+    case 3:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], result) && result;
+    case 4:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], result) && result;
+    case 5:
+        return ScriptSys->CallFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName, master, slave, demand.ValueExt[0], demand.ValueExt[1], demand.ValueExt[2], demand.ValueExt[3], demand.ValueExt[4], result) && result;
+    default:
+        throw UnreachablePlaceException(LINE_STR);
+    }
 }
 
-auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter* /*slave*/) -> uint
+auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint
 {
-    /*int bind_id = (int)result.ParamId;
-    ScriptSys.PrepareContext(
-        bind_id, _str("Critter '{}', func '{}'", master->GetName(), ScriptSys.GetBindFuncName(bind_id)));
-    ScriptSys.SetArgEntity(master);
-    ScriptSys.SetArgEntity(slave);
-    for (int i = 0; i < result.ValuesCount; i++)
-        ScriptSys.SetArgUInt(result.ValueExt[i]);
-    if (ScriptSys.RunPrepared() && result.RetValue)
-        return ScriptSys.GetReturnedUInt();*/
-    return 0;
+    NON_CONST_METHOD_HINT();
+
+    switch (result.ValuesCount) {
+    case 0:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) {
+            return func(master, slave) ? func.GetResult() : 0u;
+        }
+        break;
+    case 1:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 2:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 3:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 4:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3]) ? func.GetResult() : 0u;
+        }
+        break;
+    case 5:
+        if (auto&& func = ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName)) {
+            return func(master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4]) ? func.GetResult() : 0u;
+        }
+        break;
+    default:
+        throw UnreachablePlaceException(LINE_STR);
+    }
+
+    switch (result.ValuesCount) {
+    case 0:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName, master, slave)) {
+            return 0u;
+        }
+        break;
+    case 1:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0])) {
+            return 0u;
+        }
+        break;
+    case 2:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1])) {
+            return 0u;
+        }
+        break;
+    case 3:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2])) {
+            return 0u;
+        }
+        break;
+    case 4:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3])) {
+            return 0u;
+        }
+        break;
+    case 5:
+        if (!ScriptSys->CallFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName, master, slave, result.ValueExt[0], result.ValueExt[1], result.ValueExt[2], result.ValueExt[3], result.ValueExt[4])) {
+            return 0u;
+        }
+        break;
+    default:
+        throw UnreachablePlaceException(LINE_STR);
+    }
+
+    return 0u;
 }
 
 auto FOServer::MakePlayerId(string_view player_name) const -> uint

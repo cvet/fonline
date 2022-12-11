@@ -111,6 +111,10 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerInit, Player* /*player*/);
     ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnPlayerCheckDir, Player* /*player*/, Critter* /*cr*/, short& /*dirAngle*/);
+    ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
@@ -239,20 +243,20 @@ private:
     void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemChangeView(Entity* entity, const Property* prop);
+    void OnSetItemRecacheHex(Entity* entity, const Property* prop);
+    void OnSetItemBlockLines(Entity* entity, const Property* prop);
+    void OnSetItemIsGeck(Entity* entity, const Property* prop);
+    void OnSetItemIsRadio(Entity* entity, const Property* prop);
+    void OnSetItemOpened(Entity* entity, const Property* prop);
 
     void ProcessCritter(Critter* cr);
     void ProcessMove(Critter* cr);
     void ProcessMoveBySteps(Critter* cr, Map* map);
-    void MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self);
+    void MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self);
 
-    auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
-    auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
+    auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
+    auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint;
     auto DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
     auto DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
     auto DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;

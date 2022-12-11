@@ -66,13 +66,17 @@ public:
 
     [[nodiscard]] auto IsDeferredCallPending(uint id) const -> bool;
 
-    auto AddDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
+    auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> uint;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint;
     auto CancelDeferredCall(uint id) -> bool;
     void Process();
 
 protected:
-    auto RunDeferredCall(DeferredCall& call) const -> bool;
-    virtual auto GetNextId() -> uint;
+    virtual auto ApplyDeferredCall(uint delay, DeferredCall& call) -> uint;
+    virtual auto RunDeferredCall(DeferredCall& call) const -> bool;
     virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
 
     FOEngineBase* _engine;

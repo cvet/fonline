@@ -164,6 +164,11 @@ public:
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
     [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
 
+    [[nodiscard]] auto IsInt() const -> bool { return _isInt; }
+    [[nodiscard]] auto IsSignedInt() const -> bool { return _isSignedInt; }
+    [[nodiscard]] auto IsFloat() const -> bool { return _isFloat; }
+    [[nodiscard]] auto IsBool() const -> bool { return _isBool; }
+
     [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
     [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
     [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
@@ -175,6 +180,7 @@ public:
     [[nodiscard]] auto IsReadOnly() const -> bool { return _isReadOnly; }
     [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
     [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
+    [[nodiscard]] auto IsNullGetterForProto() const -> bool { return _isNullGetterForProto; }
 
     [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
     [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
@@ -253,6 +259,7 @@ private:
     double _maxValueF {};
     bool _isTemporary {};
     bool _isHistorical {};
+    bool _isNullGetterForProto {};
     ushort _regIndex {};
     uint _podDataOffset {};
     uint _complexDataIndex {};
@@ -708,7 +715,19 @@ private:
 
 public:
     template<typename T>
-    void Register(Property::AccessType access, string_view name, const vector<string>& flags)
+    void Register(Property::AccessType access, string_view name, const vector<string_view>& flags)
+    {
+        RegisterEx<T>(access, name, flags);
+    }
+
+    template<typename T>
+    void Register(Property::AccessType access, string_view name, const initializer_list<string_view>& flags)
+    {
+        RegisterEx<T>(access, name, {flags.begin(), flags.end()});
+    }
+
+    template<typename T>
+    void RegisterEx(Property::AccessType access, string_view name, const const_span<string_view>& flags)
     {
         auto* prop = new Property(this);
 
@@ -813,7 +832,7 @@ public:
 
         prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
 
-        AppendProperty(prop, flags);
+        AppendProperty(prop, {flags.begin(), flags.end()});
     }
 
 private:
@@ -887,5 +906,5 @@ private:
         static constexpr auto IS_DICT_OF_ARRAY = false;
     };
 
-    void AppendProperty(Property* prop, const vector<string>& flags);
+    void AppendProperty(Property* prop, const const_span<string_view>& flags);
 };

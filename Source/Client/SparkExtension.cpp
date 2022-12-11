@@ -74,7 +74,7 @@ namespace SPK::FO
         auto& v = _renderBuf->Vertices3D[_curVertexIndex++];
 
         v.Position = vec3(pos.x, pos.y, pos.z);
-        v.Color = COLOR_RGBA(color.a, color.r, color.g, color.b);
+        v.Color = COLOR_RGBA(color.a, color.b, color.g, color.r);
 #endif
     }
 
@@ -125,6 +125,14 @@ namespace SPK::FO
         render_buffer.SetNextVertex(particle.position() - quadSide() + quadUp(), particle.getColor()); // top left vertex
         render_buffer.SetNextVertex(particle.position() - quadSide() - quadUp(), particle.getColor()); // bottom left vertex
         render_buffer.SetNextVertex(particle.position() + quadSide() - quadUp(), particle.getColor()); // bottom right vertex
+    }
+
+    void SparkQuadRenderer::AddTexture2D(const Particle& particle, SparkRenderBuffer& render_buffer) const
+    {
+        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 1.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
+        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
+        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 1.0f * _textureAtlasOffsets[3]);
+        render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 1.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 1.0f * _textureAtlasOffsets[3]);
     }
 
     void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const
@@ -224,12 +232,14 @@ namespace SPK::FO
     {
         scaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
+        AddTexture2D(particle, render_buffer);
     }
 
     void SparkQuadRenderer::Render2DRot(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
         rotateAndScaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
+        AddTexture2D(particle, render_buffer);
     }
 
     void SparkQuadRenderer::Render2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const

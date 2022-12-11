@@ -35,22 +35,22 @@
 #include "Application.h"
 #include "EngineBase.h"
 
-auto ScriptSystem::ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
+auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
 {
-    if (!gen_func.CallSupported) {
+    if (!func_desc.CallSupported) {
         return false;
     }
 
-    if (type_index(*gen_func.RetType) != type_index(*ret_type)) {
+    if (type_index(*func_desc.RetType) != type_index(*ret_type)) {
         return false;
     }
-    if (gen_func.ArgsType.size() != args_type.size()) {
+    if (func_desc.ArgsType.size() != args_type.size()) {
         return false;
     }
 
     size_t index = 0;
     for (const auto* arg_type : args_type) {
-        if (type_index(*arg_type) != type_index(*gen_func.ArgsType[index])) {
+        if (type_index(*arg_type) != type_index(*func_desc.ArgsType[index])) {
             return false;
         }
         ++index;

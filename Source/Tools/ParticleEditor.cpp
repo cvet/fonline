@@ -42,14 +42,6 @@
 
 struct ParticleEditor::Impl
 {
-    enum class EditModeType
-    {
-        Default,
-        Remove,
-        Adding,
-        Naming,
-    };
-
     // Generic
     void DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj);
     // Core
@@ -111,7 +103,9 @@ struct ParticleEditor::Impl
     unique_ptr<ParticleManager> ParticleMngr {};
     unique_ptr<ParticleSystem> Particles {};
     SPK::Ref<SPK::System> SystemBackup {};
-    EditModeType EditMode {EditModeType::Default};
+    bool AddingMode {true};
+    bool RemovingMode {true};
+    bool NamingMode {};
     vector<unique_ptr<RenderTexture>> LoadedTextures {};
     vector<string> AllEffects {};
     vector<string> AllTextures {};
@@ -156,6 +150,17 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : Edito
 
     _impl->RenderTarget.reset(App->Render.CreateTexture(200, 200, true, true));
 
+    for (auto fofx_files = _editor.InputResources.FilterFiles("fofx"); fofx_files.MoveNext();) {
+        _impl->AllEffects.emplace_back(fofx_files.GetCurFileHeader().GetPath());
+    }
+    for (auto tex_files = _editor.InputResources.FilterFiles("tga", _str(asset_path).extractDir()); tex_files.MoveNext();) {
+        _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(_str(asset_path).extractDir().length() + 1));
+    }
+
+    _cameraAngle = _editor.Settings.MapCameraAngle;
+    _projFactor = _editor.Settings.ModelProjFactor;
+    _dirAngle = 0.0f;
+
     _frameStart = std::chrono::high_resolution_clock::now();
 }
 
@@ -170,27 +175,21 @@ void ParticleEditor::OnDraw()
 
     _impl->Changed = false;
 
-    if (ImGui::BeginChild("Info", {0.0f, 300.0f})) {
-        if (ImGui::RadioButton("Default mode", _impl->EditMode == Impl::EditModeType::Default)) {
-            _impl->EditMode = Impl::EditModeType::Default;
-        }
+    if (ImGui::BeginChild("Info", {0.0f, static_cast<float>(_frameHeight + 220)})) {
+        ImGui::Checkbox("Adding mode", &_impl->AddingMode);
         ImGui::SameLine();
-        if (ImGui::RadioButton("Remove mode", _impl->EditMode == Impl::EditModeType::Remove)) {
-            _impl->EditMode = Impl::EditModeType::Remove;
-        }
+        ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
         ImGui::SameLine();
-        if (ImGui::RadioButton("Adding mode", _impl->EditMode == Impl::EditModeType::Adding)) {
-            _impl->EditMode = Impl::EditModeType::Adding;
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Naming mode", _impl->EditMode == Impl::EditModeType::Naming)) {
-            _impl->EditMode = Impl::EditModeType::Naming;
-        }
-
+        ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", _impl->Particles->GetElapsedTime());
+        ImGui::Text("Elapsed: %.2f", static_cast<double>(_impl->Particles->GetElapsedTime()));
         ImGui::SameLine();
         ImGui::SliderFloat("##Speed", &_speed, 0.0f, 5.0f);
+        ImGui::SliderInt("Frame width", &_frameWidth, 1, 1000);
+        ImGui::SliderInt("Frame height", &_frameHeight, 1, 1000);
+        ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
+        ImGui::SliderFloat("Camera angle", &_cameraAngle, 1.0f, 89.0f);
+        ImGui::SliderFloat("Proj factor", &_projFactor, 0.1f, 100.0f);
 
         if (ImGui::Button("Respawn")) {
             _impl->Particles->Respawn();
@@ -230,39 +229,45 @@ void ParticleEditor::OnDraw()
         _impl->Particles->Respawn();
     }
 
-    const auto view_width = 200.0f;
-    const auto view_height = 200.0f;
-    const auto k = view_height / 768.0f;
+    const auto frame_width = static_cast<float>(_frameWidth);
+    const auto frame_height = static_cast<float>(_frameHeight);
+    const auto frame_ratio = frame_width / frame_height;
+    const auto proj_height = frame_height * (1.0f / _projFactor);
+    const auto proj_width = proj_height * frame_ratio;
 
     mat44 proj;
-    MatrixHelper::MatrixOrtho(proj[0], 0.0f, 18.65f * k * view_width / view_height, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    MatrixHelper::MatrixOrtho(proj[0], 0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     proj.Transpose();
 
     mat44 world;
-    mat44::Translation({2.0f, 1.0f, 0.0f}, world);
+    mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
 
     vec3 pos_offest;
     pos_offest = vec3();
 
-    float look_dir = 0.0f;
-    look_dir = 0.0f;
-
     vec3 view_offset;
     view_offset = vec3();
 
-    _impl->Particles->Update(dt, world, pos_offest, look_dir, view_offset);
+    _impl->Particles->Update(dt, world, pos_offest, _dirAngle, view_offset);
 
     auto* prev_rt = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(_impl->RenderTarget.get());
     App->Render.ClearRenderTarget(0u, true);
-    _impl->Particles->Draw(proj, view_offset);
+    _impl->Particles->Draw(proj, view_offset, _cameraAngle);
     App->Render.SetRenderTarget(prev_rt);
 
-    const auto pos = ImGui::GetWindowPos();
-    ImGui::GetWindowDrawList()->AddImage(_impl->RenderTarget.get(), //
-        ImVec2(pos.x + 100.0f, pos.y + 100.0f), //
-        ImVec2(pos.x + 300.0f, pos.y + 300.0f), //
-        {0.0f, 1.0f}, {1.0f, 0.0f});
+    auto* draw_list = ImGui::GetWindowDrawList();
+
+    auto pos = ImGui::GetWindowPos();
+    pos.x += 120.0f;
+    pos.y += 240.0f;
+
+    const auto border_col = ImGui::ColorConvertFloat4ToU32({1.0f, 0.0f, 0.0f, 1.0f});
+
+    draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
+    draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
+    draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
+    draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
     if (!_impl->Particles->IsActive() && _autoReplay) {
         _impl->Particles->Respawn();
@@ -396,7 +401,7 @@ void ParticleEditor::OnDraw()
 // Generic
 void ParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj)
 {
-    if (EditMode == EditModeType::Naming) {
+    if (NamingMode) {
         char buf[1000];
         strcpy(buf, obj->getName().c_str());
         if (ImGui::InputText("Name", buf, 1000)) {
@@ -711,7 +716,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
                 ImGui::TreePop();
             }
 
-            if (EditMode == EditModeType::Remove) {
+            if (RemovingMode) {
                 if (ImGui::Button(_str("Remove at {}", entry.x).c_str())) {
                     delIndex = index;
                 }
@@ -728,7 +733,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
             graph.erase(it);
         }
 
-        if (EditMode == EditModeType::Adding) {
+        if (AddingMode) {
             static float x = 0.0f;
             ImGui::InputFloat("Position", &x);
             if (ImGui::Button("Insert entry")) {
@@ -776,7 +781,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
                 ImGui::TreePop();
             }
 
-            if (EditMode == EditModeType::Remove) {
+            if (RemovingMode) {
                 if (ImGui::Button(_str("Remove at {}", entry.x).c_str())) {
                     delIndex = index;
                 }
@@ -793,7 +798,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
             graph.erase(it);
         }
 
-        if (EditMode == EditModeType::Adding) {
+        if (AddingMode) {
             static float x = 0.0f;
             ImGui::InputFloat("Position", &x);
             if (ImGui::Button("Insert entry")) {
@@ -820,7 +825,7 @@ void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const std::funct
         if (get()) {
             DrawGenericSparkObject(get());
 
-            if (EditMode == EditModeType::Remove) {
+            if (RemovingMode) {
                 if (ImGui::Button("Remove zone")) {
                     Changed |= true;
                     set(SPK::Ref<SPK::Zone>());
@@ -832,7 +837,7 @@ void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const std::funct
             ImGui::Text("%s", "No zone");
             ImGui::PopStyleColor();
 
-            if (EditMode == EditModeType::Adding) {
+            if (AddingMode) {
                 if (ImGui::Button("Add Point normal zone")) {
                     set(SPK::Point::create());
                 }
@@ -1178,7 +1183,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
                 ImGui::TreePop();
             }
 
-            if (EditMode == EditModeType::Remove) {
+            if (RemovingMode) {
                 if (ImGui::Button(_str("Remove {}", name).c_str())) {
                     delIndex = static_cast<int>(i);
                 }
@@ -1189,7 +1194,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
             del(delIndex);
         }
 
-        if (EditMode == EditModeType::Adding) {
+        if (AddingMode) {
             const auto prev_size = get_size();
             add_draw();
             Changed |= (get_size() != prev_size);
@@ -1205,7 +1210,7 @@ void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const std::
         if (get()) {
             DrawGenericSparkObject(get());
 
-            if (EditMode == EditModeType::Remove) {
+            if (RemovingMode) {
                 if (ImGui::Button("Remove")) {
                     Changed |= true;
                     del();
@@ -1217,7 +1222,7 @@ void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const std::
             ImGui::Text("No %s", label);
             ImGui::PopStyleColor();
 
-            if (EditMode == EditModeType::Adding) {
+            if (AddingMode) {
                 add_draw();
                 Changed |= !!get();
             }

@@ -244,13 +244,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
-* Common: fix TRect Width/Height
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: optimize copy() to pass placement storage for value
 * Common: apply scripts strack trace
-* ServerApp: allow instantiate client in separate thread (fix mt rendering issues)
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: move texcoord offset calculation to gpu
@@ -265,7 +263,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
 * CritterHexView: restore 2D sprite moving
-* CritterHexView: expose text on head offset to some settings
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
 * MapView: optimize, collect separate collection with IsNeedProcess
 * MapView: rework smooth item re-appearing before same item still on map
@@ -273,6 +270,7 @@ Please follow these instructions to understand how to use this engine by design:
 * MapView: generate unique entity id
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
+* SparkExtension: improve particles in 2D
 * SpriteManager: restore ShowSpriteBorders
 * SpriteManager: improve DirectX rendering
 * SpriteManager: maybe restrict fps at 60?
@@ -324,7 +322,6 @@ Please follow these instructions to understand how to use this engine by design:
 * ClientCritterScriptMethods: handle AbstractItem in Animate
 * ClientCritterScriptMethods: call animCallback
 * ClientItemScriptMethods: solve recursion in GetMapPos
-* CommonGlobalScriptMethods: quad tiles fix (2)
 * MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
@@ -340,6 +337,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Player: restore automaps
 * Player: allow attach many critters to sigle player
 * Server: disable look distance caching
+* Server: validate moving steps programmaticaly
 * Server: control max size explicitly, add option to property registration
 * Server: verify property data from client
 * Server: add container properties changing notifications
@@ -357,6 +355,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Mapper: need attention! (3)
 * Mapper: map resizing
 * Mapper: mapper render iface layer
+* ParticleEditor: improve EmitterAttacher (2)
+* ParticleEditor: improve ActionSet
+* ParticleEditor: DrawSparkObject SPK::EmitterAttacher
+* ParticleEditor: DrawSparkObject SPK::ActionSet
+* ParticleEditor: DrawSparkObject SPK::SpawnParticlesAction
   
 ## Repository structure
 

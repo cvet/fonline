@@ -329,8 +329,15 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
             auto&& [sc, next_x, next_y] = sub_collection;
             for (uint j = 0; j < sc.SequenceSize; j++, frm++) {
                 auto& shot = sequence.Frames[frm];
-                shot.NextX = static_cast<short>(sc.Main.OffsX + next_x);
-                shot.NextY = static_cast<short>(sc.Main.OffsY + next_y);
+                if (sc.Main.Frames[j].Shared) {
+                    throw ImageBakerException("FOFRM file invalid data (shared index)", fname);
+                }
+
+                shot.Width = sc.Main.Frames[j].Width;
+                shot.Height = sc.Main.Frames[j].Height;
+                shot.Data = sc.Main.Frames[j].Data;
+                shot.NextX = static_cast<short>(sc.Main.Frames[j].NextX + next_x);
+                shot.NextY = static_cast<short>(sc.Main.Frames[j].NextY + next_y);
             }
         }
     }

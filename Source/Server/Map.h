@@ -97,7 +97,7 @@ public:
     [[nodiscard]] auto IsHexBlockItem(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
-    [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
+    [[nodiscard]] auto GetCritter(uint cr_id) -> Critter*;
     [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
     [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
@@ -155,16 +155,22 @@ public:
     ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
 
 private:
+    struct HexesHash
+    {
+        std::size_t operator()(const tuple<ushort, ushort>& hexes) const noexcept { return std::get<0>(hexes) << 16 | std::get<1>(hexes); }
+    };
+
     const StaticMap* _staticMap {};
     uchar* _hexFlags {};
     int _hexFlagsSize {};
-    vector<Critter*> _mapCritters {};
-    vector<Critter*> _mapPlayerCritters {};
-    vector<Critter*> _mapNonPlayerCritters {};
-    vector<Item*> _mapItems {};
-    map<uint, Item*> _mapItemsById {};
-    map<uint, vector<Item*>> _mapItemsByHex {};
-    map<uint, vector<Item*>> _mapBlockLinesByHex {};
+    vector<Critter*> _critters {};
+    unordered_map<uint, Critter*> _crittersMap {};
+    vector<Critter*> _playerCritters {};
+    vector<Critter*> _nonPlayerCritters {};
+    vector<Item*> _items {};
+    unordered_map<uint, Item*> _itemsMap {};
+    unordered_map<tuple<ushort, ushort>, vector<Item*>, HexesHash> _itemsByHex {};
+    unordered_map<tuple<ushort, ushort>, vector<Item*>, HexesHash> _blockLinesByHex {};
     Location* _mapLocation {};
     uint _loopLastTick[5] {};
 };

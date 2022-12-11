@@ -184,8 +184,8 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                                     // Append offsets
                                     if (!first) {
                                         for (uint i = 0; i < dir_anim->CntFrm - 1; i++) {
-                                            dir_anim->NextX[dir_anim->CntFrm - 1] = static_cast<short>(dir_anim->NextX[dir_anim->CntFrm - 1] + dir_anim->NextX[i]);
-                                            dir_anim->NextY[dir_anim->CntFrm - 1] = static_cast<short>(dir_anim->NextY[dir_anim->CntFrm - 1] + dir_anim->NextY[i]);
+                                            dir_anim->NextX[dir_anim->CntFrm - 1] += dir_anim->NextX[i];
+                                            dir_anim->NextY[dir_anim->CntFrm - 1] += dir_anim->NextY[i];
                                         }
                                     }
 
@@ -290,21 +290,21 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
                 const auto* animex_ = animex->GetDir(d);
 
                 std::memcpy(anim_merge->Ind, anim_->Ind, anim_->CntFrm * sizeof(uint));
-                std::memcpy(anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof(short));
-                std::memcpy(anim_merge->NextY, anim_->NextY, anim_->CntFrm * sizeof(short));
+                std::memcpy(anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof(int));
+                std::memcpy(anim_merge->NextY, anim_->NextY, anim_->CntFrm * sizeof(int));
                 std::memcpy(anim_merge->Ind + anim_->CntFrm, animex_->Ind, animex_->CntFrm * sizeof(uint));
-                std::memcpy(anim_merge->NextX + anim_->CntFrm, animex_->NextX, animex_->CntFrm * sizeof(short));
-                std::memcpy(anim_merge->NextY + anim_->CntFrm, animex_->NextY, animex_->CntFrm * sizeof(short));
+                std::memcpy(anim_merge->NextX + anim_->CntFrm, animex_->NextX, animex_->CntFrm * sizeof(int));
+                std::memcpy(anim_merge->NextY + anim_->CntFrm, animex_->NextY, animex_->CntFrm * sizeof(int));
 
-                short ox = 0;
-                short oy = 0;
+                int ox = 0;
+                int oy = 0;
                 for (uint i = 0; i < anim_->CntFrm; i++) {
-                    ox = static_cast<short>(ox + anim_->NextX[i]);
-                    oy = static_cast<short>(oy + anim_->NextY[i]);
+                    ox += anim_->NextX[i];
+                    oy += anim_->NextY[i];
                 }
 
-                anim_merge->NextX[anim_->CntFrm] = static_cast<short>(anim_merge->NextX[anim_->CntFrm] - ox);
-                anim_merge->NextY[anim_->CntFrm] = static_cast<short>(anim_merge->NextY[anim_->CntFrm] - oy);
+                anim_merge->NextX[anim_->CntFrm] -= ox;
+                anim_merge->NextY[anim_->CntFrm] -= oy;
             }
             return anim_merge_base;
         }
@@ -322,8 +322,8 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
 
                 if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
                     std::memcpy(anim_clone->Ind, anim_->Ind, anim_->CntFrm * sizeof(uint));
-                    std::memcpy(anim_clone->NextX, anim_->NextX, anim_->CntFrm * sizeof(short));
-                    std::memcpy(anim_clone->NextY, anim_->NextY, anim_->CntFrm * sizeof(short));
+                    std::memcpy(anim_clone->NextX, anim_->NextX, anim_->CntFrm * sizeof(int));
+                    std::memcpy(anim_clone->NextY, anim_->NextY, anim_->CntFrm * sizeof(int));
                 }
                 else {
                     anim_clone->Ind[0] = anim_->Ind[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
@@ -333,8 +333,8 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
                     // Append offsets
                     if (IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
                         for (uint i = 0; i < anim_->CntFrm - 1; i++) {
-                            anim_clone->NextX[0] = static_cast<short>(anim_clone->NextX[0] + anim_->NextX[i]);
-                            anim_clone->NextY[0] = static_cast<short>(anim_clone->NextY[0] + anim_->NextY[i]);
+                            anim_clone->NextX[0] += anim_->NextX[i];
+                            anim_clone->NextY[0] += anim_->NextY[i];
                         }
                     }
                 }
@@ -369,8 +369,8 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
                 continue;
             }
 
-            si->OffsX = static_cast<short>(si->OffsX + stay_si->OffsX);
-            si->OffsY = static_cast<short>(si->OffsY + stay_si->OffsY);
+            si->OffsX += stay_si->OffsX;
+            si->OffsY += stay_si->OffsY;
         }
     }
 }
@@ -384,19 +384,20 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
     }
 
     for (uint d = 0; d < stay_frm_base->DirCount; d++) {
-        auto* frames = frames_base->GetDir(d);
-        auto* stay_frm = stay_frm_base->GetDir(d);
+        const auto* frames = frames_base->GetDir(d);
+        const auto* stay_frm = stay_frm_base->GetDir(d);
 
         const auto* stay_si = _sprMngr.GetSpriteInfo(stay_frm->Ind[0]);
         if (stay_si == nullptr) {
             return;
         }
 
-        short ox = 0;
-        short oy = 0;
+        int next_x = 0;
+        int next_y = 0;
+
         for (uint i = 0; i < stay_frm->CntFrm; i++) {
-            ox = static_cast<short>(stay_frm->NextX[i] + ox);
-            oy = static_cast<short>(stay_frm->NextY[i] + oy);
+            next_x += stay_frm->NextX[i];
+            next_y += stay_frm->NextY[i];
         }
 
         for (uint i = 0; i < frames->CntFrm; i++) {
@@ -405,8 +406,8 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
                 continue;
             }
 
-            si->OffsX = static_cast<short>(si->OffsX + ox);
-            si->OffsY = static_cast<short>(si->OffsY + oy);
+            si->OffsX += next_x;
+            si->OffsY += next_y;
         }
     }
 }
@@ -546,27 +547,27 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
     if (_critterModels.count(model_name) != 0u) {
         _critterModels[model_name]->SetDir(dir, false);
         _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
-        return _critterModels[model_name];
+        return _critterModels[model_name].get();
     }
 
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    auto* model = _sprMngr.LoadModel(model_name, true);
+    auto&& model = _sprMngr.LoadModel(model_name, true);
     _sprMngr.PopAtlasType();
 
-    if (model == nullptr) {
+    if (!model) {
         return nullptr;
     }
-
-    _critterModels[model_name] = model;
 
     model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
     model->SetDir(dir, false);
     model->StartMeshGeneration();
-    return model;
+
+    _critterModels[model_name] = std::move(model);
+    return _critterModels[model_name].get();
 }
 #endif
 
-auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = NULL */) -> uint
+auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint
 {
     const string ext = _str().getFileExtension();
     if (ext != "fo3d") {
@@ -578,6 +579,7 @@ auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2
         const auto* model = GetCritterModel(model_name, anim1, anim2, dir, layers3d);
         return model != nullptr ? model->SprId : 0u;
 #else
+        UNUSED_VARIABLE(layers3d);
         throw NotEnabled3DException("3D submodule not enabled");
 #endif
     }

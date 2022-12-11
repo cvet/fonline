@@ -723,13 +723,19 @@ int CallSystemFunction(int id, asCContext *context)
 	{
 		retQW = CallSystemFunctionNative(context, descr, obj, args, sysFunc->hostReturnInMemory ? retPointer : 0, retQW2, secondObj);
 	}
+	catch (const std::exception& ex) // (FOnline Patch)
+	{
+		cppException = true;
+
+		context->SetException(ex.what());
+	}
 	catch(...)
 	{
 		cppException = true;
 
 		// Convert the exception to a script exception so the VM can 
 		// properly report the error to the application and then clean up
-		context->SetException(TXT_EXCEPTION_CAUGHT);
+		context->SetException("Unknown exception");
 	}
 #endif
 	context->m_callingSystemFunction = 0;

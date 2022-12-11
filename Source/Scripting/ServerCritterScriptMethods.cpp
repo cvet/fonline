@@ -987,9 +987,9 @@
 ///# ...
 ///# param target ...
 ///# param cut ...
-///# param isRun ...
+///# param speed ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_MoveToCritter(Critter* self, Critter* target, uint cut, bool isRun)
+[[maybe_unused]] void Server_Critter_MoveToCritter(Critter* self, Critter* target, uint cut, uint speed)
 {
     if (target == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -1001,23 +1001,23 @@
     self->TargetMoving.HexX = target->GetHexX();
     self->TargetMoving.HexY = target->GetHexY();
     self->TargetMoving.Cut = cut;
-    self->TargetMoving.IsRun = isRun;
+    self->TargetMoving.Speed = speed;
 }
 
 ///# ...
 ///# param hx ...
 ///# param hy ...
 ///# param cut ...
-///# param isRun ...
+///# param speed ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, ushort hx, ushort hy, uint cut, bool isRun)
+[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, ushort hx, ushort hy, uint cut, uint speed)
 {
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;
     self->TargetMoving.HexX = hx;
     self->TargetMoving.HexY = hy;
     self->TargetMoving.Cut = cut;
-    self->TargetMoving.IsRun = isRun;
+    self->TargetMoving.Speed = speed;
 }
 
 ///# ...
@@ -1056,9 +1056,13 @@
 ///# param duration ...
 ///# param identifier ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFuncName<uint, Critter, int, uint&> func, uint duration, int identifier)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, uint duration, int identifier)
 {
-    self->AddTimeEvent(func, 0, duration, identifier);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    self->AddTimeEvent(func.GetName(), 0, duration, identifier);
 }
 
 ///# ...
@@ -1067,9 +1071,13 @@
 ///# param identifier ...
 ///# param rate ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFuncName<uint, Critter, int, uint&> func, uint duration, int identifier, uint rate)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, uint duration, int identifier, uint rate)
 {
-    self->AddTimeEvent(func, rate, duration, identifier);
+    if (func.IsDelegate()) {
+        throw ScriptException("Function must be global (not delegate)");
+    }
+
+    self->AddTimeEvent(func.GetName(), rate, duration, identifier);
 }
 
 ///# ...

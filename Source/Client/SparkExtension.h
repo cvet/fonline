@@ -95,6 +95,7 @@ namespace SPK::FO
         SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
 
         void AddPosAndColor(const Particle& particle, SparkRenderBuffer& render_buffer) const;
+        void AddTexture2D(const Particle& particle, SparkRenderBuffer& render_buffer) const;
         void AddTexture2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const;
 
         void Render2D(const Particle& particle, SparkRenderBuffer& render_buffer) const; // Rendering for particles with texture 2D or no texture

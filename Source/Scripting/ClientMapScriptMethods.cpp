@@ -36,3 +36,9 @@
 #include "Client.h"
 
 // ReSharper disable CppInconsistentNaming
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_RebuildFog(MapView* self)
+{
+    self->RebuildFog();
+}

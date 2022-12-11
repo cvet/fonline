@@ -37,7 +37,7 @@
 
 #include "Editor.h"
 
-class ParticleEditor : public EditorAssetView
+class ParticleEditor final : public EditorAssetView
 {
 public:
     ParticleEditor(string_view asset_path, FOEditor& editor);
@@ -47,12 +47,17 @@ public:
     auto operator=(ParticleEditor&&) noexcept = delete;
     ~ParticleEditor() override;
 
-protected:
+private:
     void OnDraw() override;
 
     struct Impl;
     unique_ptr<Impl> _impl;
     std::chrono::time_point<std::chrono::high_resolution_clock> _frameStart {};
+    int _frameWidth {200};
+    int _frameHeight {200};
     float _speed {1.0f};
+    float _dirAngle {};
+    float _cameraAngle {};
+    float _projFactor {};
     bool _autoReplay {};
 };

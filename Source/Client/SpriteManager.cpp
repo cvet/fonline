@@ -52,37 +52,37 @@ static inline auto ApplyColorBrightness(uint color, int brightness) -> uint
     }
 }
 
-TextureAtlas::SpaceNode::SpaceNode(int x, int y, uint w, uint h) : PosX {x}, PosY {y}, Width {w}, Height {h}
+TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) : PosX {x}, PosY {y}, Width {width}, Height {height}
 {
 }
 
-auto TextureAtlas::SpaceNode::FindPosition(uint w, uint h, int& x, int& y) -> bool
+auto TextureAtlas::SpaceNode::FindPosition(int width, int height, int& x, int& y) -> bool
 {
     auto result = false;
 
     if (Child1) {
-        result = Child1->FindPosition(w, h, x, y);
+        result = Child1->FindPosition(width, height, x, y);
     }
     if (!result && Child2) {
-        result = Child2->FindPosition(w, h, x, y);
+        result = Child2->FindPosition(width, height, x, y);
     }
 
-    if (!result && !Busy && Width >= w && Height >= h) {
+    if (!result && !Busy && Width >= width && Height >= height) {
         result = true;
         Busy = true;
 
         x = PosX;
         y = PosY;
 
-        if (Width == w && Height > h) {
-            Child1 = std::make_unique<SpaceNode>(PosX, PosY + h, Width, Height - h);
+        if (Width == width && Height > height) {
+            Child1 = std::make_unique<SpaceNode>(PosX, PosY + height, Width, Height - height);
         }
-        else if (Height == h && Width > w) {
-            Child1 = std::make_unique<SpaceNode>(PosX + w, PosY, Width - w, Height);
+        else if (Height == height && Width > width) {
+            Child1 = std::make_unique<SpaceNode>(PosX + width, PosY, Width - width, Height);
         }
-        else if (Width > w && Height > h) {
-            Child1 = std::make_unique<SpaceNode>(PosX + w, PosY, Width - w, h);
-            Child2 = std::make_unique<SpaceNode>(PosX, PosY + h, Width, Height - h);
+        else if (Width > width && Height > height) {
+            Child1 = std::make_unique<SpaceNode>(PosX + width, PosY, Width - width, height);
+            Child2 = std::make_unique<SpaceNode>(PosX, PosY + height, Width, Height - height);
         }
     }
     return result;
@@ -91,16 +91,6 @@ auto TextureAtlas::SpaceNode::FindPosition(uint w, uint h, int& x, int& y) -> bo
 auto AnyFrames::GetSprId(uint num_frm) const -> uint
 {
     return Ind[num_frm % CntFrm];
-}
-
-auto AnyFrames::GetNextX(uint num_frm) const -> short
-{
-    return NextX[num_frm % CntFrm];
-}
-
-auto AnyFrames::GetNextY(uint num_frm) const -> short
-{
-    return NextY[num_frm % CntFrm];
 }
 
 auto AnyFrames::GetCurSprId(uint tick) const -> uint
@@ -275,8 +265,11 @@ void SpriteManager::OnWindowSizeChanged()
     }
 }
 
-auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, uint width, uint height, bool linear_filtered) -> RenderTarget*
+auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*
 {
+    RUNTIME_ASSERT(width >= 0);
+    RUNTIME_ASSERT(height >= 0);
+
     Flush();
 
     auto rt = std::make_unique<RenderTarget>();
@@ -305,6 +298,12 @@ void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_fi
         tex_width += _settings.ScreenWidth;
         tex_height += _settings.ScreenHeight - _settings.ScreenHudHeight;
     }
+
+    tex_width = std::max(tex_width, 1);
+    tex_height = std::max(tex_height, 1);
+
+    RUNTIME_ASSERT(tex_width > 0);
+    RUNTIME_ASSERT(tex_height > 0);
 
     rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(tex_width, tex_height, linear_filtered, with_depth));
 
@@ -416,8 +415,8 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
 auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
 {
     // Try find in last picks
-    for (auto& pix : rt->LastPixelPicks) {
-        if (std::get<0>(pix) != 0 && std::get<1>(pix) != 0) {
+    for (auto&& pix : rt->LastPixelPicks) {
+        if (std::get<0>(pix) == x && std::get<1>(pix) == y) {
             return std::get<2>(pix);
         }
     }
@@ -559,48 +558,54 @@ auto SpriteManager::IsAccumulateAtlasActive() const -> bool
     return _accumulatorActive;
 }
 
-auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
+auto SpriteManager::CreateAtlas(int request_width, int request_height) -> TextureAtlas*
 {
+    RUNTIME_ASSERT(request_width > 0);
+    RUNTIME_ASSERT(request_height > 0);
+
+    auto result_width = request_width;
+    auto result_height = request_height;
+
     auto atlas = std::make_unique<TextureAtlas>();
     atlas->Type = std::get<0>(_targetAtlasStack.back());
 
     if (!std::get<1>(_targetAtlasStack.back())) {
         switch (atlas->Type) {
         case AtlasType::Static:
-            w = std::min(AppRender::MAX_ATLAS_WIDTH, 4096u);
-            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096u);
+            result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
+            result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
             break;
         case AtlasType::Dynamic:
-            w = std::min(AppRender::MAX_ATLAS_WIDTH, 2048u);
-            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192u);
+            result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 2048);
+            result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
             break;
         case AtlasType::MeshTextures:
-            w = std::min(AppRender::MAX_ATLAS_WIDTH, 1024u);
-            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048u);
+            result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
+            result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
             break;
         case AtlasType::Splash:
             throw UnreachablePlaceException(LINE_STR);
         }
     }
 
-    atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, w, h, true);
+    atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, true);
     atlas->RTarg->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
     atlas->MainTex = atlas->RTarg->MainTex.get();
-    atlas->Width = w;
-    atlas->Height = h;
-    atlas->RootNode = _accumulatorActive ? std::make_unique<TextureAtlas::SpaceNode>(0, 0, w, h) : nullptr;
+    atlas->Width = result_width;
+    atlas->Height = result_height;
+    atlas->RootNode = _accumulatorActive ? std::make_unique<TextureAtlas::SpaceNode>(0, 0, result_width, result_height) : nullptr;
 
     _allAtlases.push_back(std::move(atlas));
     return _allAtlases.back().get();
 }
 
-auto SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*
+auto SpriteManager::FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> TextureAtlas*
 {
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
     const auto atlas_type = std::get<0>(_targetAtlasStack.back());
-    const auto w = static_cast<uint>(si->Width + ATLAS_SPRITES_PADDING * 2);
-    const auto h = static_cast<uint>(si->Height + ATLAS_SPRITES_PADDING * 2);
+    const auto w = si->Width + ATLAS_SPRITES_PADDING * 2;
+    const auto h = si->Height + ATLAS_SPRITES_PADDING * 2;
 
     for (auto& a : _allAtlases) {
         if (a->Type != atlas_type) {
@@ -614,8 +619,8 @@ auto SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtl
         }
         else {
             if (w <= a->LineW && a->LineCurH + h <= a->LineMaxH) {
-                x = a->CurX - static_cast<int>(a->LineW);
-                y = a->CurY + static_cast<int>(a->LineCurH);
+                x = a->CurX - a->LineW;
+                y = a->CurY + a->LineCurH;
                 a->LineCurH += h;
                 atlas = a.get();
             }
@@ -630,7 +635,7 @@ auto SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtl
             }
             else if (a->Width >= w && a->Height - a->CurY - a->LineMaxH >= h) {
                 x = 0;
-                y = a->CurY + static_cast<int>(a->LineMaxH);
+                y = a->CurY + a->LineMaxH;
                 a->CurX = w;
                 a->CurY = y;
                 a->LineW = w;
@@ -694,7 +699,7 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
     }
 }
 
-static void WriteSimpleTga(string_view fname, uint width, uint height, vector<uint> data)
+static void WriteSimpleTga(string_view fname, int width, int height, vector<uint> data)
 {
     auto file = DiskFileSystem::OpenFile(fname, true);
     RUNTIME_ASSERT(file);
@@ -720,11 +725,17 @@ void SpriteManager::DumpAtlases() const
 
     const string dir = _str("{}_{}.{:03}mb", Timer::RealtimeTick(), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
-    if (const auto* rt = _rtMain; rt != nullptr) {
-        const string fname = _str("{}/Main_{}x{}.tga", dir, rt->MainTex->Width, rt->MainTex->Height);
-        auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
-        WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
-    }
+    const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
+        if (rt != nullptr) {
+            const string fname = _str("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Width, rt->MainTex->Height);
+            auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
+            WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
+        }
+    };
+
+    write_rt("Main", _rtMain);
+    write_rt("Contours", _rtContours);
+    write_rt("ContoursMid", _rtContoursMid);
 
     auto cnt = 0;
     for (auto&& atlas : _allAtlases) {
@@ -735,18 +746,21 @@ void SpriteManager::DumpAtlases() const
     }
 }
 
-auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint* data) -> uint
+auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint
 {
+    RUNTIME_ASSERT(width > 0);
+    RUNTIME_ASSERT(height > 0);
+
     // Get width, height
     si->DataAtlasType = std::get<0>(_targetAtlasStack.back());
     si->DataAtlasOneImage = std::get<1>(_targetAtlasStack.back());
-    si->Width = static_cast<ushort>(w);
-    si->Height = static_cast<ushort>(h);
+    si->Width = width;
+    si->Height = height;
 
     // Find place on atlas
     if (_accumulatorActive) {
-        si->AccData = new uint[w * h];
-        std::memcpy(si->AccData, data, w * h * sizeof(uint));
+        si->AccData = new uint[width * height];
+        std::memcpy(si->AccData, data, width * height * sizeof(uint));
         _accumulatorSprInfo.push_back(si);
     }
     else {
@@ -772,8 +786,8 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint*
 
 void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 {
-    const uint w = si->Width;
-    const uint h = si->Height;
+    const auto w = si->Width;
+    const auto h = si->Height;
 
     PushAtlasType(si->DataAtlasType, si->DataAtlasOneImage);
     auto x = 0;
@@ -794,7 +808,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         tex->UpdateTextureRegion(IRect(x, y + h, x + w, y + h + 1), data + (h - 1) * w);
 
         // Left
-        for (uint i = 0; i < h; i++) {
+        for (auto i = 0; i < h; i++) {
             _borderBuf[i + 1] = *(data + i * w);
         }
         _borderBuf[0] = _borderBuf[1];
@@ -802,7 +816,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + h + 1), _borderBuf.data());
 
         // Right
-        for (uint i = 0; i < h; i++) {
+        for (auto i = 0; i < h; i++) {
             _borderBuf[i + 1] = *(data + i * w + (w - 1));
         }
         _borderBuf[0] = _borderBuf[1];
@@ -1089,24 +1103,35 @@ void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
     DrawSprite(model->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color);
 }
 
-auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*
+auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> unique_del_ptr<ModelInstance>
 {
     RUNTIME_ASSERT(_modelMngr);
 
-    // Fill data
     auto* model = _modelMngr->CreateModel(fname);
     if (model == nullptr) {
         return nullptr;
     }
 
-    // Create render sprite
     model->SprId = 0;
     model->SprAtlasType = static_cast<int>(std::get<0>(_targetAtlasStack.back()));
+
     if (auto_redraw) {
         RefreshModelSprite(model);
         _autoRedrawModel.push_back(model);
     }
-    return model;
+
+    return {model, [this](auto* del_model) {
+                const auto it = std::find(_autoRedrawModel.begin(), _autoRedrawModel.end(), del_model);
+                if (it != _autoRedrawModel.end()) {
+                    _autoRedrawModel.erase(it);
+                }
+
+                if (del_model->SprId != 0u) {
+                    _sprData[del_model->SprId]->Model = nullptr;
+                }
+
+                delete del_model;
+            }};
 }
 
 void SpriteManager::RefreshModelSprite(ModelInstance* model)
@@ -1148,23 +1173,6 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
     model->SprId = index;
     _sprData[index]->Model = model;
 }
-
-void SpriteManager::FreeModel(ModelInstance* model)
-{
-    RUNTIME_ASSERT(_modelMngr);
-    RUNTIME_ASSERT(model);
-
-    const auto it = std::find(_autoRedrawModel.begin(), _autoRedrawModel.end(), model);
-    if (it != _autoRedrawModel.end()) {
-        _autoRedrawModel.erase(it);
-    }
-
-    if (model->SprId != 0u) {
-        _sprData[model->SprId]->Model = nullptr;
-    }
-
-    delete model;
-}
 #endif
 
 auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
@@ -1205,13 +1213,13 @@ void SpriteManager::Flush()
         return;
     }
 
-    _spritesDrawBuf->Upload(_dipQueue.front().SourceEffect->Usage, _curDrawQuad * 4);
+    _spritesDrawBuf->Upload(EffectUsage::QuadSprite, _curDrawQuad * 4);
 
     EnableScissor();
 
     size_t pos = 0;
     for (const auto& dip : _dipQueue) {
-        RUNTIME_ASSERT(dip.SourceEffect->Usage == _dipQueue.front().SourceEffect->Usage);
+        RUNTIME_ASSERT(dip.SourceEffect->Usage == EffectUsage::QuadSprite);
 
         dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
 
@@ -1700,8 +1708,8 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             if (!(x1 >= _sprEgg->Width || y1 >= _sprEgg->Height || x2 < 0 || y2 < 0)) {
                 x1 = std::max(x1, 0);
                 y1 = std::max(y1, 0);
-                x2 = std::min(x2, static_cast<int>(_sprEgg->Width));
-                y2 = std::min(y2, static_cast<int>(_sprEgg->Height));
+                x2 = std::min(x2, _sprEgg->Width);
+                y2 = std::min(y2, _sprEgg->Height);
 
                 const auto x1_f = static_cast<float>(x1 + ATLAS_SPRITES_PADDING);
                 const auto x2_f = static_cast<float>(x2 + ATLAS_SPRITES_PADDING);
@@ -1831,8 +1839,24 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         // Process contour effect
-        if (collect_contours) {
-            CollectContour(x, y, si, spr);
+        if (collect_contours && spr->Contour != ContourType::None) {
+            uint contour_color = 0xFF0000FF;
+
+            switch (spr->Contour) {
+            case ContourType::Red:
+                contour_color = 0xFFAF0000;
+                break;
+            case ContourType::Yellow:
+                contour_color = 0x00AFAF00;
+                break;
+            case ContourType::Custom:
+                contour_color = spr->ContourColor;
+                break;
+            default:
+                break;
+            }
+
+            CollectContour(x, y, si, contour_color);
         }
     }
 
@@ -2003,17 +2027,20 @@ void SpriteManager::DrawContours()
     }
 }
 
-void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr)
+void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint contour_color)
 {
-    if (spr->Contour == ContourType::None) {
-        return;
-    }
-    if (_rtContours == nullptr || _rtContoursMid == nullptr || _effectMngr.Effects.Contour == nullptr) {
+#if FO_ENABLE_3D
+    auto* border_effect = si->UsedForModel ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
+#else
+    auto* border_effect = _effectMngr.Effects.ContourSprite;
+#endif
+
+    if (border_effect == nullptr || _rtContours == nullptr || _rtContoursMid == nullptr) {
         return;
     }
 
     auto borders = IRect(x - 1, y - 1, x + si->Width + 1, y + si->Height + 1);
-    const auto* texture = si->Atlas->MainTex;
+    auto* texture = si->Atlas->MainTex;
     FRect textureuv;
     FRect sprite_border;
 
@@ -2025,7 +2052,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
 
     if (_settings.SpritesZoom == 1.0f) {
 #if FO_ENABLE_3D
-        if (si->Model != nullptr) {
+        if (si->UsedForModel) {
             const auto& sr = si->SprRect;
             textureuv = sr;
             sprite_border = sr;
@@ -2098,19 +2125,6 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
         sprite_border = textureuv;
     }
 
-    uint contour_color;
-    if (spr->Contour == ContourType::Red) {
-        contour_color = 0xFFAF0000;
-    }
-    else if (spr->Contour == ContourType::Yellow) {
-        contour_color = 0x00AFAF00; // Disable flashing by passing alpha == 0.0
-    }
-    else if (spr->Contour == ContourType::Custom) {
-        contour_color = spr->ContourColor;
-    }
-    else {
-        contour_color = 0xFFAFAFAF;
-    }
     contour_color = ApplyColorBrightness(contour_color, _settings.Brightness);
     contour_color = COLOR_SWAP_RB(contour_color);
 
@@ -2145,14 +2159,18 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     vbuf[pos].TexV = textureuv.Bottom;
     vbuf[pos].Color = contour_color;
 
-    auto& border_buf = _effectMngr.Effects.Contour->BorderBuf->SpriteBorder;
+    if (!border_effect->BorderBuf) {
+        border_effect->BorderBuf = RenderEffect::BorderBuffer();
+    }
+
+    auto& border_buf = border_effect->BorderBuf->SpriteBorder;
     border_buf[0] = sprite_border[0];
     border_buf[1] = sprite_border[1];
     border_buf[2] = sprite_border[2];
     border_buf[3] = sprite_border[3];
 
-    _contourDrawBuf->Upload(_effectMngr.Effects.Contour->Usage);
-    _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf);
+    _contourDrawBuf->Upload(border_effect->Usage);
+    border_effect->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
 
     PopRenderTarget();
     _contoursAdded = true;
@@ -2256,8 +2274,8 @@ void SpriteManager::BuildFont(int index)
 
     // Normalize color to gray
     if (font.MakeGray) {
-        for (uint y = 0; y < static_cast<uint>(si->Height); y++) {
-            for (uint x = 0; x < static_cast<uint>(si->Width); x++) {
+        for (auto y = 0; y < si->Height; y++) {
+            for (auto x = 0; x < si->Width; x++) {
                 const auto a = reinterpret_cast<uchar*>(&PIXEL_AT(data_normal, si->Width, x, y))[3];
                 if (a != 0u) {
                     PIXEL_AT(data_normal, si->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
@@ -2280,8 +2298,8 @@ void SpriteManager::BuildFont(int index)
 
     // Fill border
     if (si_bordered != nullptr) {
-        for (uint y = 1; y < static_cast<uint>(si_bordered->Height) - 2; y++) {
-            for (uint x = 1; x < static_cast<uint>(si_bordered->Width) - 2; x++) {
+        for (auto y = 1; y < si_bordered->Height - 2; y++) {
+            for (auto x = 1; x < si_bordered->Width - 2; x++) {
                 if (PIXEL_AT(data_normal, si->Width, x, y)) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {

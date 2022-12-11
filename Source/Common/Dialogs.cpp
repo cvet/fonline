@@ -81,18 +81,9 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
         type = DR_PROP_MAP;
     }
 
-    if (type == DR_PROP_CRITTER && prop->IsDict()) {
-        type = DR_PROP_CRITTER_DICT;
-        if (prop->GetDictKeyTypeName() != "uint") {
-            throw DialogParseException("DR property Dict must have 'uint' in key", str);
-        }
+    if (!prop->IsPlainData()) {
+        throw DialogParseException("DR property is not plain data type", str);
     }
-    else {
-        if (!prop->IsPlainData()) {
-            throw DialogParseException("DR property is not PlainData type", str);
-        }
-    }
-
     if (prop->IsDisabled()) {
         throw DialogParseException("DR property is disabled", str);
     }
@@ -130,11 +121,6 @@ void DialogManager::LoadFromResources()
     }
 }
 
-void DialogManager::ValidateDialogs()
-{
-    // Todo: validate script entries, hashes
-}
-
 void DialogManager::AddDialog(DialogPack* pack)
 {
     if (_dialogPacks.count(pack->PackId) != 0u) {
@@ -169,42 +155,35 @@ auto DialogManager::GetDialogs() -> vector<DialogPack*>
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
 {
+    auto&& pack = std::make_unique<DialogPack>();
+
     auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 
-    auto&& pack = std::make_unique<DialogPack>();
-    auto dlg_buf = fodlg.GetSectionContent("dialog");
-    istringstream input(dlg_buf);
-    string lang_buf;
     pack->PackId = _engine->ToHashedString(pack_name);
     pack->PackName = pack_name;
-    vector<string> lang_apps;
-
-    // Comment
     pack->Comment = fodlg.GetSectionContent("comment");
 
-    // Texts
-    auto lang_key = fodlg.GetStr("data", "lang", "");
+    const auto lang_key = fodlg.GetStr("data", "lang", "");
     if (lang_key.empty()) {
         throw DialogParseException("Lang app not found", pack_name);
     }
 
-    // Check dialog pack
     if (pack->PackId.as_uint() <= 0xFFFF) {
         throw DialogParseException("Invalid hash for dialog name", pack_name);
     }
 
-    lang_apps = _str(lang_key).split(' ');
+    const auto lang_apps = _str(lang_key).split(' ');
     if (lang_apps.empty()) {
         throw DialogParseException("Lang app is empty", pack_name);
     }
 
     for (size_t i = 0; i < lang_apps.size(); i++) {
-        auto& lang_app = lang_apps[i];
+        const auto& lang_app = lang_apps[i];
         if (lang_app.size() != 4) {
             throw DialogParseException("Language length not equal 4", pack_name);
         }
 
-        lang_buf = fodlg.GetSectionContent(lang_app);
+        const auto lang_buf = fodlg.GetSectionContent(lang_app);
         if (lang_buf.empty()) {
             throw DialogParseException("One of the lang section not found", pack_name);
         }
@@ -219,7 +198,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         }
 
         pack->TextsLang.push_back(*reinterpret_cast<const uint*>(lang_app.c_str()));
-        pack->Texts.push_back(FOMsg());
+        pack->Texts.emplace_back();
 
         uint str_num = 0;
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
@@ -231,32 +210,28 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         }
     }
 
-    // Dialog
+    const auto dlg_buf = fodlg.GetSectionContent("dialog");
     if (dlg_buf.empty()) {
         throw DialogParseException("Dialog section not found", pack_name);
     }
 
-    char ch = 0;
-    input >> ch;
-    if (ch != '&') {
-        return nullptr;
+    istringstream input(dlg_buf);
+
+    string tok;
+    input >> tok;
+    if (tok != "&") {
+        throw DialogParseException("Dialog start token not found", pack_name);
     }
 
-    uint dlg_id = 0;
-    uint text_id = 0;
-    uint link = 0;
-    string script;
-    uint flags = 0;
+    while (!input.eof()) {
+        Dialog dlg;
 
-    while (true) {
-        input >> dlg_id;
-        if (input.eof()) {
-            break;
-        }
+        input >> dlg.Id;
         if (input.fail()) {
             throw DialogParseException("Bad dialog id number", pack_name);
         }
 
+        uint text_id = 0;
         input >> text_id;
         if (input.fail()) {
             throw DialogParseException("Bad text link", pack_name);
@@ -265,6 +240,9 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             throw DialogParseException("Invalid text link value", pack_name);
         }
 
+        dlg.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
+
+        string script;
         input >> script;
         if (input.fail()) {
             throw DialogParseException("Bad not answer action", pack_name);
@@ -273,39 +251,41 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             script = "";
         }
 
+        dlg.DlgScriptFuncName = _engine->ToHashedString(script);
+
+        uint flags = 0;
         input >> flags;
         if (input.fail()) {
             throw DialogParseException("Bad flags", pack_name);
         }
 
-        Dialog current_dialog;
-        current_dialog.Id = dlg_id;
-        current_dialog.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
-        current_dialog.DlgScriptFunc = _engine->ToHashedString(script);
-        current_dialog.NoShuffle = ((flags & 1) == 1);
+        dlg.NoShuffle = ((flags & 1) == 1);
 
         // Read answers
-        input >> ch;
+        input >> tok;
         if (input.fail()) {
             throw DialogParseException("Dialog corrupted", pack_name);
         }
 
-        if (ch == '@') // End of current dialog node
-        {
-            pack->Dialogs.push_back(current_dialog);
-            continue;
+        if (tok == "@" || tok == "&") {
+            pack->Dialogs.push_back(dlg);
+
+            if (tok == "@") {
+                continue;
+            }
+            if (tok == "&") {
+                break;
+            }
         }
-        if (ch == '&') // End of all
-        {
-            pack->Dialogs.push_back(current_dialog);
-            break;
-        }
-        if (ch != '#') {
+
+        if (tok != "#") {
             throw DialogParseException("Parse error 0", pack_name);
         }
 
         while (!input.eof()) {
-            input >> link;
+            DialogAnswer answer;
+
+            input >> answer.Link;
             if (input.fail()) {
                 throw DialogParseException("Bad link in answer", pack_name);
             }
@@ -319,62 +299,49 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
                 throw DialogParseException("Invalid text link value in answer", pack_name);
             }
 
-            DialogAnswer current_answer;
-            current_answer.Link = link;
-            current_answer.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
+            answer.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
 
-            while (true) {
-                input >> ch;
+            while (!input.eof()) {
+                input >> tok;
                 if (input.fail()) {
                     throw DialogParseException("Parse answer character fail", pack_name);
                 }
 
-                // Demands
-                if (ch == 'D') {
-                    auto* d = LoadDemandResult(input, true);
-                    if (d == nullptr) {
-                        throw DialogParseException("Demand not loaded", pack_name);
-                    }
-
-                    current_answer.Demands.push_back(*d);
+                if (tok == "D") {
+                    answer.Demands.emplace_back(LoadDemandResult(input, true));
                 }
-                // Results
-                else if (ch == 'R') {
-                    auto* r = LoadDemandResult(input, false);
-                    if (r == nullptr) {
-                        throw DialogParseException("Result not loaded", pack_name);
-                    }
-
-                    current_answer.Results.push_back(*r);
+                else if (tok == "R") {
+                    answer.Results.emplace_back(LoadDemandResult(input, false));
                 }
-                else if (ch == '*' || ch == 'd' || ch == 'r') {
+                else if (tok == "*" || tok == "d" || tok == "r") {
                     throw DialogParseException("Found old token, update dialog file to actual format (resave in version 2.22)", pack_name);
                 }
                 else {
                     break;
                 }
             }
-            current_dialog.Answers.push_back(current_answer);
 
-            if (ch == '#') {
-                continue; // Next
-            }
-            if (ch == '@') {
-                break; // End of current dialog node
-            }
-            if (ch == '&') // End of all
-            {
-                pack->Dialogs.push_back(current_dialog);
+            dlg.Answers.push_back(answer);
+
+            if (tok == "@" || tok == "&") {
                 break;
             }
+            else if (tok != "#") {
+                throw DialogParseException("Invalid answer token", pack_name);
+            }
         }
-        pack->Dialogs.push_back(current_dialog);
+
+        pack->Dialogs.push_back(dlg);
+
+        if (tok == "&") {
+            break;
+        }
     }
 
     return pack.release();
 }
 
-auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
+auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq
 {
     NON_CONST_METHOD_HINT();
 
@@ -389,8 +356,6 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     string name;
     string script_name;
     auto no_recheck = false;
-    auto ret_value = false;
-
     int script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
@@ -488,7 +453,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
             input >> value_str;
             script_val[4] = _engine->ResolveGenericValue(value_str);
         }
-        if (values_count > 5) {
+        if (values_count < 0 || values_count > 5) {
             throw DialogParseException("Invalid values count", values_count);
         }
     } break;
@@ -504,22 +469,21 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     }
 
     // Fill
-    auto* result = new DemandResult();
-    result->Type = type;
-    result->Who = who;
-    result->ParamIndex = id_index;
-    result->ParamHash = id_hash;
-    result->ParamFuncName = script_name;
-    result->Op = oper;
-    result->ValuesCount = static_cast<uchar>(values_count);
-    result->NoRecheck = no_recheck;
-    result->RetValue = ret_value;
-    result->Value = ivalue;
-    result->ValueExt[0] = script_val[0];
-    result->ValueExt[1] = script_val[1];
-    result->ValueExt[2] = script_val[2];
-    result->ValueExt[3] = script_val[3];
-    result->ValueExt[4] = script_val[4];
+    DialogAnswerReq result;
+    result.Type = type;
+    result.Who = who;
+    result.ParamIndex = id_index;
+    result.ParamHash = id_hash;
+    result.AnswerScriptFuncName = _engine->ToHashedString(script_name);
+    result.Op = oper;
+    result.ValuesCount = static_cast<uchar>(values_count);
+    result.NoRecheck = no_recheck;
+    result.Value = ivalue;
+    result.ValueExt[0] = script_val[0];
+    result.ValueExt[1] = script_val[1];
+    result.ValueExt[2] = script_val[2];
+    result.ValueExt[3] = script_val[3];
+    result.ValueExt[4] = script_val[4];
     return result;
 }
 

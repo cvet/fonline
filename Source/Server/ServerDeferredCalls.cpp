@@ -39,14 +39,44 @@ ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) : Deferre
 {
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> uint
+{
+    const auto id = AddDeferredCall(delay, func);
+    return id;
+}
+
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
+{
+    const auto id = AddDeferredCall(delay, func, value);
+    return id;
+}
+
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
+{
+    const auto id = AddDeferredCall(delay, func, value);
+    return id;
+}
+
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
+{
+    const auto id = AddDeferredCall(delay, func, values);
+    return id;
+}
+
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
+{
+    const auto id = AddDeferredCall(delay, func, values);
+    return id;
+}
+
+/*auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, hstring func_name) -> uint
 {
     const auto id = AddDeferredCall(delay, func_name, value, values, value2, values2);
 
     if (id != 0u) {
         _savedCalls.emplace(id);
 
-        /*
+        / *
             DataBase::Document call_doc;
             call_doc["Script"] = _str().parseHash(call.FuncNum);
             call_doc["FireFullSecond"] = (int64)call.FireFullSecond;
@@ -65,17 +95,19 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, hstring func_na
             }
 
             DbStorage->Insert("DeferredCalls", call.Id, call_doc);
-        */
+        * /
     }
 
     return id;
-}
+}*/
 
-auto ServerDeferredCallManager::GetNextId() -> uint
+auto ServerDeferredCallManager::ApplyDeferredCall(uint delay, DeferredCall& call) -> uint
 {
     const auto next_id = _serverEngine->GetLastDeferredCallId() + 1;
     _serverEngine->SetLastDeferredCallId(next_id);
-    return next_id;
+    call.Id = next_id;
+
+    return DeferredCallManager::ApplyDeferredCall(delay, call);
 }
 
 void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)

@@ -247,14 +247,14 @@ public:
         ushort HexX {};
         ushort HexY {};
         uint Cut {};
-        bool IsRun {};
+        ushort Speed {};
         uint TraceDist {};
         uint GagEntityId {};
     } TargetMoving {};
 
     struct
     {
-        bool IsRunning {};
+        ushort Speed {};
         uint Uid {};
         vector<uchar> Steps {};
         vector<ushort> ControlSteps {};
@@ -276,6 +276,5 @@ private:
     bool _playerDetached {};
     uint _playerDetachTick {};
     vector<Item*> _invItems {};
-    TalkData _talk {};
     uint _talkNextTick {};
 };

@@ -141,6 +141,7 @@ static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
 static mat44 ProjectionMatrixColMaj {};
+static RenderTexture* DummyTexture {};
 
 // ReSharper disable CppInconsistentNaming
 static bool OGL_version_2_0 {};
@@ -182,16 +183,18 @@ public:
         return result;
     }
 
-    [[nodiscard]] auto GetTextureRegion(int x, int y, uint w, uint h) -> vector<uint> override
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override
     {
-        RUNTIME_ASSERT(w && h);
-        const auto size = w * h;
+        RUNTIME_ASSERT(width > 0);
+        RUNTIME_ASSERT(height > 0);
+
+        const auto size = width * height;
         vector<uint> result(size);
 
         GLint prev_fbo;
         GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-        GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
+        GL(glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
         return result;
@@ -252,6 +255,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     ForceGlslEsProfile = settings.ForceGlslEsProfile;
     SdlWindow = static_cast<SDL_Window*>(window);
 
+    // Create context
 #if !FO_WEB
     GlContext = SDL_GL_CreateContext(SdlWindow);
     RUNTIME_ASSERT_STR(GlContext, _str("OpenGL context not created, error '{}'", SDL_GetError()));
@@ -350,14 +354,22 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #undef CHECK_EXTENSION
 
     // Map framebuffer_object_ext to framebuffer_object
+#if !FO_OPENGL_ES
     if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object)) {
+        WriteLog("Map framebuffer_object_ext pointers");
         OGL_framebuffer_object = true;
-        // glGenFramebuffers = glGenFramebuffersEXT;
-        // glBindFramebuffer = glBindFramebufferEXT;
-        // glFramebufferTexture2D = glFramebufferTexture2DEXT;
-        // Todo: map all framebuffer ext functions
-        throw NotImplementedException(LINE_STR);
+        glGenFramebuffers = glGenFramebuffersEXT;
+        glGenRenderbuffers = glGenRenderbuffersEXT;
+        glBindFramebuffer = glBindFramebufferEXT;
+        glBindRenderbuffer = glBindRenderbufferEXT;
+        glDeleteFramebuffers = glDeleteFramebuffersEXT;
+        glDeleteRenderbuffers = glDeleteRenderbuffersEXT;
+        glFramebufferTexture2D = glFramebufferTexture2DEXT;
+        glFramebufferRenderbuffer = glFramebufferRenderbufferEXT;
+        glRenderbufferStorage = glRenderbufferStorageEXT;
+        glCheckFramebufferStatus = glCheckFramebufferStatusEXT;
     }
+#endif
 
     // Render states
     GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
@@ -382,14 +394,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
     GLint max_viewport_size[2];
     GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-    auto atlas_w = std::min(static_cast<uint>(max_texture_size), AppRender::MAX_ATLAS_SIZE);
+    auto atlas_w = std::min(max_texture_size, AppRender::MAX_ATLAS_SIZE);
     auto atlas_h = atlas_w;
-    atlas_w = std::min(static_cast<uint>(max_viewport_size[0]), atlas_w);
-    atlas_h = std::min(static_cast<uint>(max_viewport_size[1]), atlas_h);
+    atlas_w = std::min(max_viewport_size[0], atlas_w);
+    atlas_h = std::min(max_viewport_size[1], atlas_h);
     RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
-    const_cast<uint&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<uint&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -406,6 +418,10 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
     MatrixHelper::MatrixOrtho(ProjectionMatrixColMaj[0], 0.0f, static_cast<float>(settings.ScreenWidth), static_cast<float>(settings.ScreenHeight), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
+
+    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
+    DummyTexture = CreateTexture(1, 1, false, false);
+    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 }
 
 void OpenGL_Renderer::Present()
@@ -419,7 +435,7 @@ void OpenGL_Renderer::Present()
     }
 }
 
-auto OpenGL_Renderer::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     auto&& opengl_tex = std::make_unique<OpenGL_Texture>(width, height, linear_filtered, with_depth);
 
@@ -584,17 +600,9 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         }
 #endif
 
-        if (!opengl_effect->BorderBuf) {
-            if (usage == EffectUsage::Contour) {
-                opengl_effect->BorderBuf = RenderEffect::BorderBuffer();
-            }
-        }
-
         if (!opengl_effect->MapSpriteBuf) {
-            if (usage == EffectUsage::MapSprite) {
-                if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
-                    opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
-                }
+            if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
+                opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
             }
         }
 
@@ -817,8 +825,8 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    uint w;
-    uint h;
+    int w;
+    int h;
 
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
@@ -902,10 +910,10 @@ void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool s
     }
 }
 
-void OpenGL_Renderer::EnableScissor(int x, int y, uint w, uint h)
+void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 {
     GL(glEnable(GL_SCISSOR_TEST));
-    GL(glScissor(x, y, w, h));
+    GL(glScissor(x, y, width, height));
 }
 
 void OpenGL_Renderer::DisableScissor()
@@ -1023,11 +1031,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
             // Nothing, indices generated manually
             need_upload_indices = true;
         } break;
-        case EffectUsage::Font:
-        case EffectUsage::MapSprite:
-        case EffectUsage::Interface:
-        case EffectUsage::Flush:
-        case EffectUsage::Contour: {
+        case EffectUsage::QuadSprite: {
             // Sprite quad
             RUNTIME_ASSERT(upload_vertices % 4 == 0);
             auto& indices = Indices;
@@ -1200,7 +1204,8 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         EnableVertAtribs(Usage);
     }
 
-    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (CustomTex[0] != nullptr ? CustomTex[0] : MainTex));
+    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (CustomTex[0] != nullptr ? CustomTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+    const auto* egg_tex = EggTex != nullptr ? EggTex : DummyTexture;
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
@@ -1223,10 +1228,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
 
         if (Location_ColorMap[pass] != -1) {
-            if (main_tex == nullptr) {
-                throw RenderingException("Trying to draw effect that required texture", Name);
-            }
-
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
             GL(glUniform1i(Location_ColorMap[pass], 0));
 
@@ -1236,17 +1237,13 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
 
         if (Location_EggMap[pass] != -1) {
-            if (EggTex == nullptr) {
-                throw RenderingException("Trying to draw effect that required egg texture", Name);
-            }
-
             GL(glActiveTexture(GL_TEXTURE1));
-            GL(glBindTexture(GL_TEXTURE_2D, static_cast<OpenGL_Texture*>(EggTex)->TexId));
+            GL(glBindTexture(GL_TEXTURE_2D, static_cast<const OpenGL_Texture*>(egg_tex)->TexId));
             GL(glUniform1i(Location_EggMap[pass], 1));
             GL(glActiveTexture(GL_TEXTURE0));
 
             if (Location_EggMapSize[pass] != -1) {
-                GL(glUniform4fv(Location_EggMapSize[pass], 1, EggTex->SizeData));
+                GL(glUniform4fv(Location_EggMapSize[pass], 1, egg_tex->SizeData));
             }
         }
 

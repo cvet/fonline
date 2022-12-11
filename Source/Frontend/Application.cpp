@@ -77,12 +77,12 @@ static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
 static AppAudio::AudioStreamCallback* AudioStreamWriter {};
 
-static uint MaxAtlasWidth {};
-static uint MaxAtlasHeight {};
-static uint MaxBones {};
-const uint& AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
-const uint& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
-const uint& AppRender::MAX_BONES {MaxBones};
+static int MaxAtlasWidth {};
+static int MaxAtlasHeight {};
+static int MaxBones {};
+const int& AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
+const int& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
+const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
@@ -98,7 +98,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-    {
+    if (!IsRunInDebugger()) {
         [[maybe_unused]] static backward::SignalHandling sh;
         assert(sh.loaded());
     }
@@ -126,32 +126,6 @@ void ExitApp(bool success)
     std::quick_exit(code);
 #else
     std::exit(code);
-#endif
-}
-
-void ReportExceptionAndExit(const std::exception& ex)
-{
-    WriteLog(LogType::Error, "{}", ex.what());
-
-    if (!BreakIntoDebugger(ex.what())) {
-        CreateDumpMessage("FatalException", ex.what());
-        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
-    }
-
-    WriteLog(LogType::Error, "Shutdown!");
-    ExitApp(false);
-}
-
-void ReportExceptionAndContinue(const std::exception& ex)
-{
-    WriteLog(LogType::Error, "{}", ex.what());
-
-    if (BreakIntoDebugger(ex.what())) {
-        return;
-    }
-
-#if FO_DEBUG
-    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
 #endif
 }
 
@@ -1158,7 +1132,7 @@ void AppWindow::Destroy()
     }
 }
 
-auto AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
 }
@@ -1179,9 +1153,9 @@ void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
-void AppRender::EnableScissor(int x, int y, uint w, uint h)
+void AppRender::EnableScissor(int x, int y, int width, int height)
 {
-    ActiveRenderer->EnableScissor(x, y, w, h);
+    ActiveRenderer->EnableScissor(x, y, width, height);
 }
 
 void AppRender::DisableScissor()
@@ -1212,12 +1186,19 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
     if (ActiveRendererType != RenderType::Null) {
+        App->Settings.MouseX = x;
+        App->Settings.MouseY = y;
+
+        SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
+
         if (relative_to != nullptr) {
             SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), x, y);
         }
         else {
             SDL_WarpMouseGlobal(x, y);
         }
+
+        SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
     }
 }
 
@@ -1229,6 +1210,11 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
         return true;
     }
     return false;
+}
+
+void AppInput::ClearEvents()
+{
+    EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev)
@@ -1356,7 +1342,7 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
     auto verb_message = string(message);
 
     if (!traceback.empty()) {
-        verb_message += _str("\n{}", traceback);
+        verb_message += _str("\n\n{}", traceback);
     }
 
     SDL_MessageBoxButtonData copy_button;

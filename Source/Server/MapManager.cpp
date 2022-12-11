@@ -381,26 +381,26 @@ void MapManager::GenerateMapContent(Map* map)
 
 void MapManager::DeleteMapContent(Map* map)
 {
-    while (!map->_mapCritters.empty() || !map->_mapItems.empty()) {
+    while (!map->_critters.empty() || !map->_items.empty()) {
         // Transit players to global map
         KickPlayersToGlobalMap(map);
 
         // Delete npc
-        auto del_npcs = map->_mapNonPlayerCritters;
+        auto del_npcs = map->_nonPlayerCritters;
         for (auto* del_npc : del_npcs) {
             _engine->CrMngr.DeleteCritter(del_npc);
         }
 
         // Delete items
-        auto del_items = map->_mapItems;
+        auto del_items = map->_items;
         for (auto* del_item : del_items) {
             _engine->ItemMngr.DeleteItem(del_item);
         }
     }
 
-    RUNTIME_ASSERT(map->_mapItemsById.empty());
-    RUNTIME_ASSERT(map->_mapItemsByHex.empty());
-    RUNTIME_ASSERT(map->_mapBlockLinesByHex.empty());
+    RUNTIME_ASSERT(map->_itemsMap.empty());
+    RUNTIME_ASSERT(map->_itemsByHex.empty());
+    RUNTIME_ASSERT(map->_blockLinesByHex.empty());
 }
 
 auto MapManager::GetLocationAndMapsStatistics() const -> string
@@ -1224,52 +1224,72 @@ label_FindOk:
         return output;
     }
 
-    ushort trace_hx = input.FromHexX;
-    ushort trace_hy = input.FromHexY;
+    if (_engine->Settings.MapFreeMovement) {
+        ushort trace_hx = input.FromHexX;
+        ushort trace_hy = input.FromHexY;
 
-    while (true) {
-        ushort trace_tx = to_hx;
-        ushort trace_ty = to_hy;
+        while (true) {
+            ushort trace_tx = to_hx;
+            ushort trace_ty = to_hy;
 
-        for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
-            LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, maxhx, maxhy, 0.0f);
-            ushort next_hx = trace_hx;
-            ushort next_hy = trace_hy;
-            vector<uchar> direct_steps;
-            bool failed = false;
+            for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
+                LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, maxhx, maxhy, 0.0f);
+                ushort next_hx = trace_hx;
+                ushort next_hy = trace_hy;
+                vector<uchar> direct_steps;
+                bool failed = false;
 
-            while (true) {
-                uchar dir = tracer.GetNextHex(next_hx, next_hy);
-                direct_steps.push_back(dir);
+                while (true) {
+                    uchar dir = tracer.GetNextHex(next_hx, next_hy);
+                    direct_steps.push_back(dir);
 
-                if (next_hx == trace_tx && next_hy == trace_ty)
-                    break;
+                    if (next_hx == trace_tx && next_hy == trace_ty)
+                        break;
 
-                if (GridAt(next_hx, next_hy) <= 0) {
-                    failed = true;
+                    if (GridAt(next_hx, next_hy) <= 0) {
+                        failed = true;
+                        break;
+                    }
+                }
+
+                if (failed) {
+                    RUNTIME_ASSERT(i > 0);
+                    _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), maxhx, maxhy);
+                    continue;
+                }
+
+                for (const auto& ds : direct_steps) {
+                    output.Steps.push_back(ds);
+                }
+
+                output.ControlSteps.emplace_back(static_cast<ushort>(output.Steps.size()));
+
+                trace_hx = trace_tx;
+                trace_hy = trace_ty;
+                break;
+            }
+
+            if (trace_tx == to_hx && trace_ty == to_hy) {
+                break;
+            }
+        }
+    }
+    else {
+        for (size_t i = 0; i < raw_steps.size(); i++) {
+            const auto cur_dir = raw_steps[i];
+            output.Steps.push_back(cur_dir);
+
+            for (size_t j = i + 1; j < raw_steps.size(); j++) {
+                if (raw_steps[j] == cur_dir) {
+                    output.Steps.push_back(cur_dir);
+                    i++;
+                }
+                else {
                     break;
                 }
             }
 
-            if (failed) {
-                RUNTIME_ASSERT(i > 0);
-                _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), maxhx, maxhy);
-                continue;
-            }
-
-            for (const auto& ds : direct_steps) {
-                output.Steps.push_back(ds);
-            }
-
             output.ControlSteps.emplace_back(static_cast<ushort>(output.Steps.size()));
-
-            trace_hx = trace_tx;
-            trace_hy = trace_ty;
-            break;
-        }
-
-        if (trace_tx == to_hx && trace_ty == to_hy) {
-            break;
         }
     }
 

@@ -38,35 +38,60 @@ DeferredCallManager::DeferredCallManager(FOEngineBase* engine) : _engine {engine
     RUNTIME_ASSERT(_engine);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> uint
 {
-    DeferredCall call;
+    RUNTIME_ASSERT(func);
 
-    if (value != nullptr) {
-        call.SignedIntFunc = _engine->ScriptSys->FindFunc<void, int>(func_name);
-        call.FuncValue = *value;
-    }
-    else if (values != nullptr) {
-        call.SignedIntArrayFunc = _engine->ScriptSys->FindFunc<void, vector<int>>(func_name);
-        call.FuncValue = *values;
-    }
-    else if (value2 != nullptr) {
-        call.UnsignedIntFunc = _engine->ScriptSys->FindFunc<void, uint>(func_name);
-        call.FuncValue = *value2;
-    }
-    else if (values2 != nullptr) {
-        call.UnsignedIntArrayFunc = _engine->ScriptSys->FindFunc<void, vector<uint>>(func_name);
-        call.FuncValue = *values2;
-    }
-    else {
-        call.EmptyFunc = _engine->ScriptSys->FindFunc<void>(func_name);
-    }
+    auto call = DeferredCall();
+    call.EmptyFunc = func;
+    return ApplyDeferredCall(delay, call);
+}
 
-    if (!call.SignedIntFunc && !call.SignedIntArrayFunc && !call.UnsignedIntFunc && !call.UnsignedIntArrayFunc && !call.EmptyFunc) {
-        throw DeferredCallException("Function not found or invalid signature", func_name);
-    }
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
+{
+    RUNTIME_ASSERT(func);
 
-    call.Id = GetNextId();
+    auto call = DeferredCall();
+    call.SignedIntFunc = func;
+    call.FuncValue = value;
+    return ApplyDeferredCall(delay, call);
+}
+
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
+{
+    RUNTIME_ASSERT(func);
+
+    auto call = DeferredCall();
+    call.UnsignedIntFunc = func;
+    call.FuncValue = value;
+    return ApplyDeferredCall(delay, call);
+}
+
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
+{
+    RUNTIME_ASSERT(func);
+
+    auto call = DeferredCall();
+    call.SignedIntArrayFunc = func;
+    call.FuncValue = values;
+    return ApplyDeferredCall(delay, call);
+}
+
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
+{
+    RUNTIME_ASSERT(func);
+
+    auto call = DeferredCall();
+    call.UnsignedIntArrayFunc = func;
+    call.FuncValue = values;
+    return ApplyDeferredCall(delay, call);
+}
+
+auto DeferredCallManager::ApplyDeferredCall(uint delay, DeferredCall& call) -> uint
+{
+    if (call.Id == 0u) {
+        call.Id = ++_idCounter;
+    }
 
     const auto time_mul = _engine->GetTimeMultiplier();
     call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
@@ -98,11 +123,6 @@ auto DeferredCallManager::CancelDeferredCall(uint id) -> bool
     }
 
     return false;
-}
-
-auto DeferredCallManager::GetNextId() -> uint
-{
-    return ++_idCounter;
 }
 
 void DeferredCallManager::Process()

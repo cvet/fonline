@@ -233,30 +233,27 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
+        const auto set_callback = [](const auto* registrator, int prop_index, PropertyPostSetCallback callback) {
             const auto* prop = registrator->GetByIndex(prop_index);
-            prop->AddSetter(std::move(callback));
+            prop->AddPostSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterModelName(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::RunSpeed_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterSpeed(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::WalkSpeed_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterSpeed(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ScaleFactor_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterSpeed(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterContourColor(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemPicMap(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOffsetCoords(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOffsetCoords(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterModelName(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetCritterContourColor(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemFlags(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemSomeLight(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemPicMap(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOffsetCoords(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
     ScreenFadeOut();
@@ -420,10 +417,6 @@ void FOClient::MainLoop()
     OnLoop.Fire();
 #endif
 
-    if (IsMainScreen(SCREEN_GLOBAL_MAP)) {
-        ProcessGlobalMap();
-    }
-
     if (CurMap != nullptr) {
         CurMap->Process();
     }
@@ -562,8 +555,6 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
-    std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
-
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
         while (App->Input.PollEvent(ev)) {
@@ -621,7 +612,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
         OnMouseMove.Fire(delta_x, delta_y);
     }
     else if (ev.Type == InputEvent::EventType::MouseDownEvent) {
-        OnMouseDown.Fire(ev.MouseUp.Button);
+        OnMouseDown.Fire(ev.MouseDown.Button);
     }
     else if (ev.Type == InputEvent::EventType::MouseUpEvent) {
         OnMouseUp.Fire(ev.MouseUp.Button);
@@ -749,67 +740,62 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
     _conn.OutBuf << str;
 }
 
-void FOClient::Net_SendDir()
+void FOClient::Net_SendDir(CritterHexView* cr)
 {
-    const auto* chosen = GetChosen();
-    if (chosen == nullptr) {
-        return;
-    }
+    NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_DIR;
-    _conn.OutBuf << chosen->GetDirAngle();
+    _conn.OutBuf << CurMap->GetId();
+    _conn.OutBuf << cr->GetId();
+    _conn.OutBuf << cr->GetDirAngle();
 }
 
-void FOClient::Net_SendMove()
+void FOClient::Net_SendMove(CritterHexView* cr)
 {
-    auto* chosen = GetMapChosen();
-    if (chosen == nullptr) {
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+
+    if (cr->Moving.Steps.size() > 500) {
+        cr->ClearMove();
         return;
     }
 
-    RUNTIME_ASSERT(!chosen->Moving.Steps.empty());
-
-    if (chosen->Moving.Steps.size() > 500) {
-        chosen->ClearMove();
-        return;
-    }
-
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(bool) + sizeof(ushort) * 2 + //
-        sizeof(ushort) + static_cast<uint>(sizeof(uchar) * chosen->Moving.Steps.size()) + //
-        sizeof(ushort) + static_cast<uint>(sizeof(ushort) * chosen->Moving.ControlSteps.size()) + sizeof(short) * 2;
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
+        sizeof(ushort) + static_cast<uint>(sizeof(uchar) * cr->Moving.Steps.size()) + //
+        sizeof(ushort) + static_cast<uint>(sizeof(ushort) * cr->Moving.ControlSteps.size()) + sizeof(short) * 2;
 
     _conn.OutBuf << NETMSG_SEND_MOVE;
     _conn.OutBuf << msg_len;
     _conn.OutBuf << CurMap->GetId();
-    _conn.OutBuf << chosen->Moving.IsRunning;
-    _conn.OutBuf << chosen->Moving.StartHexX;
-    _conn.OutBuf << chosen->Moving.StartHexY;
-    _conn.OutBuf << static_cast<ushort>(chosen->Moving.Steps.size());
-    for (auto step : chosen->Moving.Steps) {
+    _conn.OutBuf << cr->GetId();
+    _conn.OutBuf << cr->Moving.Speed;
+    _conn.OutBuf << cr->Moving.StartHexX;
+    _conn.OutBuf << cr->Moving.StartHexY;
+    _conn.OutBuf << static_cast<ushort>(cr->Moving.Steps.size());
+    for (auto step : cr->Moving.Steps) {
         _conn.OutBuf << step;
     }
-    _conn.OutBuf << static_cast<ushort>(chosen->Moving.ControlSteps.size());
-    for (auto control_step : chosen->Moving.ControlSteps) {
+    _conn.OutBuf << static_cast<ushort>(cr->Moving.ControlSteps.size());
+    for (auto control_step : cr->Moving.ControlSteps) {
         _conn.OutBuf << control_step;
     }
-    _conn.OutBuf << chosen->Moving.EndOx;
-    _conn.OutBuf << chosen->Moving.EndOy;
+    _conn.OutBuf << cr->Moving.EndOx;
+    _conn.OutBuf << cr->Moving.EndOy;
 }
 
-void FOClient::Net_SendStopMove()
+void FOClient::Net_SendStopMove(CritterHexView* cr)
 {
-    const auto* chosen = GetMapChosen();
-    if (chosen == nullptr) {
-        return;
-    }
+    NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_SEND_STOP_MOVE;
     _conn.OutBuf << CurMap->GetId();
-    _conn.OutBuf << chosen->GetHexX();
-    _conn.OutBuf << chosen->GetHexY();
-    _conn.OutBuf << chosen->GetHexOffsX();
-    _conn.OutBuf << chosen->GetHexOffsY();
-    _conn.OutBuf << chosen->GetDirAngle();
+    _conn.OutBuf << cr->GetId();
+    _conn.OutBuf << cr->GetHexX();
+    _conn.OutBuf << cr->GetHexY();
+    _conn.OutBuf << cr->GetHexOffsX();
+    _conn.OutBuf << cr->GetHexOffsY();
+    _conn.OutBuf << cr->GetDirAngle();
 }
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
@@ -1398,7 +1384,7 @@ void FOClient::Net_OnCritterMove()
     uint cr_id;
     uint whole_time;
     uint offset_time;
-    bool is_run;
+    ushort speed;
     ushort start_hx;
     ushort start_hy;
     ushort steps_count;
@@ -1412,7 +1398,7 @@ void FOClient::Net_OnCritterMove()
     _conn.InBuf >> cr_id;
     _conn.InBuf >> whole_time;
     _conn.InBuf >> offset_time;
-    _conn.InBuf >> is_run;
+    _conn.InBuf >> speed;
     _conn.InBuf >> start_hx;
     _conn.InBuf >> start_hy;
     _conn.InBuf >> steps_count;
@@ -1441,7 +1427,7 @@ void FOClient::Net_OnCritterMove()
 
     cr->ClearMove();
 
-    cr->Moving.IsRunning = is_run;
+    cr->Moving.Speed = speed;
     cr->Moving.StartTick = GameTime.FrameTick();
     cr->Moving.OffsetTick = offset_time;
     cr->Moving.WholeTime = static_cast<float>(whole_time);
@@ -2075,7 +2061,7 @@ void FOClient::Net_OnEffect()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     // Base hex effect
-    CurMap->RunEffect(eff_pid, hx, hy, hx, hy);
+    CurMap->RunEffectItem(eff_pid, hx, hy, hx, hy);
 
     // Radius hexes effect
     if (radius > MAX_HEX_OFFSET) {
@@ -2091,7 +2077,7 @@ void FOClient::Net_OnEffect()
         const auto ex = static_cast<short>(hx) + sx[i];
         const auto ey = static_cast<short>(hy) + sy[i];
         if (ex >= 0 && ey >= 0 && ex < maxhx && ey < maxhy) {
-            CurMap->RunEffect(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
+            CurMap->RunEffectItem(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
         }
     }
 }
@@ -2132,7 +2118,7 @@ void FOClient::Net_OnFlyEffect()
         eff_cr2_hy = cr2->GetHexY();
     }
 
-    if (!CurMap->RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
+    if (!CurMap->RunEffectItem(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
         WriteLog("Run effect '{}' failed", eff_pid);
     }
 }
@@ -2360,27 +2346,25 @@ void FOClient::Net_OnChosenTalk()
 
     auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
     FormatTags(str, GetChosen(), npc, lexems);
-    auto text_to_script = str;
-    vector<string> answers_to_script;
+    const auto text_to_script = str;
+    string answers_to_script;
     for (const auto answers_text : answers_texts) {
         str = _curLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
         FormatTags(str, GetChosen(), npc, lexems);
-        answers_to_script.push_back(str);
+        answers_to_script += string(!answers_to_script.empty() ? "\n" : "") + str;
     }
 
     _conn.InBuf >> talk_time;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
-    dict->Set("TalkerIsNpc", &is_npc, asTYPEID_BOOL);
-    dict->Set("TalkerId", &talk_id, asTYPEID_UINT32);
-    dict->Set("Text", &text_to_script, ScriptSys.GetEngine()->GetTypeIdByDecl("string"));
-    dict->Set("Answers", &answers_to_script, ScriptSys.GetEngine()->GetTypeIdByDecl("string[]@"));
-    dict->Set("TalkTime", &talk_time, asTYPEID_UINT32);
-    ShowScreen(SCREEN__DIALOG, dict);
-    answers_to_script->Release();
-    dict->Release();*/
+    map<string, string> params;
+    params["TalkerIsNpc"] = _str("{}", is_npc);
+    params["TalkerId"] = _str("{}", talk_id);
+    params["Text"] = _str("{}", text_to_script);
+    params["Answers"] = _str("{}", answers_to_script);
+    params["TalkTime"] = _str("{}", talk_time);
+    ShowScreen(SCREEN_DIALOG, params);
 }
 
 void FOClient::Net_OnTimeSync()
@@ -2687,11 +2671,10 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
     CurMap->RebuildLight();
 
-    /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
-    dict->Set("LocationId", &loc_id, asTYPEID_UINT32);
-    dict->Set("LocationEntrance", &loc_ent, asTYPEID_UINT32);
-    ShowScreen(SCREEN__TOWN_VIEW, dict);
-    dict->Release();*/
+    map<string, string> params;
+    params["LocationId"] = _str("{}", loc_id);
+    params["LocationEntrance"] = _str("{}", loc_ent);
+    ShowScreen(SCREEN_TOWN_VIEW, params);
 }
 
 void FOClient::Net_OnRemoteCall()
@@ -2723,12 +2706,6 @@ void FOClient::SetDayTime(bool refresh)
         SprMngr.SetSpritesTreeColor(color);
         CurMap->RefreshMap();
     }
-}
-
-void FOClient::ProcessGlobalMap()
-{
-    // Todo: global map critters
-    throw NotImplementedException(LINE_STR);
 }
 
 void FOClient::TryExit()
@@ -3001,10 +2978,9 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
 #if FO_ENABLE_3D
@@ -3014,33 +2990,22 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, const
     }
 }
 
-void FOClient::OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value)
-{
-    UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
-
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        cr->RefreshSpeed();
-    }
-}
-
-void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->SprDrawValid) {
-        cr->SprDraw->SetContour(cr->SprDraw->Contour, *static_cast<const uint*>(new_value));
+        cr->SprDraw->SetContour(cr->SprDraw->Contour, cr->GetContourColor());
     }
 }
 
-void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    UNUSED_VARIABLE(new_value);
-
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
+
         if (prop == item->GetPropertyIsColorize()) {
             item->RefreshAlpha();
         }
@@ -3058,60 +3023,56 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, const void* 
         else if (prop == item->GetPropertyIsNoBlock()) {
             rebuild_cache = true;
         }
+
         if (rebuild_cache) {
             item->GetMap()->GetField(item->GetHexX(), item->GetHexY()).ProcessCache();
         }
     }
 }
 
-void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
     UNUSED_VARIABLE(entity);
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->GetMap()->RebuildLight();
     }
 }
 
-void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->RefreshAnim();
     }
 }
 
-void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
     // OffsetX, OffsetY
 
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(new_value);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        item->SetAnimOffs();
-        item->GetMap()->ProcessHexBorders(item);
+        item->RefreshOffs();
+        item->GetMap()->MeasureHexBorders(item);
     }
 }
 
-void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        const auto new_bool = *static_cast<const bool*>(new_value);
-
         if (item->GetIsCanOpen()) {
-            if (new_bool) {
+            if (item->GetOpened()) {
                 item->SetAnimFromStart();
             }
-            if (!new_bool) {
+            else {
                 item->SetAnimFromEnd();
             }
         }
@@ -3534,35 +3495,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //    CurMap->RebuildFog();
         // }
     }
-    else if (cmd == "SetMousePos" && args.size() == 4) {
-        /*int x = _str(args[1]).toInt();
-        int y = _str(args[2]).toInt();
-        bool motion = _str(args[3]).toBool();
-        if (motion)
-        {
-            SprMngr.SetMousePosition(x, y);
-        }
-        else
-        {
-            SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
-            SprMngr.SetMousePosition(x, y);
-            SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
-            Settings.MouseX = Settings.LastMouseX = x;
-            Settings.MouseY = Settings.LastMouseY = y;
-        }*/
-    }
-    else if (cmd == "MouseMove" && args.size() == 2) {
-        /*bool enabled = _str(args[1]).toBool();
-        if (enabled)
-            SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
-        else
-            SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);*/
-    }
-    else if (cmd == "SetCursorPos") {
-        if (CurMap != nullptr) {
-            CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, true);
-        }
-    }
     else if (cmd == "NetDisconnect") {
         _conn.Disconnect();
 
@@ -3702,16 +3634,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "DrawWait") {
         WaitDraw();
     }
-    else if (cmd == "ChangeDir" && args.size() == 2) {
-        auto dir = _str(args[1]).toInt();
-        GetMapChosen()->ChangeDir(static_cast<uchar>(dir));
-        Net_SendDir();
-    }
-    else if (cmd == "ChangeDirAngle" && args.size() == 2) {
-        int dir_angle = _str(args[1]).toInt();
-        GetMapChosen()->ChangeLookDirAngle(dir_angle);
-        Net_SendDir();
-    }
     else if (cmd == "MoveItem" && args.size() == 5) {
         auto item_count = _str(args[1]).toUInt();
         auto item_id = _str(args[2]).toUInt();
@@ -3762,129 +3684,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto hy = _str(args[2]).toUInt();
         CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
     }
-    else if (cmd == "RebuildLookBorders") {
-        CurMap->RebuildFog();
-    }
-    else if (cmd == "SetMove") {
-        auto* chosen = GetMapChosen();
-        const auto prev_moving = chosen->IsMoving();
-
-        chosen->ClearMove();
-
-        bool try_move = false;
-        ushort hx = 0;
-        ushort hy = 0;
-        short ox = 0;
-        short oy = 0;
-        vector<uchar> steps;
-        vector<ushort> control_steps;
-
-        if (args.size() == 5) {
-            hx = static_cast<ushort>(_str(args[1]).toInt());
-            hy = static_cast<ushort>(_str(args[2]).toInt());
-            ox = static_cast<short>(_str(args[3]).toInt());
-            oy = static_cast<short>(_str(args[4]).toInt());
-
-            const auto find_path = chosen->GetMap()->FindPath(chosen, chosen->GetHexX(), chosen->GetHexY(), hx, hy, -1);
-            if (find_path && !find_path->Steps.empty()) {
-                steps = find_path->Steps;
-                control_steps = find_path->ControlSteps;
-                try_move = true;
-            }
-        }
-        else if (args.size() == 2) {
-            int quad_dir = _str(args[1]).toInt();
-            if (quad_dir != -1) {
-                hx = chosen->GetHexX();
-                hy = chosen->GetHexY();
-                if (chosen->GetMap()->TraceMoveWay(hx, hy, ox, oy, steps, quad_dir)) {
-                    control_steps.push_back(static_cast<ushort>(steps.size()));
-                    try_move = true;
-                }
-            }
-        }
-
-        if (try_move) {
-            chosen->Moving.Steps = steps;
-            chosen->Moving.ControlSteps = control_steps;
-            chosen->Moving.StartTick = GameTime.FrameTick();
-            chosen->Moving.StartHexX = chosen->GetHexX();
-            chosen->Moving.StartHexY = chosen->GetHexY();
-            chosen->Moving.EndHexX = hx;
-            chosen->Moving.EndHexY = hy;
-            chosen->Moving.StartOx = chosen->GetHexOffsX();
-            chosen->Moving.StartOy = chosen->GetHexOffsY();
-            chosen->Moving.EndOx = ox;
-            chosen->Moving.EndOy = oy;
-
-            chosen->Moving.WholeTime = {};
-            chosen->Moving.WholeDist = {};
-
-            const auto base_move_speed = static_cast<float>(chosen->Moving.IsRunning ? chosen->GetRunSpeed() : chosen->GetWalkSpeed());
-
-            auto start_hx = chosen->Moving.StartHexX;
-            auto start_hy = chosen->Moving.StartHexY;
-
-            auto control_step_begin = 0;
-            for (size_t i = 0; i < chosen->Moving.ControlSteps.size(); i++) {
-                auto hx2 = start_hx;
-                auto hy2 = start_hy;
-
-                RUNTIME_ASSERT(control_step_begin <= chosen->Moving.ControlSteps[i]);
-                RUNTIME_ASSERT(chosen->Moving.ControlSteps[i] <= chosen->Moving.Steps.size());
-                for (auto j = control_step_begin; j < chosen->Moving.ControlSteps[i]; j++) {
-                    const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, chosen->Moving.Steps[j], chosen->GetMap()->GetWidth(), chosen->GetMap()->GetHeight());
-                    RUNTIME_ASSERT(move_ok);
-                }
-
-                auto&& [ox2, oy2] = Geometry.GetHexInterval(start_hx, start_hy, hx2, hy2);
-
-                if (i == 0) {
-                    ox2 -= chosen->Moving.StartOx;
-                    oy2 -= chosen->Moving.StartOy;
-                }
-                if (i == chosen->Moving.ControlSteps.size() - 1) {
-                    ox2 += chosen->Moving.EndOx;
-                    oy2 += chosen->Moving.EndOy;
-                }
-
-                const auto proj_oy = static_cast<float>(oy2) * Geometry.GetYProj();
-                const auto dist = std::sqrt(static_cast<float>(ox2 * ox2) + proj_oy * proj_oy);
-
-                chosen->Moving.WholeDist += dist;
-                chosen->Moving.WholeTime += dist / base_move_speed * 1000.0f;
-
-                control_step_begin = chosen->Moving.ControlSteps[i];
-                start_hx = hx2;
-                start_hy = hy2;
-
-                if (i == chosen->Moving.ControlSteps.size() - 1) {
-                    RUNTIME_ASSERT(hx2 == chosen->Moving.EndHexX);
-                    RUNTIME_ASSERT(hy2 == chosen->Moving.EndHexY);
-                }
-            }
-
-            if (chosen->Moving.WholeTime < 0.0001f) {
-                chosen->Moving.WholeTime = 0.0001f;
-            }
-            if (chosen->Moving.WholeDist < 0.0001f) {
-                chosen->Moving.WholeDist = 0.0001f;
-            }
-
-            RUNTIME_ASSERT(!chosen->Moving.Steps.empty());
-            RUNTIME_ASSERT(!chosen->Moving.ControlSteps.empty());
-            RUNTIME_ASSERT(chosen->Moving.WholeTime > 0.0f);
-            RUNTIME_ASSERT(chosen->Moving.WholeDist > 0.0f);
-
-            chosen->AnimateStay();
-            Net_SendMove();
-        }
-
-        if (prev_moving && !chosen->IsMoving()) {
-            chosen->AnimateStay();
-            Net_SendStopMove();
-        }
-    }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
         auto alpha = _str(args[1]).toInt();
 
@@ -3911,7 +3710,146 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Settings.Quit = true;
     }
     else {
-        throw ScriptException("Invalid custom call command");
+        throw ScriptException("Invalid custom call command", cmd, args.size());
     }
+
     return "";
+}
+
+void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed)
+{
+    const auto prev_moving = cr->IsMoving();
+
+    cr->ClearMove();
+
+    bool try_move = false;
+    ushort hx = 0;
+    ushort hy = 0;
+    int ox = 0;
+    int oy = 0;
+    vector<uchar> steps;
+    vector<ushort> control_steps;
+
+    if (speed > 0) {
+        if (pos_or_dir.index() == 0) {
+            hx = std::get<0>(std::get<0>(pos_or_dir));
+            hy = std::get<1>(std::get<0>(pos_or_dir));
+            ox = std::get<2>(std::get<0>(pos_or_dir));
+            oy = std::get<3>(std::get<0>(pos_or_dir));
+
+            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHexX(), cr->GetHexY(), hx, hy, -1);
+            if (find_path && !find_path->Steps.empty()) {
+                steps = find_path->Steps;
+                control_steps = find_path->ControlSteps;
+                try_move = true;
+            }
+        }
+        else if (pos_or_dir.index() == 1) {
+            const auto quad_dir = std::get<1>(pos_or_dir);
+
+            if (quad_dir != -1) {
+                hx = cr->GetHexX();
+                hy = cr->GetHexY();
+                if (cr->GetMap()->TraceMoveWay(hx, hy, ox, oy, steps, quad_dir)) {
+                    control_steps.push_back(static_cast<ushort>(steps.size()));
+                    try_move = true;
+                }
+            }
+        }
+    }
+
+    if (try_move) {
+        cr->Moving.Steps = steps;
+        cr->Moving.ControlSteps = control_steps;
+        cr->Moving.StartTick = GameTime.FrameTick();
+        cr->Moving.Speed = static_cast<ushort>(speed);
+        cr->Moving.StartHexX = cr->GetHexX();
+        cr->Moving.StartHexY = cr->GetHexY();
+        cr->Moving.EndHexX = hx;
+        cr->Moving.EndHexY = hy;
+        cr->Moving.StartOx = cr->GetHexOffsX();
+        cr->Moving.StartOy = cr->GetHexOffsY();
+        cr->Moving.EndOx = ox;
+        cr->Moving.EndOy = oy;
+
+        cr->Moving.WholeTime = {};
+        cr->Moving.WholeDist = {};
+
+        RUNTIME_ASSERT(cr->Moving.Speed > 0);
+        const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
+
+        auto start_hx = cr->Moving.StartHexX;
+        auto start_hy = cr->Moving.StartHexY;
+
+        auto control_step_begin = 0;
+        for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
+            auto hx2 = start_hx;
+            auto hy2 = start_hy;
+
+            RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+            RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+            for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
+                const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, cr->Moving.Steps[j], cr->GetMap()->GetWidth(), cr->GetMap()->GetHeight());
+                RUNTIME_ASSERT(move_ok);
+            }
+
+            auto&& [ox2, oy2] = Geometry.GetHexInterval(start_hx, start_hy, hx2, hy2);
+
+            if (i == 0) {
+                ox2 -= cr->Moving.StartOx;
+                oy2 -= cr->Moving.StartOy;
+            }
+            if (i == cr->Moving.ControlSteps.size() - 1) {
+                ox2 += cr->Moving.EndOx;
+                oy2 += cr->Moving.EndOy;
+            }
+
+            const auto proj_oy = static_cast<float>(oy2) * Geometry.GetYProj();
+            const auto dist = std::sqrt(static_cast<float>(ox2 * ox2) + proj_oy * proj_oy);
+
+            cr->Moving.WholeDist += dist;
+            cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
+
+            control_step_begin = cr->Moving.ControlSteps[i];
+            start_hx = hx2;
+            start_hy = hy2;
+
+            if (i == cr->Moving.ControlSteps.size() - 1) {
+                RUNTIME_ASSERT(hx2 == cr->Moving.EndHexX);
+                RUNTIME_ASSERT(hy2 == cr->Moving.EndHexY);
+            }
+        }
+
+        if (cr->Moving.WholeTime < 0.0001f) {
+            cr->Moving.WholeTime = 0.0001f;
+        }
+        if (cr->Moving.WholeDist < 0.0001f) {
+            cr->Moving.WholeDist = 0.0001f;
+        }
+
+        RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+        RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+        RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+        RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+
+        cr->AnimateStay();
+        Net_SendMove(cr);
+    }
+
+    if (prev_moving && !cr->IsMoving()) {
+        cr->AnimateStay();
+        Net_SendStopMove(cr);
+    }
+}
+
+void FOClient::CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle)
+{
+    if (dir_or_angle.index() == 0) {
+        cr->ChangeDir(std::get<0>(dir_or_angle));
+    }
+    else if (dir_or_angle.index() == 1) {
+        cr->ChangeLookDirAngle(std::get<1>(dir_or_angle));
+    }
+
+    Net_SendDir(cr);
 }

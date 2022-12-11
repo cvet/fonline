@@ -76,11 +76,7 @@ enum class RenderType
 enum class EffectUsage
 {
     ImGui,
-    Font,
-    MapSprite,
-    Interface,
-    Flush,
-    Contour,
+    QuadSprite,
     Primitive,
 #if FO_ENABLE_3D
     Model,
@@ -162,18 +158,18 @@ public:
     auto operator=(RenderTexture&&) noexcept = delete;
 
     [[nodiscard]] virtual auto GetTexturePixel(int x, int y) -> uint = 0;
-    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, uint w, uint h) -> vector<uint> = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> = 0;
 
     virtual void UpdateTextureRegion(const IRect& r, const uint* data) = 0;
 
-    const uint Width;
-    const uint Height;
+    const int Width;
+    const int Height;
     const float SizeData[4]; // Width, Height, TexelWidth, TexelHeight
     const bool LinearFiltered;
     const bool WithDepth;
 
 protected:
-    RenderTexture(uint width, uint height, bool linear_filtered, bool with_depth);
+    RenderTexture(int width, int height, bool linear_filtered, bool with_depth);
 };
 
 class RenderDrawBuffer : public RefCounter
@@ -331,7 +327,7 @@ class Renderer
 public:
     virtual ~Renderer() = default;
 
-    [[nodiscard]] virtual auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
+    [[nodiscard]] virtual auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
 
@@ -339,14 +335,14 @@ public:
     virtual void Present() = 0;
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
     virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
-    virtual void EnableScissor(int x, int y, uint w, uint h) = 0;
+    virtual void EnableScissor(int x, int y, int width, int height) = 0;
     virtual void DisableScissor() = 0;
 };
 
 class Null_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
+    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
 
@@ -354,7 +350,7 @@ public:
     void Present() override { }
     void SetRenderTarget(RenderTexture* tex) override { }
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override { }
-    void EnableScissor(int x, int y, uint w, uint h) override { }
+    void EnableScissor(int x, int y, int width, int height) override { }
     void DisableScissor() override { }
 };
 
@@ -365,7 +361,7 @@ class OpenGL_Renderer final : public Renderer
 public:
     static constexpr auto RING_BUFFER_LENGTH = 300;
 
-    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
+    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
 
@@ -373,7 +369,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(int x, int y, uint w, uint h) override;
+    void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
 };
 
@@ -384,7 +380,7 @@ public:
 class Direct3D_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
+    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
 
@@ -392,7 +388,7 @@ public:
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
-    void EnableScissor(int x, int y, uint w, uint h) override;
+    void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
 };
 

@@ -256,20 +256,20 @@ class AppRender final
     friend class Application;
 
 public:
-    static constexpr uint MAX_ATLAS_SIZE = 8192;
-    static constexpr uint MIN_ATLAS_SIZE = 2048;
-    static const uint& MAX_ATLAS_WIDTH;
-    static const uint& MAX_ATLAS_HEIGHT;
-    static const uint& MAX_BONES;
+    static constexpr int MAX_ATLAS_SIZE = 8192;
+    static constexpr int MIN_ATLAS_SIZE = 2048;
+    static const int& MAX_ATLAS_WIDTH;
+    static const int& MAX_ATLAS_HEIGHT;
+    static const int& MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
+    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
-    void EnableScissor(int x, int y, uint w, uint h);
+    void EnableScissor(int x, int y, int width, int height);
     void DisableScissor();
 
 private:
@@ -288,6 +288,7 @@ public:
 
     [[nodiscard]] auto PollEvent(InputEvent& ev) -> bool;
 
+    void ClearEvents();
     void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& ev);
     void SetClipboardText(string_view text);
@@ -399,6 +400,3 @@ public:
 extern Application* App;
 extern void InitApp(int argc, char** argv, string_view name_appendix);
 [[noreturn]] extern void ExitApp(bool success);
-
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
-extern void ReportExceptionAndContinue(const std::exception& ex);

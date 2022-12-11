@@ -96,3 +96,22 @@ TEST_CASE("xrange")
     REQUIRE(t3 == 5);
     REQUIRE(t4 == 25);
 }
+
+TEST_CASE("lerp")
+{
+    REQUIRE(lerp(5, 7, -1.0f) == 5);
+    REQUIRE(lerp(5, 7, 0.0f) == 5);
+    REQUIRE(lerp(5, 7, 0.49f) == 5);
+    REQUIRE(lerp(5, 7, 0.5f) == 6);
+    REQUIRE(lerp(5, 7, 0.99f) == 6);
+    REQUIRE(lerp(5, 7, 1.0f) == 7);
+    REQUIRE(lerp(5, 7, 2.0f) == 7);
+
+    REQUIRE(lerp(7u, 5u, -1.0f) == 7);
+    REQUIRE(lerp(7u, 5u, 0.0f) == 7);
+    REQUIRE(lerp(7u, 5u, 0.01f) == 6);
+    REQUIRE(lerp(7u, 5u, 0.5f) == 6);
+    REQUIRE(lerp(7u, 5u, 0.51f) == 5);
+    REQUIRE(lerp(7u, 5u, 1.0f) == 5);
+    REQUIRE(lerp(7u, 5u, 2.0f) == 5);
+}

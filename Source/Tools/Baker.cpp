@@ -376,6 +376,36 @@ void Baker::BakeAll()
         }
 #endif
 
+        // Validation engine
+        FOEngineBase* validation_engine = nullptr;
+#if FO_ANGELSCRIPT_SCRIPTING
+#if !FO_SINGLEPLAYER
+        ASCompiler_ServerScriptSystem_Validation script_sys;
+#else
+        ASCompiler_SingleScriptSystem_Validation script_sys;
+#endif
+#endif
+
+        try {
+            WriteLog("Compile AngelScript scripts");
+
+#if FO_ANGELSCRIPT_SCRIPTING
+#if !FO_SINGLEPLAYER
+            script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
+            validation_engine->ScriptSys = &script_sys;
+#else
+            script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
+            validation_engine->ScriptSys = &script_sys;
+#endif
+#endif
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+
+        RUNTIME_ASSERT(validation_engine);
+
         // Configs
         try {
             WriteLog("Bake configs");
@@ -572,22 +602,6 @@ void Baker::BakeAll()
                 for (const auto& name : resource_names) {
                     resource_hashes.insert(baker_engine.ToHashedString(name));
                 }
-
-                FOEngineBase* validation_engine = nullptr;
-
-#if FO_ANGELSCRIPT_SCRIPTING
-#if !FO_SINGLEPLAYER
-                ASCompiler_ServerScriptSystem_Validation script_sys;
-                script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
-                validation_engine->ScriptSys = &script_sys;
-#else
-                ASCompiler_SingleScriptSystem_Validation script_sys;
-                script_sys.InitAngelScriptScripting(baker_engine.Resources, &validation_engine);
-                validation_engine->ScriptSys = &script_sys;
-#endif
-#endif
-
-                RUNTIME_ASSERT(validation_engine);
 
                 WriteLog("Validate protos");
 
@@ -841,20 +855,83 @@ void Baker::BakeAll()
             }
 
             dialog_mngr.LoadFromResources();
-            dialog_mngr.ValidateDialogs();
 
-            auto dialogs = baker_engine.Resources.FilterFiles("fodlg");
-            WriteLog("Dialogs count {}", dialogs.GetFilesCount());
+            int dlg_errors = 0;
 
-            while (dialogs.MoveNext()) {
-                auto file = dialogs.GetCurFile();
-                auto dlg_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Dialogs/{}.fodlg", file.GetName())), true);
-                RUNTIME_ASSERT(dlg_file);
-                auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
-                RUNTIME_ASSERT(dlg_file_write_ok);
+            for (auto* dlg_pack : dialog_mngr.GetDialogs()) {
+                for (auto&& dlg : dlg_pack->Dialogs) {
+                    if (dlg.DlgScriptFuncName) {
+                        if (!validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, string*>(dlg.DlgScriptFuncName) && //
+                            !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(dlg.DlgScriptFuncName)) {
+                            WriteLog("Dialog {} invalid start function {}", dlg_pack->PackName, dlg.DlgScriptFuncName);
+                            dlg_errors++;
+                        }
+                    }
+
+                    for (auto&& answer : dlg.Answers) {
+                        for (auto&& demand : answer.Demands) {
+                            if (demand.Type == DR_SCRIPT) {
+                                if ((demand.ValuesCount == 0 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 1 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 2 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int, int>(demand.AnswerScriptFuncName)) || //
+                                    (demand.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<bool, Critter*, Critter*, int, int, int, int, int>(demand.AnswerScriptFuncName))) {
+                                    WriteLog("Dialog {} answer demand invalid function {}", dlg_pack->PackName, demand.AnswerScriptFuncName);
+                                    dlg_errors++;
+                                }
+                            }
+                        }
+
+                        for (auto&& result : answer.Results) {
+                            if (result.Type == DR_SCRIPT) {
+                                int not_found_count = 0;
+
+                                if ((result.ValuesCount == 0 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 1 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 2 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<void, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
+                                    not_found_count++;
+                                }
+
+                                if ((result.ValuesCount == 0 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 1 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 2 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 3 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 4 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int>(result.AnswerScriptFuncName)) || //
+                                    (result.ValuesCount == 5 && !validation_engine->ScriptSys->FindFunc<uint, Critter*, Critter*, int, int, int, int, int>(result.AnswerScriptFuncName))) {
+                                    not_found_count++;
+                                }
+
+                                if (not_found_count != 1) {
+                                    WriteLog("Dialog {} answer result invalid function {}", dlg_pack->PackName, result.AnswerScriptFuncName);
+                                    dlg_errors++;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            WriteLog("Bake dialogs complete");
+            if (dlg_errors == 0) {
+                auto dialogs = baker_engine.Resources.FilterFiles("fodlg");
+                WriteLog("Dialogs count {}", dialogs.GetFilesCount());
+
+                while (dialogs.MoveNext()) {
+                    auto file = dialogs.GetCurFile();
+                    auto dlg_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Dialogs/{}.fodlg", file.GetName())), true);
+                    RUNTIME_ASSERT(dlg_file);
+                    auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
+                    RUNTIME_ASSERT(dlg_file_write_ok);
+                }
+
+                WriteLog("Bake dialogs complete");
+            }
+            else {
+                errors++;
+            }
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);

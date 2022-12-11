@@ -137,6 +137,7 @@ VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
 FIXED_SETTING(bool, HideNativeCursor, false);
+FIXED_SETTING(uint, FadingDuration, 1000);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -187,6 +188,9 @@ FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
 FIXED_SETTING(int, DefaultModelViewHeight, 0);
 FIXED_SETTING(int, DefaultModelDrawWidth, 128);
 FIXED_SETTING(int, DefaultModelDrawHeight, 128);
+FIXED_SETTING(uint, AnimWalkSpeed, 80);
+FIXED_SETTING(uint, AnimRunSpeed, 160);
+FIXED_SETTING(float, ModelProjFactor, 40.0f);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

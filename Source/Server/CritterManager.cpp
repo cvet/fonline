@@ -429,20 +429,20 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
     cr->_talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
 
-    if (cr->_talk.Type == TalkType::None) {
+    if (cr->Talk.Type == TalkType::None) {
         return;
     }
 
     // Check time of talk
-    if (cr->_talk.TalkTime != 0u && _engine->GameTime.GameTick() - cr->_talk.StartTick > cr->_talk.TalkTime) {
+    if (cr->Talk.TalkTime != 0u && _engine->GameTime.GameTick() - cr->Talk.StartTick > cr->Talk.TalkTime) {
         CloseTalk(cr);
         return;
     }
 
     // Check npc
     const Critter* talker = nullptr;
-    if (cr->_talk.Type == TalkType::Critter) {
-        talker = GetCritter(cr->_talk.CritterId);
+    if (cr->Talk.Type == TalkType::Critter) {
+        talker = GetCritter(cr->Talk.CritterId);
         if (talker == nullptr) {
             CloseTalk(cr);
             return;
@@ -458,22 +458,22 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     }
 
     // Check distance
-    if (!cr->_talk.IgnoreDistance) {
+    if (!cr->Talk.IgnoreDistance) {
         uint map_id = 0;
         ushort hx = 0;
         ushort hy = 0;
         uint talk_distance = 0;
-        if (cr->_talk.Type == TalkType::Critter) {
+        if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();
             hx = talker->GetHexX();
             hy = talker->GetHexY();
             talk_distance = talker->GetTalkDistance();
             talk_distance = (talk_distance != 0u ? talk_distance : _engine->Settings.TalkDistance) + cr->GetMultihex();
         }
-        else if (cr->_talk.Type == TalkType::Hex) {
-            map_id = cr->_talk.TalkHexMap;
-            hx = cr->_talk.TalkHexX;
-            hy = cr->_talk.TalkHexY;
+        else if (cr->Talk.Type == TalkType::Hex) {
+            map_id = cr->Talk.TalkHexMap;
+            hx = cr->Talk.TalkHexX;
+            hy = cr->Talk.TalkHexY;
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
@@ -488,15 +488,15 @@ void CritterManager::CloseTalk(Critter* cr)
 {
     NON_CONST_METHOD_HINT();
 
-    if (cr->_talk.Type != TalkType::None) {
+    if (cr->Talk.Type != TalkType::None) {
         Critter* talker = nullptr;
 
-        if (cr->_talk.Type == TalkType::Critter) {
-            cr->_talk.Type = TalkType::None;
+        if (cr->Talk.Type == TalkType::Critter) {
+            cr->Talk.Type = TalkType::None;
 
-            talker = GetCritter(cr->_talk.CritterId);
+            talker = GetCritter(cr->Talk.CritterId);
             if (talker != nullptr) {
-                if (cr->_talk.Barter) {
+                if (cr->Talk.Barter) {
                     talker->OnBarter.Fire(cr, false, talker->GetBarterPlayers());
                     _engine->OnCritterBarter.Fire(talker, cr, false, talker->GetBarterPlayers());
                 }
@@ -505,16 +505,20 @@ void CritterManager::CloseTalk(Critter* cr)
             }
         }
 
-        if (cr->_talk.CurDialog.DlgScriptFunc) {
-            cr->_talk.Locked = true;
-            if (!_engine->ScriptSys->CallFunc<void, Critter*, Critter*>(cr->_talk.CurDialog.DlgScriptFunc, cr, talker)) {
-                // Nop
+        if (cr->Talk.CurDialog.DlgScriptFuncName) {
+            cr->Talk.Locked = true;
+            string close = "*";
+            if (auto func = _engine->ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
+                func(cr, talker, &close);
             }
-            cr->_talk.Locked = false;
+            if (auto func = _engine->ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName)) {
+                func(cr, talker, &close);
+            }
+            cr->Talk.Locked = false;
         }
     }
 
-    cr->_talk = TalkData();
+    cr->Talk = TalkData();
     cr->Send_Talk();
 }
 

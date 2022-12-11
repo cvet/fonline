@@ -34,6 +34,8 @@
 #include "Common.h"
 
 #include "Client.h"
+#include "CritterHexView.h"
+#include "CritterView.h"
 
 // ReSharper disable CppInconsistentNaming
 
@@ -193,9 +195,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2, AbstractItem* actionItem)
 {
-    // Todo: handle AbstractItem in Animate
-    // self->Animate(anim1, anim2, actionItem);
-    throw NotImplementedException(LINE_STR);
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->Animate(anim1, anim2, actionItem);
 }
 
 ///# ...
@@ -498,4 +503,59 @@
 #else
     throw NotEnabled3DException("3D submodule not enabled");
 #endif
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, ushort hx, ushort hy, int ox, int oy, uint speed)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hx, hy, ox, oy}, speed);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_MoveToDir(CritterView* self, int dir, uint speed)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterMoveTo(hex_cr, dir, 0);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_StopMove(CritterView* self)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterMoveTo(hex_cr, -1, 0);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_ChangeDir(CritterView* self, uchar dir)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterLookTo(hex_cr, dir);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_ChangeDirAngle(CritterView* self, short dirAngle)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->GetEngine()->CritterLookTo(hex_cr, dirAngle);
 }

@@ -62,33 +62,33 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void> func)
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, int> func, int value)
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, int> func, int value)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, uint> func, uint value)
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, uint> func, uint value)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
@@ -121,16 +121,27 @@
 [[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     if (cr1 == nullptr) {
-        throw ScriptException("Critter1 arg is null");
+        throw ScriptException("Critter 1 arg is null");
     }
     if (cr2 == nullptr) {
-        throw ScriptException("Critter2 arg is null");
+        throw ScriptException("Critter 2 arg is null");
     }
-    if (cr1->GetMapId() != cr2->GetMapId()) {
+
+    const auto* hex_cr1 = dynamic_cast<CritterHexView*>(cr1);
+    if (hex_cr1 == nullptr) {
+        throw ScriptException("Critter 1 is not on map");
+    }
+
+    const auto* hex_cr2 = dynamic_cast<CritterHexView*>(cr2);
+    if (hex_cr2 == nullptr) {
+        throw ScriptException("Critter 2 is not on map");
+    }
+
+    if (hex_cr1->GetMap()->GetId() != hex_cr2->GetMap()->GetId()) {
         throw ScriptException("Critters different maps");
     }
 
-    return client->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    return client->Geometry.DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
 }
 
 ///# ...
@@ -166,9 +177,6 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetChosen(FOClient* client)
 {
-    if (client->GetChosen() && client->GetChosen()->IsDestroyed()) {
-        return nullptr;
-    }
     return client->GetChosen();
 }
 
@@ -1143,7 +1151,7 @@
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectPath.empty()) {
             auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectPath);
-            if (!effect) {
+            if (effect == nullptr) {
                 throw ScriptException("Effect not found or have some errors, see log file");
             }
             return effect;
@@ -1155,13 +1163,13 @@
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
         auto* item = client->CurMap->GetItem(static_cast<uint>(effectSubtype));
-        if (item) {
+        if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
         auto* cr = client->CurMap->GetCritter(static_cast<uint>(effectSubtype));
-        if (cr) {
+        if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
     }
@@ -1184,7 +1192,7 @@
 
 #if FO_ENABLE_3D
     if (eff_type & static_cast<uint>(EffectType::SkinnedMesh)) {
-        client->EffectMngr.Effects.Skinned3d = reload_effect(client->EffectMngr.Effects.Skinned3dDefault);
+        client->EffectMngr.Effects.SkinnedModel = reload_effect(client->EffectMngr.Effects.SkinnedModelDefault);
     }
 #endif
 
@@ -1192,7 +1200,7 @@
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::Contour)) {
-        client->EffectMngr.Effects.Contour = reload_effect(client->EffectMngr.Effects.ContourDefault);
+        client->EffectMngr.Effects.ContourSprite = reload_effect(client->EffectMngr.Effects.ContourSpriteDefault);
     }
 
     if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype == -1) {
@@ -1807,7 +1815,10 @@
 
     auto& field = client->CurMap->GetField(mapSpr->HexX, mapSpr->HexY);
     auto& tree = client->CurMap->GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, (client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, //
+        (client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
+        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
+        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();
@@ -1894,11 +1905,9 @@
         return;
     }
 
-    auto*& model = client->DrawCritterModel[instance];
-    if (model == nullptr || client->DrawCritterModelCrType[instance] != modelName) {
-        if (model != nullptr) {
-            client->SprMngr.FreeModel(model);
-        }
+    auto&& model = client->DrawCritterModel[instance];
+    if (!model || client->DrawCritterModelCrType[instance] != modelName) {
+        model = nullptr;
 
         client->SprMngr.PushAtlasType(AtlasType::Dynamic);
         model = client->SprMngr.LoadModel(modelName, false);
@@ -1906,7 +1915,7 @@
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;
 
-        if (model == nullptr) {
+        if (!model) {
             client->DrawCritterModelFailedToLoad[instance] = true;
             return;
         }
@@ -1946,7 +1955,7 @@
     model->SetSpeed(speed);
     model->SetAnimation(anim1, anim2, client->DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
-    client->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), model, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), model.get(), COLOR_SCRIPT_SPRITE(color));
 
     if (count > 13) {
         client->SprMngr.PopScissor();
@@ -2068,8 +2077,8 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    IRect from(std::clamp(x, 0, client->Settings.ScreenWidth), std::clamp(y, 0, client->Settings.ScreenHeight), std::clamp(x + w, 0, client->Settings.ScreenWidth), std::clamp(y + h, 0, client->Settings.ScreenHeight));
-    auto to = from;
+    const auto from = IRect(std::clamp(x, 0, client->Settings.ScreenWidth), std::clamp(y, 0, client->Settings.ScreenHeight), std::clamp(x + w, 0, client->Settings.ScreenWidth), std::clamp(y + h, 0, client->Settings.ScreenHeight));
+    const auto to = IRect(from);
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
@@ -2105,8 +2114,8 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    IRect from(std::clamp(fromX, 0, client->Settings.ScreenWidth), std::clamp(fromY, 0, client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
-    IRect to(std::clamp(toX, 0, client->Settings.ScreenWidth), std::clamp(toY, 0, client->Settings.ScreenHeight), std::clamp(toX + toW, 0, client->Settings.ScreenWidth), std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
+    const auto from = IRect(std::clamp(fromX, 0, client->Settings.ScreenWidth), std::clamp(fromY, 0, client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
+    const auto to = IRect(std::clamp(toX, 0, client->Settings.ScreenWidth), std::clamp(toY, 0, client->Settings.ScreenHeight), std::clamp(toX + toW, 0, client->Settings.ScreenWidth), std::clamp(toY + toH, 0, client->Settings.ScreenHeight));
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
@@ -2196,15 +2205,9 @@
         return false;
     }
 
-    const auto old_x = client->Settings.MouseX;
-    const auto old_y = client->Settings.MouseY;
-    client->Settings.MouseX = x;
-    client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
     const auto result = client->CurMap->GetHexAtScreenPos(x, y, hx_, hy_, nullptr, nullptr);
-    client->Settings.MouseX = old_x;
-    client->Settings.MouseY = old_y;
     if (result) {
         hx = hx_;
         hy = hy_;
@@ -2228,15 +2231,9 @@
         return false;
     }
 
-    const auto old_x = client->Settings.MouseX;
-    const auto old_y = client->Settings.MouseY;
-    client->Settings.MouseX = x;
-    client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
     const auto result = client->CurMap->GetHexAtScreenPos(x, y, hx_, hy_, &ox, &oy);
-    client->Settings.MouseX = old_x;
-    client->Settings.MouseY = old_y;
     if (result) {
         hx = hx_;
         hy = hy_;
@@ -2288,7 +2285,7 @@
 
     auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, false);
     if (cr == nullptr && wideRange) {
-        cr = client->CurMap->GetCritterAtScreenPos(x, y, false, true);
+        cr = client->CurMap->GetCritterAtScreenPos(x, y, true, true);
     }
     return cr;
 }
@@ -2345,7 +2342,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !client->CurMap->GetField(hx, hy).Flags.IsNotPassed;
+    return !client->CurMap->GetField(hx, hy).Flags.IsMoveBlocked;
 }
 
 ///# ...
@@ -2362,7 +2359,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    return !client->CurMap->GetField(hx, hy).Flags.IsNotRaked;
+    return !client->CurMap->GetField(hx, hy).Flags.IsShootBlocked;
 }
 
 ///# ...
@@ -2466,4 +2463,20 @@
     }
 
     client->Cache.SetString(CONFIG_NAME, cfg_user);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, int x, int y)
+{
+    client->SprMngr.SetMousePosition(x, y);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetShootBorders(FOClient* client, bool enabled)
+{
+    if (client->CurMap == nullptr) {
+        throw ScriptException("Map is not loaded");
+    }
+
+    client->CurMap->SetShootBorders(enabled);
 }

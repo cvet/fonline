@@ -67,12 +67,12 @@ void Server_RegisterData(FOEngineBase* engine)
 
 #elif CLIENT_REGISTRATION
 
-static void RestoreProperty(PropertyRegistrator* registrator, string_view access, string_view type, const string& name, const vector<string>& flags)
+static void RestoreProperty(PropertyRegistrator* registrator, string_view access, string_view type, const string& name, const vector<string_view>& flags)
 {
-#define RESTORE_ARGS PropertyRegistrator *registrator, Property::AccessType access, string_view name, const vector<string>&flags
+#define RESTORE_ARGS PropertyRegistrator *registrator, Property::AccessType access, string_view name, const vector<string_view>&flags
 #define RESTORE_ARGS_PASS access, name, flags
 
-    static unordered_map<string_view, std::function<void(PropertyRegistrator*, Property::AccessType, string_view, const vector<string>&)>> call_map = {
+    static unordered_map<string_view, std::function<void(PropertyRegistrator*, Property::AccessType, string_view, const vector<string_view>&)>> call_map = {
         ///@ CodeGen PropertyMap
     };
 
@@ -178,8 +178,12 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info
     for (const auto& info : restoreInfo["Properties"]) {
         const auto tokens = _str(info).split(' ');
         auto* prop_registrator = engine->GetOrCreatePropertyRegistrator(tokens[0]);
-        auto flags = tokens;
-        flags.erase(flags.begin(), flags.begin() + 4);
+
+        vector<string_view> flags;
+        flags.reserve(tokens.size() - 4);
+        for (size_t i = 4; i < tokens.size(); i++) {
+            flags.emplace_back(tokens[i]);
+        }
 
         RestoreProperty(prop_registrator, tokens[1], tokens[2], tokens[3], flags);
     }

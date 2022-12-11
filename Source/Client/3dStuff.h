@@ -249,7 +249,7 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
-    [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
+    [[nodiscard]] auto GetDrawSize() const -> tuple<int, int>;
     [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> uint;
@@ -269,8 +269,7 @@ public:
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
     void MoveModel(int ox, int oy);
-    void SetMoving(bool enabled, bool is_run);
-    void SetMoveSpeed(float walk_factor, float run_factor);
+    void SetMoving(bool enabled, uint speed = 0);
     void SetCombatMode(bool enabled);
     void RunParticles(string_view particles_name, hstring bone_name, vec3 move);
 
@@ -314,8 +313,6 @@ private:
     ModelManager& _modelMngr;
     int _frameWidth {};
     int _frameHeight {};
-    float _frameWidthF {};
-    float _frameHeightF {};
     mat44 _frameProjRowMaj {};
     mat44 _frameProjColMaj {};
     uint _curAnim1 {};
@@ -352,14 +349,13 @@ private:
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
     bool _isMoving {};
-    bool _isRunning {};
     bool _isMovingBack {};
     int _curMovingAnim {-1};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};
-    float _walkSpeedFactor {1.0f};
-    float _runSpeedFactor {1.0f};
+    float _movingSpeedFactor {};
+    bool _isRunning {};
     bool _noRotate {};
     float _deferredLookDirAngle {};
     vector<ModelParticleSystem> _particleSystems {};
@@ -421,8 +417,8 @@ private:
     int _renderAnimProcTo {100};
     int _renderAnimDir {};
     bool _shadowDisabled {};
-    uint _drawWidth {};
-    uint _drawHeight {};
+    int _drawWidth {};
+    int _drawHeight {};
     int _viewHeight {};
     hstring _rotationBone {};
 };
