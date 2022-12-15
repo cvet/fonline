@@ -524,7 +524,7 @@
         throw ScriptException("Critter is not on map");
     }
 
-    self->GetEngine()->CritterMoveTo(hex_cr, dir, 0);
+    self->GetEngine()->CritterMoveTo(hex_cr, dir, speed);
 }
 
 ///@ ExportMethod
