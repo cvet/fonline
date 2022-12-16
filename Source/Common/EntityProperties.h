@@ -383,6 +383,8 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
 };
 
 class MapProperties : public EntityProperties

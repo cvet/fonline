@@ -3142,7 +3142,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             }
             // Sex
             else if (_str(tag).compareIgnoreCase("sex")) {
-                // sex = (cr != nullptr ? cr->GetGender() + 1 : 1);
+                sex = (cr != nullptr && cr->GetIsSexTagFemale() ? 2 : 1);
                 sex_tags = true;
                 continue;
             }
