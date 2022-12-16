@@ -1599,16 +1599,37 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 #endif
 
+    if (cr->IsDestroyed()) {
+        return;
+    }
+
     // Moving
     ProcessMove(cr);
 
+    if (cr->IsDestroyed()) {
+        return;
+    }
+
     // Idle functions
     OnCritterIdle.Fire(cr);
+
+    if (cr->IsDestroyed()) {
+        return;
+    }
+
     if (cr->GetMapId() == 0u) {
         OnCritterGlobalMapIdle.Fire(cr);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
     }
 
     CrMngr.ProcessTalk(cr, false);
+
+    if (cr->IsDestroyed()) {
+        return;
+    }
 
     // Cache look distance
     // Todo: disable look distance caching
@@ -1619,6 +1640,10 @@ void FOServer::ProcessCritter(Critter* cr)
 
     // Time events
     cr->ProcessTimeEvents();
+
+    if (cr->IsDestroyed()) {
+        return;
+    }
 
     // Remove player critter from game
     if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
@@ -1656,38 +1681,70 @@ void FOServer::ProcessCritter(Critter* cr)
 void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
 {
     if (map->IsHexStaticTrigger(from_hx, from_hy)) {
-        for (auto* item : map->GetStaticItemTriggers(from_hx, from_hy)) {
+        for (auto* item : map->GetStaticItemsTrigger(from_hx, from_hy)) {
             if (item->TriggerScriptFunc) {
                 if (!item->TriggerScriptFunc(cr, item, false, dir)) {
                     // Nop
                 }
+
+                if (cr->IsDestroyed()) {
+                    return;
+                }
             }
 
             OnStaticItemWalk.Fire(item, cr, false, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
         }
     }
 
     if (map->IsHexStaticTrigger(to_hx, to_hy)) {
-        for (auto* item : map->GetStaticItemTriggers(to_hx, to_hy)) {
+        for (auto* item : map->GetStaticItemsTrigger(to_hx, to_hy)) {
             if (item->TriggerScriptFunc) {
                 if (!item->TriggerScriptFunc(cr, item, true, dir)) {
                     // Nop
                 }
+
+                if (cr->IsDestroyed()) {
+                    return;
+                }
             }
 
             OnStaticItemWalk.Fire(item, cr, true, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
         }
     }
 
     if (map->IsHexTrigger(from_hx, from_hy)) {
         for (auto* item : map->GetItemsTrigger(from_hx, from_hy)) {
+            if (item->IsDestroyed()) {
+                continue;
+            }
+
             OnItemWalk.Fire(item, cr, false, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
         }
     }
 
     if (map->IsHexTrigger(to_hx, to_hy)) {
         for (auto* item : map->GetItemsTrigger(to_hx, to_hy)) {
+            if (item->IsDestroyed()) {
+                continue;
+            }
+
             OnItemWalk.Fire(item, cr, true, dir);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
         }
     }
 }
@@ -2829,6 +2886,10 @@ void FOServer::ProcessMove(Critter* cr)
         auto* map = MapMngr.GetMap(cr->GetMapId());
         if (map != nullptr && cr->IsAlive()) {
             ProcessMoveBySteps(cr, map);
+
+            if (cr->IsDestroyed()) {
+                return;
+            }
         }
         else {
             cr->ClearMove();
@@ -3054,18 +3115,19 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
                     cr->SetHexY(hy2);
                     map->SetFlagCritter(hx2, hy2, multihex, is_dead);
 
+                    RUNTIME_ASSERT(!cr->IsDestroyed());
                     MapMngr.ProcessVisibleCritters(cr);
-                    if (cr->Moving.Uid != move_uid) {
+                    if (cr->Moving.Uid != move_uid || cr->IsDestroyed()) {
                         return;
                     }
 
                     MapMngr.ProcessVisibleItems(cr);
-                    if (cr->Moving.Uid != move_uid) {
+                    if (cr->Moving.Uid != move_uid || cr->IsDestroyed()) {
                         return;
                     }
 
                     VerifyTrigger(map, cr, old_hx, old_hy, hx2, hy2, dir);
-                    if (cr->Moving.Uid != move_uid) {
+                    if (cr->Moving.Uid != move_uid || cr->IsDestroyed()) {
                         return;
                     }
                 }

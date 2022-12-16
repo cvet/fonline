@@ -109,11 +109,11 @@ public:
     [[nodiscard]] auto GetCrittersCount() const -> uint;
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
-    [[nodiscard]] auto GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*;
     [[nodiscard]] auto GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsTrigger(ushort hx, ushort hy) -> vector<StaticItem*>;
 
     void SetLocation(Location* loc);
     void Process();

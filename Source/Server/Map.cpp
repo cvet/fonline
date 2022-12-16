@@ -947,19 +947,6 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
     }
 }
 
-auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>
-{
-    NON_CONST_METHOD_HINT();
-
-    vector<StaticItem*> triggers;
-    for (auto* item : _staticMap->TriggerItems) {
-        if (item->GetHexX() == hx && item->GetHexY() == hy) {
-            triggers.push_back(item);
-        }
-    }
-    return triggers;
-}
-
 auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 {
     NON_CONST_METHOD_HINT();
@@ -1009,4 +996,17 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
         }
     }
     return items;
+}
+
+auto Map::GetStaticItemsTrigger(ushort hx, ushort hy) -> vector<StaticItem*>
+{
+    NON_CONST_METHOD_HINT();
+
+    vector<StaticItem*> triggers;
+    for (auto* item : _staticMap->TriggerItems) {
+        if (item->GetHexX() == hx && item->GetHexY() == hy) {
+            triggers.push_back(item);
+        }
+    }
+    return triggers;
 }

@@ -1907,6 +1907,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             if argType[-1] == '&':
                                 argType = argType[:-1]
                             globalLines.append('    auto&& arg_' + p[1] + ' = *reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')));')
+                            if p[0] in gameEntities:
+                                globalLines.append('    ENTITY_VERIFY(arg_' + p[1] + ');')
                             argIndex += 1
                         for p in evArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
