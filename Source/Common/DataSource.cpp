@@ -669,7 +669,7 @@ ZipFile::ZipFile(string_view fname)
     _zipHandle = nullptr;
 
     zlib_filefunc_def ffunc;
-    if (fname[0] != '$') {
+    if (fname[0] != '@') {
         auto* p_file = new DiskFile {DiskFileSystem::OpenFile(fname, false)};
         if (!*p_file) {
             delete p_file;
