@@ -408,19 +408,6 @@ void CritterHexView::ResetOk()
     _needReset = false;
 }
 
-auto CritterHexView::GetAnim1() const -> uint
-{
-    switch (GetCond()) {
-    case CritterCondition::Alive:
-        return GetAnim1Alive() != 0u ? GetAnim1Alive() : ANIM1_UNARMED;
-    case CritterCondition::Knockout:
-        return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
-    case CritterCondition::Dead:
-        return GetAnim1Dead() != 0u ? GetAnim1Dead() : ANIM1_UNARMED;
-    }
-    return ANIM1_UNARMED;
-}
-
 auto CritterHexView::GetAnim2() const -> uint
 {
     switch (GetCond()) {

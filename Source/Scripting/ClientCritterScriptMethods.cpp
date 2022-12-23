@@ -166,12 +166,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Critter_GetAnim1(CritterView* self)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    return hex_cr->GetAnim1();
+    return self->GetAnim1();
 }
 
 ///# ...

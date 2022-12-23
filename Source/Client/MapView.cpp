@@ -3097,12 +3097,13 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, s
     return cr;
 }
 
-auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterHexView*
+auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*
 {
     auto* cr = new CritterHexView(this, id, proto);
     cr->RestoreData(data);
     cr->SetHexX(hx);
     cr->SetHexY(hy);
+    cr->ChangeDirAngle(dir_angle);
 
     AddCritterInternal(cr);
     return cr;

@@ -218,7 +218,7 @@ public:
 
     // Critters
     auto AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
-    auto AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterHexView*;
+    auto AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*;
     auto GetCritter(uint id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;

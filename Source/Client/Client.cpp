@@ -315,6 +315,12 @@ auto FOClient::GetMapChosen() -> CritterHexView*
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
+auto FOClient::GetWorldmapCritter(uint cr_id) -> CritterView*
+{
+    const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+    return it != _worldmapCritters.end() ? *it : nullptr;
+}
+
 void FOClient::ProcessAutoLogin()
 {
     auto auto_login = Settings.AutoLogin;
@@ -1000,13 +1006,13 @@ void FOClient::Net_OnAddCritter()
     uint msg_len;
     _conn.InBuf >> msg_len;
 
-    uint crid;
+    uint cr_id;
     ushort hx;
     ushort hy;
     short hex_ox;
     short hex_oy;
     short dir_angle;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
     _conn.InBuf >> hex_ox;
@@ -1043,14 +1049,19 @@ void FOClient::Net_OnAddCritter()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (CurMap == nullptr) {
-        return;
+    CritterView* cr;
+
+    if (CurMap != nullptr) {
+        cr = CurMap->AddCritter(cr_id, proto, hx, hy, dir_angle, _tempPropertiesData);
+    }
+    else {
+        cr = new CritterView(this, cr_id, proto);
+        cr->RestoreData(_tempPropertiesData);
+        _worldmapCritters.emplace_back(cr);
     }
 
-    auto* cr = CurMap->AddCritter(crid, proto, hx, hy, _tempPropertiesData);
     cr->SetHexOffsX(hex_ox);
     cr->SetHexOffsY(hex_oy);
-    cr->ChangeDirAngle(dir_angle);
     cr->SetCond(cond);
     cr->SetAnim1Alive(anim1_alive);
     cr->SetAnim1Knockout(anim1_ko);
@@ -1070,30 +1081,42 @@ void FOClient::Net_OnAddCritter()
 
     OnCritterIn.Fire(cr);
 
-    if (cr->IsChosen()) {
+    if (CurMap != nullptr && cr->IsChosen()) {
         CurMap->RebuildFog();
     }
 }
 
 void FOClient::Net_OnRemoveCritter()
 {
-    uint remove_crid;
-    _conn.InBuf >> remove_crid;
+    uint cr_id;
+    _conn.InBuf >> cr_id;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (CurMap == nullptr) {
-        return;
+    if (CurMap != nullptr) {
+        auto* cr = CurMap->GetCritter(cr_id);
+        if (cr == nullptr) {
+            BreakIntoDebugger();
+            return;
+        }
+
+        cr->Finish();
+
+        OnCritterOut.Fire(cr);
     }
+    else {
+        const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
+        if (it == _worldmapCritters.end()) {
+            BreakIntoDebugger();
+            return;
+        }
 
-    auto* cr = CurMap->GetCritter(remove_crid);
-    if (cr == nullptr) {
-        return;
+        auto* cr = *it;
+        OnCritterOut.Fire(cr);
+        _worldmapCritters.erase(it);
+        cr->MarkAsDestroyed();
+        cr->Release();
     }
-
-    cr->Finish();
-
-    OnCritterOut.Fire(cr);
 }
 
 void FOClient::Net_OnText()
@@ -1271,6 +1294,11 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
     auto sstr = _str(str).str();
     OnMapMessage.Fire(sstr, hx, hy, color, show_time);
 
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
     CurMap->AddMapText(sstr, hx, hy, color, show_time, false, 0, 0);
 
     FlashGameWindow();
@@ -1292,6 +1320,11 @@ void FOClient::Net_OnMapText()
     _conn.InBuf >> unsafe_text;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
 
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         WriteLog("Invalid coords, hx {}, hy {}, text '{}'", hx, hy, text);
@@ -1369,6 +1402,7 @@ void FOClient::Net_OnCritterDir()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1417,6 +1451,7 @@ void FOClient::Net_OnCritterMove()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1519,6 +1554,7 @@ void FOClient::Net_OnCritterStopMove()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1568,6 +1604,7 @@ void FOClient::Net_OnCritterAction()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1582,12 +1619,12 @@ void FOClient::Net_OnCritterAction()
 void FOClient::Net_OnCritterMoveItem()
 {
     uint msg_len;
-    uint crid;
+    uint cr_id;
     uchar action;
     uchar prev_slot;
     bool is_item;
     _conn.InBuf >> msg_len;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> action;
     _conn.InBuf >> prev_slot;
     _conn.InBuf >> is_item;
@@ -1618,12 +1655,17 @@ void FOClient::Net_OnCritterMoveItem()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (CurMap == nullptr) {
-        return;
+    CritterView* cr;
+
+    if (CurMap != nullptr) {
+        cr = CurMap->GetCritter(cr_id);
+    }
+    else {
+        cr = GetWorldmapCritter(cr_id);
     }
 
-    auto* cr = CurMap->GetCritter(crid);
     if (cr == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1650,7 +1692,9 @@ void FOClient::Net_OnCritterMoveItem()
         }
     }
 
-    cr->Action(action, prev_slot, is_item ? _someItem : nullptr, false);
+    if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
+        hex_cr->Action(action, prev_slot, is_item ? _someItem : nullptr, false);
+    }
 }
 
 void FOClient::Net_OnCritterAnimate()
@@ -1671,6 +1715,7 @@ void FOClient::Net_OnCritterAnimate()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1701,6 +1746,7 @@ void FOClient::Net_OnCritterSetAnims()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1739,6 +1785,7 @@ void FOClient::Net_OnCritterTeleport()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1780,6 +1827,7 @@ void FOClient::Net_OnCritterPos()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -1836,6 +1884,7 @@ void FOClient::Net_OnAllProperties()
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
         WriteLog("Chosen not created, skip");
+        BreakIntoDebugger();
         return;
     }
 
@@ -1857,6 +1906,7 @@ void FOClient::Net_OnChosenClearItems()
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
         WriteLog("Chosen is not created in clear items");
+        BreakIntoDebugger();
         return;
     }
 
@@ -1885,6 +1935,7 @@ void FOClient::Net_OnChosenAddItem()
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
         WriteLog("Chosen is not created in add item");
+        BreakIntoDebugger();
         return;
     }
 
@@ -1904,10 +1955,12 @@ void FOClient::Net_OnChosenAddItem()
 
     item->AddRef();
 
-    CurMap->RebuildFog();
+    if (CurMap != nullptr) {
+        CurMap->RebuildFog();
 
-    if (item->LightGetHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
-        CurMap->RebuildLight();
+        if (item->LightGetHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
+            CurMap->RebuildLight();
+        }
     }
 
     if (!_initialItemsSend) {
@@ -1927,18 +1980,20 @@ void FOClient::Net_OnChosenEraseItem()
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
         WriteLog("Chosen is not created in erase item");
+        BreakIntoDebugger();
         return;
     }
 
     auto* item = chosen->GetItem(item_id);
     if (item == nullptr) {
         WriteLog("Item not found, id {}", item_id);
+        BreakIntoDebugger();
         return;
     }
 
     auto* item_clone = item->CreateRefClone();
 
-    const auto rebuild_light = (item->GetIsLight() && item->GetCritterSlot() != 0u);
+    const auto rebuild_light = (CurMap != nullptr && item->GetIsLight() && item->GetCritterSlot() != 0u);
     chosen->DeleteItem(item, true);
     if (rebuild_light) {
         CurMap->RebuildLight();
@@ -1955,6 +2010,7 @@ void FOClient::Net_OnAllItemsSend()
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
         WriteLog("Chosen is not created in all items send");
+        BreakIntoDebugger();
         return;
     }
 
@@ -1986,6 +2042,7 @@ void FOClient::Net_OnAddItemOnMap()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -2010,6 +2067,7 @@ void FOClient::Net_OnEraseItemFromMap()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -2041,6 +2099,11 @@ void FOClient::Net_OnAnimateItem()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
+
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
         item->SetAnim(from_frm, to_frm);
@@ -2059,6 +2122,11 @@ void FOClient::Net_OnEffect()
     _conn.InBuf >> radius;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
 
     // Base hex effect
     CurMap->RunEffectItem(eff_pid, hx, hy, hx, hy);
@@ -2103,6 +2171,7 @@ void FOClient::Net_OnFlyEffect()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -2148,7 +2217,7 @@ void FOClient::Net_OnPlaceToGameComplete()
     FlashGameWindow();
     ScreenFadeOut();
 
-    if (CurMapPid) {
+    if (CurMap != nullptr) {
         CurMap->SkipItemsFade();
         CurMap->FindSetCenter(chosen->GetHexX(), chosen->GetHexY());
         dynamic_cast<CritterHexView*>(chosen)->AnimateStay();
@@ -2323,6 +2392,7 @@ void FOClient::Net_OnChosenTalk()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -2663,6 +2733,7 @@ void FOClient::Net_OnViewMap()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -3305,6 +3376,11 @@ void FOClient::RunScreenScript(bool show, int screen, map<string, string> params
 void FOClient::LmapPrepareMap()
 {
     _lmapPrepPix.clear();
+
+    if (CurMap == nullptr) {
+        BreakIntoDebugger();
+        return;
+    }
 
     const auto* chosen = GetMapChosen();
     if (chosen == nullptr) {

@@ -219,6 +219,7 @@
 [[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItems(FOClient* client)
 {
     vector<ItemView*> items;
+
     if (client->CurMap != nullptr) {
         const auto items_ = client->CurMap->GetItems();
         items.reserve(items_.size());
@@ -228,6 +229,7 @@
             }
         }
     }
+
     return items;
 }
 
@@ -265,12 +267,17 @@
         return nullptr;
     }
 
-    auto* cr = client->CurMap->GetCritter(critterId);
-    if (!cr || cr->IsDestroyed() || cr->IsDestroying()) {
-        return nullptr;
-    }
+    if (client->CurMap != nullptr) {
+        auto* cr = client->CurMap->GetCritter(critterId);
+        if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
+            return nullptr;
+        }
 
-    return cr;
+        return cr;
+    }
+    else {
+        return client->GetWorldmapCritter(critterId);
+    }
 }
 
 ///# ...
@@ -281,10 +288,15 @@
 {
     vector<CritterView*> critters;
 
-    for (auto* cr : client->CurMap->GetCritters()) {
-        if (cr->CheckFind(findType)) {
-            critters.push_back(cr);
+    if (client->CurMap != nullptr) {
+        for (auto* cr : client->CurMap->GetCritters()) {
+            if (cr->CheckFind(findType)) {
+                critters.push_back(cr);
+            }
         }
+    }
+    else {
+        critters = client->GetWorldmapCritters();
     }
 
     return critters;
@@ -299,17 +311,35 @@
 {
     vector<CritterView*> critters;
 
-    if (!pid) {
-        for (auto* cr : client->CurMap->GetCritters()) {
-            if (cr->CheckFind(findType)) {
-                critters.push_back(cr);
+    if (client->CurMap != nullptr) {
+        if (!pid) {
+            for (auto* cr : client->CurMap->GetCritters()) {
+                if (cr->CheckFind(findType)) {
+                    critters.push_back(cr);
+                }
+            }
+        }
+        else {
+            for (auto* cr : client->CurMap->GetCritters()) {
+                if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
+                    critters.push_back(cr);
+                }
             }
         }
     }
     else {
-        for (auto* cr : client->CurMap->GetCritters()) {
-            if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
-                critters.push_back(cr);
+        if (!pid) {
+            for (auto* cr : client->GetWorldmapCritters()) {
+                if (cr->CheckFind(findType)) {
+                    critters.push_back(cr);
+                }
+            }
+        }
+        else {
+            for (auto* cr : client->GetWorldmapCritters()) {
+                if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
+                    critters.push_back(cr);
+                }
             }
         }
     }
@@ -326,6 +356,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
@@ -355,6 +389,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     vector<CritterHexView*> critters;
     client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
     return vec_downcast<CritterView*>(critters);
@@ -376,6 +414,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     vector<CritterHexView*> critters;
     pair<ushort, ushort> block = {};
     pair<ushort, ushort> pre_block = {};
@@ -397,6 +439,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Game_GetHexInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
 {
+    if (client->CurMap == nullptr) {
+        return;
+    }
+
     pair<ushort, ushort> pre_block = {};
     pair<ushort, ushort> block = {};
     client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
@@ -414,6 +460,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<uchar> Client_Game_GetPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     if (fromHx >= client->CurMap->GetWidth() || fromHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
     }
@@ -459,6 +509,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<uchar> Client_Game_GetPath(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     if (toHx >= client->CurMap->GetWidth() || toHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
     }
@@ -507,6 +561,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetPathLength(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     if (fromHx >= client->CurMap->GetWidth() || fromHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
     }
@@ -549,6 +607,10 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetPathLength(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
+    if (client->CurMap == nullptr) {
+        return {};
+    }
+
     if (toHx >= client->CurMap->GetWidth() || toHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
     }
@@ -705,6 +767,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_MapMessage(FOClient* client, string_view text, ushort hx, ushort hy, uint showTime, uint color, bool fade, int endOx, int endOy)
 {
+    if (client->CurMap == nullptr) {
+        return;
+    }
+
     client->CurMap->AddMapText(text, hx, hy, color, showTime, fade, endOx, endOy);
 }
 
@@ -859,6 +925,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_LockScreenScroll(FOClient* client, CritterView* cr, bool softLock, bool unlockIfSame)
 {
+    if (client->CurMap == nullptr) {
+        throw ScriptException("Map is not loaded");
+    }
+
     const auto id = (cr != nullptr ? cr->GetId() : 0);
     if (softLock) {
         if (unlockIfSame && id == client->CurMap->AutoScroll.SoftLockedCritter) {
@@ -924,7 +994,7 @@
     }
 
     if (client->CurMap != nullptr) {
-        auto* const col = client->CurMap->GetMapDayColor();
+        const auto* col = client->CurMap->GetMapDayColor();
         r = col[0 + dayPart];
         g = col[4 + dayPart];
         b = col[8 + dayPart];

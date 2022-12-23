@@ -493,10 +493,6 @@ void Player::Send_GlobalInfo(uchar info_flags)
 
     RUNTIME_ASSERT(_ownedCr);
 
-    if (_ownedCr->LockMapTransfers != 0) {
-        return;
-    }
-
     const auto known_locs = _ownedCr->GetKnownLocations();
 
     // Calculate length of message
