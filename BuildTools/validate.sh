@@ -102,10 +102,6 @@ fi
 
 BUILD_TARGET="$BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION=$FO_CMAKE_CONTRIBUTION"
 
-if [ "$TARGET" != "mac" ] && [ "$TARGET" != "ios" ]; then
-    $CUR_DIR/prepare-workspace.sh $TARGET
-fi
-
 BUILD_DIR=validate-$1
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
