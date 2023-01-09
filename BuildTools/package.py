@@ -10,6 +10,7 @@ import tarfile
 import glob
 import io
 import struct
+import stat
 
 parser = argparse.ArgumentParser(description='FOnline packager')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
@@ -28,7 +29,7 @@ parser.add_argument('-arch', dest='arch', required=True, help='architectures to 
 # Web: wasm
 parser.add_argument('-pack', dest='pack', required=True, help='package type')
 # Windows: Raw Zip Wix Headless Service
-# Linux: Raw Tar Zip AppImage
+# Linux: Raw Tar TarGz Zip AppImage
 # Android: Raw Apk
 # macOS: Raw Bundle
 # iOS: Raw Bundle
@@ -199,17 +200,19 @@ def build():
 	if args.platform == 'Windows':
 		# Raw files
 		for arch in args.arch.split('+'):
-			binName = args.devname + '_' + args.target + ('Headless' if 'Headless' in args.pack else '') + ('Service' if 'Service' in args.pack else '')
-			binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
-			log('Binary input for ' + arch, binPath)
-			shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binName + '.exe'))
-			if os.path.isfile(os.path.join(binPath, binName + '.pdb')):
-				log('PDB file included')
-				shutil.copy(os.path.join(binPath, binName + '.pdb'), os.path.join(targetOutputPath, binName + '.pdb'))
-			else:
-				log('PDB file NOT included')
-			patchEmbedded(os.path.join(targetOutputPath, binName + '.exe'))
-			patchConfig(os.path.join(targetOutputPath, binName + '.exe'))
+			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Service'] if 'Service' in args.pack else []):
+				binName = args.devname + '_' + args.target + binType
+				log('Setup', arch, binName)
+				binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
+				log('Binary input', binPath)
+				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binName + '.exe'))
+				if os.path.isfile(os.path.join(binPath, binName + '.pdb')):
+					log('PDB file included')
+					shutil.copy(os.path.join(binPath, binName + '.pdb'), os.path.join(targetOutputPath, binName + '.pdb'))
+				else:
+					log('PDB file NOT included')
+				patchEmbedded(os.path.join(targetOutputPath, binName + '.exe'))
+				patchConfig(os.path.join(targetOutputPath, binName + '.exe'))
 		
 		# Zip
 		if 'Zip' in args.pack:
@@ -297,17 +300,42 @@ def build():
 
 	elif args.platform == 'Linux':
 		# Raw files
-		os.makedirs(gameOutputPath)
-		shutil.copytree(resourcesPath, gameOutputPath + '/Data')
-		# shutil.copy(binariesPath + '/Linux/FOnline32', gameOutputPath + '/' + gameName + '32')
-		shutil.copy(binariesPath + '/Linux/FOnline64', gameOutputPath + '/' + gameName + '64')
-		# patchConfig(gameOutputPath + '/' + gameName + '32')
-		patchConfig(gameOutputPath + '/' + gameName + '64')
-
+		for arch in args.arch.split('+'):
+			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Daemon'] if 'Daemon' in args.pack else []):
+				binName = args.devname + '_' + args.target + binType
+				log('Setup', arch, binName)
+				binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
+				log('Binary input', binPath)
+				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binName))
+				patchEmbedded(os.path.join(targetOutputPath, binName))
+				patchConfig(os.path.join(targetOutputPath, binName))
+				st = os.stat(os.path.join(targetOutputPath, binName))
+				os.chmod(os.path.join(targetOutputPath, binName), st.st_mode | stat.S_IEXEC)
+		
 		# Tar
-		makeTar(targetOutputPath + '/' + gameName + '.tar', gameOutputPath, 'w')
-		makeTar(targetOutputPath + '/' + gameName + '.tar.gz', gameOutputPath, 'w:gz')
-
+		if 'Tar' in args.pack:
+			log('Create tar archive')
+			makeTar(targetOutputPath + '.tar', targetOutputPath, 'w')
+		
+		# TarGz
+		if 'TarGz' in args.pack:
+			log('Create tar.gz archive')
+			makeTar(targetOutputPath + '.tar.gz', targetOutputPath, 'w:gz')
+		
+		# Zip
+		if 'Zip' in args.pack:
+			log('Create zipped archive')
+			makeZip(targetOutputPath + '.zip', targetOutputPath, 1)
+		
+		# AppImage
+		if 'Zip' in args.pack:
+			# Todo: AppImage
+			pass
+		
+		# Cleanup raw files if not requested
+		if 'Raw' not in args.pack:
+			shutil.rmtree(targetOutputPath, True)
+		
 	elif args.platform == 'Mac':
 		# Raw files
 		os.makedirs(gameOutputPath)
