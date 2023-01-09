@@ -723,7 +723,7 @@ ZipFile::ZipFile(string_view fname)
 
         struct MemStream
         {
-            const uchar* Buf;
+            volatile const uchar* Buf;
             uint Length;
             uint Pos;
         };
@@ -753,7 +753,7 @@ ZipFile::ZipFile(string_view fname)
 
                 auto* mem_stream = new MemStream();
                 mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint);
-                mem_stream->Length = *reinterpret_cast<const uint*>(EMBEDDED_RESOURCES);
+                mem_stream->Length = *reinterpret_cast<volatile const uint*>(EMBEDDED_RESOURCES);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }
@@ -761,7 +761,9 @@ ZipFile::ZipFile(string_view fname)
         };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
             auto* mem_stream = static_cast<MemStream*>(stream);
-            std::memcpy(buf, mem_stream->Buf + mem_stream->Pos, size);
+            for (size_t i = 0; i < size; i++) {
+                static_cast<uchar*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
+            }
             mem_stream->Pos += static_cast<uint>(size);
             return size;
         };
