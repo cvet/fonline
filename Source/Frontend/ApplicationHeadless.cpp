@@ -52,6 +52,10 @@
 #endif
 #endif
 
+#if FO_LINUX || FO_MAC
+#include <signal.h>
+#endif
+
 Application* App;
 
 #if FO_WINDOWS && FO_DEBUG
@@ -66,6 +70,15 @@ const int& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
 const int& AppRender::MAX_BONES {MAX_BONES_};
 const int AppAudio::AUDIO_FORMAT_U8 = 0;
 const int AppAudio::AUDIO_FORMAT_S16 = 1;
+
+#if FO_LINUX || FO_MAC
+static void SignalHandler(int sig)
+{
+    signal(sig, SignalHandler);
+
+    App->Settings.Quit = true;
+}
+#endif
 
 void InitApp(int argc, char** argv, string_view name_appendix)
 {
@@ -98,6 +111,17 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 #endif
 
     App = new Application(argc, argv, name);
+
+#if FO_LINUX || FO_MAC
+    const auto set_signal = [](int sig) {
+        void (*ohandler)(int) = signal(sig, SignalHandler);
+        if (ohandler != SIG_DFL) {
+            signal(sig, ohandler);
+        }
+    };
+    set_signal(SIGINT);
+    set_signal(SIGTERM);
+#endif
 }
 
 void ExitApp(bool success)

@@ -57,6 +57,7 @@ extern "C" int main(int argc, char** argv)
             }
         }
 
+        server->Shutdown();
         delete server;
 
         ExitApp(true);
