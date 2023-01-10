@@ -284,6 +284,32 @@ void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
+void ForkProcess()
+{
+#if FO_LINUX || FO_MAC
+    pid_t pid = ::fork();
+    if (pid < 0) {
+        std::abort();
+    }
+    else if (pid != 0) {
+        std::exit(EXIT_SUCCESS);
+    }
+
+    ::close(STDIN_FILENO);
+    ::close(STDOUT_FILENO);
+    ::close(STDERR_FILENO);
+
+    if (::setsid() < 0) {
+        std::abort();
+    }
+
+    ::umask(0);
+
+#else
+    throw InvalidCallException(LINE_STR);
+#endif
+}
+
 // Dummy symbols for web build to avoid linker errors
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)

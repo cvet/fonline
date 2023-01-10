@@ -90,6 +90,20 @@ void InitApp(int argc, char** argv, string_view name_appendix)
         throw AppInitException("InitApp must be called only once");
     }
 
+#if FO_LINUX || FO_MAC
+    const auto need_fork = [&] {
+        for (int i = 0; i < argc; i++) {
+            if (string_view(argv[i]) == "--fork") {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (need_fork()) {
+        ForkProcess();
+    }
+#endif
+
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     {
