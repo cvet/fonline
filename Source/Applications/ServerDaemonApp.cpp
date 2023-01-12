@@ -34,15 +34,9 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "GenericUtils.h"
 #include "Server.h"
 #include "Settings.h"
-
-#if FO_LINUX || FO_MAC
-#include <errno.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
@@ -53,7 +47,7 @@ int main(int argc, char** argv)
     try {
         InitApp(argc, argv, "ServerDaemon");
 
-        ForkProcess();
+        GenericUtils::ForkProcess();
 
         auto* server = new FOServer(App->Settings);
 

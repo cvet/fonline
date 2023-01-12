@@ -78,6 +78,7 @@ public:
     [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
 
     static void SetRandomSeed(int seed);
+    static void ForkProcess();
 };
 
 class MatrixHelper final

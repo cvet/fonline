@@ -1515,6 +1515,4 @@ extern int GlobalDataCallbacksCount;
 extern void CreateGlobalData();
 extern void DeleteGlobalData();
 
-extern void ForkProcess();
-
 #endif // FO_PRECOMPILED_HEADER_GUARD

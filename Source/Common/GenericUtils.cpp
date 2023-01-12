@@ -36,6 +36,14 @@
 
 #include "zlib.h"
 
+// For ForkProcess
+#if FO_LINUX || FO_MAC
+#include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 auto Math::FloatCompare(float f1, float f2) -> bool
 {
     if (std::abs(f1 - f2) <= 1.0e-5f) {
@@ -189,6 +197,32 @@ auto Compressor::Uncompress(const_span<uchar> data, size_t mul_approx) -> vector
 
     buf.resize(buf_len);
     return buf;
+}
+
+void GenericUtils::ForkProcess()
+{
+#if FO_LINUX || FO_MAC
+    pid_t pid = ::fork();
+    if (pid < 0) {
+        std::abort();
+    }
+    else if (pid != 0) {
+        std::exit(EXIT_SUCCESS);
+    }
+
+    ::close(STDIN_FILENO);
+    ::close(STDOUT_FILENO);
+    ::close(STDERR_FILENO);
+
+    if (::setsid() < 0) {
+        std::abort();
+    }
+
+    ::umask(0);
+
+#else
+    throw InvalidCallException(LINE_STR);
+#endif
 }
 
 // Default randomizer
