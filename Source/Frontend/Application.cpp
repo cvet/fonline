@@ -35,6 +35,7 @@
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
@@ -106,7 +107,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
         return false;
     };
     if (need_fork()) {
-        ForkProcess();
+        GenericUtils::ForkProcess();
     }
 #endif
 
