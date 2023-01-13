@@ -197,8 +197,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
-        Data->Client->Shutdown();
-        delete Data->Client;
+        if (Data->Client != nullptr) {
+            Data->Client->Shutdown();
+            delete Data->Client;
+        }
 
         ExitApp(true);
     }
