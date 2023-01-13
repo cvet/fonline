@@ -71,9 +71,13 @@ struct ServerConnection::Impl
     fd_set NetSockSet {};
 };
 
-ServerConnection::ServerConnection(ClientNetworkSettings& settings) : _settings {settings}, _impl {new Impl()}
+ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
+    _settings {settings}, //
+    _impl {new Impl()},
+    _netIn(_settings.NetBufferSize),
+    _netOut(_settings.NetBufferSize)
 {
-    _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
+    _incomeBuf.resize(_settings.NetBufferSize);
 
     AddMessageHandler(NETMSG_DISCONNECT, [this] { Disconnect(); });
     AddMessageHandler(NETMSG_PING, [this] { Net_OnPing(); });
@@ -157,7 +161,7 @@ void ServerConnection::Process()
                 RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
             }
 
-            if (_isConnected && _netOut.IsEmpty() && _pingTick == 0u && _settings.PingPeriod != 0u && Timer::RealtimeTick() >= _pingCallTick) {
+            if (_isConnected && _netOut.IsEmpty() && _pingTick == 0.0 && _settings.PingPeriod != 0u && Timer::RealtimeTick() >= _pingCallTick) {
                 _netOut << NETMSG_PING;
                 _netOut << PING_SERVER;
                 _pingTick = Timer::RealtimeTick();
@@ -439,9 +443,9 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             {
                 _netOut << static_cast<uchar>(1); // Subnegotiation version
                 _netOut << static_cast<uchar>(_settings.ProxyUser.length()); // Name length
-                _netOut.Push(_settings.ProxyUser.c_str(), static_cast<uint>(_settings.ProxyUser.length())); // Name
+                _netOut.Push(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
                 _netOut << static_cast<uchar>(_settings.ProxyPass.length()); // Pass length
-                _netOut.Push(_settings.ProxyPass.c_str(), static_cast<uint>(_settings.ProxyPass.length())); // Pass
+                _netOut.Push(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
 
                 if (!send_recv()) {
                     return false;
@@ -510,7 +514,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
         }
         else if (_settings.ProxyType == PROXY_HTTP) {
             string buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", ::inet_ntoa(_impl->SockAddr.sin_addr), port);
-            _netOut.Push(buf.c_str(), static_cast<uint>(buf.length()));
+            _netOut.Push(buf.c_str(), buf.length());
 
             if (!send_recv()) {
                 return false;
@@ -569,7 +573,7 @@ void ServerConnection::Disconnect()
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}", _bytesSend, _bytesReceive, _bytesReceive + _bytesSend, _bytesRealReceive);
+        WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}", _bytesSend, _bytesReceived, _bytesReceived + _bytesSend, _bytesRealReceived);
 
         _isConnected = false;
 
@@ -599,7 +603,7 @@ auto ServerConnection::DispatchData() -> bool
     }
 
     const auto tosend = _netOut.GetEndPos();
-    auto sendpos = 0u;
+    size_t sendpos = 0;
     while (sendpos < tosend) {
         if (_interthreadCommunication) {
             _interthreadSend({_netOut.GetData(), tosend});
@@ -609,8 +613,8 @@ auto ServerConnection::DispatchData() -> bool
         else {
 #if FO_WINDOWS
             WSABUF buf;
-            buf.buf = reinterpret_cast<char*>(_netOut.GetData()) + sendpos;
-            buf.len = tosend - sendpos;
+            buf.buf = reinterpret_cast<CHAR*>(_netOut.GetData() + sendpos);
+            buf.len = static_cast<ULONG>(tosend - sendpos);
             DWORD len;
             if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
 #else
@@ -638,11 +642,11 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
         return 0;
     }
 
-    uint whole_len;
+    size_t whole_len;
 
     if (_interthreadCommunication) {
         RUNTIME_ASSERT(!_interthreadReceived.empty());
-        whole_len = static_cast<uint>(_interthreadReceived.size());
+        whole_len = _interthreadReceived.size();
         _incomeBuf = _interthreadReceived;
         _interthreadReceived.clear();
     }
@@ -652,8 +656,8 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
 #if FO_WINDOWS
         DWORD flags = 0;
         WSABUF buf;
-        buf.buf = reinterpret_cast<char*>(_incomeBuf.data());
-        buf.len = static_cast<uint>(_incomeBuf.size());
+        buf.buf = reinterpret_cast<CHAR*>(_incomeBuf.data());
+        buf.len = static_cast<ULONG>(_incomeBuf.size());
         DWORD len;
         if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
@@ -669,14 +673,14 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
             return -2;
         }
 
-        whole_len = static_cast<uint>(len);
-        while (whole_len == static_cast<uint>(_incomeBuf.size())) {
+        whole_len = len;
+        while (whole_len == _incomeBuf.size()) {
             _incomeBuf.resize(_incomeBuf.size() * 2);
 
 #if FO_WINDOWS
             flags = 0;
-            buf.buf = reinterpret_cast<char*>(_incomeBuf.data()) + whole_len;
-            buf.len = static_cast<uint>(_incomeBuf.size()) - whole_len;
+            buf.buf = reinterpret_cast<CHAR*>(_incomeBuf.data() + whole_len);
+            buf.len = static_cast<ULONG>(_incomeBuf.size() - whole_len);
             if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
             len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
@@ -708,27 +712,27 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     const auto old_pos = _netIn.GetEndPos();
 
     if (unpack && !_settings.DisableZlibCompression) {
-        _impl->ZStream.next_in = _incomeBuf.data();
-        _impl->ZStream.avail_in = whole_len;
-        _impl->ZStream.next_out = _netIn.GetData() + _netIn.GetEndPos();
-        _impl->ZStream.avail_out = _netIn.GetAvailLen();
+        _impl->ZStream.next_in = static_cast<Bytef*>(_incomeBuf.data());
+        _impl->ZStream.avail_in = static_cast<uInt>(whole_len);
+        _impl->ZStream.next_out = static_cast<Bytef*>(_netIn.GetData() + _netIn.GetEndPos());
+        _impl->ZStream.avail_out = static_cast<uInt>(_netIn.GetAvailLen());
 
         const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(first_inflate == Z_OK);
 
-        auto uncompr = static_cast<uint>(reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
+        auto uncompr = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(_netIn.GetData());
         _netIn.SetEndPos(uncompr);
 
-        while (_impl->ZStream.avail_in != 0u) {
-            _netIn.GrowBuf(NetBuffer::DEFAULT_BUF_SIZE);
+        while (_impl->ZStream.avail_in != 0) {
+            _netIn.GrowBuf(_settings.NetBufferSize);
 
-            _impl->ZStream.next_out = _netIn.GetData() + _netIn.GetEndPos();
-            _impl->ZStream.avail_out = _netIn.GetAvailLen();
+            _impl->ZStream.next_out = static_cast<Bytef*>(_netIn.GetData() + _netIn.GetEndPos());
+            _impl->ZStream.avail_out = static_cast<uInt>(_netIn.GetAvailLen());
 
             const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
             RUNTIME_ASSERT(next_inflate == Z_OK);
 
-            uncompr = static_cast<uint>(reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
+            uncompr = reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(_netIn.GetData());
             _netIn.SetEndPos(uncompr);
         }
     }
@@ -736,8 +740,9 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
         _netIn.AddData(_incomeBuf.data(), whole_len);
     }
 
-    _bytesReceive += whole_len;
-    _bytesRealReceive += _netIn.GetEndPos() - old_pos;
+    _bytesReceived += whole_len;
+    _bytesRealReceived += _netIn.GetEndPos() - old_pos;
+
     return static_cast<int>(_netIn.GetEndPos() - old_pos);
 }
 
@@ -785,8 +790,8 @@ void ServerConnection::Net_OnPing()
     }
     else if (ping == PING_SERVER) {
         const auto cur_tick = Timer::RealtimeTick();
-        _settings.Ping = static_cast<uint>(cur_tick - _pingTick);
-        _pingTick = 0;
+        _settings.Ping = iround(cur_tick - _pingTick);
+        _pingTick = 0.0;
         _pingCallTick = cur_tick + _settings.PingPeriod;
     }
 }

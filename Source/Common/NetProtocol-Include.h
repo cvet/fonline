@@ -144,10 +144,11 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_UPDATE_FILE_DATA MAKE_NETMSG_HEADER(18)
-#define NETMSG_UPDATE_FILE_DATA_SIZE (sizeof(uint) + FILE_UPDATE_PORTION)
 // ////////////////////////////////////////////////////////////////////////
 // Portion of data
-// uchar data[FILE_UPDATE_PORTION]
+// uint msg_len
+// uint data_len
+// uchar data[data_len]
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

@@ -1139,9 +1139,6 @@ static constexpr ushort MAXHEX_DEFAULT = 200;
 static constexpr ushort MAXHEX_MIN = 10;
 static constexpr ushort MAXHEX_MAX = 4000;
 
-// Client parameters
-#define FILE_UPDATE_PORTION (16384)
-
 // Answer
 #define ANSWER_BEGIN (0xF0)
 #define ANSWER_END (0xF1)

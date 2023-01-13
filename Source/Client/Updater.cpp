@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: support restoring file downloading from interrupted position
+
 #include "Updater.h"
 
 #if !FO_SINGLEPLAYER
@@ -40,8 +42,6 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
-
-static const string UPDATE_TEMP_FILE = "Update.fobin";
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _resources), _sprMngr(_settings, window, _resources, _effectMngr)
 {
@@ -124,12 +124,20 @@ auto Updater::Process() -> bool
 
     if (!_filesToUpdate.empty()) {
         update_text += "\n";
+
         for (const auto& update_file : _filesToUpdate) {
-            const auto cur = static_cast<float>(update_file.Size - update_file.RemaningSize) / (1024.0f * 1024.0f);
+            auto cur_bytes = update_file.Size - update_file.RemaningSize;
+            if (&update_file == &_filesToUpdate.front()) {
+                cur_bytes += _conn.GetUnpackedBytesReceived() - _bytesRealReceivedCheckpoint;
+            }
+
+            const auto cur = static_cast<float>(cur_bytes) / (1024.0f * 1024.0f);
             const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
             const string name = _str(update_file.Name).formatPath();
+
             update_text += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
         }
+
         update_text += "\n";
     }
 
@@ -148,6 +156,11 @@ auto Updater::Process() -> bool
     _conn.Process();
 
     return !_aborted && _fileListReceived && _filesToUpdate.empty();
+}
+
+auto Updater::MakeWritePath(string_view fname) const -> string
+{
+    return _str(_settings.ResourcesDir).combinePath(fname).str();
 }
 
 void Updater::AddText(uint num_str, string_view num_str_str)
@@ -239,24 +252,30 @@ void Updater::Net_OnUpdateFilesResponse()
 
 void Updater::Net_OnUpdateFileData()
 {
-    // Get portion
-    uchar data[FILE_UPDATE_PORTION];
-    _conn.InBuf.Pop(data, sizeof(data));
+    uint msg_len;
+    uint data_size;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> data_size;
+
+    _updateFileBuf.resize(data_size);
+    _conn.InBuf.Pop(_updateFileBuf.data(), data_size);
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto& update_file = _filesToUpdate.front();
 
     // Write data to temp file
-    if (!_tempFile->Write(data, std::min(update_file.RemaningSize, sizeof(data)))) {
+    if (!_tempFile->Write(_updateFileBuf.data(), std::min(update_file.RemaningSize, _updateFileBuf.size()))) {
         Abort(STR_FILESYSTEM_ERROR, "Can't write temp file!");
         return;
     }
 
     // Get next portion or finalize data
-    update_file.RemaningSize -= std::min(update_file.RemaningSize, sizeof(data));
+    RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
+    update_file.RemaningSize -= data_size;
     if (update_file.RemaningSize > 0u) {
         _conn.OutBuf << NETMSG_GET_UPDATE_FILE_DATA;
+        _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
     }
     else {
         GetNextFile();
@@ -270,11 +289,11 @@ void Updater::GetNextFile()
 
         const auto& prev_update_file = _filesToUpdate.front();
 
-        if (!DiskFileSystem::DeleteFile(prev_update_file.Name)) {
+        if (!DiskFileSystem::DeleteFile(MakeWritePath(prev_update_file.Name))) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
             return;
         }
-        if (!DiskFileSystem::RenameFile(UPDATE_TEMP_FILE, prev_update_file.Name)) {
+        if (!DiskFileSystem::RenameFile(MakeWritePath(_str("~{}", prev_update_file.Name)), MakeWritePath(prev_update_file.Name))) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
             return;
         }
@@ -288,13 +307,15 @@ void Updater::GetNextFile()
         _conn.OutBuf << NETMSG_GET_UPDATE_FILE;
         _conn.OutBuf << next_update_file.Index;
 
-        DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
-        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(UPDATE_TEMP_FILE, true));
+        DiskFileSystem::DeleteFile(MakeWritePath(_str("~{}", next_update_file.Name)));
+        _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(_str("~{}", next_update_file.Name)), true));
 
         if (!*_tempFile) {
             Abort(STR_FILESYSTEM_ERROR, "File system error!");
         }
     }
+
+    _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
 }
 
 #endif

@@ -685,7 +685,7 @@ void Player::Send_Talk()
         Connection->Bout << all_answers;
         Connection->Bout << static_cast<ushort>(_ownedCr->Talk.Lexems.length()); // Lexems length
         if (_ownedCr->Talk.Lexems.length() != 0u) {
-            Connection->Bout.Push(_ownedCr->Talk.Lexems.c_str(), static_cast<uint>(_ownedCr->Talk.Lexems.length())); // Lexems string
+            Connection->Bout.Push(_ownedCr->Talk.Lexems.c_str(), _ownedCr->Talk.Lexems.length()); // Lexems string
         }
         Connection->Bout << _ownedCr->Talk.CurDialog.TextId; // Main text_id
         for (auto& answer : _ownedCr->Talk.CurDialog.Answers) {

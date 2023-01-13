@@ -43,7 +43,7 @@ DECLARE_EXCEPTION(NetworkException);
 class NetConnection
 {
 public:
-    NetConnection() = default;
+    explicit NetConnection(ServerNetworkSettings& settings);
     NetConnection(const NetConnection&) = delete;
     NetConnection(NetConnection&&) noexcept = delete;
     auto operator=(const NetConnection&) = delete;
@@ -64,9 +64,9 @@ public:
     void AddRef() const;
     void Release() const;
 
-    NetInBuffer Bin {};
+    NetInBuffer Bin;
     std::mutex BinLocker {};
-    NetOutBuffer Bout {};
+    NetOutBuffer Bout;
     std::mutex BoutLocker {};
 
 private:

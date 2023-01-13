@@ -1463,7 +1463,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     if constexpr (std::is_same_v<T, string>) {
         out_buf << static_cast<ushort>(value.length());
-        out_buf.Push(value.data(), static_cast<uint>(value.length()));
+        out_buf.Push(value.data(), value.length());
     }
     else if constexpr (std::is_same_v<T, hstring>) {
         out_buf << value;

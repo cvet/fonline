@@ -1789,7 +1789,7 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->Bout << msg_len;
     connection->Bout << outdated;
     connection->Bout << static_cast<uint>(_updateFilesDesc.size());
-    connection->Bout.Push(_updateFilesDesc.data(), static_cast<uint>(_updateFilesDesc.size()));
+    connection->Bout.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
     }
@@ -1855,28 +1855,24 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
     }
 
     const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
-    const auto offset = connection->UpdateFilePortion * FILE_UPDATE_PORTION;
+    uint update_portion = Settings.UpdateFileSendSize;
+    const auto offset = connection->UpdateFilePortion * update_portion;
 
-    if (offset + FILE_UPDATE_PORTION < update_file_data.size()) {
+    if (offset + update_portion < update_file_data.size()) {
         connection->UpdateFilePortion++;
     }
     else {
+        update_portion = update_file_data.size() % update_portion;
         connection->UpdateFileIndex = -1;
     }
 
-    uchar data[FILE_UPDATE_PORTION];
-    const auto remaining_size = update_file_data.size() - offset;
-    if (remaining_size >= sizeof(data)) {
-        std::memcpy(data, &update_file_data[offset], sizeof(data));
-    }
-    else {
-        std::memcpy(data, &update_file_data[offset], remaining_size);
-        std::memset(&data[remaining_size], 0, sizeof(data) - remaining_size);
-    }
+    const uint msg_len = sizeof(NETMSG_UPDATE_FILE_DATA) + sizeof(msg_len) + sizeof(update_portion) + update_portion;
 
     CONNECTION_OUTPUT_BEGIN(connection);
     connection->Bout << NETMSG_UPDATE_FILE_DATA;
-    connection->Bout.Push(data, sizeof(data));
+    connection->Bout << msg_len;
+    connection->Bout << update_portion;
+    connection->Bout.Push(&update_file_data[offset], update_portion);
     CONNECTION_OUTPUT_END(connection);
 }
 

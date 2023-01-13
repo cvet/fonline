@@ -92,6 +92,8 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
 FIXED_SETTING(uint, ServerPort, 4000);
+FIXED_SETTING(uint, NetBufferSize, 4096);
+FIXED_SETTING(uint, UpdateFileSendSize, 1000000);
 FIXED_SETTING(bool, SecuredWebSockets, false);
 FIXED_SETTING(bool, DisableTcpNagle, true);
 FIXED_SETTING(bool, DisableZlibCompression, false);

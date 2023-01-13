@@ -40,12 +40,11 @@
 class NetBuffer
 {
 public:
-    static constexpr uint DEFAULT_BUF_SIZE = 4096;
-    static constexpr int CRYPT_KEYS_COUNT = 50;
-    static constexpr uint STRING_LEN_SIZE = sizeof(ushort);
-    static constexpr uint ARRAY_LEN_SIZE = sizeof(ushort);
+    static constexpr size_t CRYPT_KEYS_COUNT = 50;
+    static constexpr size_t STRING_LEN_SIZE = sizeof(ushort);
+    static constexpr size_t ARRAY_LEN_SIZE = sizeof(ushort);
 
-    NetBuffer();
+    explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
     NetBuffer(NetBuffer&&) noexcept = default;
     auto operator=(const NetBuffer&) = delete;
@@ -54,22 +53,23 @@ public:
 
     [[nodiscard]] auto IsError() const -> bool;
     [[nodiscard]] auto GetData() -> uchar*;
-    [[nodiscard]] auto GetEndPos() const -> uint;
+    [[nodiscard]] auto GetEndPos() const -> size_t;
 
     void SetError(bool value);
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
     virtual void ResetBuf();
-    void GrowBuf(uint len);
+    void GrowBuf(size_t len);
 
 protected:
     auto EncryptKey(int move) -> uchar;
-    void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
+    void CopyBuf(const void* from, void* to, uchar crypt_key, size_t len);
 
     bool _isError {};
     unique_ptr<uchar[]> _bufData {};
-    uint _bufLen {};
-    uint _bufEndPos {};
+    size_t _defaultBufLen {};
+    size_t _bufLen {};
+    size_t _bufEndPos {};
     bool _encryptActive {};
     int _encryptKeyPos {};
     uchar _encryptKeys[CRYPT_KEYS_COUNT] {};
@@ -79,7 +79,7 @@ protected:
 class NetOutBuffer final : public NetBuffer
 {
 public:
-    NetOutBuffer() = default;
+    explicit NetOutBuffer(size_t buf_len) : NetBuffer(buf_len) { }
     NetOutBuffer(const NetOutBuffer&) = delete;
     NetOutBuffer(NetOutBuffer&&) noexcept = default;
     auto operator=(const NetOutBuffer&) = delete;
@@ -88,8 +88,8 @@ public:
 
     [[nodiscard]] auto IsEmpty() const -> bool { return _bufEndPos == 0u; }
 
-    void Push(const void* buf, uint len);
-    void Cut(uint len);
+    void Push(const void* buf, size_t len);
+    void Cut(size_t len);
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     auto operator<<(const T& i) -> NetBuffer&
@@ -117,22 +117,22 @@ public:
 class NetInBuffer final : public NetBuffer
 {
 public:
-    NetInBuffer() = default;
+    explicit NetInBuffer(size_t buf_len) : NetBuffer(buf_len) { }
     NetInBuffer(const NetInBuffer&) = delete;
     NetInBuffer(NetInBuffer&&) noexcept = default;
     auto operator=(const NetInBuffer&) = delete;
     auto operator=(NetInBuffer&&) noexcept -> NetInBuffer& = default;
     ~NetInBuffer() override = default;
 
-    [[nodiscard]] auto GetReadPos() const -> uint { return _bufReadPos; }
-    [[nodiscard]] auto GetAvailLen() const -> uint { return _bufLen - _bufEndPos; }
+    [[nodiscard]] auto GetReadPos() const -> size_t { return _bufReadPos; }
+    [[nodiscard]] auto GetAvailLen() const -> size_t { return _bufLen - _bufEndPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
-    void AddData(const void* buf, uint len);
-    void SetEndPos(uint pos) { _bufEndPos = pos; }
+    void AddData(const void* buf, size_t len);
+    void SetEndPos(size_t pos);
     void SkipMsg(uint msg);
     void ShrinkReadBuf();
-    void Pop(void* buf, uint len);
+    void Pop(void* buf, size_t len);
     void ResetBuf() override;
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
@@ -155,5 +155,5 @@ public:
     [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
 
 private:
-    uint _bufReadPos {};
+    size_t _bufReadPos {};
 };

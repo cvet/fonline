@@ -34,9 +34,10 @@
 #include "NetBuffer.h"
 #include "GenericUtils.h"
 
-NetBuffer::NetBuffer()
+NetBuffer::NetBuffer(size_t buf_len)
 {
-    _bufLen = DEFAULT_BUF_SIZE;
+    _defaultBufLen = buf_len;
+    _bufLen = buf_len;
     _bufData = std::make_unique<uchar[]>(_bufLen);
 }
 
@@ -45,7 +46,7 @@ auto NetBuffer::IsError() const -> bool
     return _isError;
 }
 
-auto NetBuffer::GetEndPos() const -> uint
+auto NetBuffer::GetEndPos() const -> size_t
 {
     return _bufEndPos;
 }
@@ -85,10 +86,10 @@ auto NetBuffer::EncryptKey(int move) -> uchar
     if (_encryptActive) {
         key = _encryptKeys[_encryptKeyPos];
         _encryptKeyPos += move;
-        if (_encryptKeyPos < 0 || _encryptKeyPos >= CRYPT_KEYS_COUNT) {
-            _encryptKeyPos %= CRYPT_KEYS_COUNT;
+        if (_encryptKeyPos < 0 || _encryptKeyPos >= static_cast<int>(CRYPT_KEYS_COUNT)) {
+            _encryptKeyPos %= static_cast<int>(CRYPT_KEYS_COUNT);
             if (_encryptKeyPos < 0) {
-                _encryptKeyPos += CRYPT_KEYS_COUNT;
+                _encryptKeyPos += static_cast<int>(CRYPT_KEYS_COUNT);
             }
         }
     }
@@ -103,13 +104,13 @@ void NetBuffer::ResetBuf()
 
     _bufEndPos = 0;
 
-    if (_bufLen > DEFAULT_BUF_SIZE) {
-        _bufLen = DEFAULT_BUF_SIZE;
+    if (_bufLen > _defaultBufLen) {
+        _bufLen = _defaultBufLen;
         _bufData = std::make_unique<uchar[]>(_bufLen);
     }
 }
 
-void NetBuffer::GrowBuf(uint len)
+void NetBuffer::GrowBuf(size_t len)
 {
     if (_bufEndPos + len < _bufLen) {
         return;
@@ -131,7 +132,7 @@ auto NetBuffer::GetData() -> uchar*
     return _bufData.get();
 }
 
-void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
+void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, size_t len)
 {
     NON_CONST_METHOD_HINT();
 
@@ -142,12 +143,12 @@ void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
     const auto* from_ = static_cast<const uchar*>(from);
     auto* to_ = static_cast<uchar*>(to);
 
-    for (uint i = 0; i < len; i++, to_++, from_++) {
+    for (size_t i = 0; i < len; i++, to_++, from_++) {
         *to_ = *from_ ^ crypt_key;
     }
 }
 
-void NetOutBuffer::Push(const void* buf, uint len)
+void NetOutBuffer::Push(const void* buf, size_t len)
 {
     if (_isError || len == 0u) {
         return;
@@ -161,7 +162,7 @@ void NetOutBuffer::Push(const void* buf, uint len)
     _bufEndPos += len;
 }
 
-void NetOutBuffer::Cut(uint len)
+void NetOutBuffer::Cut(size_t len)
 {
     if (_isError || len == 0u) {
         return;
@@ -173,7 +174,7 @@ void NetOutBuffer::Cut(uint len)
     }
 
     auto* buf = _bufData.get();
-    for (uint i = 0; i + len < _bufEndPos; i++) {
+    for (size_t i = 0; i + len < _bufEndPos; i++) {
         buf[i] = buf[i + len];
     }
 
@@ -187,7 +188,7 @@ void NetInBuffer::ResetBuf()
     _bufReadPos = 0;
 }
 
-void NetInBuffer::AddData(const void* buf, uint len)
+void NetInBuffer::AddData(const void* buf, size_t len)
 {
     if (_isError || len == 0u) {
         return;
@@ -201,7 +202,12 @@ void NetInBuffer::AddData(const void* buf, uint len)
     _bufEndPos += len;
 }
 
-void NetInBuffer::Pop(void* buf, uint len)
+void NetInBuffer::SetEndPos(size_t pos)
+{
+    _bufEndPos = pos;
+}
+
+void NetInBuffer::Pop(void* buf, size_t len)
 {
     if (_isError) {
         std::memset(buf, 0, len);
@@ -299,8 +305,6 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_GET_UPDATE_FILE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GET_UPDATE_FILE_DATA:
         return NETMSG_GET_UPDATE_FILE_DATA_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_UPDATE_FILE_DATA:
-        return NETMSG_UPDATE_FILE_DATA_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REMOVE_CRITTER:
         return NETMSG_REMOVE_CRITTER_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_MSG:
@@ -394,6 +398,7 @@ auto NetInBuffer::NeedProcess() -> bool
     case NETMSG_POD_PROPERTY(8, 2):
         return NETMSG_POD_PROPERTY_SIZE(8, 2) + _bufReadPos <= _bufEndPos;
 
+    case NETMSG_UPDATE_FILE_DATA:
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
@@ -440,6 +445,7 @@ auto NetInBuffer::NeedProcess() -> bool
     CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(-static_cast<int>(sizeof(msg))), sizeof(msg_len));
 
     switch (msg) {
+    case NETMSG_UPDATE_FILE_DATA:
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
@@ -512,9 +518,6 @@ void NetInBuffer::SkipMsg(uint msg)
         break;
     case NETMSG_GET_UPDATE_FILE_DATA:
         size = NETMSG_GET_UPDATE_FILE_DATA_SIZE;
-        break;
-    case NETMSG_UPDATE_FILE_DATA:
-        size = NETMSG_UPDATE_FILE_DATA_SIZE;
         break;
     case NETMSG_REMOVE_CRITTER:
         size = NETMSG_REMOVE_CRITTER_SIZE;
@@ -655,6 +658,7 @@ void NetInBuffer::SkipMsg(uint msg)
         size = NETMSG_POD_PROPERTY_SIZE(8, 2);
         break;
 
+    case NETMSG_UPDATE_FILE_DATA:
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
