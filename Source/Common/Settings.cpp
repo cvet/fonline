@@ -360,30 +360,6 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         }
     }
 
-    // Command line config
-    for (auto i = 0; i < argc; i++) {
-        // Skip path
-        if (i == 0 && argv[0][0] != '-') {
-            continue;
-        }
-
-        const_cast<vector<string>&>(CommandLineArgs).emplace_back(argv[i]);
-        const_cast<string&>(CommandLine) += argv[i];
-        if (i < argc - 1) {
-            const_cast<string&>(CommandLine) += " ";
-        }
-
-        if (argv[i][0] == '-') {
-            auto key = _str("{}", argv[i]).trim().str().substr(1);
-            if (i < argc - 1 && argv[i + 1][0] != '-') {
-                SetValue(key, _str("{}", argv[i + 1]).trim());
-            }
-            else {
-                SetValue(key, "1");
-            }
-        }
-    }
-
     // External config
     if (!ExternalConfig.empty()) {
         WriteLog("Load external config {}", ExternalConfig);
@@ -402,6 +378,34 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
             if (!BreakIntoDebugger("External config not found")) {
                 throw GenericException("External config not found", ExternalConfig);
             }
+        }
+    }
+
+    // Command line config
+    for (auto i = 0; i < argc; i++) {
+        // Skip path
+        if (i == 0 && argv[0][0] != '-') {
+            continue;
+        }
+
+        const_cast<vector<string>&>(CommandLineArgs).emplace_back(argv[i]);
+        const_cast<string&>(CommandLine) += argv[i];
+        if (i < argc - 1) {
+            const_cast<string&>(CommandLine) += " ";
+        }
+
+        if (argv[i][0] == '-') {
+            auto key = _str("{}", argv[i]).trim().str().substr(1);
+
+            if (!key.empty() && key.front() == '-') {
+                key = key.substr(1);
+            }
+
+            const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? _str("{}", argv[i + 1]).trim().str() : "1";
+
+            WriteLog("Command line set {} = {}", key, value);
+
+            SetValue(key, value);
         }
     }
 
