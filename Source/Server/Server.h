@@ -79,6 +79,7 @@ public:
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
 
+    void Start();
     void Shutdown();
     void MainLoop();
     void DrawGui(string_view server_name);

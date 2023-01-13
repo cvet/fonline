@@ -112,11 +112,6 @@ FOServer::FOServer(GlobalSettings& settings) :
         }
     }
 
-    DbStorage.StartChanges();
-    if (DbHistory) {
-        DbHistory.StartChanges();
-    }
-
     // Properties that saving to data base
     for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
         const auto count = static_cast<int>(registrator->GetCount());
@@ -221,21 +216,6 @@ FOServer::FOServer(GlobalSettings& settings) :
     ProtoMngr.LoadFromResources();
     MapMngr.LoadFromResources();
 
-    // Globals
-    const auto globals_doc = DbStorage.Get("Game", 1);
-    if (globals_doc.empty()) {
-        DbStorage.Insert("Game", 1, {});
-    }
-    else {
-        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
-            throw ServerInitException("Failed to load globals document");
-        }
-
-        GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
-    }
-
-    ServerDeferredCalls.LoadDeferredCalls();
-
     // Resource packs for client
     if (Settings.DataSynchronization) {
         auto writer = DataWriter(_updateFilesDesc);
@@ -274,6 +254,35 @@ FOServer::FOServer(GlobalSettings& settings) :
         // Complete files list
         writer.Write<short>(-1);
     }
+
+    // Admin manager
+    if (Settings.AdminPanelPort != 0u) {
+        InitAdminManager(this, static_cast<ushort>(Settings.AdminPanelPort));
+    }
+}
+
+void FOServer::Start()
+{
+    // Start logic
+    DbStorage.StartChanges();
+    if (DbHistory) {
+        DbHistory.StartChanges();
+    }
+
+    // Globals
+    const auto globals_doc = DbStorage.Get("Game", 1);
+    if (globals_doc.empty()) {
+        DbStorage.Insert("Game", 1, {});
+    }
+    else {
+        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
+            throw ServerInitException("Failed to load globals document");
+        }
+
+        GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
+    }
+
+    ServerDeferredCalls.LoadDeferredCalls();
 
     // Scripting
     ScriptSys->InitModules();
@@ -323,11 +332,6 @@ FOServer::FOServer(GlobalSettings& settings) :
     // Start script
     if (!OnStart.Fire()) {
         throw ServerInitException("Start script failed");
-    }
-
-    // Admin manager
-    if (Settings.AdminPanelPort != 0u) {
-        InitAdminManager(this, static_cast<ushort>(Settings.AdminPanelPort));
     }
 
     // Commit initial data base changes

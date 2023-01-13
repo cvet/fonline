@@ -48,6 +48,8 @@
 enum class ServerStateType
 {
     Stopped,
+    PreWarmRequest,
+    PreWarmed,
     StartRequest,
     Started,
     StopRequest,
@@ -83,12 +85,32 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         // Async server start/stop
         const auto start_server = [] {
             RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
+            Data->ServerState = ServerStateType::PreWarmRequest;
+            Data->ThreadTasks.fetch_add(1);
+            std::thread([] {
+                try {
+                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::PreWarmRequest);
+                    Data->Server = new FOServer(App->Settings);
+                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::PreWarmRequest);
+                    Data->ServerState = ServerStateType::PreWarmed;
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                    Data->Server = nullptr;
+                    Data->ServerState = ServerStateType::Stopped;
+                }
+                Data->ThreadTasks.fetch_sub(1);
+            }).detach();
+        };
+
+        const auto start_server_step2 = [] {
+            RUNTIME_ASSERT(Data->ServerState == ServerStateType::PreWarmed);
             Data->ServerState = ServerStateType::StartRequest;
             Data->ThreadTasks.fetch_add(1);
             std::thread([] {
                 try {
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
-                    Data->Server = new FOServer(App->Settings);
+                    Data->Server->Start();
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
                     Data->ServerState = ServerStateType::Started;
                 }
@@ -162,8 +184,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                             start_server();
                         }
                     }
-                    else if (Data->ServerState == ServerStateType::StartRequest) {
+                    else if (Data->ServerState == ServerStateType::PreWarmRequest || Data->ServerState == ServerStateType::PreWarmed || Data->ServerState == ServerStateType::StartRequest) {
                         imgui_progress_btn("Starting server...");
+
+                        if (Data->ServerState == ServerStateType::PreWarmed) {
+                            start_server_step2();
+                        }
                     }
                     else if (Data->ServerState == ServerStateType::Started) {
                         if (ImGui::Button("Stop server", control_btn_size)) {
@@ -285,7 +311,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 if (Data->ServerState == ServerStateType::Started) {
                     stop_server();
                 }
-                else if (Data->ServerState == ServerStateType::Stopped) {
+                else if (Data->ServerState == ServerStateType::Stopped || Data->ServerState == ServerStateType::PreWarmRequest || Data->ServerState == ServerStateType::PreWarmed) {
+                    if (Data->ServerState == ServerStateType::PreWarmRequest || Data->ServerState == ServerStateType::PreWarmed) {
+                        WriteLog("Abort server before start");
+                    }
                     break;
                 }
             }

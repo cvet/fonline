@@ -50,6 +50,7 @@ int main(int argc, char** argv)
         GenericUtils::ForkProcess();
 
         auto* server = new FOServer(App->Settings);
+        server->Start();
 
         while (!App->Settings.Quit) {
             try {

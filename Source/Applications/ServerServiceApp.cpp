@@ -65,6 +65,7 @@ static void ServerEntry()
     try {
         try {
             Data->Server = new FOServer(App->Settings);
+            Data->Server->Start();
         }
         catch (const std::exception& ex) {
             ReportExceptionAndExit(ex);

@@ -47,6 +47,7 @@ extern "C" int main(int argc, char** argv)
         InitApp(argc, argv, "ServerHeadless");
 
         auto* server = new FOServer(App->Settings);
+        server->Start();
 
         while (!App->Settings.Quit) {
             try {
