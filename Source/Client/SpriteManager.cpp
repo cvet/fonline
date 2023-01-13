@@ -39,7 +39,7 @@
 constexpr int SPRITES_BUFFER_SIZE = 10000;
 constexpr int ATLAS_SPRITES_PADDING = 1;
 
-static inline auto ApplyColorBrightness(uint color, int brightness) -> uint
+static auto ApplyColorBrightness(uint color, int brightness) -> uint
 {
     if (brightness != 0) {
         const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
@@ -1221,7 +1221,9 @@ void SpriteManager::Flush()
     for (const auto& dip : _dipQueue) {
         RUNTIME_ASSERT(dip.SourceEffect->Usage == EffectUsage::QuadSprite);
 
-        dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+        if (_sprEgg != nullptr) {
+            dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+        }
 
         if (dip.SourceEffect->MapSpriteBuf) {
             dip.SourceEffect->MapSpriteBuf->ZoomFactor = _settings.SpritesZoom;
