@@ -122,4 +122,5 @@ public:
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor);
+    static auto GetExePath() -> optional<string>;
 };

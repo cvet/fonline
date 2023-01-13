@@ -896,3 +896,50 @@ void DiskFileSystem::IterateDir(string_view dir, string_view ext, bool include_s
 {
     RecursiveDirLook(dir, "", include_subdirs, ext, visitor);
 }
+
+auto DiskFileSystem::GetExePath() -> optional<string>
+{
+#if FO_WINDOWS
+    vector<wchar_t> path;
+    path.resize(FILENAME_MAX);
+
+    auto size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    if (size == 0) {
+        return std::nullopt;
+    }
+
+    while (size == path.size()) {
+        path.resize(path.size() * 2);
+        size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+        if (size == 0) {
+            return std::nullopt;
+        }
+    }
+
+    return _str().parseWideChar(path.data()).str();
+
+#elif FO_MAC
+    char path[PROC_PIDPATHINFO_MAXSIZE];
+
+    const auto pid = ::getpid();
+    if (::proc_pidpath(pid, path, sizeof(path)) <= 0) {
+        return std::nullopt;
+    }
+
+    return path;
+
+#elif FO_LINUX
+    char path[FILENAME_MAX];
+
+    const auto size = ::readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (size == -1) {
+        return std::nullopt;
+    }
+
+    path[size] = '\0';
+    return path;
+
+#else
+    return std::nullopt;
+#endif
+}
