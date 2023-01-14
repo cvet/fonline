@@ -49,6 +49,9 @@
 #if FO_ANDROID
 #include "SDL.h"
 #endif
+#if FO_MAC
+#include <libproc.h>
+#endif
 
 #if FO_WINDOWS && FO_UWP
 #define CreateFileW CreateFileFromAppW
