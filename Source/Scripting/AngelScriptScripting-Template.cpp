@@ -3067,14 +3067,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     engine->ShutDownAndRelease();
 #else
 #if COMPILER_VALIDATION_MODE
+#if SERVER_SCRIPTING
+    game_engine->Resources.AddDataSource(_str(App->Settings.BakeOutput).combinePath("ServerAngelScript"), DataSourceType::Default);
+#elif CLIENT_SCRIPTING
+    game_engine->Resources.AddDataSource(_str(App->Settings.BakeOutput).combinePath("ClientAngelScript"), DataSourceType::Default);
+#elif SINGLE_SCRIPTING
     game_engine->Resources.AddDataSource(_str(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
+#elif MAPPER_SCRIPTING
+    game_engine->Resources.AddDataSource(_str(App->Settings.BakeOutput).combinePath("MapperAngelScript"), DataSourceType::Default);
+#endif
 #endif
 #if SERVER_SCRIPTING
     File script_file = game_engine->Resources.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
     File script_file = game_engine->Resources.ReadFile("ClientRootModule.fosb");
 #elif SINGLE_SCRIPTING
-    File script_file = game_engine->Resources.ReadFile("SingleRootModule.fosb");
+    File script_file = game_engine->Resources.ReadFile("RootModule.fosb");
 #elif MAPPER_SCRIPTING
     File script_file = game_engine->Resources.ReadFile("MapperRootModule.fosb");
 #endif
@@ -3476,13 +3484,13 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
 #if SERVER_SCRIPTING
-    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/ServerRootModule.fosb");
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("ServerAngelScript/ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
-    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/ClientRootModule.fosb");
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("ClientAngelScript/ClientRootModule.fosb");
 #elif SINGLE_SCRIPTING
-    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/SingleRootModule.fosb");
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("SingleAngelScript/SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
-    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/MapperRootModule.fosb");
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("MapperAngelScript/MapperRootModule.fosb");
 #endif
 
     auto file = DiskFileSystem::OpenFile(script_out_path, true);

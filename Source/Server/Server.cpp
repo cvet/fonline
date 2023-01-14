@@ -65,9 +65,11 @@ FOServer::FOServer(GlobalSettings& settings) :
     Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
     Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerProtos"));
     Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ServerAngelScript"));
+    }
 
     for (const auto& entry : Settings.ServerResourceEntries) {
         Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
@@ -218,10 +220,13 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Resource packs for client
     if (Settings.DataSynchronization) {
+        FileSystem client_resources;
+        client_resources.AddDataSource(_str("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
+
         auto writer = DataWriter(_updateFilesDesc);
 
-        const auto add_sync_file = [&writer, this](string_view path) {
-            const auto file = Resources.ReadFile(path);
+        const auto add_sync_file = [&client_resources, &writer, this](string_view path) {
+            const auto file = client_resources.ReadFile(path);
             if (!file) {
                 throw ServerInitException("Resource pack for client not found", path);
             }
@@ -237,18 +242,15 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         add_sync_file("EngineData.zip");
         add_sync_file("Core.zip");
-        add_sync_file("Protos.zip");
         add_sync_file("Texts.zip");
-        add_sync_file("AngelScript.zip");
+        add_sync_file("ClientProtos.zip");
+        add_sync_file("StaticMaps.zip");
+        if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+            add_sync_file("ClientAngelScript.zip");
+        }
 
         for (const auto& resource_entry : Settings.ClientResourceEntries) {
             add_sync_file(_str("{}.zip", resource_entry));
-        }
-
-        add_sync_file("Texts.zip");
-        add_sync_file("Protos.zip");
-        if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-            add_sync_file("AngelScript.zip");
         }
 
         // Complete files list

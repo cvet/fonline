@@ -115,17 +115,18 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     CreateGlobalData();
 
-    string name = FO_DEV_NAME;
-    if (!name_appendix.empty()) {
-        name.append("_");
-        name.append(name_appendix);
+#if !FO_WEB
+    if (const auto exe_path = DiskFileSystem::GetExePath()) {
+        LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
+    }
+    else {
+        LogToFile(_str("{}.log", FO_DEV_NAME));
     }
 
-#if !FO_WEB
-    LogToFile(_str("{}.log", name));
+    WriteLog("Starting {} {}", FO_DEV_NAME, FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv, name);
+    App = new Application(argc, argv);
 
 #if FO_LINUX || FO_MAC
     const auto set_signal = [](int sig) {
@@ -156,7 +157,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv, string_view name) : Settings(argc, argv), _name {name}
+Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
     UNUSED_VARIABLE(_time);
     UNUSED_VARIABLE(_timeFrequency);
@@ -187,11 +188,6 @@ void Application::HideCursor()
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
     UNUSED_VARIABLE(effect);
-}
-
-auto Application::GetName() const -> string_view
-{
-    return _name;
 }
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*

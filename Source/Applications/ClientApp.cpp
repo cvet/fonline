@@ -147,8 +147,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         ShowExceptionMessageBox(true);
         InitApp(argc, argv, "");
 
-        WriteLog("Starting {} {}", App->GetName(), FO_GAME_VERSION);
-
         if (App->Settings.HideNativeCursor) {
             App->HideCursor();
         }

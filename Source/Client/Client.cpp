@@ -62,10 +62,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
     Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
     Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
-    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("StaticMaps"));
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ClientProtos"));
+    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("ClientAngelScript"));
+    }
 
     for (const auto& entry : Settings.ClientResourceEntries) {
         Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));

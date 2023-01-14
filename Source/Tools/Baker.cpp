@@ -325,18 +325,18 @@ void Baker::BakeAll()
                 while (script_files.MoveNext() && all_scripts_up_to_date) {
                     auto file = script_files.GetCurFileHeader();
 #if !FO_SINGLEPLAYER
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("ServerAngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("ServerAngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
 #else
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/SingleRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/RootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
 #endif
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("MapperAngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
                         all_scripts_up_to_date = false;
                     }
                 }
@@ -568,7 +568,11 @@ void Baker::BakeAll()
 #endif
 
             if (!parse_protos) {
+#if !FO_SINGLEPLAYER
+                const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("FullProtos/FullProtos.foprob"));
+#else
                 const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("Protos/Protos.foprob"));
+#endif
                 if (last_write_time > 0) {
                     const auto check_up_to_date = [last_write_time, &resources = baker_engine.Resources](string_view ext) -> bool {
                         auto files = resources.FilterFiles(ext);
@@ -644,6 +648,8 @@ void Baker::BakeAll()
 
                 if (_settings.ForceBakering) {
                     auto del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Maps"));
+                    RUNTIME_ASSERT(del_maps_ok);
+                    del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("StaticMaps"));
                     RUNTIME_ASSERT(del_maps_ok);
                 }
 
@@ -790,7 +796,7 @@ void Baker::BakeAll()
                             final_writer.Write<uint>(map_tile_count);
                             final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
 
-                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Maps/{}.fomapb2", proto_map->GetName())), true);
+                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("StaticMaps/{}.fomapb2", proto_map->GetName())), true);
                             RUNTIME_ASSERT(map_bin_file);
                             auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                             RUNTIME_ASSERT(map_bin_file_write_ok);
@@ -831,9 +837,13 @@ void Baker::BakeAll()
                 };
 
                 WriteLog("Write protos");
+#if !FO_SINGLEPLAYER
+                write_protos(proto_mngr, "FullProtos/FullProtos.foprob");
+                write_protos(server_proto_mngr, "ServerProtos/ServerProtos.foprob");
+                write_protos(client_proto_mngr, "ClientProtos/ClientProtos.foprob");
+#else
                 write_protos(proto_mngr, "Protos/Protos.foprob");
-                write_protos(server_proto_mngr, "Protos/ServerProtos.foprob");
-                write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
+#endif
             }
 
             WriteLog("Bake protos complete");

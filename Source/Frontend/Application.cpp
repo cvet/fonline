@@ -121,17 +121,18 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     CreateGlobalData();
 
-    string name = FO_DEV_NAME;
-    if (!name_appendix.empty()) {
-        name.append("_");
-        name.append(name_appendix);
+#if !FO_WEB
+    if (const auto exe_path = DiskFileSystem::GetExePath()) {
+        LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
+    }
+    else {
+        LogToFile(_str("{}.log", FO_DEV_NAME));
     }
 
-#if !FO_WEB
-    LogToFile(_str("{}.log", name));
+    WriteLog("Starting {} {}", FO_DEV_NAME, FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv, name);
+    App = new Application(argc, argv);
 }
 
 void ExitApp(bool success)
@@ -172,7 +173,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv, string_view name) : Settings(argc, argv), _name {name}
+Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
     if (Settings.NullRenderer) {
         SDL_SetHint("SDL_HINT_RENDER_DRIVER", "dummy");
@@ -573,11 +574,6 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
     SDL_iPhoneSetAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
 }
 #endif
-
-auto Application::GetName() const -> string_view
-{
-    return _name;
-}
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {

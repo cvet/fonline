@@ -43,6 +43,11 @@
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(settings, PropertiesRelationType::BothRelative), FOClient(settings, window, true)
 {
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("FullProtos"));
+    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("MapperAngelScript"));
+    }
+
     for (const auto& dir : settings.BakeContentEntries) {
         ContentFileSys.AddDataSource(dir, DataSourceType::DirRoot);
     }

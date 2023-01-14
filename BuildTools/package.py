@@ -44,13 +44,13 @@ parser.add_argument('-compresslevel', dest='compresslevel', required=True, help=
 args = parser.parse_args()
 
 def log(*text):
-	print('[Package]', *text)
+	print('[Package]', *text, flush=True)
 
 log(f'Make {args.target} ({args.config}) for {args.platform}')
 
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
-resourcesDir = 'Data'
+resourcesDir = 'Resources'
 
 curPath = os.path.dirname(sys.argv[0])
 
@@ -127,40 +127,43 @@ def makeTar(name, path, mode):
 
 def build():
 	# Make packs
-	resourceEntries = []
-	if args.target == 'Server':
-		resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
-		resourceEntries += [['Protos', '*.foprob']]
-		resourceEntries += [['AngelScript', '*.fosb']]
-		resourceEntries += [['Dialogs', '*.fodlg']]
-		resourceEntries += [['Maps', '*.fomapb*']]
-		resourceEntries += [['Texts', '*.fotxtb']]
-	elif args.target == 'Client':
-		resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
-		resourceEntries += [['Protos', 'ClientProtos.foprob']]
-		resourceEntries += [['AngelScript', 'ClientRootModule.fosb']]
-		resourceEntries += [['Maps', '*.fomapb2']]
-		resourceEntries += [['Texts', '*.fotxtb']]
-	elif args.target == 'Mapper':
-		resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
-		resourceEntries += [['Protos', '*.foprob']]
-		resourceEntries += [['AngelScript', '*.fosb']]
-	elif args.target == 'Editor':
-		pass
-	else:
-		assert False
-	
-	for pack in set(args.respack):
-		if not ([1 for t in ['Server', 'Client', 'Single', 'Editor', 'Mapper'] if t in pack] and args.target not in pack):
-			assert pack not in [p[0] for p in resourceEntries] and pack != 'Configs', 'Used reserved pack name'
-			resourceEntries += [[pack, '**']]
-	
+	def getTargetEntries(target):
+		resourceEntries = []
+		if target == 'Server':
+			resourceEntries += [['Embedded', '**']]
+			resourceEntries += [['ServerProtos', '*.foprob']]
+			resourceEntries += [['ServerAngelScript', '*.fosb']]
+			resourceEntries += [['Dialogs', '*.fodlg']]
+			resourceEntries += [['Maps', '*.fomapb*']]
+		elif target == 'Client' or target == 'Mapper':
+			resourceEntries += [['Embedded', '**']]
+			resourceEntries += [['Core', '**']]
+			resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
+			resourceEntries += [['ClientProtos', 'ClientProtos.foprob']]
+			resourceEntries += [['ClientAngelScript', 'ClientRootModule.fosb']]
+			resourceEntries += [['StaticMaps', '*.fomapb2']]
+			resourceEntries += [['Texts', '*.fotxtb']]
+			if target == 'Mapper':
+				resourceEntries += [['FullProtos', '*.foprob']]
+				resourceEntries += [['MapperAngelScript', '*.fosb']]
+			for pack in set(args.respack):
+				if not ([1 for t in ['Server', 'Client', 'Single', 'Editor', 'Mapper'] if t in pack] and target not in pack):
+					if pack not in ['Embedded', 'Core']:
+						assert pack not in [p[0] for p in resourceEntries] and pack != 'Configs', 'Used reserved pack name'
+						resourceEntries += [[pack, '**']]
+		elif target == 'Editor':
+			resourceEntries += [['Embedded', '**']]
+		else:
+			assert False
+		return resourceEntries
+		
 	bakeringPath = getInput('Bakering', 'Resources')
 	log('Bakering input', bakeringPath)
 	
-	os.makedirs(os.path.join(targetOutputPath, resourcesDir))
+	if args.target != 'Editor':
+		os.makedirs(os.path.join(targetOutputPath, resourcesDir))
 	
-	for packName, fileMask in resourceEntries:
+	for packName, fileMask in getTargetEntries(args.target):
 		files = [f for f in glob.glob(os.path.join(bakeringPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
 		assert len(files), 'No files in pack ' + packName
 		if packName == 'Embedded':
@@ -181,6 +184,22 @@ def build():
 				for file in files:
 					zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
 	
+	if args.target == 'Server':
+		os.makedirs(os.path.join(targetOutputPath, 'Client' + resourcesDir))
+		
+		for packName, fileMask in getTargetEntries('Client'):
+			files = [f for f in glob.glob(os.path.join(bakeringPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+			assert len(files), 'No files in pack ' + packName
+			if packName == 'Raw':
+				log('Make client pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
+				for file in files:
+					shutil.copy(file, os.path.join(targetOutputPath, 'Client' + resourcesDir, os.path.relpath(file, os.path.join(bakeringPath, packName))))
+			elif packName != 'Embedded':
+				log('Make client pack', packName + '/' + fileMask, '=>', packName + '.zip', '(' + str(len(files)) + ')')
+				with zipfile.ZipFile(os.path.join(targetOutputPath, 'Client' + resourcesDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+					for file in files:
+						zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
+	
 	def patchEmbedded(filePath):
 		patchData(filePath, bytearray([0] + [0x42] * 42 + [0]), embeddedData, 1200000)
 	log('Embedded data length', len(embeddedData))
@@ -189,7 +208,7 @@ def build():
 	configName = args.config if args.target != 'Client' else 'Client_' + args.config
 	log('Config', configName)
 	
-	assert os.path.isfile(os.path.join(bakeringPath, 'Configs', configName + '.focfg')), 'Confif file not found'
+	assert os.path.isfile(os.path.join(bakeringPath, 'Configs', configName + '.focfg')), 'Config file not found'
 	with open(os.path.join(bakeringPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
 		configData = str.encode(f.read())
 	
@@ -202,17 +221,18 @@ def build():
 		for arch in args.arch.split('+'):
 			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Service'] if 'Service' in args.pack else []):
 				binName = args.devname + '_' + args.target + binType
+				binOutName = binName if args.target != 'Client' else args.nicename
 				log('Setup', arch, binName)
 				binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
 				log('Binary input', binPath)
-				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binName + '.exe'))
+				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binOutName + '.exe'))
 				if os.path.isfile(os.path.join(binPath, binName + '.pdb')):
 					log('PDB file included')
-					shutil.copy(os.path.join(binPath, binName + '.pdb'), os.path.join(targetOutputPath, binName + '.pdb'))
+					shutil.copy(os.path.join(binPath, binName + '.pdb'), os.path.join(targetOutputPath, binOutName + '.pdb'))
 				else:
 					log('PDB file NOT included')
-				patchEmbedded(os.path.join(targetOutputPath, binName + '.exe'))
-				patchConfig(os.path.join(targetOutputPath, binName + '.exe'))
+				patchEmbedded(os.path.join(targetOutputPath, binOutName + '.exe'))
+				patchConfig(os.path.join(targetOutputPath, binOutName + '.exe'))
 		
 		# Zip
 		if 'Zip' in args.pack:
@@ -303,14 +323,15 @@ def build():
 		for arch in args.arch.split('+'):
 			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Daemon'] if 'Daemon' in args.pack else []):
 				binName = args.devname + '_' + args.target + binType
+				binOutName = binName if args.target != 'Client' else args.nicename
 				log('Setup', arch, binName)
 				binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
 				log('Binary input', binPath)
-				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binName))
-				patchEmbedded(os.path.join(targetOutputPath, binName))
-				patchConfig(os.path.join(targetOutputPath, binName))
-				st = os.stat(os.path.join(targetOutputPath, binName))
-				os.chmod(os.path.join(targetOutputPath, binName), st.st_mode | stat.S_IEXEC)
+				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binOutName))
+				patchEmbedded(os.path.join(targetOutputPath, binOutName))
+				patchConfig(os.path.join(targetOutputPath, binOutName))
+				st = os.stat(os.path.join(targetOutputPath, binOutName))
+				os.chmod(os.path.join(targetOutputPath, binOutName), st.st_mode | stat.S_IEXEC)
 		
 		# Tar
 		if 'Tar' in args.pack:
