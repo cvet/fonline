@@ -204,10 +204,10 @@ void GenericUtils::ForkProcess()
 #if FO_LINUX || FO_MAC
     pid_t pid = ::fork();
     if (pid < 0) {
-        std::abort();
+        throw GenericException("fork() failed");
     }
     else if (pid != 0) {
-        std::exit(EXIT_SUCCESS);
+        ExitApp(true);
     }
 
     ::close(STDIN_FILENO);
@@ -215,10 +215,8 @@ void GenericUtils::ForkProcess()
     ::close(STDERR_FILENO);
 
     if (::setsid() < 0) {
-        std::abort();
+        throw GenericException("setsid() failed");
     }
-
-    ::umask(0);
 
 #else
     throw InvalidCallException(LINE_STR);
