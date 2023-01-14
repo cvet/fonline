@@ -45,9 +45,9 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp(argc, argv, "ServerDaemon");
-
         GenericUtils::ForkProcess();
+
+        InitApp(argc, argv, "ServerDaemon");
 
         auto* server = new FOServer(App->Settings);
         server->Start();
