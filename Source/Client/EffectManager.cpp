@@ -100,6 +100,7 @@ void EffectManager::LoadMinimalEffects()
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/Font_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/Interface_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
 
     if (effect_errors != 0) {

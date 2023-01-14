@@ -933,7 +933,7 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
     }
 
     // Load fresh
-    return LoadAnimation(fname, true);
+    return LoadAnimation(fname, false);
 }
 
 #if FO_ENABLE_3D
@@ -1251,6 +1251,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     }
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    RUNTIME_ASSERT(effect);
 
     if (_dipQueue.empty() || _dipQueue.back().SourceEffect->CanBatch(effect)) {
         _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
@@ -1343,6 +1344,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     }
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    RUNTIME_ASSERT(effect);
 
     if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
         _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
@@ -1428,6 +1430,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
     color = COLOR_SWAP_RB(color);
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    RUNTIME_ASSERT(effect);
 
     const auto last_right_offs = (si->SprRect.Right - si->SprRect.Left) / width;
     const auto last_bottom_offs = (si->SprRect.Bottom - si->SprRect.Top) / height;
@@ -1742,6 +1745,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         if (effect == nullptr) {
             effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Generic;
         }
+        RUNTIME_ASSERT(effect);
 
         // Choose atlas
         if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
@@ -1937,6 +1941,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     Flush();
 
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.Primitive;
+    RUNTIME_ASSERT(effect);
 
     // Check primitives
     const auto count = points.size();

@@ -298,6 +298,10 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
 FIXED_SETTING(uint, TextDelay, 3000);
+FIXED_SETTING(uint, UpdaterInfoDelay, 1000);
+FIXED_SETTING(int, UpdaterInfoPos, 0); // <1 - top, 0 - center, >1 - bottom
+FIXED_SETTING(string, DefaultSplash, "");
+FIXED_SETTING(string, DefaultSplashPack, "");
 VARIABLE_SETTING(string, Language, "engl");
 VARIABLE_SETTING(bool, WinNotify, true);
 VARIABLE_SETTING(bool, SoundNotify, false);

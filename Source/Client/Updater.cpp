@@ -50,12 +50,19 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
     _resources.AddDataSource(_settings.EmbeddedResources);
     _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
 
+    if (!_settings.DefaultSplashPack.empty()) {
+        _resources.AddDataSource(_str(_settings.ResourcesDir).combinePath(_settings.DefaultSplashPack), DataSourceType::MaybeNotAvailable);
+    }
+
     _effectMngr.LoadMinimalEffects();
 
     // Wait screen
-    _sprMngr.PushAtlasType(AtlasType::Splash, true);
-    _splashPic = _sprMngr.ReloadAnimation(_splashPic, "DefaultSplash.png");
-    _sprMngr.PopAtlasType();
+    if (!_settings.DefaultSplash.empty()) {
+        _sprMngr.PushAtlasType(AtlasType::Splash, true);
+        _splashPic = _sprMngr.LoadAnimation(_settings.DefaultSplash, false);
+        _sprMngr.PopAtlasType();
+    }
+
     _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     if (_splashPic != nullptr) {
         _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
@@ -111,8 +118,14 @@ void Updater::Net_OnDisconnect()
 
 auto Updater::Process() -> bool
 {
-    // Skip all events
-    App->Input.ClearEvents();
+    InputEvent ev;
+    while (App->Input.PollEvent(ev)) {
+        if (ev.Type == InputEvent::EventType::KeyDownEvent) {
+            if (ev.KeyDown.Code == KeyCode::Escape) {
+                App->Settings.Quit = true;
+            }
+        }
+    }
 
     // Update indication
     string update_text;
@@ -141,16 +154,30 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
+    const auto elapsed_time = Timer::RealtimeTick() - _startTick;
     const auto dots = static_cast<int>(std::fmod((Timer::RealtimeTick() - _startTick) / 100.0, 50.0)) + 1;
     for ([[maybe_unused]] const auto i : xrange(dots)) {
         update_text += ".";
     }
 
-    _sprMngr.BeginScene(COLOR_RGB(50, 50, 50));
-    if (_splashPic != nullptr) {
-        _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+    _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    {
+        if (_splashPic != nullptr) {
+            _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+        }
+
+        if (elapsed_time >= _settings.UpdaterInfoDelay) {
+            if (_settings.UpdaterInfoPos < 0) {
+                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            }
+            else if (_settings.UpdaterInfoPos == 0) {
+                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            }
+            else {
+                _sprMngr.DrawStr(IRect(0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+            }
+        }
     }
-    _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
     _sprMngr.EndScene();
 
     _conn.Process();

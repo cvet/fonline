@@ -288,7 +288,12 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
         return std::make_unique<FalloutDat>(_str("{}.dat", path));
     }
 
-    throw DataSourceException("Data pack not found", path, type);
+    if (type == DataSourceType::MaybeNotAvailable) {
+        return std::make_unique<DummySpace>();
+    }
+    else {
+        throw DataSourceException("Data pack not found", path, type);
+    }
 }
 
 NonCachedDir::NonCachedDir(string_view fname)
