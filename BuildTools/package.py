@@ -135,6 +135,9 @@ def build():
 			resourceEntries += [['ServerAngelScript', '*.fosb']]
 			resourceEntries += [['Dialogs', '*.fodlg']]
 			resourceEntries += [['Maps', '*.fomapb*']]
+			for pack in set(args.respack):
+				if 'Server' in pack:
+					resourceEntries += [[pack, '**']]
 		elif target == 'Client' or target == 'Mapper':
 			resourceEntries += [['Embedded', '**']]
 			resourceEntries += [['Core', '**']]

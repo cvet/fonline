@@ -41,6 +41,7 @@
 
 #if FO_HAVE_FBXSDK
 #ifdef __clang__
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
 #pragma clang diagnostic ignored "-Wnull-dereference"
 #pragma clang diagnostic ignored "-Wuninitialized-const-reference"
 #pragma clang diagnostic ignored "-Wdeprecated-builtins"
