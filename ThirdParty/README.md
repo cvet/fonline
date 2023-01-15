@@ -7,7 +7,7 @@
 * Catch2 - [Catch2-3.1.1](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
-* glslang - [glslang-11.7.0](https://github.com/KhronosGroup/glslang)
+* glslang - [glslang-11.13.0/1.3.236.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
 * SDL2 - [SDL2-2.24.1](https://github.com/libsdl-org/SDL)

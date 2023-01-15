@@ -48,7 +48,7 @@
 #include "SPIRV/disassemble.h"
 #include "SPIRV/doc.h"
 #include "SPIRV/SPVRemapper.h"
-#include "StandAlone/ResourceLimits.h"
+#include "glslang/Public/ResourceLimits.h"
 #include "glslang/Public/ShaderLang.h"
 
 #include "Initializer.h"
@@ -199,7 +199,7 @@ public:
             shader->setStringsWithLengths(&shaderStrings, &shaderLengths, 1);
         if (!entryPointName.empty()) shader->setEntryPoint(entryPointName.c_str());
         return shader->parse(
-                (resources ? resources : &glslang::DefaultTBuiltInResource),
+                (resources ? resources : GetDefaultResources()),
                 defaultVersion, isForwardCompatible, controls);
     }
 
@@ -217,6 +217,7 @@ public:
             EShTextureSamplerTransformMode texSampTransMode = EShTexSampTransKeep,
             bool enableOptimizer = false,
             bool enableDebug = false,
+            bool enableNonSemanticShaderDebugInfo = false,
             bool automap = true)
     {
         const EShLanguage stage = GetShaderStage(GetSuffix(shaderName));
@@ -253,7 +254,7 @@ public:
         glslang::TProgram program;
         program.addShader(&shader);
         success &= program.link(controls);
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#if !defined(GLSLANG_WEB)
         if (success)
             program.mapIO();
 #endif
@@ -263,6 +264,8 @@ public:
             std::vector<uint32_t> spirv_binary;
             options().disableOptimizer = !enableOptimizer;
             options().generateDebugInfo = enableDebug;
+            options().emitNonSemanticShaderDebugInfo = enableNonSemanticShaderDebugInfo;
+            options().emitNonSemanticShaderDebugSource = enableNonSemanticShaderDebugInfo;
             glslang::GlslangToSpv(*program.getIntermediate(stage),
                                   spirv_binary, &logger, &options());
 
@@ -315,7 +318,7 @@ public:
         program.addShader(&shader);
         
         success &= program.link(controls);
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#if !defined(GLSLANG_WEB)
         if (success)
             program.mapIO();
 #endif
@@ -360,18 +363,19 @@ public:
         glslang::TProgram program;
         program.addShader(&shader);
         success &= program.link(controls);
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#if !defined(GLSLANG_WEB)
         if (success)
             program.mapIO();
 #endif
 
         if (success && (controls & EShMsgSpvRules)) {
         spv::SpvBuildLogger logger;
+            std::vector<std::string> whiteListStrings;
             std::vector<uint32_t> spirv_binary;
             glslang::GlslangToSpv(*program.getIntermediate(stage),
                                   spirv_binary, &logger, &options());
 
-            spv::spirvbin_t(0 /*verbosity*/).remap(spirv_binary, remapOptions);
+            spv::spirvbin_t(0 /*verbosity*/).remap(spirv_binary, whiteListStrings, remapOptions);
 
             std::ostringstream disassembly_stream;
             spv::Parameterize();
@@ -394,9 +398,9 @@ public:
     {
         if ((controls & EShMsgSpvRules)) {
             std::vector<uint32_t> spirv_binary(code); // scratch copy
+            std::vector<std::string> whiteListStrings;
+            spv::spirvbin_t(0 /*verbosity*/).remap(spirv_binary, whiteListStrings, remapOptions);
 
-            spv::spirvbin_t(0 /*verbosity*/).remap(spirv_binary, remapOptions);
-            
             std::ostringstream disassembly_stream;
             spv::Parameterize();
             spv::Disassemble(disassembly_stream, spirv_binary);
@@ -447,7 +451,8 @@ public:
                                  const std::string& entryPointName="",
                                  const std::string& baseDir="/baseResults/",
                                  const bool enableOptimizer = false,
-                                 const bool enableDebug = false)
+                                 const bool enableDebug = false,
+                                 const bool enableNonSemanticShaderDebugInfo = false)
     {
         const std::string inputFname = testDir + "/" + testName;
         const std::string expectedOutputFname =
@@ -463,7 +468,8 @@ public:
         if (enableDebug)
             controls = static_cast<EShMessages>(controls | EShMsgDebugInfo);
         GlslangResult result = compileAndLink(testName, input, entryPointName, controls, clientTargetVersion,
-            targetLanguageVersion, false, EShTexSampTransKeep, enableOptimizer, enableDebug, automap);
+            targetLanguageVersion, false, EShTexSampTransKeep, enableOptimizer, enableDebug,
+            enableNonSemanticShaderDebugInfo, automap);
 
         // Generate the hybrid output in the way of glslangValidator.
         std::ostringstream stream;
@@ -634,7 +640,7 @@ public:
         std::string ppShader;
         glslang::TShader::ForbidIncluder includer;
         const bool success = shader.preprocess(
-            &glslang::DefaultTBuiltInResource, defaultVersion, defaultProfile,
+            GetDefaultResources(), defaultVersion, defaultProfile,
             forceVersionProfile, isForwardCompatible, (EShMessages)(EShMsgOnlyPreprocessor | EShMsgCascadingErrors),
             &ppShader, includer);
 
