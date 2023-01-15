@@ -123,7 +123,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
         LogToFile(_str("{}.log", FO_DEV_NAME));
     }
 
-    WriteLog("Starting {} {}", FO_DEV_NAME, FO_GAME_VERSION);
+    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
     App = new Application(argc, argv);
