@@ -32,7 +32,7 @@ public:
 	  */
 	//@{
 		//! Reset the video to default values.
-        void Reset() override;
+		virtual void Reset();
 	//@}
 
     /**
@@ -54,14 +54,14 @@ public:
 		  * \return          \c True,if update successfully, \c false otherwise.
 		  * \remarks         Update the texture filename if the connection exists.
 		  */
-        bool SetFileName(const char* pName) override;
+		virtual bool SetFileName(const char* pName);
 
 		/** Specify the Video relative filename.
 		  * \param pName     Video relative filename.
 		  * \return          \c True, if update successfully, \c false otherwise.
 		  * \remarks         Update the texture filename if the connection exists.
 		  */
-        bool SetRelativeFileName(const char* pName) override;
+		virtual bool SetRelativeFileName(const char* pName);
 
 		/**
 		* \name Image sequence attributes Management
@@ -170,12 +170,12 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void Construct(const FbxObject* pFrom) override;
-    void ConstructProperties(bool pForceSet) override;
-    bool ConnectNotify(FbxConnectEvent const &pEvent) override;
+    virtual void Construct(const FbxObject* pFrom);
+    virtual void ConstructProperties(bool pForceSet);
+    virtual bool ConnectNotify(FbxConnectEvent const &pEvent);
 
 public:
-	FbxObject& Copy(const FbxObject& pObject) override;
+	virtual FbxObject& Copy(const FbxObject& pObject);
 
 	FbxPropertyT<FbxBool>   ImageSequence;
 	FbxPropertyT<FbxInt> ImageSequenceOffset;

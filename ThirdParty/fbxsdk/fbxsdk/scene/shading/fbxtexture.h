@@ -535,7 +535,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+	virtual FbxObject& Copy(const FbxObject& pObject);
 
 	bool operator==(FbxTexture const& pTexture) const;
 
@@ -547,10 +547,10 @@ public:
 	FbxString GetTextureType();
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void ConstructProperties(bool pForceSet) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void ConstructProperties(bool pForceSet);
 
-    bool PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty) override;
+    virtual bool PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty);
 
 	void Init();
 

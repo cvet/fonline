@@ -121,11 +121,11 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void Destruct(bool pRecursive) override;
-	void ConstructProperties(bool pForceSet) override;
-	bool ConnectNotify(const FbxConnectEvent& pEvent) override;
-	bool PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void Destruct(bool pRecursive);
+	virtual void ConstructProperties(bool pForceSet);
+	virtual bool ConnectNotify(const FbxConnectEvent& pEvent);
+	virtual bool PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty);
 
 private:
 	void		Reset();

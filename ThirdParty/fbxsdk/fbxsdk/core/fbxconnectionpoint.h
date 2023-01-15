@@ -16,7 +16,6 @@
 #include <fbxsdk/fbxsdk_def.h>
 
 #include <fbxsdk/core/base/fbxarray.h>
-#include <fbxsdk/core/base/fbxset.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
@@ -215,8 +214,7 @@ protected:
 		void					InsertSrcAt(int pIndex, FbxConnectionPoint* pConnect, FbxConnection::EType pType);
 		void					AddSrc(FbxConnectionPoint* pConnect, FbxConnection::EType pType);
 		void					RemoveSrcAt(int pIndex);
-        int						FindSrc(FbxConnectionPoint* pConnect) const;
-        bool				    IsConnectedSrc(FbxConnectionPoint* pConnect) const;
+		int						FindSrc(FbxConnectionPoint* pConnect) const;
 		int						GetSrcCount() const; 
 		FbxConnectionPoint*		GetSrc(int pIndex) const;
 		FbxConnection::EType	GetSrcType(int pIndex) const;
@@ -234,15 +232,8 @@ protected:
 			Connection(FbxConnectionPoint* pPoint, FbxConnection::EType pType) : mPoint(pPoint), mType(pType){}
 			FbxConnectionPoint* mPoint; FbxConnection::EType mType;
 		};
-
-        // Separate the arrays for better cache usage when only touching 1 piece of data (eg in FindSrc)
-        // These arrays must be kept in sync (eg during AddSrc, RemoveSrcAt, etc)
-        FbxArray<FbxConnectionPoint*>   mSrcPointList;
-        FbxArray<FbxConnection::EType>  mSrcTypeList;
-        
-        FbxArray<Connection>            mDstList;
-
-        FbxSet<FbxConnectionPoint*>     mSrcListLookup;
+		FbxArray<Connection>	mSrcList;
+		FbxArray<Connection>	mDstList;
 	};
 
 	void				SubConnectAdd(FbxConnectionPoint* pConnect);
@@ -260,11 +251,9 @@ protected:
 	bool				InternalMoveSrcBefore(int pIndex, int pBeforeIndex);
 
 private:
-    inline void			InsertSrcAt(int pIndex, FbxConnectionPoint* pConnect, FbxConnection::EType pConnectionType) { mConnectionList.InsertSrcAt(pIndex, pConnect, pConnectionType); }
-    inline void			InsertDstAt(int pIndex, FbxConnectionPoint* pConnect, FbxConnection::EType pConnectionType) { mConnectionList.InsertDstAt(pIndex, pConnect, pConnectionType); }
-    inline void			AddSrc(FbxConnectionPoint* pConnect, FbxConnection::EType pConnectionType) { mConnectionList.AddSrc(pConnect, pConnectionType); }
-    inline void			AddDst(FbxConnectionPoint* pConnect, FbxConnection::EType pConnectionType) { mConnectionList.AddDst(pConnect, pConnectionType); }
-    inline void			RemoveSrcAt(int pIndex){ mConnectionList.RemoveSrcAt(pIndex); }
+	inline void			InsertSrcAt(int pIndex, FbxConnectionPoint* pConnect, FbxConnection::EType pConnectionType){ mConnectionList.InsertSrcAt(pIndex, pConnect, pConnectionType); }
+	inline void			InsertDstAt(int pIndex, FbxConnectionPoint* pConnect, FbxConnection::EType pConnectionType){ mConnectionList.InsertDstAt(pIndex, pConnect, pConnectionType); }
+	inline void			RemoveSrcAt(int pIndex){ mConnectionList.RemoveSrcAt(pIndex); }
 	inline void			RemoveDstAt(int pIndex){ mConnectionList.RemoveDstAt(pIndex); }    	
 
 	static bool			InternalConnectBefore(FbxConnectionPoint* pSrc, FbxConnectionPoint* pSrc_BeforeDst, FbxConnectionPoint* pDst, FbxConnectionPoint* pDst_BeforeSrc, FbxConnection::EType pConnectionType);
@@ -277,12 +266,12 @@ private:
 	bool						DisconnectOwnedConnect(FbxConnectionPoint* pConnect);
 
 	void*							mData;
+	int								mFlags;
 	FbxConnectionPoint*				mOwner;
-	FbxConnectionPointFilter*		mFilter;
 	ConnectionList					mConnectionList;
 	FbxArray<FbxConnectionPoint*>	mSubConnectList;
 	FbxArray<FbxConnectionPoint*>	mSubConnectCreatedList;		
-	int								mFlags;
+	FbxConnectionPointFilter*		mFilter;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

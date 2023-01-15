@@ -74,7 +74,7 @@ public:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     // Remark: This method copies the mEntries table AND clears the UserData on the resulting copy to prevent shared memory
     // data between clones/copies.
-    FbxObject& Copy(const FbxObject& pObject) override;
+    virtual FbxObject& Copy(const FbxObject& pObject);
 
 private:
     FbxDynamicArray<FbxBindingTableEntry> mEntries;

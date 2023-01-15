@@ -29,7 +29,7 @@ class FBXSDK_DLL FbxMarker : public FbxNodeAttribute
 
 public:
 	//! Return the type of node attribute which is EType::eMarker.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+	virtual FbxNodeAttribute::EType GetAttributeType() const;
 
 	//! Reset the marker to default values.
 	void Reset();
@@ -265,12 +265,12 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+	virtual FbxObject& Copy(const FbxObject& pObject);
 
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    const char* GetTypeName() const override;
-    FbxStringList GetTypeFlags() const override;
+	virtual void ConstructProperties(bool pForceSet);
+	virtual const char* GetTypeName() const;
+	virtual FbxStringList GetTypeFlags() const;
 
 	EType mType;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

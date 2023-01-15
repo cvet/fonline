@@ -256,11 +256,11 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxNodeAttribute::EType GetAttributeType() const override;
+	virtual FbxNodeAttribute::EType GetAttributeType() const;
 
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    FbxStringList	GetTypeFlags() const override;
+	virtual void ConstructProperties(bool pForceSet);
+	virtual FbxStringList	GetTypeFlags() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

@@ -33,7 +33,7 @@ class FBXSDK_DLL FbxCameraStereo : public FbxCamera
 
 public:
     //! Return the type of node attribute which is EType::eCameraStereo.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+    virtual FbxNodeAttribute::EType GetAttributeType() const;
 
     //! Reset the stereo camera to default values.
     void Reset();
@@ -232,9 +232,9 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
+    virtual void ConstructProperties(bool pForceSet);
 
-    FbxStringList GetTypeFlags() const override;
+    virtual FbxStringList GetTypeFlags() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

@@ -185,7 +185,7 @@ public:
       * \param pDefault             The default text. Uses pID if NULL.
       * \return                     The potentially localized text. May return the parameter passed in.
     */
-    const char* Localize( const char* pID, const char* pDefault = NULL ) const override;
+    virtual const char* Localize( const char* pID, const char* pDefault = NULL ) const;
 
     // =======================================================================
     //
@@ -232,8 +232,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void Destruct(bool pRecursive);
 
 	mutable FbxLocalizationManager* mLocalizationManager;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

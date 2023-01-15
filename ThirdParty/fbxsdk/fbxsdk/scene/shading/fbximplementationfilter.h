@@ -81,7 +81,7 @@ public:
 	/** Tells if this filter matches the given shading node implementation
 	  * \param pObjectPtr The given shading node implementation
 	  */
-	bool Match(const FbxObject * pObjectPtr) const override;
+	virtual bool Match(const FbxObject * pObjectPtr) const;
 
 	//! Stores the shading API
 	FbxString mShadingAPI;

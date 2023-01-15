@@ -51,17 +51,17 @@ public:
     * \param pFileName the name of file.
     * \return Return true if the specified file is created and opened.
     */
-    bool FileCreate(char* pFileName) override;
+    virtual bool FileCreate(char* pFileName);
 
     /** Close file.
     * \return Return true if file is closed successfully, false otherwise.
     */
-    bool FileClose() override;
+    virtual bool FileClose();
 
     /** Check if current file is open.
     * \return Return true if file is open, false otherwise.
     */
-    bool IsFileOpen() override;
+    virtual bool IsFileOpen();
 
     //@}
 
@@ -72,26 +72,26 @@ public:
 
     /** Get Collada export options settings.
     */
-	void GetWriteOptions() override {}
+	virtual void GetWriteOptions(){}
 
     /** Export the FBX document to Collada file, according to the given options settings.
     * \param pDocument FBX Document to export.
     * \return true on success, false otherwise.
     */
-    bool Write(FbxDocument* pDocument) override;
+    virtual bool Write(FbxDocument* pDocument);
 
     /** Process FBX scene before exporting FBX scene to Collada file.
     * \param pScene the FBX scene to precess.
     * \return Return true if the given scene is processed successfully.
     * \remarks This function is processing name clash, special transformation conversion etc.
     */
-    bool PreprocessScene(FbxScene &pScene) override;
+    virtual bool PreprocessScene(FbxScene &pScene);
 
     /** Process FBX scene after exporting FBX scene to Collada file.
     * \param pScene the FBX scene to precess.
     * \return Return true if the given scene is processed successfully.
     */
-    bool PostprocessScene(FbxScene &pScene) override;
+    virtual bool PostprocessScene(FbxScene &pScene);
 
     //@}
 

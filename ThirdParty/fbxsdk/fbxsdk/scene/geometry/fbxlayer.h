@@ -313,12 +313,6 @@ public:
 	};
 };
 
-enum EFbxMemoryClearMode
-{
-    eClearToZero,
-    eUninitialized
-};
-
 //Special conversion types, we do not want them to resolve to undefined.
 typedef FbxHandle* FbxRefPtr;
 typedef FbxLayerElementArray* FbxLayerElementArrayPtr;
@@ -467,7 +461,7 @@ public:
       *	                                 deleted when the pointer is released or the object is destroyed. At the moment of 
       *                                  release or destruction, the values in this buffer are copied back into this object.
 	  */
-	template <class T> inline T* GetLocked(T*, ELockMode pLockMode=eReadWriteLock) {T v{}; return (T*)GetLocked(pLockMode, FbxTypeOf(v)); }
+	template <class T> inline T* GetLocked(T*, ELockMode pLockMode=eReadWriteLock) {T v; return (T*)GetLocked(pLockMode, FbxTypeOf(v)); }
 
 	/** Unlock the data buffer.
 	  * \param pDataPtr                  The buffer to be released.
@@ -522,25 +516,21 @@ public:
 
     /** Sets the count of items in the data buffer.
       * \param pCount               The count of items to be set.
-      * \param pInitializeMode      Whether to clear the memory of any newly created items.
-      * \return \c True if the operation is successful and \c False if an error occurred.
       */
-	bool	SetCount(int pCount, EFbxMemoryClearMode pInitializeMode = eClearToZero);
+	void	SetCount(int pCount);
 
     //! Clears the data buffer.
 	void	Clear();
 
     /** Resizes the data buffer.
       * \param pItemCount           The new size of the data buffer. 
-      * \return \c True if the operation is successful and \c False if an error occurred.
       */
-	bool	Resize(int pItemCount, EFbxMemoryClearMode pInitializeMode = eClearToZero);
+	void	Resize(int pItemCount);
 
     /** Appends space to the data buffer.
       * \param pItemCount           The appended space size
-      * \return \c True if the operation is successful and \c False if an error occurred.
       */
-	bool	AddMultiple(int pItemCount, EFbxMemoryClearMode pInitializeMode = eClearToZero);
+	void	AddMultiple(int pItemCount);
 
     /** Appends a new item to the end of the data buffer.
       * \param pItem                Pointer of the new item to be added
@@ -971,17 +961,12 @@ public:
     FbxLayerElementArray& operator=(const FbxArray<T>& pArrayTemplate)
     {
         SetStatus(LockAccessStatus::eNoWriteLock);
-        if (ReadWriteLock())
+        if (WriteLock())
         {
-            SetCount(pArrayTemplate.GetCount(), eUninitialized);
-
-            void* lSrc = const_cast<FbxArray<T>&>(pArrayTemplate).GetLocked(eReadLock);
-            void* lDst = GetLocked();
-            memcpy(lDst, lSrc, sizeof(T) * pArrayTemplate.GetCount());
-            const_cast<FbxLayerElementArrayTemplate<T>&>(pArrayTemplate).Release(&lSrc);
-            Release(&lDst);
-
-            ReadWriteUnlock();
+            SetCount(pArrayTemplate.GetCount());
+            for (int i = 0; i < pArrayTemplate.GetCount(); i++)
+                SetAt(i, pArrayTemplate.GetAt(i));
+            WriteUnlock();
             SetStatus(LockAccessStatus::eSuccess);
         }
         return *this;
@@ -995,17 +980,12 @@ public:
         if ( this != &pArrayTemplate )
         {
             SetStatus(LockAccessStatus::eNoWriteLock);
-            if (ReadWriteLock())
+            if (WriteLock())
             {
-                SetCount(pArrayTemplate.GetCount(), eUninitialized);
-
-                void* lSrc = const_cast<FbxLayerElementArrayTemplate<T>&>(pArrayTemplate).GetLocked(eReadLock);
-                void* lDst = GetLocked();
-                memcpy(lDst, lSrc, sizeof(T) * pArrayTemplate.GetCount());
-                const_cast<FbxLayerElementArrayTemplate<T>&>(pArrayTemplate).Release(&lSrc);
-                Release(&lDst);
-
-                ReadWriteUnlock();
+                SetCount(pArrayTemplate.GetCount());
+                for (int i = 0; i < pArrayTemplate.GetCount(); i++)
+                    SetAt(i, pArrayTemplate.GetAt(i));
+                WriteUnlock();
                 SetStatus(LockAccessStatus::eSuccess);
             }
         }
@@ -1050,12 +1030,7 @@ public:
 	FbxLayerElementArrayTemplate<Type>& GetDirectArray() const
 	{ 
 		FBX_ASSERT(mReferenceMode == FbxLayerElement::eDirect || mReferenceMode == FbxLayerElement::eIndexToDirect);
-
-		if (mDirectArray == NULL)
-		{
-			throw std::runtime_error("FbxLayerElementArrayTemplate - mDirectArray is NULL");
-		}
-		return *mDirectArray;
+		return *mDirectArray; 
 	}
 
 	/** Returns the direct array of Layer Elements.
@@ -1065,12 +1040,7 @@ public:
 	FbxLayerElementArrayTemplate<Type>& GetDirectArray()
 	{ 
 		FBX_ASSERT(mReferenceMode == FbxLayerElement::eDirect || mReferenceMode == FbxLayerElement::eIndexToDirect);
-
-		if (mDirectArray == NULL)
-		{
-			throw std::runtime_error("FbxLayerElementArrayTemplate - mDirectArray is NULL");
-		}
-		return *mDirectArray;
+		return *mDirectArray; 
 	}
 
 	/** Returns the index array of Layer Elements.
@@ -1241,8 +1211,7 @@ public:
 	virtual bool ContentWriteTo(FbxStream& pStream) const
 	{
 		void* a;
-		unsigned int v;
-        size_t s;
+		int s,v;
 		int count = 0;
 
 		// direct array
@@ -1279,8 +1248,7 @@ public:
 	virtual bool ContentReadFrom(const FbxStream& pStream)
 	{
 		void* a;
-		unsigned int v;
-        size_t s;
+		int s,v;
 		int count = 0;
 
 		// direct array

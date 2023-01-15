@@ -112,13 +112,13 @@ public:
     /** Retrieve the constraint source count.
       * \return Current constraint source count.
       */
-    int GetConstraintSourceCount() const override;
+    int GetConstraintSourceCount() const;
 
     /** Retrieve a constraint source object.
       * \param pIndex The specified index.
       * \return Current source at the specified index.
       */
-    FbxObject* GetConstraintSource(int pIndex) const override;
+    FbxObject* GetConstraintSource(int pIndex) const;
 
     /** Set the constrained object.
       * \param pObject The constrained object.
@@ -128,7 +128,7 @@ public:
     /** Retrieve the constrained object.
       * \return Current constrained object.
       */
-    FbxObject* GetConstrainedObject() const override;
+    FbxObject* GetConstrainedObject() const;
 
     /** Set the world up object.
       * \param pObject The new world up object.
@@ -145,9 +145,9 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
+    virtual void ConstructProperties(bool pForceSet);
 
-    EType GetConstraintType() const override;
+    virtual EType GetConstraintType() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

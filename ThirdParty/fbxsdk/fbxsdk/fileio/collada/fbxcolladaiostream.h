@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2017 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -62,18 +62,17 @@ template <typename TYPE> int FromStringToArray(const char * pString, TYPE * pArr
     int lDestCounter = 0;
     const int lSourceUnitValidEnd = pSourceUnitOffset + pSourceValidUnitCount;
     const int lDestUnitGap = pDestGroupSize - pDestValidUnitCount - pDestUnitOffset;
-
     while (lSource && *lSource)
     {
         TYPE lData;
         const char * lSourceStart = lSource;
         if (FromString(&lData, lSource, &lSource) && lSourceCounter >= pSourceUnitOffset && lSourceCounter < lSourceUnitValidEnd)
         {
-            if (lReadCount >= pArraySize)
-            {
-                // we are trying to write past the allocated buffer
-                return 0;
-            }
+			if (lReadCount >= pArraySize)
+			{
+				// we are trying to write past the allocated buffer
+				return 0;
+			}
 
             if (lDestCounter == 0)
             {

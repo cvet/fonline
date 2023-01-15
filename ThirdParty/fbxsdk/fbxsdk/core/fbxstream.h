@@ -55,13 +55,13 @@ public:
 	* \param pData Pointer to the memory block to write.
 	* \param pSize Size (in bytes) of the memory block to write.
 	* \return The number of bytes written in the stream. */
-	virtual size_t Write(const void* /*pData*/, FbxUInt64 /*pSize*/) = 0;
+	virtual int Write(const void* /*pData*/, int /*pSize*/) = 0;
 
 	/** Read bytes from the stream and store them in the memory block.
 	* \param pData Pointer to the memory block where the read bytes are stored.
 	* \param pSize Number of bytes read from the stream.
 	* \return The actual number of bytes successfully read from the stream. */
-	virtual size_t Read(void* /*pData*/, FbxUInt64 /*pSize*/) const = 0;
+	virtual int Read(void* /*pData*/, int /*pSize*/) const = 0;
 
 	/** Read a string from the stream.
 	* The default implementation is written in terms of Read() but does not cope with DOS line endings.
@@ -93,11 +93,11 @@ public:
 
 	/** Get the current stream position.
 	* \return Current number of bytes from the beginning of the stream. */
-	virtual FbxInt64 GetPosition() const = 0;
+	virtual long GetPosition() const = 0;
 
 	/** Set the current stream position.
 	* \param pPosition Number of bytes from the beginning of the stream to seek to. */
-	virtual void SetPosition(FbxInt64 pPosition)=0;
+	virtual void SetPosition(long pPosition)=0;
 
 	/** Return 0 if no errors occurred. Otherwise, return 1 to indicate
 	* an error. This method will be invoked whenever FBX needs to verify
@@ -114,10 +114,10 @@ public:
 	FbxStream(){};
 	virtual ~FbxStream(){};
 
-    size_t Write(const char* pData, FbxUInt64 pSize){ return Write((void*)pData, pSize); }
-    size_t Write(const int* pData, FbxUInt64 pSize){ return Write((void*)pData, pSize); }
-    size_t Read(char* pData, FbxUInt64 pSize) const { return Read((void*)pData, pSize); }
-    size_t Read(int* pData, FbxUInt64 pSize) const { return Read((void*)pData, pSize); }
+	int Write(const char* pData, int pSize){ return Write((void*)pData, pSize); }
+	int Write(const int* pData, int pSize){ return Write((void*)pData, pSize); }
+	int Read(char* pData, int pSize) const { return Read((void*)pData, pSize); }
+	int Read(int* pData, int pSize) const { return Read((void*)pData, pSize); }
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

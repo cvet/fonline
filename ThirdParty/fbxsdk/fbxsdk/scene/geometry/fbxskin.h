@@ -94,7 +94,7 @@ public:
     /** Get the type of the deformer.
       * \return                        Deformer type identifier.
       */
-    EDeformerType GetDeformerType() const override {return eSkin; };
+    EDeformerType GetDeformerType()  const {return eSkin; };
 
 	/** \enum EType Skinning type.
 	* The skinning type decides which method will be used to do the skinning.
@@ -169,13 +169,13 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    void Compact() override;
-    FbxObject& Copy(const FbxObject& pObject) override;
-    FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
+	virtual void Compact();
+    virtual FbxObject& Copy(const FbxObject& pObject);
+    virtual FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-    FbxStringList GetTypeFlags() const override;
+	virtual void Construct(const FbxObject* pFrom);
+    virtual FbxStringList GetTypeFlags() const;
 
     // Skin deformer
     double mDeformAccuracy;

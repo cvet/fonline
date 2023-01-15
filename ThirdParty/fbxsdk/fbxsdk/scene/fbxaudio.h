@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2017 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -44,7 +44,7 @@ public:
 	  */
 	//@{
 		//! Reset the audio to default values.
-        void Reset() override;
+		void Reset();
 	//@}
 
     /**
@@ -89,11 +89,11 @@ private:
 	void InitializeAnimFX();
 
 protected:
-    void Construct(const FbxObject* pFrom) override;
-    void ConstructProperties(bool pForceSet) override;
+    virtual void Construct(const FbxObject* pFrom);
+    virtual void ConstructProperties(bool pForceSet);
 
 public:
-	FbxObject& Copy(const FbxObject& pObject) override;
+	virtual FbxObject& Copy(const FbxObject& pObject);
 
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };

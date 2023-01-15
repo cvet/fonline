@@ -107,13 +107,13 @@ public:
 		bool ConvertPatchToNurbsSurfaceInPlace(FbxNode* pNode);
 
 		/** Convert a FbxNurbs to a FbxNurbsSurface
-		  * \param pNurbs    Pointer to the original nurb
+		  * \param pNurbs     Pointer to the original nurb
 		  * \return          A FbxNurbsSurface that is equivalent to the original nurb.
 		  */
 		FbxNurbsSurface* ConvertNurbsToNurbsSurface( FbxNurbs* pNurbs );
 
 		/** Convert a FbxNurbsSurface to a FbxNurbs
-		  * \param pNurbs    Pointer to the original nurbs surface
+		  * \param pNurbs     Pointer to the original nurbs surface
 		  * \return          A FbxNurbs that is equivalent to the original nurbs surface.
 		  */
 		FbxNurbs* ConvertNurbsSurfaceToNurbs( FbxNurbsSurface* pNurbs );
@@ -138,7 +138,7 @@ public:
     */
     //@{
 		/** Flip UV and/or skin clusters of a nurb.
-		  * \param pNurbs            Pointer to the Source nurb.
+		  * \param pNurbs             Pointer to the Source nurb.
 		  * \param pSwapUV           Set to \c true to swap the UVs.
 		  * \param pSwapClusters     Set to \c true to swap the control point indices of clusters.
 		  * \return                  A flipped FbxNurbs, or \c NULL if the function fails.
@@ -146,7 +146,7 @@ public:
 		FbxNurbs* FlipNurbs(FbxNurbs* pNurbs, bool pSwapUV, bool pSwapClusters);
 
 		/** Flip UV and/or skin clusters of a nurb surface.
-		  * \param pNurbs            Pointer to the Source nurb surface.
+		  * \param pNurbs             Pointer to the Source nurb surface.
 		  * \param pSwapUV           Set to \c true to swap the UVs.
 		  * \param pSwapClusters     Set to \c true to swap the control point indices of clusters.
 		  * \return                  A flipped FbxNurbsSurface, or \c NULL if the function fails.
@@ -165,9 +165,9 @@ public:
 		  *                  vertices.
 		  * \remarks         For applications that only supports normals by control points, 
 		  *                  this function duplicates control points to equal the 
-		  *                  number of polygon vertices. skins and shapes are also converted.\n
-		  *                  As preconditions:\n
-		  *                       -# polygons must have been created\n
+		  *                  number of polygon vertices. skins and shapes are also converted.
+		  *                  As preconditions:
+		  *                       -# polygons must have been created
 		  *                       -# the number of normals in the mesh and in its associated shapes must match the 
 		  *                          number of polygon vertices.
 		  */
@@ -178,7 +178,7 @@ public:
 		  * none exists on the mesh.
 		  * \param pMesh     The mesh used to generate edge smoothing.
 		  * \return          \c true on success, \c false otherwise.
-		  * \remarks         The edge smoothing data is placed on Layer 0 of the mesh.\n
+		  * \remarks         The edge smoothing data is placed on Layer 0 of the mesh.
 		  *                  Normals do not need to be on Layer 0, since the first layer with
 		  *                  per polygon vertex normals is used.
 		  */
@@ -219,7 +219,7 @@ public:
 		* \param pReplace If \c true, replace the original mesh with new one and delete the original mesh, but *only* if they got split into multiple meshes, otherwise left untouched.
 		* \return \c true on success, \c false otherwise.
 		* \remark The function will fail if the mapped material is not per face (FbxLayerElement::eByPolygon) or if a material is multi-layered. It will create as many meshes as
-		* there are materials applied to it. If one mesh have some polygons with material A, some polygons with material B, and some polygons with NO material, 3 distinct meshes
+		* there are materials applied to it. If one mesh have some polygons with material A, some polygons with material B, and some polygons with NO material, 3 meshes distinct
 		* will be created. The newly created meshes will be automatically attached to the same FbxNode that holds the original FbxMesh. If the original mesh have tangents, they will
 		* be regenerated on the new meshes. */
 		bool SplitMeshPerMaterial(FbxMesh* pMesh, bool pReplace);
@@ -235,27 +235,24 @@ public:
 
 	/**
 	* Merge multiple meshes to one mesh.
-	* The method will merge:\n 
-	* \n
-	*	a) mesh vertex;\n
-	*	b) mesh polygon;\n
-	*	c) mesh edge;\n
-	*	d) mesh elements; only the layer 0 elements are merged with some restrictions.\n
-    *	e) if there are skins for old mesh, merge these skins. The new skin clusters link to old skeletons.\n
-	* \n
-	*  
+	* The method will merge: 
+	* a) mesh vertex;
+	* b) mesh polygon;
+	* c) mesh edge;
+	* d) all mesh elements; only the layer 0 elements is merged.
+	* e) if there are skins for old mesh, merge these skins. The new skin clusters link to old skeletons.
+	*
 	* \param pMeshNodes FBX nodes that hold multiple meshes. These meshes will be merged.
-	* \param pNodeName  Name of new mesh node.
+	* \param pNodeName	 Name of new mesh node.
 	* \param pScene     The scene that will contain the new mesh node.
-	* \return           The new mesh node if merge successfully, otherwise NULL is returned.
-	* \remarks          This method creates a new mesh, leaving the source mesh unchanged.\n
-	*                   The transform of new mesh node is: translate (0, 0, 0), rotation (0, 0, 0), scale (1, 1, 1).\n
-	*                   For layer element material, normal, smoothing, UV set, vertex color, binormal, tangent and polygon group,
-	*                   if any mesh misses these element, the merge for this kind of element is skipped.\n
-	*                   For layer element crease, hole, visibility, if any mesh has such element, the kind of element
-	*                   will be merged. The missing element will be filled with default values.\n
-	*                   For meshes with skin binding, if the pose of frame 0 is different with bind pose, the new mesh will be distorted.\n
-    *                   UserData layer elements are merged only if they have identical layouts (same mapping mode, same DataTypes and same DataNames arrays).
+	* \return			 The new mesh node if merge successfully, otherwise NULL is returned.
+	* \remarks			 This method creates a new mesh, leaving the source mesh unchanged.
+	*                   The transform of new mesh node is: translate (0, 0, 0), rotation (0, 0, 0), scale (1, 1, 1).
+	*					 For layer element material, normal, smoothing, UV set, vertex color, binormal, tangent and polygon group,
+	*					 if any mesh misses these element, the merge for this kind of element is skipped.
+	*					 For layer element crease, hole, visibility and user data, if any mesh has such element, the kind of element
+	*                   will be merged. The missing element will be filled with default values.
+	*					 For meshes with skin binding, if the pose of frame 0 is different with bind pose, the new mesh will be distorted.
 	*/
 	FbxNode* MergeMeshes(FbxArray<FbxNode*>& pMeshNodes, const char* pNodeName, FbxScene* pScene);
 
@@ -340,10 +337,6 @@ private:
     FbxManager* mManager;
 
 	friend class FbxWriter3ds;
-
-public:
-	static bool mValidateTriangulation;
-
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

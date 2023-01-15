@@ -126,12 +126,12 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject&	Copy(const FbxObject& pObject) override;
+	virtual FbxObject&	Copy(const FbxObject& pObject);
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void ConstructProperties(bool pForceSet) override;
-	void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void ConstructProperties(bool pForceSet);
+	virtual void Destruct(bool pRecursive);
 
 	FbxThumbnailMembers* mMembers;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

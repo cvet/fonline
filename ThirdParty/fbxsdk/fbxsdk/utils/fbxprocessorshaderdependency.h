@@ -41,7 +41,7 @@ public:
     * \name Overridable internal function    */
     //@{
 protected:
-    bool internal_ProcessObject(FbxObject* pObject) override;
+    virtual bool internal_ProcessObject(FbxObject* pObject);
     //@}
 
 /*****************************************************************************************************************************
@@ -50,8 +50,8 @@ protected:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 // Constructor / Destructor
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    void Destruct(bool pRecursive) override;
+    virtual void ConstructProperties(bool pForceSet);
+    virtual void Destruct(bool pRecursive);
 
 public:
 

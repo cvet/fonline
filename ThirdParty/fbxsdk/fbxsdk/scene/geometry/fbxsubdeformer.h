@@ -87,8 +87,8 @@ class FBXSDK_DLL FbxSubDeformer : public FbxObject
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	FbxStringList GetTypeFlags() const override { return FbxStringList(); }
+	virtual void Construct(const FbxObject* pFrom);
+	virtual FbxStringList GetTypeFlags() const { return FbxStringList(); }
 
 	// Local
 	bool		mMultiLayer;

@@ -155,8 +155,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    EType GetConstraintType() const override;
+    virtual void ConstructProperties(bool pForceSet);
+    virtual EType GetConstraintType() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

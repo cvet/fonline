@@ -26,10 +26,10 @@ public:
 	FbxWriterFbx5(FbxManager& pManager, FbxExporter& pExporter, int pID, FbxStatus& pStatus);
 	virtual ~FbxWriterFbx5();
 
-	bool FileCreate(char* pFileName) override;
-    bool FileCreate(FbxStream* pStream, void* pStreamData) override;
-	bool FileClose() override;
-	bool IsFileOpen() override;
+	virtual bool FileCreate(char* pFileName);
+    virtual bool FileCreate(FbxStream* pStream, void* pStreamData);
+	virtual bool FileClose();
+	virtual bool IsFileOpen();
 
 	typedef enum 
 	{
@@ -40,14 +40,14 @@ public:
 
 	void SetExportMode(EExportMode pMode);
 
-	void GetWriteOptions() override;
-	bool Write(FbxDocument* pDocument) override;
+	virtual void GetWriteOptions();
+	virtual bool Write(FbxDocument* pDocument);
 
 	virtual bool Write(FbxDocument* pDocument, FbxIO* pFbx);
-	bool PreprocessScene(FbxScene& pScene) override;
-	bool PostprocessScene(FbxScene& pScene) override;
+	virtual bool PreprocessScene(FbxScene& pScene);
+	virtual bool PostprocessScene(FbxScene& pScene);
 
-	bool SupportsStreams() const  override		{ return true; }
+	virtual bool SupportsStreams() const		{ return true; }
 
 private:
 	bool WriteAnimation(FbxScene& pScene);

@@ -110,12 +110,6 @@ public:
       */
     FbxVector4 GetTranslationOffset(const FbxObject* pObject) const;
 
-    /** Retrieve the translation offset FbxProperty of the specified constraint source.
-    * \param pObject The specified constraint source
-    * \return The current translation offset property.
-    */
-    FbxProperty GetTranslationOffsetProperty(const FbxObject* pObject) const;
-
     /** Set the rotation offset of the specified constraint source.
       * \param pObject The specified constraint source.
       * \param pRotation The new offset vector.
@@ -124,15 +118,9 @@ public:
 
     /** Retrieve the rotation offset of the specified constraint source.
       * \param pObject The specified constraint source.
-      * \return The current rotation offset.
+      * \return The current translation offset.
       */
     FbxVector4 GetRotationOffset(const FbxObject* pObject) const;
-
-    /** Retrieve the rotation offset FbxProperty of the specified constraint source.
-      * \param pObject The specified constraint source
-      * \return The current rotation offset property.
-      */
-    FbxProperty GetRotationOffsetProperty(const FbxObject* pObject) const;
 
     /** Add a constraint source to the constraint.
       * \param pObject New constraint source.
@@ -143,13 +131,13 @@ public:
     /** Retrieve the constraint source count.
       * \return Current constraint source count.
       */
-    int GetConstraintSourceCount() const override;
+    int GetConstraintSourceCount() const;
 
     /** Retrieve a constraint source object.
       * \param pIndex Index of the constraint source.
       * \return The constraint source at the specified index.
       */
-    FbxObject* GetConstraintSource(int pIndex) const override;
+    FbxObject* GetConstraintSource(int pIndex) const;
 
     /** Set the constrained object.
       * \param pObject The constrained object.
@@ -159,15 +147,15 @@ public:
     /** Retrieve the constrained object.
       * \return Current constrained object.
       */
-    FbxObject* GetConstrainedObject() const override;
+    FbxObject* GetConstrainedObject() const;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    EType GetConstraintType() const override;
+    virtual void ConstructProperties(bool pForceSet);
+    virtual EType GetConstraintType() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

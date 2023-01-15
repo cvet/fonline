@@ -36,29 +36,29 @@ public:
     * \param pScene
     * \return Returns true if some names have been modified.
     */
-    bool DecodeScene(FbxScene* pScene) override;
+    virtual bool DecodeScene(FbxScene* pScene);
 
     /** This method renames all the names in the scene
     * \param pScene
     * \return Returns true if some names have been modified.
     */
-    bool EncodeScene(FbxScene* pScene) override;
+    virtual bool EncodeScene(FbxScene* pScene);
 
     /** This method find the original name of a given string
     * \param pName
     * \return Returns true if the name has been modified.
     */
-    bool DecodeString(FbxNameHandler& pName) override;
+    virtual bool DecodeString(FbxNameHandler& pName);
 
     /** This method find the renaming name of a given string
     * \param pName
     * \param pIsPropertyName
     * \return Returns true if the name has been modified.
     */
-    bool EncodeString(FbxNameHandler& pName, bool pIsPropertyName=false) override;
+    virtual bool EncodeString(FbxNameHandler& pName, bool pIsPropertyName=false);
 
     //! clean up the name cells.
-    void CleanUp() override;
+    virtual void CleanUp();
 };
 
 #include <fbxsdk/fbxsdk_nsend.h>

@@ -29,10 +29,10 @@ class FbxBindingTable;
   * FbxImplementation* lImpl = FbxImplementation::Create( &pMyScene, "MyImplementation" );
   * pMyObject.AddImplementation( lImpl );
   * pMyObject.SetDefaultImplementation( lImpl );
-  * lImpl->RenderAPI = FBXSDK_RENDERING_API_DIRECTX;
+  * lImpl->RenderAPI = FBXSDK_RENDERING_API_DIRECTX; //FBXSDK_RENDERING_API_DIRECTX, FBXSDK_RENDERING_API_OPENGL, FBXSDK_RENDERING_API_MENTALRAY or FBXSDK_RENDERING_API_PREVIEW
   * lImpl->RenderAPIVersion = "9.0"; //API Version
   *
-  * lImpl->Language = FBXSDK_SHADING_LANGUAGE_HLSL;
+  * lImpl->Language = FBXSDK_SHADING_LANGUAGE_HLSL; //FBXSDK_SHADING_LANGUAGE_HLSL, FBXSDK_SHADING_LANGUAGE_GLSL, FBXSDK_SHADING_LANGUAGE_CGFX or FBXSDK_SHADING_LANGUAGE_MRSL
   * lImpl->LanguageVersion = "1.0";  //Language Version
   * \endcode
   *
@@ -42,7 +42,7 @@ class FbxBindingTable;
   * \endcode
   * Also, you can access the exist FbxImplementation in FbxObject by this:
   * \code
-  * const FbxImplementation* lImpl = GetImplementation( pMyObject, FBXSDK_IMPLEMENTATION_CGFX );
+  * const FbxImplementation* lImpl = GetImplementation( pMyObject, FBXSDK_IMPLEMENTATION_CGFX ); // FBXSDK_IMPLEMENTATION_PREVIEW, FBXSDK_IMPLEMENTATION_MENTALRAY, FBXSDK_IMPLEMENTATION_CGFX, FBXSDK_IMPLEMENTATION_HLSL, FBXSDK_IMPLEMENTATION_OGS or FBXSDK_IMPLEMENTATION_NONE
   * \endcode
   * \nosubgrouping
   * \see FbxImplementationFilter
@@ -65,7 +65,7 @@ public:
     //@{
 
 	/** Shader Language.
-      * * \see Predefined values in fbxshadingconventions.h
+      * \see FBXSDK_SHADING_LANGUAGE_HLSL, FBXSDK_SHADING_LANGUAGE_GLSL, FBXSDK_SHADING_LANGUAGE_CGFX and FBXSDK_SHADING_LANGUAGE_MRSL in conventions.h
       */
 	FbxPropertyT<FbxString>			Language;
 
@@ -73,7 +73,7 @@ public:
 	FbxPropertyT<FbxString>			LanguageVersion;
 
 	/** Render API.
-      * \see Predefined values in fbxshadingconventions.h
+      * \see FBXSDK_SHADING_LANGUAGE_HLSL, FBXSDK_SHADING_LANGUAGE_GLSL, FBXSDK_SHADING_LANGUAGE_CGFX and FBXSDK_SHADING_LANGUAGE_MRSL in conventions.h
       */
 	FbxPropertyT<FbxString>			RenderAPI;
 
@@ -232,7 +232,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
+	virtual void ConstructProperties(bool pForceSet);
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

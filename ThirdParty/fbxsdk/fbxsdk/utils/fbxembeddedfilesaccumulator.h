@@ -105,7 +105,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 private:
-    bool internal_ProcessObject(FbxObject* pObject) override;
+    virtual bool internal_ProcessObject(FbxObject* pObject);
     FbxSet<FbxString>   mPropertyFilter;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };

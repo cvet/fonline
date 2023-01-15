@@ -64,12 +64,12 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
-    EDeformerType GetDeformerType() const override { return FbxDeformer::eVertexCache; }
+	virtual FbxObject& Copy(const FbxObject& pObject);
+	virtual EDeformerType GetDeformerType() const { return FbxDeformer::eVertexCache; }
     
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    FbxStringList GetTypeFlags() const override;
+	virtual void ConstructProperties(bool pForceSet);
+	virtual FbxStringList GetTypeFlags() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

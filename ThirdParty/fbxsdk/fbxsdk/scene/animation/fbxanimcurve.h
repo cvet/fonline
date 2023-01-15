@@ -815,12 +815,12 @@ public:
 		virtual void KeyModifyEnd () = 0;
 
 		//! Remove all the keys of the animation curve and free buffer memory.
-        void KeyClear () override = 0;
+		virtual void KeyClear () = 0;
 
 		/** Get the number of keys.
 		  * \return Key count.
 		  */
-        int KeyGetCount () const override = 0;
+		virtual int KeyGetCount () const = 0;
 
 		/** Add a given key at given time. The new key is appended after all the other animation curve's keys.
 		* Function FbxAnimCurve::KeyInsert() should be used instead if the key 
@@ -839,7 +839,7 @@ public:
 		* \remark Key value, interpolation type and tangent mode must be set 
 		*  explicitly afterwards.
 		*/
-        int KeyAdd (FbxTime pTime, FbxAnimCurveKeyBase& pKey, int* pLast = NULL) override = 0;
+		virtual int KeyAdd (FbxTime pTime, FbxAnimCurveKeyBase& pKey, int* pLast = NULL) = 0; 
 
 		/** Add a key at given time. The new key is appended after all the other animation curve's keys.
 		* Function FbxAnimCurve::KeyInsert() should be used instead if the key 
@@ -865,20 +865,20 @@ public:
 		* \remark Result is undetermined if animation curve has no key or if index 
 		* is out of bounds.
 		*/
-        bool KeySet(int pIndex,  FbxAnimCurveKeyBase& pKey) override = 0;
+		virtual bool KeySet(int pIndex,  FbxAnimCurveKeyBase& pKey) = 0;
 		    
 		/** Remove key at given index. Other key indices are updated automatically.
 		* \param pIndex Index of key to remove.
 		* \return \c true on success, \c false otherwise.
 		*/
-        bool KeyRemove(int pIndex) override = 0 ;
+		virtual bool KeyRemove(int pIndex) = 0;
 
 		/** Remove all the keys in the given range.
 		* \param pStartIndex Index of the first key to remove (inclusive).
 		* \param pEndIndex Index of the last key to remove (inclusive).
 		* \return true on success.
 		*/
-        bool KeyRemove(int pStartIndex, int pEndIndex) override = 0;
+		virtual bool KeyRemove(int pStartIndex, int pEndIndex) = 0;
 
 		/** Insert a key at given time.
 		* This function should be used instead of FbxAnimCurve::KeyAdd() if the key 
@@ -1051,14 +1051,14 @@ public:
 		*   \param pKeyIndex   Index of the queried key.
 		*	\return Key time (time at which this key is occurring).
 		*/
-        FbxTime KeyGetTime(int pKeyIndex) const override = 0;
+		virtual FbxTime KeyGetTime(int pKeyIndex) const = 0;
 
 		/** Set key time.
 		* \param pKeyIndex   Index of the key.
 		* \param pTime Key time (time at which this key is occurring).
 		* \remark The new key time might modify the key index.
 		*/
-        void KeySetTime(int pKeyIndex, FbxTime pTime) override = 0;
+		virtual void KeySetTime(int pKeyIndex, FbxTime pTime) = 0;
 
 		/** Set or unset the tangent break. When this flag is set (FbxAnimCurveDef::eTangentBreak), the key's left and right slopes are independent.
 		* When this flag is off, the key's left and right slope are equal.
@@ -1270,7 +1270,7 @@ public:
 		* has no key.
 		* \remarks This function takes extrapolation into account.
 		*/
-        float Evaluate (FbxTime pTime, int* pLast = NULL) override = 0;
+		virtual float Evaluate (FbxTime pTime, int* pLast = NULL) = 0;
 
 		/**	Evaluate animation curve value at a given key index.
 		* \param pIndex Any value from 0 to FbxAnimCurve::KeyGetCount() - 1.
@@ -1283,7 +1283,7 @@ public:
 		* This function does not take extrapolation into account.
 		* Result is undetermined if index is out of bounds.
 		*/
-        float EvaluateIndex( double pIndex) override = 0;
+		virtual float EvaluateIndex( double pIndex) = 0;
 		    
 		/**	Evaluate function left derivative at given time.
 		* \param pTime Time of evaluation.
@@ -1318,7 +1318,7 @@ public:
 		  * \param pTimeInterval Reference to receive start and end time.
 		  * \return \c true on success, \c false otherwise.
 		  */
-        bool GetTimeInterval(FbxTimeSpan& pTimeInterval) const override = 0;
+		virtual bool GetTimeInterval(FbxTimeSpan& pTimeInterval) = 0;
 
 		/** Copy animation curve content into current animation curve.
 		  * \param pSource Animation curve to be copied (which will not be modified).
@@ -1348,9 +1348,9 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 	virtual KFCurve* GetKFCurve() = 0;
-    bool Store(FbxIO* pFileObject, bool pLegacyVersion=false) override = 0;
-    bool Retrieve(FbxIO* pFileObject) override = 0;
-    void ExtrapolationSyncCallback() override = 0;
+	virtual bool Store(FbxIO* pFileObject, bool pLegacyVersion=false) = 0;
+    virtual bool Retrieve(FbxIO* pFileObject) = 0;
+	virtual void ExtrapolationSyncCallback() = 0;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

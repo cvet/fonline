@@ -97,7 +97,7 @@ protected:
 	bool SetDoubleParameter(FbxProperty pProperty, double pDouble);
 	bool GetDoubleParameter(FbxProperty pProperty, double pDouble) const;
 	
-    void ConstructProperties(bool pForceSet) override;
+	virtual void ConstructProperties(bool pForceSet);
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

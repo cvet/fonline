@@ -56,7 +56,7 @@ public:
     /** Get the type of the sub deformer.
       * \return SubDeformer type identifier: eCluster.
       */
-    EType GetSubDeformerType() const override {return eCluster; };
+    EType GetSubDeformerType() const {return eCluster; };
 
     /** Restore the cluster to its initial state.
       * Calling this function will clear the following:
@@ -258,7 +258,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+    virtual FbxObject& Copy(const FbxObject& pObject);
     void SetUserData(const char* pUserDataID, const char* pUserData);
     const char* GetUserDataID () const;
     const char* GetUserData () const;
@@ -270,10 +270,10 @@ public:
 
 
 protected:
-    void Construct(const FbxObject* pFrom) override;
-    void ConstructProperties(bool pForceSet) override;
+    virtual void Construct(const FbxObject* pFrom);
+    virtual void ConstructProperties(bool pForceSet);
 
-    FbxStringList GetTypeFlags() const override;
+    virtual FbxStringList GetTypeFlags() const;
 
     ELinkMode               mLinkMode;
     FbxString               mUserDataID;

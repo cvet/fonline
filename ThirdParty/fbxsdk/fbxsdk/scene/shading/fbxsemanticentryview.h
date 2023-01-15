@@ -83,7 +83,7 @@ public:
 	* \return       Entry type as string "FbxSemanticEntry".
 	* \remarks Always use EntryType() to get the right entry type.
 	*/
-	const char* EntryType() const override;
+	virtual const char* EntryType() const;
 };
 
 #include <fbxsdk/fbxsdk_nsend.h>

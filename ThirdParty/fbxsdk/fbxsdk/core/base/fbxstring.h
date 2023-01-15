@@ -407,7 +407,7 @@ public:
 		* \return \c true if something got replaced. */
 		bool ReplaceAll(const char* pFind, const char* pReplaceBy);
 
-		/** Replace all occurrence of character to find by replacement character.
+        /** Replace all occurrence of character to find by replacement character.
 		* \param pFind The character to look for.
 		* \param pReplaceBy The character to replace by.
 		* \return \c true if character found and replaced. */
@@ -422,13 +422,6 @@ public:
 		* \param pSpans The span
 		* \return The number of tokens. */
 		int GetTokenCount(const char* pSpans) const;
-
-		/** Get number of tokens.
-		* \param pString The string
-		* \param pStringLength The length of the string
-		* \param pSpan The span
-		* \return The number of tokens. */
-		static int GetTokenCount(const char* pString, size_t pStringLength, char pSpan);
 
 		/** Get token at given index.
 		* \param pTokenIndex The token index.

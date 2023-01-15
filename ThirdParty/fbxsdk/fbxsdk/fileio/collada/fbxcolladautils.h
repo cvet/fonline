@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2017 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -17,27 +17,10 @@
 
 #include <fbxsdk/fileio/collada/fbxcolladatokens.h>
 #include <fbxsdk/fileio/collada/fbxcolladaiostream.h>
-#include <fbxsdk/scene/fbxscene.h>
-#include <fbxsdk/utils/fbxrenamingstrategybase.h>
-#include <fbxsdk/utils/fbxnamehandler.h>
 
-#include <libxml/globals.h>
+#include <components/libxml2-2.7.8/include/libxml/globals.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
-
-class FBXSDK_DLL FbxRenamingStrategyCollada : public FbxRenamingStrategyBase
-{
-public:
-	FbxRenamingStrategyCollada();
-	virtual ~FbxRenamingStrategyCollada();
-
-	void CleanUp() override;
-	bool DecodeScene(FbxScene* pScene) override;
-	bool EncodeScene(FbxScene* pScene) override;
-	bool DecodeString(FbxNameHandler& pName) override;
-	bool EncodeString(FbxNameHandler& pName, bool pIsPropertyName = false) override;
-};
-
 
 #ifndef INT_MAX
 	#define INT_MAX 0x7FFFFFFF
@@ -209,12 +192,8 @@ void DAE_GetElementContent(xmlNode * pElement, TYPE & pData)
 {
     if (pElement != NULL)
     {
-        xmlChar* lContent = xmlNodeGetContent(pElement);
-		if (lContent)
-		{
-			FromString(&pData, (const char *)lContent);
-			xmlFree(lContent);
-		}
+        FbxAutoFreePtr<xmlChar> lContent(xmlNodeGetContent(pElement));
+        FromString(&pData, (const char *)lContent.Get());
     }
 }
 
@@ -249,11 +228,10 @@ bool DAE_GetElementAttributeValue(xmlNode * pElement, const char * pAttributeNam
     if (!pElement || !pAttributeName)
         return false;
 
-    xmlChar* lPropertyValue = xmlGetProp(pElement, (const xmlChar *)pAttributeName);
+    FbxAutoFreePtr<xmlChar> lPropertyValue(xmlGetProp(pElement, (const xmlChar *)pAttributeName));
     if (lPropertyValue)
     {
-        FromString(&pData, (const char *)lPropertyValue);
-		xmlFree(lPropertyValue);
+        FromString(&pData, (const char *)lPropertyValue.Get());
         return true;
     }
     return false;
@@ -269,11 +247,10 @@ inline bool DAE_GetElementAttributeValue(xmlNode * pElement,
     if (!pElement || !pAttributeName)
         return false;
 
-    xmlChar* lPropertyValue =xmlGetProp(pElement, (const xmlChar *)pAttributeName);
+    FbxAutoFreePtr<xmlChar> lPropertyValue(xmlGetProp(pElement, (const xmlChar *)pAttributeName));
     if (lPropertyValue)
     {
-        pData = (const char *)lPropertyValue;
-		xmlFree(lPropertyValue);
+        pData = (const char *)lPropertyValue.Get();
         return true;
     }
     return false;
@@ -291,10 +268,9 @@ bool DAE_CompareAttributeValue(xmlNode * pElement,
 
 /** Get the ID of another element from the url attribute of the given element.
   * \param pElement The specific XML element in which the ID is looked for.
-  * \param pExternalRef The external reference part of the url (before the #)
   * \return The ID of another element if success, or an empty string if no url attributes are found.
   */
-const FbxString DAE_GetIDFromUrlAttribute(xmlNode * pElement, FbxString& pExternalRef);
+const FbxString DAE_GetIDFromUrlAttribute(xmlNode * pElement);
 
 /** Get the ID of another element from the source attribute of the given element.
   * \param pElement The specific XML element in which the ID is looked for.

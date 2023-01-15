@@ -30,8 +30,8 @@ class FBXSDK_DLL FbxGenericNode : public FbxObject
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	void Construct(const FbxObject* pFrom) override;
-    FbxStringList GetTypeFlags() const override;
+	virtual void Construct(const FbxObject* pFrom);
+    virtual FbxStringList GetTypeFlags() const;
 
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };

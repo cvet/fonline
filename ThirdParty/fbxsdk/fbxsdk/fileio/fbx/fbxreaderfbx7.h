@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2019 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -54,31 +54,31 @@ public:
       * \param pFlags        the EFileOpenSpecialFlags to open with
       * \return if the file is open successfully return true, otherwise return false
       */
-    bool FileOpen(char* pFileName, EFileOpenSpecialFlags pFlags) override;
+    virtual bool FileOpen(char* pFileName, EFileOpenSpecialFlags pFlags);
 
     /** Open file with default flag
       *	\param pFileName     name of the File to open
       * \return if the file is open successfully return \c true, otherwise return \c false
       */
-    bool FileOpen(char* pFileName) override;
+    virtual bool FileOpen(char* pFileName);
 
     /** Open file with default flag
       */
-    bool FileOpen(FbxFile* pFile) override;
+    virtual bool FileOpen(FbxFile* pFile);
 
     /** Open file from stream
       */
-	bool FileOpen(FbxStream * pStream, void* pStreamData) override;
+	virtual bool FileOpen(FbxStream * pStream, void* pStreamData);
 
     /** Close the file stream
       * \return if the file is closed successfully return \c true, otherwise return \c false
       */
-    bool FileClose() override;
+    virtual bool FileClose();
 
     /** Check whether the file stream is open.
       *	\return if the file stream is open return \c true, otherwise return \c false.
       */
-    bool IsFileOpen() override;
+    virtual bool IsFileOpen();
 
     /** Get current Import mode
       *	
@@ -90,14 +90,14 @@ public:
       *	\param pMinor       Minor version
       *	\param pRevision    Revision version
       */
-    void GetVersion(int& pMajor, int& pMinor, int& pRevision) override;
+    virtual void GetVersion(int& pMajor, int& pMinor, int& pRevision);
 
     /** Get axis system information from file
       *	\param pAxisSystem      axis system in file
       * \param pSystemUnits     system unit in file
       * \return if either pAxisSystem or pSystemUnits is \c NULL return \c false, otherwise return \c true.
       */
-    bool GetAxisInfo(FbxAxisSystem* pAxisSystem, FbxSystemUnit* pSystemUnits) override;
+    virtual bool GetAxisInfo(FbxAxisSystem* pAxisSystem, FbxSystemUnit* pSystemUnits);
 
 	/** Get FBX file time mode read from GlobalSettings in FBX 6.n and FBX 7.n
 	  *	\param pTimeMode  ref to a FbxTime::EMode enum	
@@ -105,35 +105,33 @@ public:
 	  *	\remarks    This function must be called after FbxImporter::Initialize().
 	  *             Can be used for statistics (via GlobalSettings) before loading the whole scene from the file.
 	  */
-	bool GetFrameRate(FbxTime::EMode &pTimeMode) override;
+	virtual bool GetFrameRate(FbxTime::EMode &pTimeMode);
 
     /** Get the statistics from file
       *	\param pStats statistics in file
       *	\return if fetching statistics is successfully return \c true, otherwise return \c false.
       */
-    bool GetStatistics(FbxStatistics* pStats) override;
+    virtual bool GetStatistics(FbxStatistics* pStats);
 
      /** Get the file stream options
       *	\param pParseFileAsNeeded       Whether to parse file as read options
       * \return true on success, otherwise return false.
       */
-    bool GetReadOptions(bool pParseFileAsNeeded = true) override;
+    virtual bool GetReadOptions(bool pParseFileAsNeeded = true);
 
     /** Read file with stream options
       *	\param pDocument        FbxDocument to store the file data
       *	\return if fetching statistics is successful return \c true, otherwise return \c false.
       */
-    bool Read(FbxDocument *pDocument) override;
+    virtual bool Read(FbxDocument *pDocument);
 
-#ifndef FBXSDK_ENV_WINSTORE
 	/** Reads extension plug-ins name, version and parameters, so that we can remember if a plug-in was used during export.
 	  * This is especially useful for extension plug-ins that modify the scene and also to warn users during import if an
 	  * extension plug-in was used that could be missing.
       * \param pParams The parameters of the extension plug-in. The properties of the objects are used
 	  * as the parameters of the extension plug-in.
       */
-	void PluginReadParameters(FbxObject& pParams) override;
-#endif /* !FBXSDK_ENV_WINSTORE */
+	virtual void PluginReadParameters(FbxObject& pParams);
 
     /** Get the file options
       * \param pFbx                     file object to read options
@@ -152,21 +150,21 @@ public:
     /** Returns the scene info from the file.
       * \return The pointer to file scene info defined by this reader.
       */
-    FbxDocumentInfo*  GetSceneInfo() override;
+    virtual FbxDocumentInfo*  GetSceneInfo();
 
     /** Returns the pointer to the list of TakeInfo from the file.
       * \return NULL
       */
-    FbxArray<FbxTakeInfo*>* GetTakeInfo() override;
+    virtual FbxArray<FbxTakeInfo*>* GetTakeInfo();
 
     /** Pass a progress handler to the reader
       * \param pProgress     FbxProgress to store the progress information.
       */
-    void SetProgressHandler(FbxProgress *pProgress) override;
+    virtual void SetProgressHandler(FbxProgress *pProgress);
 
-	void SetEmbeddingExtractionFolder(const char* pExtractFolder) override;
-    void SetEmbeddedFileCallback(FbxEmbeddedFileCallback* pCallback) override;
-	bool SupportsStreams() const  override { return true; }
+	virtual void SetEmbeddingExtractionFolder(const char* pExtractFolder);
+
+	virtual bool SupportsStreams() const { return true; }
 
 private:
     // Declared, not defined.

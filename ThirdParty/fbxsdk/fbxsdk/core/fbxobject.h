@@ -36,7 +36,7 @@ class FbxUserDataRecord;
 class FbxConnectEvent;
 
 //! \internal Macro used to declare ClassId mechanics.
-#define FBXSDK_CLASS_DECLARE(Class, Parent, Const_Override)\
+#define FBXSDK_CLASS_DECLARE(Class, Parent)\
 private:\
 	Class(const Class&);\
 	Class& operator=(const Class&);\
@@ -44,14 +44,14 @@ protected:\
 	virtual ~Class(){};\
 public:\
 	static FbxClassId ClassId;\
-	virtual FbxClassId GetClassId() Const_Override { return ClassId; }\
+	virtual FbxClassId GetClassId() const { return ClassId; }\
 	friend class FBXSDK_NAMESPACE::FbxManager;\
     typedef Parent ParentClass;\
 	static Class* Create(FbxManager* pManager, const char* pName);\
 
 //! \internal Macro used to declare the FbxObject class.
-#define FBXSDK_FBXOBJECT_DECLARE(Class, Parent, Const_Override)\
-	FBXSDK_CLASS_DECLARE(Class, Parent, Const_Override)\
+#define FBXSDK_FBXOBJECT_DECLARE(Class, Parent)\
+	FBXSDK_CLASS_DECLARE(Class, Parent)\
     FBXSDK_FRIEND_NEW()\
     static Class* Create(FbxObject* pContainer, const char* pName);\
 protected:\
@@ -59,14 +59,14 @@ protected:\
 
 //! Macro used to declare a new class derived from FbxObject.
 #define FBXSDK_OBJECT_DECLARE(Class, Parent)\
-	FBXSDK_FBXOBJECT_DECLARE(Class, Parent, const override)\
+	FBXSDK_FBXOBJECT_DECLARE(Class, Parent)\
 protected:\
 	Class(FbxManager& pManager, const char* pName) : Parent(pManager, pName){};\
 private: /* end of object declaration, put back private */\
 
 //! Macro used to declare a new abstract class derived from FbxObject.
 #define FBXSDK_ABSTRACT_OBJECT_DECLARE(Class, Parent)\
-	FBXSDK_CLASS_DECLARE(Class, Parent, const override)\
+	FBXSDK_CLASS_DECLARE(Class, Parent)\
 protected:\
 	static FbxObjectCreateProc Allocate;\
 	Class(FbxManager& pManager, const char* pName) : Parent(pManager, pName){};\
@@ -156,7 +156,7 @@ private: /* end of object declaration, put back private */\
   */
 class FBXSDK_DLL FbxObject : public FbxEmitter
 {
-	FBXSDK_FBXOBJECT_DECLARE(FbxObject, FbxEmitter, const);
+	FBXSDK_FBXOBJECT_DECLARE(FbxObject, FbxEmitter);
 
 public:
 	//! \name General Object Management
@@ -233,7 +233,7 @@ public:
 		* \param pObject	The source object to copy data from.
 		* \return			Returns the destination object being modified by the source.
 		* \remark			This function replace the assignment operator (operator=). It will copy all property values and the name. Connections are NOT copied. */
-        virtual FbxObject& Copy(const FbxObject& pObject);
+		virtual FbxObject& Copy(const FbxObject& pObject);
 
 		//! Types of clones that can be created for FbxObject.
 		enum ECloneType
@@ -276,15 +276,10 @@ public:
 		* \return The number of objects that are reference clones of this object. */
 		int GetReferencedByCount() const;
 
-		/** Returns a reference clone of this object at the specified index. This method has been deprecated in favor of retrieving the entire array with the function overload that takes an FbxArray.
+		/** Returns a reference clone of this object at the specified index.
 		* \param pIndex	The specified index, valid values are [0, GetReferencedByCount())
 		* \return		The reference clone, or NULL (if pIndex is out of range). */
-		FBX_DEPRECATED FbxObject* GetReferencedBy(int pIndex) const;
-
-		/** Returns an array containing all the reference clones of this object.
-		* \param pReferencedBy	The array of refeerences populated by this function.
-		* \return The number of objects that are reference clones of this object. */
-		int GetReferencedBy(FbxArray<FbxObject*>& pReferencedBy) const;
+		FbxObject* GetReferencedBy(int pIndex) const;
 	//@}
 
 	/**
@@ -351,7 +346,7 @@ public:
 		  * \param pName Whose prefix is removed.
 		  * \return A temporary string without prefix.
 		  */
-		static FbxString RemovePrefix(const char* pName);
+		static FbxString RemovePrefix(char* pName);
 
 		/** Strips the prefix of pName
 		  * \param lName Whose prefix is stripped.
@@ -946,7 +941,7 @@ public:
 		  * \return \c True on success, \c false otherwise.
 		  * \remarks The URL indicates where the object is stored.
 		  */
-		virtual bool SetUrl(const char* pUrl);
+		virtual bool SetUrl(char* pUrl);
 	//@}
 
 	/** \name Run-time ClassId Management */

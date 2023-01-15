@@ -31,7 +31,7 @@ class FBXSDK_DLL FbxConstraintCustom : public FbxConstraint
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    EType GetConstraintType() const override;
+    virtual EType GetConstraintType() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

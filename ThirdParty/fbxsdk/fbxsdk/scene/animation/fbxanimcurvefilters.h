@@ -251,15 +251,15 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)  override                  { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override  { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override          { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                   { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)  { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL)          { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
     //@}
 
     /** Apply filter on all the curves of an animation curve node.
@@ -269,18 +269,18 @@ public:
       * \remarks              This method collects all the FbxAnimCurve objects connected to the curve node
       *                       and calls Apply(FbxAnimCurve**, int)
       */
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL);
 
     /** Apply filter on an animation curve.
       * \param pCurve         Curve to which the filter is applied.
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL);
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** Get the current derivative tolerance.
       * \return     The value of the current derivative tolerance.
@@ -376,16 +376,16 @@ public:
     //! Constructor.
     FbxAnimCurveFilterScaleCompensate();
     //! Return name of the filter.
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                   { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override  { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus = NULL) override             { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus);       }
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus = NULL) override        { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus);   }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                   { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)  { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus = NULL)             { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus);       }
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus = NULL)        { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus);   }
     //@}
 
     /**Compensate parent's scale to children's scale. 
@@ -397,9 +397,8 @@ public:
      * \remarks      This filter will re-sample the animation curves.
      */
     virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxIOSettings& pIOS, FbxStatus* pStatus = NULL);
-
     /** Always fail because this filter needs 2 curves. */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus = NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus = NULL);
 };
 
 /**GimbleKiller filter.
@@ -421,7 +420,7 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /** This filter expects to work with 3 interdependent curves. Passing the animation stack makes no sense.
       * since this object would not know which curves to handle.
@@ -429,7 +428,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool NeedApply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL)  override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** This filter expects to work with 3 interdependent curves. Collecting all the animation curves from
       * the properties defined in \e pObj could not guarantee that we are manipulating 3 interdependent curves.
@@ -438,7 +437,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false
       */
-    bool NeedApply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Check if the animation curve node needs an application of the filter.
       * \param pCurveNode     Curve node to test.
@@ -448,7 +447,7 @@ public:
 	  *                       It will validate that 3 animation curves are defined. 
 	  *                       If the condition is not met, the method will return \c false.
       */
-    bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override;
+    virtual bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL);
 
     /** Check if the given animation curve need an application of the filter.
       * \param pCurve         Array of curves to test if they need the and application of the filter.
@@ -459,12 +458,12 @@ public:
       *                       that they are all coming from an Euler rotation anim curve node. Therefore, it expects 
       *                       \e pCount to be equal to 3.
       */
-    bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
      /** This filter expects to work with interdependent curves. Receiving one single curve is useless.
        * \return              \c false
        */
-    bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
     
     /** This filter expects to work with 3 interdependent curves. Passing the animation stack makes no sense
       * since this object would not know which curves to handle.
@@ -472,7 +471,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool Apply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** This filter expects to work with 3 interdependent curves. Collecting all the animation curves from
       * the properties defined in \e pObj could not guarantee that we are manipulating 3 interdependent curves.
@@ -481,7 +480,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false
       */
-    bool Apply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Apply filter on all the curves of an animation curve node.
       * \param pCurveNode     Curve node to which the filter is applied.
@@ -490,7 +489,7 @@ public:
       * \remarks              This method collects all the FbxAnimCurve objects connected to the curve node
       *                       and calls Apply(FbxAnimCurve**, int)
       */
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus = NULL) override;
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus = NULL);
 
     /** Apply filter on the given animation curve.
       * \param pCurve         Array of curve to which the filter is applied.
@@ -501,16 +500,16 @@ public:
       *                       that they are all coming from an Euler rotation anim curve node. Therefore, it expects 
       *                       \e pCount to be equal to 3.
       */
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus = NULL) override;
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus = NULL);
 
     /** This filter expects to work with interdependent curves. Receiving one single curve is useless.
       * \return               \c false
       */
-    bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus = NULL)  override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus = NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
 	//! Return \c true if key sync filter is enabled.
 	bool GetApplyKeySyncFilter() const;
@@ -549,15 +548,15 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                   { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override  { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override               { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                   { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)  { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL)               { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus); }
     //@}
 
     /** Apply filter on the given animation curve.
@@ -566,18 +565,18 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
     /** Apply filter on an animation curve.
       * \param pCurve         Curve to which the filter is applied.
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL);
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
 	//!	Get precision.
 	double GetPrecision() const;
@@ -628,18 +627,18 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool NeedApply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                   { return FbxAnimCurveFilter::NeedApply(pAnimStack, pStatus); }
-    bool NeedApply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override  { return FbxAnimCurveFilter::NeedApply(pObj, pAnimStack, pStatus); }
-    bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override               { return FbxAnimCurveFilter::NeedApply(pCurveNode, pStatus); }
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override                   { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus); }
+    virtual bool NeedApply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                   { return FbxAnimCurveFilter::NeedApply(pAnimStack, pStatus); }
+    virtual bool NeedApply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)  { return FbxAnimCurveFilter::NeedApply(pObj, pAnimStack, pStatus); }
+    virtual bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL)               { return FbxAnimCurveFilter::NeedApply(pCurveNode, pStatus); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL)                   { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus); }
     //@}
 
     /** Check if the given animation curve need an application of the filter.
@@ -648,14 +647,14 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if at least one animation curve in the array needs an application of the filter.
       */
-    bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
     /** One single curve cannot be sync'ed.
       * \param pCurve     Curve to test if it needs application of filter.
       * \param pStatus    The FbxStatus object to hold error codes.
       * \return           \c false
       */
-    bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Apply filter on the given animation curve.
       * \param pCurve         Array of curve to which the filter is applied.
@@ -663,7 +662,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
     /** Apply filter on an animation curve.
       * \param pCurve         Curve to which the filter is applied.
@@ -671,7 +670,7 @@ public:
       * \return               \c true.
       * \remarks              Has no effect since there is only one curve.
       */
-    bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return true; }
+    virtual bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return true; }
 };
 
 
@@ -691,16 +690,16 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override                   { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus); }
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override              { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL)                   { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus); }
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL)              { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
     //@}
 
     /** Apply the filter on an animation curve.
@@ -708,11 +707,11 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL);
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** Set if the keys are on frame.
       * \param pKeysOnFrame     value if keys are set on frame multiples.
@@ -780,15 +779,15 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override              { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL)              { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
     //@}
 
      /** Apply filter on all the curves of an animation curve node.
@@ -798,18 +797,18 @@ public:
       * \remarks              This method collects all the FbxAnimCurve objects connected to the curve node
       *                       and calls Apply(FbxAnimCurve**, int)
       */
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL);
 
     /** Apply filter on an animation curve.
       * \param pCurve         Curve to which the filter is applied.
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL);
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** Get the scale factor.
 	  *	\return The current scale factor.
@@ -848,15 +847,15 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override              { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                       { return FbxAnimCurveFilter::Apply(pAnimStack, pStatus); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)      { return FbxAnimCurveFilter::Apply(pObj, pAnimStack, pStatus); }
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL)              { return FbxAnimCurveFilter::Apply(pCurve, pCount, pStatus); }
     //@}
 
      /** Apply filter on all the curves of an animation curve node.
@@ -866,18 +865,18 @@ public:
       * \remarks              This method collects all the FbxAnimCurve objects connected to the curve node
       *                       and calls Apply(FbxAnimCurve**, int)
       */
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL);
 
     /** Apply filter on an animation curve.
       * \param pCurve         Curve to which the filter is applied.
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL);
 
     /** Reset the filter to its default parameters. (null curve)
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** Get the scale factor.
 	  *	\return The current scale factor.
@@ -900,7 +899,7 @@ private:
 
 /**Time shift and scale filter.
   *\nosubgrouping
-  * Filter to shift and/or scale key times on animation curve.
+  * Filter to shift key times and scale key values on animation curves.
   */
 class FBXSDK_DLL FbxAnimCurveFilterTSS : public FbxAnimCurveFilter
 {
@@ -914,16 +913,16 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override                       { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pAnimStack); }
-    bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL) override      { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pObj, pAnimStack); }
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override                   { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pCurveNode); }
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override              { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pCurve, pCount); }
+    virtual bool Apply(FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)                       { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pAnimStack); }
+    virtual bool Apply(FbxObject* pObj, FbxAnimStack* pAnimStack, FbxStatus* pStatus=NULL)      { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pObj, pAnimStack); }
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL)                   { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pCurveNode); }
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL)              { FBX_UNUSED(pStatus); return FbxAnimCurveFilter::Apply(pCurve, pCount); }
     //@}
 
     /** Apply filter on an animation curve.
@@ -931,11 +930,11 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       */
-    bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve& pCurve, FbxStatus* pStatus=NULL);
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** Get the time shift value.
     * \return     The time value used for the shift.
@@ -954,8 +953,6 @@ public:
 
     /** Set the scale factor.
       * \param pScale     The new scale factor to set.
-      * \remark The parameter can be set to any value but the filter will not use it when 0 or negative. 
-      * However, a custom filter derived from this class may be able to manipulate any value set. 
       */
 	void SetScale(double pScale);
 
@@ -996,7 +993,7 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to the name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /** This filter expects to work with 3 interdependent curves. Passing the animation stack makes no sense
       * since this object would not know which curves to handle.
@@ -1004,7 +1001,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool NeedApply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; };
+    virtual bool NeedApply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; };
 
     /** This filter expects to work with 3 interdependent curves. Collecting all the animation curves from
       * the properties defined in \e pObj could not guarantee that we are manipulating 3 interdependent curves.
@@ -1013,7 +1010,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool NeedApply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Check if the animation curve node needs an application of the filter.
       * \param pCurveNode     Curve node to test.
@@ -1023,7 +1020,7 @@ public:
 	  *                       It will validate that 3 animation curves are defined. 
 	  *                       If the condition is not met, the method will return \c false.
       */
-    bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override;
+    virtual bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL);
 
     /** Check if the given animation curve needs an application of the filter.
       * \param pCurve         Array of curves to test if they need an application of the filter.
@@ -1035,12 +1032,12 @@ public:
       *                       that they are all coming from an Euler rotation anim curve node. Therefore, it expects 
       *                       \e pCount to be equal to 3.
       */
-    bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
     /** This filter expects to work with interdependent curves. Receiving one single curve is useless.
       * \return               \c false.
       */
-    bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; };
+    virtual bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; };
 
     /** This filter expects to work with 3 interdependent curves. Passing the animation stack makes no sense
       * since this object would not know which curves to handle.
@@ -1048,7 +1045,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool Apply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; };
+    virtual bool Apply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; };
 
     /** This filter expects to work with 3 interdependent curves. Collecting all the animation curves from
       * the properties defined in \e pObj could not guarantee that we are manipulating 3 interdependent curves.
@@ -1057,7 +1054,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool Apply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Apply filter on all the curves of an animation curve node.
       * \param pCurveNode     Curve node to which the filter is applied.
@@ -1065,7 +1062,7 @@ public:
       * \return               \c true if the curve filtering operation was successful, \c false otherwise.
       * \remarks              This filter expects a Euler rotation curve node with three curves.
       */
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL);
 
     /** Apply filter on the given animation curve.
       * \param pCurve         Array of curve to which the filter is applied.
@@ -1076,16 +1073,16 @@ public:
       *                       that they are all coming from an Euler rotation anim curve node. Therefore, it expects 
       *                       \e pCount to be equal to 3.
       */
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
     /** This filter expects to work with 3 interdependent curves. Receiving one single curve is useless.
       * \return               \c false.
       */
-    bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** Get the unroll quality tolerance.
     * \return     The current unroll quality tolerance.
@@ -1152,7 +1149,6 @@ private:
     bool             mTestForPath;
     bool             mForceAutoTangents;
     FbxEuler::EOrder mRotationOrder;
-	bool             mRotationOrderExplicitlySet;
     int              mRotationLayerType;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
@@ -1176,15 +1172,15 @@ public:
     /** Get the name of the filter.
       * \return     Pointer to name.
       */
-    const char* GetName() const override;
+    virtual const char* GetName() const;
 
     /**
 	 * \name Exposed parent class methods.
 	 */
 	//@{
-    bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override          { return FbxAnimCurveFilter::NeedApply(pCurve, pCount,pStatus); }
-    bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL) override               { return FbxAnimCurveFilter::NeedApply(pCurveNode, pStatus);    }
-    bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus = NULL) override                 { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus);        }
+    virtual bool NeedApply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL)          { return FbxAnimCurveFilter::NeedApply(pCurve, pCount,pStatus); }
+    virtual bool NeedApply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus=NULL)               { return FbxAnimCurveFilter::NeedApply(pCurveNode, pStatus);    }
+    virtual bool Apply(FbxAnimCurveNode& pCurveNode, FbxStatus* pStatus = NULL)                 { return FbxAnimCurveFilter::Apply(pCurveNode, pStatus);        }
     //@}
 
     /** This filter expects to work with interdependent curves. Passing the animation stack makes no sense
@@ -1193,7 +1189,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false 
       */
-    bool NeedApply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** This filter expects to work with 9 interdependent curves. Collecting all the animation curves from
       * the properties defined in \e pObj could not guarantee that we are manipulating 9 interdependent curves.
@@ -1202,7 +1198,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false
       */
-    bool NeedApply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Check if the animation curve nodes need an application of the filter.
       * \param pCurveNode     Curves to test if they need an application of the filter.
@@ -1218,7 +1214,7 @@ public:
     /** This filter expects to work with interdependent curves. Receiving one single curve is useless.
       * \return               \c false.
       */
-    bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool NeedApply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** This filter expects to work with interdependent curves. Passing the animation stack makes no sense
       * since this object would not know which curves to handle.
@@ -1226,7 +1222,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool Apply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** This filter expects to work with 9 interdependent curves. Collecting all the animation curves from
       * the properties defined in \e pObj could not guarantee that we are manipulating 9 interdependent curves.
@@ -1235,7 +1231,7 @@ public:
       * \param pStatus        The FbxStatus object to hold error codes.
       * \return               \c false.
       */
-    bool Apply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) override { FBX_UNUSED(pStatus); return false; }
+    virtual bool Apply(FbxObject* /*pObj*/, FbxAnimStack* /*pAnimStack*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; }
 
     /** Apply filter on all the curves of the animation curve nodes.
       * \param pCurveNode     Curve nodes to which the filter is applied.
@@ -1260,7 +1256,7 @@ public:
       *                       The Apply(FbxAnimCurveNode*) method is not affected by this limitation since
       *                       the channel values can be accessed via the animation curve node. 
       */
-    bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL) override;
+    virtual bool Apply(FbxAnimCurve** pCurve, int pCount, FbxStatus* pStatus=NULL);
 
     /** Apply filter on the given animation curves.
       * \param pCurve         Array of curve to which the filter is applied.
@@ -1273,16 +1269,16 @@ public:
       * \remarks              The curves are assumed to represent: Translation X,Y and Z, Rotation X,Y and Z and
       *                       Scaling X,Y and Z in this order.
       */
-    virtual bool Apply(FbxAnimCurve** pCurve, double* pVals, FbxStatus* pStatus=NULL);
+    bool Apply(FbxAnimCurve** pCurve, double* pVals, FbxStatus* pStatus=NULL);
 
     /** This filter expects to work with interdependent curves. Receiving one single curve is useless.
       * \return               \c false.
       */
-    bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL)  override { FBX_UNUSED(pStatus); return false; };
+    virtual bool Apply(FbxAnimCurve& /*pCurve*/, FbxStatus* pStatus=NULL) { FBX_UNUSED(pStatus); return false; };
 
     /** Reset the filter to its default parameters.
       */
-    void Reset() override;
+    virtual void Reset();
 
     /** \enum EMatrixIndex Matrix index type
       * - \e ePreGlobal
@@ -1466,8 +1462,7 @@ private:
     bool DoConvert(FbxAnimCurve** pCurve, 
                     double pT[eAxisCount], 
                     double pR[eAxisCount], 
-                    double pS[eAxisCount],
-					FbxStatus* pStatus);
+                    double pS[eAxisCount]);
 
     void FindTimeInterval
     (

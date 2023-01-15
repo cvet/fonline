@@ -52,7 +52,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	void Construct(const FbxObject* pFrom) override;
+	virtual void Construct(const FbxObject* pFrom);
 
     int DetectReaderFileFormat(const char *pFileName);
     int DetectWriterFileFormat(const char *pFileName);

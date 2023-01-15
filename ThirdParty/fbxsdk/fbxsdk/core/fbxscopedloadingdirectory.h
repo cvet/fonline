@@ -41,8 +41,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 private:
-	bool SpecificLoad(FbxPluginData& pData) override;
-	void SpecificUnload(FbxPluginData& pData) override;
+	virtual bool SpecificLoad(FbxPluginData& pData);
+	virtual void SpecificUnload(FbxPluginData& pData);
 
 	FbxString mDirectoryPath;
 	FbxString mExtension;

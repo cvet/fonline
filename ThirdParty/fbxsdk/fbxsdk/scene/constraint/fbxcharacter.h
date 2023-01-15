@@ -58,26 +58,12 @@ public:
 	FbxVector4	mOffsetT;		//! Get offset position of this character link.
 	FbxVector4	mOffsetR;		//! Get offset rotation of this character link.
 	FbxVector4	mOffsetS;		//! Get offset scale of this character link.
-	FbxVector4	mParentROffset;	//! Get the parent offset rotation of this character link.
-	bool		mHasRotSpace;	//! \c true if this character link has a defined rotation space.
-	FbxLimits	mRLimits;		//! Get the rotation limits of this character link.
-	FbxVector4	mPreRotation;	//! Get the PreRotation of this character link.
-	FbxVector4	mPostRotation;	//! Get the PostRotation of this character link.
-
-    /** Get the rotation order of this character link.
-      * Note that, for legacy reasons, this member stores the old rotation order values which still have 
-      * some enum items that have been deprecated in the FBX SDK. For this reason, it is
-      * strongly suggested to use the \a FromFbxEOrder() and \a ToFbxEOrder() functions to ensure
-      * that the FbxEuler::EOrder enum values are always used when querying or setting this property
-      * regardless of how it is internally stored.
-      *
-      * \verbatim 
-      Ex: 
-         mRotOrder = FbxCharacterLink::FromFbxEOrder(FbxEuler::eOrderXYZ)
-         FbxEuler::EOrder order = FbxCharacterLink::ToFbxEOrder(mRotOrder)
-        \endverbatim
-      */
-    int			mRotOrder;
+	FbxVector4	mParentROffset;	//! Get the parent offset rotation of this character link
+	bool		mHasRotSpace;	//! \c true if this character link has a defined rotation space
+	FbxLimits	mRLimits;		//! Get the rotation limits of this character link
+	FbxVector4	mPreRotation;	//! Get the PreRotation of this character link
+	FbxVector4	mPostRotation;	//! Get the PostRotation of this character link
+	int			mRotOrder;		//! Get the rotation order of this character link
 	double		mAxisLen;		//! Get the axis length of this character link
 
 /*****************************************************************************************************************************
@@ -90,10 +76,6 @@ public:
 	FbxProperty mPropertyOffsetS;
 	FbxProperty mPropertyParentOffsetR;
 	FbxProperty mPropertyTemplateName;
-
-    static int FromFbxEOrder(FbxEuler::EOrder pOrder);
-    static FbxEuler::EOrder ToFbxEOrder(int pOrder);
-
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 
@@ -950,17 +932,17 @@ public:
     
     FbxCharacterLink*	GetCharacterLinkPtr(ENodeId pCharacterNodeId);
 
-    FbxObject*	Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
+    virtual FbxObject*	Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;    
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void ConstructProperties(bool pForceSet) override;
-	void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void ConstructProperties(bool pForceSet);
+	virtual void Destruct(bool pRecursive);
 
-	FbxObject&		Copy(const FbxObject& pObject) override;
-	EType			GetConstraintType() const override;
-	FbxStringList	GetTypeFlags() const override;
-	bool			ConnectNotify (FbxConnectEvent const &pEvent) override;
+	virtual FbxObject&		Copy(const FbxObject& pObject);
+	virtual EType			GetConstraintType() const;
+	virtual FbxStringList	GetTypeFlags() const;
+	virtual bool			ConnectNotify (FbxConnectEvent const &pEvent);
 
 private:
 	bool					InverseProperty(FbxProperty& pProp);

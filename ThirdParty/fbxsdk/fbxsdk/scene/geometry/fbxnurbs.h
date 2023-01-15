@@ -34,7 +34,7 @@ class FBXSDK_DLL FbxNurbs : public FbxGeometry
 
 public:
     //! Returns the FbxNodeAttribute::EType::eNurbs node attribute type.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+    virtual FbxNodeAttribute::EType GetAttributeType() const;
 
     //! Resets the NURBS surface its default values.
     void Reset();
@@ -225,13 +225,13 @@ public:
         eErrorCount
     };
 
-    FbxObject& Copy(const FbxObject& pObject) override;
-    void SetControlPointAt(const FbxVector4 &pCtrlPoint , int pIndex) override { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
-    void InitControlPoints(int pCount) override                                { ParentClass::InitControlPoints(pCount);             }
+    virtual FbxObject& Copy(const FbxObject& pObject);
+    virtual void SetControlPointAt(const FbxVector4 &pCtrlPoint , int pIndex) { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
+    virtual void InitControlPoints(int pCount)                                { ParentClass::InitControlPoints(pCount);             }
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-    void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+    virtual void Destruct(bool pRecursive);
 
     FbxUInt mUOrder, mVOrder;
     int mUCount, mVCount;

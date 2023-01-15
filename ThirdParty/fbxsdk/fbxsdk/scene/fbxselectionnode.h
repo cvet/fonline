@@ -89,8 +89,8 @@ public:
     static const char* SELECT_TYPE_NAMES[(int)eSelectTypeCount];
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-    bool ConnectNotify (FbxConnectEvent const &pEvent) override;
+	virtual void Construct(const FbxObject* pFrom);
+    bool ConnectNotify (FbxConnectEvent const &pEvent);
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

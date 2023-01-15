@@ -29,7 +29,7 @@ class FBXSDK_DLL FbxPatch : public FbxGeometry
 
 public:
     //! Returns the FbxNodeAttribute::EType::ePatch node attribute type.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+    virtual FbxNodeAttribute::EType GetAttributeType() const;
 
     //! Resets the patch to its default values.
     void Reset();
@@ -173,27 +173,27 @@ public:
           * \return         \c True if the content is successfully processed by the receiving stream.
           *                 If it is not successful, returns \c false.
           */
-        bool ContentWriteTo(FbxStream& pStream) const override;
+        virtual bool ContentWriteTo(FbxStream& pStream) const;
 
         /** Reads the content of the patch from the given stream.
           * \param pStream  The source stream.
           * \return         \c True if the patch completes with the data received from the stream successfully. 
           *                 If it is not successful, returns \c false.
           */
-        bool ContentReadFrom(const FbxStream& pStream) override;
+        virtual bool ContentReadFrom(const FbxStream& pStream);
     //@}
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
-    void InitControlPoints(int pCount)  override                              { ParentClass::InitControlPoints(pCount); }
-    void SetControlPointAt(const FbxVector4 &pCtrlPoint ,int pIndex) override { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
+    virtual FbxObject& Copy(const FbxObject& pObject);
+    virtual void InitControlPoints(int pCount)                                  { ParentClass::InitControlPoints(pCount); }
+    virtual void SetControlPointAt(const FbxVector4 &pCtrlPoint , int pIndex)   { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }    
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-    void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+    virtual void Destruct(bool pRecursive);
 
     EType mUType, mVType;
     int mUCount, mVCount;

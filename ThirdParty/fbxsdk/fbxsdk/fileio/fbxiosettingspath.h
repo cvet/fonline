@@ -197,8 +197,6 @@
 #define IOSN_NAMETAKE                   "UseSceneName"
 
 #define IOSN_SHAPE               		 "Shape"
-#define IOSN_SHAPEATTRIBUTES			 "ShapeAttributes" 
-#define IOSN_SHAPEATTRIBUTE_VALUES		 "ShapeAttributesValues"
 #define IOSN_LIGHT						 "Light"
 #define IOSN_LIGHTATTENUATION            "LightAttenuation"
 #define IOSN_CAMERA						 "Camera"
@@ -339,59 +337,44 @@
 
 #define IOSN_VERSIONS_UI_ALIAS           "VersionsUIAlias"
 #define IOSN_VERSIONS_COMP_DESCRIPTIONS  "VersionsCompDescriptions"
-
-// FBX specific
-#define IOSN_MODEL_COUNT                    "Model_Count"
-#define IOSN_DEVICE_COUNT                   "Device_Count"
-#define IOSN_CHARACTER_COUNT                "Character_Count"
-#define IOSN_ACTOR_COUNT                    "Actor_Count"
-#define IOSN_CONSTRAINT_COUNT               "Constraint_Count"
-#define IOSN_MEDIA_COUNT                    "Media_Count"
-#define IOSN_TEMPLATE                       "Template"
-#define IOSN_PIVOT                          "Pivot"
-#define IOSN_GLOBAL_SETTINGS                "Global_Settings"
-#define IOSN_MERGE_LAYER_AND_TIMEWARP       "Merge_Layer_and_Timewarp"
-#define IOSN_GOBO                           "Gobo"
-#define IOSN_LINK                           "Link"
-#define IOSN_MATERIAL                       "Material"
-#define IOSN_TEXTURE                        "Texture"
-#define IOSN_MODEL                          "Model"
-
-#define IOSN_NORMAL                         "LayerElementNormal"
-#define IOSN_BINORMAL                       "LayerElementBinormal"
-#define IOSN_TANGENT                        "LayerElementTangent"
-#define IOSN_VERTEXCOLOR                    "LayerElementVertexColor"
-#define IOSN_POLYGROUP                      "LayerElementPolygroup"
-#define IOSN_SMOOTHING                      "LayerElementSmoothing"
-#define IOSN_USERDATA                       "LayerElementUserData"
-#define IOSN_VISIBILITY                     "LayerElementVisibility"
-#define IOSN_EDGECREASE                     "LayerElementEdgeCrease"
-#define IOSN_VERTEXCREASE                   "LayerElementVertexCrease"
-#define IOSN_HOLE                           "LayerElementHole"
-
-#define IOSN_EMBEDDED                       "EMBEDDED"
-#define IOSN_PASSWORD                       "Password"
-#define IOSN_PASSWORD_ENABLE                "Password_Enable"
-#define IOSN_CURRENT_TAKE_NAME              "Current_Take_Name"
-#define IOSN_COLLAPSE_EXTERNALS             "COLLAPSE EXTERNALS"
-#define IOSN_COMPRESS_ARRAYS                "Compress_Arrays"
-#define IOSN_COMPRESS_LEVEL                 "Compress_Level"
-#define IOSN_COMPRESS_MINSIZE               "Compress_Minsize"
-#define IOSN_EMBEDDED_PROPERTIES_SKIP       "Embedded_Skipped_Properties"
-#define IOSN_EXPORT_FILE_VERSION            "ExportFileVersion"
-#define IOSN_SHOW_UI_WARNING                "ShowUIWarning"
-#define IOSN_ADD_MATERIAL_TO_EDIT           "AddMaterialToEdit"
-#define IOSN_ENABLE_TEX_DISPLAY             "EnableTexDisplay"
-#define IOSN_PREFERED_ENVELOPPE_SYSTEM      "kImportPreferedEnveloppeSystem"
-#define IOSN_FIRST_TIME_RUN_NOTICE          "FirstTimeRunNotice"
-#define IOSN_EXTRACT_EMBEDDED_DATA          "ExtractEmbeddedData"
-#define IOSN_CALCULATE_LEGACY_SHAPE_NORMAL  "CalculateLegacyShapeNormal"
+	
+// FBX specific 
+#define IOSN_MODEL_COUNT                 "Model_Count"
+#define IOSN_DEVICE_COUNT                "Device_Count"     
+#define IOSN_CHARACTER_COUNT             "Character_Count"  
+#define IOSN_ACTOR_COUNT                 "Actor_Count"      
+#define IOSN_CONSTRAINT_COUNT            "Constraint_Count" 
+#define IOSN_MEDIA_COUNT                 "Media_Count" 
+#define IOSN_TEMPLATE                    "Template"
+#define IOSN_PIVOT                       "Pivot"
+#define IOSN_GLOBAL_SETTINGS             "Global_Settings"
+#define IOSN_MERGE_LAYER_AND_TIMEWARP    "Merge_Layer_and_Timewarp"
+#define IOSN_GOBO                        "Gobo"
+#define IOSN_LINK                        "Link"
+#define IOSN_MATERIAL                    "Material"
+#define IOSN_TEXTURE                     "Texture"
+#define IOSN_MODEL                       "Model"
+#define IOSN_EMBEDDED                    "EMBEDDED"
+#define IOSN_PASSWORD                    "Password"
+#define IOSN_PASSWORD_ENABLE             "Password_Enable"
+#define IOSN_CURRENT_TAKE_NAME           "Current_Take_Name"
+#define IOSN_COLLAPSE_EXTERNALS          "COLLAPSE EXTERNALS"
+#define IOSN_COMPRESS_ARRAYS             "Compress_Arrays"
+#define IOSN_COMPRESS_LEVEL              "Compress_Level"
+#define IOSN_COMPRESS_MINSIZE            "Compress_Minsize"
+#define IOSN_EMBEDDED_PROPERTIES_SKIP    "Embedded_Skipped_Properties"
+#define IOSN_EXPORT_FILE_VERSION         "ExportFileVersion"
+#define IOSN_SHOW_UI_WARNING			 "ShowUIWarning"
+#define IOSN_ADD_MATERIAL_TO_EDIT		 "AddMaterialToEdit"
+#define IOSN_ENABLE_TEX_DISPLAY          "EnableTexDisplay"
+#define IOSN_PREFERED_ENVELOPPE_SYSTEM   "kImportPreferedEnveloppeSystem"
+#define IOSN_FIRST_TIME_RUN_NOTICE       "FirstTimeRunNotice"
+#define IOSN_EXTRACT_EMBEDDED_DATA       "ExtractEmbeddedData"
 
 // internal usage
-#define IOSN_USETMPFILEPERIPHERAL		   "UseTmpFilePeripheral"
-#define IOSN_CONSTRUCTIONHISTORY           "ConstructionHistory"
-#define IOSN_RELAXED_FBX_CHECK             "RelaxedFbxCheck"
-#define IOSN_KEEP_PRODUCER_CAM_SRCOBJ      "KeepProducerCamSrcObj"
+#define IOSN_USETMPFILEPERIPHERAL		 "UseTmpFilePeripheral"
+#define IOSN_CONSTRUCTIONHISTORY         "ConstructionHistory"
+#define IOSN_RELAXED_FBX_CHECK           "RelaxedFbxCheck"
 
 //---------------------------
 // import defined path
@@ -595,41 +578,26 @@
 #define IMP_FBX_CONSTRAINT_COUNT        IMP_FBX "|" IOSN_CONSTRAINT_COUNT 
 #define IMP_FBX_MEDIA_COUNT             IMP_FBX "|" IOSN_MEDIA_COUNT      
 
-#define IMP_FBX_TEMPLATE                       IMP_FBX "|" IOSN_TEMPLATE
-#define IMP_FBX_PIVOT                          IMP_FBX "|" IOSN_PIVOT
-#define IMP_FBX_GLOBAL_SETTINGS                IMP_FBX "|" IOSN_GLOBAL_SETTINGS
-#define IMP_FBX_CHARACTER                      IMP_FBX "|" IOSN_CHARACTER
-#define IMP_FBX_CONSTRAINT                     IMP_FBX "|" IOSN_CONSTRAINT
-#define IMP_FBX_MERGE_LAYER_AND_TIMEWARP       IMP_FBX "|" IOSN_MERGE_LAYER_AND_TIMEWARP
-#define IMP_FBX_GOBO                           IMP_FBX "|" IOSN_GOBO
-#define IMP_FBX_SHAPE                          IMP_FBX "|" IOSN_SHAPE
-#define IMP_FBX_LINK                           IMP_FBX "|" IOSN_LINK
-#define IMP_FBX_MATERIAL                       IMP_FBX "|" IOSN_MATERIAL
-#define IMP_FBX_TEXTURE                        IMP_FBX "|" IOSN_TEXTURE
-#define IMP_FBX_MODEL                          IMP_FBX "|" IOSN_MODEL
-#define IMP_FBX_AUDIO                          IMP_FBX "|" IOSN_AUDIO
-#define IMP_FBX_ANIMATION                      IMP_FBX "|" IOSN_ANIMATION
-#define IMP_FBX_PASSWORD                       IMP_FBX "|" IOSN_PASSWORD
-#define IMP_FBX_PASSWORD_ENABLE                IMP_FBX "|" IOSN_PASSWORD_ENABLE
-#define IMP_FBX_CURRENT_TAKE_NAME              IMP_FBX "|" IOSN_CURRENT_TAKE_NAME
-#define IMP_FBX_EXTRACT_EMBEDDED_DATA          IMP_FBX "|" IOSN_EXTRACT_EMBEDDED_DATA
-#define IMP_FBX_CALCULATE_LEGACY_SHAPE_NORMAL  IMP_FBX "|" IOSN_CALCULATE_LEGACY_SHAPE_NORMAL // only used on FBX v7 (and above) imports. Turning this flag off will prevent the legacy type shapes to have normals
-
-#define IMP_FBX_NORMAL                   IMP_FBX "|" IOSN_NORMAL
-#define IMP_FBX_BINORMAL                 IMP_FBX "|" IOSN_BINORMAL
-#define IMP_FBX_TANGENT                  IMP_FBX "|" IOSN_TANGENT
-#define IMP_FBX_VERTEXCOLOR              IMP_FBX "|" IOSN_VERTEXCOLOR
-#define IMP_FBX_POLYGROUP                IMP_FBX "|" IOSN_POLYGROUP
-#define IMP_FBX_SMOOTHING                IMP_FBX "|" IOSN_SMOOTHING
-#define IMP_FBX_USERDATA                 IMP_FBX "|" IOSN_USERDATA
-#define IMP_FBX_VISIBILITY               IMP_FBX "|" IOSN_VISIBILITY
-#define IMP_FBX_EDGECREASE               IMP_FBX "|" IOSN_EDGECREASE
-#define IMP_FBX_VERTEXCREASE             IMP_FBX "|" IOSN_VERTEXCREASE
-#define IMP_FBX_HOLE                     IMP_FBX "|" IOSN_HOLE
-
+#define IMP_FBX_TEMPLATE                    IMP_FBX "|" IOSN_TEMPLATE
+#define IMP_FBX_PIVOT                       IMP_FBX "|" IOSN_PIVOT
+#define IMP_FBX_GLOBAL_SETTINGS             IMP_FBX "|" IOSN_GLOBAL_SETTINGS
+#define IMP_FBX_CHARACTER                   IMP_FBX "|" IOSN_CHARACTER
+#define IMP_FBX_CONSTRAINT                  IMP_FBX "|" IOSN_CONSTRAINT
+#define IMP_FBX_MERGE_LAYER_AND_TIMEWARP    IMP_FBX "|" IOSN_MERGE_LAYER_AND_TIMEWARP
+#define IMP_FBX_GOBO                        IMP_FBX "|" IOSN_GOBO
+#define IMP_FBX_SHAPE                       IMP_FBX "|" IOSN_SHAPE	
+#define IMP_FBX_LINK                        IMP_FBX "|" IOSN_LINK
+#define IMP_FBX_MATERIAL                    IMP_FBX "|" IOSN_MATERIAL
+#define IMP_FBX_TEXTURE                     IMP_FBX "|" IOSN_TEXTURE
+#define IMP_FBX_MODEL                       IMP_FBX "|" IOSN_MODEL
+#define IMP_FBX_AUDIO						IMP_FBX "|" IOSN_AUDIO
+#define IMP_FBX_ANIMATION                   IMP_FBX "|" IOSN_ANIMATION
+#define IMP_FBX_PASSWORD                    IMP_FBX "|" IOSN_PASSWORD        
+#define IMP_FBX_PASSWORD_ENABLE             IMP_FBX "|" IOSN_PASSWORD_ENABLE 
+#define IMP_FBX_CURRENT_TAKE_NAME           IMP_FBX "|" IOSN_CURRENT_TAKE_NAME
+#define IMP_FBX_EXTRACT_EMBEDDED_DATA       IMP_FBX "|" IOSN_EXTRACT_EMBEDDED_DATA
 // internal use
-#define IMP_RELAXED_FBX_CHECK           IMP_FBX "|" IOSN_RELAXED_FBX_CHECK
-#define IMP_KEEP_PRODUCER_CAM_SRCOBJ    IMP_FBX "|" IOSN_KEEP_PRODUCER_CAM_SRCOBJ
+#define IMP_RELAXED_FBX_CHECK               IMP_FBX "|" IOSN_RELAXED_FBX_CHECK
 
 #define IMP_BUTTON_WEB_UPDATE           IMP_INFORMATION_GRP "|" IOSN_BUTTON_WEB_UPDATE
 #define IMP_PI_VERSION                  IMP_INFORMATION_GRP "|" IOSN_PI_VERSION
@@ -791,8 +759,6 @@
 #define EXP_CACHE_SIZE                  EXP_CACHE_GRP "|" IOSN_CACHE_SIZE
 
 #define EXP_SHAPE               		EXP_DEFORMATION "|" IOSN_SHAPE
-#define EXP_SHAPEATTRIBUTES             EXP_DEFORMATION "|" IOSN_SHAPEATTRIBUTES
-#define EXP_SHAPEATTRIBUTESVALUES       EXP_SHAPEATTRIBUTES "|" IOSN_SHAPEATTRIBUTE_VALUES
 #define EXP_SKINS			    		EXP_DEFORMATION "|" IOSN_SKINS
 
 #define EXP_APPLYCSTKEYRED              EXP_CURVEFILTERS "|" IOSN_APPLYCSTKEYRED
@@ -905,7 +871,6 @@
 #define IOSN_MOTION_FRAME_RATE_USED							"MotionFrameRateUsed"
 #define IOSN_MOTION_FRAME_RANGE						    	"MotionFrameRange"
 #define IOSN_MOTION_WRITE_DEFAULT_AS_BASE_TR                "MotionWriteDefaultAsBaseTR"
-#define IOSN_MOTION_UP_AXIS_USED_IN_FILE					"MotionUpAxisUsedInFile"   
 
 // Import
 
@@ -919,7 +884,6 @@
 #define IMP_MOB_SET_OCCLUDED_TO_LAST_VALID_POSITION			IMP_MOTION_BASE "|" IOSN_MOTION_SET_OCCLUDED_TO_LAST_VALID_POSITION
 #define IMP_MOB_AS_OPTICAL_SEGMENTS							IMP_MOTION_BASE "|" IOSN_MOTION_AS_OPTICAL_SEGMENTS
 #define IMP_MOB_ASF_SCENE_OWNED								IMP_MOTION_BASE "|" IOSN_MOTION_ASF_SCENE_OWNED
-#define IMP_MOB_UP_AXIS_USED_IN_FILE						IMP_MOTION_BASE "|" IOSN_MOTION_UP_AXIS_USED_IN_FILE
 
 // Acclaim AMC options
 #define IMP_ACCLAIM_AMC_CREATE_REFERENCE_NODE				IMP_ACCLAIM_AMC "|" IOSN_MOTION_CREATE_REFERENCE_NODE

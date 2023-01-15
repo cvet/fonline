@@ -70,7 +70,7 @@ public:
 
 
     //! Returns the type of node attribute.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+    virtual FbxNodeAttribute::EType GetAttributeType() const;
 
     /** Detects if the point is in the boundary's control hull.
       * \param pPoint       The point to be detected.
@@ -87,7 +87,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+    virtual FbxObject& Copy(const FbxObject& pObject);
 
     void ClearCurves();
     void CopyCurves( FbxBoundary const& pOther );
@@ -95,7 +95,7 @@ public:
     bool IsCounterClockwise();
 
 protected:
-    void ConstructProperties(bool pForceSet) override;
+    virtual void ConstructProperties(bool pForceSet);
 
     void Reset();
     bool LineSegmentIntersect(const FbxVector4 & pStart1, const FbxVector4 & pEnd1, const FbxVector4 & pStart2, const FbxVector4 & pEnd2 ) const;
@@ -111,7 +111,7 @@ class FBXSDK_DLL FbxTrimNurbsSurface : public FbxGeometry
     FBXSDK_OBJECT_DECLARE(FbxTrimNurbsSurface,FbxGeometry);
 public:
     //! Returns the type of node attribute.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+    virtual FbxNodeAttribute::EType GetAttributeType() const;
 
 
     /** Returns the number of regions on this trimmed NURBS surface.
@@ -192,7 +192,7 @@ public:
       */
     inline bool GetFlipNormals() const { return  mFlipNormals; }
 
-    int GetControlPointsCount() const override;
+    virtual int GetControlPointsCount() const;
 
     /** Sets the control point and the normal values for a specified index.
       * \param pCtrlPoint         The value of the control point.
@@ -200,24 +200,24 @@ public:
       * \param pIndex             The specified index.
       * \param pI2DSearch         Unused in this implementation.
       */
-    void SetControlPointAt(const FbxVector4 &pCtrlPoint, const FbxVector4 &pNormal , int pIndex, bool pI2DSearch = false) override;
+    virtual void SetControlPointAt(const FbxVector4 &pCtrlPoint, const FbxVector4 &pNormal , int pIndex, bool pI2DSearch = false);
 
     /** Sets the control point for a specified index.
       * \param pCtrlPoint         The value of the control point.
       * \param pIndex             The specified index.
       */
-    void SetControlPointAt(const FbxVector4 &pCtrlPoint, int pIndex) override { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
+    virtual void SetControlPointAt(const FbxVector4 &pCtrlPoint, int pIndex) { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
 
      /** Returns the NURBS surface's control points.
        * \param pStatus         The FbxStatus object to hold error codes.
        */
-    FbxVector4* GetControlPoints(FbxStatus* pStatus = NULL) const override;
+    virtual FbxVector4* GetControlPoints(FbxStatus* pStatus = NULL) const;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+    virtual FbxObject& Copy(const FbxObject& pObject);
 
     bool IsValid(bool mustClosed = true);
     void ClearBoundaries();
@@ -226,7 +226,7 @@ public:
     void RebuildRegions();
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
+	virtual void Construct(const FbxObject* pFrom);
 
 private:
     bool			mFlipNormals;

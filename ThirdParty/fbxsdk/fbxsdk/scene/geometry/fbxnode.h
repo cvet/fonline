@@ -49,9 +49,9 @@ class FbxAnimCurveFilterMatrixConverter;
 /** Represents an element in the scene graph. A scene graph is a tree of FbxNode 
   * objects. The tree management services are self contained in this class.
   *
-  * \note The FBX SDK does not test the validity of the constructed scene graph by default. It 
+  * \note The FBX SDK does not test the validity of the constructed scene graph. It 
   * is the responsibility of the caller to make sure that it does not generate cyclic 
-  * graphs in a node hierarchy. The class FbxSceneCheckUtility can be used for this test.
+  * graphs in a node hierarchy.
   *
   * Besides the tree management, this class defines all the properties required to describe
   * the position of the object in the scene. This information include the basic Translation,
@@ -564,13 +564,13 @@ public:
 	  *
 	  * \note Please refer to the FBX SDK programmers guide for more details.
 	  * 
-	  * The application of the pivots is performed by calling the method ConvertPivotAnimationRecursive(). Typically,
+	  * The application of the pivots is performed by calling the method ConvertPivotAnimation(). Typically,
 	  * you set-up the eDestinationPivot context to match what your system can directly support and leave at (0,0,0) the
 	  * attributes that are not supported by your system. When the values of a specific attribute in the 
 	  * two contexts (source and destination) are identical, the system considers that no adjustment is 
 	  * required because the attribute is directly supported in the destination world.
 	  *
-	  * Below is an example of code that shows how the pivot information could be setup before calling ConvertPivotAnimationRecursive(). 
+	  * Below is an example of code that shows how the pivot information could be setup before calling ConvertPivotAnimation(). 
 	  * \code
 	  * FbxVector4 lZero(0,0,0);
       * FbxVector4 lOne(1,1,1);
@@ -969,8 +969,9 @@ public:
 		  */
 		void ResetPivotSet( FbxNode::EPivotSet pPivotSet );
 
-		/** Fully supports all the attributes defined in the pivot sets and can process animation data defined on different animation
-		  * stacks. 
+		/** This version is an improved version of the ConvertPivotAnimation(). It fully supports all the
+		  * attributes defined in the pivot sets and can process animation data defined on different animation
+		  * stack. 
 		  * \param pAnimStack The animation stack on which the conversion will take place. If equals \c NULL, convert the animation on all the animation stacks.
 		  * \param pConversionTarget If set to EPivotSet::eDestinationPivot,
 		  *                          convert animation data from the EPivotSet::eSourcePivot pivot context
@@ -2316,7 +2317,7 @@ public:
 		int mSubIndex;
 	};
 
-    void					AddChildName(const char* pChildName);
+    void					AddChildName(char* pChildName);
     char*					GetChildName(FbxUInt pIndex) const;
     FbxUInt					GetChildNameCount() const;
 
@@ -2338,10 +2339,10 @@ public:
     // Duplicate this node as well as all its node attributes and the Target and UpTarget objects.
     FbxNode*                DeepCloneWithNodeAttributes();
 
-    FbxObject&		Copy(const FbxObject& pObject) override;
-    const char*		GetTypeName() const override;
-    FbxStringList	GetTypeFlags() const override;
-    bool			PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty) override;
+    virtual FbxObject&		Copy(const FbxObject& pObject);
+    virtual const char*		GetTypeName() const;
+    virtual FbxStringList	GetTypeFlags() const;
+    virtual bool			PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty);
 
     enum ECullingType
 	{
@@ -2354,9 +2355,9 @@ public:
     bool					mCorrectInheritType;
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void ConstructProperties(bool pForceSet) override;
-	void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void ConstructProperties(bool pForceSet);
+	virtual void Destruct(bool pRecursive);
 
 	void				Reset();
 	bool				GetAnimationIntervalRecursive(FbxTimeSpan& pTimeInterval, FbxAnimLayer* pAnimLayer);

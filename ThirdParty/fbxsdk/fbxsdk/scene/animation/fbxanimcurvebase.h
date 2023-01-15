@@ -236,20 +236,20 @@ public:
           * \param pTimeInterval Reference to receive start time and end time.
           * \return \c true on success, \c false otherwise.
           */
-        virtual bool GetTimeInterval(FbxTimeSpan& pTimeInterval) const;
+        virtual bool GetTimeInterval(FbxTimeSpan& pTimeInterval);
     //@}
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+    virtual FbxObject& Copy(const FbxObject& pObject);
     virtual bool Store(FbxIO* pFileObject, bool pLegacyVersion=false) = 0;
     virtual bool Retrieve(FbxIO* pFileObject) = 0;
 	virtual void ExtrapolationSyncCallback() = 0;
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
+	virtual void Construct(const FbxObject* pFrom);
 
 private:
     EExtrapolationType mPreExtrapolation;

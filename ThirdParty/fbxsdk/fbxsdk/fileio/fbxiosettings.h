@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2017 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -568,9 +568,9 @@ public:
 	};
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void ConstructProperties(bool pForceSet) override;
-	void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void ConstructProperties(bool pForceSet);
+	virtual void Destruct(bool pRecursive);
 
 private:
 	void AddNewPropInfo(FbxProperty& pProp);

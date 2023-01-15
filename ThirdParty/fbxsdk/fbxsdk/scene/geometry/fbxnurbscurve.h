@@ -63,7 +63,7 @@ class FBXSDK_DLL FbxNurbsCurve : public FbxGeometry
 
 public:
 	//! Returns the EType::eNurbsCurve node attribute type.
-    FbxNodeAttribute::EType GetAttributeType() const override;
+	virtual FbxNodeAttribute::EType GetAttributeType() const;
 
 	/** \enum EDimension        The dimension of the CVs.
 	  * - \e e2D                The CVs are two dimensional points.
@@ -194,7 +194,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    FbxObject& Copy(const FbxObject& pObject) override;
+    virtual FbxObject& Copy(const FbxObject& pObject);
 
 	bool FullMultiplicity() const;
 
@@ -210,12 +210,12 @@ public:
 
 	bool mIsRational;
 
-    void SetControlPointAt(const FbxVector4 &pCtrlPoint , int pIndex) override { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
-    void InitControlPoints(int pCount) override                                { ParentClass::InitControlPoints(pCount);             }
+    virtual void SetControlPointAt(const FbxVector4 &pCtrlPoint , int pIndex) { ParentClass::SetControlPointAt(pCtrlPoint, pIndex); }
+    virtual void InitControlPoints(int pCount)                                { ParentClass::InitControlPoints(pCount);             }
 
 protected:
-	void Construct(const FbxObject* pFrom) override;
-	void Destruct(bool pRecursive) override;
+	virtual void Construct(const FbxObject* pFrom);
+	virtual void Destruct(bool pRecursive);
 
 	void Reset();
 

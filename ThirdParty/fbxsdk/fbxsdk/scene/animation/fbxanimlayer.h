@@ -184,7 +184,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
+	virtual void ConstructProperties(bool pForceSet);
 	virtual FbxAnimLayer* GetAnimLayer();
 
 private:

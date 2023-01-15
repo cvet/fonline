@@ -56,7 +56,7 @@
 	#define FBXSDK_strcpy(dst, size, src)			strcpy(dst, src)
 	#define FBXSDK_strncpy(dst, size, src, count)	strncpy(dst, src, count)
 	#define FBXSDK_strcat(dst, size, src)			strcat(dst, src)
-	#define FBXSDK_strtok(str, delim, ctx)			strtok_r(str, delim, ctx)
+	#define FBXSDK_strtok(str, delim, ctx)			strtok(str, delim)
 	#define FBXSDK_wcscpy(dst, size, src)			wcscpy(dst, src)
 	#define FBXSDK_wcscat(dst, size, src)			wcscat_s(dst, src)
 	#define FBXSDK_getpid							getpid	
@@ -67,17 +67,6 @@
 
 #else
 	#error Unsupported platform!
-#endif
-
-#if defined(FBXSDK_ENV_WIN)
-    #define FBXSDK_ftell64(fp)             _ftelli64(fp)
-    #define FBXSDK_fseek64(fp, offs, mode) _fseeki64(fp, offs, mode)
-#elif defined(FBXSDK_ENV_LINUX)  && !defined(FBXSDK_ENV_ANDROID)
-    #define FBXSDK_ftell64(fp)              ftello64(fp)
-    #define FBXSDK_fseek64(fp, offs, mode)  fseeko64(fp, offs, mode)
-#else
-    #define FBXSDK_ftell64(fp)              ftello(fp)
-    #define FBXSDK_fseek64(fp, offs, mode)  fseeko(fp, (off_t)offs, mode)
 #endif
 
 #define FBXSDK_strdup								FbxStrDup

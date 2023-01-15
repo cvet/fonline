@@ -140,8 +140,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    void ConstructProperties(bool pForceSet) override;
-    void Destruct(bool pRecursive) override;
+    virtual void ConstructProperties(bool pForceSet);
+	virtual void Destruct(bool pRecursive);
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 
