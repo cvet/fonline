@@ -43,6 +43,7 @@
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wnull-dereference"
 #pragma clang diagnostic ignored "-Wuninitialized-const-reference"
+#pragma clang diagnostic ignored "-Wdeprecated-builtins"
 #endif
 #include "fbxsdk.h"
 #endif
