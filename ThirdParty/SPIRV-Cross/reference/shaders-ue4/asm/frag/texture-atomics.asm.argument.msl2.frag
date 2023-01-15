@@ -56,6 +56,8 @@ struct type_Globals
     uint2 ShadowTileListGroupSize;
 };
 
+constant float3 _70 = {};
+
 struct spvDescriptorSetBuffer0
 {
     const device type_StructuredBuffer_v4float* CulledObjectBoxBounds [[id(0)]];
@@ -63,8 +65,6 @@ struct spvDescriptorSetBuffer0
     texture2d<uint> RWShadowTileNumCulledObjects [[id(2)]];
     device atomic_uint* RWShadowTileNumCulledObjects_atomic [[id(3)]];
 };
-
-constant float3 _70 = {};
 
 struct main0_out
 {
@@ -86,11 +86,11 @@ fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuff
     float2 _93 = float2((*spvDescriptorSet0._Globals).ShadowTileListGroupSize);
     float2 _96 = ((_91 / _93) * float2(2.0)) - float2(1.0);
     float2 _100 = (((_91 + float2(1.0)) / _93) * float2(2.0)) - float2(1.0);
-    float3 _102 = float3(_100.x, _100.y, _70.z);
-    _102.z = 1.0;
+    float3 _101 = float3(_100.x, _100.y, _70.z);
+    _101.z = 1.0;
     uint _103 = in.in_var_TEXCOORD0 * 5u;
     uint _107 = _103 + 1u;
-    if (all((*spvDescriptorSet0.CulledObjectBoxBounds)._m0[_107].xy > _96.xy) && all((*spvDescriptorSet0.CulledObjectBoxBounds)._m0[_103].xyz < _102))
+    if (all((*spvDescriptorSet0.CulledObjectBoxBounds)._m0[_107].xy > _96.xy) && all((*spvDescriptorSet0.CulledObjectBoxBounds)._m0[_103].xyz < _101))
     {
         float3 _121 = float3(0.5) * ((*spvDescriptorSet0.CulledObjectBoxBounds)._m0[_103].xyz + (*spvDescriptorSet0.CulledObjectBoxBounds)._m0[_107].xyz);
         float _122 = _96.x;

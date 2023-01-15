@@ -13,7 +13,7 @@
 * SDL2 - [SDL2-2.24.1](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
 * span - [span](https://github.com/tcbrindle/span)
-* SPIRV-Cross - [SPIRV-Cross-30.08.2021](https://github.com/KhronosGroup/SPIRV-Cross)
+* SPIRV-Cross - [SPIRV-Cross-1.3.236.0](https://github.com/KhronosGroup/SPIRV-Cross)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
