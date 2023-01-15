@@ -95,8 +95,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp(argc, argv, "");
 
-        WriteLog("Starting {} {}", App->GetName(), FO_GAME_VERSION);
-
 #if FO_IOS
         MainEntry(nullptr);
         App->SetMainLoopCallback(MainEntry);
