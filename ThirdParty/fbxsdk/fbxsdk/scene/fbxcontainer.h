@@ -89,8 +89,8 @@ public:
     FbxContainerTemplate* mContainerTemplate;
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

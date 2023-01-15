@@ -168,6 +168,30 @@ public:
 		  */
 		FbxAxisSystem(const EPreDefinedAxisSystem pAxisSystem);
 
+        /** Static method.
+          *
+          * This function takes a string representation of the axis system. It parses the string and outputs by reference. If the parse fails, the output is unmodified and the function returns false.
+          *
+          * The representation is three letters long, case-sensitive.
+          *
+          * The first letter is the left-right axis, x, y or z. Lower-case means the axis is positive going to the right, upper-case means it is positive going left.
+          *
+          * The second letter is the vertical axis, x, y or z. Lower-case means the axis is positive going to up, upper-case means it is positive going down.
+          *
+          * The third letter is the forward axis, x, y or z. Lower-case means the axis is positive going into the screen, upper-case means it is positive going from the screen, towards the viewer.
+          *
+          * Example: Maya Y-up is "xyZ" -- x points right, y points up, z points out of the screen.
+          * Example: Max is "xzy" -- x points right, z points up, y points into the screen.
+          *
+          * Note: It is possible to represent the same axis system in different ways with the same letters. For example, Maya Y-up can also be
+          *       "Xyz" if turned 180 degrees. This is accounted for in the function and therefore "Xyz" and "xyZ" will yield the same resulting FbxAxisSystem.
+          *
+          * \param pAxes String representation of the axis system, see the main description for format.
+          * \param pOutput Result of parsing, if parsing succeeded. Otherwise \c pOutput is unmodified.
+          * \return \c true if the parse succeeded, \c false otherwise.
+          */
+        static bool ParseAxisSystem(const char * pAxes, FbxAxisSystem& pOutput);
+
 		//! Destructor.
 		virtual ~FbxAxisSystem();
     //@}
@@ -223,7 +247,24 @@ public:
     static const FbxAxisSystem Lightwave;
 	//@}
 
-    /** Convert a scene to this axis system. Sets the axis system of the scene to this system unit. 
+    /** Convert a scene to this axis system. Sets the axis system of the scene to this axis system.
+      *
+      * This is a deep conversion: it modifies transforms, vertex positions,
+      * animation curves and so on throughout the hierarchy. Consequently, it
+      * is able to accurately support handedness changes.
+      *
+      * Custom properties will not be converted.
+      * \param pScene     The scene to convert
+      */
+    void DeepConvertScene(FbxScene* pScene) const;
+
+    /** Convert a scene to this axis system. Sets the axis system of the scene to this axis system.
+      *
+      * This conversion effects a rotation of the root nodes. Consequently, it
+      * cannot represent changes in handedness (e.g. from right-handed to
+      * left-handed).
+      *
+      * Custom properties will not be converted.
       * \param pScene     The scene to convert
       */
     void ConvertScene(FbxScene* pScene) const;
@@ -280,6 +321,8 @@ protected:
 		EAxis	mAxis;
 		int		mSign;
 	};
+
+    friend class FbxConversionMatrix;
 
     AxisDef mUpVector;
     AxisDef mFrontVector;

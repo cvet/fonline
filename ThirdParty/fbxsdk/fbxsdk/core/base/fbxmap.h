@@ -252,7 +252,7 @@ private:
 
 /** A simple map class representing a dictionary-like data structure.
 * \nosubgrouping */
-template <class Key, class Type, class Compare> class FBXSDK_DLL FbxSimpleMap
+template <class Key, class Type, class Compare> class FbxSimpleMap
 {
 public:
     typedef typename FbxMap<Key, Type, Compare>::RecordType* Iterator;
@@ -345,7 +345,7 @@ private:
 
 /** This class template declare a simple FbxObject map.
 * \nosubgrouping */
-template <class Type, class Compare> class FBXSDK_DLL FbxObjectMap : public FbxSimpleMap<Type, FbxObject*, Compare>
+template <class Type, class Compare> class FbxObjectMap : public FbxSimpleMap<Type, FbxObject*, Compare>
 {
 public:
     //! Constructor
@@ -363,7 +363,7 @@ public:
 
 /** A class that maps strings to objects with a basic string comparator.
 * \nosubgrouping */
-class FBXSDK_DLL FbxObjectStringMap : public FbxObjectMap<FbxString, FbxStringCompare>
+class FbxObjectStringMap : public FbxObjectMap<FbxString, FbxStringCompare>
 {
 public:
     //! Constructor

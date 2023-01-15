@@ -560,10 +560,15 @@ public:
 		* \return The count of property pages which make reference to this property page. */
 		int GetReferencedByCount(void) const;
 
-		/** According the given index,get the property page which make reference to this property page.
+		/** According the given index,get the property page which make reference to this property page. This method has been deprecated in favor of retrieving the entire array with the function overload that takes an FbxArray.
 		* \param pIndex The given index
 		* \return The pointer to the property page which reference to this property page and be found by index. */
-		void* GetReferencedBy(int pIndex) const; 
+		FBX_DEPRECATED void* GetReferencedBy(int pIndex) const;
+
+		/** Get an array containing all the property pages which make reference to this property page.
+		* \param pReferencedBy  The array of refeerences populated by this function.
+		* \return The number of references. */
+		int GetReferencedBy(FbxArray<void*>& pReferencedBy) const;
 	//@}
 
 private:

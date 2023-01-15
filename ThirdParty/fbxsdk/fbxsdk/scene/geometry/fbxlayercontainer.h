@@ -33,7 +33,7 @@ public:
 
 	/** Returns the type of node attribute.
 	  */
-	virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
 	/**
 	  * \name Layer Management 
@@ -122,7 +122,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 	int  GTC(FbxUInt i, int j);
 	void* GT (int  i,    FbxUInt l, int j); 
@@ -137,12 +137,12 @@ public:
 	void RemoveFromLayerElementsList(FbxLayerElement* pLEl);
 
 protected:
-	virtual void Destruct(bool pRecursive);
+    void Destruct(bool pRecursive) override;
 
 	void CopyLayers(const FbxLayerContainer* pLayerContainer);
 
-	virtual void SetDocument(FbxDocument* pDocument);
-	virtual	bool ConnectNotify (FbxConnectEvent const &pEvent);
+    void SetDocument(FbxDocument* pDocument) override;
+    bool ConnectNotify (FbxConnectEvent const &pEvent) override;
 
 	FbxArray<FbxLayer*> mLayerArray;
 	FbxArray<FbxLayerElement*> mLayerElementsList;

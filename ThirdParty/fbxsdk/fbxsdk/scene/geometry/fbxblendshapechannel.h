@@ -114,7 +114,7 @@ public:
     /** Get the type of the sub deformer.
       * \return      The sub deformer type identifier of blend shape channel.
       */
-    EType GetSubDeformerType() const {return eBlendShapeChannel; };
+    EType GetSubDeformerType() const override {return eBlendShapeChannel; };
 
     /** Restore the blend shape channel to the initial state.
       * Calling this function will do the following:
@@ -129,14 +129,14 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
-    virtual FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;
+    FbxObject& Copy(const FbxObject& pObject) override;
+    FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
     
 protected:
-    virtual void Construct(const FbxObject* pFrom);
-    virtual void ConstructProperties(bool pForceSet);
+    void Construct(const FbxObject* pFrom) override;
+    void ConstructProperties(bool pForceSet) override;
 
-    virtual FbxStringList GetTypeFlags() const;
+    FbxStringList GetTypeFlags() const override;
 
     //The full weights array of each shapes on this blend shape channel
 	FbxArray<double> mShapeFullWeightArray;

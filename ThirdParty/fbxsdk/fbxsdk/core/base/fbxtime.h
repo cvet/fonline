@@ -85,6 +85,7 @@ public:
 		  * - \e eFrames96			96 frames/s
 		  * - \e eFrames72			72 frames/s
 		  * - \e eFrames59dot94		~59.94 frames/s
+		  * - \e eFrames119dot88	~119.88 frames/s
 		  * - \e eModesCount		Number of time modes
 		  */
 		enum EMode
@@ -107,6 +108,7 @@ public:
 			eFrames96,
 			eFrames72,
 			eFrames59dot94,
+			eFrames119dot88,
 			eModesCount
 		};
 

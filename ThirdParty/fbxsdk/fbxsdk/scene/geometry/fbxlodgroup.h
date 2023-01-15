@@ -88,7 +88,7 @@ class FBXSDK_DLL FbxLODGroup : public FbxNodeAttribute
 
 public:
     //! Return the type of node attribute which is EType::eLODGroup.
-    virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
     /** \enum EDisplayLevel types to determine how to display nodes in LODGroup.
       * - \e eUseLOD Display the node according LOD threshold
@@ -292,11 +292,11 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-    virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+    void ConstructProperties(bool pForceSet) override;
 
 private:
 	int mNbThresholds;
@@ -311,7 +311,7 @@ private:
 	bool DisplayLevel(int pEl, FbxLODGroup::EDisplayLevel pValue);
 
 public:
-    virtual FbxStringList GetTypeFlags() const;
+    FbxStringList GetTypeFlags() const override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

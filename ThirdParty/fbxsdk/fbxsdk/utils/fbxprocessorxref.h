@@ -70,7 +70,7 @@ public:
           * be copied because the source is not found.
           * Memory is owned by the client code, and will not be freed by us.
           */
-        MissingUrlHandler*          MissingUrlHandler;
+        MissingUrlHandler*          MissingUrlHandlerCB;
 
     /** Since FbxProperty is an opaque type, we can't do an efficient operator <
       * on it, and must keep the data on the object, which can be compared through
@@ -125,8 +125,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
 
 	PropertyUpdateMap mUpdatedProperties;
 
@@ -134,9 +134,9 @@ protected:
 	// Also checks the ForceCopy property.
 	bool ShouldCopyFile(const FbxString& pTarget, const FbxString& pSource) const;
 
-	virtual bool	internal_ProcessCollectionBegin (FbxCollection*     pObject);
-	virtual bool	internal_ProcessCollectionEnd   (FbxCollection*     pObject);
-	virtual bool	internal_ProcessObject          (FbxObject*     pObject);
+    bool	internal_ProcessCollectionBegin (FbxCollection*     pObject) override;
+    bool	internal_ProcessCollectionEnd   (FbxCollection*     pObject) override;
+    bool	internal_ProcessObject          (FbxObject*     pObject) override;
 	bool			ProcessPathProperty(FbxProperty &pProperty);
 	virtual bool	ValidPropertyForXRefCopy(FbxObject* pObject, FbxProperty& lProperty) const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

@@ -305,7 +305,7 @@ public:
       * \return                      Effector node ID associated with the given effector node name, or FbxEffector::eNodeIdInvalid (-1) if
       *                              no effector node with pEffectorNodeName exists.
       */
-    static FbxEffector::ENodeId GetEffectorNodeId(char* pEffectorNodeName);
+    static FbxEffector::ENodeId GetEffectorNodeId(const char* pEffectorNodeName);
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -351,9 +351,9 @@ public:
 	FbxPropertyT<FbxReference> Character;
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
-	virtual FbxStringList GetTypeFlags() const;
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
+	FbxStringList GetTypeFlags() const override;
 
 private:
 	FbxArray<FbxProperty>    mFKBuf;

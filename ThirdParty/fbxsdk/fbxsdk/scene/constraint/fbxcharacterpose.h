@@ -94,13 +94,13 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
-    virtual FbxObject* Clone(                          FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;    
-            void       Clone(FbxScene* pPoseScene,     FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL);
+    FbxObject& Copy(const FbxObject& pObject) override;
+    FbxObject* Clone(                          FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
+    void       Clone(FbxScene* pPoseScene,     FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL);
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-    virtual void Destruct(bool pRecursive);
+	void Construct(const FbxObject* pFrom) override;
+    void Destruct(bool pRecursive) override;
 
 private:
     FbxScene* mPoseScene;

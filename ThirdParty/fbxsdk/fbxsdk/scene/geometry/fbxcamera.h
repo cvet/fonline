@@ -37,7 +37,7 @@ class FBXSDK_DLL FbxCamera : public FbxNodeAttribute
 
 public:
     //! Return the type of node attribute which is EType::eCamera.
-    virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
     //! Reset the camera to default values.
     void Reset();
@@ -1856,11 +1856,11 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 protected:
-    virtual void ConstructProperties(bool pForceSet);
-	virtual FbxStringList GetTypeFlags() const;
+    void ConstructProperties(bool pForceSet) override;
+    FbxStringList GetTypeFlags() const override;
 
 private:
     double ComputePixelRatio(FbxUInt pWidth, FbxUInt pHeight, double pScreenRatio = 1.3333333333);

@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2018 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -23,7 +23,10 @@
 #define FBXSDK_TC_INFINITY				FBXSDK_LONGLONG(0x7fffffffffffffff)
 #define FBXSDK_TC_FIX_DEN				FBXSDK_LONGLONG(100000000)
 
-#define FBXSDK_TC_MILLISECOND			FBXSDK_LONGLONG(46186158)
+#define FBXSDK_TC_LEGACY_MILLISECOND	FBXSDK_LONGLONG(46186158)
+#define FBXSDK_TC_LEGACY_SECOND			FbxLongLong(FBXSDK_TC_LEGACY_MILLISECOND*1000)
+
+#define FBXSDK_TC_MILLISECOND			FBXSDK_LONGLONG(141120)
 #define FBXSDK_TC_SECOND				FbxLongLong(FBXSDK_TC_MILLISECOND*1000)
 #define FBXSDK_TC_MINUTE				FbxLongLong(FBXSDK_TC_SECOND*60)
 #define FBXSDK_TC_HOUR					FbxLongLong(FBXSDK_TC_MINUTE*60)
@@ -85,6 +88,8 @@ FBXSDK_DLL FbxLongLong FbxTCSetMNTSCnd(int pHour, int pMinute, int pSecond, FbxL
 FBXSDK_DLL FbxLongLong FbxTCGetMNTSCnd(FbxLongLong pTime, int& pHour, int& pMinute, int& pSecond, int& pFrame, int& pField);
 FBXSDK_DLL FbxLongLong FbxTCSetMNTSC_2Xnd(int pHour, int pMinute, int pSecond, FbxLongLong pFrame, int pField);
 FBXSDK_DLL FbxLongLong FbxTCGetMNTSC_2Xnd(FbxLongLong pTime, int& pHour, int& pMinute, int& pSecond, int& pFrame, int& pField);
+FBXSDK_DLL FbxLongLong FbxTCSetMNTSC_4Xnd(int pHour, int pMinute, int pSecond, FbxLongLong pFrame, int pField);
+FBXSDK_DLL FbxLongLong FbxTCGetMNTSC_4Xnd(FbxLongLong pTime, int& pHour, int& pMinute, int& pSecond, int& pFrame, int& pField);
 FBXSDK_DLL FbxLongLong FbxTCSetMNTSC(int pHour, int pMinute, int pSecond, FbxLongLong pFrame, int pField);
 FBXSDK_DLL FbxLongLong FbxTCGetMNTSC(FbxLongLong pTime, int& pHour, int& pMinute, int& pSecond, int& pFrame, int& pField);
 FBXSDK_DLL FbxLongLong FbxTCSetPAL(int pHour, int pMinute, int pSecond, FbxLongLong pFrame, int pField);
@@ -93,6 +98,17 @@ FBXSDK_DLL FbxLongLong FbxTCSetFILM(int pHour, int pMinute, int pSecond, FbxLong
 FBXSDK_DLL FbxLongLong FbxTCGetFILM(FbxLongLong pTime, int& pHour, int& pMinute, int& pSecond, int& pFrame);
 FBXSDK_DLL FbxLongLong FbxTCSetFILMND(int pHour, int pMinute, int pSecond, FbxLongLong pFrame, int pField);
 FBXSDK_DLL FbxLongLong FbxTCGetFILMND(FbxLongLong pTime, int& pHour, int& pMinute, int& pSecond, int& pFrame, int& pField);
+
+FBXSDK_DLL FbxLongLong FbxTCFromLegacy(FbxLongLong pTime);
+FBXSDK_DLL FbxLongLong FbxTCToLegacy(FbxLongLong pTime);
+
+/*****************************************************************************************************************************
+** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
+*****************************************************************************************************************************/
+#define FBXSDK_TC_LEGACY_DEFINITION           127
+#define FBXSDK_TC_STANDARD_DEFINITION         0
+FBXSDK_DLL void      FbxTCSetDefinition(int pType);
+FBXSDK_DLL int       FbxTCGetDefinition();
 
 #include <fbxsdk/fbxsdk_nsend.h>
 

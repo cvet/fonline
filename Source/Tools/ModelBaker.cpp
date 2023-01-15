@@ -41,8 +41,7 @@
 
 #if FO_HAVE_FBXSDK
 #ifdef __clang__
-#pragma clang diagnostic ignored "-Wnull-dereference"
-#pragma clang diagnostic ignored "-Wuninitialized-const-reference"
+#pragma clang diagnostic ignored "-Wdeprecated-builtins"
 #endif
 #include "fbxsdk.h"
 #endif
@@ -288,7 +287,7 @@ public:
     {
         const auto* str = reinterpret_cast<const char*>(_file->GetCurBuf());
         auto len = 0;
-        while ((*str != 0) && len < max_size - 1) {
+        while (*str != 0 && len < max_size - 1) {
             str++;
             len++;
             if (*str == '\n' || (stop_at_first_white_space && *str == ' ')) {
@@ -315,7 +314,7 @@ public:
         }
     }
 
-    auto Read(void* data, int size) const -> int override
+    auto Read(void* data, FbxUInt64 size) const -> size_t override
     {
         _file->CopyData(data, size);
         return size;
@@ -323,11 +322,11 @@ public:
 
     auto GetState() -> EState override { return _curState; }
     auto Flush() -> bool override { return true; }
-    auto Write(const void* /*data*/, int /*size*/) -> int override { return 0; }
+    auto Write(const void* /*data*/, FbxUInt64 /*size*/) -> size_t override { return 0; }
     [[nodiscard]] auto GetReaderID() const -> int override { return 0; }
     [[nodiscard]] auto GetWriterID() const -> int override { return -1; }
-    [[nodiscard]] auto GetPosition() const -> long override { return static_cast<long>(_file->GetCurPos()); }
-    void SetPosition(long position) override { _file->SetCurPos(static_cast<uint>(position)); }
+    [[nodiscard]] auto GetPosition() const -> FbxInt64 override { return static_cast<FbxInt64>(_file->GetCurPos()); }
+    void SetPosition(FbxInt64 position) override { _file->SetCurPos(static_cast<size_t>(position)); }
     [[nodiscard]] auto GetError() const -> int override { return 0; }
     void ClearError() override { }
 

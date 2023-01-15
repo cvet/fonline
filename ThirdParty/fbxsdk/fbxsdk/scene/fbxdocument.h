@@ -60,7 +60,7 @@ public:
     */
     //@{
         //! Remove document members and restore default settings.
-        virtual void  Clear();
+        void  Clear() override;
 
         /** Add a member object and connect it to Roots.
 		  * \param pMember Object to add to the document.
@@ -74,7 +74,7 @@ public:
 
 		/** Find a member object in the document, that has the given type and name.
 		* \param pName Member name. */
-		template <class T> inline T* FindRootMember(char* pName){ return Roots.FindSrcObject<T>(pName); }
+		template <class T> inline T* FindRootMember(const char* pName){ return Roots.FindSrcObject<T>(pName); }
 
         //! Return the number of objects in the document.
         inline int GetRootMemberCount () const { return Roots.GetSrcObjectCount(); }
@@ -149,7 +149,7 @@ public:
         /** Retrieve the current peripheral of the document.
         * \return Current peripheral.
         */
-        virtual FbxPeripheral* GetPeripheral();
+        FbxPeripheral* GetPeripheral() override;
 
         /** Unload all the unloadable objects contained in the document using the currently set peripheral. 
           * \param pStatus The FbxStatus object to hold error codes.
@@ -285,17 +285,17 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
-	virtual void Compact();
+    FbxObject& Copy(const FbxObject& pObject) override;
+    void Compact() override;
 	void ConnectVideos();
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
-	virtual void Destruct(bool pRecursive);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
+	void Destruct(bool pRecursive) override;
 
-	virtual bool ConnectNotify(const FbxConnectEvent& pEvent);
-	virtual void SetDocument(FbxDocument* pDocument);
+	bool ConnectNotify(const FbxConnectEvent& pEvent) override;
+	void SetDocument(FbxDocument* pDocument) override;
 
 	bool		 FindTakeName(const FbxString& pTakeName);
 

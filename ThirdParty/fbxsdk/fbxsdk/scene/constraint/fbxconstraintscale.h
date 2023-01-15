@@ -70,31 +70,31 @@ public:
 	/** Retrieve the constraint source count.
 	  * \return Current constraint source count.
 	  */
-	int GetConstraintSourceCount() const;
+    int GetConstraintSourceCount() const override;
 
 	/** Retrieve a constraint source object.
 	  * \param pIndex Index of the source
 	  * \return Current source at the specified index.
 	  */
-	FbxObject* GetConstraintSource(int pIndex) const;
+    FbxObject* GetConstraintSource(int pIndex) const override;
 
 	/** Set the constrained object.
 	  * \param pObject The constrained object.
 	  */
-	void SetConstrainedObject(FbxObject* pObject);
+    void SetConstrainedObject(FbxObject* pObject);
 
 	/** Retrieve the constrained object.
 	  * \return Current constrained object.
 	  */
-	FbxObject* GetConstrainedObject() const;
+    FbxObject* GetConstrainedObject() const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	virtual void ConstructProperties(bool pForceSet);
-	virtual EType GetConstraintType() const;
+    void ConstructProperties(bool pForceSet) override;
+    EType GetConstraintType() const override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

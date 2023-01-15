@@ -20,22 +20,7 @@
 #include <fbxsdk/core/math/fbxmatrix.h>
 #include <fbxsdk/core/math/fbxaffinematrix.h>
 
-//On Mac OS, cmath will include math.h and undef "isnan"
-#if defined(FBXSDK_ENV_MAC)
-	#include <cmath>
-	extern "C" int isnan (double);
-#endif
-
 #include <fbxsdk/fbxsdk_nsbegin.h>
-
-#if defined(FBXSDK_ENV_WIN)
-	#ifndef isnan
-		#define isnan	_isnan
-	#endif
-	#ifndef finite
-		#define finite	_finite
-	#endif
-#endif
 
 //---------------------------------------------------------------------------------------
 //Common Constants

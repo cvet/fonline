@@ -143,7 +143,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    bool CopyProducerCamera(const char* pCameraName, const FbxCamera* pCamera) const;
+    bool CopyProducerCamera(const char* pCameraName, const FbxCamera* pCamera, bool pIncludeConnections = false) const;
 
 private:
     FbxGlobalCameraSettings(FbxManager& pManager, FbxScene& pScene);

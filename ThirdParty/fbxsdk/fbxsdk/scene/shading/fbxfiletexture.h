@@ -53,7 +53,7 @@ public:
 	/** Resets the default texture values.
 	  * \remarks            The texture file name is not reset.
 	  */
-	void Reset();
+    void Reset() override;
 
     /** Sets the associated texture file. 
       * \param pName        The absolute path of the texture file.   
@@ -107,7 +107,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 	bool operator==(FbxFileTexture const& pTexture) const;
 
@@ -115,8 +115,8 @@ public:
 	void SetMediaName(const char* pMediaName);
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
 
 	void Init();
 	void SyncVideoFileName(const char* pFileName);

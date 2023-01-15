@@ -63,7 +63,7 @@ public:
       * \remarks          The normals initialized with this function will have the ReferenceMode set to eDirect. Also,
       *                   the array will always be defined on layer 0.
       */
-    void InitNormals(int pCount = 0 );
+    void InitNormals(int pCount = 0, EFbxMemoryClearMode pInitializeMode = eClearToZero);
 
     /** Allocates memory space for the array of normals cloned from the pSrc.
       * \param pSrc       The source geometry from which the normals information is cloned.
@@ -627,14 +627,14 @@ public:
           * \return \c True if the content is successfully processed
           * by the receiving stream, \c false otherwise.
           */
-        virtual bool ContentWriteTo(FbxStream& pStream) const;
+        bool ContentWriteTo(FbxStream& pStream) const override;
 
         /** Reads the content of the geometry object from the specified stream.
           * \param pStream The source stream.
           * \return \c True if the geometry object fills itself with the received data
           * from the stream successfully, \c false otherwise.
           */
-        virtual bool ContentReadFrom(const FbxStream& pStream);
+        bool ContentReadFrom(const FbxStream& pStream) override;
     //@}
 
         /** Calculate the actual amount of memory used by this geometry object. 
@@ -646,8 +646,8 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
-	virtual void Compact();
+    FbxObject& Copy(const FbxObject& pObject) override;
+    void Compact() override;
 
     FbxArray<FbxVector4> mControlPoints;
 
@@ -659,8 +659,8 @@ public:
     bool GetBinormalsIndices(FbxLayerElementArrayTemplate<int>** pLockableArray, const int pLayerIndex = 0) const;
 
 protected:
-    virtual void ConstructProperties(bool pForceSet);
-    virtual void ContentClear();
+    void ConstructProperties(bool pForceSet) override;
+    void ContentClear() override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

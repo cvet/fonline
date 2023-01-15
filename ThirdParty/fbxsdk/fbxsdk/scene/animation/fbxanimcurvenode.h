@@ -292,7 +292,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
     static const char* CurveNodeNameFrom(const char* pName);
 	static bool EvaluateChannels(FbxAnimCurveNode* pCurveNode, double* pData, unsigned int pCount, FbxTime pTime);
@@ -312,10 +312,10 @@ private:
     void Evaluate(double* pData, FbxTime pTime);
     
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-    virtual void Destruct(bool pRecursive);
-    virtual void ConstructProperties(bool pForceSet);
-	virtual bool ConnectNotify(const FbxConnectEvent& pEvent);
+	void Construct(const FbxObject* pFrom) override;
+    void Destruct(bool pRecursive) override;
+    void ConstructProperties(bool pForceSet) override;
+	bool ConnectNotify(const FbxConnectEvent& pEvent) override;
 
     FbxAnimCurveNode* Find(FbxAnimCurveNode* pRoot, const FbxString& pName);
 

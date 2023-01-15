@@ -31,6 +31,9 @@
 #include <float.h>
 #include <math.h>
 #include <time.h>
+#include <stdexcept>
+#include <climits>
+#include <iterator>
 
 //---------------------------------------------------------------------------------------
 //Define Version and Namespace

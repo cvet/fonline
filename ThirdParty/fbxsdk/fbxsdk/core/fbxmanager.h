@@ -174,7 +174,7 @@ public:
 		/** Class unregistration.
 		  * \param pFBX_TYPE_Class  FBX type of unregistered class.
 		  */
-		template <typename T> inline void UnregisterFbxClass(const T* pFBX_TYPE_Class)
+		template <typename T> inline void UnregisterFbxClass(const T*)
 		{
 			Internal_UnregisterFbxClass(T::ClassId);
 			T::ClassId = FbxClassId();

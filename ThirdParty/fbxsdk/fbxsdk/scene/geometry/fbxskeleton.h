@@ -37,7 +37,7 @@ class FBXSDK_DLL FbxSkeleton : public FbxNodeAttribute
 
 public:
  	//! Return the type of node attribute (i.e: FbxNodeAttribute::EType::eSkeleton).
-	virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
     //! Reset the skeleton to default values and type to \c eRoot.
 	void Reset();
@@ -175,16 +175,16 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
 
 	void Reset( bool pResetProperties );
 
-	virtual const char* GetTypeName() const;
-	virtual FbxStringList GetTypeFlags() const;
+	const char* GetTypeName() const override;
+	FbxStringList GetTypeFlags() const override;
 
     EType mSkeletonType;
 

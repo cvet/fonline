@@ -306,9 +306,9 @@ public:
     bool GetEntryProperty(const FbxObject* pObject, const char* pEntryDestinationName, FbxProperty & pProp) const;
 
 protected:
-    virtual void Construct(const FbxObject* pFrom);
-    virtual void Destruct(bool pRecursive);
-    virtual void ConstructProperties(bool pForceSet);
+    void Construct(const FbxObject* pFrom) override;
+    void Destruct(bool pRecursive) override;
+    void ConstructProperties(bool pForceSet) override;
 
     void InstantiateFunction();
     bool Evaluate(const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
@@ -323,7 +323,7 @@ protected:
 /**  An evaluation operator to get the position of the node that is bound with this operator via a certain property.
   *  The position of the node is represented by translation.
   */
-class FbxNodePositionBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxNodePositionBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -338,10 +338,10 @@ public:
 	  * \param pResult A pointer to a buffer that can hold the result.
 	  * \return \c true on success, \c false otherwise.
 	  */
-	virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
+	bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
 	
 	//! Inverse evaluation for this binding function is not implemented yet.
-	virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+	bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -355,7 +355,7 @@ public:
 /**  An evaluation operator to get the direction of the node that is bound with this operator via a certain property.
   *  The direction of the node is represented by Euler rotation.
   */
-class FbxNodeDirectionBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxNodeDirectionBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -370,10 +370,10 @@ public:
 	  * \param pResult A pointer to a buffer that can hold the result.
 	  * \return \c true on success, \c false otherwise.
 	  */
-	virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
+	bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
 	
 	//! Inverse evaluation for this binding function is not implemented yet.
-	virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+	bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -386,7 +386,7 @@ public:
 
 /** A pass through operator used to assign constants to parameters.
 */
-class FbxAssignBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxAssignBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -398,10 +398,10 @@ public:
     * \param pResultType Will be filled by the type of the result.
     * \param pResult Will be filled by a pointer to a buffer that hold the result.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
     
 	//! Inverse evaluation for this binding function is not implemented yet.
-	virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+	bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -416,7 +416,7 @@ public:
 /** A conditional operator that outputs one out of two properties, based on
   * the value of a predicate property.
   */
-class FbxConditionalBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxConditionalBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -435,8 +435,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -451,7 +451,7 @@ public:
 /** A switch operator that outputs one out of n properties, based on
   * the value of a predicate property.
   */
-class FbxSwitchBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxSwitchBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -470,8 +470,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -483,7 +483,7 @@ public:
 };
 
 
-class FbxTRSToMatrixBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxTRSToMatrixBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -498,8 +498,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -511,7 +511,7 @@ public:
 };
 
 
-class FbxAddBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxAddBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -526,8 +526,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -539,7 +539,7 @@ public:
 };
 
 
-class FbxSubstractBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxSubstractBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -554,8 +554,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -567,7 +567,7 @@ public:
 };
 
 
-class FbxMultiplyBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxMultiplyBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -582,9 +582,9 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
     //Set index to 1 to get realWorldScale.  
-	virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+	bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -596,7 +596,7 @@ public:
 };
 
 
-class FbxMultiplyDistBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxMultiplyDistBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -611,8 +611,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -623,7 +623,7 @@ public:
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 
-class FbxOneOverXBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxOneOverXBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -638,8 +638,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -650,7 +650,7 @@ public:
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 
-class FbxPowerBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxPowerBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -665,8 +665,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -677,7 +677,7 @@ public:
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 
-class FbxDegreeToRadianBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxDegreeToRadianBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -692,8 +692,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -705,7 +705,7 @@ public:
 };
 
 
-class FbxVectorDegreeToVectorRadianBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxVectorDegreeToVectorRadianBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -720,8 +720,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -734,7 +734,7 @@ public:
 
 
 
-class FbxSphericalToCartesianBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxSphericalToCartesianBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -749,8 +749,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -763,7 +763,7 @@ public:
 
 
 
-class FbxIsYupBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxIsYupBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -778,8 +778,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+	bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -795,7 +795,7 @@ public:
 /** A symbol(string) operator that search the string table and return its corresponding unique id, based on
   * the value of a predicate property.
   */
-class FbxSymbolIDBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxSymbolIDBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -809,8 +809,8 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
-    virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
+    bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -825,7 +825,7 @@ public:
 /**  A chooser operator that check spot distribution and returns the correct value, based on
   *  the value of a predicate property.
   */
-class FbxSpotDistributionChooserBOF : public FbxBindingOperator::Function
+class FBXSDK_DLL FbxSpotDistributionChooserBOF : public FbxBindingOperator::Function
 {
 public:
 	//! Name of the operation function.
@@ -840,10 +840,10 @@ public:
     * \param pResult A pointer to a buffer that can hold the result.
     * \return \c true on success, \c false otherwise.
     */
-    virtual bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const;
+    bool Evaluate(const FbxBindingOperator* pOperator, const FbxObject* pObject, EFbxType* pResultType, void** pResult) const override;
     
 	//! Inverse evaluation for this binding function is not implemented yet.
-	virtual bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const;
+	bool ReverseEvaluate(const FbxBindingOperator* pOperator, const FbxObject* pTarget, const void* pIn, void** pOut, EFbxType* pOutType, bool setObj, int index) const override;
     
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **

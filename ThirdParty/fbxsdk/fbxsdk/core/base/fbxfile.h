@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2019 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -118,7 +118,7 @@ public:
       * \param pMemPtr Unused
 	  * \param pSize Unused
 	  */
-	virtual void		GetMemoryFileInfo(void** pMemPtr, size_t pSize);
+	virtual void		GetMemoryFileInfo(void** pMemPtr, size_t& pSize);
 
 	/** Checks whether the file is currently opened.
 	  * \return True if file is opened, false otherwise

@@ -23,19 +23,24 @@
 #define FBXSDK_SHADING_LANGUAGE_CGFX	"CGFX"
 #define FBXSDK_SHADING_LANGUAGE_SFX		"SFX"
 #define FBXSDK_SHADING_LANGUAGE_MRSL	"MentalRaySL"
+#define FBXSDK_SHADING_LANGUAGE_SSSL    "StandardSSL"
 
 //Predefined rendering APIs
 #define FBXSDK_RENDERING_API_DIRECTX	"DirectX"
 #define FBXSDK_RENDERING_API_OPENGL		"OpenGL"
 #define FBXSDK_RENDERING_API_MENTALRAY	"MentalRay"
 #define FBXSDK_RENDERING_API_PREVIEW	"PreviewColorAPI"
+// These two hints are only relevant for the FBXSDK_SHADING_LANGUAGE_SSSL
+#define FBXSDK_RENDERING_API_SSSL       "OSL"
+#define FBXSDK_RENDERING_API_MATERIALX  "MaterialX"
 
 #define FBXSDK_IMPLEMENTATION_PREVIEW	"ImplementationPreview"
 #define FBXSDK_IMPLEMENTATION_MENTALRAY	"ImplementationMentalRay"
 #define FBXSDK_IMPLEMENTATION_CGFX		"ImplementationCGFX"
 #define FBXSDK_IMPLEMENTATION_HLSL		"ImplementationHLSL"
 #define FBXSDK_IMPLEMENTATION_SFX	    "ImplementationSFX"
-#define FBXSDK_IMPLEMENTATION_OGS		"ImplementaitonOGS"
+#define FBXSDK_IMPLEMENTATION_OGS		"ImplementationOGS"
+#define FBXSDK_IMPLEMENTATION_SSSL      "ImplementationSSSL"
 #define FBXSDK_IMPLEMENTATION_NONE		"ImplementationNone"
 
 //PROTEIN 1.0 conventions

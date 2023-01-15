@@ -196,11 +196,11 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 protected:
-	virtual void Destruct(bool pRecursive);
-	virtual void ConstructProperties(bool pForceSet);
+    void Destruct(bool pRecursive) override;
+    void ConstructProperties(bool pForceSet) override;
 
     FbxPropertyT<FbxReference> SceneThumbnail;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

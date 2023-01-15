@@ -28,7 +28,7 @@ class FBXSDK_DLL FbxNull : public FbxNodeAttribute
 
 public:
     //! Returns the EType::eNull node attribute type.
-    virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
     //! Resets the default values.
     void Reset();
@@ -101,14 +101,14 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 protected:
-    virtual void Construct(const FbxObject* pFrom);
-    virtual void ConstructProperties(bool pForceSet);
+    void Construct(const FbxObject* pFrom) override;
+    void ConstructProperties(bool pForceSet) override;
 
 public:
-    virtual FbxStringList GetTypeFlags() const;
+    FbxStringList GetTypeFlags() const override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

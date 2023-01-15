@@ -321,13 +321,15 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-protected:
-	virtual void Construct(const FbxObject* pFrom);
-    virtual void Destruct(bool pRecursive);
-    virtual void ConstructProperties(bool pForceSet);
+    bool SetMatrix(int pIndex, const FbxMatrix& pMatrix);
 
-	virtual FbxObject&	Copy(const FbxObject& pObject);
-    virtual const char*	GetTypeName() const;
+protected:
+	void Construct(const FbxObject* pFrom) override;
+    void Destruct(bool pRecursive) override;
+    void ConstructProperties(bool pForceSet) override;
+
+	FbxObject&	Copy(const FbxObject& pObject) override;
+    const char*	GetTypeName() const override;
 
     //Returns false if pNode is already inserted in the list and the current matrix is different from the stored one. Also, if this pose is a rest pose, check if
     //pNode belongs to other BindPoses (accessed through the scene pointer). pPos will contains the index of the FbxPoseInfo if the parameters are already stored in this object.

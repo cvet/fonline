@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2017 Autodesk, Inc.
+   Copyright (C) 2019 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -33,22 +33,24 @@ public:
     FbxWriterFbx7(FbxManager& pManager, FbxExporter& pExporter, EExportMode pMode, int pID, FbxStatus& pStatus);
     virtual ~FbxWriterFbx7();
 
-    virtual bool FileCreate(char* pFileName);
-    virtual bool FileCreate(FbxStream* pStream, void* pStreamData);
-    virtual bool FileClose();
-    virtual bool IsFileOpen();
+    bool FileCreate(char* pFileName) override;
+    bool FileCreate(FbxStream* pStream, void* pStreamData) override;
+    bool FileClose() override;
+    bool IsFileOpen() override;
 
-    virtual void GetWriteOptions();
-    virtual bool Write(FbxDocument* pDocument);
-    virtual bool PreprocessScene(FbxScene &pScene);
-    virtual bool PostprocessScene(FbxScene &pScene);
+    void GetWriteOptions() override;
+    bool Write(FbxDocument* pDocument) override;
+    bool PreprocessScene(FbxScene &pScene) override;
+    bool PostprocessScene(FbxScene &pScene) override;
     virtual bool Write(FbxDocument* pDocument, FbxIO* pFbx);
-	virtual void PluginWriteParameters(FbxObject& pParams);
-    virtual void SetProgressHandler(FbxProgress *pProgress);
-
+#ifndef FBXSDK_ENV_WINSTORE
+	void PluginWriteParameters(FbxObject& pParams) override;
+#endif // FBXSDK_ENV_WINSTORE
+    void SetProgressHandler(FbxProgress *pProgress) override;
+    void SetEmbeddedFileCallback(FbxEmbeddedFileCallback* pCallback) override;
     void SetExportMode(EExportMode pMode);
 
-	virtual bool SupportsStreams() const		{ return true; }
+	bool SupportsStreams() const  override		{ return true; }
 
 private:
     // Declared, not defined.

@@ -40,7 +40,7 @@ class FBXSDK_DLL FbxProceduralTexture : public FbxTexture
 
 	/** Resets the default procedural texture values.
 	  */
-	void Reset();
+    void Reset() override;
 
 	//@}
 
@@ -65,13 +65,13 @@ class FBXSDK_DLL FbxProceduralTexture : public FbxTexture
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 	bool operator==(FbxProceduralTexture const& pTexture) const;
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
 
 	void Init();
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

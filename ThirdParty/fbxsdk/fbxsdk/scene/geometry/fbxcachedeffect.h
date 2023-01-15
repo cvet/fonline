@@ -31,7 +31,7 @@ class FBXSDK_DLL FbxCachedEffect : public FbxNodeAttribute
 
 public:
     //! Returns the FbxNodeAttribute::EType::eCachedEffect attribute type.
-	virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 	
      /** Effect attribute category. This is for identification purpose and has 
        * no influence inside the FBX SDK. However, applications may use this to filter FbxCachedEffect
@@ -78,14 +78,14 @@ protected:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject&	Copy(const FbxObject& pObject);
+    FbxObject&	Copy(const FbxObject& pObject) override;
 
 protected:
-	virtual void ConstructProperties(bool pForceSet);
+    void ConstructProperties(bool pForceSet) override;
 
 public:
-	virtual const char* GetTypeName() const;
-	virtual FbxStringList GetTypeFlags() const;
+    const char* GetTypeName() const override;
+    FbxStringList GetTypeFlags() const override;
 
 private:
 	void ClearCacheConnections();

@@ -54,8 +54,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-    virtual void ConstructProperties(bool pForceSet);
-    virtual bool ValidPropertyForXRefCopy(FbxObject* pObject, FbxProperty& lProperty) const;
+    void ConstructProperties(bool pForceSet) override;
+    bool ValidPropertyForXRefCopy(FbxObject* pObject, FbxProperty& lProperty) const override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

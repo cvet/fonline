@@ -66,7 +66,7 @@ public:
 	//! \name Scene Management
 	//@{
 		//! Clear the scene content by deleting the node tree below the root node and restoring default settings.
-		void Clear();
+        void Clear() override;
 
 		/** Get the root node of the scene.
 		* \return Pointer to the root node.
@@ -101,7 +101,7 @@ public:
 		*   \param pName Name of the generic node.
 		*   \return found generic node
 		*/
-		FbxGenericNode* GetGenericNode(char* pName);
+		FbxGenericNode* GetGenericNode(const char* pName);
 
 		/** Add a generic node to this scene.
 		* \param pGenericNode Pointer to the generic node to be added.
@@ -151,7 +151,7 @@ public:
 		/** Create a new ControlSetPlug.
 		* \param pName Name given to ControlSetPlug.
 		* \return Index of created ControlSetPlug. */
-		int CreateControlSetPlug(char* pName);
+		int CreateControlSetPlug(const char* pName);
 
 		/** Destroy ControlSetPlug.
 		* \param pIndex Specify which ControlSetPlug to destroy. */
@@ -173,7 +173,7 @@ public:
 		/** Create a new character pose.
 		* \param pName Name given to character pose.
 		* \return Index of created character pose. */
-		int CreateCharacterPose(char* pName);
+		int CreateCharacterPose(const char* pName);
 
 		/** Destroy character pose.
 		* \param pIndex Specify which character pose to destroy. */
@@ -282,7 +282,7 @@ public:
 		/** Get the material by its name.
 		* \param pName Name of the material.
 		* \return Pointer to the material or \c NULL if not found. */
-		FbxSurfaceMaterial* GetMaterial(char* pName);
+		FbxSurfaceMaterial* GetMaterial(const char* pName);
 
 		/** Add the material to this scene.
 		* \param pMaterial Pointer to the material to be added.
@@ -321,7 +321,7 @@ public:
 		/** Get the texture by its name.
 		* \param pName Name of the texture.
 		* \return Pointer to the texture or \c NULL if not found. */
-		FbxTexture* GetTexture(char* pName);
+		FbxTexture* GetTexture(const char* pName);
 
 		/** Add the texture to this scene.
 		* \param pTexture Pointer to the texture to be added.
@@ -454,16 +454,16 @@ public:
 	FbxGlobalCameraSettings& GlobalCameraSettings() { return *mGlobalCameraSettings; }
 
 	//  Clone this scene object (and everything else it contains if clone type is eDeepClone)
-	virtual FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;    
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 	void ConnectMaterials();
 
 	void BuildMaterialLayersDirectArray();
 	void ReindexMaterialConnections(); // called to make sure that eIndex is remapped to eIndexToDirect
 
-	FbxMultiMap* AddTakeTimeWarpSet(char *pTakeName);
-	FbxMultiMap* GetTakeTimeWarpSet(char *pTakeName);
+	FbxMultiMap* AddTakeTimeWarpSet(const char *pTakeName);
+	FbxMultiMap* GetTakeTimeWarpSet(const char *pTakeName);
 
 	// This function will destroy the scene (and all the objects directly connected to it) without sending 
 	// the Connect notifications nor trying to disconnect the objects first. This is a bypass of the intended
@@ -471,8 +471,8 @@ public:
 	void ForceKill();
 
 private:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void Destruct(bool pRecursive);
+	void Construct(const FbxObject* pFrom) override;
+	void Destruct(bool pRecursive) override;
 
 	void ConnectTextureLayerElement(FbxLayerContainer* pLayerContainer, FbxLayerElement::EType pLayerType, FbxNode* pParentNode);
 	void BuildTextureLayersDirectArrayForLayerType(FbxLayerContainer* pLayerContainer, FbxLayerElement::EType pLayerType);

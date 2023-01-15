@@ -487,7 +487,7 @@ public:
     /** Get this iterator's first item. 
       * \return     NULL if the iterator is empty.
       */
-    FbxAccumulatorEntry* const First();
+    FbxAccumulatorEntry* First();
 
     /** Get this iterator's previous item.
       * \return     NULL if the iterator reached the beginning (or is empty).
@@ -496,7 +496,7 @@ public:
       *             its reset state (meaning that a call to First() is mandatory
       *             to be able to iterate again).
       */
-    FbxAccumulatorEntry* const Previous();
+    FbxAccumulatorEntry* Previous();
 
     /** Get this iterator's next item.
       * \return     NULL if the iterator reached the end (or is empty).
@@ -505,7 +505,7 @@ public:
       *             First() or after a preceding call to Previous() reached 
       *             beyond the beginning).
       */
-    FbxAccumulatorEntry* const Next();
+    FbxAccumulatorEntry* Next();
 
 protected:
     // Called in the constructor.

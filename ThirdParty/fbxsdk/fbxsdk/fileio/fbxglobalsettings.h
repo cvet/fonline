@@ -259,7 +259,7 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
     
 protected:
 	FbxPropertyT<FbxInt>	UpAxis;
@@ -287,8 +287,8 @@ protected:
     FbxPropertyT<FbxDouble>     CustomFrameRate;
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-	virtual void ConstructProperties(bool pForceSet);
+	void Construct(const FbxObject* pFrom) override;
+	void ConstructProperties(bool pForceSet) override;
 	
 private:
     void AxisSystemToProperties();

@@ -173,8 +173,8 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-    virtual void Destruct(bool pRecursive);
+	void Construct(const FbxObject* pFrom) override;
+    void Destruct(bool pRecursive) override;
 
     virtual void EvaluateNodeTransform(FbxNodeEvalState* pResult, FbxNode* pNode, const FbxTime& pTime, FbxNode::EPivotSet pPivotSet, bool pApplyTarget) = 0;
 	virtual void EvaluatePropertyValue(FbxPropertyEvalState* pResult, FbxProperty& pProperty, const FbxTime& pTime) = 0;
@@ -188,6 +188,17 @@ private:
 	FbxAnimEvalState*		mEvalState;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
+
+/** Evaluate the property at the specified time using the template type provided.
+* \param pProperty The property to evaluate.
+* \param pTime The time used for evaluate.
+* \param pForceEval Force the evaluator to refresh the evaluation state cache even if its already up-to-date.
+* \return The property value at the specified time converted to the template type provided, if possible.
+* \remark If the property type versus the template cannot be converted, the result is unknown. */
+template <class T> inline T EvaluatePropertyValue(FbxProperty& pProperty, const FbxTime& pTime, bool pForceEval)
+{ 
+	return pProperty.GetAnimationEvaluator()-> template GetPropertyValue<T>(pProperty, pTime, pForceEval);
+}
 
 #include <fbxsdk/fbxsdk_nsend.h>
 

@@ -159,40 +159,40 @@ typedef FbxULongLong*			FbxULongLongPtr;
 
 //-------------------------------------------------------------------------------------
 //Various utility functions for fbxsdk basic types
-inline const FbxChar				FbxMin(const FbxChar){ return FBXSDK_CHAR_MIN; }
-inline const FbxUChar				FbxMin(const FbxUChar){ return FBXSDK_UCHAR_MIN; }
-inline const FbxShort				FbxMin(const FbxShort){ return FBXSDK_SHORT_MIN; }
-inline const FbxUShort				FbxMin(const FbxUShort){ return FBXSDK_USHORT_MIN; }
-inline const FbxInt					FbxMin(const FbxInt){ return FBXSDK_INT_MIN; }
-inline const FbxUInt				FbxMin(const FbxUInt){ return FBXSDK_UINT_MIN; }
-inline const FbxLongLong			FbxMin(const FbxLongLong){ return FBXSDK_LONGLONG_MIN; }
-inline const FbxULongLong			FbxMin(const FbxULongLong){ return FBXSDK_ULONGLONG_MIN; }
-inline const FbxFloat				FbxMin(const FbxFloat){ return FBXSDK_FLOAT_MIN; }
-inline const FbxDouble				FbxMin(const FbxDouble){ return FBXSDK_DOUBLE_MIN; }
+inline FbxChar				FbxMin(const FbxChar){ return FBXSDK_CHAR_MIN; }
+inline FbxUChar				FbxMin(const FbxUChar){ return FBXSDK_UCHAR_MIN; }
+inline FbxShort				FbxMin(const FbxShort){ return FBXSDK_SHORT_MIN; }
+inline FbxUShort			FbxMin(const FbxUShort){ return FBXSDK_USHORT_MIN; }
+inline FbxInt				FbxMin(const FbxInt){ return FBXSDK_INT_MIN; }
+inline FbxUInt				FbxMin(const FbxUInt){ return FBXSDK_UINT_MIN; }
+inline FbxLongLong			FbxMin(const FbxLongLong){ return FBXSDK_LONGLONG_MIN; }
+inline FbxULongLong			FbxMin(const FbxULongLong){ return FBXSDK_ULONGLONG_MIN; }
+inline FbxFloat				FbxMin(const FbxFloat){ return FBXSDK_FLOAT_MIN; }
+inline FbxDouble			FbxMin(const FbxDouble){ return FBXSDK_DOUBLE_MIN; }
 
-inline const FbxChar				FbxMax(const FbxChar){ return FBXSDK_CHAR_MAX; }
-inline const FbxUChar				FbxMax(const FbxUChar){ return FBXSDK_UCHAR_MAX; }
-inline const FbxShort				FbxMax(const FbxShort){ return FBXSDK_SHORT_MAX; }
-inline const FbxUShort				FbxMax(const FbxUShort){ return FBXSDK_USHORT_MAX; }
-inline const FbxInt					FbxMax(const FbxInt){ return FBXSDK_INT_MAX; }
-inline const FbxUInt				FbxMax(const FbxUInt){ return FBXSDK_UINT_MAX; }
-inline const FbxLongLong			FbxMax(const FbxLongLong){ return FBXSDK_LONGLONG_MAX; }
-inline const FbxULongLong			FbxMax(const FbxULongLong){ return FBXSDK_ULONGLONG_MAX; }
-inline const FbxFloat				FbxMax(const FbxFloat){ return FBXSDK_FLOAT_MAX; }
-inline const FbxDouble				FbxMax(const FbxDouble){ return FBXSDK_DOUBLE_MAX; }
+inline FbxChar				FbxMax(const FbxChar){ return FBXSDK_CHAR_MAX; }
+inline FbxUChar				FbxMax(const FbxUChar){ return FBXSDK_UCHAR_MAX; }
+inline FbxShort				FbxMax(const FbxShort){ return FBXSDK_SHORT_MAX; }
+inline FbxUShort			FbxMax(const FbxUShort){ return FBXSDK_USHORT_MAX; }
+inline FbxInt				FbxMax(const FbxInt){ return FBXSDK_INT_MAX; }
+inline FbxUInt				FbxMax(const FbxUInt){ return FBXSDK_UINT_MAX; }
+inline FbxLongLong			FbxMax(const FbxLongLong){ return FBXSDK_LONGLONG_MAX; }
+inline FbxULongLong			FbxMax(const FbxULongLong){ return FBXSDK_ULONGLONG_MAX; }
+inline FbxFloat				FbxMax(const FbxFloat){ return FBXSDK_FLOAT_MAX; }
+inline FbxDouble			FbxMax(const FbxDouble){ return FBXSDK_DOUBLE_MAX; }
 
 #ifndef FBXSDK_SYSTEM_IS_LP64
-	inline const FbxLong			FbxMin(const FbxLong){ return FBXSDK_LONG_MIN; }
-	inline const FbxULong			FbxMin(const FbxULong){ return FBXSDK_ULONG_MIN; }
-	inline const FbxLong			FbxMax(const FbxLong){ return FBXSDK_LONG_MAX; }
-	inline const FbxULong			FbxMax(const FbxULong){ return FBXSDK_ULONG_MAX; }
+	inline FbxLong			FbxMin(const FbxLong){ return FBXSDK_LONG_MIN; }
+	inline FbxULong			FbxMin(const FbxULong){ return FBXSDK_ULONG_MIN; }
+	inline FbxLong			FbxMax(const FbxLong){ return FBXSDK_LONG_MAX; }
+	inline FbxULong			FbxMax(const FbxULong){ return FBXSDK_ULONG_MAX; }
 #endif
 
-template<class T> inline const T	FbxMin(const T){};
-template<class T> inline const T	FbxMax(const T){};
+template<class T> inline T	FbxMin(const T){};
+template<class T> inline T	FbxMax(const T){};
 
-template<class T> inline T			FbxMin(const T x, const T y){ return (x < y) ? x : y; }
-template<class T> inline T			FbxMax(const T x, const T y){ return (x > y) ? x : y; }
+template<class T> inline T	FbxMin(const T x, const T y){ return (x < y) ? x : y; }
+template<class T> inline T	FbxMax(const T x, const T y){ return (x > y) ? x : y; }
 
 //-------------------------------------------------------------------------------------
 //Vector Template Types

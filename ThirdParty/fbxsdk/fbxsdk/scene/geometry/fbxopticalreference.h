@@ -29,14 +29,14 @@ class FBXSDK_DLL FbxOpticalReference : public FbxNodeAttribute
 
 public:
 	//! Return the type of node attribute which is FbxNodeAttribute::EType::eOpticalReference.
-	virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 protected:
-	virtual FbxStringList	GetTypeFlags() const;
+    FbxStringList	GetTypeFlags() const override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

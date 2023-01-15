@@ -47,7 +47,7 @@ private:
     mutable QueryT* mData;
 
 private:
-    virtual const char* GetEventName() const { FBX_ASSERT(false); return ""; }
+    const char* GetEventName() const override { FBX_ASSERT(false); return ""; }
     static const char* FbxEventName() { FBX_ASSERT(false); return ""; }
     friend class FbxEvent< FbxQueryEvent<QueryT> >;
 };

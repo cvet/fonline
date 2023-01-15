@@ -46,7 +46,7 @@ class FBXSDK_DLL FbxCameraSwitcher : public FbxNodeAttribute
     //@}
 
     //! Return the type of node attribute which is EType::eCameraSwitcher.
-    virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
     /**
       * \name Default Animation Values.
@@ -79,14 +79,14 @@ class FBXSDK_DLL FbxCameraSwitcher : public FbxNodeAttribute
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	virtual FbxObject& Copy(const FbxObject& pObject);
+    FbxObject& Copy(const FbxObject& pObject) override;
 
 protected:
-    virtual void Destruct(bool pRecursive);
-    virtual void ConstructProperties(bool pForceSet);
+    void Destruct(bool pRecursive) override;
+    void ConstructProperties(bool pForceSet) override;
 
 public:
-    void AddCameraName(char* pCameraName);
+    void AddCameraName(const char* pCameraName);
     char* GetCameraName(FbxUInt pIndex) const;
     FbxUInt GetCameraNameCount() const;
 	void ClearCameraNames();

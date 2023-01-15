@@ -79,18 +79,18 @@ public:
     * \param pFileName the name of file.
     * \return Return true if the specified file is opened.
     */
-    virtual bool FileOpen(char* pFileName);
-    
+    bool FileOpen(char* pFileName) override;
+
     /** Close file.
     * \return Return true if file is closed successfully, false otherwise.
     */
-	virtual bool FileClose();
+	bool FileClose() override;
 
     /** Check if current file is open.
     * \return Return true if file is open, false otherwise.
     */
-	virtual bool IsFileOpen();
-    
+	bool IsFileOpen() override;
+
     //@}
 
     /**
@@ -102,25 +102,25 @@ public:
     * \param pParseFileAsNeeded whether parse file as needed, the default value is true.
     * \return true
     */
-	virtual bool GetReadOptions(bool pParseFileAsNeeded = true){ return true; }
+	bool GetReadOptions(bool pParseFileAsNeeded = true) override { return true; }
 
     /** Get axis system information from file
       * \param pAxisSystem      axis system in file
       * \param pSystemUnits     system unit in file
       * \return if either pAxisSystem or pSystemUnits is \c NULL return \c false, otherwise return \c true.
       */
-    virtual bool GetAxisInfo(FbxAxisSystem* pAxisSystem, FbxSystemUnit* pSystemUnits);
+    bool GetAxisInfo(FbxAxisSystem* pAxisSystem, FbxSystemUnit* pSystemUnits) override;
 
     /** Returns the list of take infos from the file.
       * \return NULL
       */
-    virtual FbxArray<FbxTakeInfo*>* GetTakeInfo();
+    FbxArray<FbxTakeInfo*>* GetTakeInfo() override;
 
     /** Read from Collada file and import it to the FBX document, according to the given options settings.
     * \param pDocument FBX Document to import.
     * \return true on success, false otherwise.
     */
-	virtual bool Read(FbxDocument* pDocument);
+	bool Read(FbxDocument* pDocument) override;
 
     //@}
 

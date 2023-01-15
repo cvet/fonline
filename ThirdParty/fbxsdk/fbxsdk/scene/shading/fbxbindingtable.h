@@ -138,7 +138,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 private:
-    virtual void ConstructProperties(bool pForceSet);
+    void ConstructProperties(bool pForceSet) override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

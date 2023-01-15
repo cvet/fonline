@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2019 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -37,6 +37,7 @@ class FbxSystemUnit;
 class FbxNode;
 class FbxProgress;
 class FbxTakeInfo;
+class FbxEmbeddedFileCallback;
 
  /** Base class of other readers used internally.
    * This class provides the interfaces for reading files.
@@ -228,6 +229,8 @@ public:
     virtual void SetProgressHandler(FbxProgress* /*pProgress*/){}
 
 	virtual void SetEmbeddingExtractionFolder(const char* /*pExtractFolder*/){}
+
+    virtual void SetEmbeddedFileCallback(FbxEmbeddedFileCallback* /*pCallback*/) {}
 
 	/** Returns true if this reader supports FbxStream I/O. Default value is false. */
 	virtual bool SupportsStreams() const;

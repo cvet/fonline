@@ -31,6 +31,8 @@ class FbxAnimCurveNode;
 class FbxAnimCurve;
 class FbxAnimEvaluator;
 
+template <class T> inline T EvaluatePropertyValue(FbxProperty& pProperty, const FbxTime& pTime, bool pForceEval = false);
+
 /** \brief Class to hold user properties.
 * \nosubgrouping
 */
@@ -1070,6 +1072,9 @@ private:
 template <class T> class FbxPropertyT : public FbxProperty
 {
 public:
+    /** Provides access to the property's underlying type */
+    typedef T ValueType;
+
 	/**
 	  * \name Static initialization.
 	  */
@@ -1083,7 +1088,7 @@ public:
 		  */
 		FbxProperty& StaticInit(FbxObject* pObject, const char* pName, const T& pValue, bool pForceSet, FbxPropertyFlags::EFlags pFlags=FbxPropertyFlags::eNone)
 		{
-			return StaticInit(pObject, pName, FbxGetDataTypeFromEnum(FbxTypeOf(*((T*)0))), pValue, pForceSet, pFlags);
+			return StaticInit(pObject, pName, FbxGetDataTypeFromEnum(FbxTypeOf(pValue)), pValue, pForceSet, pFlags);
 		}
 
 		/** Creates a property and initializes it using a specific value and flag.
@@ -1158,7 +1163,7 @@ public:
 		* \return The property value at the specified time. */
 		T EvaluateValue(const FbxTime& pTime=FBXSDK_TIME_INFINITE, bool pForceEval=false)
 		{
-			return GetAnimationEvaluator()-> template GetPropertyValue<T>(*this, pTime, pForceEval);
+			return EvaluatePropertyValue<T>(*this, pTime, pForceEval);
 		}
 	//@}
 
@@ -1185,7 +1190,7 @@ public:
 
 	const FbxProperty& StaticInit(FbxObject* pObject, const char* pName, const FbxReference& pValue, bool pForceSet, FbxPropertyFlags::EFlags pFlags=FbxPropertyFlags::eNone)
 	{
-		return StaticInit(pObject, pName, FbxGetDataTypeFromEnum(FbxTypeOf(*((FbxReference*)0))), pValue, pForceSet, pFlags);
+		return StaticInit(pObject, pName, FbxGetDataTypeFromEnum(eFbxReference), pValue, pForceSet, pFlags);
 	}
 
 	const FbxProperty& StaticInit(FbxObject* pObject, const char* pName, const FbxDataType& pDataType, const FbxReference& pValue, bool pForceSet, FbxPropertyFlags::EFlags pFlags=FbxPropertyFlags::eNone)

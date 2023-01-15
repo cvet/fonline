@@ -388,7 +388,7 @@ public:
             }
         }
 
-        inline const int GetBlackDepth() { return mBlackDepth; }
+        inline int GetBlackDepth() { return mBlackDepth; }
 
     private:
         enum ETreeType {eRed, eBlack};
@@ -428,19 +428,17 @@ public:
     typedef FbxRedBlackConstIterator<RecordType>  ConstIteratorType;
     typedef FbxRedBlackIterator<RecordType>       IteratorType;
 
-    inline FbxRedBlackTree() : mRoot(0), mSize(0), mAllocator(sizeof(RecordType)) {}
-    inline FbxRedBlackTree(const FbxRedBlackTree& pTree) : mRoot(0), mSize(0), mAllocator(sizeof(RecordType)) { operator=(pTree); }
+    inline FbxRedBlackTree() : mRoot(0), mAllocator(sizeof(RecordType)), mSize(0) {}
+    inline FbxRedBlackTree(const FbxRedBlackTree& pTree) : mRoot(0), mAllocator(sizeof(RecordType)), mSize(0) { operator=(pTree); }
     inline ~FbxRedBlackTree() { Clear(); }
 
-    /** Deep copy pTree in this. 
+    /** Deep copy pTree in this, allocator is not copied.
 	* \param pTree The tree to copy in this tree. */
     inline FbxRedBlackTree& operator=(const FbxRedBlackTree& pTree)
     {
         if( this != &pTree )
         {
             Clear();
-
-            mAllocator = pTree.mAllocator;
 
             if( pTree.mRoot )
             {
@@ -799,9 +797,8 @@ public:
 
 protected:
     RecordType* mRoot;
-    int mSize;
-
-    AllocatorType mAllocator;
+	AllocatorType mAllocator;
+	int mSize;
 
     inline RecordType* DuplicateSubTree(const RecordType* pNode)
     {
@@ -844,51 +841,58 @@ protected:
             else if (lNode->mParent->mColor == RecordType::eRed)
             {
                 RecordType* lUncle = 0;
-                if (lNode->mParent == lNode->mParent->mParent->mLeftChild)
+
+                if ((lNode->mParent != NULL) && (lNode->mParent->mParent != NULL))
                 {
-                    lUncle = lNode->mParent->mParent->mRightChild;
-                }
-                else if (lNode->mParent == lNode->mParent->mParent->mRightChild)
-                {
-                    lUncle = lNode->mParent->mParent->mLeftChild;
+                    if (lNode->mParent == lNode->mParent->mParent->mLeftChild)
+                    {
+                        lUncle = lNode->mParent->mParent->mRightChild;
+                    }
+                    else if (lNode->mParent == lNode->mParent->mParent->mRightChild)
+                    {
+                        lUncle = lNode->mParent->mParent->mLeftChild;
+                    }
                 }
 
                 // since lNode->mParent is red, lNode->mParent->mParent exists
 
-                if (lUncle && lUncle->mColor == RecordType::eRed)
+                if ((lNode->mParent != NULL) && (lNode->mParent->mParent != NULL))
                 {
-                    lNode->mParent->mColor = RecordType::eBlack;
-                    lUncle->mColor = RecordType::eBlack;
-                    lNode->mParent->mParent->mColor = RecordType::eRed;
-                    lNode = lNode->mParent->mParent;
+                    if (lUncle && lUncle->mColor == RecordType::eRed)
+                    {
+                        lNode->mParent->mColor = RecordType::eBlack;
+                        lUncle->mColor = RecordType::eBlack;
+                        lNode->mParent->mParent->mColor = RecordType::eRed;
+                        lNode = lNode->mParent->mParent;
 
-                    lDone = false;
-                }
-                else
-                {
-                    if ((lNode == lNode->mParent->mRightChild) &&
-                        (lNode->mParent == lNode->mParent->mParent->mLeftChild))
-                    {
-                        LeftRotate(lNode->mParent);
-                        lNode = lNode->mLeftChild;
-                    }
-                    else if ((lNode == lNode->mParent->mLeftChild) &&
-                            (lNode->mParent == lNode->mParent->mParent->mRightChild))
-                    {
-                        RightRotate(lNode->mParent);
-                        lNode = lNode->mRightChild;
-                    }
-
-                    lNode->mParent->mColor = RecordType::eBlack;
-                    lNode->mParent->mParent->mColor = RecordType::eRed;
-                    if ((lNode == lNode->mParent->mLeftChild) &&
-                        (lNode->mParent == lNode->mParent->mParent->mLeftChild))
-                    {
-                        RightRotate(lNode->mParent->mParent);
+                        lDone = false;
                     }
                     else
                     {
-                        LeftRotate(lNode->mParent->mParent);
+                        if ((lNode == lNode->mParent->mRightChild) &&
+                            (lNode->mParent == lNode->mParent->mParent->mLeftChild))
+                        {
+                            LeftRotate(lNode->mParent);
+                            lNode = lNode->mLeftChild;
+                        }
+                        else if ((lNode == lNode->mParent->mLeftChild) &&
+                                 (lNode->mParent == lNode->mParent->mParent->mRightChild))
+                        {
+                            RightRotate(lNode->mParent);
+                            lNode = lNode->mRightChild;
+                        }
+
+                        lNode->mParent->mColor = RecordType::eBlack;
+                        lNode->mParent->mParent->mColor = RecordType::eRed;
+                        if ((lNode == lNode->mParent->mLeftChild) &&
+                            (lNode->mParent == lNode->mParent->mParent->mLeftChild))
+                        {
+                            RightRotate(lNode->mParent->mParent);
+                        }
+                        else
+                        {
+                            LeftRotate(lNode->mParent->mParent);
+                        }
                     }
                 }
             }

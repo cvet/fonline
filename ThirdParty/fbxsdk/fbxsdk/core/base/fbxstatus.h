@@ -16,11 +16,14 @@
 #include <fbxsdk/fbxsdk_def.h>
 
 #include <fbxsdk/core/base/fbxstring.h>
+#include <fbxsdk/core/base/fbxarray.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
 /** This class facilitates the testing/reporting of errors.  It encapsulates the
   * status code and the internal FBXSDK error code as returned by the API functions.
+  * By default, the class will not accumulate all the error messages into the history array.
+  * If this history is desired, the object must be configured by calling KeepErrorStringHistory(true)
   * \nosubgrouping
   */
 class FBXSDK_DLL FbxStatus
@@ -41,13 +44,15 @@ public:
 		eSceneCheckFail							//!< Scene validation failure
     };
 
-    //! Default constructor.
-    FbxStatus();
-
-    FbxStatus(EStatusCode pCode);
+    //! Default constructor.    
+	FbxStatus();
+	FbxStatus(EStatusCode pCode);
     FbxStatus(const FbxStatus& rhs);
 
+    ~FbxStatus();
+
     FbxStatus&      operator=(const FbxStatus& rhs);
+	FbxStatus&      operator+=(const FbxStatus& rhs);
 
     /** Equivalence operator.
       * \param rhs Status object to compare.
@@ -103,6 +108,23 @@ public:
     //! Get the error message string corresponding to the current code.
     const char*     GetErrorString() const;
 
+	/** Configure this object to remember all the error messages string.
+	  * \param pState If set to true, this object will record all the error messages that can
+	  *               later be access by calling GetErrorStringHistory(). If set to false,
+	  *               any recorded history is also cleared.
+	  * \return Previous state of the flag.
+	  */
+	bool            KeepErrorStringHistory(bool pState);
+
+	/** Get the history of all the error messages that have been set.
+	  * \param pHistory Array that is going to be filled with the stored string.
+	  *
+	  * \remark the strings are allocated with FbxNew so the pHistory array must be deleted
+	  *          using the statement FbxArrayDelete<FbxString*>(pHistory).
+	  * \remark the error strings are returned in stack mode (last error -> first element)
+	  */
+	void            GetErrorStringHistory(FbxArray<FbxString*>& pHistory);
+
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
@@ -111,7 +133,9 @@ public:
 private:
     EStatusCode     mCode;
     FbxString       mErrorString;
+	bool            mKeepErrorStringHistory;
 
+	FbxArray<FbxString*> mErrorStringHistory;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS */
 };
 

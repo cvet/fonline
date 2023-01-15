@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2019 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -101,33 +101,33 @@ public:
       * \param pFlags        the EFileOpenSpecialFlags to open with
       * \return if the file is open successfully return true, otherwise return false
       */
-    virtual bool FileOpen(char* pFileName, EFileOpenSpecialFlags pFlags);
+    bool FileOpen(char* pFileName, EFileOpenSpecialFlags pFlags) override;
 
     /** Open file with default flag
       *	\param pFileName     name of the File to open
       * \return if the file is open successfully return \c true, otherwise return \c false
       */
-    virtual bool FileOpen(char* pFileName);
+    bool FileOpen(char* pFileName) override;
 
     /** Open file with FbxFile handle
       *	\param pFile        the FbxFile handle
       * \return if the file is open successfully return \c true, otherwise return \c false
       */
-    virtual bool FileOpen(FbxFile * pFile);
+    bool FileOpen(FbxFile * pFile) override;
 
     /** Open file from stream
       */
-	virtual bool FileOpen(FbxStream * pStream, void* pStreamData);
+	bool FileOpen(FbxStream * pStream, void* pStreamData) override;
 
     /** Close the file stream
       * \return if the file is closed successfully return \c true, otherwise return \c false
       */
-    virtual bool FileClose();
+    bool FileClose() override;
 
     /** Check whether the file stream is open.
       *	\return if the file stream is open return \c true, otherwise return \c false.
       */
-    virtual bool IsFileOpen();
+    bool IsFileOpen() override;
 
     /** \enum EImportMode File import mode.
       *
@@ -149,14 +149,14 @@ public:
       *	\param pMinor       Minor version
       *	\param pRevision    Revision version
       */
-    virtual void GetVersion(int& pMajor, int& pMinor, int& pRevision);
+    void GetVersion(int& pMajor, int& pMinor, int& pRevision) override;
 
     /** Get axis system information from file
       *	\param pAxisSystem      axis system in file
       * \param pSystemUnits     system unit in file
       * \return if either pAxisSystem or pSystemUnits is \c NULL return \c false, otherwise return \c true.
       */
-    virtual bool GetAxisInfo(FbxAxisSystem* pAxisSystem, FbxSystemUnit* pSystemUnits);
+    bool GetAxisInfo(FbxAxisSystem* pAxisSystem, FbxSystemUnit* pSystemUnits) override;
 
 	/** Get FBX file time mode read from GlobalSettings in FBX 6.n and FBX 7.n
 	  *	\param pTimeMode  ref to a FbxTime::EMode enum
@@ -164,26 +164,26 @@ public:
 	  *	\remarks    This function must be called after FbxImporter::Initialize().
 	  *             Can be used for statistics (via GlobalSettings) before loading the whole scene from the file.
 	  */
-	virtual bool GetFrameRate(FbxTime::EMode &pTimeMode);	
+	bool GetFrameRate(FbxTime::EMode &pTimeMode) override;
 
     /** Get the statistics from file
       *	\param pStats statistics in file
       *	\return if fetching statistics is successfully return \c true, otherwise return \c false.
       */
-    virtual bool GetStatistics(FbxStatistics* pStats);
+    bool GetStatistics(FbxStatistics* pStats) override;
 
     /** Get the file stream options
       *	\param pParseFileAsNeeded       Whether to parse file as read options
       * \return true on success, otherwise return false.
       */
-    virtual bool GetReadOptions(bool pParseFileAsNeeded = true);
+    bool GetReadOptions(bool pParseFileAsNeeded = true) override;
 
 
     /** Read file with stream options
       *	\param pDocument        FbxDocument to store the file data
       *	\return if fetching statistics is successful return \c true, otherwise return \c false.
       */
-    virtual bool Read(FbxDocument *pDocument);
+    bool Read(FbxDocument *pDocument) override;
 
     /** Get the file options
       * \param pFbx                     file object to read options
@@ -200,31 +200,32 @@ public:
       */
     virtual bool Read(FbxDocument *pDocument, FbxIO* pFbx);
 
-
+#ifndef FBXSDK_ENV_WINSTORE
     /** Read all the properties and flags
       *	\param pParams        settings to assign properties and flags
       */
-	virtual void PluginReadParameters(FbxObject& pParams);
+	void PluginReadParameters(FbxObject& pParams) override;
+#endif /* !FBXSDK_ENV_WINSTORE */
 
     /** Returns the scene info from the file.
       * \return The pointer to file scene info defined by this reader.
       */
-    virtual FbxDocumentInfo*  GetSceneInfo() { return mSceneInfo; }
+    FbxDocumentInfo*  GetSceneInfo() override { return mSceneInfo; }
 
 
     /** Returns the pointer to the list of TakeInfo from the file.
       * \return NULL
       */
-    virtual FbxArray<FbxTakeInfo*>* GetTakeInfo() { return &mTakeInfo; }
+    FbxArray<FbxTakeInfo*>* GetTakeInfo() override { return &mTakeInfo; }
 
     /** Pass a progress handler to the reader
       * \param pProgress     FbxProgress to store the progress information.
       */
-    virtual void SetProgressHandler(FbxProgress *pProgress);
+    void SetProgressHandler(FbxProgress *pProgress) override;
 
-	virtual void SetEmbeddingExtractionFolder(const char* pExtractFolder);
-
-	virtual bool SupportsStreams() const { return true; }
+	void SetEmbeddingExtractionFolder(const char* pExtractFolder) override;
+    void SetEmbeddedFileCallback(FbxEmbeddedFileCallback* pCallback) override;
+	bool SupportsStreams() const override { return true; }
 
 private:
 
@@ -996,7 +997,7 @@ private:
       * \param pStringArray string array
       * \return return the index of the array if the string is found, otherwise return \c -1
       */
-    int  FindString(FbxString pString, FbxArray<FbxString*>& pStringArray);
+    int  FindString(const char* pString, FbxArray<FbxString*>& pStringArray);
 
     /** Read password from string
       *	\param pPassword        password in string
@@ -1095,6 +1096,9 @@ private:
     Fbx6ClassTemplateMap    mClassTemplateMap;
     FbxProgress*            mProgress;
     bool                    mProgressPause;
+
+	bool                    mValidateData;
+	FbxSceneCheckUtility*   mCheckUtility;
 };
 
 #include <fbxsdk/fbxsdk_nsend.h>

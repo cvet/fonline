@@ -87,7 +87,7 @@ public:
     /** Get the type of the deformer.
       * \return                         The deformer type identifier of blend shape deformer.
       */
-    EDeformerType GetDeformerType()  const {return eBlendShape; };
+    EDeformerType GetDeformerType() const override {return eBlendShape; };
 
 	/** Restore the blend shape deformer to the initial state.
 	* Calling this function will do the following:
@@ -100,11 +100,11 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
-    virtual FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;
+    FbxObject& Copy(const FbxObject& pObject) override;
+    FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
     
 protected:
-    virtual FbxStringList GetTypeFlags() const;
+    FbxStringList GetTypeFlags() const override;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

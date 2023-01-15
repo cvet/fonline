@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2019 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -35,14 +35,15 @@ public:
 	virtual ~FbxReaderFbx5();
 
     virtual bool FileOpen(char* pFileName, bool pIgnoredArg);
-    virtual bool FileOpen(char* pFileName, EFileOpenSpecialFlags pFlags){ return FbxReader::FileOpen(pFileName, pFlags); }
-	virtual bool FileOpen(char* pFileName);
-    virtual bool FileOpen(FbxFile * pFile);
-	virtual bool FileOpen(FbxStream * pStream, void* pStreamData);
-	virtual bool FileClose();
-	virtual bool IsFileOpen();
+    bool FileOpen(char* pFileName, EFileOpenSpecialFlags pFlags) override { return FbxReader::FileOpen(pFileName, pFlags); }
+	bool FileOpen(char* pFileName) override;
+    bool FileOpen(FbxFile * pFile) override;
+	bool FileOpen(FbxStream * pStream, void* pStreamData) override;
+	bool FileClose() override;
+	bool IsFileOpen() override;
 
-	virtual void SetEmbeddingExtractionFolder(const char* pExtractFolder);
+	void SetEmbeddingExtractionFolder(const char* pExtractFolder) override;
+    void SetEmbeddedFileCallback(FbxEmbeddedFileCallback* pCallback) override;
 
 	typedef enum 
 	{
@@ -52,18 +53,18 @@ public:
 	} EImportMode;
 
 	EImportMode GetImportMode();
-	virtual void GetVersion(int& pMajor, int& pMinor, int& pRevision);
+	void GetVersion(int& pMajor, int& pMinor, int& pRevision) override;
 
-	virtual bool GetReadOptions(bool pParseFileAsNeeded = true);
-	virtual bool Read(FbxDocument* pDocument);
+	bool GetReadOptions(bool pParseFileAsNeeded = true) override;
+	bool Read(FbxDocument* pDocument) override;
 
 	virtual bool GetReadOptions(FbxIO* pFbx, bool pParseFileAsNeeded = true);
 	virtual bool Read(FbxScene& pScene, FbxIO* pFbx);
 
-    virtual FbxDocumentInfo* GetSceneInfo() { return mSceneInfo; }
-    virtual FbxArray<FbxTakeInfo*>* GetTakeInfo() { return &mTakeInfo; }
+    FbxDocumentInfo* GetSceneInfo() override { return mSceneInfo; }
+    FbxArray<FbxTakeInfo*>* GetTakeInfo() override { return &mTakeInfo; }
 
-	virtual bool SupportsStreams() const { return true; }
+	bool SupportsStreams() const override { return true; }
 
 private:
 	void ReadOptionsInMainSection();

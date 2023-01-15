@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2019 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -15,6 +15,7 @@
 
 #include <fbxsdk/fbxsdk_def.h>
 
+#include <fbxsdk/fileio/fbxcallbacks.h>
 #include <fbxsdk/utils/fbxrenamingstrategy.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
@@ -191,6 +192,8 @@ public:
       * \param pProgress     FbxProgress to store the progress information.
       */
     virtual void SetProgressHandler(FbxProgress* /*pProgress*/){}
+
+    virtual void SetEmbeddedFileCallback(FbxEmbeddedFileCallback* /*pCallback*/) {}
 
 	/** Returns true if this writer supports FbxStream I/O. Default value is false. */
 	virtual bool SupportsStreams() const;

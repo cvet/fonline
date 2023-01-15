@@ -53,7 +53,7 @@ public:
       *
       * \return \e eUnknown
       */
-    virtual FbxNodeAttribute::EType GetAttributeType() const;
+    FbxNodeAttribute::EType GetAttributeType() const override;
 
     /**
       * \name Deformer Management
@@ -280,8 +280,8 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    virtual FbxObject& Copy(const FbxObject& pObject);
-    virtual FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const;
+    FbxObject& Copy(const FbxObject& pObject) override;
+    FbxObject* Clone(FbxObject::ECloneType pCloneType=eDeepClone, FbxObject* pContainer=NULL, void* pSet = NULL) const override;
 
     void CleanShapeChannels(FbxAnimLayer* pAnimLayer);
     void CleanShapeChannel(FbxAnimLayer* pAnimLayer, int pShapeIndex);
@@ -293,9 +293,9 @@ public:
     void ClearTemporaryShapeNames();
 
 protected:
-	virtual void Construct(const FbxObject* pFrom);
-    virtual void Destruct(bool pRecursive);
-    virtual void SetDocument(FbxDocument* pDocument);
+	void Construct(const FbxObject* pFrom) override;
+    void Destruct(bool pRecursive) override;
+    void SetDocument(FbxDocument* pDocument) override;
 
     FbxString CreateShapeChannelName(int pShapeIndex);
     FbxString CreateShapeChannelName(FbxString pShapeName);

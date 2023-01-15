@@ -175,9 +175,9 @@ public:
 	enum EType {eAND, eOR};
 
     static FbxQueryOperator* Create(FbxQuery* pA, EType pOperator, FbxQuery* pB);
-    virtual FbxInt GetUniqueId() const { return FBXSDK_QUERY_UNIQUE_ID+1; }
-    virtual bool IsValid(const FbxProperty& pProperty) const;
-    virtual bool IsEqual(FbxQuery* pOtherQuery) const;
+    FbxInt GetUniqueId() const override { return FBXSDK_QUERY_UNIQUE_ID+1; }
+    bool IsValid(const FbxProperty& pProperty) const override;
+    bool IsEqual(FbxQuery* pOtherQuery) const override;
 
 protected:
     FbxQueryOperator(FbxQuery* pA, EType pOperator, FbxQuery* pB);
@@ -194,9 +194,9 @@ public:
     FBXSDK_FRIEND_NEW();
 
     static FbxQueryOperatorUnary* Create(FbxQuery* pA);
-    virtual FbxInt GetUniqueId() const{ return FBXSDK_QUERY_UNIQUE_ID+2; }
-    virtual bool IsValid(const FbxProperty& pProperty) const;
-    virtual bool IsEqual(FbxQuery* pOtherQuery) const;
+    FbxInt GetUniqueId() const override { return FBXSDK_QUERY_UNIQUE_ID+2; }
+    bool IsValid(const FbxProperty& pProperty) const override;
+    bool IsEqual(FbxQuery* pOtherQuery) const override;
 
 protected:
     FbxQueryOperatorUnary(FbxQuery* pA);
@@ -212,9 +212,9 @@ public:
     FBXSDK_FRIEND_NEW();
 
     static FbxQueryClassId* Create(const FbxClassId& pClassId);
-    virtual FbxInt GetUniqueId() const{ return FBXSDK_QUERY_UNIQUE_ID+3; }
-    virtual bool IsValid(const FbxProperty& pProperty) const;
-    virtual bool IsEqual(FbxQuery* pOtherQuery) const;
+    FbxInt GetUniqueId() const override { return FBXSDK_QUERY_UNIQUE_ID+3; }
+    bool IsValid(const FbxProperty& pProperty) const override;
+    bool IsEqual(FbxQuery* pOtherQuery) const override;
 
 protected:
     FbxQueryClassId(const FbxClassId& pClassId);
@@ -229,9 +229,9 @@ public:
     FBXSDK_FRIEND_NEW();
 
     static FbxQueryIsA* Create(const FbxClassId& pClassId);       
-    virtual FbxInt GetUniqueId() const{ return FBXSDK_QUERY_UNIQUE_ID+4; }
-    virtual bool IsValid(const FbxProperty& pProperty) const;
-    virtual bool IsEqual(FbxQuery* pOtherQuery) const;
+    FbxInt GetUniqueId() const override { return FBXSDK_QUERY_UNIQUE_ID+4; }
+    bool IsValid(const FbxProperty& pProperty) const override;
+    bool IsEqual(FbxQuery* pOtherQuery) const override;
 
 protected:
     FbxQueryIsA(const FbxClassId& pClassId);
@@ -246,9 +246,9 @@ public:
     FBXSDK_FRIEND_NEW();
 
     static FbxQueryIsProperty* Create();
-    virtual FbxInt GetUniqueId() const{ return FBXSDK_QUERY_UNIQUE_ID+5; }
-    virtual bool IsValid(const FbxProperty& pProperty) const;
-    virtual bool IsEqual(FbxQuery* pOtherQuery) const;
+    FbxInt GetUniqueId() const override { return FBXSDK_QUERY_UNIQUE_ID+5; }
+    bool IsValid(const FbxProperty& pProperty) const override;
+    bool IsEqual(FbxQuery* pOtherQuery) const override;
 
 protected:
     FbxQueryIsProperty();

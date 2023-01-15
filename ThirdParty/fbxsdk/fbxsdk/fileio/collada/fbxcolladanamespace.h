@@ -15,7 +15,7 @@
 
 #include <fbxsdk.h>
 
-#include <components/libxml2-2.7.8/include/libxml/globals.h>
+#include <libxml/globals.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 

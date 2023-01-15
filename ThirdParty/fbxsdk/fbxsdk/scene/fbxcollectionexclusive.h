@@ -30,7 +30,7 @@ public:
     /** Add a member if it's not a member of any other FbxCollectionExclusive objects.
       * \param pMember Object to be added
       */
-    bool AddMember(FbxObject* pMember);
+    bool AddMember(FbxObject* pMember) override;
 };
 
 #include <fbxsdk/fbxsdk_nsend.h>
