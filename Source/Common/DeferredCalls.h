@@ -75,11 +75,15 @@ public:
     void Process();
 
 protected:
-    virtual auto ApplyDeferredCall(uint delay, DeferredCall& call) -> uint;
+    virtual auto GetNextCallId() -> uint;
     virtual auto RunDeferredCall(DeferredCall& call) const -> bool;
     virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
 
     FOEngineBase* _engine;
     list<DeferredCall> _deferredCalls {};
+
+private:
+    auto AddDeferredCall(uint delay, DeferredCall& call) -> uint;
+
     uint _idCounter {};
 };
