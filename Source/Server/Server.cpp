@@ -61,6 +61,8 @@ FOServer::FOServer(GlobalSettings& settings) :
 {
     WriteLog("Start server");
 
+    WriteLog("Mount data packs");
+
     Resources.AddDataSource(Settings.EmbeddedResources);
     Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
@@ -76,6 +78,8 @@ FOServer::FOServer(GlobalSettings& settings) :
     }
 
 #if !FO_SINGLEPLAYER
+    WriteLog("Initialize script system");
+
     extern void Server_RegisterData(FOEngineBase*);
     Server_RegisterData(this);
 
@@ -83,16 +87,14 @@ FOServer::FOServer(GlobalSettings& settings) :
     ScriptSys->InitSubsystems();
 #endif
 
-    GameTime.FrameAdvance();
-
     // Network
-    WriteLog("Starting server on ports {} and {}", Settings.ServerPort, Settings.ServerPort + 1);
+#if !FO_SINGLEPLAYER
+    WriteLog("Listen ports {} and {}", Settings.ServerPort, Settings.ServerPort + 1);
 
     if (auto* server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
         _connectionServers.emplace_back(server);
     }
 
-#if !FO_SINGLEPLAYER
     if (auto* server = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
         _connectionServers.emplace_back(server);
     }
@@ -102,6 +104,8 @@ FOServer::FOServer(GlobalSettings& settings) :
 #endif
 
     // Data base
+    WriteLog("Connect to data base");
+
     DbStorage = ConnectToDataBase(Settings.DbStorage);
     if (!DbStorage) {
         throw ServerInitException("Can't init storage data base", Settings.DbStorage);
@@ -113,6 +117,8 @@ FOServer::FOServer(GlobalSettings& settings) :
             throw ServerInitException("Can't init histrory data base", Settings.DbHistory);
         }
     }
+
+    WriteLog("Setup engine data");
 
     // Properties that saving to data base
     for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
@@ -214,12 +220,19 @@ FOServer::FOServer(GlobalSettings& settings) :
         set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
+    WriteLog("Load dialogs");
     DlgMngr.LoadFromResources();
+
+    WriteLog("Load protos");
     ProtoMngr.LoadFromResources();
+
+    WriteLog("Load maps");
     MapMngr.LoadFromResources();
 
     // Resource packs for client
     if (Settings.DataSynchronization) {
+        WriteLog("Load client data packs");
+
         FileSystem client_resources;
         client_resources.AddDataSource(_str("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
 
@@ -259,13 +272,16 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Admin manager
     if (Settings.AdminPanelPort != 0u) {
+        WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
+
         InitAdminManager(this, static_cast<ushort>(Settings.AdminPanelPort));
     }
 }
 
 void FOServer::Start()
 {
-    // Start logic
+    WriteLog("Start game logic");
+
     DbStorage.StartChanges();
     if (DbHistory) {
         DbHistory.StartChanges();
@@ -284,9 +300,11 @@ void FOServer::Start()
         GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
     }
 
-    ServerDeferredCalls.LoadDeferredCalls();
+    GameTime.FrameAdvance();
 
     // Scripting
+    WriteLog("Init script modules");
+
     ScriptSys->InitModules();
 
     if (!OnInit.Fire()) {
@@ -295,41 +313,98 @@ void FOServer::Start()
 
     // Init world
     if (globals_doc.empty()) {
+        WriteLog("Generate world");
+
         if (!OnGenerateWorld.Fire()) {
             throw ServerInitException("Generate world script failed");
         }
     }
     else {
-        const auto loc_fabric = [this](uint id, const ProtoLocation* proto) { return new Location(this, id, proto); };
-        const auto map_fabric = [this](uint id, const ProtoMap* proto) {
-            const auto* static_map = MapMngr.GetStaticMap(proto);
-            return new Map(this, id, proto, nullptr, static_map);
-        };
-        const auto cr_fabric = [this](uint id, const ProtoCritter* proto) { return new Critter(this, id, nullptr, proto); };
-        const auto item_fabric = [this](uint id, const ProtoItem* proto) { return new Item(this, id, proto); };
-        EntityMngr.LoadEntities(loc_fabric, map_fabric, cr_fabric, item_fabric);
+        WriteLog("Restore world");
 
-        MapMngr.LinkMaps();
-        CrMngr.LinkCritters();
-        ItemMngr.LinkItems();
+        int errors = 0;
 
-        EntityMngr.InitAfterLoad();
-
-        for (auto&& [id, item] : EntityMngr.GetItems()) {
-            if (item->GetIsRadio()) {
-                ItemMngr.RegisterRadio(item);
-            }
+        try {
+            ServerDeferredCalls.LoadDeferredCalls();
+        }
+        catch (std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
         }
 
-        WriteLog("Process critters visibility..");
+        try {
+            const auto loc_fabric = [this](uint id, const ProtoLocation* proto) { return new Location(this, id, proto); };
+            const auto map_fabric = [this](uint id, const ProtoMap* proto) {
+                const auto* static_map = MapMngr.GetStaticMap(proto);
+                return new Map(this, id, proto, nullptr, static_map);
+            };
+            const auto cr_fabric = [this](uint id, const ProtoCritter* proto) { return new Critter(this, id, nullptr, proto); };
+            const auto item_fabric = [this](uint id, const ProtoItem* proto) {
+                auto* item = new Item(this, id, proto);
+                if (item->GetIsRadio()) {
+                    ItemMngr.RegisterRadio(item);
+                }
+                return item;
+            };
+
+            EntityMngr.LoadEntities(loc_fabric, map_fabric, cr_fabric, item_fabric);
+        }
+        catch (std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+
+        try {
+            MapMngr.LinkMaps();
+        }
+        catch (std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+
+        try {
+            CrMngr.LinkCritters();
+        }
+        catch (std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+
+        try {
+            ItemMngr.LinkItems();
+        }
+        catch (std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+
+        try {
+            EntityMngr.InitAfterLoad();
+        }
+        catch (std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
+        }
+
         for (auto&& [id, cr] : copy(EntityMngr.GetCritters())) {
             if (!cr->IsDestroyed()) {
-                MapMngr.ProcessVisibleCritters(cr);
-                MapMngr.ProcessVisibleItems(cr);
+                try {
+                    MapMngr.ProcessVisibleCritters(cr);
+                    MapMngr.ProcessVisibleItems(cr);
+                }
+                catch (std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                    errors++;
+                }
             }
         }
-        WriteLog("Process critters visibility complete");
+
+        if (errors != 0) {
+            throw ServerInitException("Something went wrong during world restoring");
+        }
     }
+
+    WriteLog("Start world");
 
     // Start script
     if (!OnStart.Fire()) {
@@ -1677,7 +1752,7 @@ void FOServer::ProcessCritter(Critter* cr)
         // Full delete
         if (full_delete) {
             CrMngr.DeleteInventory(cr);
-            DbStorage.Delete("PlayerCritters", cr->GetId());
+            DbStorage.Delete("Critters", cr->GetId());
         }
 
         cr->Release();
@@ -2158,7 +2233,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         // Try load critter from data base
         if (cr == nullptr && cr_id != 0u) {
-            auto cr_doc = DbStorage.Get("PlayerCritters", cr_id);
+            auto cr_doc = DbStorage.Get("Critters", cr_id);
             if (cr_doc.empty() || cr_doc.count("_Proto") == 0u) {
                 player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
                 player->Connection->GracefulDisconnect();
@@ -2640,7 +2715,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
         entry_id = server_entity->GetId();
 
-        DbStorage.Update(_str("{}s", server_entity->GetStorageName()), entry_id, prop->GetName(), value);
+        DbStorage.Update(_str("{}s", server_entity->GetClassName()), entry_id, prop->GetName(), value);
     }
     else {
         entry_id = 1u;

@@ -1036,14 +1036,9 @@ public:
         bson_t filter;
         bson_init(&filter);
 
-        if (!bson_append_int32(&filter, "_id", 3, 1)) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name);
-        }
+        auto* opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
 
-        bson_t opts;
-        bson_init(&opts);
-
-        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
+        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, opts, nullptr);
         if (cursor == nullptr) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
@@ -1073,7 +1068,7 @@ public:
 
         mongoc_cursor_destroy(cursor);
         bson_destroy(&filter);
-        bson_destroy(&opts);
+        bson_destroy(opts);
         return ids;
     }
 
@@ -1088,7 +1083,7 @@ protected:
         bson_t filter;
         bson_init(&filter);
 
-        if (!bson_append_int32(&filter, "_id", 3, id)) {
+        if (!bson_append_int32(&filter, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1133,7 +1128,7 @@ protected:
         bson_t insert;
         bson_init(&insert);
 
-        if (!bson_append_int32(&insert, "_id", 3, id)) {
+        if (!bson_append_int32(&insert, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1159,7 +1154,7 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        if (!bson_append_int32(&selector, "_id", 3, id)) {
+        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1196,7 +1191,7 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        if (!bson_append_int32(&selector, "_id", 3, id)) {
+        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 

@@ -38,6 +38,7 @@
 
 ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
 {
+    _name = _str("{}", _id);
 }
 
 auto ServerEntity::GetId() const -> uint
@@ -48,6 +49,7 @@ auto ServerEntity::GetId() const -> uint
 void ServerEntity::SetId(uint id)
 {
     _id = id;
+    _name = _str("{}", _id);
 }
 
 auto ServerEntity::GetEngine() -> FOServer*
@@ -59,10 +61,5 @@ auto ServerEntity::GetEngine() -> FOServer*
 
 auto ServerEntity::GetName() const -> string_view
 {
-    return GetProperties().GetRegistrator()->GetClassName();
-}
-
-auto ServerEntity::GetStorageName() const -> string_view
-{
-    return GetClassName();
+    return _name;
 }

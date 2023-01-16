@@ -50,6 +50,8 @@ void CritterManager::LinkCritters()
 {
     WriteLog("Link critters...");
 
+    int errors = 0;
+
     const auto critters = GetAllCritters();
     vector<Critter*> critter_groups;
     critter_groups.reserve(critters.size());
@@ -63,11 +65,15 @@ void CritterManager::LinkCritters()
 
         auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
         if (cr->GetMapId() != 0u && map == nullptr) {
-            throw EntitiesLoadException("Map not found for critter", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY());
+            WriteLog("Map {} not found for critter {} at hex {} {}", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY());
+            errors++;
+            continue;
         }
 
         if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), 0)) {
-            throw EntitiesLoadException("Error parsing npc to map", cr->GetName(), cr->GetId(), cr->GetMapId(), cr->GetHexX(), cr->GetHexY());
+            WriteLog("Error parsing npc {} to map {} at hex {} {}", cr->GetName(), cr->GetMapId(), cr->GetHexX(), cr->GetHexY());
+            errors++;
+            continue;
         }
 
         _engine->MapMngr.AddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0);
@@ -80,10 +86,16 @@ void CritterManager::LinkCritters()
     // Move critters to global groups
     for (auto* cr : critter_groups) {
         if (!_engine->MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId())) {
-            throw EntitiesLoadException("Error parsing npc to global group", cr->GetName(), cr->GetGlobalMapLeaderId());
+            WriteLog("Error parsing npc {} to global group {}", cr->GetName(), cr->GetGlobalMapLeaderId());
+            errors++;
+            continue;
         }
 
         _engine->MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
+    }
+
+    if (errors != 0) {
+        throw ServerInitException("Link critters failed");
     }
 
     WriteLog("Link critters complete");

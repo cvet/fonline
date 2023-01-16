@@ -43,8 +43,6 @@
 #include "Map.h"
 #include "Player.h"
 
-DECLARE_EXCEPTION(EntitiesLoadException);
-
 class EntityManager final
 {
 public:

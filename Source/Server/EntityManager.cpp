@@ -134,11 +134,11 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
             const auto* proto = entity_with_proto->GetProto();
             auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine);
             doc["_Proto"] = string(proto->GetName());
-            _engine->DbStorage.Insert(_str("{}s", entity->GetStorageName()), id, doc);
+            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
         }
         else {
             const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine);
-            _engine->DbStorage.Insert(_str("{}s", entity->GetStorageName()), id, doc);
+            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
         }
     }
 }
@@ -150,7 +150,7 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
     RUNTIME_ASSERT(entity->GetId() != 0u);
 
     if (delete_from_db) {
-        _engine->DbStorage.Delete(_str("{}s", entity->GetStorageName()), entity->GetId());
+        _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
     }
 
     entity->SetId(0);
@@ -271,6 +271,8 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 {
     WriteLog("Load entities...");
 
+    int errors = 0;
+
     // Todo: load locations -> theirs maps -> critters/items on map -> items in critters/containers
     const string query[] = {
         "Locations",
@@ -289,15 +291,21 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
             const auto proto_it = doc.find("_Proto");
             if (proto_it == doc.end()) {
-                throw EntitiesLoadException("'_Proto' section not found in entity", collection_name, id);
+                WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
+                errors++;
+                continue;
             }
             if (proto_it->second.index() != AnyData::STRING_VALUE) {
-                throw EntitiesLoadException("'_Proto' section is not string type", collection_name, id, proto_it->second.index());
+                WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.index());
+                errors++;
+                continue;
             }
 
             const auto& proto_name = std::get<string>(proto_it->second);
             if (proto_name.empty()) {
-                throw EntitiesLoadException("'_Proto' section is empty", collection_name, id);
+                WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
+                errors++;
+                continue;
             }
 
             const auto proto_id = _engine->ToHashedString(std::get<string>(proto_it->second));
@@ -305,12 +313,16 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
             if (q == 0) {
                 const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Location proto not found", proto_name);
+                    WriteLog("Location proto {} not found", proto_name);
+                    errors++;
+                    continue;
                 }
 
                 auto* loc = loc_fabric(id, proto);
                 if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), doc, *_engine)) {
-                    throw EntitiesLoadException("Failed to restore location properties", proto_name, id);
+                    WriteLog("Failed to restore location {} {} properties", proto_name, id);
+                    errors++;
+                    continue;
                 }
 
                 loc->BindScript();
@@ -320,12 +332,16 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
             else if (q == 1) {
                 const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Map proto not found", proto_name);
+                    WriteLog("Map proto {} not found", proto_name);
+                    errors++;
+                    continue;
                 }
 
                 auto* map = map_fabric(id, proto);
                 if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), doc, *_engine)) {
-                    throw EntitiesLoadException("Failed to restore map properties", proto_name, id);
+                    WriteLog("Failed to restore map {} {} properties", proto_name, id);
+                    errors++;
+                    continue;
                 }
 
                 RegisterEntity(map);
@@ -333,12 +349,16 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
             else if (q == 2) {
                 const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Proto critter not found", proto_name);
+                    WriteLog("Proto critter {} not found", proto_name);
+                    errors++;
+                    continue;
                 }
 
                 auto* npc = npc_fabric(id, proto);
                 if (!PropertiesSerializator::LoadFromDocument(&npc->GetPropertiesForEdit(), doc, *_engine)) {
-                    throw EntitiesLoadException("Failed to restore critter properties", proto_name, id);
+                    WriteLog("Failed to restore critter {} {} properties", proto_name, id);
+                    errors++;
+                    continue;
                 }
 
                 RegisterEntity(npc);
@@ -346,12 +366,16 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
             else if (q == 3) {
                 const auto* proto = _engine->ProtoMngr.GetProtoItem(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Proto item is not loaded", proto_name);
+                    WriteLog("Proto item {} is not loaded", proto_name);
+                    errors++;
+                    continue;
                 }
 
                 auto* item = item_fabric(id, proto);
                 if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), doc, *_engine)) {
-                    throw EntitiesLoadException("Failed to restore item properties", proto_name, id);
+                    WriteLog("Failed to restore item {} {} properties", proto_name, id);
+                    errors++;
+                    continue;
                 }
 
                 RegisterEntity(item);
@@ -360,6 +384,10 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 throw UnreachablePlaceException(LINE_STR);
             }
         }
+    }
+
+    if (errors != 0) {
+        throw ServerInitException("Load entities failed");
     }
 
     WriteLog("Load entities complete");
@@ -377,8 +405,24 @@ void EntityManager::InitAfterLoad()
     auto items = copy(_allItems);
 
     for (auto&& [id, loc] : locs) {
+        loc->AddRef();
+    }
+    for (auto&& [id, map] : maps) {
+        map->AddRef();
+    }
+    for (auto&& [id, cr] : critters) {
+        cr->AddRef();
+    }
+    for (auto&& [id, item] : items) {
+        item->AddRef();
+    }
+
+    for (auto&& [id, loc] : locs) {
         if (!loc->IsDestroyed()) {
             _engine->OnLocationInit.Fire(loc, false);
+            if (!loc->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(_engine->ScriptSys, loc, loc->GetInitScript(), false);
+            }
         }
     }
 
@@ -401,10 +445,25 @@ void EntityManager::InitAfterLoad()
     }
 
     for (auto&& [id, item] : items) {
-        _engine->OnItemInit.Fire(item, false);
         if (!item->IsDestroyed()) {
-            ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
+            _engine->OnItemInit.Fire(item, false);
+            if (!item->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
+            }
         }
+    }
+
+    for (auto&& [id, loc] : locs) {
+        loc->Release();
+    }
+    for (auto&& [id, map] : maps) {
+        map->Release();
+    }
+    for (auto&& [id, cr] : critters) {
+        cr->Release();
+    }
+    for (auto&& [id, item] : items) {
+        item->Release();
     }
 
     WriteLog("Init entities after load complete");

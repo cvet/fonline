@@ -57,6 +57,8 @@ void MapManager::LinkMaps()
 {
     WriteLog("Link maps...");
 
+    int errors = 0;
+
     // Link maps to locations
     for (auto&& [id, map] : GetMaps()) {
         const auto loc_id = map->GetLocId();
@@ -64,7 +66,9 @@ void MapManager::LinkMaps()
 
         auto* loc = GetLocation(loc_id);
         if (loc == nullptr) {
-            throw EntitiesLoadException("Location for map not found", loc_id, map->GetName(), map->GetId());
+            WriteLog("Location {} for map {} not found", loc_id, map->GetName());
+            errors++;
+            continue;
         }
 
         auto& loc_maps = loc->GetMapsRaw();
@@ -81,9 +85,15 @@ void MapManager::LinkMaps()
         auto& loc_maps = loc->GetMapsRaw();
         for (size_t i = 0; i < loc_maps.size(); i++) {
             if (loc_maps[i] == nullptr) {
-                throw EntitiesLoadException("Location map is empty", loc->GetName(), loc->GetId(), i);
+                WriteLog("Location {} map index {} is empty", loc->GetName(), i);
+                errors++;
+                continue;
             }
         }
+    }
+
+    if (errors != 0) {
+        throw ServerInitException("Link maps failed");
     }
 
     WriteLog("Link maps complete");
