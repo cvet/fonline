@@ -177,6 +177,7 @@ public:
     [[nodiscard]] auto GetMapDayTime() -> int*;
     [[nodiscard]] auto GetMapDayColor() -> uchar*;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
+    [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
     void MarkAsDestroyed() override;
     void EnableMapperMode();

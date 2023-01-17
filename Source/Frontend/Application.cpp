@@ -175,8 +175,19 @@ static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
 Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
+    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+    SDL_SetHint(SDL_HINT_MOUSE_AUTO_CAPTURE, "0");
+    SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
+
     if (Settings.NullRenderer) {
-        SDL_SetHint("SDL_HINT_RENDER_DRIVER", "dummy");
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
+        SDL_SetHint(SDL_HINT_VIDEODRIVER, "dummy");
+    }
+
+    if constexpr (FO_ANDROID) {
+        SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
     }
 
     if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0) {
@@ -428,6 +439,8 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
         if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
+
+        SDL_DisableScreenSaver();
 
         if (_isTablet) {
             SDL_DisplayMode mode;
@@ -720,24 +733,14 @@ void Application::BeginFrame()
             }
         } break;
         case SDL_FINGERMOTION: {
-            InputEvent::MouseMoveEvent ev;
-            ev.MouseX = sdl_event.motion.x;
-            ev.MouseY = sdl_event.motion.y;
-            EventsQueue->emplace_back(ev);
-        } break;
+            throw InvalidCallException("SDL_FINGERMOTION");
+        }
         case SDL_FINGERDOWN: {
-            InputEvent::MouseMoveEvent ev1;
-            SDL_GetMouseState(&ev1.MouseX, &ev1.MouseY);
-            EventsQueue->emplace_back(ev1);
-            InputEvent::MouseDownEvent ev2;
-            ev2.Button = MouseButton::Left;
-            EventsQueue->emplace_back(ev2);
-        } break;
+            throw InvalidCallException("SDL_FINGERDOWN");
+        }
         case SDL_FINGERUP: {
-            InputEvent::MouseUpEvent ev;
-            ev.Button = MouseButton::Left;
-            EventsQueue->emplace_back(ev);
-        } break;
+            throw InvalidCallException("SDL_FINGERUP");
+        }
         case SDL_MOUSEWHEEL: {
             InputEvent::MouseWheelEvent ev;
             ev.Delta = -sdl_event.wheel.y;
@@ -919,8 +922,10 @@ void Application::BeginFrame()
             _pendingMouseLeaveFrame = 0;
         }
 
+        SDL_CaptureMouse(SDL_TRUE);
+        SDL_SetWindowGrab(static_cast<SDL_Window*>(MainWindow._windowHandle), MainWindow._grabbed ? SDL_TRUE : SDL_FALSE);
+
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-        SDL_CaptureMouse(_mouseButtonsDown != 0 ? SDL_TRUE : SDL_FALSE);
         const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
 #else
         const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
@@ -1148,6 +1153,11 @@ void AppWindow::AlwaysOnTop(bool enable)
         ::SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
     }
 #endif
+}
+
+void AppWindow::GrabInput(bool enabled)
+{
+    _grabbed = enabled;
 }
 
 void AppWindow::Destroy()

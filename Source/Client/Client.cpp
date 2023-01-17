@@ -429,6 +429,8 @@ void FOClient::MainLoop()
         CurMap->Process();
     }
 
+    App->MainWindow.GrabInput(CurMap != nullptr && CurMap->IsScrollEnabled());
+
     // Render
     EffectMngr.UpdateEffects(GameTime);
 
@@ -570,6 +572,8 @@ void FOClient::ProcessInputEvents()
         }
     }
     else {
+        std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
+
         Keyb.Lost();
         OnInputLost.Fire();
     }

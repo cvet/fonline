@@ -2649,6 +2649,13 @@ void MapView::PrepareFogToDraw()
     }
 }
 
+auto MapView::IsScrollEnabled() const -> bool
+{
+    return _engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft || _engine->Settings.ScrollMouseRight || //
+        _engine->Settings.ScrollKeybRight || _engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp || //
+        _engine->Settings.ScrollMouseDown || _engine->Settings.ScrollKeybDown;
+}
+
 auto MapView::Scroll() -> bool
 {
     // Scroll delay
@@ -2663,7 +2670,7 @@ auto MapView::Scroll() -> bool
         last_tick = tick;
     }
 
-    const auto is_scroll = (_engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft || _engine->Settings.ScrollMouseRight || _engine->Settings.ScrollKeybRight || _engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp || _engine->Settings.ScrollMouseDown || _engine->Settings.ScrollKeybDown);
+    const auto is_scroll = IsScrollEnabled();
     auto scr_ox = _engine->Settings.ScrOx;
     auto scr_oy = _engine->Settings.ScrOy;
     const auto prev_scr_ox = scr_ox;
@@ -2674,14 +2681,14 @@ auto MapView::Scroll() -> bool
     }
 
     // Check critter scroll lock
-    if ((AutoScroll.HardLockedCritter != 0u) && !is_scroll) {
+    if (AutoScroll.HardLockedCritter != 0u && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.HardLockedCritter);
         if ((cr != nullptr) && (cr->GetHexX() != _screenHexX || cr->GetHexY() != _screenHexY)) {
             ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.02f, true);
         }
     }
 
-    if ((AutoScroll.SoftLockedCritter != 0u) && !is_scroll) {
+    if (AutoScroll.SoftLockedCritter != 0u && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
         if (cr != nullptr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
             const auto [ox, oy] = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
