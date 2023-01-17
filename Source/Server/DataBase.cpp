@@ -33,6 +33,7 @@
 
 #include "DataBase.h"
 #include "DiskFileSystem.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 #if FO_HAVE_JSON
@@ -1315,22 +1316,24 @@ private:
 auto ConnectToDataBase(string_view connection_info) -> DataBase
 {
     if (const auto options = _str(connection_info).split(' '); !options.empty()) {
+        WriteLog("Connect to {} data base", options.front());
+
 #if FO_HAVE_JSON
-        if (options[0] == "JSON" && options.size() == 2) {
+        if (options.front() == "JSON" && options.size() == 2) {
             return DataBase(new DbJson(options[1]));
         }
 #endif
 #if FO_HAVE_UNQLITE
-        if (options[0] == "DbUnQLite" && options.size() == 2) {
+        if (options.front() == "DbUnQLite" && options.size() == 2) {
             return DataBase(new DbUnQLite(options[1]));
         }
 #endif
 #if FO_HAVE_MONGO && !FO_SINGLEPLAYER
-        if (options[0] == "Mongo" && options.size() == 3) {
+        if (options.front() == "Mongo" && options.size() == 3) {
             return DataBase(new DbMongo(options[1], options[2]));
         }
 #endif
-        if (options[0] == "Memory" && options.size() == 1) {
+        if (options.front() == "Memory" && options.size() == 1) {
             return DataBase(new DbMemory());
         }
     }

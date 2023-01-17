@@ -178,7 +178,6 @@ public:
     DialogManager DlgMngr;
 
     DataBase DbStorage {};
-    DataBase DbHistory {}; // Todo: remove history DB system?
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};

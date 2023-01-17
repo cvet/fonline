@@ -658,6 +658,8 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) co
 auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
 #if FO_HAVE_ASIO
+    WriteLog("Listen TCP connections on port {}", settings.ServerPort);
+
     return new NetTcpServer(settings, std::move(callback));
 #else
     throw NotSupportedException("NetServerBase::StartTcpServer");
@@ -668,9 +670,13 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
 {
 #if FO_HAVE_ASIO
     if (settings.SecuredWebSockets) {
+        WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
+
         return new NetTlsWebSocketsServer(settings, std::move(callback));
     }
     else {
+        WriteLog("Listen WebSockets (no TLS) connections on port {}", settings.ServerPort + 1);
+
         return new NetNoTlsWebSocketsServer(settings, std::move(callback));
     }
 #else

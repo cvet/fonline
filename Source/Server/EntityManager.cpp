@@ -442,15 +442,13 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
     WriteLog("Loaded {} maps", loaded_maps);
     WriteLog("Loaded {} critters", loaded_crs);
     WriteLog("Loaded {} items", loaded_items);
-
-    WriteLog("Load entities complete");
 }
 
 void EntityManager::InitAfterLoad()
 {
     NON_CONST_METHOD_HINT();
 
-    WriteLog("Init entities after load");
+    WriteLog("Init entities after link");
 
     auto locs = copy(_allLocations);
     auto maps = copy(_allMaps);
@@ -518,8 +516,6 @@ void EntityManager::InitAfterLoad()
     for (auto&& [id, item] : items) {
         item->Release();
     }
-
-    WriteLog("Init entities after load complete");
 }
 
 void EntityManager::FinalizeEntities()

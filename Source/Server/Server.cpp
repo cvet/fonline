@@ -89,7 +89,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Network
 #if !FO_SINGLEPLAYER
-    WriteLog("Listen ports {} and {}", Settings.ServerPort, Settings.ServerPort + 1);
+    WriteLog("Start networking");
 
     if (auto* server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
         _connectionServers.emplace_back(server);
@@ -104,18 +104,9 @@ FOServer::FOServer(GlobalSettings& settings) :
 #endif
 
     // Data base
-    WriteLog("Connect to data base");
-
     DbStorage = ConnectToDataBase(Settings.DbStorage);
     if (!DbStorage) {
         throw ServerInitException("Can't init storage data base", Settings.DbStorage);
-    }
-
-    if (Settings.DbHistory != "None") {
-        DbHistory = ConnectToDataBase(Settings.DbHistory);
-        if (!DbHistory) {
-            throw ServerInitException("Can't init histrory data base", Settings.DbHistory);
-        }
     }
 
     WriteLog("Setup engine data");
@@ -220,18 +211,18 @@ FOServer::FOServer(GlobalSettings& settings) :
         set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
-    WriteLog("Load dialogs");
+    WriteLog("Load dialogs data");
     DlgMngr.LoadFromResources();
 
-    WriteLog("Load protos");
+    WriteLog("Load protos data");
     ProtoMngr.LoadFromResources();
 
-    WriteLog("Load maps");
+    WriteLog("Load maps data");
     MapMngr.LoadFromResources();
 
     // Resource packs for client
     if (Settings.DataSynchronization) {
-        WriteLog("Load client data packs");
+        WriteLog("Load client data packs for synchronization");
 
         FileSystem client_resources;
         client_resources.AddDataSource(_str("Client{}", Settings.ResourcesDir), DataSourceType::DirRoot);
@@ -283,9 +274,6 @@ void FOServer::Start()
     WriteLog("Start game logic");
 
     DbStorage.StartChanges();
-    if (DbHistory) {
-        DbHistory.StartChanges();
-    }
 
     // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);
@@ -413,9 +401,6 @@ void FOServer::Start()
 
     // Commit initial data base changes
     DbStorage.CommitChanges();
-    if (DbHistory) {
-        DbHistory.CommitChanges();
-    }
 
     GameTime.FrameAdvance();
     _stats.ServerStartTick = GameTime.FrameTick();
@@ -441,17 +426,11 @@ void FOServer::Shutdown()
 
     // Finish logic
     DbStorage.StartChanges();
-    if (DbHistory) {
-        DbHistory.StartChanges();
-    }
 
     OnFinish.Fire();
     EntityMngr.FinalizeEntities();
 
     DbStorage.CommitChanges();
-    if (DbHistory) {
-        DbHistory.CommitChanges();
-    }
 
     // Shutdown servers
     for (auto* server : _connectionServers) {
@@ -512,9 +491,6 @@ void FOServer::MainLoop()
 
     // Begin data base changes
     DbStorage.StartChanges();
-    if (DbHistory) {
-        DbHistory.StartChanges();
-    }
 
     // Advance time
     if (GameTime.FrameAdvance()) {
@@ -655,9 +631,6 @@ void FOServer::MainLoop()
 
     // Commit changed to data base
     DbStorage.CommitChanges();
-    if (DbHistory) {
-        DbHistory.CommitChanges();
-    }
 
     // Clients log
     DispatchLogToClients();
@@ -2723,7 +2696,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         DbStorage.Update(entity->GetClassName(), entry_id, prop->GetName(), value);
     }
 
-    if (DbHistory && prop->IsHistorical()) {
+    if (prop->IsHistorical()) {
         const auto history_id = GetHistoryRecordsId();
         SetHistoryRecordsId(history_id + 1u);
 
@@ -2731,11 +2704,12 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
         AnyData::Document doc;
         doc["Time"] = static_cast<int64>(time.count());
+        doc["EntityClass"] = string(entity->GetClassName());
         doc["EntityId"] = static_cast<int>(entry_id);
         doc["Property"] = prop->GetName();
         doc["Value"] = value;
 
-        DbHistory.Insert(_str("{}sHistory", entity->GetClassName()), history_id, doc);
+        DbStorage.Insert("History", history_id, doc);
     }
 }
 

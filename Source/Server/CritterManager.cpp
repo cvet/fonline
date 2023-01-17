@@ -99,8 +99,6 @@ void CritterManager::LinkCritters()
     if (errors != 0) {
         throw ServerInitException("Link critters failed");
     }
-
-    WriteLog("Link critters complete");
 }
 
 void CritterManager::InitAfterLoad()

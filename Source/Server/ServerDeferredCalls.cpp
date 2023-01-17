@@ -256,5 +256,5 @@ void ServerDeferredCallManager::LoadDeferredCalls()
         throw DeferredCallsLoadException("Not all deffered calls can be loaded");
     }
 
-    WriteLog("Loaded deferred calls {}", _savedCalls.size());
+    WriteLog("Loaded {} deferred calls", _savedCalls.size());
 }

@@ -106,8 +106,6 @@ void ItemManager::LinkItems()
     if (errors != 0) {
         throw ServerInitException("Link items failed");
     }
-
-    WriteLog("Link items complete");
 }
 
 void ItemManager::InitAfterLoad()

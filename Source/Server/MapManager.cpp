@@ -95,8 +95,6 @@ void MapManager::LinkMaps()
     if (errors != 0) {
         throw ServerInitException("Link maps failed");
     }
-
-    WriteLog("Link maps complete");
 }
 
 void MapManager::LoadFromResources()
