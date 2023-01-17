@@ -163,6 +163,8 @@ void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
 
 void ServerDeferredCallManager::LoadDeferredCalls()
 {
+    WriteLog("Load deferred calls");
+
     int errors = 0;
 
     const auto call_ids = _serverEngine->DbStorage.GetAllIds("DeferredCalls");
@@ -253,4 +255,6 @@ void ServerDeferredCallManager::LoadDeferredCalls()
     if (errors != 0) {
         throw DeferredCallsLoadException("Not all deffered calls can be loaded");
     }
+
+    WriteLog("Loaded deferred calls {}", _savedCalls.size());
 }

@@ -48,7 +48,7 @@ CritterManager::CritterManager(FOServer* engine) : _engine {engine}
 
 void CritterManager::LinkCritters()
 {
-    WriteLog("Link critters...");
+    WriteLog("Link critters");
 
     int errors = 0;
 
@@ -76,10 +76,12 @@ void CritterManager::LinkCritters()
             continue;
         }
 
-        _engine->MapMngr.AddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0);
-
-        if (map == nullptr) {
-            cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() - 1);
+        if (map != nullptr) {
+            map->AddCritter(cr);
+        }
+        else if (map == nullptr) {
+            cr->GlobalMapGroup = new vector<Critter*>();
+            cr->GlobalMapGroup->push_back(cr);
         }
     }
 
@@ -127,6 +129,11 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
     item->EvaluateSortValue(cr->_invItems);
     cr->SetItem(item);
 
+    auto item_ids = cr->GetItemIds();
+    RUNTIME_ASSERT(std::find(item_ids.begin(), item_ids.end(), item->GetId()) == item_ids.end());
+    item_ids.emplace_back(item->GetId());
+    cr->SetItemIds(std::move(item_ids));
+
     // Send
     if (send) {
         cr->Send_AddItem(item);
@@ -146,6 +153,10 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
 
+    if (item->GetIsRadio()) {
+        _engine->ItemMngr.UnregisterRadio(item);
+    }
+
     const auto it = std::find(cr->_invItems.begin(), cr->_invItems.end(), item);
     RUNTIME_ASSERT(it != cr->_invItems.end());
     cr->_invItems.erase(it);
@@ -155,11 +166,20 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     if (send) {
         cr->Send_EraseItem(item);
     }
-    if (item->GetCritterSlot() != 0u) {
+    if (item->GetCritterSlot() != 0) {
         cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
     }
 
     _engine->OnCritterMoveItem.Fire(cr, item, item->GetCritterSlot());
+
+    item->SetCritterId(0);
+    item->SetCritterSlot(0);
+
+    auto item_ids = cr->GetItemIds();
+    const auto item_id_it = std::find(item_ids.begin(), item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(item_id_it != item_ids.end());
+    item_ids.erase(item_id_it);
+    cr->SetItemIds(std::move(item_ids));
 }
 
 auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*

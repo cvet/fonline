@@ -279,6 +279,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         }
                     }
                 }
+                if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+                    ImGui::SetScrollHereY(1.0f);
+                }
                 ImGui::End();
             }
 

@@ -228,12 +228,17 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
     SetItem(item, hx, hy);
 
+    auto item_ids = GetItemIds();
+    RUNTIME_ASSERT(std::find(item_ids.begin(), item_ids.end(), item->GetId()) == item_ids.end());
+    item_ids.emplace_back(item->GetId());
+    SetItemIds(std::move(item_ids));
+
     // Process critters view
     item->ViewPlaceOnMap = true;
     for (auto* cr : GetCritters()) {
         if (!item->GetIsHidden() || item->GetIsAlwaysView()) {
-            if (!item->GetIsAlwaysView()) // Check distance for non-hide items
-            {
+            if (!item->GetIsAlwaysView()) {
+                // Check distance for non-hide items
                 bool allowed;
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
@@ -311,6 +316,12 @@ void Map::EraseItem(uint item_id)
     item->SetMapId(0);
     item->SetHexX(0);
     item->SetHexY(0);
+
+    auto item_ids = GetItemIds();
+    const auto item_id_it = std::find(item_ids.begin(), item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(item_id_it != item_ids.end());
+    item_ids.erase(item_id_it);
+    SetItemIds(std::move(item_ids));
 
     if (item->GetIsGeck()) {
         _mapLocation->GeckCount--;

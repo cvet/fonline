@@ -44,6 +44,7 @@
 #include "Settings.h"
 #include "Timer.h"
 
+// Todo: make dynamic path growth and move max value to settings
 static constexpr auto FPATH_MAX_PATH = 400;
 
 DECLARE_EXCEPTION(MapManagerException);

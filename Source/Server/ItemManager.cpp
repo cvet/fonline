@@ -46,7 +46,7 @@ ItemManager::ItemManager(FOServer* engine) : _engine {engine}
 
 void ItemManager::LinkItems()
 {
-    WriteLog("Link items...");
+    WriteLog("Link items");
 
     int errors = 0;
 
@@ -131,35 +131,40 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 
 void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 {
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(holder);
+
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (holder != nullptr) {
-            _engine->CrMngr.EraseItemFromCritter(dynamic_cast<Critter*>(holder), item, true);
+        if (auto* cr = dynamic_cast<Critter*>(holder); cr != nullptr) {
+            _engine->CrMngr.EraseItemFromCritter(cr, item, true);
         }
-        else if (item->GetIsRadio()) {
-            RegisterRadio(item);
+        else {
+            throw GenericException("Item owner (critter inventory) not found");
         }
-        item->SetCritterId(0u);
-        item->SetCritterSlot(0u);
     } break;
     case ItemOwnership::MapHex: {
-        if (holder != nullptr) {
-            dynamic_cast<Map*>(holder)->EraseItem(item->GetId());
+        if (auto* map = dynamic_cast<Map*>(holder); map != nullptr) {
+            map->EraseItem(item->GetId());
         }
-        item->SetMapId(0u);
-        item->SetHexX(0u);
-        item->SetHexY(0u);
+        else {
+            throw GenericException("Item owner (map) not found");
+        }
     } break;
     case ItemOwnership::ItemContainer: {
-        if (holder != nullptr) {
-            EraseItemFromContainer(dynamic_cast<Item*>(holder), item);
+        if (auto* cont = dynamic_cast<Item*>(holder); cont != nullptr) {
+            EraseItemFromContainer(cont, item);
         }
-        item->SetContainerId(0u);
-        item->SetContainerStack(0u);
+        else {
+            throw GenericException("Item owner (container) not found");
+        }
     } break;
     default:
         break;
     }
+
     item->SetOwnership(ItemOwnership::Nowhere);
 }
 
@@ -203,6 +208,11 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     item->SetContainerStack(stack_id);
     item->EvaluateSortValue(*cont->_childItems);
     SetItemToContainer(cont, item);
+
+    auto sub_item_ids = cont->GetSubItemIds();
+    RUNTIME_ASSERT(std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId()) == sub_item_ids.end());
+    sub_item_ids.emplace_back(item->GetId());
+    cont->SetSubItemIds(std::move(sub_item_ids));
 }
 
 void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
@@ -225,6 +235,12 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
         delete cont->_childItems;
         cont->_childItems = nullptr;
     }
+
+    auto sub_item_ids = cont->GetSubItemIds();
+    const auto sub_item_id_it = std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(sub_item_id_it != sub_item_ids.end());
+    sub_item_ids.erase(sub_item_id_it);
+    cont->SetSubItemIds(std::move(sub_item_ids));
 }
 
 auto ItemManager::GetItems() -> const unordered_map<uint, Item*>&
@@ -267,6 +283,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     // Scripts
     _engine->OnItemInit.Fire(item, true);
+
     if (!item->IsDestroyed()) {
         ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), true);
     }
@@ -333,21 +350,9 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
         return nullptr;
     }
 
-    new_item->SetOwnership(ItemOwnership::Nowhere);
-    new_item->SetCritterId(0u);
-    new_item->SetCritterSlot(0u);
-    new_item->SetMapId(0u);
-    new_item->SetHexX(0u);
-    new_item->SetHexY(0u);
-    new_item->SetContainerId(0u);
-    new_item->SetContainerStack(0u);
+    RUNTIME_ASSERT(new_item->GetOwnership() == ItemOwnership::Nowhere);
 
     item->SetCount(item_count - count);
-
-    // Radio collection
-    if (new_item->GetIsRadio()) {
-        RegisterRadio(new_item);
-    }
 
     return new_item;
 }

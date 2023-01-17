@@ -112,6 +112,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, uint, ContainerId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, SubItemIds);
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty Resource
@@ -260,13 +262,13 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, MapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefMapId);
+    ENTITY_PROPERTY(PrivateServer, uint, LastMapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, RefMapPid);
+    ENTITY_PROPERTY(PrivateServer, hstring, LastMapPid);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefLocationId);
+    ENTITY_PROPERTY(PrivateServer, uint, LastLocationId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, RefLocationPid);
+    ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexX);
     ///@ ExportProperty ReadOnly
@@ -279,6 +281,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, uchar, Dir);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, short, DirAngle);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, ItemIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
     ///@ ExportProperty ReadOnly
@@ -420,6 +424,10 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, LocId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, CritterIds);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, ItemIds);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateCommon, uchar, RainCapacity);
     ///@ ExportProperty
@@ -442,6 +450,8 @@ public:
     // Todo: implement Location InitScript
     ///@ ExportProperty ScriptFuncType = LocationInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, MapIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
     ///@ ExportProperty ReadOnly
