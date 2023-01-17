@@ -233,7 +233,7 @@ public:
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
-    void GrabInput(bool enabled);
+    void GrabInput(bool enable);
     void SetSize(int w, int h);
     void SetPosition(int x, int y);
     void Minimize();

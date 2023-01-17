@@ -1155,9 +1155,9 @@ void AppWindow::AlwaysOnTop(bool enable)
 #endif
 }
 
-void AppWindow::GrabInput(bool enabled)
+void AppWindow::GrabInput(bool enable)
 {
-    _grabbed = enabled;
+    _grabbed = enable;
 }
 
 void AppWindow::Destroy()

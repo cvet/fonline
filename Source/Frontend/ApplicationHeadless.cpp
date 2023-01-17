@@ -282,6 +282,11 @@ void AppWindow::AlwaysOnTop(bool enable)
     UNUSED_VARIABLE(enable);
 }
 
+void AppWindow::GrabInput(bool enable)
+{
+    UNUSED_VARIABLE(enable);
+}
+
 void AppWindow::Destroy()
 {
 }
