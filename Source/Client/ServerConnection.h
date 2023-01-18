@@ -93,6 +93,7 @@ private:
     auto DispatchData() -> bool;
     auto CheckSocketStatus(bool for_write) -> bool;
 
+    void Net_SendHandshake();
     void Net_OnPing();
 
     ClientNetworkSettings& _settings;

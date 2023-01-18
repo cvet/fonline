@@ -41,7 +41,6 @@
 #include "Log.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _resources), _sprMngr(_settings, window, _resources, _effectMngr)
 {
@@ -92,17 +91,6 @@ void Updater::Net_OnConnect(bool success)
     if (success) {
         AddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
         AddText(STR_CHECK_UPDATES, "Check updates...");
-
-        _conn.OutBuf << NETMSG_HANDSHAKE;
-        _conn.OutBuf << static_cast<uint>(FO_COMPATIBILITY_VERSION);
-
-        const auto encrypt_key = NetBuffer::GenerateEncryptKey();
-        _conn.OutBuf << encrypt_key;
-        _conn.OutBuf.SetEncryptKey(encrypt_key);
-        _conn.InBuf.SetEncryptKey(encrypt_key);
-
-        constexpr uchar padding[28] = {};
-        _conn.OutBuf.Push(padding, sizeof(padding));
     }
     else {
         Abort(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");

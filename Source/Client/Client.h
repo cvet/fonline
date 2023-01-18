@@ -302,7 +302,6 @@ protected:
     void LmapPrepareMap();
     void GmapNullParams();
 
-    void Net_SendHandshake();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);

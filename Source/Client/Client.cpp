@@ -646,8 +646,6 @@ void FOClient::Net_OnConnect(bool success)
         const auto reason = _initNetReason;
         _initNetReason = INIT_NET_REASON_NONE;
 
-        Net_SendHandshake();
-
         // After connect things
         if (reason == INIT_NET_REASON_LOGIN) {
             Net_SendLogIn();
@@ -686,22 +684,6 @@ void FOClient::Net_OnDisconnect()
     }
 
     ProcessAutoLogin();
-}
-
-void FOClient::Net_SendHandshake()
-{
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf << NETMSG_HANDSHAKE;
-    _conn.OutBuf << static_cast<uint>(FO_COMPATIBILITY_VERSION);
-
-    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
-    _conn.OutBuf << encrypt_key;
-    _conn.OutBuf.SetEncryptKey(encrypt_key);
-    _conn.InBuf.SetEncryptKey(encrypt_key);
-
-    constexpr uchar padding[28] = {};
-    _conn.OutBuf.Push(padding, sizeof(padding));
 }
 
 void FOClient::Net_SendLogIn()
@@ -3520,14 +3502,15 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
     }
     else if (cmd == "CustomConnect") {
-        _loginName = "";
-        _loginPassword = "";
+        if (!_conn.IsConnected()) {
+            _loginName = "";
+            _loginPassword = "";
 
-        RUNTIME_ASSERT(_initNetReason == INIT_NET_REASON_NONE);
-        RUNTIME_ASSERT(!_conn.IsConnected());
-        RUNTIME_ASSERT(!_conn.IsConnecting());
+            RUNTIME_ASSERT(_initNetReason == INIT_NET_REASON_NONE);
+            RUNTIME_ASSERT(!_conn.IsConnecting());
 
-        _initNetReason = INIT_NET_REASON_CUSTOM;
+            _initNetReason = INIT_NET_REASON_CUSTOM;
+        }
     }
     else if (cmd == "DumpAtlases") {
         SprMngr.DumpAtlases();

@@ -951,7 +951,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
     }
 
     if (connection->Bin.IsError()) {
-        WriteLog("Wrong network data from connection ip '{}'", connection->GetHost());
+        WriteLog("Wrong network data from connection '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }

@@ -37,6 +37,7 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 #include "Timer.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #include "zlib.h"
@@ -193,6 +194,8 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
             _isConnecting = false;
             _isConnected = true;
 
+            Net_SendHandshake();
+
             if (_connectCallback) {
                 _connectCallback(true);
             }
@@ -266,6 +269,8 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 
         _isConnecting = false;
         _isConnected = true;
+
+        Net_SendHandshake();
 
         if (_connectCallback) {
             _connectCallback(true);
@@ -775,6 +780,20 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 #else
     return _str("{} ({})", strerror(errno), errno);
 #endif
+}
+
+void ServerConnection::Net_SendHandshake()
+{
+    _netOut << NETMSG_HANDSHAKE;
+    _netOut << static_cast<uint>(FO_COMPATIBILITY_VERSION);
+
+    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
+    _netOut << encrypt_key;
+    _netOut.SetEncryptKey(encrypt_key);
+    _netIn.SetEncryptKey(encrypt_key);
+
+    constexpr uchar padding[28] = {};
+    _netOut.Push(padding, sizeof(padding));
 }
 
 void ServerConnection::Net_OnPing()
