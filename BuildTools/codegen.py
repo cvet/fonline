@@ -3333,7 +3333,7 @@ createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gamename + '";')
-writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = 0x12345678;') # Todo: FO_COMPATIBILITY_VERSION
+writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHash(args.buildhash) + ';')
 
 # Actual writing of generated files
 try:
