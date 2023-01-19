@@ -361,10 +361,10 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     }
 
     // External config
-    if (!ExternalConfig.empty()) {
-        WriteLog("Load external config {}", ExternalConfig);
+    const auto apply_external_config = [&](string_view config_path) {
+        WriteLog("Load external config {}", config_path);
 
-        if (auto settings_file = DiskFileSystem::OpenFile(ExternalConfig, false)) {
+        if (auto settings_file = DiskFileSystem::OpenFile(config_path, false)) {
             string settings_content;
             settings_content.resize(settings_file.GetSize());
             settings_file.Read(settings_content.data(), settings_content.size());
@@ -376,9 +376,13 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         }
         else {
             if (!BreakIntoDebugger("External config not found")) {
-                throw GenericException("External config not found", ExternalConfig);
+                throw GenericException("External config not found", config_path);
             }
         }
+    };
+
+    if (!ExternalConfig.empty()) {
+        apply_external_config(ExternalConfig);
     }
 
     // Command line config
@@ -406,6 +410,10 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
             WriteLog("Command line set {} = {}", key, value);
 
             SetValue(key, value);
+
+            if (key == "ExternalConfig") {
+                apply_external_config(ExternalConfig);
+            }
         }
     }
 
