@@ -1671,14 +1671,6 @@ void FOServer::ProcessCritter(Critter* cr)
         return;
     }
 
-    if (cr->GetMapId() == 0u) {
-        OnCritterGlobalMapIdle.Fire(cr);
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
-    }
-
     CrMngr.ProcessTalk(cr, false);
 
     if (cr->IsDestroyed()) {

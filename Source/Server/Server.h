@@ -146,8 +146,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGlobalMapIdle, Critter* /*cr*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*fromSlot*/);
