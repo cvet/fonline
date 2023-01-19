@@ -178,7 +178,6 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
     SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
-    SDL_SetHint(SDL_HINT_MOUSE_AUTO_CAPTURE, "0");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
 
     if (Settings.NullRenderer) {
@@ -922,7 +921,6 @@ void Application::BeginFrame()
             _pendingMouseLeaveFrame = 0;
         }
 
-        SDL_CaptureMouse(SDL_TRUE);
         SDL_SetWindowGrab(static_cast<SDL_Window*>(MainWindow._windowHandle), MainWindow._grabbed ? SDL_TRUE : SDL_FALSE);
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
