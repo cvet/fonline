@@ -79,7 +79,7 @@ void CritterManager::LinkCritters()
         if (map != nullptr) {
             map->AddCritter(cr);
         }
-        else if (map == nullptr) {
+        else {
             cr->GlobalMapGroup = new vector<Critter*>();
             cr->GlobalMapGroup->push_back(cr);
         }
