@@ -472,6 +472,7 @@ render_window(int index)
     ++frames;
 }
 
+#ifndef __EMSCRIPTEN__
 static int SDLCALL
 render_thread_fn(void* render_ctx)
 {
@@ -512,6 +513,7 @@ loop_threaded()
         SDLTest_CommonEvent(state, &event, &done);
     }
 }
+#endif
 
 static void
 loop()
@@ -612,7 +614,7 @@ main(int argc, char *argv[])
         return 0;
     }
 
-    context = (SDL_GLContext *)SDL_calloc(state->num_windows, sizeof(context));
+    context = (SDL_GLContext *)SDL_calloc(state->num_windows, sizeof(*context));
     if (context == NULL) {
         SDL_Log("Out of memory!\n");
         quit(2);

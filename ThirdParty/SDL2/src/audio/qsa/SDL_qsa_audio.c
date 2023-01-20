@@ -117,7 +117,7 @@ QSA_WaitDevice(_THIS)
     int result;
 
     /* Setup timeout for playing one fragment equal to 2 seconds          */
-    /* If timeout occured than something wrong with hardware or driver    */
+    /* If timeout occurred than something wrong with hardware or driver    */
     /* For example, Vortex 8820 audio driver stucks on second DAC because */
     /* it doesn't exist !                                                 */
     result = SDL_IOReady(this->hidden->audio_fd,
@@ -128,7 +128,7 @@ QSA_WaitDevice(_THIS)
         SDL_SetError("QSA: SDL_IOReady() failed: %s", strerror(errno));
         break;
     case 0:
-        SDL_SetError("QSA: timeout on buffer waiting occured");
+        SDL_SetError("QSA: timeout on buffer waiting occurred");
         this->hidden->timeout_on_wait = 1;
         break;
     default:
