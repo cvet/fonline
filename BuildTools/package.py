@@ -31,9 +31,9 @@ parser.add_argument('-pack', dest='pack', required=True, help='package type')
 # Windows: Raw Zip Wix Headless Service
 # Linux: Raw Tar TarGz Zip AppImage
 # Android: Raw Apk
-# macOS: Raw Bundle
+# macOS: Raw Bundle Zip
 # iOS: Raw Bundle
-# Web: Raw
+# Web: Raw Zip
 parser.add_argument('-respack', dest='respack', required=True, action='append', default=[], help='resource pack entry')
 parser.add_argument('-config', dest='config', required=True, help='config name')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
@@ -53,10 +53,6 @@ buildToolsPath = os.path.dirname(os.path.realpath(__file__))
 resourcesDir = 'Resources'
 
 curPath = os.path.dirname(sys.argv[0])
-
-#os.environ['JAVA_HOME'] = sys.argv[6]
-#os.environ['ANDROID_HOME'] = sys.argv[7]
-#os.environ['EMSCRIPTEN'] = sys.argv[8]
 
 # Find files
 def getInput(subdir, inputType):
@@ -87,7 +83,7 @@ def getLogo():
 	return PIL.Image.open(logoPath)
 
 def patchData(filePath, mark, data, maxSize):
-	assert len(data) <= maxSize, 'Data size is ' + str(data) + ' but maximum is ' + str(maxSize)
+	assert len(data) <= maxSize, 'Data size is to big ' + str(len(data)) + ' but maximum is ' + str(maxSize)
 	with open(filePath, 'rb') as f:
 		file = f.read()
 	fileSize = os.path.getsize(filePath)
@@ -102,12 +98,12 @@ def patchData(filePath, mark, data, maxSize):
 def patchFile(filePath, textFrom, textTo):
 	with open(filePath, 'rb') as f:
 		content = f.read()
-	content = content.replace(textFrom, textTo)
+	content = content.replace(textFrom.encode('utf-8'), textTo.encode('utf-8'))
 	with open(filePath, 'wb') as f:
 		f.write(content)
 
-def makeZip(name, path, compresslevel):
-	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED, compresslevel=compresslevel)
+def makeZip(name, path):
+	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel))
 	for root, dirs, files in os.walk(path):
 		for file in files:
 			zip.write(os.path.join(root, file), os.path.join(os.path.relpath(root, path), file))
@@ -204,7 +200,7 @@ def build():
 						zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
 	
 	def patchEmbedded(filePath):
-		patchData(filePath, bytearray([0] + [0x42] * 42 + [0]), embeddedData, 1200000)
+		patchData(filePath, bytearray([(i + 42) % 200 for i in range(1200000)]), embeddedData, 1200000)
 	log('Embedded data length', len(embeddedData))
 	
 	# Evaluate config
@@ -226,7 +222,8 @@ def build():
 				binName = args.devname + '_' + args.target + binType
 				binOutName = binName if args.target != 'Client' else args.nicename
 				log('Setup', arch, binName)
-				binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
+				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
+				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binOutName + '.exe'))
 				if os.path.isfile(os.path.join(binPath, binName + '.pdb')):
@@ -240,7 +237,7 @@ def build():
 		# Zip
 		if 'Zip' in args.pack:
 			log('Create zipped archive')
-			makeZip(targetOutputPath + '.zip', targetOutputPath, 1)
+			makeZip(targetOutputPath + '.zip', targetOutputPath)
 		
 		"""
 		# MSI Installer
@@ -328,7 +325,8 @@ def build():
 				binName = args.devname + '_' + args.target + binType
 				binOutName = binName if args.target != 'Client' else args.nicename
 				log('Setup', arch, binName)
-				binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
+				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
+				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binOutName))
 				patchEmbedded(os.path.join(targetOutputPath, binOutName))
@@ -349,7 +347,7 @@ def build():
 		# Zip
 		if 'Zip' in args.pack:
 			log('Create zipped archive')
-			makeZip(targetOutputPath + '.zip', targetOutputPath, 1)
+			makeZip(targetOutputPath + '.zip', targetOutputPath)
 		
 		# AppImage
 		if 'Zip' in args.pack:
@@ -366,73 +364,88 @@ def build():
 		shutil.copytree(resourcesPath, gameOutputPath + '/Data')
 		shutil.copy(binariesPath + '/Mac/FOnline', gameOutputPath + '/' + gameName)
 		patchConfig(gameOutputPath + '/' + gameName)
-
+		
 		# Tar
 		makeTar(targetOutputPath + '/' + gameName + '.tar', gameOutputPath, 'w')
 		makeTar(targetOutputPath + '/' + gameName + '.tar.gz', gameOutputPath, 'w:gz')
-
+	
 	elif args.platform == 'Android':
 		shutil.copytree(binariesPath + '/Android', gameOutputPath)
 		patchConfig(gameOutputPath + '/libs/armeabi-v7a/libFOnline.so')
 		# No x86 build
 		# patchConfig(gameOutputPath + '/libs/x86/libFOnline.so')
 		patchFile(gameOutputPath + '/res/values/strings.xml', 'FOnline', gameName)
-
+		
 		# Icons
 		logo = getLogo()
 		logo.resize((48, 48)).save(gameOutputPath + '/res/drawable-mdpi/ic_launcher.png', 'png')
 		logo.resize((72, 72)).save(gameOutputPath + '/res/drawable-hdpi/ic_launcher.png', 'png')
 		logo.resize((96, 96)).save(gameOutputPath + '/res/drawable-xhdpi/ic_launcher.png', 'png')
 		logo.resize((144, 144)).save(gameOutputPath + '/res/drawable-xxhdpi/ic_launcher.png', 'png')
-
+		
 		# Bundle
 		shutil.copytree(resourcesPath, gameOutputPath + '/assets')
 		with open(gameOutputPath + '/assets/FilesTree.txt', 'wb') as f:
 			f.write('\n'.join(os.listdir(resourcesPath)))
-
+		
 		# Pack
 		antPath = os.path.abspath(os.path.join(curPath, 'ant', 'bin', 'ant.bat'))
 		r = subprocess.call([antPath, '-f', gameOutputPath, 'debug'], shell = True)
 		assert r == 0
 		shutil.copy(gameOutputPath + '/bin/SDLActivity-debug.apk', targetOutputPath + '/' + gameName + '.apk')
-
+	
 	elif args.platform == 'Web':
-		# Release version
-		os.makedirs(gameOutputPath)
-
-		if os.path.isfile(os.path.join(outputPath, 'WebIndex.html')):
-			shutil.copy(os.path.join(outputPath, 'WebIndex.html'), os.path.join(gameOutputPath, 'index.html'))
-		else:
-			shutil.copy(os.path.join(binariesPath, 'Web', 'index.html'), os.path.join(gameOutputPath, 'index.html'))
-		shutil.copy(binariesPath + '/Web/FOnline.js', os.path.join(gameOutputPath, 'FOnline.js'))
-		shutil.copy(binariesPath + '/Web/FOnline.wasm', os.path.join(gameOutputPath, 'FOnline.wasm'))
-		shutil.copy(binariesPath + '/Web/SimpleWebServer.py', os.path.join(gameOutputPath, 'SimpleWebServer.py'))
-		patchConfig(gameOutputPath + '/FOnline.wasm')
-
-		# Debug version
-		shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/debug.html')
-		shutil.copy(binariesPath + '/Web/FOnline_Debug.js', gameOutputPath + '/FOnline_Debug.js')
-		shutil.copy(binariesPath + '/Web/FOnline_Debug.js.mem', gameOutputPath + '/FOnline_Debug.js.mem')
-		patchConfig(gameOutputPath + '/FOnline_Debug.js.mem')
-		patchFile(gameOutputPath + '/debug.html', 'FOnline.js', 'FOnline_Debug.js')
-
+		assert args.arch == 'wasm'
+		
+		binName = args.devname + '_' + args.target
+		binOutName = binName
+		log('Setup', binName)
+		binEntry = args.target + '-' + args.platform + '-' + args.arch + ('-Debug' if 'Debug' in args.pack else '')
+		binPath = getInput(os.path.join('Binaries', binEntry), binName)
+		log('Binary input', binPath)
+		shutil.copy(os.path.join(binPath, binName + '.js'), os.path.join(targetOutputPath, binOutName + '.js'))
+		shutil.copy(os.path.join(binPath, binName + '.wasm'), os.path.join(targetOutputPath, binOutName + '.wasm'))
+		
+		patchEmbedded(os.path.join(targetOutputPath, binOutName + '.wasm'))
+		patchConfig(os.path.join(targetOutputPath, binOutName + '.wasm'))
+		
+		shutil.copy(os.path.join(curPath, 'web', 'DefaultWebIndex.html'), os.path.join(targetOutputPath, 'index.html'))
+		
+		if 'WebServer' in args.pack:
+			shutil.copy(os.path.join(curPath, 'web', 'SimpleWebServer.py'), os.path.join(targetOutputPath, 'SimpleWebServer.py'))
+		
 		# Generate resources
-		r = subprocess.call(['python3', os.environ['EMSCRIPTEN'] + '/tools/file_packager.py', \
-				'Resources.data', '--preload', resourcesPath + '@/Data', '--js-output=Resources.js'], shell = True)
-		assert r == 0
-		shutil.move('Resources.js', gameOutputPath + '/Resources.js')
-		shutil.move('Resources.data', gameOutputPath + '/Resources.data')
-
+		assert 'EMSDK' in os.environ and os.environ['EMSDK'], 'No EMSDK provided'
+		filePackagerPath = os.path.join(os.environ['EMSDK'], 'upstream', 'emscripten', 'tools', 'file_packager.py')
+		assert os.path.isfile(filePackagerPath), 'No emscripten tools/file_packager.py found'
+		
+		packagerArgs = ['python3', filePackagerPath, os.path.join(targetOutputPath, 'Resources.data').replace('\\', '/'),
+				'--preload', os.path.join(targetOutputPath, resourcesDir).replace('\\', '/') + '@Resources/',
+				'--js-output=' + os.path.join(targetOutputPath, 'Resources.js').replace('\\', '/')]
+		log('Call emscripten packager:')
+		for arg in packagerArgs:
+			log('-', arg)
+		
+		r = subprocess.call(packagerArgs)
+		assert r == 0, 'Emscripten tools/file_packager.py failed'
+		
+		shutil.rmtree(os.path.join(targetOutputPath, resourcesDir), True)
+		
 		# Patch *.html
-		patchFile(gameOutputPath + '/index.html', '$TITLE$', gameName)
-		patchFile(gameOutputPath + '/index.html', '$LOADING$', gameName)
-		patchFile(gameOutputPath + '/debug.html', '$TITLE$', gameName + ' Debug')
-		patchFile(gameOutputPath + '/debug.html', '$LOADING$', gameName + ' Debug')
-
+		patchFile(os.path.join(targetOutputPath, 'index.html'), '$TITLE$', args.nicename)
+		patchFile(os.path.join(targetOutputPath, 'index.html'), '$LOADING$', args.nicename)
+		patchFile(os.path.join(targetOutputPath, 'index.html'), '$RESOURCESJS$', 'Resources.js')
+		patchFile(os.path.join(targetOutputPath, 'index.html'), '$MAINJS$', binOutName + '.js')
+		
 		# Favicon
-		logo = getLogo()
-		logo.save(os.path.join(gameOutputPath, 'favicon.ico'), 'ico')
-
+		#logo = getLogo()
+		#logo.save(os.path.join(gameOutputPath, 'favicon.ico'), 'ico')
+		
+		# Zip
+		if 'Zip' in args.pack:
+			log('Create zipped archive')
+			makeZip(targetOutputPath + '.zip', targetOutputPath)
+		
 	else:
 		assert False, 'Unknown build target'
 

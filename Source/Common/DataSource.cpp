@@ -737,21 +737,13 @@ ZipFile::ZipFile(string_view fname)
             if (string(filename) == "@Embedded") {
                 static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
                 auto default_array = true;
-                for (size_t i = 0; i < 1 && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != 0x00) {
+
+                for (size_t i = 0; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
+                    if (EMBEDDED_RESOURCES[i] != static_cast<uchar>((i + 42) % 200)) {
                         default_array = false;
                     }
                 }
-                for (size_t i = 1; i < 43 && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != 0x42) {
-                        default_array = false;
-                    }
-                }
-                for (size_t i = 43; i < 44 && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != 0x00) {
-                        default_array = false;
-                    }
-                }
+
                 if (default_array) {
                     throw DataSourceException("Embedded resources not really embed");
                 }

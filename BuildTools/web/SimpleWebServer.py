@@ -1,9 +1,12 @@
-import SimpleHTTPServer
-import SocketServer
+#!/usr/bin/python3
 
-SERVER_PORT = 8000
+import http.server
+import socketserver
 
-handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-httpd = SocketServer.TCPServer(('', SERVER_PORT), handler)
-print 'Now you can run game by typing in browser "localhost:' + str(SERVER_PORT) + '"'
-httpd.serve_forever()
+PORT = 8000
+
+handler = http.server.SimpleHTTPRequestHandler
+
+with socketserver.TCPServer(("", PORT), handler) as httpd:
+    print("Serving at port", PORT)
+    httpd.serve_forever()

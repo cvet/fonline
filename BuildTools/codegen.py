@@ -3310,8 +3310,8 @@ try:
     preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
     assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('volatile const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {0x00, ' + ('0x42, ' * 42) + '0x00};')
-
+    writeFile('volatile const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(preserveBufSize)]) + '};')
+    
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)
 
