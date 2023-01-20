@@ -900,9 +900,7 @@ void FOClient::Net_OnUpdateFilesResponse()
 
     vector<uchar> data;
     data.resize(data_size);
-    if (data_size != 0u) {
-        _conn.InBuf.Pop(data.data(), data_size);
-    }
+    _conn.InBuf.Pop(data.data(), data_size);
 
     if (!outdated) {
         NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
@@ -910,13 +908,13 @@ void FOClient::Net_OnUpdateFilesResponse()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    // RestoreData(_globalsPropertiesData);
-
-    // Todo: run updater if resources changed
-
-    /*if (outdated) {
-        AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    if (outdated) {
+        throw ResourcesOutdatedException("Binary outdated");
     }
+
+    FileSystem resources;
+
+    resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
     auto reader = DataReader(data);
 
@@ -929,22 +927,18 @@ void FOClient::Net_OnUpdateFilesResponse()
         RUNTIME_ASSERT(name_len > 0);
         const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
         const auto size = reader.Read<uint>();
-        const auto hash = reader.Read<uint>();
 
         // Check hash
-        if (_resources.ReadFileHeader(fname)) {
-            const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
-            if (file_hash.empty()) {
-                // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
-            }
-
-            if (_str(file_hash).toUInt() == hash) {
+        if (auto file = resources.ReadFileHeader(fname)) {
+            if (file.GetSize() == size) {
                 continue;
             }
         }
+
+        throw ResourcesOutdatedException("Resource pack outdated", fname);
     }
 
-    throw ResourcesOutdatedException("...");*/
+    RestoreData(_globalsPropertiesData);
 }
 
 void FOClient::Net_OnWrongNetProto()
