@@ -409,7 +409,7 @@ def build():
 		patchEmbedded(os.path.join(targetOutputPath, binOutName + '.wasm'))
 		patchConfig(os.path.join(targetOutputPath, binOutName + '.wasm'))
 		
-		shutil.copy(os.path.join(curPath, 'web', 'defualt-index.html'), os.path.join(targetOutputPath, 'index.html'))
+		shutil.copy(os.path.join(curPath, 'web', 'default-index.html'), os.path.join(targetOutputPath, 'index.html'))
 		
 		if 'WebServer' in args.pack:
 			shutil.copy(os.path.join(curPath, 'web', 'simple-web-server.py'), os.path.join(targetOutputPath, 'web-server.py'))
