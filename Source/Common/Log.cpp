@@ -115,9 +115,9 @@ void WriteLogMessage(LogType type, string_view message)
     // Make message
     string result;
     if (!Data->LogDisableTimestamp) {
-        const auto now = ::time(nullptr);
-        const auto* t = ::localtime(&now);
-        result += _str("[{}:{}:{}] ", t->tm_hour, t->tm_min, t->tm_sec);
+        const auto now = std::time(nullptr);
+        const auto* t = std::localtime(&now);
+        result += _str("[{:02}:{:02}:{:02}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
 
     result.reserve(result.size() + message.length() + 1u);
