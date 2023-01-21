@@ -409,10 +409,10 @@ def build():
 		patchEmbedded(os.path.join(targetOutputPath, binOutName + '.wasm'))
 		patchConfig(os.path.join(targetOutputPath, binOutName + '.wasm'))
 		
-		shutil.copy(os.path.join(curPath, 'web', 'DefaultWebIndex.html'), os.path.join(targetOutputPath, 'index.html'))
+		shutil.copy(os.path.join(curPath, 'web', 'defualt-index.html'), os.path.join(targetOutputPath, 'index.html'))
 		
 		if 'WebServer' in args.pack:
-			shutil.copy(os.path.join(curPath, 'web', 'SimpleWebServer.py'), os.path.join(targetOutputPath, 'SimpleWebServer.py'))
+			shutil.copy(os.path.join(curPath, 'web', 'simple-web-server.py'), os.path.join(targetOutputPath, 'web-server.py'))
 		
 		# Generate resources
 		assert 'EMSDK' in os.environ and os.environ['EMSDK'], 'No EMSDK provided'
