@@ -912,30 +912,37 @@ void FOClient::Net_OnUpdateFilesResponse()
         throw ResourcesOutdatedException("Binary outdated");
     }
 
-    FileSystem resources;
+    if (!data.empty()) {
+        FileSystem resources;
 
-    resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+        resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
-    auto reader = DataReader(data);
+        auto reader = DataReader(data);
 
-    for (uint file_index = 0;; file_index++) {
-        const auto name_len = reader.Read<short>();
-        if (name_len == -1) {
-            break;
-        }
-
-        RUNTIME_ASSERT(name_len > 0);
-        const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-        const auto size = reader.Read<uint>();
-
-        // Check hash
-        if (auto file = resources.ReadFileHeader(fname)) {
-            if (file.GetSize() == size) {
-                continue;
+        for (uint file_index = 0;; file_index++) {
+            const auto name_len = reader.Read<short>();
+            if (name_len == -1) {
+                break;
             }
+
+            RUNTIME_ASSERT(name_len > 0);
+            const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
+            const auto size = reader.Read<uint>();
+            const auto hash = reader.Read<uint>();
+
+            UNUSED_VARIABLE(hash);
+
+            // Check hash
+            if (auto file = resources.ReadFileHeader(fname)) {
+                if (file.GetSize() == size) {
+                    continue;
+                }
+            }
+
+            throw ResourcesOutdatedException("Resource pack outdated", fname);
         }
 
-        throw ResourcesOutdatedException("Resource pack outdated", fname);
+        reader.VerifyEnd();
     }
 
     RestoreData(_globalsPropertiesData);

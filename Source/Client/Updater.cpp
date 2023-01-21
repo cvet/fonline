@@ -208,9 +208,7 @@ void Updater::Net_OnUpdateFilesResponse()
 
     vector<uchar> data;
     data.resize(data_size);
-    if (data_size > 0u) {
-        _conn.InBuf.Pop(data.data(), data_size);
-    }
+    _conn.InBuf.Pop(data.data(), data_size);
 
     if (!outdated) {
         NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
@@ -226,48 +224,52 @@ void Updater::Net_OnUpdateFilesResponse()
     RUNTIME_ASSERT(!_fileListReceived);
     _fileListReceived = true;
 
-    auto reader = DataReader(data);
+    if (!data.empty()) {
+        auto reader = DataReader(data);
 
-    for (uint file_index = 0;; file_index++) {
-        const auto name_len = reader.Read<short>();
-        if (name_len == -1) {
-            break;
-        }
-
-        RUNTIME_ASSERT(name_len > 0);
-        const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
-        const auto size = reader.Read<uint>();
-        const auto hash = reader.Read<uint>();
-
-        // Check hash
-        if (auto file = _resources.ReadFileHeader(fname)) {
-            // Todo: add update file files checking by hashes
-            /*const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
-            if (file_hash.empty()) {
-                // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
+        for (uint file_index = 0;; file_index++) {
+            const auto name_len = reader.Read<short>();
+            if (name_len == -1) {
+                break;
             }
 
-            if (_str(file_hash).toUInt() == hash) {
-                continue;
-            }*/
+            RUNTIME_ASSERT(name_len > 0);
+            const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
+            const auto size = reader.Read<uint>();
+            const auto hash = reader.Read<uint>();
 
-            if (file.GetSize() == size) {
-                continue;
+            // Check hash
+            if (auto file = _resources.ReadFileHeader(fname)) {
+                // Todo: add update file files checking by hashes
+                /*const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
+                if (file_hash.empty()) {
+                    // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
+                }
+
+                if (_str(file_hash).toUInt() == hash) {
+                    continue;
+                }*/
+
+                if (file.GetSize() == size) {
+                    continue;
+                }
             }
-        }
 
-        // Get this file
-        UpdateFile update_file;
-        update_file.Index = file_index;
-        update_file.Name = fname;
-        update_file.Size = size;
-        update_file.RemaningSize = size;
-        update_file.Hash = hash;
-        _filesToUpdate.push_back(update_file);
-        _filesWholeSize += size;
+            // Get this file
+            UpdateFile update_file;
+            update_file.Index = file_index;
+            update_file.Name = fname;
+            update_file.Size = size;
+            update_file.RemaningSize = size;
+            update_file.Hash = hash;
+            _filesToUpdate.push_back(update_file);
+            _filesWholeSize += size;
+        }
+        
+        if (!_filesToUpdate.empty()) {
+            GetNextFile();
+        }
     }
-
-    GetNextFile();
 }
 
 void Updater::Net_OnUpdateFileData()
