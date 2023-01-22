@@ -453,11 +453,14 @@ void CritterHexView::RefreshModel()
 {
     _model = nullptr;
 
-    const string ext = _str(GetModelName()).getFileExtension();
+    const auto model_name = GetModelName();
+    const auto ext = _str(model_name).getFileExtension();
+
     if (ext == "fo3d") {
         _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-        _model = _engine->SprMngr.LoadModel(GetModelName(), true);
+        _model = _engine->SprMngr.LoadModel(model_name, true);
+
         if (_model) {
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
@@ -609,19 +612,19 @@ void CritterHexView::Process()
 
     // Combat mode
 #if FO_ENABLE_3D
-    const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond();
+    if (_model != nullptr) {
+        if (const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond(); is_combat != _model->IsCombatMode()) {
+            if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
+                if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
+                    Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
+                }
+                else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
+                    Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
+                }
+            }
 
-    if (is_combat != _model->IsCombatMode()) {
-        if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
-            if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
-                Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
-            }
-            else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
-                Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
-            }
+            _model->SetCombatMode(is_combat);
         }
-
-        _model->SetCombatMode(is_combat);
     }
 #endif
 }
