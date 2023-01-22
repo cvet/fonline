@@ -450,7 +450,8 @@
     if (hex_cr->IsModel()) {
         hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, std::clamp(normalizedTime, 0.0f, 1.0f), [hex_cr, animCallback] {
                                                               if (!hex_cr->IsDestroyed()) {
-                                                                  const auto result = hex_cr->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(animCallback, hex_cr);
+                                                                  const auto func_name = static_cast<hstring>(animCallback);
+                                                                  const auto result = hex_cr->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(func_name, hex_cr);
                                                                   UNUSED_VARIABLE(result);
                                                               }
                                                           }});
