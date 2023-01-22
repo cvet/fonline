@@ -1994,7 +1994,7 @@ void FOMapper::IntLMouseUp()
                 }
             }
             else {
-                auto* entity = CurMap->GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
+                auto* entity = CurMap->GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY, 0, true);
 
                 if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                     if (!CurMap->IsIgnorePid(item->GetProtoId())) {

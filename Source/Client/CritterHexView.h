@@ -65,7 +65,7 @@ public:
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto GetDrawRect() const -> IRect;
+    [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }

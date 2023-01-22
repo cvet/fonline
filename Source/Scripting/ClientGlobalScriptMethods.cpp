@@ -2324,7 +2324,7 @@
     }
 
     bool item_egg;
-    return client->CurMap->GetItemAtScreenPos(x, y, item_egg);
+    return client->CurMap->GetItemAtScreenPos(x, y, item_egg, 0, true);
 }
 
 ///# ...
@@ -2338,24 +2338,24 @@
         return nullptr;
     }
 
-    return client->CurMap->GetCritterAtScreenPos(x, y, false, false);
+    return client->CurMap->GetCritterAtScreenPos(x, y, false, 0, true);
 }
 
 ///# ...
 ///# param x ...
 ///# param y ...
-///# param wideRange
+///# param extraRange
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Game_GetCritterAtScreenPos(FOClient* client, int x, int y, bool wideRange)
+[[maybe_unused]] CritterView* Client_Game_GetCritterAtScreenPos(FOClient* client, int x, int y, int extraRange)
 {
     if (client->CurMap == nullptr) {
         return nullptr;
     }
 
-    auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, false);
-    if (cr == nullptr && wideRange) {
-        cr = client->CurMap->GetCritterAtScreenPos(x, y, true, true);
+    auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, 0, true);
+    if (cr == nullptr && extraRange != 0) {
+        cr = client->CurMap->GetCritterAtScreenPos(x, y, true, extraRange, false);
     }
     return cr;
 }
@@ -2371,7 +2371,7 @@
         return nullptr;
     }
 
-    return client->CurMap->GetEntityAtScreenPos(x, y);
+    return client->CurMap->GetEntityAtScreenPos(x, y, 0, true);
 }
 
 ///# ...

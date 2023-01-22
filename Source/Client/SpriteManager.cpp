@@ -1508,23 +1508,46 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(const Sprite* prep) const -> IRect
+auto SpriteManager::GetDrawRect(const Sprite* spr) const -> IRect
 {
-    const auto id = prep->PSprId != nullptr ? *prep->PSprId : prep->SprId;
+    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
     RUNTIME_ASSERT(id < _sprData.size());
     const auto* si = _sprData[id];
     RUNTIME_ASSERT(si);
 
-    auto x = prep->ScrX - si->Width / 2 + si->OffsX + *prep->PScrX;
-    auto y = prep->ScrY - si->Height + si->OffsY + *prep->PScrY;
-    if (prep->OffsX != nullptr) {
-        x += *prep->OffsX;
+    auto x = spr->ScrX - si->Width / 2 + si->OffsX + *spr->PScrX;
+    auto y = spr->ScrY - si->Height + si->OffsY + *spr->PScrY;
+    if (spr->OffsX != nullptr) {
+        x += *spr->OffsX;
     }
-    if (prep->OffsY != nullptr) {
-        y += *prep->OffsY;
+    if (spr->OffsY != nullptr) {
+        y += *spr->OffsY;
     }
 
     return {x, y, x + si->Width, y + si->Height};
+}
+
+auto SpriteManager::GetViewRect(const Sprite* spr) const -> IRect
+{
+    auto rect = GetDrawRect(spr);
+
+    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
+    RUNTIME_ASSERT(id < _sprData.size());
+    const auto* si = _sprData[id];
+    RUNTIME_ASSERT(si);
+
+#if FO_ENABLE_3D
+    if (si->Model != nullptr) {
+        auto&& [view_width, view_height] = si->Model->GetViewSize();
+
+        rect.Left = rect.CenterX() - view_width / 2;
+        rect.Right = rect.Left + view_width;
+        rect.Bottom = rect.Bottom - rect.Height() / 4 + _settings.MapHexHeight / 2;
+        rect.Top = rect.Bottom - view_height;
+    }
+#endif
+
+    return rect;
 }
 
 void SpriteManager::InitializeEgg(string_view egg_name)
@@ -1606,7 +1629,6 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         return;
     }
 
-    // Todo: restore ShowSpriteBorders
     vector<PrimitivePoint> borders;
 
     if (!_eggValid) {
@@ -1863,6 +1885,17 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             }
 
             CollectContour(x, y, si, contour_color);
+        }
+
+        if (_settings.ShowSpriteBorders && spr->DrawOrder > DrawOrderType::TileEnd) {
+            auto rect = GetViewRect(spr);
+
+            rect.Left += _settings.ScrOx;
+            rect.Right += _settings.ScrOx;
+            rect.Top += _settings.ScrOy;
+            rect.Bottom += _settings.ScrOy;
+
+            PrepareSquare(borders, rect, COLOR_RGBA(50, 0, 0, 255));
         }
     }
 

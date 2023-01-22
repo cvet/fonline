@@ -788,11 +788,11 @@ void CritterHexView::ProcessMoving()
     }
 }
 
-auto CritterHexView::GetDrawRect() const -> IRect
+auto CritterHexView::GetViewRect() const -> IRect
 {
     RUNTIME_ASSERT(SprDrawValid);
 
-    return _engine->SprMngr.GetDrawRect(SprDraw);
+    return _engine->SprMngr.GetViewRect(SprDraw);
 }
 
 void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
@@ -854,20 +854,11 @@ void CritterHexView::SetText(string_view str, uint color, uint text_delay)
 void CritterHexView::GetNameTextPos(int& x, int& y) const
 {
     if (SprDrawValid) {
-        const auto dr = GetDrawRect();
-        const auto dr_half_width = dr.Width() / 2;
-        x = iround(static_cast<float>(dr.Left + dr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+        const auto rect = GetViewRect();
+        const auto rect_half_width = rect.Width() / 2;
 
-#if FO_ENABLE_3D
-        if (const auto view_height = _model != nullptr ? _model->GetViewHeight() : 0; view_height != 0) {
-            auto&& [draw_width, draw_height] = _model->GetDrawSize();
-            y = iround(static_cast<float>(dr.Bottom - static_cast<int>(draw_height / 4) - view_height + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
-        }
-        else
-#endif
-        {
-            y = iround(static_cast<float>(dr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
-        }
+        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
     }
     else {
         // Offscreen

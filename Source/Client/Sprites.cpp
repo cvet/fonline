@@ -105,13 +105,13 @@ void Sprite::Unvalidate()
     Root = nullptr;
 }
 
-auto Sprite::GetIntersected(int ox, int oy) -> Sprite*
+auto Sprite::GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*
 {
     if (ox < 0 || oy < 0) {
         return nullptr;
     }
 
-    return Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
+    return !check_transparent || Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
 }
 
 void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)

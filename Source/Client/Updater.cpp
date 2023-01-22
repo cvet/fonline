@@ -265,7 +265,7 @@ void Updater::Net_OnUpdateFilesResponse()
             _filesToUpdate.push_back(update_file);
             _filesWholeSize += size;
         }
-        
+
         if (!_filesToUpdate.empty()) {
             GetNextFile();
         }
