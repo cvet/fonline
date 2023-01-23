@@ -131,6 +131,7 @@ They are located in ThirdParty directory.
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
+* [tracy](https://github.com/wolfpld/tracy) - profiler
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
 * [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
