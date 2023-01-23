@@ -448,10 +448,10 @@
 
 #if FO_ENABLE_3D
     if (hex_cr->IsModel()) {
-        hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, std::clamp(normalizedTime, 0.0f, 1.0f), [hex_cr, animCallback] {
-                                                              if (!hex_cr->IsDestroyed()) {
+        hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, std::clamp(normalizedTime, 0.0f, 1.0f), [self, animCallback] {
+                                                              if (!self->IsDestroyed()) {
                                                                   const auto func_name = static_cast<hstring>(animCallback);
-                                                                  const auto result = hex_cr->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(func_name, hex_cr);
+                                                                  const auto result = self->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(func_name, self);
                                                                   UNUSED_VARIABLE(result);
                                                               }
                                                           }});
