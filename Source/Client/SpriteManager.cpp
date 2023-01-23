@@ -41,7 +41,7 @@ constexpr int ATLAS_SPRITES_PADDING = 1;
 
 static auto ApplyColorBrightness(uint color, int brightness) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (brightness != 0) {
         const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
@@ -56,12 +56,12 @@ static auto ApplyColorBrightness(uint color, int brightness) -> uint
 
 TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) : PosX {x}, PosY {y}, Width {width}, Height {height}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 auto TextureAtlas::SpaceNode::FindPosition(int width, int height, int& x, int& y) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto result = false;
 
@@ -95,35 +95,35 @@ auto TextureAtlas::SpaceNode::FindPosition(int width, int height, int& x, int& y
 
 auto AnyFrames::GetSprId(uint num_frm) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return Ind[num_frm % CntFrm];
 }
 
 auto AnyFrames::GetCurSprId(uint tick) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return CntFrm > 1 ? Ind[tick % Ticks * 100 / Ticks * CntFrm / 100] : Ind[0];
 }
 
 auto AnyFrames::GetCurSprIndex(uint tick) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return CntFrm > 1 ? tick % Ticks * 100 / Ticks * CntFrm / 100 : 0;
 }
 
 auto AnyFrames::GetDir(uint dir) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
 SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _resources {resources}, _effectMngr {effect_mngr}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
@@ -155,7 +155,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 
 SpriteManager::~SpriteManager()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _window->Destroy();
 
@@ -168,14 +168,14 @@ SpriteManager::~SpriteManager()
 
 auto SpriteManager::GetWindowSize() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _window->GetSize();
 }
 
 void SpriteManager::SetWindowSize(int w, int h)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -184,14 +184,14 @@ void SpriteManager::SetWindowSize(int w, int h)
 
 auto SpriteManager::GetWindowPosition() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _window->GetPosition();
 }
 
 void SpriteManager::SetWindowPosition(int x, int y)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -200,7 +200,7 @@ void SpriteManager::SetWindowPosition(int x, int y)
 
 void SpriteManager::SetMousePosition(int x, int y)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -209,14 +209,14 @@ void SpriteManager::SetMousePosition(int x, int y)
 
 auto SpriteManager::IsWindowFocused() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _window->IsFocused();
 }
 
 void SpriteManager::MinimizeWindow()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -225,7 +225,7 @@ void SpriteManager::MinimizeWindow()
 
 auto SpriteManager::EnableFullscreen() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -234,7 +234,7 @@ auto SpriteManager::EnableFullscreen() -> bool
 
 auto SpriteManager::DisableFullscreen() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -243,7 +243,7 @@ auto SpriteManager::DisableFullscreen() -> bool
 
 void SpriteManager::BlinkWindow()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -252,7 +252,7 @@ void SpriteManager::BlinkWindow()
 
 void SpriteManager::SetAlwaysOnTop(bool enable)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -261,7 +261,7 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
 
 void SpriteManager::BeginScene(uint clear_color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_rtMain != nullptr) {
         PushRenderTarget(_rtMain);
@@ -286,7 +286,7 @@ void SpriteManager::BeginScene(uint clear_color)
 
 void SpriteManager::EndScene()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Flush();
 
@@ -298,7 +298,7 @@ void SpriteManager::EndScene()
 
 void SpriteManager::OnWindowSizeChanged()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -312,7 +312,7 @@ void SpriteManager::OnWindowSizeChanged()
 
 auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(width >= 0);
     RUNTIME_ASSERT(height >= 0);
@@ -332,7 +332,7 @@ auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType s
 
 void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -364,7 +364,7 @@ void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_fi
 
 void SpriteManager::PushRenderTarget(RenderTarget* rt)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Flush();
 
@@ -379,7 +379,7 @@ void SpriteManager::PushRenderTarget(RenderTarget* rt)
 
 void SpriteManager::PopRenderTarget()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
     _rtStack.pop_back();
@@ -398,7 +398,7 @@ void SpriteManager::PopRenderTarget()
 
 void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Flush();
 
@@ -469,7 +469,7 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
 
 auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Try find in last picks
     for (auto&& pix : rt->LastPixelPicks) {
@@ -492,14 +492,14 @@ auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -
 
 void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     App->Render.ClearRenderTarget(color, with_depth);
 }
 
 void SpriteManager::PushScissor(int l, int t, int r, int b)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Flush();
 
@@ -513,7 +513,7 @@ void SpriteManager::PushScissor(int l, int t, int r, int b)
 
 void SpriteManager::PopScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_scissorStack.empty()) {
         Flush();
@@ -526,7 +526,7 @@ void SpriteManager::PopScissor()
 
 void SpriteManager::RefreshScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_scissorStack.empty()) {
         _scissorRect.Left = _scissorStack[0];
@@ -560,7 +560,7 @@ void SpriteManager::RefreshScissor()
 
 void SpriteManager::EnableScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -575,7 +575,7 @@ void SpriteManager::EnableScissor()
 
 void SpriteManager::DisableScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -586,35 +586,35 @@ void SpriteManager::DisableScissor()
 
 void SpriteManager::PushAtlasType(AtlasType atlas_type)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     PushAtlasType(atlas_type, false);
 }
 
 void SpriteManager::PushAtlasType(AtlasType atlas_type, bool one_image)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _targetAtlasStack.emplace_back(atlas_type, one_image);
 }
 
 void SpriteManager::PopAtlasType()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _targetAtlasStack.pop_back();
 }
 
 void SpriteManager::AccumulateAtlasData()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _accumulatorActive = true;
 }
 
 void SpriteManager::FlushAccumulatedAtlasData()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _accumulatorActive = false;
     if (_accumulatorSprInfo.empty()) {
@@ -634,14 +634,14 @@ void SpriteManager::FlushAccumulatedAtlasData()
 
 auto SpriteManager::IsAccumulateAtlasActive() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _accumulatorActive;
 }
 
 auto SpriteManager::CreateAtlas(int request_width, int request_height) -> TextureAtlas*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(request_width > 0);
     RUNTIME_ASSERT(request_height > 0);
@@ -684,7 +684,7 @@ auto SpriteManager::CreateAtlas(int request_width, int request_height) -> Textur
 
 auto SpriteManager::FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> TextureAtlas*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
@@ -759,7 +759,7 @@ auto SpriteManager::FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> Text
 
 void SpriteManager::DestroyAtlases(AtlasType atlas_type)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
         auto& atlas = *it;
@@ -788,7 +788,7 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
 
 static void WriteSimpleTga(string_view fname, int width, int height, vector<uint> data)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto file = DiskFileSystem::OpenFile(fname, true);
     RUNTIME_ASSERT(file);
@@ -807,7 +807,7 @@ static void WriteSimpleTga(string_view fname, int width, int height, vector<uint
 
 void SpriteManager::DumpAtlases() const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint atlases_memory_size = 0;
     for (auto&& atlas : _allAtlases) {
@@ -839,7 +839,7 @@ void SpriteManager::DumpAtlases() const
 
 auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(width > 0);
     RUNTIME_ASSERT(height > 0);
@@ -879,7 +879,7 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, cons
 
 void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto w = si->Width;
     const auto h = si->Height;
@@ -934,7 +934,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 
 auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_targetAtlasStack.empty());
 
@@ -967,7 +967,7 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrame
 
 auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto file = _resources.ReadFile(fname);
     if (!file) {
@@ -1016,7 +1016,7 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 
 auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (fname.empty()) {
         return anim;
@@ -1040,7 +1040,7 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
 #if FO_ENABLE_3D
 void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_modelMngr);
 
@@ -1074,7 +1074,7 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 
 void SpriteManager::Preload3dModel(string_view model_name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(_modelMngr);
@@ -1084,7 +1084,7 @@ void SpriteManager::Preload3dModel(string_view model_name)
 
 auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
@@ -1154,7 +1154,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
 
 void SpriteManager::RenderModel(ModelInstance* model)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
@@ -1203,7 +1203,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
 
 void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
@@ -1216,7 +1216,7 @@ void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
 
 auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> unique_del_ptr<ModelInstance>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
@@ -1249,7 +1249,7 @@ auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> unique_del
 
 void SpriteManager::RefreshModelSprite(ModelInstance* model)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
@@ -1292,7 +1292,7 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
 
 auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(frames < MAX_FRAMES);
     auto* anim = _anyFramesPool.Get();
@@ -1304,7 +1304,7 @@ auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
 
 void SpriteManager::CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(dirs > 1);
     RUNTIME_ASSERT(dirs == 6 || dirs == 8);
@@ -1316,7 +1316,7 @@ void SpriteManager::CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs)
 
 void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (anim == nullptr || anim == DummyAnimation) {
         return;
@@ -1330,7 +1330,7 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
 
 void SpriteManager::Flush()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_curDrawQuad == 0) {
         return;
@@ -1364,7 +1364,7 @@ void SpriteManager::Flush()
 
 void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (id == 0u) {
         return;
@@ -1425,14 +1425,14 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
 
 void SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSpriteSizeExt(id, x, y, w, h, zoom_up, center, false, color);
 }
 
 void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (id == 0u) {
         return;
@@ -1522,7 +1522,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
 
 void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (id == 0u) {
         return;
@@ -1621,7 +1621,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
 
 void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     points.push_back({r.Left, r.Bottom, color});
     points.push_back({r.Left, r.Top, color});
@@ -1633,7 +1633,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r
 
 void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     points.push_back({lb.X, lb.Y, color});
     points.push_back({lt.X, lt.Y, color});
@@ -1645,7 +1645,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
 
 auto SpriteManager::GetDrawRect(const Sprite* spr) const -> IRect
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
     RUNTIME_ASSERT(id < _sprData.size());
@@ -1666,7 +1666,7 @@ auto SpriteManager::GetDrawRect(const Sprite* spr) const -> IRect
 
 auto SpriteManager::GetViewRect(const Sprite* spr) const -> IRect
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto rect = GetDrawRect(spr);
 
@@ -1691,7 +1691,7 @@ auto SpriteManager::GetViewRect(const Sprite* spr) const -> IRect
 
 void SpriteManager::InitializeEgg(string_view egg_name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _eggValid = false;
     _eggHx = _eggHy = _eggX = _eggY = 0;
@@ -1710,7 +1710,7 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 
 auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (egg_appearence == EggAppearenceType::None) {
         return false;
@@ -1753,7 +1753,7 @@ auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType e
 
 void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
     const auto* si = _sprData[id];
@@ -1770,7 +1770,7 @@ void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
 
 void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender, int prerender_ox, int prerender_oy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (dtree.Size() == 0u) {
         return;
@@ -2055,7 +2055,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
 auto SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto color = GetPixColor(spr_id, offs_x, offs_y, with_zoom);
     return (color & 0xFF000000) != 0;
@@ -2063,7 +2063,7 @@ auto SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with
 
 auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (offs_x < 0 || offs_y < 0) {
         return 0;
@@ -2094,7 +2094,7 @@ auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_z
 
 auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_eggValid) {
         return false;
@@ -2120,7 +2120,7 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
 
 void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, const FPoint* offset, RenderEffect* custom_effect)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (points.empty()) {
         return;
@@ -2201,7 +2201,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
 
 void SpriteManager::DrawContours()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_contoursAdded && _rtContours != nullptr && _rtContoursMid != nullptr) {
         // Draw collected contours
@@ -2226,7 +2226,7 @@ void SpriteManager::DrawContours()
 
 void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint contour_color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_ENABLE_3D
     auto* border_effect = si->UsedForModel ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
@@ -2377,7 +2377,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
 
 auto SpriteManager::GetFont(int num) -> FontData*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2392,14 +2392,14 @@ auto SpriteManager::GetFont(int num) -> FontData*
 
 void SpriteManager::ClearFonts()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _allFonts.clear();
 }
 
 void SpriteManager::SetDefaultFont(int index, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _defFontIndex = index;
     _defFontColor = color;
@@ -2407,7 +2407,7 @@ void SpriteManager::SetDefaultFont(int index, uint color)
 
 void SpriteManager::SetFontEffect(int index, RenderEffect* effect)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* font = GetFont(index);
     if (font != nullptr) {
@@ -2417,7 +2417,7 @@ void SpriteManager::SetFontEffect(int index, RenderEffect* effect)
 
 void SpriteManager::BuildFonts()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < _allFonts.size(); i++) {
         if (_allFonts[i] && !_allFonts[i]->Builded) {
@@ -2428,7 +2428,7 @@ void SpriteManager::BuildFonts()
 
 void SpriteManager::BuildFont(int index)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2550,7 +2550,7 @@ void SpriteManager::BuildFont(int index)
 
 auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Skip if loaded
     if (skip_if_loaded && index < static_cast<int>(_allFonts.size()) && _allFonts[index]) {
@@ -2703,7 +2703,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
 
 auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (index < 0) {
         WriteLog("Invalid index");
@@ -2815,7 +2815,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 
 static void StrCopy(char* to, size_t size, string_view from)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(to);
     RUNTIME_ASSERT(size > 0);
@@ -2838,14 +2838,14 @@ static void StrCopy(char* to, size_t size, string_view from)
 template<int Size>
 static void StrCopy(char (&to)[Size], string_view from)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return StrCopy(to, Size, from);
 }
 
 static void StrGoTo(char*& str, char ch)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     while (*str != 0 && *str != ch) {
         ++str;
@@ -2854,7 +2854,7 @@ static void StrGoTo(char*& str, char ch)
 
 static void StrEraseInterval(char* str, uint len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (str == nullptr || len == 0u) {
         return;
@@ -2872,7 +2872,7 @@ static void StrEraseInterval(char* str, uint len)
 
 static void StrInsert(char* to, const char* from, uint from_len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (to == nullptr || from == nullptr) {
         return;
@@ -2903,7 +2903,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
 
 void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3322,7 +3322,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
 void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint color /* = 0 */, int num_font /* = -1 */)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Check
     if (str.empty()) {
@@ -3486,7 +3486,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
 
 auto SpriteManager::GetLinesCount(int width, int height, string_view str, int num_font /* = -1 */) -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (width <= 0 || height <= 0) {
         return 0;
@@ -3514,7 +3514,7 @@ auto SpriteManager::GetLinesCount(int width, int height, string_view str, int nu
 
 auto SpriteManager::GetLinesHeight(int width, int height, string_view str, int num_font /* = -1 */) -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (width <= 0 || height <= 0) {
         return 0;
@@ -3535,7 +3535,7 @@ auto SpriteManager::GetLinesHeight(int width, int height, string_view str, int n
 
 auto SpriteManager::GetLineHeight(int num_font) -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* font = GetFont(num_font);
     if (font == nullptr) {
@@ -3547,7 +3547,7 @@ auto SpriteManager::GetLineHeight(int num_font) -> int
 
 auto SpriteManager::GetTextInfo(int width, int height, string_view str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     tw = th = lines = 0;
 
@@ -3578,7 +3578,7 @@ auto SpriteManager::GetTextInfo(int width, int height, string_view str, int num_
 
 auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<string> result;
 
@@ -3604,7 +3604,7 @@ auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -
 
 auto SpriteManager::HaveLetter(int num_font, uint letter) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* font = GetFont(num_font);
     if (font == nullptr) {

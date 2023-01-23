@@ -52,6 +52,23 @@
 #pragma warning(disable:4702) // unreachable code
 #endif
 
+// (FOnline Patch)
+using ScriptCallFuncType = void(*)(asIScriptFunction*);
+
+static void BeginScriptCall(asIScriptFunction* func)
+{
+	auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(1));
+
+	callback(func);
+}
+
+static void EndScriptCall(asIScriptFunction* func)
+{
+	auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(2));
+
+	callback(func);
+}
+
 BEGIN_AS_NAMESPACE
 
 // We need at least 2 PTRs reserved for exception handling
@@ -1694,6 +1711,8 @@ bool asCContext::ReserveStackSpace(asUINT size)
 void asCContext::CallScriptFunction(asCScriptFunction *func)
 {
 	asASSERT( func->scriptData );
+
+	BeginScriptCall(func); // (FOnline Patch)
 
 	// Push the framepointer, function id and programCounter on the stack
 	PushCallState();
@@ -4886,6 +4905,8 @@ void asCContext::CleanArgsOnStack()
 
 void asCContext::CleanStackFrame()
 {
+	EndScriptCall(m_currentFunction); // (FOnline Patch)
+
 	// Clean object variables on the stack
 	// If the stack memory is not allocated or the program pointer
 	// is not set, then there is nothing to clean up on the stack frame

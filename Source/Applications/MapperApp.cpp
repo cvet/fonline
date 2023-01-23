@@ -53,7 +53,7 @@ GLOBAL_DATA(MapperAppData, Data);
 
 static void MapperEntry(void*)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_WEB
     // Wait file system synchronization
@@ -89,7 +89,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
 #endif
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);

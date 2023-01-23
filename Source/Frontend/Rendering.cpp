@@ -42,7 +42,7 @@ RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool w
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(width > 0);
     RUNTIME_ASSERT(height > 0);
@@ -50,12 +50,12 @@ RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool w
 
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) : IsStatic {is_static}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto content = loader(name);
     const auto fofx = ConfigFile(name, content, nullptr, ConfigFileOption::CollectContent);

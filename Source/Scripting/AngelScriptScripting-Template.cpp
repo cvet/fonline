@@ -94,6 +94,9 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
+// Reset garbage from WinApi
+#include "WinApi-Include.h"
+
 #if SERVER_SCRIPTING
 #define BaseEntity ServerEntity
 #elif CLIENT_SCRIPTING
@@ -184,7 +187,7 @@ public:
 #if SERVER_SCRIPTING
     FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
         AngelScript_ServerCompiler_RegisterData(this);
@@ -192,7 +195,7 @@ public:
 #elif CLIENT_SCRIPTING
     FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
         AngelScript_ClientCompiler_RegisterData(this);
@@ -200,7 +203,7 @@ public:
 #elif SINGLE_SCRIPTING
     FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
         AngelScript_SingleCompiler_RegisterData(this);
@@ -208,7 +211,7 @@ public:
 #elif MAPPER_SCRIPTING
     FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
         AngelScript_MapperCompiler_RegisterData(this);
@@ -271,7 +274,7 @@ constexpr bool is_script_enum_v = std::is_same_v<T, ScriptEnum_uint8> || std::is
 #if !COMPILER_MODE
 static void CallbackException(asIScriptContext* ctx, void* param)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // string str = ctx->GetExceptionString();
     // if (str != "Pass")
@@ -295,7 +298,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     void CreateContext()
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         asIScriptContext* ctx = Engine->CreateContext();
         RUNTIME_ASSERT(ctx);
@@ -311,7 +314,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     void FinishContext(asIScriptContext* ctx)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto it = std::find(FreeContexts.begin(), FreeContexts.end(), ctx);
         RUNTIME_ASSERT(it != FreeContexts.end());
@@ -323,7 +326,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     auto RequestContext() -> asIScriptContext*
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (FreeContexts.empty()) {
             CreateContext();
@@ -337,7 +340,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     void ReturnContext(asIScriptContext* ctx)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         ctx->Unprepare();
 
@@ -354,7 +357,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(func);
 
@@ -371,7 +374,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     auto RunContext(asIScriptContext* ctx, bool can_suspend) -> bool
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
 
@@ -426,7 +429,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     void ResumeSuspendedContexts()
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (BusyContexts.empty()) {
             return;
@@ -456,7 +459,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
     auto GetContextTraceback(asIScriptContext* top_ctx) -> string
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         string result;
         result.reserve(2048);
@@ -530,7 +533,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 template<typename T>
 static T* ScriptableObject_Factory()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return new T();
 }
@@ -539,7 +542,7 @@ static T* ScriptableObject_Factory()
 // Arrays stuff
 [[maybe_unused]] static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScriptArray*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
@@ -554,7 +557,7 @@ static T* ScriptableObject_Factory()
 template<typename T, typename T2 = T>
 [[maybe_unused]] static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(as_engine);
 
@@ -578,7 +581,7 @@ template<typename T, typename T2 = T>
 template<typename T, typename T2 = T>
 [[maybe_unused]] static void AssignArray(asIScriptEngine* as_engine, const vector<T>& vec, CScriptArray* as_array)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     as_array->Resize(0);
 
@@ -601,7 +604,7 @@ template<typename T, typename T2 = T>
 template<typename T, typename T2 = T>
 [[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* as_array = CreateASArray(as_engine, type);
 
@@ -614,7 +617,7 @@ template<typename T, typename T2 = T>
 
 [[maybe_unused]] static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScriptDict*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
@@ -629,7 +632,7 @@ template<typename T, typename T2 = T>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
     static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
@@ -655,7 +658,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, CScriptDict* as_dict)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
     static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
@@ -674,7 +677,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
     static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
@@ -690,7 +693,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
 [[maybe_unused]] static auto GetASObjectInfo(void* ptr, int type_id) -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (type_id) {
     case asTYPEID_VOID:
@@ -741,7 +744,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
 [[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, NameResolver& name_resolver) -> hstring
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (func == nullptr) {
         return hstring();
@@ -765,7 +768,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 #if !COMPILER_MODE
 static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static unordered_map<type_index, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
         {type_index(typeid(bool)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
@@ -884,7 +887,7 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
 template<typename TRet, typename... Args>
 [[maybe_unused]] static auto GetASScriptFunc(asIScriptFunction* func, SCRIPTING_CLASS::AngelScriptImpl* script_sys) -> ScriptFunc<TRet, Args...>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* func_desc = new ScriptFuncDesc();
     func_desc->Name = func->GetDelegateObject() == nullptr ? GetASFuncName(func, *script_sys->GameEngine) : hstring();
@@ -902,7 +905,7 @@ template<typename TRet, typename... Args>
 #if !COMPILER_MODE
 static auto CalcConstructAddrSpace(const Property* prop) -> size_t
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
@@ -931,7 +934,7 @@ static auto CalcConstructAddrSpace(const Property* prop) -> size_t
 
 static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
@@ -954,7 +957,7 @@ static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
 
 static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* construct_addr, asIScriptEngine* as_engine)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto resolve_hash = [prop](const void* hptr) -> hstring {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
@@ -1207,7 +1210,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
 static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     PropertyRawData prop_data;
 
@@ -1447,7 +1450,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static auto CalcNetBufParamLen(const T& value) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
         if (value.size() > 0xFFFF) {
@@ -1467,7 +1470,7 @@ static auto CalcNetBufParamLen(const T& value) -> uint
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static auto CalcNetBufParamLen(const vector<T>& value) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (value.size() > 0xFFFF) {
         throw ScriptException("Too big array to send", value.size());
@@ -1494,7 +1497,7 @@ template<typename T, typename U,
         int> = 0>
 static auto CalcNetBufParamLen(const map<T, U>& value) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (value.size() > 0xFFFF) {
         throw ScriptException("Too big dict to send", value.size());
@@ -1527,7 +1530,7 @@ static auto CalcNetBufParamLen(const map<T, U>& value) -> uint
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
         out_buf << static_cast<ushort>(value.length());
@@ -1544,7 +1547,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     out_buf << static_cast<ushort>(value.size());
 
@@ -1559,7 +1562,7 @@ template<typename T, typename U,
         int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     out_buf << static_cast<ushort>(value.size());
 
@@ -1572,7 +1575,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolver)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
         ushort len = 0;
@@ -1591,7 +1594,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name_resolver)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ushort inner_values_count = 0;
     in_buf >> inner_values_count;
@@ -1610,7 +1613,7 @@ template<typename T, typename U,
         int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name_resolver)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ushort inner_values_count = 0;
     in_buf >> inner_values_count;
@@ -1626,7 +1629,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 
 [[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint msg_len, uint rpc_num)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     out_buf << NETMSG_RPC;
     out_buf << msg_len;
@@ -1637,7 +1640,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 template<typename T>
 static void Entity_AddRef(const T* self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->AddRef();
@@ -1650,7 +1653,7 @@ static void Entity_AddRef(const T* self)
 template<typename T>
 static void Entity_Release(const T* self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->Release();
@@ -1663,7 +1666,7 @@ static void Entity_Release(const T* self)
 template<typename T>
 static auto Entity_IsDestroyed(const T* self) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -1677,7 +1680,7 @@ static auto Entity_IsDestroyed(const T* self) -> bool
 template<typename T>
 static auto Entity_IsDestroying(const T* self) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -1691,7 +1694,7 @@ static auto Entity_IsDestroying(const T* self) -> bool
 template<typename T>
 static auto Entity_Name(const T* self) -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -1706,7 +1709,7 @@ static auto Entity_Name(const T* self) -> string
 template<typename T>
 static auto Entity_Id(const T* self) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -1721,7 +1724,7 @@ static auto Entity_Id(const T* self) -> uint
 template<typename T>
 static auto Entity_ProtoId(const T* self) -> hstring
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -1736,7 +1739,7 @@ static auto Entity_ProtoId(const T* self) -> hstring
 template<>
 auto Entity_ProtoId(const Entity* self) -> hstring
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -1754,7 +1757,7 @@ auto Entity_ProtoId(const Entity* self) -> hstring
 template<typename T>
 static auto Entity_Proto(const T* self) -> const ProtoEntity*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(self);
@@ -1770,7 +1773,7 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
 
 static void Global_Assert_0(bool condition)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1783,7 +1786,7 @@ static void Global_Assert_0(bool condition)
 
 static void Global_Assert_1(bool condition, void* obj1Ptr, int obj1)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1797,7 +1800,7 @@ static void Global_Assert_1(bool condition, void* obj1Ptr, int obj1)
 
 static void Global_Assert_2(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1812,7 +1815,7 @@ static void Global_Assert_2(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_3(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1828,7 +1831,7 @@ static void Global_Assert_3(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_4(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1845,7 +1848,7 @@ static void Global_Assert_4(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_5(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1863,7 +1866,7 @@ static void Global_Assert_5(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_6(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1882,7 +1885,7 @@ static void Global_Assert_6(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_7(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1902,7 +1905,7 @@ static void Global_Assert_7(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_8(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1923,7 +1926,7 @@ static void Global_Assert_8(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_9(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1945,7 +1948,7 @@ static void Global_Assert_9(bool condition, void* obj1Ptr, int obj1, void* obj2P
 
 static void Global_Assert_10(bool condition, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9, void* obj10Ptr, int obj10)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     if (!condition) {
@@ -1968,7 +1971,7 @@ static void Global_Assert_10(bool condition, void* obj1Ptr, int obj1, void* obj2
 
 static void Global_ThrowException_0(string message)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     throw ScriptException(message);
@@ -1979,7 +1982,7 @@ static void Global_ThrowException_0(string message)
 
 static void Global_ThrowException_1(string message, void* obj1Ptr, int obj1)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -1991,7 +1994,7 @@ static void Global_ThrowException_1(string message, void* obj1Ptr, int obj1)
 
 static void Global_ThrowException_2(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2004,7 +2007,7 @@ static void Global_ThrowException_2(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_3(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2018,7 +2021,7 @@ static void Global_ThrowException_3(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_4(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2033,7 +2036,7 @@ static void Global_ThrowException_4(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_5(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2049,7 +2052,7 @@ static void Global_ThrowException_5(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_6(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2066,7 +2069,7 @@ static void Global_ThrowException_6(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_7(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2084,7 +2087,7 @@ static void Global_ThrowException_7(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_8(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2103,7 +2106,7 @@ static void Global_ThrowException_8(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_9(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2123,7 +2126,7 @@ static void Global_ThrowException_9(string message, void* obj1Ptr, int obj1, voi
 
 static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, void* obj2Ptr, int obj2, void* obj3Ptr, int obj3, void* obj4Ptr, int obj4, void* obj5Ptr, int obj5, void* obj6Ptr, int obj6, void* obj7Ptr, int obj7, void* obj8Ptr, int obj8, void* obj9Ptr, int obj9, void* obj10Ptr, int obj10)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
@@ -2144,7 +2147,7 @@ static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, vo
 
 static void Global_Yield(uint time)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* ctx = asGetActiveContext();
@@ -2161,7 +2164,7 @@ static void Global_Yield(uint time)
 template<typename T>
 static void ASPropertyGetter(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -2243,7 +2246,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
 template<typename T, typename Deferred>
 static void ASPropertySetter(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -2368,7 +2371,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 template<typename T>
 static void Global_Get(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* ptr = *static_cast<T**>(gen->GetAuxiliary());
@@ -2381,7 +2384,7 @@ static void Global_Get(asIScriptGeneric* gen)
 template<typename T>
 static auto Entity_GetSelf(T* entity) -> T*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2395,7 +2398,7 @@ static auto Entity_GetSelf(T* entity) -> T*
 template<typename T>
 static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2427,7 +2430,7 @@ static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 template<typename T>
 static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2463,7 +2466,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 template<typename T>
 static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2495,7 +2498,7 @@ static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
 template<typename T>
 static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     ENTITY_VERIFY_NULL(entity);
@@ -2531,7 +2534,7 @@ static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
 template<typename T>
 static void Property_GetComponent(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
@@ -2549,7 +2552,7 @@ static void Property_GetComponent(asIScriptGeneric* gen)
 template<typename T>
 static void Property_GetValue(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
@@ -2582,7 +2585,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
 template<typename T>
 static void Property_SetValue(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
@@ -2623,7 +2626,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
 template<typename T>
 static Entity* EntityDownCast(T* a)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static_assert(std::is_base_of_v<Entity, T>);
 
@@ -2637,7 +2640,7 @@ static Entity* EntityDownCast(T* a)
 template<typename T>
 static T* EntityUpCast(Entity* a)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static_assert(std::is_base_of_v<Entity, T>);
 
@@ -2650,14 +2653,14 @@ static T* EntityUpCast(Entity* a)
 
 static void HashedString_Construct(hstring* self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     new (self) hstring();
 }
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
@@ -2669,7 +2672,7 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 
 static void HashedString_CreateFromString(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
@@ -2681,7 +2684,7 @@ static void HashedString_CreateFromString(asIScriptGeneric* gen)
 
 static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -2693,56 +2696,56 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 
 static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     new (self) hstring(other);
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     self = other;
 }
 
 static bool HashedString_Equals(const hstring& self, const hstring& other)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return self == other;
 }
 
 static bool HashedString_EqualsString(const hstring& self, const string& other)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return self.as_str() == other;
 }
 
 static string HashedString_StringCast(const hstring& self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return string(self.as_str());
 }
 
 static string HashedString_GetString(const hstring& self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return string(self.as_str());
 }
 
 static int HashedString_GetHash(const hstring& self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return self.as_int();
 }
 
 static uint HashedString_GetUHash(const hstring& self)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return self.as_uint();
 }
@@ -2750,7 +2753,7 @@ static uint HashedString_GetUHash(const hstring& self)
 template<typename T, typename U>
 static void CustomEntity_Create(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -2762,7 +2765,7 @@ static void CustomEntity_Create(asIScriptGeneric* gen)
 template<typename T, typename U>
 static void CustomEntity_Get(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -2776,7 +2779,7 @@ static void CustomEntity_Get(asIScriptGeneric* gen)
 template<typename T, typename U>
 static void CustomEntity_DeleteById(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -2788,7 +2791,7 @@ static void CustomEntity_DeleteById(asIScriptGeneric* gen)
 template<typename T, typename U>
 static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -2802,7 +2805,7 @@ static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
 
 static void Enum_Parse(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* enum_info = static_cast<SCRIPTING_CLASS::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
@@ -2828,7 +2831,7 @@ static void Enum_Parse(asIScriptGeneric* gen)
 
 static void Enum_ToString(asIScriptGeneric* gen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     auto* enum_info = static_cast<SCRIPTING_CLASS::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
@@ -2854,7 +2857,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(param);
 
@@ -2881,6 +2884,24 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
     WriteLog("{}", formatted_message);
 }
 
+static void AngelScriptBeginCall(asIScriptFunction* func)
+{
+    const auto* func_decl = func->GetDeclaration(true, true);
+    void* entry_ptr = STACK_TRACE_ENTRY_BEGIN(func_decl);
+
+    func->SetUserData(entry_ptr);
+}
+
+static void AngelScriptEndCall(asIScriptFunction* func)
+{
+    void* entry_ptr = func->GetUserData();
+
+    if (entry_ptr != nullptr) {
+        func->SetUserData(nullptr);
+        STACK_TRACE_ENTRY_END(entry_ptr);
+    }
+}
+
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources);
 #else
@@ -2889,7 +2910,7 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     FOEngine* game_engine = _engine;
@@ -2908,6 +2929,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RUNTIME_ASSERT(engine);
 
     engine->SetUserData(game_engine);
+    engine->SetUserData(&AngelScriptBeginCall, 1);
+    engine->SetUserData(&AngelScriptEndCall, 2);
 
 #if !COMPILER_MODE
     AngelScriptData = std::make_unique<AngelScriptImpl>();
@@ -3492,14 +3515,14 @@ class BinaryStream : public asIBinaryStream
 public:
     explicit BinaryStream(std::vector<asBYTE>& buf) : _binBuf {buf}
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         //
     }
 
     void Write(const void* ptr, asUINT size) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (!ptr || size == 0u) {
             return;
@@ -3512,7 +3535,7 @@ public:
 
     void Read(void* ptr, asUINT size) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (!ptr || size == 0u) {
             return;
@@ -3524,7 +3547,7 @@ public:
 
     auto GetBuf() -> std::vector<asBYTE>&
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return _binBuf;
     }
@@ -3538,7 +3561,7 @@ private:
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
 
@@ -3548,14 +3571,14 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
     public:
         ScriptLoader(const string* root, const map<string, string>* files) : _rootScript {root}, _scriptFiles {files}
         {
-            PROFILER_ENTRY();
+            STACK_TRACE_ENTRY();
 
             //
         }
 
         auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
         {
-            PROFILER_ENTRY();
+            STACK_TRACE_ENTRY();
 
             if (_rootScript != nullptr) {
                 data.resize(_rootScript->size());
@@ -3584,7 +3607,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
 
         void FileLoaded() override
         {
-            PROFILER_ENTRY();
+            STACK_TRACE_ENTRY();
 
             _includeDeep--;
         }
@@ -3743,7 +3766,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
 #else
 static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
     RUNTIME_ASSERT(!script_bin.empty());

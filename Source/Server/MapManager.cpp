@@ -45,21 +45,21 @@
 
 MapManager::MapManager(FOServer* engine) : _engine {engine}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _mapGrid = new short[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
 }
 
 MapManager::~MapManager()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     delete[] _mapGrid;
 }
 
 void MapManager::LinkMaps()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Link maps");
 
@@ -105,7 +105,7 @@ void MapManager::LinkMaps()
 
 void MapManager::LoadFromResources()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_staticMaps.empty());
 
@@ -298,7 +298,7 @@ void MapManager::LoadFromResources()
 
 auto MapManager::GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _staticMaps.find(proto_map);
     RUNTIME_ASSERT(it != _staticMaps.end());
@@ -307,7 +307,7 @@ auto MapManager::GetStaticMap(const ProtoMap* proto_map) const -> const StaticMa
 
 void MapManager::GenerateMapContent(Map* map)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -401,7 +401,7 @@ void MapManager::GenerateMapContent(Map* map)
 
 void MapManager::DeleteMapContent(Map* map)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     while (!map->_critters.empty() || !map->_items.empty()) {
         // Transit players to global map
@@ -427,7 +427,7 @@ void MapManager::DeleteMapContent(Map* map)
 
 auto MapManager::GetLocationAndMapsStatistics() const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto& locations = _engine->EntityMngr.GetLocations();
     const auto& maps = _engine->EntityMngr.GetMaps();
@@ -454,7 +454,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
 
 auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     if (proto == nullptr) {
@@ -514,7 +514,7 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
 
 auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* proto_map = _engine->ProtoMngr.GetProtoMap(proto_id);
     if (proto_map == nullptr) {
@@ -539,7 +539,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 
 void MapManager::RegenerateMap(Map* map)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _engine->OnMapFinish.Fire(map);
 
@@ -555,7 +555,7 @@ void MapManager::RegenerateMap(Map* map)
 
 auto MapManager::GetMap(uint map_id) -> Map*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -568,14 +568,14 @@ auto MapManager::GetMap(uint map_id) -> Map*
 
 auto MapManager::GetMap(uint map_id) const -> const Map*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return const_cast<MapManager*>(this)->GetMap(map_id);
 }
 
 auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) -> Map*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -588,7 +588,7 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) -> Map*
 
 auto MapManager::GetMaps() -> const unordered_map<uint, Map*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -597,14 +597,14 @@ auto MapManager::GetMaps() -> const unordered_map<uint, Map*>&
 
 auto MapManager::GetMapsCount() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_engine->EntityMngr.GetMaps().size());
 }
 
 auto MapManager::GetLocationByMap(uint map_id) -> Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* map = GetMap(map_id);
     if (map == nullptr) {
@@ -615,7 +615,7 @@ auto MapManager::GetLocationByMap(uint map_id) -> Location*
 
 auto MapManager::GetLocation(uint loc_id) -> Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -628,14 +628,14 @@ auto MapManager::GetLocation(uint loc_id) -> Location*
 
 auto MapManager::GetLocation(uint loc_id) const -> const Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return const_cast<MapManager*>(this)->GetLocation(loc_id);
 }
 
 auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -647,7 +647,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*
 
 auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const int zl = _engine->Settings.GlobalMapZoneLength;
     const IRect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones, (wy1 + w1_radius) / zl + zones);
@@ -657,7 +657,7 @@ auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int w
 
 auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -676,7 +676,7 @@ auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Loc
 
 void MapManager::KickPlayersToGlobalMap(Map* map)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto* cl : map->GetPlayers()) {
         TransitToGlobal(cl, 0, true);
@@ -685,7 +685,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
 
 auto MapManager::GetLocations() -> const unordered_map<uint, Location*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -694,14 +694,14 @@ auto MapManager::GetLocations() -> const unordered_map<uint, Location*>&
 
 auto MapManager::GetLocationsCount() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_engine->EntityMngr.GetLocations().size());
 }
 
 void MapManager::LocationGarbager()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_runGarbager) {
         _runGarbager = false;
@@ -716,7 +716,7 @@ void MapManager::LocationGarbager()
 
 void MapManager::DeleteLocation(Location* loc)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Start deleting
     auto&& maps = copy(loc->GetMaps());
@@ -771,7 +771,7 @@ void MapManager::DeleteLocation(Location* loc)
 
 void MapManager::TraceBullet(TraceData& trace)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -864,7 +864,7 @@ void MapManager::TraceBullet(TraceData& trace)
 
 auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     FindPathOutput output;
 
@@ -1377,7 +1377,7 @@ label_FindOk:
 
 auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (cr->LockMapTransfers != 0) {
         WriteLog("Transfers locked, critter '{}'", cr->GetName());
@@ -1389,7 +1389,7 @@ auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> boo
 
 auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Check location deletion
     const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
@@ -1502,7 +1502,7 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 
 auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (map != nullptr) {
         if (hx >= map->GetWidth() || hy >= map->GetHeight()) {
@@ -1525,7 +1525,7 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint
 
 void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1596,7 +1596,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
 
 void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     cr->LockMapTransfers++;
 
@@ -1653,7 +1653,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
 void MapManager::ProcessVisibleCritters(Critter* view_cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2006,7 +2006,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
 void MapManager::ProcessVisibleItems(Critter* view_cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2064,7 +2064,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
 
 void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Critters
     const auto dirs_count = GameSettings::MAP_DIR_COUNT;
@@ -2168,7 +2168,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
 
 auto MapManager::CheckKnownLoc(Critter* cr, uint loc_id) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (const auto known_loc_id : cr->GetKnownLocations()) {
         if (known_loc_id == loc_id) {
@@ -2180,7 +2180,7 @@ auto MapManager::CheckKnownLoc(Critter* cr, uint loc_id) const -> bool
 
 void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2195,7 +2195,7 @@ void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
 
 void MapManager::EraseKnownLoc(Critter* cr, uint loc_id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto known_locs = cr->GetKnownLocations();
     for (size_t i = 0; i < known_locs.size(); i++) {

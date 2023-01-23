@@ -115,26 +115,26 @@ BaseBaker::BaseBaker(BakerSettings& settings, FileCollection&& files, BakeChecke
     _bakeChecker {std::move(bake_checker)},
     _writeData {std::move(write_data)}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_writeData);
 }
 
 Baker::Baker(BakerSettings& settings) : _settings {settings}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 auto Baker::MakeOutputPath(string_view path) const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _str(_settings.BakeOutput).combinePath(path).str();
 }
 
 void Baker::BakeAll()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Start bakering");
 
@@ -1074,7 +1074,7 @@ void Baker::BakeAll()
 
 auto Baker::ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     unordered_map<string, std::function<bool(hstring)>> script_func_verify = {
         {"ItemInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
@@ -1140,12 +1140,12 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
 BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& settings) : _inputResources {input_resources}, _settings {settings}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 auto BakerDataSource::FindFile(const string& path) const -> File*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (const auto it = _bakedFiles.find(path); it != _bakedFiles.end()) {
         return it->second ? it->second.get() : nullptr;
@@ -1196,7 +1196,7 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
 
 auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (const auto* file = FindFile(string(path)); file != nullptr) {
         size = file->GetSize();
@@ -1208,7 +1208,7 @@ auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& writ
 
 auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (const auto* file = FindFile(string(path)); file != nullptr) {
         size = file->GetSize();
@@ -1220,7 +1220,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
 
 auto BakerDataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
 }

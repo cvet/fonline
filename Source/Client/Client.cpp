@@ -57,7 +57,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Resources.AddDataSource(Settings.EmbeddedResources);
     Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
@@ -268,14 +268,14 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
 FOClient::~FOClient()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     delete ScriptSys;
 }
 
 void FOClient::Shutdown()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     App->Render.SetRenderTarget(nullptr);
     _conn.Disconnect();
@@ -283,42 +283,42 @@ void FOClient::Shutdown()
 
 auto FOClient::ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return OnCritterAnimation.Fire(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 auto FOClient::ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return OnCritterAnimationSubstitute.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 auto FOClient::ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return OnCritterAnimationFallout.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 auto FOClient::IsConnecting() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _conn.IsConnecting();
 }
 
 auto FOClient::IsConnected() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _conn.IsConnected();
 }
 
 auto FOClient::GetChosen() -> CritterView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -332,14 +332,14 @@ auto FOClient::GetChosen() -> CritterView*
 
 auto FOClient::GetMapChosen() -> CritterHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
 auto FOClient::GetWorldmapCritter(uint cr_id) -> CritterView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
     return it != _worldmapCritters.end() ? *it : nullptr;
@@ -347,7 +347,7 @@ auto FOClient::GetWorldmapCritter(uint cr_id) -> CritterView*
 
 void FOClient::ProcessAutoLogin()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto auto_login = Settings.AutoLogin;
 
@@ -395,7 +395,7 @@ void FOClient::ProcessAutoLogin()
 
 void FOClient::MainLoop()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto time_changed = GameTime.FrameAdvance();
 
@@ -491,7 +491,7 @@ void FOClient::MainLoop()
 
 void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!push_back || _screenEffects.empty()) {
         _screenEffects.push_back({GameTime.FrameTick(), time, from_color, to_color});
@@ -509,7 +509,7 @@ void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_b
 
 void FOClient::ScreenQuake(int noise, uint time)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Settings.ScrOx -= _screenOffsX;
     Settings.ScrOy -= _screenOffsY;
@@ -525,7 +525,7 @@ void FOClient::ScreenQuake(int noise, uint time)
 
 void FOClient::ProcessScreenEffectFading()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SprMngr.Flush();
 
@@ -565,7 +565,7 @@ void FOClient::ProcessScreenEffectFading()
 
 void FOClient::ProcessScreenEffectQuake()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if ((_screenOffsX != 0 || _screenOffsY != 0) && GameTime.GameTick() >= _screenOffsNextTick) {
         Settings.ScrOx -= _screenOffsX;
@@ -599,7 +599,7 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
@@ -617,7 +617,7 @@ void FOClient::ProcessInputEvents()
 
 void FOClient::ProcessInputEvent(const InputEvent& ev)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         const auto key_code = ev.KeyDown.Code;
@@ -679,7 +679,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
 
 void FOClient::Net_OnConnect(bool success)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (success) {
         // Reason
@@ -711,7 +711,7 @@ void FOClient::Net_OnConnect(bool success)
 
 void FOClient::Net_OnDisconnect()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (CurMap != nullptr) {
         CurMap->MarkAsDestroyed();
@@ -730,7 +730,7 @@ void FOClient::Net_OnDisconnect()
 
 void FOClient::Net_SendLogIn()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Player login");
 
@@ -746,7 +746,7 @@ void FOClient::Net_SendLogIn()
 
 void FOClient::Net_SendCreatePlayer()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -762,7 +762,7 @@ void FOClient::Net_SendCreatePlayer()
 
 void FOClient::Net_SendText(string_view send_str, uchar how_say)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     int say_type = how_say;
     auto str = string(send_str);
@@ -784,7 +784,7 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 
 void FOClient::Net_SendDir(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -796,7 +796,7 @@ void FOClient::Net_SendDir(CritterHexView* cr)
 
 void FOClient::Net_SendMove(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -832,7 +832,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
 
 void FOClient::Net_SendStopMove(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -848,7 +848,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(entity);
@@ -927,7 +927,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
 void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -939,7 +939,7 @@ void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 
 void FOClient::Net_SendPing(uchar ping)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -949,7 +949,7 @@ void FOClient::Net_SendPing(uchar ping)
 
 void FOClient::Net_OnUpdateFilesResponse()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     bool outdated;
@@ -1012,14 +1012,14 @@ void FOClient::Net_OnUpdateFilesResponse()
 
 void FOClient::Net_OnWrongNetProto()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnRegisterSuccess()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Registration success");
 
@@ -1028,7 +1028,7 @@ void FOClient::Net_OnRegisterSuccess()
 
 void FOClient::Net_OnLoginSuccess()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Authentication success");
 
@@ -1060,7 +1060,7 @@ void FOClient::Net_OnLoginSuccess()
 
 void FOClient::Net_OnAddCritter()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     _conn.InBuf >> msg_len;
@@ -1147,7 +1147,7 @@ void FOClient::Net_OnAddCritter()
 
 void FOClient::Net_OnRemoveCritter()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint cr_id;
     _conn.InBuf >> cr_id;
@@ -1182,7 +1182,7 @@ void FOClient::Net_OnRemoveCritter()
 
 void FOClient::Net_OnText()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint crid;
@@ -1210,7 +1210,7 @@ void FOClient::Net_OnText()
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (with_lexems) {
         uint msg_len;
@@ -1252,7 +1252,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
 void FOClient::OnText(string_view str, uint crid, int how_say)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto fstr = string(str);
     if (fstr.empty()) {
@@ -1356,7 +1356,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
 
 void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto show_time = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
 
@@ -1375,7 +1375,7 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 
 void FOClient::Net_OnMapText()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     ushort hx;
@@ -1411,7 +1411,7 @@ void FOClient::Net_OnMapText()
 
 void FOClient::Net_OnMapTextMsg()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ushort hx;
     ushort hy;
@@ -1438,7 +1438,7 @@ void FOClient::Net_OnMapTextMsg()
 
 void FOClient::Net_OnMapTextMsgLex()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     ushort hx;
@@ -1469,7 +1469,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
 void FOClient::Net_OnCritterDir()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint crid;
     short dir_angle;
@@ -1491,7 +1491,7 @@ void FOClient::Net_OnCritterDir()
 
 void FOClient::Net_OnCritterMove()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint cr_id;
@@ -1616,7 +1616,7 @@ void FOClient::Net_OnCritterMove()
 
 void FOClient::Net_OnCritterStopMove()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint cr_id;
     ushort start_hx;
@@ -1650,7 +1650,7 @@ void FOClient::Net_OnCritterStopMove()
 
 void FOClient::Net_OnSomeItem()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint item_id;
@@ -1675,7 +1675,7 @@ void FOClient::Net_OnSomeItem()
 
 void FOClient::Net_OnCritterAction()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint crid;
     int action;
@@ -1703,7 +1703,7 @@ void FOClient::Net_OnCritterAction()
 
 void FOClient::Net_OnCritterMoveItem()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint cr_id;
@@ -1786,7 +1786,7 @@ void FOClient::Net_OnCritterMoveItem()
 
 void FOClient::Net_OnCritterAnimate()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint crid;
     uint anim1;
@@ -1823,7 +1823,7 @@ void FOClient::Net_OnCritterAnimate()
 
 void FOClient::Net_OnCritterSetAnims()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint crid;
     CritterCondition cond;
@@ -1866,7 +1866,7 @@ void FOClient::Net_OnCritterSetAnims()
 
 void FOClient::Net_OnCritterTeleport()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint crid;
     ushort to_hx;
@@ -1904,7 +1904,7 @@ void FOClient::Net_OnCritterTeleport()
 
 void FOClient::Net_OnCritterPos()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint crid;
     ushort hx;
@@ -1967,7 +1967,7 @@ void FOClient::Net_OnCritterPos()
 
 void FOClient::Net_OnAllProperties()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Chosen properties");
 
@@ -1998,7 +1998,7 @@ void FOClient::Net_OnAllProperties()
 
 void FOClient::Net_OnChosenClearItems()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _initialItemsSend = true;
 
@@ -2018,7 +2018,7 @@ void FOClient::Net_OnChosenClearItems()
 
 void FOClient::Net_OnChosenAddItem()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint item_id;
@@ -2073,7 +2073,7 @@ void FOClient::Net_OnChosenAddItem()
 
 void FOClient::Net_OnChosenEraseItem()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint item_id;
     _conn.InBuf >> item_id;
@@ -2108,7 +2108,7 @@ void FOClient::Net_OnChosenEraseItem()
 
 void FOClient::Net_OnAllItemsSend()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _initialItemsSend = false;
 
@@ -2130,7 +2130,7 @@ void FOClient::Net_OnAllItemsSend()
 
 void FOClient::Net_OnAddItemOnMap()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint item_id;
@@ -2166,7 +2166,7 @@ void FOClient::Net_OnAddItemOnMap()
 
 void FOClient::Net_OnEraseItemFromMap()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint item_id;
     bool is_deleted;
@@ -2199,7 +2199,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
 void FOClient::Net_OnAnimateItem()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint item_id;
     uchar from_frm;
@@ -2223,7 +2223,7 @@ void FOClient::Net_OnAnimateItem()
 
 void FOClient::Net_OnEffect()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     hstring eff_pid;
     ushort hx;
@@ -2266,7 +2266,7 @@ void FOClient::Net_OnEffect()
 // Todo: synchronize effects showing (for example shot and kill)
 void FOClient::Net_OnFlyEffect()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     hstring eff_pid;
     uint eff_cr1_id;
@@ -2309,7 +2309,7 @@ void FOClient::Net_OnFlyEffect()
 
 void FOClient::Net_OnPlaySound()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uint synchronize_crid;
@@ -2325,7 +2325,7 @@ void FOClient::Net_OnPlaySound()
 
 void FOClient::Net_OnPlaceToGameComplete()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -2352,7 +2352,7 @@ void FOClient::Net_OnPlaceToGameComplete()
 
 void FOClient::Net_OnProperty(uint data_size)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     if (data_size == 0u) {
@@ -2485,7 +2485,7 @@ void FOClient::Net_OnProperty(uint data_size)
 
 void FOClient::Net_OnChosenTalk()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uchar is_npc;
@@ -2562,7 +2562,7 @@ void FOClient::Net_OnChosenTalk()
 
 void FOClient::Net_OnTimeSync()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ushort year;
     ushort month;
@@ -2596,7 +2596,7 @@ void FOClient::Net_OnTimeSync()
 
 void FOClient::Net_OnLoadMap()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     WriteLog("Change map..");
 
@@ -2667,7 +2667,7 @@ void FOClient::Net_OnLoadMap()
 
 void FOClient::Net_OnGlobalInfo()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     uchar info_flags;
@@ -2755,7 +2755,7 @@ void FOClient::Net_OnGlobalInfo()
 
 void FOClient::Net_OnSomeItems()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     int param;
@@ -2791,7 +2791,7 @@ void FOClient::Net_OnSomeItems()
 
 void FOClient::Net_OnAutomapsInfo()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     bool clear;
@@ -2854,7 +2854,7 @@ void FOClient::Net_OnAutomapsInfo()
 
 void FOClient::Net_OnViewMap()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ushort hx;
     ushort hy;
@@ -2885,7 +2885,7 @@ void FOClient::Net_OnViewMap()
 
 void FOClient::Net_OnRemoteCall()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint msg_len;
     _conn.InBuf >> msg_len;
@@ -2899,7 +2899,7 @@ void FOClient::Net_OnRemoteCall()
 
 void FOClient::SetDayTime(bool refresh)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (refresh) {
         _prevDayTimeColor.reset();
@@ -2920,7 +2920,7 @@ void FOClient::SetDayTime(bool refresh)
 
 void FOClient::TryExit()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto active = GetActiveScreen(nullptr);
     if (active != SCREEN_NONE) {
@@ -2942,7 +2942,7 @@ void FOClient::TryExit()
 
 void FOClient::FlashGameWindow()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (SprMngr.IsWindowFocused()) {
         return;
@@ -2955,7 +2955,7 @@ void FOClient::FlashGameWindow()
 
 auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* anim = ResMngr.GetAnim(name, res_type);
     if (anim == nullptr) {
@@ -2983,7 +2983,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
 
 void FOClient::AnimFree(uint anim_id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(anim_id < _ifaceAnimations.size());
 
@@ -2995,7 +2995,7 @@ void FOClient::AnimFree(uint anim_id)
 
 auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
@@ -3005,7 +3005,7 @@ auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 
 auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
@@ -3015,7 +3015,7 @@ auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
 
 auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
@@ -3025,7 +3025,7 @@ auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 
 auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3037,7 +3037,7 @@ auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 
 void FOClient::AnimRun(uint anim_id, uint flags)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3069,7 +3069,7 @@ void FOClient::AnimRun(uint anim_id, uint flags)
 
 void FOClient::AnimProcess()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3120,7 +3120,7 @@ void FOClient::AnimProcess()
 
 void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(entity == this);
 
@@ -3134,7 +3134,7 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(entity == _curPlayer);
 
@@ -3147,7 +3147,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* cr = dynamic_cast<CritterView*>(entity);
     if (cr->IsChosen()) {
@@ -3163,7 +3163,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
@@ -3194,7 +3194,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(entity == CurMap);
 
@@ -3208,7 +3208,7 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(entity == _curLocation);
 
@@ -3222,7 +3222,7 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(prop);
 
@@ -3236,7 +3236,7 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(prop);
 
@@ -3247,7 +3247,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
@@ -3280,7 +3280,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
@@ -3294,7 +3294,7 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(prop);
 
@@ -3305,7 +3305,7 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // OffsetX, OffsetY
 
@@ -3319,7 +3319,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(prop);
 
@@ -3337,7 +3337,7 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 
 void FOClient::AddMessage(uchar mess_type, string_view msg)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     OnMessageBox.Fire(mess_type, string(msg));
 }
@@ -3345,7 +3345,7 @@ void FOClient::AddMessage(uchar mess_type, string_view msg)
 // Todo: move targs formatting to scripts
 void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3479,7 +3479,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
 
 void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     while (GetActiveScreen(nullptr) != SCREEN_NONE) {
         HideScreen(SCREEN_NONE);
@@ -3521,7 +3521,7 @@ void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
 
 auto FOClient::GetActiveScreen(vector<int>* screens) -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<int> active_screens;
     OnGetActiveScreens.Fire(active_screens);
@@ -3539,7 +3539,7 @@ auto FOClient::GetActiveScreen(vector<int>* screens) -> int
 
 auto FOClient::IsScreenPresent(int screen) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<int> active_screens;
     GetActiveScreen(&active_screens);
@@ -3548,14 +3548,14 @@ auto FOClient::IsScreenPresent(int screen) -> bool
 
 void FOClient::ShowScreen(int screen, map<string, string> params)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RunScreenScript(true, screen, std::move(params));
 }
 
 void FOClient::HideScreen(int screen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (screen == SCREEN_NONE) {
         screen = GetActiveScreen(nullptr);
@@ -3569,14 +3569,14 @@ void FOClient::HideScreen(int screen)
 
 void FOClient::RunScreenScript(bool show, int screen, map<string, string> params)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     OnScreenChange.Fire(show, screen, std::move(params));
 }
 
 void FOClient::LmapPrepareMap()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _lmapPrepPix.clear();
 
@@ -3652,7 +3652,7 @@ void FOClient::LmapPrepareMap()
 
 void FOClient::GmapNullParams()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _worldmapLoc.clear();
     _worldmapFog.Fill(0);
@@ -3666,7 +3666,7 @@ void FOClient::GmapNullParams()
 
 void FOClient::WaitDraw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_waitPic != nullptr) {
         SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameTick()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
@@ -3676,7 +3676,7 @@ void FOClient::WaitDraw()
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Parse command
     vector<string> args;
@@ -4004,7 +4004,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto prev_moving = cr->IsMoving();
 
@@ -4132,7 +4132,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
 
 void FOClient::CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (dir_or_angle.index() == 0) {
         cr->ChangeDir(std::get<0>(dir_or_angle));

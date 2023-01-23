@@ -124,27 +124,27 @@ CacheStorage::~CacheStorage() = default;
 
 auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl->HasEntry(entry_name);
 }
 
 auto CacheStorage::GetString(string_view entry_name) const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl->GetString(entry_name);
 }
 auto CacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl->GetData(entry_name);
 }
 
 void CacheStorage::SetString(string_view entry_name, string_view str)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -153,7 +153,7 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
 
 void CacheStorage::SetData(string_view entry_name, const_span<uchar> data)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -162,7 +162,7 @@ void CacheStorage::SetData(string_view entry_name, const_span<uchar> data)
 
 void CacheStorage::EraseEntry(string_view entry_name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -171,14 +171,14 @@ void CacheStorage::EraseEntry(string_view entry_name)
 
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _str("{}/{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real_path).eraseFileExtension()}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DiskFileSystem::ResolvePath(_workPath);
     DiskFileSystem::MakeDirTree(_workPath);
@@ -195,7 +195,7 @@ FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     return !!DiskFileSystem::OpenFile(path, false);
@@ -203,7 +203,7 @@ auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 
 auto FileCacheStorage::GetString(string_view entry_name) const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
@@ -223,7 +223,7 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
 
 auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
@@ -242,7 +242,7 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
@@ -258,7 +258,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 
 void FileCacheStorage::SetData(string_view entry_name, const_span<uchar> data)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
@@ -274,7 +274,7 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uchar> data)
 
 void FileCacheStorage::EraseEntry(string_view entry_name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     DiskFileSystem::DeleteFile(path);
@@ -283,7 +283,7 @@ void FileCacheStorage::EraseEntry(string_view entry_name)
 #if FO_HAVE_UNQLITE
 UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _workPath = real_path;
 
@@ -309,7 +309,7 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 
 auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto r = unqlite_kv_fetch_callback(
         _db.get(), entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
@@ -322,7 +322,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
 
 void UnqliteCacheStorage::EraseEntry(string_view entry_name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto r = unqlite_kv_delete(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()));
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
@@ -339,7 +339,7 @@ void UnqliteCacheStorage::EraseEntry(string_view entry_name)
 
 auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     unqlite_int64 size = 0;
     auto r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), nullptr, &size);
@@ -363,7 +363,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
 
 auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     unqlite_int64 size = 0;
     auto r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), nullptr, &size);
@@ -387,7 +387,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 
 void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto r = unqlite_kv_store(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), str.data(), static_cast<unqlite_int64>(str.length()));
     if (r != UNQLITE_OK) {
@@ -402,7 +402,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
 
 void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uchar> data)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto r = unqlite_kv_store(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), data.data(), static_cast<unqlite_int64>(data.size()));
     if (r != UNQLITE_OK) {

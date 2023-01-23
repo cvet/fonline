@@ -43,7 +43,7 @@ extern "C" int main(int argc, char** argv)
 [[maybe_unused]] static auto ServerHeadlessApp(int argc, char** argv) -> int
 #endif
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv, "ServerHeadless");

@@ -89,7 +89,7 @@ const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
 void InitApp(int argc, char** argv, string_view name_appendix)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Ensure that we call init only once
     static std::once_flag once;
@@ -139,7 +139,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
 void ExitApp(bool success)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
@@ -151,7 +151,7 @@ void ExitApp(bool success)
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_name != other->_name) {
         return false;
@@ -181,7 +181,7 @@ static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
 Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
@@ -573,14 +573,14 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
 
 void Application::OpenLink(string_view link)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SDL_OpenURL(string(link).c_str());
 }
 
 void Application::HideCursor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -589,7 +589,7 @@ void Application::HideCursor()
 
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _imguiEffect = effect;
 }
@@ -597,7 +597,7 @@ void Application::SetImGuiEffect(RenderEffect* effect)
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SDL_iPhoneSetAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
 }
@@ -605,7 +605,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
 
@@ -618,7 +618,7 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -691,7 +691,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
 
 void Application::BeginFrame()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
     ActiveRenderer->ClearRenderTarget(COLOR_RGB(150, 150, 150));
@@ -974,7 +974,7 @@ void Application::BeginFrame()
 
 void Application::EndFrame()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
 
@@ -1057,7 +1057,7 @@ void Application::EndFrame()
 
 auto AppWindow::GetSize() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto w = 1000;
     auto h = 1000;
@@ -1069,7 +1069,7 @@ auto AppWindow::GetSize() const -> tuple<int, int>
 
 void AppWindow::SetSize(int w, int h)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1080,7 +1080,7 @@ void AppWindow::SetSize(int w, int h)
 
 auto AppWindow::GetPosition() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto x = 0;
     auto y = 0;
@@ -1092,7 +1092,7 @@ auto AppWindow::GetPosition() const -> tuple<int, int>
 
 void AppWindow::SetPosition(int x, int y)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1103,7 +1103,7 @@ void AppWindow::SetPosition(int x, int y)
 
 auto AppWindow::IsFocused() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0u;
@@ -1114,7 +1114,7 @@ auto AppWindow::IsFocused() const -> bool
 
 void AppWindow::Minimize()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1125,7 +1125,7 @@ void AppWindow::Minimize()
 
 auto AppWindow::IsFullscreen() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
@@ -1136,7 +1136,7 @@ auto AppWindow::IsFullscreen() const -> bool
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1163,7 +1163,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
 void AppWindow::Blink()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1182,7 +1182,7 @@ void AppWindow::Blink()
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1201,14 +1201,14 @@ void AppWindow::AlwaysOnTop(bool enable)
 
 void AppWindow::GrabInput(bool enable)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _grabbed = enable;
 }
 
 void AppWindow::Destroy()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1224,14 +1224,14 @@ void AppWindow::Destroy()
 
 auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ActiveRenderer->SetRenderTarget(tex);
     RenderTargetTex = tex;
@@ -1239,49 +1239,49 @@ void AppRender::SetRenderTarget(RenderTexture* tex)
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return RenderTargetTex;
 }
 
 void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(int x, int y, int width, int height)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ActiveRenderer->EnableScissor(x, y, width, height);
 }
 
 void AppRender::DisableScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ActiveRenderer->DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto x = 100;
     auto y = 100;
@@ -1293,7 +1293,7 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
         App->Settings.MouseX = x;
@@ -1314,7 +1314,7 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!EventsQueue->empty()) {
         ev = EventsQueue->front();
@@ -1326,28 +1326,28 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 
 void AppInput::ClearEvents()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NextFrameEventsQueue->push_back(ev);
 }
 
 void AppInput::SetClipboardText(string_view text)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SDL_SetClipboardText(string(text).c_str());
 }
 
 auto AppInput::GetClipboardText() -> const string&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _clipboardTextStorage = SDL_GetClipboardText();
     return _clipboardTextStorage;
@@ -1355,14 +1355,14 @@ auto AppInput::GetClipboardText() -> const string&
 
 auto AppAudio::IsEnabled() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return AudioDeviceId >= 2;
 }
 
 auto AppAudio::GetStreamSize() -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1371,7 +1371,7 @@ auto AppAudio::GetStreamSize() -> uint
 
 auto AppAudio::GetSilence() -> uchar
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1380,7 +1380,7 @@ auto AppAudio::GetSilence() -> uchar
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1391,7 +1391,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
 struct AppAudio::AudioConverter
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     int Format {};
     int Channels {};
@@ -1402,7 +1402,7 @@ struct AppAudio::AudioConverter
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1445,7 +1445,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
 
 void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1455,7 +1455,7 @@ void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 
 void AppAudio::LockDevice()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1464,7 +1464,7 @@ void AppAudio::LockDevice()
 
 void AppAudio::UnlockDevice()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1473,7 +1473,7 @@ void AppAudio::UnlockDevice()
 
 void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_WEB || FO_ANDROID || FO_IOS
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, string(title).c_str(), string(message).c_str(), nullptr);
@@ -1517,7 +1517,7 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
 
 static ImGuiKey KeycodeToImGuiKey(int keycode)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (keycode) {
     case SDLK_TAB:

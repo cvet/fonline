@@ -36,7 +36,7 @@
 
 void Sprite::Unvalidate()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -109,7 +109,7 @@ void Sprite::Unvalidate()
 
 auto Sprite::GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ox < 0 || oy < 0) {
         return nullptr;
@@ -120,7 +120,7 @@ auto Sprite::GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*
 
 void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -139,7 +139,7 @@ void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
 
 void Sprite::SetContour(ContourType contour)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -158,7 +158,7 @@ void Sprite::SetContour(ContourType contour)
 
 void Sprite::SetContour(ContourType contour, uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -178,7 +178,7 @@ void Sprite::SetContour(ContourType contour, uint color)
 
 void Sprite::SetColor(uint color)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -197,7 +197,7 @@ void Sprite::SetColor(uint color)
 
 void Sprite::SetAlpha(uchar* alpha)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -216,7 +216,7 @@ void Sprite::SetAlpha(uchar* alpha)
 
 void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -267,7 +267,7 @@ void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxh
 
 void Sprite::SetFixedAlpha(uchar alpha)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;
@@ -290,7 +290,7 @@ void Sprite::SetFixedAlpha(uchar alpha)
 
 void Sprites::GrowPool()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -303,7 +303,7 @@ void Sprites::GrowPool()
 
 auto Sprites::RootSprite() -> Sprite*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -312,7 +312,7 @@ auto Sprites::RootSprite() -> Sprite*
 
 auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _spriteCount++;
 
@@ -419,14 +419,14 @@ auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, usho
 
 auto Sprites::AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
 auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Find place
     uint pos;
@@ -453,7 +453,7 @@ auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x
 
 void Sprites::Unvalidate()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     while (_rootSprite != nullptr) {
         _rootSprite->Unvalidate();
@@ -463,7 +463,7 @@ void Sprites::Unvalidate()
 
 void Sprites::SortByMapPos()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_rootSprite == nullptr) {
         return;
@@ -511,14 +511,14 @@ void Sprites::SortByMapPos()
 
 auto Sprites::Size() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _spriteCount;
 }
 
 void Sprites::Clear()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Unvalidate();
 

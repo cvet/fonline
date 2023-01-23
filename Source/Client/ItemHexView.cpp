@@ -42,14 +42,14 @@
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto), _map {map}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawEffect = _engine->EffectMngr.Effects.Generic;
 }
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(map, id, proto)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetProperties(props);
 
@@ -58,7 +58,7 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Pr
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(props_data);
     RestoreData(*props_data);
@@ -68,7 +68,7 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const ve
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy) : ItemHexView(map, id, proto)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (props_data != nullptr) {
         RestoreData(*props_data);
@@ -82,7 +82,7 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const ve
 
 void ItemHexView::AfterConstruction()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetOwnership(ItemOwnership::MapHex);
 
@@ -100,7 +100,7 @@ void ItemHexView::AfterConstruction()
 
 void ItemHexView::Finish()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetFade(false);
 
@@ -114,21 +114,21 @@ void ItemHexView::Finish()
 
 auto ItemHexView::IsFinishing() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _finishing;
 }
 
 auto ItemHexView::IsFinished() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _finishing && _engine->GameTime.GameTick() >= _finishingTime;
 }
 
 void ItemHexView::StopFinishing()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _finishing = false;
     SetFade(true);
@@ -137,7 +137,7 @@ void ItemHexView::StopFinishing()
 
 void ItemHexView::Process()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Animation
     if (_begFrm != _endFrm) {
@@ -240,7 +240,7 @@ void ItemHexView::Process()
 
 void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto from_hx = GetHexX();
     const auto from_hy = GetHexY();
@@ -278,7 +278,7 @@ void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
 
 void ItemHexView::SetFade(bool fade_up)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto tick = _engine->GameTime.GameTick();
     _fadingEndTick = tick + _engine->Settings.FadingDuration - (_fadingEndTick > tick ? _fadingEndTick - tick : 0);
@@ -288,7 +288,7 @@ void ItemHexView::SetFade(bool fade_up)
 
 void ItemHexView::SkipFade()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_fading) {
         _fading = false;
@@ -298,7 +298,7 @@ void ItemHexView::SkipFade()
 
 void ItemHexView::RefreshAnim()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _anim = nullptr;
 
@@ -333,7 +333,7 @@ void ItemHexView::RefreshAnim()
 
 void ItemHexView::SetSprite(Sprite* spr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (spr != nullptr) {
         SprDraw = spr;
@@ -350,7 +350,7 @@ void ItemHexView::SetSprite(Sprite* spr)
 
 auto ItemHexView::GetEggType() const -> EggAppearenceType
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (GetDisableEgg() || GetIsFlat()) {
         return EggAppearenceType::None;
@@ -371,7 +371,7 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
 
 void ItemHexView::StartAnimate()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetStayAnim();
     _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
@@ -380,7 +380,7 @@ void ItemHexView::StartAnimate()
 
 void ItemHexView::StopAnimate()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetSpr(_animBegFrm);
     _begFrm = _animBegFrm;
@@ -390,7 +390,7 @@ void ItemHexView::StopAnimate()
 
 void ItemHexView::SetAnimFromEnd()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _begFrm = _animEndFrm;
     _endFrm = _animBegFrm;
@@ -400,7 +400,7 @@ void ItemHexView::SetAnimFromEnd()
 
 void ItemHexView::SetAnimFromStart()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _begFrm = _animBegFrm;
     _endFrm = _animEndFrm;
@@ -410,7 +410,7 @@ void ItemHexView::SetAnimFromStart()
 
 void ItemHexView::SetAnim(uint beg, uint end)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (beg > _anim->CntFrm - 1) {
         beg = _anim->CntFrm - 1;
@@ -427,7 +427,7 @@ void ItemHexView::SetAnim(uint beg, uint end)
 
 void ItemHexView::SetSprStart()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetSpr(_animBegFrm);
     _begFrm = _curFrm;
@@ -436,7 +436,7 @@ void ItemHexView::SetSprStart()
 
 void ItemHexView::SetSprEnd()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SetSpr(_animEndFrm);
     _begFrm = _curFrm;
@@ -445,7 +445,7 @@ void ItemHexView::SetSprEnd()
 
 void ItemHexView::SetSpr(uint num_spr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _curFrm = num_spr;
     SprId = _anim->GetSprId(_curFrm);
@@ -454,7 +454,7 @@ void ItemHexView::SetSpr(uint num_spr)
 
 void ItemHexView::RefreshOffs()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
@@ -472,7 +472,7 @@ void ItemHexView::RefreshOffs()
 
 void ItemHexView::SetStayAnim()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (GetIsShowAnimExt()) {
         SetAnim(GetAnimStay0(), GetAnimStay1());
@@ -484,7 +484,7 @@ void ItemHexView::SetStayAnim()
 
 void ItemHexView::SetShowAnim()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (GetIsShowAnimExt()) {
         SetAnim(GetAnimShow0(), GetAnimShow1());
@@ -496,7 +496,7 @@ void ItemHexView::SetShowAnim()
 
 void ItemHexView::SetHideAnim()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (GetIsShowAnimExt()) {
         SetAnim(GetAnimHide0(), GetAnimHide1());

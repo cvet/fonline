@@ -41,19 +41,19 @@
 
 EditorView::EditorView(string_view view_name, FOEditor& editor) : _viewName {view_name}, _editor {editor}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 auto EditorView::GetViewName() const -> const string&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _viewName;
 }
 
 void EditorView::Draw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     OnPreDraw();
 
@@ -77,40 +77,40 @@ void EditorView::Draw()
 
 void EditorView::BringToFront()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _bringToFront = true;
 }
 
 void EditorView::Close()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _requestClose = true;
 }
 
 EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_view asset_path) : EditorView(asset_path, data), _assetPath {asset_path}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 auto EditorAssetView::GetAssetPath() const -> const string&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _assetPath;
 }
 
 auto EditorAssetView::IsChanged() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _changed;
 }
 
 void EditorAssetView::OnPreDraw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ImGui::SetNextWindowPos({300.0f, 0.0f}, ImGuiCond_Once);
     ImGui::SetNextWindowSize({500.0f, static_cast<float>(std::get<1>(App->MainWindow.GetSize()))}, ImGuiCond_Once);
@@ -118,7 +118,7 @@ void EditorAssetView::OnPreDraw()
 
 void EditorAssetView::OnDraw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     /*if (ImGui::TreeNode("Dependencies")) {
         ImGui::TreePop();
@@ -130,7 +130,7 @@ void EditorAssetView::OnDraw()
 
 FOEditor::FOEditor(GlobalSettings& settings) : Settings {settings}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!settings.BakeContentEntries.empty());
     RUNTIME_ASSERT(!settings.BakeResourceEntries.empty());
@@ -163,7 +163,7 @@ FOEditor::FOEditor(GlobalSettings& settings) : Settings {settings}
 
 auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -180,7 +180,7 @@ auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
 
 void FOEditor::OpenAsset(string_view path)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto&& view : _views) {
         if (auto* asset_view = dynamic_cast<EditorAssetView*>(view.get()); asset_view != nullptr && asset_view->GetAssetPath() == path) {
@@ -197,7 +197,7 @@ void FOEditor::OpenAsset(string_view path)
 
 void FOEditor::MainLoop()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto&& view : _newViews) {
         _views.emplace_back(std::move(view));

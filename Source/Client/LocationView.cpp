@@ -36,14 +36,14 @@
 
 LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), LocationProperties(GetInitRef())
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(proto);
 }
 
 void LocationView::MarkAsDestroyed()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Entity::MarkAsDestroying();
     Entity::MarkAsDestroyed();

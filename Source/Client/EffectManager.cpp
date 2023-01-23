@@ -37,13 +37,13 @@
 
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (const auto it = _loadedEffects.find(string(path)); it != _loadedEffects.end()) {
         return it->second.get();
@@ -66,7 +66,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto&& [name, effect] : _loadedEffects) {
         PerFrameEffectUpdate(effect.get(), game_time);
@@ -75,7 +75,7 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 
 void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -104,7 +104,7 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 
 void EffectManager::LoadMinimalEffects()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto effect_errors = 0;
 
@@ -120,7 +120,7 @@ void EffectManager::LoadMinimalEffects()
 
 void EffectManager::LoadDefaultEffects()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto effect_errors = 0;
 

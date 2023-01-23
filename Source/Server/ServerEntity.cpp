@@ -38,21 +38,21 @@
 
 ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _name = _str("{}", _id);
 }
 
 auto ServerEntity::GetId() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _id;
 }
 
 void ServerEntity::SetId(uint id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _id = id;
     _name = _str("{}", _id);
@@ -60,7 +60,7 @@ void ServerEntity::SetId(uint id)
 
 auto ServerEntity::GetEngine() -> FOServer*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -69,7 +69,7 @@ auto ServerEntity::GetEngine() -> FOServer*
 
 auto ServerEntity::GetName() const -> string_view
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _name;
 }

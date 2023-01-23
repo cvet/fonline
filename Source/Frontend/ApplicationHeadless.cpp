@@ -83,7 +83,7 @@ static void SignalHandler(int sig)
 
 void InitApp(int argc, char** argv, string_view name_appendix)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Ensure that we call init only once
     static std::once_flag once;
@@ -144,7 +144,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
 void ExitApp(bool success)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
@@ -156,7 +156,7 @@ void ExitApp(bool success)
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(other);
 
@@ -165,7 +165,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 
 Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(_time);
     UNUSED_VARIABLE(_timeFrequency);
@@ -186,26 +186,26 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
 
 void Application::OpenLink(string_view link)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(link);
 }
 
 void Application::HideCursor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(effect);
 }
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
@@ -215,7 +215,7 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
@@ -226,21 +226,21 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 #endif
 
 void Application::BeginFrame()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _onFrameBeginDispatcher();
 }
 
 void Application::EndFrame()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _onFrameEndDispatcher();
 
@@ -249,7 +249,7 @@ void Application::EndFrame()
 
 auto AppWindow::GetSize() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto w = 1000;
     auto h = 1000;
@@ -259,7 +259,7 @@ auto AppWindow::GetSize() const -> tuple<int, int>
 
 void AppWindow::SetSize(int w, int h)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(w);
     UNUSED_VARIABLE(h);
@@ -267,7 +267,7 @@ void AppWindow::SetSize(int w, int h)
 
 auto AppWindow::GetPosition() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto x = 0;
     auto y = 0;
@@ -277,7 +277,7 @@ auto AppWindow::GetPosition() const -> tuple<int, int>
 
 void AppWindow::SetPosition(int x, int y)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
@@ -285,27 +285,27 @@ void AppWindow::SetPosition(int x, int y)
 
 auto AppWindow::IsFocused() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return true;
 }
 
 void AppWindow::Minimize()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 auto AppWindow::IsFullscreen() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return false;
 }
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -316,33 +316,33 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
 void AppWindow::Blink()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(enable);
 }
 
 void AppWindow::GrabInput(bool enable)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(enable);
 }
 
 void AppWindow::Destroy()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
@@ -354,21 +354,21 @@ auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool 
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(tex);
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return nullptr;
 }
 
 void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(color);
     UNUSED_VARIABLE(depth);
@@ -377,7 +377,7 @@ void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil
 
 void AppRender::EnableScissor(int x, int y, int width, int height)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
@@ -387,13 +387,13 @@ void AppRender::EnableScissor(int x, int y, int width, int height)
 
 void AppRender::DisableScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(is_static);
 
@@ -402,7 +402,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(usage);
     UNUSED_VARIABLE(name);
@@ -413,7 +413,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto x = 100;
     auto y = 100;
@@ -422,7 +422,7 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
@@ -430,7 +430,7 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(ev);
 
@@ -439,41 +439,41 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 
 void AppInput::ClearEvents()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 void AppInput::PushEvent(const InputEvent& ev)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(ev);
 }
 
 void AppInput::SetClipboardText(string_view text)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(text);
 }
 
 auto AppInput::GetClipboardText() -> const string&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _clipboardTextStorage;
 }
 
 auto AppAudio::IsEnabled() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return false;
 }
 
 auto AppAudio::GetStreamSize() -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -482,7 +482,7 @@ auto AppAudio::GetStreamSize() -> uint
 
 auto AppAudio::GetSilence() -> uchar
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 
@@ -491,7 +491,7 @@ auto AppAudio::GetSilence() -> uchar
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(stream_callback);
 
@@ -500,7 +500,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(format);
     UNUSED_VARIABLE(channels);
@@ -514,7 +514,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
 
 void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(output);
     UNUSED_VARIABLE(buf);
@@ -525,21 +525,21 @@ void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 
 void AppAudio::LockDevice()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 }
 
 void AppAudio::UnlockDevice()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(IsEnabled());
 }
 
 void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(title);
     UNUSED_VARIABLE(message);

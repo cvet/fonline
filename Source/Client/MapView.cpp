@@ -44,28 +44,28 @@ static constexpr auto MAX_LIGHT_ALPHA = 255;
 
 static auto EvaluateItemDrawOrder(const ItemHexView* item) -> DrawOrderType
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return item->GetIsFlat() ? (!item->IsAnyScenery() ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (!item->IsAnyScenery() ? DrawOrderType::Item : DrawOrderType::Scenery);
 }
 
 static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return cr->IsDead() && !cr->GetIsNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
 }
 
 static auto EvaluateTileDrawOrder(const Field::Tile& tile) -> DrawOrderType
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<DrawOrderType>(static_cast<int>(DrawOrderType::Tile) + static_cast<int>(tile.Layer));
 }
 
 Field::~Field()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     delete Critters;
     delete Tiles[0];
@@ -76,7 +76,7 @@ Field::~Field()
 
 void Field::AddItem(ItemHexView* item, ItemHexView* block_lines_item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item || block_lines_item);
 
@@ -99,7 +99,7 @@ void Field::AddItem(ItemHexView* item, ItemHexView* block_lines_item)
 
 void Field::EraseItem(ItemHexView* item, ItemHexView* block_lines_item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item || block_lines_item);
 
@@ -136,7 +136,7 @@ void Field::EraseItem(ItemHexView* item, ItemHexView* block_lines_item)
 
 auto Field::AddTile(AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof) -> Tile&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Tile* tile;
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
@@ -166,7 +166,7 @@ auto Field::AddTile(AnyFrames* anim, short ox, short oy, uchar layer, bool is_ro
 
 void Field::EraseTile(uint index, bool is_roof)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
     auto*& stile = SimplyTile[is_roof ? 1 : 0];
@@ -190,7 +190,7 @@ void Field::EraseTile(uint index, bool is_roof)
 
 auto Field::GetTilesCount(bool is_roof) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
     auto*& stile = SimplyTile[is_roof ? 1 : 0];
@@ -200,7 +200,7 @@ auto Field::GetTilesCount(bool is_roof) -> uint
 
 auto Field::GetTile(uint index, bool is_roof) -> Field::Tile&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
     auto*& stile = SimplyTile[is_roof ? 1 : 0];
@@ -215,7 +215,7 @@ auto Field::GetTile(uint index, bool is_roof) -> Field::Tile&
 
 auto Field::GetActiveCritter() -> CritterHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (Critters != nullptr) {
         for (auto* cr : *Critters) {
@@ -230,7 +230,7 @@ auto Field::GetActiveCritter() -> CritterHexView*
 
 void Field::AddCritter(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (Critters == nullptr) {
         Critters = new vector<CritterHexView*>();
@@ -242,7 +242,7 @@ void Field::AddCritter(CritterHexView* cr)
 
 void Field::EraseCritter(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(Critters != nullptr);
 
@@ -259,7 +259,7 @@ void Field::EraseCritter(CritterHexView* cr)
 
 void Field::ProcessCache()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     Flags.IsWall = false;
     Flags.IsWallTransp = false;
@@ -325,7 +325,7 @@ void Field::ProcessCache()
 
 void Field::AddSpriteToChain(Sprite* spr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (SpriteChain == nullptr) {
         SpriteChain = spr;
@@ -343,7 +343,7 @@ void Field::AddSpriteToChain(Sprite* spr)
 
 void Field::UnvalidateSpriteChain() const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (SpriteChain != nullptr) {
         while (SpriteChain != nullptr) {
@@ -360,7 +360,7 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
     _tilesTree(engine->SprMngr, _spritesPool),
     _roofTree(engine->SprMngr, _spritesPool)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _rtScreenOx = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
@@ -415,7 +415,7 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
 
 MapView::~MapView()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_critters.empty() || !_crittersMap.empty() || !_items.empty() || !_itemsMap.empty()) {
         BreakIntoDebugger();
@@ -432,7 +432,7 @@ MapView::~MapView()
 
 void MapView::MarkAsDestroyed()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto* cr : copy(_critters)) {
         DestroyCritter(cr);
@@ -452,7 +452,7 @@ void MapView::MarkAsDestroyed()
 
 void MapView::EnableMapperMode()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _mapperMode = true;
 
@@ -463,7 +463,7 @@ void MapView::EnableMapperMode()
 
 void MapView::LoadStaticData()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto file = _engine->Resources.ReadFile(_str("{}.fomapb2", GetProtoId()));
     if (!file) {
@@ -574,7 +574,7 @@ void MapView::LoadStaticData()
 
 void MapView::Process()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Critters
     {
@@ -624,7 +624,7 @@ void MapView::Process()
 
 void MapView::AddTile(const MapTile& tile)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -648,7 +648,7 @@ void MapView::AddTile(const MapTile& tile)
 
 void MapView::AddMapText(string_view str, ushort hx, ushort hy, uint color, uint show_time, bool fade, int ox, int oy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     MapText map_text;
     map_text.HexX = hx;
@@ -671,21 +671,21 @@ void MapView::AddMapText(string_view str, ushort hx, ushort hy, uint color, uint
 
 auto MapView::GetViewWidth() const -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<int>(static_cast<float>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
 }
 
 auto MapView::GetViewHeight() const -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<int>(static_cast<float>((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) / _engine->Settings.MapHexLineHeight + (((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
 }
 
 void MapView::AddItemToField(ItemHexView* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const ushort hx = item->GetHexX();
     const ushort hy = item->GetHexY();
@@ -700,7 +700,7 @@ void MapView::AddItemToField(ItemHexView* item)
 
 void MapView::RemoveItemFromField(ItemHexView* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const ushort hx = item->GetHexX();
     const ushort hy = item->GetHexY();
@@ -715,7 +715,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
 
 auto MapView::AddItem(uint id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(id != 0u);
 
@@ -736,7 +736,7 @@ auto MapView::AddItem(uint id, const ProtoItem* proto, const map<string, string>
 
 auto MapView::AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(id != 0u);
     RUNTIME_ASSERT(!(hx >= _maxHexX || hy >= _maxHexY));
@@ -757,7 +757,7 @@ auto MapView::AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added,
 
 void MapView::AddItemInternal(ItemHexView* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
@@ -817,7 +817,7 @@ void MapView::AddItemInternal(ItemHexView* item)
 
 void MapView::MoveItem(ItemHexView* item, ushort hx, ushort hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item->GetMap() == this);
 
@@ -845,7 +845,7 @@ void MapView::MoveItem(ItemHexView* item, ushort hx, ushort hy)
 
 void MapView::DestroyItem(ItemHexView* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (item->SprDrawValid) {
         item->SprDraw->Unvalidate();
@@ -873,7 +873,7 @@ void MapView::DestroyItem(ItemHexView* item)
 
 void MapView::SkipItemsFade()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -884,7 +884,7 @@ void MapView::SkipItemsFade()
 
 auto MapView::GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (hx >= _maxHexX || hy >= _maxHexY || GetField(hx, hy).Items == nullptr) {
         return nullptr;
@@ -901,7 +901,7 @@ auto MapView::GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*
 
 auto MapView::GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (hx >= _maxHexX || hy >= _maxHexY || GetField(hx, hy).Items == nullptr) {
         return nullptr;
@@ -918,7 +918,7 @@ auto MapView::GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*
 
 auto MapView::GetItem(uint id) -> ItemHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (const auto it = _itemsMap.find(id); it != _itemsMap.end()) {
         return it->second;
@@ -929,7 +929,7 @@ auto MapView::GetItem(uint id) -> ItemHexView*
 
 auto MapView::GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto& field = GetField(hx, hy);
     if (field.Items != nullptr) {
@@ -941,7 +941,7 @@ auto MapView::GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>
 
 auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto result = IRect();
 
@@ -982,7 +982,7 @@ auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
 
 auto MapView::RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!(from_hx >= _maxHexX || from_hy >= _maxHexY || to_hx >= _maxHexX || to_hy >= _maxHexY));
 
@@ -1012,7 +1012,7 @@ auto MapView::RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ush
 
 void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ushort hx = 0;
     ushort hy = 0;
@@ -1066,7 +1066,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
 
 void MapView::DrawCursor(uint spr_id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1086,7 +1086,7 @@ void MapView::DrawCursor(uint spr_id)
 
 void MapView::DrawCursor(string_view text)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1103,7 +1103,7 @@ void MapView::DrawCursor(string_view text)
 
 void MapView::RebuildMap(int rx, int ry)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_viewField.empty());
 
@@ -1258,7 +1258,7 @@ void MapView::RebuildMap(int rx, int ry)
 
 void MapView::RebuildMapOffset(int ox, int oy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_viewField.empty());
     RUNTIME_ASSERT(ox == 0 || ox == -1 || ox == 1);
@@ -1540,14 +1540,14 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
 void MapView::ClearHexLight()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     std::memset(_hexLight.data(), 0, _hexLight.size() * sizeof(uchar));
 }
 
 void MapView::PrepareLightToDraw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_rtLight == nullptr) {
         return;
@@ -1586,7 +1586,7 @@ void MapView::PrepareLightToDraw()
 
 void MapView::MarkLight(ushort hx, ushort hy, uint inten)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1609,7 +1609,7 @@ void MapView::MarkLight(ushort hx, ushort hy, uint inten)
 
 void MapView::MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, uint inten)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto& field = GetField(hx, hy);
     if (field.Flags.IsWall) {
@@ -1648,7 +1648,7 @@ void MapView::MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, uint 
 
 void MapView::MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto is_wall = false;
     auto north_south = false;
@@ -1698,7 +1698,7 @@ void MapView::MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, ushort 
 
 void MapView::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto& field = GetField(to_hx, to_hy);
     if (field.Flags.IsWallTransp) {
@@ -1715,7 +1715,7 @@ void MapView::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ushort
 
 void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto [base_sx, base_sy] = GenericUtils::GetStepsCoords(from_hx, from_hy, hx, hy);
     const auto sx1_f = base_sx;
@@ -1819,7 +1819,7 @@ void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy,
 
 void MapView::ParseLightTriangleFan(const LightSource& ls)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // All dirs disabled
     if ((ls.Flags & 0x3F) == 0x3F) {
@@ -1964,7 +1964,7 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
 
 void MapView::RealRebuildLight()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_viewField.empty());
 
@@ -1989,7 +1989,7 @@ void MapView::RealRebuildLight()
 
 void MapView::CollectLightSources()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _lightSources.clear();
 
@@ -2033,7 +2033,7 @@ void MapView::CollectLightSources()
 
 auto MapView::ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto ox = (is_roof ? _engine->Settings.MapRoofOffsX : _engine->Settings.MapTileOffsX) + tile.OffsX;
     const auto oy = (is_roof ? _engine->Settings.MapRoofOffsY : _engine->Settings.MapTileOffsY) + tile.OffsY;
@@ -2042,7 +2042,7 @@ auto MapView::ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool
 
 void MapView::RebuildTiles()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _tilesTree.Unvalidate();
 
@@ -2101,7 +2101,7 @@ void MapView::RebuildTiles()
 
 void MapView::RebuildRoof()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _roofTree.Unvalidate();
 
@@ -2161,7 +2161,7 @@ void MapView::RebuildRoof()
 
 void MapView::SetSkipRoof(ushort hx, ushort hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_roofSkip != GetField(hx, hy).RoofNum) {
         _roofSkip = GetField(hx, hy).RoofNum;
@@ -2171,7 +2171,7 @@ void MapView::SetSkipRoof(ushort hx, ushort hy)
 
 void MapView::MarkRoofNum(int hxi, int hyi, short num)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (hxi < 0 || hyi < 0 || hxi >= _maxHexX || hyi >= _maxHexY) {
         return;
@@ -2202,7 +2202,7 @@ void MapView::MarkRoofNum(int hxi, int hyi, short num)
 
 auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (spr_id == 0u) {
         return false;
@@ -2224,14 +2224,14 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
 
 void MapView::MeasureHexBorders(const ItemHexView* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     MeasureHexBorders(item->SprId, item->GetOffsetX(), item->GetOffsetY(), true);
 }
 
 auto MapView::MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
     if (si == nullptr) {
@@ -2278,7 +2278,7 @@ auto MapView::MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) ->
 
 void MapView::SwitchShowHex()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _isShowHex = !_isShowHex;
 
@@ -2287,7 +2287,7 @@ void MapView::SwitchShowHex()
 
 void MapView::ClearHexTrack()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -2296,7 +2296,7 @@ void MapView::ClearHexTrack()
 
 void MapView::SwitchShowTrack()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -2311,7 +2311,7 @@ void MapView::SwitchShowTrack()
 
 void MapView::InitView(int cx, int cy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2413,7 +2413,7 @@ void MapView::InitView(int cx, int cy)
 
 void MapView::ResizeView()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_viewField.empty()) {
         for (auto i = 0, j = _hVisible * _wVisible; i < j; i++) {
@@ -2434,7 +2434,7 @@ void MapView::ResizeView()
 
 void MapView::ChangeZoom(int zoom)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_engine->Settings.SpritesZoomMin == _engine->Settings.SpritesZoomMax) {
         return;
@@ -2484,7 +2484,7 @@ void MapView::ChangeZoom(int zoom)
 
 void MapView::GetScreenHexes(int& sx, int& sy) const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     sx = _screenHexX;
     sy = _screenHexY;
@@ -2492,7 +2492,7 @@ void MapView::GetScreenHexes(int& sx, int& sy) const
 
 void MapView::GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto& center_hex = _viewField[_hVisible / 2 * _wVisible + _wVisible / 2];
     const auto center_hx = center_hex.HexX;
@@ -2507,7 +2507,7 @@ void MapView::GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const
 
 void MapView::DrawMap()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Prepare light
     PrepareLightToDraw();
@@ -2586,7 +2586,7 @@ void MapView::DrawMap()
 
 void MapView::DrawMapTexts()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto* cr : _critters) {
         cr->DrawTextOnHead();
@@ -2660,7 +2660,7 @@ void MapView::DrawMapTexts()
 
 void MapView::PrepareFogToDraw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_mapperMode || _rtFog == nullptr) {
         return;
@@ -2799,7 +2799,7 @@ void MapView::PrepareFogToDraw()
 
 auto MapView::IsScrollEnabled() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft || _engine->Settings.ScrollMouseRight || //
         _engine->Settings.ScrollKeybRight || _engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp || //
@@ -2808,7 +2808,7 @@ auto MapView::IsScrollEnabled() const -> bool
 
 auto MapView::Scroll() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Scroll delay
     auto time_k = 1.0f;
@@ -3015,7 +3015,7 @@ auto MapView::Scroll() -> bool
 
 auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto max_pos = _wVisible * _hVisible;
     for (auto pos : positions) {
@@ -3047,7 +3047,7 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
 
 auto MapView::ScrollCheck(int xmod, int ymod) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     int positions_left[4] = {
         _hTop * _wVisible + _wRight + GetViewWidth(), // Left top
@@ -3147,7 +3147,7 @@ auto MapView::ScrollCheck(int xmod, int ymod) -> bool
 
 void MapView::ScrollToHex(int hx, int hy, float speed, bool can_stop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto sx = 0;
     auto sy = 0;
@@ -3161,7 +3161,7 @@ void MapView::ScrollToHex(int hx, int hy, float speed, bool can_stop)
 
 void MapView::ScrollOffset(int ox, int oy, float speed, bool can_stop)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!AutoScroll.Active) {
         AutoScroll.Active = true;
@@ -3179,7 +3179,7 @@ void MapView::ScrollOffset(int ox, int oy, float speed, bool can_stop)
 
 void MapView::AddCritterToField(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto hx = cr->GetHexX();
     const auto hy = cr->GetHexY();
@@ -3219,7 +3219,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
 
 void MapView::RemoveCritterFromField(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto hx = cr->GetHexX();
     const auto hy = cr->GetHexY();
@@ -3244,7 +3244,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
 
 auto MapView::GetCritter(uint id) -> CritterHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (id == 0u) {
         return nullptr;
@@ -3256,7 +3256,7 @@ auto MapView::GetCritter(uint id) -> CritterHexView*
 
 auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (id != 0u && _crittersMap.count(id) != 0u) {
         return nullptr;
@@ -3274,7 +3274,7 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, s
 
 auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* cr = new CritterHexView(this, id, proto);
     cr->RestoreData(data);
@@ -3288,7 +3288,7 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort h
 
 void MapView::AddCritterInternal(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint fading_tick = 0u;
 
@@ -3313,7 +3313,7 @@ void MapView::AddCritterInternal(CritterHexView* cr)
 
 void MapView::DestroyCritter(CritterHexView* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cr->GetMap() == this);
 
@@ -3335,14 +3335,14 @@ void MapView::DestroyCritter(CritterHexView* cr)
 
 auto MapView::GetCritters() -> const vector<CritterHexView*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _critters;
 }
 
 auto MapView::GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<CritterHexView*> crits;
     auto& field = GetField(hx, hy);
@@ -3360,7 +3360,7 @@ auto MapView::GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> ve
 
 void MapView::SetCritterContour(uint crid, ContourType contour)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_critterContourCrId != 0u) {
         auto* cr = GetCritter(_critterContourCrId);
@@ -3387,7 +3387,7 @@ void MapView::SetCritterContour(uint crid, ContourType contour)
 
 void MapView::SetCrittersContour(ContourType contour)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_crittersContour == contour) {
         return;
@@ -3404,7 +3404,7 @@ void MapView::SetCrittersContour(ContourType contour)
 
 void MapView::MoveCritter(CritterHexView* cr, ushort hx, ushort hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cr->GetMap() == this);
 
@@ -3416,7 +3416,7 @@ void MapView::MoveCritter(CritterHexView* cr, ushort hx, ushort hy)
 
 void MapView::TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cr->GetMap() == this);
     RUNTIME_ASSERT(hx < _maxHexX && hy < _maxHexY);
@@ -3443,7 +3443,7 @@ void MapView::TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoo
 
 void MapView::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (multihex != 0u) {
         auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
@@ -3462,7 +3462,7 @@ void MapView::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
 
 auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_ox, int* hex_oy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto xf = static_cast<float>(x) - static_cast<float>(_engine->Settings.ScrOx) / _engine->Settings.SpritesZoom;
     const auto yf = static_cast<float>(y) - static_cast<float>(_engine->Settings.ScrOy) / _engine->Settings.SpritesZoom;
@@ -3517,7 +3517,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
 
 auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, bool check_transparent) -> ItemHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3622,7 +3622,7 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
 
 auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, int extra_range, bool check_transparent) -> CritterHexView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -3664,7 +3664,7 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, i
 
 auto MapView::GetEntityAtScreenPos(int x, int y, int extra_range, bool check_transparent) -> ClientEntity*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto item_egg = false;
     ItemHexView* item = GetItemAtScreenPos(x, y, item_egg, extra_range, check_transparent);
@@ -3684,7 +3684,7 @@ auto MapView::GetEntityAtScreenPos(int x, int y, int extra_range, bool check_tra
 
 auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> optional<FindPathResult>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #define GRID_AT(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y)-grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x)-grid_ox)]
 
@@ -4006,14 +4006,14 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
 
 bool MapView::CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return !!FindPath(cr, start_x, start_y, end_x, end_y, cut);
 }
 
 bool MapView::TraceMoveWay(ushort& hx, ushort& hy, int& ox, int& oy, vector<uchar>& steps, int quad_dir)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ox = 0;
     oy = 0;
@@ -4076,7 +4076,7 @@ bool MapView::TraceMoveWay(ushort& hx, ushort& hy, int& ox, int& oy, vector<ucha
 
 auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isShowTrack) {
         ClearHexTrack();
@@ -4135,7 +4135,7 @@ auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist,
 
 void MapView::FindSetCenter(int cx, int cy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_viewField.empty());
 
@@ -4206,7 +4206,7 @@ void MapView::FindSetCenter(int cx, int cy)
 
 void MapView::SetShootBorders(bool enabled)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_drawShootBorders != enabled) {
         _drawShootBorders = enabled;
@@ -4216,14 +4216,14 @@ void MapView::SetShootBorders(bool enabled)
 
 auto MapView::GetDayTime() const -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _engine->GetHour() * 60 + _engine->GetMinute();
 }
 
 auto MapView::GetMapTime() const -> int
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_curMapTime < 0) {
         return GetDayTime();
@@ -4233,21 +4233,21 @@ auto MapView::GetMapTime() const -> int
 
 auto MapView::GetMapDayTime() -> int*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _dayTime;
 }
 
 auto MapView::GetMapDayColor() -> uchar*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _dayColor;
 }
 
 void MapView::OnWindowSizeChanged()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_viewField.empty()) {
         return;
@@ -4261,7 +4261,7 @@ void MapView::OnWindowSizeChanged()
 
 auto MapView::GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -4272,7 +4272,7 @@ auto MapView::GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&
 
 void MapView::ClearSelTiles()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4309,7 +4309,7 @@ void MapView::ClearSelTiles()
 
 void MapView::ParseSelTiles()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4335,7 +4335,7 @@ void MapView::ParseSelTiles()
 
 void MapView::SetTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4374,7 +4374,7 @@ void MapView::SetTile(hstring name, ushort hx, ushort hy, short ox, short oy, uc
 
 void MapView::EraseTile(ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4392,7 +4392,7 @@ void MapView::EraseTile(ushort hx, ushort hy, uchar layer, bool is_roof, uint sk
 
 void MapView::AddFastPid(hstring pid)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4401,7 +4401,7 @@ void MapView::AddFastPid(hstring pid)
 
 auto MapView::IsFastPid(hstring pid) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4410,7 +4410,7 @@ auto MapView::IsFastPid(hstring pid) const -> bool
 
 void MapView::ClearFastPids()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4419,7 +4419,7 @@ void MapView::ClearFastPids()
 
 void MapView::AddIgnorePid(hstring pid)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
     _ignorePids.insert(pid);
@@ -4427,7 +4427,7 @@ void MapView::AddIgnorePid(hstring pid)
 
 void MapView::SwitchIgnorePid(hstring pid)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4441,7 +4441,7 @@ void MapView::SwitchIgnorePid(hstring pid)
 
 auto MapView::IsIgnorePid(hstring pid) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4450,7 +4450,7 @@ auto MapView::IsIgnorePid(hstring pid) const -> bool
 
 void MapView::ClearIgnorePids()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4459,7 +4459,7 @@ void MapView::ClearIgnorePids()
 
 auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushort>>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4583,7 +4583,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushor
 
 void MapView::MarkPassedHexes()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4608,7 +4608,7 @@ void MapView::MarkPassedHexes()
 
 auto MapView::GetTempEntityId() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
@@ -4629,7 +4629,7 @@ auto MapView::GetTempEntityId() const -> uint
 
 auto MapView::SaveToText() const -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     string fomap;
     fomap.reserve(0x1000000); // 1mb

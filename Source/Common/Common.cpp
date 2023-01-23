@@ -70,7 +70,7 @@ int GlobalDataCallbacksCount;
 
 void CreateGlobalData()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         CreateGlobalDataCallbacks[i]();
@@ -79,7 +79,7 @@ void CreateGlobalData()
 
 void DeleteGlobalData()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
@@ -87,7 +87,7 @@ void DeleteGlobalData()
 }
 void ReportExceptionAndExit(const std::exception& ex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
@@ -116,7 +116,7 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
@@ -143,15 +143,13 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
 void ShowExceptionMessageBox(bool enabled)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ExceptionMessageBox = enabled;
 }
 
 auto GetStackTrace() -> string
 {
-    PROFILER_ENTRY();
-
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
     }
@@ -205,7 +203,7 @@ static std::once_flag RunInDebuggerOnce;
 
 auto IsRunInDebugger() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
@@ -250,7 +248,7 @@ auto IsRunInDebugger() -> bool
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (IsRunInDebugger()) {
 #if FO_WINDOWS
@@ -274,7 +272,7 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 
 void CreateDumpMessage(string_view appendix, string_view message)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
@@ -299,28 +297,28 @@ void CreateDumpMessage(string_view appendix, string_view message)
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void SDL_UnloadObject(void* handle)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void emscripten_sleep(unsigned int ms)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw UnreachablePlaceException(LINE_STR);
 }

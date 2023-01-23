@@ -71,19 +71,19 @@ using ssl_context = asio::ssl::context;
 
 NetConnection::NetConnection(ServerNetworkSettings& settings) : Bin(settings.NetBufferSize), Bout(settings.NetBufferSize)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 void NetConnection::AddRef() const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ++_refCount;
 }
 
 void NetConnection::Release() const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (--_refCount == 0) {
         delete this;
@@ -95,7 +95,7 @@ class NetConnectionImpl : public NetConnection
 public:
     explicit NetConnectionImpl(ServerNetworkSettings& settings) : NetConnection(settings), _settings {settings}
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         _outBuf.resize(_settings.NetBufferSize);
 
@@ -119,7 +119,7 @@ public:
 
     ~NetConnectionImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (_zStreamActive) {
             deflateEnd(&_zStream);
@@ -128,35 +128,35 @@ public:
 
     [[nodiscard]] auto GetIp() const -> uint override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return _ip;
     }
 
     [[nodiscard]] auto GetHost() const -> string_view override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return _host;
     }
 
     [[nodiscard]] auto GetPort() const -> ushort override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return _port;
     }
 
     [[nodiscard]] auto IsDisconnected() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return _isDisconnected;
     }
 
     void DisableCompression() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (_zStreamActive) {
             deflateEnd(&_zStream);
@@ -166,7 +166,7 @@ public:
 
     void Dispatch() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (_isDisconnected) {
             return;
@@ -185,7 +185,7 @@ public:
 
     void Disconnect() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto expected = false;
         if (_isDisconnected.compare_exchange_strong(expected, true)) {
@@ -199,7 +199,7 @@ protected:
 
     auto SendCallback(size_t& out_len) -> const uchar*
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         std::lock_guard locker(BoutLocker);
 
@@ -258,7 +258,7 @@ protected:
 
     void ReceiveCallback(const uchar* buf, size_t len)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         std::lock_guard locker(BinLocker);
 
@@ -363,7 +363,7 @@ class NetConnectionAsio final : public NetConnectionImpl
 public:
     NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) : NetConnectionImpl(settings), _socket {socket}
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const auto& address = socket->remote_endpoint().address();
         _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint>(-1);
@@ -386,7 +386,7 @@ public:
     auto operator=(NetConnectionAsio&&) noexcept = delete;
     ~NetConnectionAsio() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (!_isDisconnected) {
             _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
@@ -396,14 +396,14 @@ public:
 
     [[nodiscard]] auto IsWebConnection() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return false;
     }
 
     [[nodiscard]] auto IsInterthreadConnection() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return false;
     }
@@ -411,14 +411,14 @@ public:
 private:
     void NextAsyncRead()
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this_ = this, socket = _socket](std::error_code error, size_t bytes) { AsyncRead(this_, socket, error, bytes); });
     }
 
     static void AsyncRead(NetConnectionAsio* this_, asio::ip::tcp::socket* socket, std::error_code error, size_t bytes)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (!error) {
             this_->ReceiveCallback(this_->_inBuf.data(), bytes);
@@ -435,7 +435,7 @@ private:
 
     void AsyncWrite(std::error_code error, size_t bytes)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         UNUSED_VARIABLE(bytes);
 
@@ -451,7 +451,7 @@ private:
 
     void DispatchImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto expected = false;
         if (_writePending.compare_exchange_strong(expected, true)) {
@@ -473,7 +473,7 @@ private:
 
     void DisconnectImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
         _socket->close(_dummyError);
@@ -494,7 +494,7 @@ class NetConnectionWebSocket final : public NetConnectionImpl
 public:
     NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) : NetConnectionImpl(settings), _server {server}, _connection {connection}
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const auto& address = connection->get_raw_socket().remote_endpoint().address();
         _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
@@ -520,7 +520,7 @@ public:
 
     ~NetConnectionWebSocket() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (_isDisconnected) {
             std::error_code error;
@@ -530,14 +530,14 @@ public:
 
     [[nodiscard]] auto IsWebConnection() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return true;
     }
 
     [[nodiscard]] auto IsInterthreadConnection() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return false;
     }
@@ -545,7 +545,7 @@ public:
 private:
     void OnMessage(message_ptr msg)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const auto& payload = msg->get_payload();
         RUNTIME_ASSERT(!payload.empty());
@@ -554,7 +554,7 @@ private:
 
     void OnFail()
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         WriteLog("Failed: {}", _connection->get_ec().message());
         Disconnect();
@@ -562,14 +562,14 @@ private:
 
     void OnClose()
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         Disconnect();
     }
 
     void OnHttp()
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         // Prevent use this feature
         Disconnect();
@@ -577,7 +577,7 @@ private:
 
     void DispatchImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         size_t len = 0;
         const auto* buf = SendCallback(len);
@@ -594,7 +594,7 @@ private:
 
     void DisconnectImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         std::error_code error;
         _connection->terminate(error);
@@ -606,7 +606,7 @@ private:
 
 NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}, _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _connectionCallback = std::move(callback);
     AcceptNext();
@@ -615,7 +615,7 @@ NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback c
 
 void NetTcpServer::Shutdown()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _ioService.stop();
     _runThread.join();
@@ -623,7 +623,7 @@ void NetTcpServer::Shutdown()
 
 void NetTcpServer::Run()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         _ioService.run();
@@ -635,7 +635,7 @@ void NetTcpServer::Run()
 
 void NetTcpServer::AcceptNext()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* socket = new asio::ip::tcp::socket(_ioService);
     _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, socket); });
@@ -643,7 +643,7 @@ void NetTcpServer::AcceptNext()
 
 void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!error) {
         _connectionCallback(new NetConnectionAsio(_settings, socket));
@@ -658,7 +658,7 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
 
 NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _connectionCallback = std::move(callback);
 
@@ -673,7 +673,7 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
 
 void NetNoTlsWebSocketsServer::Shutdown()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _server.stop();
     _runThread.join();
@@ -681,7 +681,7 @@ void NetNoTlsWebSocketsServer::Shutdown()
 
 void NetNoTlsWebSocketsServer::Run()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         _server.run();
@@ -693,7 +693,7 @@ void NetNoTlsWebSocketsServer::Run()
 
 void NetNoTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto connection = _server.get_con_from_hdl(std::move(hdl));
     _connectionCallback(new NetConnectionWebSocket<web_sockets_no_tls>(_settings, &_server, connection));
@@ -701,7 +701,7 @@ void NetNoTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 
 auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
@@ -711,7 +711,7 @@ auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bo
 
 NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (settings.WssPrivateKey.empty()) {
         throw GenericException("'WssPrivateKey' not provided");
@@ -734,7 +734,7 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
 
 void NetTlsWebSocketsServer::Shutdown()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _server.stop();
     _runThread.join();
@@ -742,7 +742,7 @@ void NetTlsWebSocketsServer::Shutdown()
 
 void NetTlsWebSocketsServer::Run()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         _server.run();
@@ -754,7 +754,7 @@ void NetTlsWebSocketsServer::Run()
 
 void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto connection = _server.get_con_from_hdl(std::move(hdl));
     _connectionCallback(new NetConnectionWebSocket<web_sockets_tls>(_settings, &_server, connection));
@@ -762,7 +762,7 @@ void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 
 auto NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
@@ -772,7 +772,7 @@ auto NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 
 auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) const -> shared_ptr<ssl_context>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(hdl);
 
@@ -786,7 +786,7 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) co
 
 auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_HAVE_ASIO
     WriteLog("Listen TCP connections on port {}", settings.ServerPort);
@@ -799,7 +799,7 @@ auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCa
 
 auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_HAVE_ASIO
     if (settings.SecuredWebSockets) {
@@ -822,7 +822,7 @@ class InterthreadConnection : public NetConnectionImpl
 public:
     InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) : NetConnectionImpl(settings), _send {std::move(send)}
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         //
     }
@@ -835,21 +835,21 @@ public:
 
     [[nodiscard]] auto IsWebConnection() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return false;
     }
 
     [[nodiscard]] auto IsInterthreadConnection() const -> bool override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         return true;
     }
 
     void Receive(const_span<uchar> buf)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (!buf.empty()) {
             ReceiveCallback(buf.data(), buf.size());
@@ -863,7 +863,7 @@ public:
 private:
     void DispatchImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         size_t len = 0;
         const auto* buf = SendCallback(len);
@@ -874,7 +874,7 @@ private:
 
     void DisconnectImpl() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (_send) {
             _send({});
@@ -897,7 +897,7 @@ public:
 
     InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _virtualPort {static_cast<ushort>(settings.ServerPort)}
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         if (InterthreadListeners.count(_virtualPort) != 0u) {
             throw NetworkException("Port is busy", _virtualPort);
@@ -912,7 +912,7 @@ public:
 
     void Shutdown() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0u);
         InterthreadListeners.erase(_virtualPort);
@@ -924,7 +924,7 @@ private:
 
 auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return new InterthreadServer(settings, std::move(callback));
 }

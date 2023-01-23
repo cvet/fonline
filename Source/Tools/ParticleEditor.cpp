@@ -115,7 +115,7 @@ struct ParticleEditor::Impl
 
 ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : EditorAssetView("Particle Editor", editor, asset_path), _impl {std::make_unique<Impl>()}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _impl->EffectMngr = std::make_unique<EffectManager>(_editor.Settings, _editor.BakedResources);
 
@@ -170,7 +170,7 @@ ParticleEditor::~ParticleEditor() = default;
 
 void ParticleEditor::OnDraw()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     EditorAssetView::OnDraw();
 
@@ -405,7 +405,7 @@ void ParticleEditor::OnDraw()
 // Generic
 void ParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (NamingMode) {
         char buf[1000];
@@ -474,7 +474,7 @@ void ParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>
 // Core
 void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transformable>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto is_custom_transform = !obj->getTransform().isLocalIdentity();
 
@@ -513,7 +513,7 @@ void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transforma
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::System>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkTransformable(obj);
 
@@ -531,7 +531,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::System>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (auto&& renderer = obj->getRenderer()) {
         bool val = renderer->isActive();
@@ -670,49 +670,49 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
 // Interpolators
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatDefaultInitializer>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_FLOAT("Default value", getDefaultValue, setDefaultValue);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorDefaultInitializer>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_COLOR("Default color", getDefaultValue, setDefaultValue);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInitializer>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_FLOAT_FLOAT("Min value", "Max value", getMinValue, getMaxValue, setValues);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInitializer>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_COLOR_COLOR("Min color", "Max color", getMinValue, getMaxValue, setValues);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatSimpleInterpolator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_FLOAT_FLOAT("Birth value", "Death value", getBirthValue, getDeathValue, setValues);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorSimpleInterpolator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_COLOR_COLOR("Birth value", "Death value", getBirthValue, getDeathValue, setValues);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInterpolator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_FLOAT_FLOAT("Birth min value", "Birth max value", getMinBirthValue, getMaxBirthValue, setBirthValues);
     DRAW_SPK_FLOAT_FLOAT("Death min value", "Death max value", getMinDeathValue, getMaxDeathValue, setDeathValues);
@@ -720,7 +720,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInterp
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInterpolator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_COLOR_COLOR("Birth min color", "Birth max color", getMinBirthValue, getMaxBirthValue, setBirthValues);
     DRAW_SPK_COLOR_COLOR("Death min color", "Death max color", getMinDeathValue, getMaxDeathValue, setDeathValues);
@@ -728,7 +728,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInterp
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& graph = obj->getGraph();
     if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", static_cast<int>(graph.size()))) {
@@ -785,7 +785,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& graph = obj->getGraph();
     if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", static_cast<int>(graph.size()))) {
@@ -853,7 +853,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 // Zones
 void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const std::function<SPK::Ref<SPK::Zone>()>& get, const std::function<void(const SPK::Ref<SPK::Zone>&)>& set)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx(name)) {
         if (get()) {
@@ -901,7 +901,7 @@ void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const std::funct
 
 void ParticleEditor::Impl::DrawSparkZone(const SPK::Ref<SPK::Zone>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkTransformable(obj);
     DRAW_SPK_VECTOR("Position", getPosition, setPosition);
@@ -909,14 +909,14 @@ void ParticleEditor::Impl::DrawSparkZone(const SPK::Ref<SPK::Zone>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Point>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZone(obj);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Sphere>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZone(obj);
     DRAW_SPK_FLOAT("Sphere Radius", getRadius, setRadius);
@@ -924,7 +924,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Sphere>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Plane>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZone(obj);
     DRAW_SPK_VECTOR("Plane Normal", getNormal, setNormal);
@@ -932,7 +932,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Plane>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Ring>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZone(obj);
     DRAW_SPK_VECTOR("Ring Normal", getNormal, setNormal);
@@ -941,7 +941,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Ring>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Box>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZone(obj);
     DRAW_SPK_VECTOR("Box Dimension", getDimensions, setDimensions);
@@ -950,7 +950,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Box>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Cylinder>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZone(obj);
     DRAW_SPK_FLOAT_FLOAT("Cylinder Height", "Cylinder Radius", getHeight, getRadius, setDimensions);
@@ -960,7 +960,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Cylinder>& obj)
 // Emitters
 void ParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkTransformable(obj);
     DRAW_SPK_BOOL("Active", isActive, setActive);
@@ -988,21 +988,21 @@ void ParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomEmitter>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StraightEmitter>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
     DRAW_SPK_VECTOR("StraightEmitter Direction", getDirection, setDirection);
@@ -1010,7 +1010,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StraightEmitter>&
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SphericEmitter>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
     DRAW_SPK_VECTOR("SphericEmitter Direction", getDirection, setDirection);
@@ -1019,7 +1019,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SphericEmitter>& 
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkEmitter(obj);
     DrawSparkInnerZone(
@@ -1030,7 +1030,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& o
 // Modifiers
 void ParticleEditor::Impl::DrawSparkModifier(const SPK::Ref<SPK::Modifier>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkTransformable(obj);
     DRAW_SPK_BOOL("Active", isActive, setActive);
@@ -1039,7 +1039,7 @@ void ParticleEditor::Impl::DrawSparkModifier(const SPK::Ref<SPK::Modifier>& obj)
 
 void ParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModifier>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
     DrawSparkInnerZone(
@@ -1049,7 +1049,7 @@ void ParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModif
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Gravity>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
     DRAW_SPK_VECTOR("Gravity Value", getValue, setValue);
@@ -1057,7 +1057,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Gravity>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Friction>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
 
@@ -1068,7 +1068,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Friction>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Obstacle>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZonedModifier(obj);
     DRAW_SPK_FLOAT("Obstacle BouncingRatio", getBouncingRatio, setBouncingRatio);
@@ -1077,14 +1077,14 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Obstacle>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Rotator>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Collider>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
     DRAW_SPK_FLOAT("Collider Elasticity", getElasticity, setElasticity);
@@ -1092,14 +1092,14 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Collider>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Destroyer>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZonedModifier(obj);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Vortex>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
 
@@ -1113,7 +1113,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Vortex>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
 
@@ -1126,7 +1126,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>&
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
 
@@ -1137,7 +1137,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomForce>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkModifier(obj);
     DRAW_SPK_VECTOR_VECTOR("RandomForce MinVector", "RandomForce MaxVector", getMinVector, getMaxVector, setVectors);
@@ -1146,7 +1146,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomForce>& obj
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::LinearForce>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkZonedModifier(obj);
     DRAW_SPK_VECTOR("LinearForce Value", getValue, setValue);
@@ -1160,14 +1160,14 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::LinearForce>& obj
 // Actions
 void ParticleEditor::Impl::DrawSparkAction(const SPK::Ref<SPK::Action>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_BOOL("Active", isActive, setActive);
 }
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DrawSparkAction(obj);
 
@@ -1176,7 +1176,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj)
 
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!"Not implemented");
 
@@ -1188,7 +1188,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAct
 // Renderers
 void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     DRAW_SPK_BOOL("Active", isActive, setActive);
 
@@ -1264,7 +1264,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 // Helpers
 void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::function<size_t()> get_size, const std::function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const std::function<void(size_t)>& del, const std::function<void()>& add_draw)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, static_cast<int>(get_size()))) {
         int delIndex = -1;
@@ -1302,7 +1302,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, std::f
 
 void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const std::function<SPK::Ref<SPK::SPKObject>()>& get, const std::function<void()>& del, const std::function<void()>& add_draw)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx(label, 0, "%s (%s)", label, get() ? get()->getClassName().c_str() : "Not assigned")) {
         if (get()) {

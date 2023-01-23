@@ -164,21 +164,21 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
 
 EffectBaker::EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     glslang::InitializeProcess();
 }
 
 EffectBaker::~EffectBaker()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     glslang::FinalizeProcess();
 }
 
 void EffectBaker::AutoBake()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _errors = 0;
 
@@ -243,7 +243,7 @@ void EffectBaker::AutoBake()
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto fofx = ConfigFile(fname, string(content), nullptr, ConfigFileOption::CollectContent);
     if (!fofx.HasSection("Effect")) {
@@ -322,7 +322,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;

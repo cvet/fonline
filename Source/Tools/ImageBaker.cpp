@@ -49,7 +49,7 @@ static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uin
 
 ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Swap palette R&B
     // Todo: swap colors of fo palette once in header
@@ -63,14 +63,14 @@ ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeChecke
 
 auto ImageBaker::IsImageExt(string_view ext) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return ext == "fofrm" || ext == "frm" || ext == "fr0" || ext == "rix" || ext == "art" || ext == "zar" || ext == "til" || ext == "mos" || ext == "bam" || ext == "png" || ext == "tga";
 }
 
 void ImageBaker::AutoBake()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _errors = 0;
 
@@ -93,7 +93,7 @@ void ImageBaker::AutoBake()
 
 void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _files.ResetCounter();
     while (_files.MoveNext()) {
@@ -127,7 +127,7 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 
 void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<uchar> data;
     auto writer = DataWriter(data);
@@ -174,7 +174,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
 auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const string ext = _str(fname_with_opt).getFileExtension();
     const string dir = _str(fname_with_opt).extractDir();
@@ -248,7 +248,7 @@ auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 
 auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     FrameCollection collection;
 
@@ -361,7 +361,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
 
 auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -600,7 +600,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -849,7 +849,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadRix(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
     UNUSED_VARIABLE(fname);
@@ -886,7 +886,7 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1154,7 +1154,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1570,7 +1570,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadZar(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1663,7 +1663,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1787,7 +1787,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1892,7 +1892,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2038,7 +2038,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2063,7 +2063,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
 
 auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> FrameCollection
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -2088,7 +2088,7 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
 
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     struct PngMessage
     {
@@ -2191,7 +2191,7 @@ static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) 
 
 static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Reading macros
     auto read_error = false;

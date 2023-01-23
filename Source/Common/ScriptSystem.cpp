@@ -37,7 +37,7 @@
 
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!func_desc.CallSupported) {
         return false;
@@ -63,7 +63,7 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
 
 void ScriptSystem::InitModules()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -76,7 +76,7 @@ void ScriptSystem::InitModules()
 
 void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _rpcReceivers.find(rpc_num);
     if (it == _rpcReceivers.end()) {
@@ -88,7 +88,7 @@ void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
 
 void ScriptSystem::Process()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -104,7 +104,7 @@ void ScriptSystem::Process()
 
 auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
     RUNTIME_ASSERT(prop_reg);

@@ -49,7 +49,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
 #endif
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);

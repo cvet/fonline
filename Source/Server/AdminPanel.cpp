@@ -78,14 +78,14 @@ static void AdminWork(FOServer* server, Session* session);
 
 void InitAdminManager(FOServer* server, ushort port)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     std::thread(AdminManager, server, port).detach();
 }
 
 static void AdminManager(FOServer* server, ushort port)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     WSADATA wsa;
@@ -210,7 +210,7 @@ static void AdminManager(FOServer* server, ushort port)
 
 static void AdminWork(FOServer* server, Session* session)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* event_unsubscriber = new EventUnsubscriber();
     *event_unsubscriber += server->OnWillFinish += [&server, &event_unsubscriber]() {
@@ -355,7 +355,7 @@ label_Finish:
 
 void InitAdminManager(FOServer* server, ushort port)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 #endif

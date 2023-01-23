@@ -42,7 +42,7 @@
 
 Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), MapProperties(GetInitRef()), _staticMap {static_map}, _mapLocation {location}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(_staticMap);
@@ -54,14 +54,14 @@ Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, c
 
 Map::~Map()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     delete[] _hexFlags;
 }
 
 void Map::Process()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto tick = _engine->GameTime.GameTick();
     ProcessLoop(0, GetLoopTime1(), tick);
@@ -73,7 +73,7 @@ void Map::Process()
 
 void Map::ProcessLoop(int index, uint time, uint tick)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (time != 0u && tick - _loopLastTick[index] >= time) {
         _loopLastTick[index] = tick;
@@ -91,14 +91,14 @@ void Map::ProcessLoop(int index, uint time, uint tick)
 
 auto Map::GetProtoMap() const -> const ProtoMap*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<const ProtoMap*>(_proto);
 }
 
 auto Map::GetLocation() -> Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -107,21 +107,21 @@ auto Map::GetLocation() -> Location*
 
 auto Map::GetLocation() const -> const Location*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _mapLocation;
 }
 
 void Map::SetLocation(Location* loc)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _mapLocation = loc;
 }
 
 auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<ushort, ushort>>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (IsHexesPassed(hx, hy, multihex) && !(skip_unsafe && (IsHexStaticTrigger(hx, hy) || IsHexTrigger(hx, hy)))) {
         return tuple {hx, hy};
@@ -177,7 +177,7 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
 
 auto Map::FindPlaceOnMap(ushort hx, ushort hy, Critter* cr, uint radius) const -> optional<tuple<ushort, ushort>>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto multihex = cr->GetMultihex();
     auto r = FindStartHex(hx, hy, multihex, radius, true);
@@ -189,7 +189,7 @@ auto Map::FindPlaceOnMap(ushort hx, ushort hy, Critter* cr, uint radius) const -
 
 void Map::AddCritter(Critter* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_crittersMap.count(cr->GetId()) == 0);
 
@@ -210,7 +210,7 @@ void Map::AddCritter(Critter* cr)
 
 void Map::EraseCritter(Critter* cr)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     {
         const auto it = _crittersMap.find(cr->GetId());
@@ -240,7 +240,7 @@ void Map::EraseCritter(Critter* cr)
 
 auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (item == nullptr) {
         return false;
@@ -293,7 +293,7 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
 void Map::SetItem(Item* item, ushort hx, ushort hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_itemsMap.count(item->GetId()));
 
@@ -319,7 +319,7 @@ void Map::SetItem(Item* item, ushort hx, ushort hy)
 
 void Map::EraseItem(uint item_id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item_id);
     const auto it = _itemsMap.find(item_id);
@@ -376,7 +376,7 @@ void Map::EraseItem(uint item_id)
 
 void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
@@ -394,7 +394,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
 
 void Map::ChangeViewItem(Item* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto* cr : GetCritters()) {
         if (cr->CountIdVisItem(item->GetId())) {
@@ -451,7 +451,7 @@ void Map::ChangeViewItem(Item* item)
 
 void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -464,7 +464,7 @@ void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 
 auto Map::GetItem(uint item_id) -> Item*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _itemsMap.find(item_id);
     return it != _itemsMap.end() ? it->second : nullptr;
@@ -472,7 +472,7 @@ auto Map::GetItem(uint item_id) -> Item*
 
 auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
     if (it_hex_all != _itemsByHex.end()) {
@@ -488,7 +488,7 @@ auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) ->
 
 auto Map::GetItemGag(ushort hx, ushort hy) -> Item*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
     if (it_hex_all != _itemsByHex.end()) {
@@ -503,7 +503,7 @@ auto Map::GetItemGag(ushort hx, ushort hy) -> Item*
 
 auto Map::GetItems() -> vector<Item*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -512,7 +512,7 @@ auto Map::GetItems() -> vector<Item*>
 
 auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<Item*> items;
 
@@ -528,7 +528,7 @@ auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
 
 auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -543,7 +543,7 @@ auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vecto
 
 auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -558,7 +558,7 @@ auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 
 auto Map::GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<Item*> traps;
     const auto it_hex_all = _itemsByHex.find(tuple {hx, hy});
@@ -574,7 +574,7 @@ auto Map::GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>
 
 auto Map::IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!IsHexPassed(hx, hy)) {
         return false;
@@ -587,7 +587,7 @@ auto Map::IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item)
 
 void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
         _blockLinesByHex.emplace(tuple {hx2, hy2}, vector<Item*>()).first->second.push_back(item);
@@ -597,7 +597,7 @@ void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 
 void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
         auto it_hex_all_bl = _blockLinesByHex.find(tuple {hx2, hy2});
@@ -617,7 +617,7 @@ void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
 
 void Map::RecacheHexFlags(ushort hx, ushort hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UnsetHexFlag(hx, hy, FH_BLOCK_ITEM);
     UnsetHexFlag(hx, hy, FH_NRAKE_ITEM);
@@ -687,7 +687,7 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
 
 auto Map::GetHexFlags(ushort hx, ushort hy) const -> ushort
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto hi = static_cast<ushort>(static_cast<ushort>(_hexFlags[hy * GetWidth() + hx]) << 8);
     const auto lo = static_cast<ushort>(GetStaticMap()->HexFlags[hy * GetWidth() + hx]);
@@ -696,7 +696,7 @@ auto Map::GetHexFlags(ushort hx, ushort hy) const -> ushort
 
 void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -705,7 +705,7 @@ void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
 
 void Map::UnsetHexFlag(ushort hx, ushort hy, uchar flag)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -714,21 +714,21 @@ void Map::UnsetHexFlag(ushort hx, ushort hy, uchar flag)
 
 auto Map::IsHexPassed(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return !IsBitSet(GetHexFlags(hx, hy), FH_NOWAY);
 }
 
 auto Map::IsHexRaked(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return !IsBitSet(GetHexFlags(hx, hy), FH_NOSHOOT);
 }
 
 auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Base
     if (IsBitSet(GetHexFlags(hx, hy), FH_NOWAY)) {
@@ -758,7 +758,7 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
 
 auto Map::IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (cr != nullptr && !cr->IsDead() && multihex > 0) {
         UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), multihex, false);
@@ -772,42 +772,42 @@ auto Map::IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -
 
 auto Map::IsHexTrigger(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_TRIGGER);
 }
 
 auto Map::IsHexCritter(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_CRITTER) || IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_DEAD_CRITTER);
 }
 
 auto Map::IsHexGag(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_GAG_ITEM);
 }
 
 auto Map::IsHexBlockItem(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_BLOCK_ITEM);
 }
 
 auto Map::IsHexStaticTrigger(ushort hx, ushort hy) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return IsBitSet(GetStaticMap()->HexFlags[hy * GetWidth() + hx], FH_STATIC_TRIGGER);
 }
 
 auto Map::IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (dead) {
         return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_DEAD_CRITTER);
@@ -818,7 +818,7 @@ auto Map::IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool
 
 void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (dead) {
         SetHexFlag(hx, hy, FH_DEAD_CRITTER);
@@ -845,7 +845,7 @@ void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 
 void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (dead) {
         uint dead_count = 0;
@@ -881,7 +881,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 
 auto Map::GetCritter(uint cr_id) -> Critter*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -893,7 +893,7 @@ auto Map::GetCritter(uint cr_id) -> Critter*
 
 auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -921,7 +921,7 @@ auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
 
 auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -938,7 +938,7 @@ auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find
 
 auto Map::GetCritters() -> vector<Critter*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -947,7 +947,7 @@ auto Map::GetCritters() -> vector<Critter*>
 
 auto Map::GetPlayers() -> vector<Critter*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -956,7 +956,7 @@ auto Map::GetPlayers() -> vector<Critter*>
 
 auto Map::GetNpcs() -> vector<Critter*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -965,49 +965,49 @@ auto Map::GetNpcs() -> vector<Critter*>
 
 auto Map::GetCrittersRaw() -> vector<Critter*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _critters;
 }
 
 auto Map::GetPlayersRaw() -> vector<Critter*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _playerCritters;
 }
 
 auto Map::GetNpcsRaw() -> vector<Critter*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _nonPlayerCritters;
 }
 
 auto Map::GetCrittersCount() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_critters.size());
 }
 
 auto Map::GetPlayersCount() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_playerCritters.size());
 }
 
 auto Map::GetNpcsCount() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_nonPlayerCritters.size());
 }
 
 void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1020,7 +1020,7 @@ void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 
 void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1033,7 +1033,7 @@ void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort fr
 
 void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1050,7 +1050,7 @@ void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsaf
 
 void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1067,7 +1067,7 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
 
 void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, string_view lexems)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1084,7 +1084,7 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
 
 auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1098,7 +1098,7 @@ auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 
 auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1113,7 +1113,7 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
 
 auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1128,7 +1128,7 @@ auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) ->
 
 auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -1143,7 +1143,7 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
 
 auto Map::GetStaticItemsTrigger(ushort hx, ushort hy) -> vector<StaticItem*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 

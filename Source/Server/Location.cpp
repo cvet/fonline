@@ -39,14 +39,14 @@
 
 Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), LocationProperties(GetInitRef())
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(proto);
 }
 
 void Location::BindScript()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     EntranceScriptBindId = 0;
 
@@ -61,35 +61,35 @@ void Location::BindScript()
 
 auto Location::GetProtoLoc() const -> const ProtoLocation*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<const ProtoLocation*>(_proto);
 }
 
 auto Location::IsLocVisible() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
 }
 
 auto Location::GetMapsRaw() -> vector<Map*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _locMaps;
 };
 
 auto Location::GetMaps() -> vector<Map*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _locMaps;
 }
 
 auto Location::GetMaps() const -> vector<const Map*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<const Map*> maps;
     maps.insert(maps.begin(), _locMaps.begin(), _locMaps.end());
@@ -98,14 +98,14 @@ auto Location::GetMaps() const -> vector<const Map*>
 
 auto Location::GetMapsCount() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<uint>(_locMaps.size());
 }
 
 auto Location::GetMapByIndex(uint index) -> Map*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -117,7 +117,7 @@ auto Location::GetMapByIndex(uint index) -> Map*
 
 auto Location::GetMapByPid(hstring map_pid) -> Map*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -131,7 +131,7 @@ auto Location::GetMapByPid(hstring map_pid) -> Map*
 
 auto Location::GetMapIndex(hstring map_pid) const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uint index = 0;
     for (const auto* map : _locMaps) {
@@ -145,7 +145,7 @@ auto Location::GetMapIndex(hstring map_pid) const -> uint
 
 auto Location::IsCanEnter(uint players_count) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto max_palyers = GetMaxPlayers();
     if (max_palyers == 0u) {
@@ -163,7 +163,7 @@ auto Location::IsCanEnter(uint players_count) const -> bool
 
 auto Location::IsNoCritter() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (const auto* map : _locMaps) {
         if (map->GetCrittersCount() != 0u) {
@@ -175,7 +175,7 @@ auto Location::IsNoCritter() const -> bool
 
 auto Location::IsNoPlayer() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (const auto* map : _locMaps) {
         if (map->GetPlayersCount() != 0u) {
@@ -187,7 +187,7 @@ auto Location::IsNoPlayer() const -> bool
 
 auto Location::IsNoNpc() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (const auto* map : _locMaps) {
         if (map->GetNpcsCount() != 0u) {
@@ -199,7 +199,7 @@ auto Location::IsNoNpc() const -> bool
 
 auto Location::IsCanDelete() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (GeckCount > 0) {
         return false;

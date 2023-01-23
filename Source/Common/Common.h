@@ -159,10 +159,37 @@ inline auto format_as(T v)
 #include "WinApi-Include.h"
 #endif
 
-// Tracy profiler
+// Profiling
+#ifdef TRACY_ENABLE
 #include "tracy/Tracy.hpp"
-#define PROFILER_ENTRY() ZoneScoped
+#include "tracy/TracyC.h"
+
+#define STACK_TRACE_ENTRY() ZoneScoped
+#define STACK_TRACE_ENTRY_BEGIN(name) \
+    [n = name]() -> void* { \
+        TracyCZone(ctx, true); \
+        TracyCZoneName(ctx, n, strlen(n)); \
+        return ctx.active ? reinterpret_cast<void*>(static_cast<size_t>(ctx.id)) : nullptr; \
+    }()
+#define STACK_TRACE_ENTRY_END(ptr) \
+    [p = ptr]() { \
+        TracyCZoneCtx ctx; \
+        ctx.id = static_cast<uint32_t>(reinterpret_cast<size_t>(p)); \
+        ctx.active = !!ctx.id; \
+        TracyCZoneEnd(ctx); \
+    }()
+
 #define PROFILER_FRAME_MARK() FrameMark
+#define PROFILER_LOG(text, len) TracyMessage(text, len)
+
+#else
+#define STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY_BEGIN(name) nullptr
+#define STACK_TRACE_ENTRY_END(ptr)
+
+#define PROFILER_FRAME_MARK()
+#define PROFILER_LOG(text, len)
+#endif
 
 // Base types
 // Todo: split meanings if int8 and char in code
@@ -302,8 +329,14 @@ public:
             } \
             _stackTrace = GetStackTrace(); \
         } \
-        [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
-        [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; } \
+        [[nodiscard]] auto what() const noexcept -> const char* override \
+        { \
+            return _exceptionMessage.c_str(); \
+        } \
+        [[nodiscard]] auto StackTrace() const noexcept -> const string& override \
+        { \
+            return _stackTrace; \
+        } \
 \
     private: \
         string _exceptionMessage {}; \
@@ -576,14 +609,20 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT() \
-    void AddRef() { ++RefCounter; } \
+    void AddRef() \
+    { \
+        ++RefCounter; \
+    } \
     void Release() \
     { \
         if (--RefCounter == 0) { \
             delete this; \
         } \
     } \
-    int RefCounter { 1 }
+    int RefCounter \
+    { \
+        1 \
+    }
 
 // Ref counted objects scope holder
 template<typename T>

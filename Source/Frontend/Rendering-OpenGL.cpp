@@ -109,7 +109,7 @@
 
 static auto ErrCodeToString(GLenum err_code) -> string
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #define ERR_CODE_CASE(err_code_variant) \
     case err_code_variant: \
@@ -253,7 +253,7 @@ public:
 
 void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RenderDebug = settings.RenderDebug;
     ForceGlslEsProfile = settings.ForceGlslEsProfile;
@@ -430,7 +430,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
 void OpenGL_Renderer::Present()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if !FO_WEB
     SDL_GL_SwapWindow(SdlWindow);
@@ -443,7 +443,7 @@ void OpenGL_Renderer::Present()
 
 auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& opengl_tex = std::make_unique<OpenGL_Texture>(width, height, linear_filtered, with_depth);
 
@@ -480,7 +480,7 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
 
 auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& opengl_dbuf = std::make_unique<OpenGL_DrawBuffer>(is_static);
 
@@ -489,7 +489,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 
 auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& opengl_effect = std::make_unique<OpenGL_Effect>(usage, name, loader);
 
@@ -837,7 +837,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     int w;
     int h;
@@ -897,7 +897,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 
 void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     GLbitfield clear_flags = 0;
 
@@ -928,7 +928,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool s
 
 void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     GL(glEnable(GL_SCISSOR_TEST));
     GL(glScissor(x, y, width, height));
@@ -936,14 +936,14 @@ void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 
 void OpenGL_Renderer::DisableScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
 static void EnableVertAtribs(EffectUsage usage)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -975,7 +975,7 @@ static void EnableVertAtribs(EffectUsage usage)
 
 static void DisableVertAtribs(EffectUsage usage)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -994,7 +994,7 @@ static void DisableVertAtribs(EffectUsage usage)
 
 OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     GL(glGenBuffers(1, &VertexBufObj));
     GL(glGenBuffers(1, &IndexBufObj));
@@ -1002,7 +1002,7 @@ OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_stati
 
 OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (VertexBufObj != 0u) {
         glDeleteBuffers(1, &VertexBufObj);
@@ -1017,7 +1017,7 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 
 void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -1124,7 +1124,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (name) {
 #define CHECK_ENTRY(name, glname) \
@@ -1150,7 +1150,7 @@ static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 
 static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (name) {
 #define CHECK_ENTRY(name, glname) \
@@ -1168,7 +1168,7 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 
 OpenGL_Effect::~OpenGL_Effect()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < _passCount; i++) {
         if (Program[i] != 0u) {
@@ -1179,7 +1179,7 @@ OpenGL_Effect::~OpenGL_Effect()
 
 void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 

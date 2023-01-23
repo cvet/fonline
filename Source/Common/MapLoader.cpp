@@ -39,7 +39,7 @@
 
 void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Load from file
     const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;

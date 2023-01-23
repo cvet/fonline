@@ -73,7 +73,7 @@ static void FlushLogAtExit()
 
 void LogWithoutTimestamp()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     std::lock_guard locker(Data->LogLocker);
 
@@ -82,7 +82,7 @@ void LogWithoutTimestamp()
 
 void LogToFile(string_view fname)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     std::lock_guard locker(Data->LogLocker);
 
@@ -91,7 +91,7 @@ void LogToFile(string_view fname)
 
 void SetLogCallback(string_view key, LogFunc callback)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     std::lock_guard locker(Data->LogLocker);
 
@@ -111,7 +111,7 @@ void SetLogCallback(string_view key, LogFunc callback)
 
 void WriteLogMessage(LogType type, string_view message)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Avoid recursive calls
     if (Data->LogFunctionsInProcess) {
@@ -152,6 +152,8 @@ void WriteLogMessage(LogType type, string_view message)
 #if FO_ANDROID
     __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
 #endif
+
+    PROFILER_LOG(result.c_str(), result.length());
 
     // Todo: colorize log texts
     const char* color = nullptr;

@@ -60,7 +60,7 @@
 
 void Server_RegisterData(FOEngineBase* engine)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ///@ CodeGen ServerRegister
 
@@ -71,7 +71,7 @@ void Server_RegisterData(FOEngineBase* engine)
 
 static void RestoreProperty(PropertyRegistrator* registrator, string_view access, string_view type, const string& name, const vector<string_view>& flags)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 #define RESTORE_ARGS PropertyRegistrator *registrator, Property::AccessType access, string_view name, const vector<string_view>&flags
 #define RESTORE_ARGS_PASS access, name, flags
@@ -109,7 +109,7 @@ static void RestoreProperty(PropertyRegistrator* registrator, string_view access
 
 void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info_bin)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ///@ CodeGen ClientRegister
 
@@ -201,7 +201,7 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info
 
 void Single_RegisterData(FOEngineBase* engine)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ///@ CodeGen SingleRegister
 
@@ -212,7 +212,7 @@ void Single_RegisterData(FOEngineBase* engine)
 
 void Mapper_RegisterData(FOEngineBase* engine)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ///@ CodeGen MapperRegister
 
@@ -223,7 +223,7 @@ void Mapper_RegisterData(FOEngineBase* engine)
 
 void Baker_RegisterData(FOEngineBase* engine)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ///@ CodeGen BakerRegister
 
@@ -232,7 +232,7 @@ void Baker_RegisterData(FOEngineBase* engine)
 
 auto Baker_GetRestoreInfo() -> vector<uchar>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     map<string, vector<string>> restore_info;
 
@@ -282,7 +282,7 @@ void AngelScript_SingleCompiler_RegisterData(FOEngineBase* engine)
 void AngelScript_MapperCompiler_RegisterData(FOEngineBase* engine)
 #endif
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ///@ CodeGen CompilerRegister
 

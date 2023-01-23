@@ -36,7 +36,7 @@
 
 NetBuffer::NetBuffer(size_t buf_len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _defaultBufLen = buf_len;
     _bufLen = buf_len;
@@ -45,35 +45,35 @@ NetBuffer::NetBuffer(size_t buf_len)
 
 auto NetBuffer::IsError() const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _isError;
 }
 
 auto NetBuffer::GetEndPos() const -> size_t
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _bufEndPos;
 }
 
 void NetBuffer::SetError(bool value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _isError = value;
 }
 
 auto NetBuffer::GenerateEncryptKey() -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return (GenericUtils::Random(1, 255) << 24) | (GenericUtils::Random(1, 255) << 16) | (GenericUtils::Random(1, 255) << 8) | GenericUtils::Random(1, 255);
 }
 
 void NetBuffer::SetEncryptKey(uint seed)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (seed == 0u) {
         _encryptActive = false;
@@ -92,7 +92,7 @@ void NetBuffer::SetEncryptKey(uint seed)
 
 auto NetBuffer::EncryptKey(int move) -> uchar
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     uchar key = 0;
     if (_encryptActive) {
@@ -110,7 +110,7 @@ auto NetBuffer::EncryptKey(int move) -> uchar
 
 void NetBuffer::ResetBuf()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError) {
         return;
@@ -126,7 +126,7 @@ void NetBuffer::ResetBuf()
 
 void NetBuffer::GrowBuf(size_t len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_bufEndPos + len < _bufLen) {
         return;
@@ -143,7 +143,7 @@ void NetBuffer::GrowBuf(size_t len)
 
 auto NetBuffer::GetData() -> uchar*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -152,7 +152,7 @@ auto NetBuffer::GetData() -> uchar*
 
 void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, size_t len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -170,7 +170,7 @@ void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, size_t len)
 
 void NetOutBuffer::Push(const void* buf, size_t len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError || len == 0u) {
         return;
@@ -186,7 +186,7 @@ void NetOutBuffer::Push(const void* buf, size_t len)
 
 void NetOutBuffer::Cut(size_t len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError || len == 0u) {
         return;
@@ -207,7 +207,7 @@ void NetOutBuffer::Cut(size_t len)
 
 void NetInBuffer::ResetBuf()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NetBuffer::ResetBuf();
 
@@ -216,7 +216,7 @@ void NetInBuffer::ResetBuf()
 
 void NetInBuffer::AddData(const void* buf, size_t len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError || len == 0u) {
         return;
@@ -232,14 +232,14 @@ void NetInBuffer::AddData(const void* buf, size_t len)
 
 void NetInBuffer::SetEndPos(size_t pos)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _bufEndPos = pos;
 }
 
 void NetInBuffer::Pop(void* buf, size_t len)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError) {
         std::memset(buf, 0, len);
@@ -262,7 +262,7 @@ void NetInBuffer::Pop(void* buf, size_t len)
 
 void NetInBuffer::ShrinkReadBuf()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError) {
         return;
@@ -290,7 +290,7 @@ void NetInBuffer::ShrinkReadBuf()
 
 auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     hstring::hash_t h;
     *this >> h;
@@ -310,7 +310,7 @@ auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
 
 auto NetInBuffer::NeedProcess() -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError) {
         return false;
@@ -520,7 +520,7 @@ auto NetInBuffer::NeedProcess() -> bool
 
 void NetInBuffer::SkipMsg(uint msg)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isError) {
         return;

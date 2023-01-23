@@ -39,7 +39,7 @@
 template<class T>
 static void WriteProtosToBinary(vector<uchar>& data, const unordered_map<hstring, const T*>& protos)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto writer = DataWriter(data);
     writer.Write<uint>(static_cast<uint>(protos.size()));
@@ -69,7 +69,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const unordered_map<hstring
 template<class T>
 static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, unordered_map<hstring, const T*>& protos)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<uchar> props_data;
 
@@ -102,7 +102,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
 
 static void InsertMapValues(const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : from_kv) {
         RUNTIME_ASSERT(!key.empty());
@@ -129,7 +129,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 template<class T>
 static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Collect data
     auto files = resources.FilterFiles(ext);
@@ -295,12 +295,12 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
 
 ProtoManager::ProtoManager(FOEngineBase* engine) : _engine {engine}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 void ProtoManager::ParseProtos(FileSystem& resources)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     ParseProtosExt<ProtoItem>(resources, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
     ParseProtosExt<ProtoCritter>(resources, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
@@ -324,7 +324,7 @@ void ProtoManager::ParseProtos(FileSystem& resources)
 
 void ProtoManager::LoadFromResources()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     string protos_fname = "Protos.foprob";
 
@@ -357,7 +357,7 @@ void ProtoManager::LoadFromResources()
 
 auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<uchar> data;
     WriteProtosToBinary<ProtoItem>(data, _itemProtos);
@@ -369,7 +369,7 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
 
 auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _itemProtos.find(proto_id);
     return it != _itemProtos.end() ? it->second : nullptr;
@@ -377,7 +377,7 @@ auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
 
 auto ProtoManager::GetProtoCritter(hstring proto_id) -> const ProtoCritter*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _crProtos.find(proto_id);
     return it != _crProtos.end() ? it->second : nullptr;
@@ -385,7 +385,7 @@ auto ProtoManager::GetProtoCritter(hstring proto_id) -> const ProtoCritter*
 
 auto ProtoManager::GetProtoMap(hstring proto_id) -> const ProtoMap*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _mapProtos.find(proto_id);
     return it != _mapProtos.end() ? it->second : nullptr;
@@ -393,7 +393,7 @@ auto ProtoManager::GetProtoMap(hstring proto_id) -> const ProtoMap*
 
 auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _locProtos.find(proto_id);
     return it != _locProtos.end() ? it->second : nullptr;
@@ -401,35 +401,35 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
 
 auto ProtoManager::GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _itemProtos;
 }
 
 auto ProtoManager::GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _crProtos;
 }
 
 auto ProtoManager::GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _mapProtos;
 }
 
 auto ProtoManager::GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _locProtos;
 }
 
 auto ProtoManager::GetAllProtos() const -> vector<const ProtoEntity*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<const ProtoEntity*> protos;
     protos.reserve(_itemProtos.size() + _crProtos.size() + _mapProtos.size() + _locProtos.size());

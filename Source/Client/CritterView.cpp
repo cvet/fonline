@@ -38,26 +38,26 @@
 
 CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef())
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _name = _str("{} {}", proto->GetName(), id);
 }
 
 void CritterView::Init()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 void CritterView::Finish()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 void CritterView::MarkAsDestroyed()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto* item : _items) {
         item->MarkAsDestroyed();
@@ -71,14 +71,14 @@ void CritterView::MarkAsDestroyed()
 
 void CritterView::SetName(string_view name)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _name = name;
 }
 
 void CritterView::SetPlayer(bool is_player, bool is_chosen)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _ownedByPlayer = is_player;
     _isChosen = is_chosen;
@@ -86,7 +86,7 @@ void CritterView::SetPlayer(bool is_player, bool is_chosen)
 
 void CritterView::SetPlayerOffline(bool is_offline)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_ownedByPlayer);
 
@@ -95,7 +95,7 @@ void CritterView::SetPlayerOffline(bool is_offline)
 
 auto CritterView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto* item = new ItemView(_engine, id, proto);
     item->RestoreData(properties_data);
@@ -113,7 +113,7 @@ auto CritterView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vec
 
 void CritterView::DeleteItem(ItemView* item, bool animate)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = std::find(_items.begin(), _items.end(), item);
     RUNTIME_ASSERT(it != _items.end());
@@ -129,7 +129,7 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
 
 void CritterView::DeleteAllItems()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     while (!_items.empty()) {
         DeleteItem(*_items.begin(), false);
@@ -138,7 +138,7 @@ void CritterView::DeleteAllItems()
 
 auto CritterView::GetItem(uint item_id) -> ItemView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -152,7 +152,7 @@ auto CritterView::GetItem(uint item_id) -> ItemView*
 
 auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -166,7 +166,7 @@ auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
 
 auto CritterView::GetItems() -> const vector<ItemView*>&
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -175,7 +175,7 @@ auto CritterView::GetItems() -> const vector<ItemView*>&
 
 auto CritterView::CheckFind(CritterFindType find_type) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (find_type == CritterFindType::Any) {
         return true;
@@ -197,7 +197,7 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
 
 auto CritterView::GetAnim1() const -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (GetCond()) {
     case CritterCondition::Alive:

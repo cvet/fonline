@@ -106,7 +106,7 @@ static bool VSync {};
 
 static auto ConvertBlend(BlendFuncType blend) -> D3D11_BLEND
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (blend) {
     case BlendFuncType::Zero:
@@ -141,7 +141,7 @@ static auto ConvertBlend(BlendFuncType blend) -> D3D11_BLEND
 
 static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -160,7 +160,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 
 void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RenderDebug = settings.RenderDebug;
     SdlWindow = static_cast<SDL_Window*>(window);
@@ -245,7 +245,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
 void Direct3D_Renderer::Present()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto swap_chain = SwapChain->Present(VSync ? 1 : 0, 0);
     RUNTIME_ASSERT(swap_chain == S_OK);
@@ -253,7 +253,7 @@ void Direct3D_Renderer::Present()
 
 auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& d3d_tex = std::make_unique<Direct3D_Texture>(width, height, linear_filtered, with_depth);
 
@@ -293,7 +293,7 @@ auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtere
 
 auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& d3d_dbuf = std::make_unique<Direct3D_DrawBuffer>(is_static);
 
@@ -302,7 +302,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 
 auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& d3d_effect = std::make_unique<Direct3D_Effect>(usage, name, loader);
 
@@ -464,7 +464,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
 void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (tex != nullptr) {
         const auto* d3d_tex = static_cast<Direct3D_Texture*>(tex);
@@ -481,7 +481,7 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 
 void Direct3D_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (color.has_value()) {
         const auto color_value = color.value();
@@ -508,21 +508,21 @@ void Direct3D_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool
 
 void Direct3D_Renderer::EnableScissor(int x, int y, int width, int height)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
 }
 
 void Direct3D_Renderer::DisableScissor()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
 }
 
 Direct3D_Texture::~Direct3D_Texture()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (TexHandle != nullptr) {
         TexHandle->Release();
@@ -540,7 +540,7 @@ Direct3D_Texture::~Direct3D_Texture()
 
 auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
     return 0;
@@ -548,7 +548,7 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
 
 auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) -> vector<uint>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(width > 0);
     RUNTIME_ASSERT(height > 0);
@@ -563,7 +563,7 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) -> 
 
 void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
     // D3DDeviceContext->UpdateSubresource()
@@ -571,20 +571,20 @@ void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
 }
 
 void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
 }
 
 Direct3D_Effect::~Direct3D_Effect()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (VertexBuf != nullptr) {
         VertexBuf->Release();
@@ -614,7 +614,7 @@ Direct3D_Effect::~Direct3D_Effect()
 
 void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     throw NotImplementedException(LINE_STR);
 }

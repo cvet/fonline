@@ -65,7 +65,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
 
 SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
@@ -92,7 +92,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _se
 
 SoundManager::~SoundManager()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_isActive) {
         App->Audio.SetSource(nullptr);
@@ -103,7 +103,7 @@ SoundManager::~SoundManager()
 
 void SoundManager::ProcessSounds(uchar* output)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto it = _soundsActive.begin(); it != _soundsActive.end();) {
         auto* sound = *it;
@@ -120,7 +120,7 @@ void SoundManager::ProcessSounds(uchar* output)
 
 auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     // Playing
     const auto whole = _outputBuf.size();
@@ -195,7 +195,7 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
 
 auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto fixed_fname = string(fname);
     string ext = _str(fname).getFileExtension();
@@ -225,7 +225,7 @@ auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
 
 auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -319,7 +319,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
 auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -352,7 +352,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 
 auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto file = _resources.ReadFile(fname);
     if (!file) {
@@ -472,7 +472,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
 auto SoundManager::StreamOgg(Sound* sound) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -502,7 +502,7 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
 
 auto SoundManager::ConvertData(Sound* sound) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
@@ -517,7 +517,7 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
 
 auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view name) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_isActive || _settings.SoundVolume == 0) {
         return true;
@@ -546,7 +546,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
 
 auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_isActive) {
         return true;
@@ -566,7 +566,7 @@ auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 
 void SoundManager::StopSounds()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_isActive) {
         return;
@@ -579,7 +579,7 @@ void SoundManager::StopSounds()
 
 void SoundManager::StopMusic()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_isActive) {
         return;

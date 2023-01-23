@@ -43,7 +43,7 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int
 #endif
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         InitApp(argc, argv, "Baker");

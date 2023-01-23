@@ -39,7 +39,7 @@
 
 static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> uint
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Find(str);
     const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Find(str);
@@ -99,12 +99,12 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
 
 DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 void DialogManager::LoadFromResources()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto errors = 0;
 
@@ -128,7 +128,7 @@ void DialogManager::LoadFromResources()
 
 void DialogManager::AddDialog(DialogPack* pack)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_dialogPacks.count(pack->PackId) != 0u) {
         throw DialogManagerException("Dialog already added", pack->PackName);
@@ -145,7 +145,7 @@ void DialogManager::AddDialog(DialogPack* pack)
 
 auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto it = _dialogPacks.find(pack_id);
     return it != _dialogPacks.end() ? it->second.get() : nullptr;
@@ -153,7 +153,7 @@ auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
 
 auto DialogManager::GetDialogs() -> vector<DialogPack*>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     vector<DialogPack*> result;
 
@@ -166,7 +166,7 @@ auto DialogManager::GetDialogs() -> vector<DialogPack*>
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto&& pack = std::make_unique<DialogPack>();
 
@@ -356,7 +356,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DialogAnswerReq
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -504,7 +504,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
 
 auto DialogManager::GetDrType(string_view str) -> uchar
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (str == "Property" || str == "_param") {
         return DR_PROP_CRITTER;
@@ -526,7 +526,7 @@ auto DialogManager::GetDrType(string_view str) -> uchar
 
 auto DialogManager::GetWho(char who) -> uchar
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (who == 'P' || who == 'p') {
         return DR_WHO_PLAYER;
@@ -539,7 +539,7 @@ auto DialogManager::GetWho(char who) -> uchar
 
 auto DialogManager::CheckOper(char oper) -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '!' || oper == '}' || oper == '{';
 }

@@ -89,40 +89,40 @@ DataBase::~DataBase() = default;
 
 DataBase::DataBase(DataBaseImpl* impl) : _impl {impl}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 DataBase::operator bool() const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl != nullptr;
 }
 
 auto DataBase::GetAllIds(string_view collection_name) const -> vector<uint>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl->GetAllIds(collection_name);
 }
 
 auto DataBase::Get(string_view collection_name, uint id) const -> AnyData::Document
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl->Get(collection_name, id);
 }
 
 auto DataBase::Valid(string_view collection_name, uint id) const -> bool
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return !_impl->Get(collection_name, id).empty();
 }
 
 void DataBase::StartChanges()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -131,7 +131,7 @@ void DataBase::StartChanges()
 
 void DataBase::Insert(string_view collection_name, uint id, const AnyData::Document& doc)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -140,7 +140,7 @@ void DataBase::Insert(string_view collection_name, uint id, const AnyData::Docum
 
 void DataBase::Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -149,7 +149,7 @@ void DataBase::Update(string_view collection_name, uint id, string_view key, con
 
 void DataBase::Delete(string_view collection_name, uint id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -158,7 +158,7 @@ void DataBase::Delete(string_view collection_name, uint id)
 
 void DataBase::CommitChanges()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -167,7 +167,7 @@ void DataBase::CommitChanges()
 
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto value_index = value.index();
     if (value_index == AnyData::INT_VALUE) {
@@ -339,7 +339,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
 
 static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : doc) {
         ValueToBson(key, value, bson);
@@ -348,7 +348,7 @@ static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 
 static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto* value = bson_iter_value(iter);
 
@@ -468,7 +468,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 
 static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     bson_iter_t iter;
     if (!bson_iter_init(&iter, bson)) {
@@ -489,7 +489,7 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
 
 auto DataBaseImpl::Get(string_view collection_name, uint id) -> AnyData::Document
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto collection_name_str = string(collection_name);
 
@@ -514,7 +514,7 @@ auto DataBaseImpl::Get(string_view collection_name, uint id) -> AnyData::Documen
 
 void DataBaseImpl::StartChanges()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_changesStarted);
     RUNTIME_ASSERT(_recordChanges.empty());
@@ -526,7 +526,7 @@ void DataBaseImpl::StartChanges()
 
 void DataBaseImpl::Insert(string_view collection_name, uint id, const AnyData::Document& doc)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto collection_name_str = string(collection_name);
 
@@ -542,7 +542,7 @@ void DataBaseImpl::Insert(string_view collection_name, uint id, const AnyData::D
 
 void DataBaseImpl::Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto collection_name_str = string(collection_name);
 
@@ -554,7 +554,7 @@ void DataBaseImpl::Update(string_view collection_name, uint id, string_view key,
 
 void DataBaseImpl::Delete(string_view collection_name, uint id)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     const auto collection_name_str = string(collection_name);
 
@@ -573,7 +573,7 @@ void DataBaseImpl::Delete(string_view collection_name, uint id)
 
 void DataBaseImpl::CommitChanges()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_changesStarted);
 
@@ -619,7 +619,7 @@ public:
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         vector<uint> ids;
         DiskFileSystem::IterateDir(_str(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
@@ -640,7 +640,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -674,7 +674,7 @@ protected:
 
     void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -712,7 +712,7 @@ protected:
 
     void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -765,7 +765,7 @@ protected:
 
     void DeleteRecord(string_view collection_name, uint id) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
         if (!DiskFileSystem::DeleteFile(path)) {
@@ -775,7 +775,7 @@ protected:
 
     void CommitRecords() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         // Nothing
     }
@@ -797,7 +797,7 @@ public:
 
     explicit DbUnQLite(string_view storage_dir)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         DiskFileSystem::MakeDirTree(storage_dir);
 
@@ -821,7 +821,7 @@ public:
 
     ~DbUnQLite() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         for (auto&& [key, value] : _collections) {
             unqlite_close(value);
@@ -830,7 +830,7 @@ public:
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -881,7 +881,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -913,7 +913,7 @@ protected:
 
     void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -948,7 +948,7 @@ protected:
 
     void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -986,7 +986,7 @@ protected:
 
     void DeleteRecord(string_view collection_name, uint id) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -1001,7 +1001,7 @@ protected:
 
     void CommitRecords() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         for (auto&& [key, value] : _collections) {
             const auto commit = unqlite_commit(value);
@@ -1014,7 +1014,7 @@ protected:
 private:
     [[nodiscard]] auto GetCollection(string_view collection_name) const -> unqlite*
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         unqlite* db;
 
@@ -1052,7 +1052,7 @@ public:
 
     DbMongo(string_view uri, string_view db_name)
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         mongoc_init();
 
@@ -1089,7 +1089,7 @@ public:
 
     ~DbMongo() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         for (auto&& [key, value] : _collections) {
             mongoc_collection_destroy(value);
@@ -1102,7 +1102,7 @@ public:
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1151,7 +1151,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1196,7 +1196,7 @@ protected:
 
     void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1224,7 +1224,7 @@ protected:
 
     void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1265,7 +1265,7 @@ protected:
 
     void DeleteRecord(string_view collection_name, uint id) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1289,7 +1289,7 @@ protected:
 
     void CommitRecords() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         // Nothing
     }
@@ -1297,7 +1297,7 @@ protected:
 private:
     [[nodiscard]] auto GetCollection(string_view collection_name) const -> mongoc_collection_t*
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         mongoc_collection_t* collection;
 
@@ -1336,7 +1336,7 @@ public:
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const auto& collection = _collections[string(collection_name)];
 
@@ -1353,7 +1353,7 @@ public:
 protected:
     [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         const auto& collection = _collections[string(collection_name)];
 
@@ -1363,7 +1363,7 @@ protected:
 
     void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1375,7 +1375,7 @@ protected:
 
     void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1391,7 +1391,7 @@ protected:
 
     void DeleteRecord(string_view collection_name, uint id) override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         auto& collection = _collections[string(collection_name)];
 
@@ -1403,7 +1403,7 @@ protected:
 
     void CommitRecords() override
     {
-        PROFILER_ENTRY();
+        STACK_TRACE_ENTRY();
 
         // Nothing
     }
@@ -1414,7 +1414,7 @@ private:
 
 auto ConnectToDataBase(string_view connection_info) -> DataBase
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (const auto options = _str(connection_info).split(' '); !options.empty()) {
         WriteLog("Connect to {} data base", options.front());

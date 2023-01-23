@@ -39,7 +39,7 @@ constexpr auto BIAS_FLOAT = 0.02f;
 
 LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _geometry {geometry}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _maxHx = maxhx;
     _maxHy = maxhy;
@@ -120,7 +120,7 @@ LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx
 
 auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     auto t1_x = cx;
     auto t2_x = cx;
@@ -150,7 +150,7 @@ auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
 
 void LineTracer::GetNextSquare(ushort& cx, ushort& cy)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _x1 += _dx;
     _y1 += _dy;
@@ -168,7 +168,7 @@ void LineTracer::GetNextSquare(ushort& cx, ushort& cy)
 
 void LineTracer::NormalizeDir()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (_dir <= 0.0f) {
         _dir = 360.0f - std::fmod(-_dir, 360.0f);

@@ -55,7 +55,7 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     _resources {resources},
     _textureLoader {std::move(tex_loader)}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     static std::once_flag once;
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
@@ -65,12 +65,12 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
 
 ParticleManager::~ParticleManager()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 auto ParticleManager::CreateParticles(string_view name) -> unique_ptr<ParticleSystem>
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     SPK::Ref<SPK::System> base_system;
 
@@ -110,33 +110,33 @@ auto ParticleManager::CreateParticles(string_view name) -> unique_ptr<ParticleSy
 
 ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) : _particleMngr {particle_mngr}
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     _impl = std::make_unique<Impl>();
 }
 
 ParticleSystem::~ParticleSystem()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 }
 
 bool ParticleSystem::IsActive() const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return _impl->System->isActive();
 }
 
 auto ParticleSystem::GetElapsedTime() const -> float
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     return static_cast<float>(_elapsedTime);
 }
 
 auto ParticleSystem::GetBaseSystem() -> SPK::System*
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -145,7 +145,7 @@ auto ParticleSystem::GetBaseSystem() -> SPK::System*
 
 void ParticleSystem::SetBaseSystem(SPK::System* system)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -154,7 +154,7 @@ void ParticleSystem::SetBaseSystem(SPK::System* system)
 
 void ParticleSystem::Respawn()
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -166,7 +166,7 @@ void ParticleSystem::Respawn()
 
 void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest, float look_dir, const vec3& view_offset)
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
@@ -214,7 +214,7 @@ void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest
 
 void ParticleSystem::Draw(const mat44& proj, const vec3& view_offset, float cam_rot) const
 {
-    PROFILER_ENTRY();
+    STACK_TRACE_ENTRY();
 
     if (!_impl->System->isActive()) {
         return;
