@@ -123,6 +123,7 @@ set( FO_ANGELSCRIPT_EXT_DIR "" )
 set( FO_ANGELSCRIPT_SDK_DIR "" )
 set( FO_ANGELSCRIPT_PREPROCESSOR_DIR "" )
 set( FO_MONO_DIR "" )
+set( FO_TRACY_DIR "" )
 set( FO_OGG_SOURCE "" )
 set( FO_VORBIS_SOURCE "" )
 set( FO_THEORA_SOURCE "" )
@@ -1143,6 +1144,17 @@ if( FO_MONO_SCRIPTING )
 	add_compile_definitions( HAVE_EXTERN_DEFINED_WINAPI_SUPPORT )
 	DisableLibWarnings( libmono )
 endif()
+
+# Tracy profiler
+StatusMessage( "+ Tracy" )
+set( FO_TRACY_DIR "ThirdParty/tracy" )
+set( TRACY_STATIC ON CACHE BOOL "Forced by FOnline" FORCE )
+set( TRACY_CALLSTACK ON CACHE BOOL "Forced by FOnline" FORCE )
+set( TRACY_ONLY_LOCALHOST ON CACHE BOOL "Forced by FOnline" FORCE )
+add_subdirectory( "${FO_TRACY_DIR}" )
+include_directories( "${FO_TRACY_DIR}/public" )
+list( APPEND FO_COMMON_LIBS "TracyClient" )
+DisableLibWarnings( TracyClient )
 
 # Engine sources
 list( APPEND FO_COMMON_SOURCE
