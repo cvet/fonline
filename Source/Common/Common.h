@@ -159,6 +159,11 @@ inline auto format_as(T v)
 #include "WinApi-Include.h"
 #endif
 
+// Tracy profiler
+#include "tracy/Tracy.hpp"
+#define PROFILER_ENTRY() ZoneScoped
+#define PROFILER_FRAME_MARK() FrameMark
+
 // Base types
 // Todo: split meanings if int8 and char in code
 // Todo: move from 32 bit hashes to 64 bit

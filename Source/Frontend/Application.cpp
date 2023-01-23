@@ -1027,6 +1027,8 @@ void Application::EndFrame()
     ActiveRenderer->Present();
 
     _onFrameEndDispatcher();
+
+    PROFILER_FRAME_MARK();
 }
 
 auto AppWindow::GetSize() const -> tuple<int, int>

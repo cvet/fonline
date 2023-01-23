@@ -220,6 +220,8 @@ void Application::BeginFrame()
 void Application::EndFrame()
 {
     _onFrameEndDispatcher();
+
+    PROFILER_FRAME_MARK();
 }
 
 auto AppWindow::GetSize() const -> tuple<int, int>
