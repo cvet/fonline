@@ -44,11 +44,15 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     GameTime(settings),
     _propsRelation {props_relation}
 {
+    PROFILER_ENTRY();
+
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
 }
 
 auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_registrationFinalized);
 
     if (_registrationFinalized) {
@@ -67,6 +71,8 @@ auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> Pro
 
 void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_registrationFinalized);
 
     if (_registrationFinalized) {
@@ -91,6 +97,8 @@ void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_ty
 
 auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
 {
+    PROFILER_ENTRY();
+
     const auto it = _registrators.find(string(class_name));
     RUNTIME_ASSERT(it != _registrators.end());
     return it->second;
@@ -98,6 +106,8 @@ auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const
 
 void FOEngineBase::FinalizeDataRegistration()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_registrationFinalized);
 
     _registrationFinalized = true;
@@ -107,6 +117,8 @@ void FOEngineBase::FinalizeDataRegistration()
 
 auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
 {
+    PROFILER_ENTRY();
+
     const auto it = _enumsFull.find(string(enum_value_name));
     if (it == _enumsFull.end()) {
         if (failed != nullptr) {
@@ -123,6 +135,8 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) c
 
 auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
 {
+    PROFILER_ENTRY();
+
     const auto enum_it = _enums.find(string(enum_name));
     if (enum_it == _enums.end()) {
         if (failed != nullptr) {
@@ -150,6 +164,8 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
 
 auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> string
 {
+    PROFILER_ENTRY();
+
     const auto enum_it = _enumsRev.find(string(enum_name));
     if (enum_it == _enumsRev.end()) {
         if (failed != nullptr) {
@@ -177,6 +193,8 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
 
 auto FOEngineBase::ToHashedString(string_view s, bool mustExists) const -> hstring
 {
+    PROFILER_ENTRY();
+
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
     if (s.empty()) {
@@ -211,6 +229,8 @@ auto FOEngineBase::ToHashedString(string_view s, bool mustExists) const -> hstri
 
 auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
+    PROFILER_ENTRY();
+
     if (h == 0u) {
         return {};
     }
@@ -230,6 +250,8 @@ auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 
 auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
 {
+    PROFILER_ENTRY();
+
     if (str.empty()) {
         return 0;
     }

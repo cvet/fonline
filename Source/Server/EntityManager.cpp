@@ -40,10 +40,13 @@
 
 EntityManager::EntityManager(FOServer* engine) : _engine {engine}
 {
+    PROFILER_ENTRY();
 }
 
 void EntityManager::RegisterEntity(Player* entity, uint id)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(id != 0u);
     entity->SetId(id);
     RegisterEntityEx(entity);
@@ -53,6 +56,8 @@ void EntityManager::RegisterEntity(Player* entity, uint id)
 
 void EntityManager::UnregisterEntity(Player* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = _allPlayers.find(entity->GetId());
     RUNTIME_ASSERT(it != _allPlayers.end());
     _allPlayers.erase(it);
@@ -61,6 +66,8 @@ void EntityManager::UnregisterEntity(Player* entity)
 
 void EntityManager::RegisterEntity(Location* entity)
 {
+    PROFILER_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allLocations.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -68,6 +75,8 @@ void EntityManager::RegisterEntity(Location* entity)
 
 void EntityManager::UnregisterEntity(Location* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = _allLocations.find(entity->GetId());
     RUNTIME_ASSERT(it != _allLocations.end());
     _allLocations.erase(it);
@@ -76,6 +85,8 @@ void EntityManager::UnregisterEntity(Location* entity)
 
 void EntityManager::RegisterEntity(Map* entity)
 {
+    PROFILER_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allMaps.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -83,6 +94,8 @@ void EntityManager::RegisterEntity(Map* entity)
 
 void EntityManager::UnregisterEntity(Map* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = _allMaps.find(entity->GetId());
     RUNTIME_ASSERT(it != _allMaps.end());
     _allMaps.erase(it);
@@ -91,6 +104,8 @@ void EntityManager::UnregisterEntity(Map* entity)
 
 void EntityManager::RegisterEntity(Critter* entity)
 {
+    PROFILER_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allCritters.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -98,6 +113,8 @@ void EntityManager::RegisterEntity(Critter* entity)
 
 void EntityManager::UnregisterEntity(Critter* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = _allCritters.find(entity->GetId());
     RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
@@ -106,6 +123,8 @@ void EntityManager::UnregisterEntity(Critter* entity)
 
 void EntityManager::RegisterEntity(Item* entity)
 {
+    PROFILER_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allItems.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -113,6 +132,8 @@ void EntityManager::RegisterEntity(Item* entity)
 
 void EntityManager::UnregisterEntity(Item* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = _allItems.find(entity->GetId());
     RUNTIME_ASSERT(it != _allItems.end());
     _allItems.erase(it);
@@ -121,6 +142,8 @@ void EntityManager::UnregisterEntity(Item* entity)
 
 void EntityManager::RegisterEntityEx(ServerEntity* entity)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (entity->GetId() == 0u) {
@@ -145,6 +168,8 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
 void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity->GetId() != 0u);
@@ -158,6 +183,8 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
 
 auto EntityManager::GetPlayer(uint id) -> Player*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second;
     }
@@ -167,11 +194,15 @@ auto EntityManager::GetPlayer(uint id) -> Player*
 
 auto EntityManager::GetPlayers() -> const unordered_map<uint, Player*>&
 {
+    PROFILER_ENTRY();
+
     return _allPlayers;
 }
 
 auto EntityManager::GetLocation(uint id) -> Location*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second;
     }
@@ -181,6 +212,8 @@ auto EntityManager::GetLocation(uint id) -> Location*
 
 auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 {
+    PROFILER_ENTRY();
+
     for (auto&& [id, loc] : _allLocations) {
         if (loc->GetProtoId() == pid) {
             if (skip_count == 0u) {
@@ -195,11 +228,15 @@ auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 
 auto EntityManager::GetLocations() -> const unordered_map<uint, Location*>&
 {
+    PROFILER_ENTRY();
+
     return _allLocations;
 }
 
 auto EntityManager::GetMap(uint id) -> Map*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
         return it->second;
     }
@@ -209,6 +246,8 @@ auto EntityManager::GetMap(uint id) -> Map*
 
 auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 {
+    PROFILER_ENTRY();
+
     for (auto&& [id, map] : _allMaps) {
         if (map->GetProtoId() == pid) {
             if (skip_count == 0u) {
@@ -223,11 +262,15 @@ auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 
 auto EntityManager::GetMaps() -> const unordered_map<uint, Map*>&
 {
+    PROFILER_ENTRY();
+
     return _allMaps;
 }
 
 auto EntityManager::GetCritter(uint id) -> Critter*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
         return it->second;
     }
@@ -237,11 +280,15 @@ auto EntityManager::GetCritter(uint id) -> Critter*
 
 auto EntityManager::GetCritters() -> const unordered_map<uint, Critter*>&
 {
+    PROFILER_ENTRY();
+
     return _allCritters;
 }
 
 auto EntityManager::GetItem(uint id) -> Item*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second;
     }
@@ -251,11 +298,15 @@ auto EntityManager::GetItem(uint id) -> Item*
 
 auto EntityManager::GetItems() -> const unordered_map<uint, Item*>&
 {
+    PROFILER_ENTRY();
+
     return _allItems;
 }
 
 auto EntityManager::GetCritterItems(uint cr_id) -> vector<Item*>
 {
+    PROFILER_ENTRY();
+
     vector<Item*> items;
 
     for (auto&& [id, item] : _allItems) {
@@ -269,6 +320,8 @@ auto EntityManager::GetCritterItems(uint cr_id) -> vector<Item*>
 
 void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
 {
+    PROFILER_ENTRY();
+
     WriteLog("Load entities");
 
     int errors = 0;
@@ -446,6 +499,8 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
 void EntityManager::InitAfterLoad()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     WriteLog("Init entities after link");
@@ -520,6 +575,8 @@ void EntityManager::InitAfterLoad()
 
 void EntityManager::FinalizeEntities()
 {
+    PROFILER_ENTRY();
+
     const auto destroy_entities = [](auto& entities) {
         auto recursion_fuse = 0;
 
@@ -549,6 +606,8 @@ void EntityManager::FinalizeEntities()
 
 auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*
 {
+    PROFILER_ENTRY();
+
     auto& all_entities = _allCustomEntities[string(entity_class_name)];
     const auto it = all_entities.find(id);
 
@@ -578,6 +637,8 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> S
 
 auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerEntity*
 {
+    PROFILER_ENTRY();
+
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
     auto* entity = new ServerEntity(_engine, 0u, registrator);
 
@@ -591,6 +652,8 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
 
 void EntityManager::DeleteCustomEntity(string_view entity_class_name, uint id)
 {
+    PROFILER_ENTRY();
+
     auto* entity = GetCustomEntity(entity_class_name, id);
     if (entity != nullptr) {
         auto& all_entities = _allCustomEntities[string(entity_class_name)];

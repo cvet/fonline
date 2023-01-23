@@ -70,7 +70,7 @@ public:
     [[nodiscard]] auto str() const -> string { return _s; }
     [[nodiscard]] auto strv() const -> string_view { return _s; }
 
-    [[nodiscard]] auto length() const -> uint;
+    [[nodiscard]] auto length() const -> size_t;
     [[nodiscard]] auto empty() const -> bool;
     [[nodiscard]] auto compareIgnoreCase(string_view r) const -> bool;
     [[nodiscard]] auto compareIgnoreCaseUtf8(string_view r) const -> bool;
@@ -79,7 +79,7 @@ public:
     [[nodiscard]] auto endsWith(char r) const -> bool;
     [[nodiscard]] auto endsWith(string_view r) const -> bool;
     [[nodiscard]] auto isValidUtf8() const -> bool;
-    [[nodiscard]] auto lengthUtf8() const -> uint;
+    [[nodiscard]] auto lengthUtf8() const -> size_t;
 
     auto substringUntil(char separator) -> _str&;
     auto substringUntil(string_view separator) -> _str&;

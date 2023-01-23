@@ -73,6 +73,8 @@ static void FlushLogAtExit()
 
 void LogWithoutTimestamp()
 {
+    PROFILER_ENTRY();
+
     std::lock_guard locker(Data->LogLocker);
 
     Data->LogDisableTimestamp = true;
@@ -80,6 +82,8 @@ void LogWithoutTimestamp()
 
 void LogToFile(string_view fname)
 {
+    PROFILER_ENTRY();
+
     std::lock_guard locker(Data->LogLocker);
 
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
@@ -87,6 +91,8 @@ void LogToFile(string_view fname)
 
 void SetLogCallback(string_view key, LogFunc callback)
 {
+    PROFILER_ENTRY();
+
     std::lock_guard locker(Data->LogLocker);
 
     if (!key.empty()) {
@@ -105,6 +111,8 @@ void SetLogCallback(string_view key, LogFunc callback)
 
 void WriteLogMessage(LogType type, string_view message)
 {
+    PROFILER_ENTRY();
+
     // Avoid recursive calls
     if (Data->LogFunctionsInProcess) {
         return;

@@ -37,16 +37,22 @@
 
 Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
 {
+    PROFILER_ENTRY();
+
     _props.SetEntity(this);
 }
 
 void Entity::AddRef() const noexcept
 {
+    PROFILER_ENTRY();
+
     ++_refCounter;
 }
 
 void Entity::Release() const noexcept
 {
+    PROFILER_ENTRY();
+
     if (--_refCounter == 0) {
         delete this;
     }
@@ -54,21 +60,29 @@ void Entity::Release() const noexcept
 
 auto Entity::GetClassName() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return _props.GetRegistrator()->GetClassName();
 }
 
 auto Entity::GetProperties() const -> const Properties&
 {
+    PROFILER_ENTRY();
+
     return _props;
 }
 
 auto Entity::GetPropertiesForEdit() -> Properties&
 {
+    PROFILER_ENTRY();
+
     return _props;
 }
 
 auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _events.find(event_name); it != _events.end()) {
         return &it->second;
     }
@@ -78,11 +92,15 @@ auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallback
 
 void Entity::SubscribeEvent(const string& event_name, EventCallbackData callback)
 {
+    PROFILER_ENTRY();
+
     SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
 }
 
 void Entity::UnsubscribeEvent(const string& event_name, const void* subscription_ptr)
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _events.find(event_name); it != _events.end()) {
         UnsubscribeEvent(&it->second, subscription_ptr);
     }
@@ -90,6 +108,8 @@ void Entity::UnsubscribeEvent(const string& event_name, const void* subscription
 
 void Entity::UnsubscribeAllEvent(const string& event_name)
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _events.find(event_name); it != _events.end()) {
         it->second.clear();
     }
@@ -97,6 +117,8 @@ void Entity::UnsubscribeAllEvent(const string& event_name)
 
 auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _events.find(event_name); it != _events.end()) {
         return FireEvent(&it->second, args);
     }
@@ -105,6 +127,8 @@ auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& 
 
 void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(callbacks);
@@ -114,6 +138,8 @@ void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackD
 
 void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(callbacks);
@@ -125,6 +151,8 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* 
 
 auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(callbacks);
 
     for (const auto& cb : copy(*callbacks)) {
@@ -156,16 +184,22 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
 
 auto Entity::IsDestroying() const -> bool
 {
+    PROFILER_ENTRY();
+
     return _isDestroying;
 }
 
 auto Entity::IsDestroyed() const -> bool
 {
+    PROFILER_ENTRY();
+
     return _isDestroyed;
 }
 
 void Entity::MarkAsDestroying()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_isDestroying);
     RUNTIME_ASSERT(!_isDestroyed);
 
@@ -174,6 +208,8 @@ void Entity::MarkAsDestroying()
 
 void Entity::MarkAsDestroyed()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_isDestroyed);
 
     _isDestroying = true;
@@ -182,107 +218,149 @@ void Entity::MarkAsDestroyed()
 
 void Entity::SetProperties(const Properties& props)
 {
+    PROFILER_ENTRY();
+
     _props = props;
 }
 
 auto Entity::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
 {
+    PROFILER_ENTRY();
+
     return _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
 void Entity::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
+    PROFILER_ENTRY();
+
     _props.RestoreData(all_data, all_data_sizes);
 }
 
 void Entity::RestoreData(const vector<vector<uchar>>& properties_data)
 {
+    PROFILER_ENTRY();
+
     _props.RestoreData(properties_data);
 }
 
 auto Entity::LoadFromText(const map<string, string>& key_values) -> bool
 {
+    PROFILER_ENTRY();
+
     return _props.LoadFromText(key_values);
 }
 
 void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
+    PROFILER_ENTRY();
+
     _props.SetValueFromData(prop, prop_data);
 }
 
 auto Entity::GetValueAsInt(const Property* prop) const -> int
 {
+    PROFILER_ENTRY();
+
     return _props.GetPlainDataValueAsInt(prop);
 }
 
 auto Entity::GetValueAsInt(int prop_index) const -> int
 {
+    PROFILER_ENTRY();
+
     return _props.GetValueAsInt(prop_index);
 }
 
 auto Entity::GetValueAsFloat(const Property* prop) const -> float
 {
+    PROFILER_ENTRY();
+
     return _props.GetPlainDataValueAsFloat(prop);
 }
 
 auto Entity::GetValueAsFloat(int prop_index) const -> float
 {
+    PROFILER_ENTRY();
+
     return _props.GetValueAsFloat(prop_index);
 }
 
 void Entity::SetValueAsInt(const Property* prop, int value)
 {
+    PROFILER_ENTRY();
+
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
 void Entity::SetValueAsInt(int prop_index, int value)
 {
+    PROFILER_ENTRY();
+
     _props.SetValueAsInt(prop_index, value);
 }
 
 void Entity::SetValueAsFloat(const Property* prop, float value)
 {
+    PROFILER_ENTRY();
+
     _props.SetPlainDataValueAsFloat(prop, value);
 }
 
 void Entity::SetValueAsFloat(int prop_index, float value)
 {
+    PROFILER_ENTRY();
+
     _props.SetValueAsFloat(prop_index, value);
 }
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_protoId);
 }
 
 auto ProtoEntity::GetName() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return _protoId.as_str();
 }
 
 auto ProtoEntity::GetProtoId() const -> hstring
 {
+    PROFILER_ENTRY();
+
     return _protoId;
 }
 
 void ProtoEntity::EnableComponent(hstring component)
 {
+    PROFILER_ENTRY();
+
     _components.emplace(component);
     _componentHashes.emplace(component.as_hash());
 }
 
 auto ProtoEntity::HasComponent(hstring name) const -> bool
 {
+    PROFILER_ENTRY();
+
     return _components.count(name) != 0u;
 }
 
 auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
 {
+    PROFILER_ENTRY();
+
     return _componentHashes.count(hash) != 0u;
 }
 
 EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) : _proto {proto}
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_proto);
 
     _proto->AddRef();
@@ -291,25 +369,35 @@ EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) : _pro
 
 EntityWithProto::~EntityWithProto()
 {
+    PROFILER_ENTRY();
+
     _proto->Release();
 }
 
 auto EntityWithProto::GetProtoId() const -> hstring
 {
+    PROFILER_ENTRY();
+
     return _proto->GetProtoId();
 }
 
 auto EntityWithProto::GetProto() const -> const ProtoEntity*
 {
+    PROFILER_ENTRY();
+
     return _proto;
 }
 
 EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) : _entity {entity}, _callbackName {callback_name}
 {
+    PROFILER_ENTRY();
+
 }
 
 void EntityEventBase::Subscribe(Entity::EventCallbackData callback)
 {
+    PROFILER_ENTRY();
+
     if (_callbacks == nullptr) {
         _callbacks = _entity->GetEventCallbacks(_callbackName);
     }
@@ -320,6 +408,8 @@ void EntityEventBase::Subscribe(Entity::EventCallbackData callback)
 // ReSharper disable once CppMemberFunctionMayBeConst
 void EntityEventBase::Unsubscribe(const void* subscription_ptr)
 {
+    PROFILER_ENTRY();
+
     if (_callbacks == nullptr) {
         return;
     }
@@ -329,6 +419,8 @@ void EntityEventBase::Unsubscribe(const void* subscription_ptr)
 
 void EntityEventBase::UnsubscribeAll()
 {
+    PROFILER_ENTRY();
+
     if (_callbacks == nullptr) {
         return;
     }

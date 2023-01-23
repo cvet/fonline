@@ -44,6 +44,8 @@
 
 CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto) : CritterView(map->GetEngine(), id, proto), _map {map}
 {
+    PROFILER_ENTRY();
+
     _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
     DrawEffect = _engine->EffectMngr.Effects.Critter;
     auto layers = GetModelLayers();
@@ -53,6 +55,8 @@ CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto)
 
 void CritterHexView::Init()
 {
+    PROFILER_ENTRY();
+
     CritterView::Init();
 
 #if FO_ENABLE_3D
@@ -66,6 +70,8 @@ void CritterHexView::Init()
 
 void CritterHexView::Finish()
 {
+    PROFILER_ENTRY();
+
     CritterView::Finish();
 
     SetFade(false);
@@ -74,16 +80,22 @@ void CritterHexView::Finish()
 
 auto CritterHexView::IsFinishing() const -> bool
 {
+    PROFILER_ENTRY();
+
     return _finishingTime != 0;
 }
 
 auto CritterHexView::IsFinished() const -> bool
 {
+    PROFILER_ENTRY();
+
     return _finishingTime != 0u && _engine->GameTime.GameTick() > _finishingTime;
 }
 
 void CritterHexView::SetFade(bool fade_up)
 {
+    PROFILER_ENTRY();
+
     const auto tick = _engine->GameTime.GameTick();
     FadingTick = tick + _engine->Settings.FadingDuration - (FadingTick > tick ? FadingTick - tick : 0);
     _fadeUp = fade_up;
@@ -92,6 +104,8 @@ void CritterHexView::SetFade(bool fade_up)
 
 auto CritterHexView::GetFadeAlpha() -> uchar
 {
+    PROFILER_ENTRY();
+
     const auto tick = _engine->GameTime.GameTick();
     const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTick > tick ? FadingTick - tick : 0u);
     if (fading_proc == 100u) {
@@ -104,11 +118,15 @@ auto CritterHexView::GetFadeAlpha() -> uchar
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
 {
+    PROFILER_ENTRY();
+
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
 auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
+    PROFILER_ENTRY();
+
     auto* item = CritterView::AddItem(id, proto, slot, properties_data);
 
     if (item->GetCritterSlot() != 0u && !IsAnim()) {
@@ -120,6 +138,8 @@ auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const 
 
 void CritterHexView::DeleteItem(ItemView* item, bool animate)
 {
+    PROFILER_ENTRY();
+
     CritterView::DeleteItem(item, animate);
 
     if (animate && !IsAnim()) {
@@ -129,6 +149,8 @@ void CritterHexView::DeleteItem(ItemView* item, bool animate)
 
 auto CritterHexView::GetAttackDist() -> uint
 {
+    PROFILER_ENTRY();
+
     uint dist = 0;
     _engine->OnCritterGetAttackDistantion.Fire(this, nullptr, 0, dist);
     return dist;
@@ -136,6 +158,8 @@ auto CritterHexView::GetAttackDist() -> uint
 
 void CritterHexView::ClearMove()
 {
+    PROFILER_ENTRY();
+
     Moving.Steps = {};
     Moving.ControlSteps = {};
     Moving.StartTick = {};
@@ -155,6 +179,8 @@ void CritterHexView::ClearMove()
 
 void CritterHexView::Action(int action, int action_ext, Entity* context_item, bool local_call /* = true */)
 {
+    PROFILER_ENTRY();
+
     _engine->OnCritterAction.Fire(local_call, this, action, action_ext, context_item);
 
     switch (action) {
@@ -213,6 +239,8 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
 
 void CritterHexView::NextAnim(bool erase_front)
 {
+    PROFILER_ENTRY();
+
     if (_animSequence.empty()) {
         return;
     }
@@ -247,6 +275,8 @@ void CritterHexView::NextAnim(bool erase_front)
 
 void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
 {
+    PROFILER_ENTRY();
+
     const auto dir = GetDir();
     if (anim1 == 0u) {
         anim1 = GetAnim1();
@@ -301,6 +331,8 @@ void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
 
 void CritterHexView::AnimateStay()
 {
+    PROFILER_ENTRY();
+
     ClearAnim();
 
     _animStartTick = _engine->GameTime.GameTick();
@@ -380,6 +412,8 @@ void CritterHexView::AnimateStay()
 
 void CritterHexView::ClearAnim()
 {
+    PROFILER_ENTRY();
+
     for (const auto& anim : _animSequence) {
         if (anim.ContextItem != nullptr) {
             anim.ContextItem->Release();
@@ -390,6 +424,8 @@ void CritterHexView::ClearAnim()
 
 auto CritterHexView::IsHaveLightSources() const -> bool
 {
+    PROFILER_ENTRY();
+
     for (const auto* item : _items) {
         if (item->GetIsLight()) {
             return true;
@@ -400,16 +436,22 @@ auto CritterHexView::IsHaveLightSources() const -> bool
 
 auto CritterHexView::IsNeedReset() const -> bool
 {
+    PROFILER_ENTRY();
+
     return _needReset && _engine->GameTime.GameTick() >= _resetTick;
 }
 
 void CritterHexView::ResetOk()
 {
+    PROFILER_ENTRY();
+
     _needReset = false;
 }
 
 auto CritterHexView::GetAnim2() const -> uint
 {
+    PROFILER_ENTRY();
+
     switch (GetCond()) {
     case CritterCondition::Alive:
 #if FO_ENABLE_3D
@@ -427,6 +469,8 @@ auto CritterHexView::GetAnim2() const -> uint
 
 auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 {
+    PROFILER_ENTRY();
+
     if (anim1 == 0u) {
         anim1 = GetAnim1();
     }
@@ -443,6 +487,8 @@ auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 #if FO_ENABLE_3D
 auto CritterHexView::GetModelLayersData() const -> const int*
 {
+    PROFILER_ENTRY();
+
     uint data_size;
     const auto* data = GetProperties().GetRawData(GetPropertyModelLayers(), data_size);
     RUNTIME_ASSERT(data_size == sizeof(int) * LAYERS3D_COUNT);
@@ -451,6 +497,8 @@ auto CritterHexView::GetModelLayersData() const -> const int*
 
 void CritterHexView::RefreshModel()
 {
+    PROFILER_ENTRY();
+
     _model = nullptr;
 
     const auto model_name = GetModelName();
@@ -484,17 +532,23 @@ void CritterHexView::RefreshModel()
 
 void CritterHexView::ChangeDir(uchar dir)
 {
+    PROFILER_ENTRY();
+
     ChangeDirAngle(_engine->Geometry.DirToAngle(dir));
 }
 
 void CritterHexView::ChangeDirAngle(int dir_angle)
 {
+    PROFILER_ENTRY();
+
     ChangeLookDirAngle(dir_angle);
     ChangeMoveDirAngle(dir_angle);
 }
 
 void CritterHexView::ChangeLookDirAngle(int dir_angle)
 {
+    PROFILER_ENTRY();
+
     const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
 
     if (normalized_dir_angle == GetDirAngle()) {
@@ -517,6 +571,8 @@ void CritterHexView::ChangeLookDirAngle(int dir_angle)
 
 void CritterHexView::ChangeMoveDirAngle(int dir_angle)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
 #if FO_ENABLE_3D
@@ -528,6 +584,8 @@ void CritterHexView::ChangeMoveDirAngle(int dir_angle)
 
 void CritterHexView::Process()
 {
+    PROFILER_ENTRY();
+
     if (IsMoving()) {
         ProcessMoving();
     }
@@ -631,6 +689,8 @@ void CritterHexView::Process()
 
 void CritterHexView::ProcessMoving()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!Moving.Steps.empty());
     RUNTIME_ASSERT(!Moving.ControlSteps.empty());
     RUNTIME_ASSERT(Moving.WholeTime > 0.0f);
@@ -790,6 +850,8 @@ void CritterHexView::ProcessMoving()
 
 auto CritterHexView::GetViewRect() const -> IRect
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(SprDrawValid);
 
     return _engine->SprMngr.GetViewRect(SprDraw);
@@ -797,6 +859,8 @@ auto CritterHexView::GetViewRect() const -> IRect
 
 void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
 {
+    PROFILER_ENTRY();
+
     _curFrmIndex = frm_index;
 
     SprId = anim->GetSprId(_curFrmIndex);
@@ -819,6 +883,8 @@ void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
 
 void CritterHexView::AddExtraOffs(int ext_ox, int ext_oy)
 {
+    PROFILER_ENTRY();
+
     _oxExt += static_cast<float>(ext_ox);
     _oyExt += static_cast<float>(ext_oy);
 
@@ -833,6 +899,8 @@ void CritterHexView::AddExtraOffs(int ext_ox, int ext_oy)
 
 void CritterHexView::RefreshOffs()
 {
+    PROFILER_ENTRY();
+
     SprOx = GetHexOffsX() + iround(_oxExt) + _oxAnim;
     SprOy = GetHexOffsY() + iround(_oyExt) + _oyAnim;
 
@@ -845,6 +913,8 @@ void CritterHexView::RefreshOffs()
 
 void CritterHexView::SetText(string_view str, uint color, uint text_delay)
 {
+    PROFILER_ENTRY();
+
     _tickStartText = _engine->GameTime.GameTick();
     _strTextOnHead = str;
     _tickTextDelay = text_delay;
@@ -853,6 +923,8 @@ void CritterHexView::SetText(string_view str, uint color, uint text_delay)
 
 void CritterHexView::GetNameTextPos(int& x, int& y) const
 {
+    PROFILER_ENTRY();
+
     if (SprDrawValid) {
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
@@ -869,6 +941,8 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
 
 void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const
 {
+    PROFILER_ENTRY();
+
     name_visible = false;
 
     string str;
@@ -905,6 +979,8 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
 
 void CritterHexView::DrawTextOnHead()
 {
+    PROFILER_ENTRY();
+
     if (_strTextOnHead.empty()) {
         if (IsOwnedByPlayer() && !_engine->Settings.ShowPlayerNames) {
             return;

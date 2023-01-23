@@ -164,16 +164,22 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
 
 EffectBaker::EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
+    PROFILER_ENTRY();
+
     glslang::InitializeProcess();
 }
 
 EffectBaker::~EffectBaker()
 {
+    PROFILER_ENTRY();
+
     glslang::FinalizeProcess();
 }
 
 void EffectBaker::AutoBake()
 {
+    PROFILER_ENTRY();
+
     _errors = 0;
 
 #if FO_ASYNC_BAKE
@@ -237,6 +243,8 @@ void EffectBaker::AutoBake()
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 {
+    PROFILER_ENTRY();
+
     auto fofx = ConfigFile(fname, string(content), nullptr, ConfigFileOption::CollectContent);
     if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
@@ -314,6 +322,8 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate)
 {
+    PROFILER_ENTRY();
+
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
 

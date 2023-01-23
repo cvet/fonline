@@ -44,6 +44,8 @@
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _resources), _sprMngr(_settings, window, _resources, _effectMngr)
 {
+    PROFILER_ENTRY();
+
     _startTick = Timer::RealtimeTick();
 
     _resources.AddDataSource(_settings.EmbeddedResources);
@@ -88,6 +90,8 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
 
 void Updater::Net_OnConnect(bool success)
 {
+    PROFILER_ENTRY();
+
     if (success) {
         AddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
         AddText(STR_CHECK_UPDATES, "Check updates...");
@@ -99,6 +103,8 @@ void Updater::Net_OnConnect(bool success)
 
 void Updater::Net_OnDisconnect()
 {
+    PROFILER_ENTRY();
+
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
         Abort(STR_CONNECTION_FAILTURE, "Connection failture!");
     }
@@ -106,6 +112,8 @@ void Updater::Net_OnDisconnect()
 
 auto Updater::Process() -> bool
 {
+    PROFILER_ENTRY();
+
     InputEvent ev;
     while (App->Input.PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
@@ -175,16 +183,22 @@ auto Updater::Process() -> bool
 
 auto Updater::MakeWritePath(string_view fname) const -> string
 {
+    PROFILER_ENTRY();
+
     return _str(_settings.ResourcesDir).combinePath(fname).str();
 }
 
 void Updater::AddText(uint num_str, string_view num_str_str)
 {
+    PROFILER_ENTRY();
+
     _messages.emplace_back(num_str_str);
 }
 
 void Updater::Abort(uint num_str, string_view num_str_str)
 {
+    PROFILER_ENTRY();
+
     _aborted = true;
 
     AddText(num_str, num_str_str);
@@ -197,6 +211,8 @@ void Updater::Abort(uint num_str, string_view num_str_str)
 
 void Updater::Net_OnUpdateFilesResponse()
 {
+    PROFILER_ENTRY();
+
     uint msg_len;
     bool outdated;
     uint data_size;
@@ -274,6 +290,8 @@ void Updater::Net_OnUpdateFilesResponse()
 
 void Updater::Net_OnUpdateFileData()
 {
+    PROFILER_ENTRY();
+
     uint msg_len;
     uint data_size;
     _conn.InBuf >> msg_len;
@@ -306,6 +324,8 @@ void Updater::Net_OnUpdateFileData()
 
 void Updater::GetNextFile()
 {
+    PROFILER_ENTRY();
+
     if (_tempFile) {
         _tempFile = nullptr;
 

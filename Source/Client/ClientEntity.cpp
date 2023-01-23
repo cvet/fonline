@@ -36,20 +36,28 @@
 
 ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
 {
+    PROFILER_ENTRY();
+
 }
 
 auto ClientEntity::GetId() const -> uint
 {
+    PROFILER_ENTRY();
+
     return _id;
 }
 
 void ClientEntity::SetId(uint id)
 {
+    PROFILER_ENTRY();
+
     _id = id;
 }
 
 auto ClientEntity::GetEngine() -> FOClient*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     return _engine;
@@ -57,10 +65,14 @@ auto ClientEntity::GetEngine() -> FOClient*
 
 auto ClientEntity::GetName() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return GetProperties().GetRegistrator()->GetClassName();
 }
 
 void ClientEntity::MarkAsDestroyed()
 {
+    PROFILER_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }

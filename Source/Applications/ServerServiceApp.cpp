@@ -62,6 +62,8 @@ static void SetFOServiceStatus(uint state);
 
 static void ServerEntry()
 {
+    PROFILER_ENTRY();
+
     try {
         try {
             Data->Server = new FOServer(App->Settings);
@@ -104,6 +106,8 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ServerServiceApp(int argc, char** argv) -> int
 #endif
 {
+    PROFILER_ENTRY();
+
     try {
         InitApp(argc, argv, "ServerService");
 
@@ -215,6 +219,8 @@ int main(int argc, char** argv)
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
+    PROFILER_ENTRY();
+
     try {
         // Todo: convert argv from wchar_t** to char**
         InitApp(argc, nullptr, "ServerService");
@@ -245,6 +251,8 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
 static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
 {
+    PROFILER_ENTRY();
+
     try {
         if (opcode == SERVICE_CONTROL_STOP) {
             SetFOServiceStatus(SERVICE_STOP_PENDING);
@@ -268,6 +276,8 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
 
 static void SetFOServiceStatus(uint state)
 {
+    PROFILER_ENTRY();
+
     if (state == 0u) {
         state = Data->LastState;
     }

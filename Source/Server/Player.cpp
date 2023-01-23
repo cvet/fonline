@@ -43,46 +43,63 @@
 
 Player::Player(FOServer* engine, uint id, ClientConnection* connection) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef()), Connection {connection}, _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
 {
+    PROFILER_ENTRY();
 }
 
 Player::~Player()
 {
+    PROFILER_ENTRY();
+
     delete Connection;
 }
 
 void Player::SetName(string_view name)
 {
+    PROFILER_ENTRY();
+
     _name = name;
 }
 
 void Player::SetOwnedCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_ownedCr);
     _ownedCr = cr;
 }
 
 auto Player::GetName() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return _name;
 }
 
 auto Player::GetIp() const -> uint
 {
+    PROFILER_ENTRY();
+
     return Connection->GetIp();
 }
 
 auto Player::GetHost() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return Connection->GetHost();
 }
 
 auto Player::GetPort() const -> ushort
 {
+    PROFILER_ENTRY();
+
     return Connection->GetPort();
 }
 
 void Player::Send_AddCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(short) * 3 + sizeof(CritterCondition) + sizeof(uint) * 6 + sizeof(bool) * 3 + sizeof(hstring::hash_t);
 
     vector<uchar*>* data = nullptr;
@@ -128,6 +145,8 @@ void Player::Send_AddCritter(Critter* cr)
 
 void Player::Send_RemoveCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -138,6 +157,8 @@ void Player::Send_RemoveCritter(Critter* cr)
 
 void Player::Send_LoadMap(Map* map)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_ownedCr);
@@ -186,6 +207,8 @@ void Player::Send_LoadMap(Map* map)
 
 void Player::Send_Property(NetProperty type, const Property* prop, Entity* entity)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity);
@@ -264,6 +287,8 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
 
 void Player::Send_Move(Critter* from_cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (!from_cr->Moving.Steps.empty()) {
@@ -306,6 +331,8 @@ void Player::Send_Move(Critter* from_cr)
 
 void Player::Send_Dir(Critter* from_cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -317,6 +344,8 @@ void Player::Send_Dir(Critter* from_cr)
 
 void Player::Send_Action(Critter* from_cr, int action, int action_ext, Item* item)
 {
+    PROFILER_ENTRY();
+
     if (item != nullptr) {
         Send_SomeItem(item);
     }
@@ -332,6 +361,8 @@ void Player::Send_Action(Critter* from_cr, int action, int action_ext, Item* ite
 
 void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
 {
+    PROFILER_ENTRY();
+
     if (item != nullptr) {
         Send_SomeItem(item);
     }
@@ -376,6 +407,8 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
 
 void Player::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
 {
+    PROFILER_ENTRY();
+
     if (item != nullptr) {
         Send_SomeItem(item);
     }
@@ -393,6 +426,8 @@ void Player::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, 
 
 void Player::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -406,6 +441,8 @@ void Player::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, 
 
 void Player::Send_AddItemOnMap(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto is_added = item->ViewPlaceOnMap;
@@ -430,6 +467,8 @@ void Player::Send_AddItemOnMap(Item* item)
 
 void Player::Send_EraseItemFromMap(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -441,6 +480,8 @@ void Player::Send_EraseItemFromMap(Item* item)
 
 void Player::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -453,6 +494,8 @@ void Player::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 
 void Player::Send_AddItem(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (item->GetIsHidden()) {
@@ -477,6 +520,8 @@ void Player::Send_AddItem(Item* item)
 
 void Player::Send_EraseItem(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -487,6 +532,8 @@ void Player::Send_EraseItem(Item* item)
 
 void Player::Send_GlobalInfo(uchar info_flags)
 {
+    PROFILER_ENTRY();
+
 #define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 2 + sizeof(ushort) + sizeof(uint) + sizeof(uchar))
 
     NON_CONST_METHOD_HINT();
@@ -560,6 +607,8 @@ void Player::Send_GlobalInfo(uchar info_flags)
 
 void Player::Send_GlobalLocation(Location* loc, bool add)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     constexpr auto info_flags = GM_INFO_LOCATION;
@@ -588,6 +637,8 @@ void Player::Send_GlobalLocation(Location* loc, bool add)
 
 void Player::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     constexpr auto info_flags = GM_INFO_FOG;
@@ -605,6 +656,8 @@ void Player::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
 
 void Player::Send_Position(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -620,6 +673,8 @@ void Player::Send_Position(Critter* cr)
 
 void Player::Send_AllProperties()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uint msg_len = sizeof(uint) + sizeof(uint);
@@ -638,6 +693,8 @@ void Player::Send_AllProperties()
 
 void Player::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -650,6 +707,8 @@ void Player::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 
 void Player::Send_Talk()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_ownedCr);
@@ -699,6 +758,8 @@ void Player::Send_Talk()
 
 void Player::Send_TimeSync()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -715,6 +776,8 @@ void Player::Send_TimeSync()
 
 void Player::Send_Text(Critter* from_cr, string_view text, uchar how_say)
 {
+    PROFILER_ENTRY();
+
     if (text.empty()) {
         return;
     }
@@ -725,6 +788,8 @@ void Player::Send_Text(Critter* from_cr, string_view text, uchar how_say)
 
 void Player::Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(from_id) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(text.length()) + sizeof(unsafe_text);
@@ -741,6 +806,8 @@ void Player::Send_TextEx(uint from_id, string_view text, uchar how_say, bool uns
 
 void Player::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (num_str == 0u) {
@@ -760,6 +827,8 @@ void Player::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort 
 
 void Player::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_msg)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (num_str == 0u) {
@@ -777,6 +846,8 @@ void Player::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_
 
 void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (num_str == 0u) {
@@ -799,6 +870,8 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
 
 void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (num_str == 0u) {
@@ -820,6 +893,8 @@ void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
 
 void Player::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(hx) + sizeof(hy) + sizeof(color) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(text.length()) + sizeof(unsafe_text);
@@ -837,6 +912,8 @@ void Player::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bo
 
 void Player::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -851,6 +928,8 @@ void Player::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, u
 
 void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) * 2 + sizeof(uint) + sizeof(ushort) + sizeof(uint) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
@@ -869,6 +948,8 @@ void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg
 
 void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     // Todo: restore automaps
@@ -952,6 +1033,8 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
 
 void Player::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -965,6 +1048,8 @@ void Player::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 
 void Player::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -981,6 +1066,8 @@ void Player::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushor
 
 void Player::Send_PlaySound(uint crid_synchronize, string_view sound_name)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(crid_synchronize) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(sound_name.length());
@@ -995,6 +1082,8 @@ void Player::Send_PlaySound(uint crid_synchronize, string_view sound_name)
 
 void Player::Send_ViewMap()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_ownedCr);
@@ -1010,6 +1099,8 @@ void Player::Send_ViewMap()
 
 void Player::Send_SomeItem(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uchar);
@@ -1029,6 +1120,8 @@ void Player::Send_SomeItem(Item* item)
 
 void Player::Send_PlaceToGameComplete()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -1038,6 +1131,8 @@ void Player::Send_PlaceToGameComplete()
 
 void Player::Send_AddAllItems()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_ownedCr);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -1055,6 +1150,8 @@ void Player::Send_AddAllItems()
 
 void Player::Send_AllAutomapsInfo()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_ownedCr);
@@ -1072,6 +1169,8 @@ void Player::Send_AllAutomapsInfo()
 
 void Player::Send_SomeItems(const vector<Item*>* items, int param)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(param) + sizeof(bool) + sizeof(uint);

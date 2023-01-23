@@ -59,6 +59,8 @@ FOServer::FOServer(GlobalSettings& settings) :
     ItemMngr(this),
     DlgMngr(this)
 {
+    PROFILER_ENTRY();
+
     WriteLog("Start server");
 
     WriteLog("Mount data packs");
@@ -271,6 +273,8 @@ FOServer::FOServer(GlobalSettings& settings) :
 
 void FOServer::Start()
 {
+    PROFILER_ENTRY();
+
     WriteLog("Start game logic");
 
     DbStorage.StartChanges();
@@ -412,6 +416,8 @@ void FOServer::Start()
 
 FOServer::~FOServer()
 {
+    PROFILER_ENTRY();
+
     for (const auto* server : _connectionServers) {
         delete server;
     }
@@ -422,6 +428,8 @@ FOServer::~FOServer()
 
 void FOServer::Shutdown()
 {
+    PROFILER_ENTRY();
+
     _willFinishDispatcher();
 
     // Finish logic
@@ -486,6 +494,8 @@ void FOServer::Shutdown()
 
 void FOServer::MainLoop()
 {
+    PROFILER_ENTRY();
+
     // Cycle time
     const auto frame_begin = Timer::RealtimeTick();
 
@@ -665,6 +675,8 @@ void FOServer::MainLoop()
 
 void FOServer::DrawGui(string_view server_name)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     constexpr auto default_buf_size = 1000000; // ~1mb
@@ -727,6 +739,8 @@ void FOServer::DrawGui(string_view server_name)
 
 auto FOServer::GetIngamePlayersStatistics() -> string
 {
+    PROFILER_ENTRY();
+
     const auto& players = EntityMngr.GetPlayers();
     const auto conn_count = _unloginedPlayers.size() + players.size();
 
@@ -745,6 +759,8 @@ auto FOServer::GetIngamePlayersStatistics() -> string
 
 void FOServer::OnNewConnection(NetConnection* net_connection)
 {
+    PROFILER_ENTRY();
+
     if (!_started) {
         net_connection->Disconnect();
         return;
@@ -757,6 +773,8 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
 
 void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 {
+    PROFILER_ENTRY();
+
     auto* connection = unlogined_player->Connection;
 
     if (connection->IsHardDisconnected()) {
@@ -847,6 +865,8 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 
 void FOServer::ProcessPlayer(Player* player)
 {
+    PROFILER_ENTRY();
+
     if (player->Connection->IsHardDisconnected()) {
         if (auto* cr = player->GetOwnedCritter(); cr != nullptr) {
             cr->DetachPlayer();
@@ -944,6 +964,8 @@ void FOServer::ProcessPlayer(Player* player)
 
 void FOServer::ProcessConnection(ClientConnection* connection)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (connection->IsHardDisconnected()) {
@@ -984,6 +1006,8 @@ void FOServer::ProcessConnection(ClientConnection* connection)
 
 void FOServer::Process_Text(Player* player)
 {
+    PROFILER_ENTRY();
+
     Critter* cr = player->GetOwnedCritter();
 
     uint msg_len = 0;
@@ -1109,6 +1133,8 @@ void FOServer::Process_Text(Player* player)
 
 void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
+    PROFILER_ENTRY();
+
     SetLogCallback("Process_Command", logcb);
     Process_CommandReal(buf, logcb, player, admin_panel);
     SetLogCallback("Process_Command", nullptr);
@@ -1116,6 +1142,8 @@ void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* p
 
 void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
+    PROFILER_ENTRY();
+
     auto* cl_ = player->GetOwnedCritter();
 
     uint msg_len = 0;
@@ -1585,6 +1613,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
 void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(multiplier >= 1 && multiplier <= 50000);
     RUNTIME_ASSERT(year >= Settings.StartYear);
     RUNTIME_ASSERT(year < Settings.StartYear + 100);
@@ -1611,6 +1641,8 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
 
 void FOServer::LogToClients(string_view str)
 {
+    PROFILER_ENTRY();
+
     if (!str.empty() && str.back() == '\n') {
         _logLines.emplace_back(str, 0, str.length() - 1);
     }
@@ -1621,6 +1653,8 @@ void FOServer::LogToClients(string_view str)
 
 void FOServer::DispatchLogToClients()
 {
+    PROFILER_ENTRY();
+
     if (_logLines.empty()) {
         return;
     }
@@ -1647,6 +1681,8 @@ void FOServer::DispatchLogToClients()
 
 void FOServer::ProcessCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
 #if FO_SINGLEPLAYER
     if (GameTime.IsGamePaused()) {
         return;
@@ -1726,6 +1762,8 @@ void FOServer::ProcessCritter(Critter* cr)
 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
 {
+    PROFILER_ENTRY();
+
     if (map->IsHexStaticTrigger(from_hx, from_hy)) {
         for (auto* item : map->GetStaticItemsTrigger(from_hx, from_hy)) {
             if (item->TriggerScriptFunc) {
@@ -1797,6 +1835,8 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
 
 void FOServer::Process_Handshake(ClientConnection* connection)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     // Net protocol
@@ -1842,6 +1882,8 @@ void FOServer::Process_Handshake(ClientConnection* connection)
 
 void FOServer::Process_Ping(ClientConnection* connection)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uchar ping = 0;
@@ -1869,6 +1911,8 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
 void FOServer::Process_UpdateFile(ClientConnection* connection)
 {
+    PROFILER_ENTRY();
+
     uint file_index = 0;
     connection->Bin >> file_index;
 
@@ -1888,6 +1932,8 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
 
 void FOServer::Process_UpdateFileData(ClientConnection* connection)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (connection->UpdateFileIndex == -1) {
@@ -1920,6 +1966,8 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
 
 void FOServer::Process_Register(Player* unlogined_player)
 {
+    PROFILER_ENTRY();
+
     uint msg_len = 0;
     unlogined_player->Connection->Bin >> msg_len;
     string name;
@@ -2007,6 +2055,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 
 void FOServer::Process_Login(Player* unlogined_player)
 {
+    PROFILER_ENTRY();
+
     uint msg_len = 0;
     unlogined_player->Connection->Bin >> msg_len;
     string name;
@@ -2327,6 +2377,8 @@ void FOServer::Process_Login(Player* unlogined_player)
 
 void FOServer::Process_Move(Player* player)
 {
+    PROFILER_ENTRY();
+
     uint msg_len;
     uint map_id;
     uint cr_id;
@@ -2393,6 +2445,8 @@ void FOServer::Process_Move(Player* player)
 
 void FOServer::Process_StopMove(Player* player)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uint map_id;
@@ -2438,6 +2492,8 @@ void FOServer::Process_StopMove(Player* player)
 
 void FOServer::Process_Dir(Player* player)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uint map_id;
@@ -2475,6 +2531,8 @@ void FOServer::Process_Dir(Player* player)
 
 void FOServer::Process_Property(Player* player, uint data_size)
 {
+    PROFILER_ENTRY();
+
     Critter* cr = player->GetOwnedCritter();
 
     uint msg_len;
@@ -2667,6 +2725,8 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
 void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
@@ -2707,6 +2767,8 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto&& [id, player] : EntityMngr.GetPlayers()) {
             player->Send_Property(NetProperty::Game, prop, this);
@@ -2716,6 +2778,8 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
@@ -2723,6 +2787,8 @@ void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     auto* cr = dynamic_cast<Critter*>(entity);
 
     const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
@@ -2738,6 +2804,8 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
@@ -2776,6 +2844,8 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
         map->SendProperty(NetProperty::Map, prop, map);
@@ -2784,6 +2854,8 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
         for (auto* map : loc->GetMaps()) {
@@ -2794,6 +2866,8 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
     UNUSED_VARIABLE(prop);
 
@@ -2815,6 +2889,8 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
 
 void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
@@ -2843,6 +2919,8 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     UNUSED_VARIABLE(prop);
 
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
@@ -2858,6 +2936,8 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2871,6 +2951,8 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2883,6 +2965,8 @@ void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetIsRadio()) {
@@ -2895,6 +2979,8 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 
 void FOServer::OnSetItemOpened(Entity* entity, const Property* prop)
 {
+    PROFILER_ENTRY();
+
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetIsCanOpen()) {
@@ -2924,6 +3010,8 @@ void FOServer::OnSetItemOpened(Entity* entity, const Property* prop)
 
 void FOServer::ProcessMove(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     // Moving
     if (cr->IsMoving()) {
         auto* map = MapMngr.GetMap(cr->GetMapId());
@@ -3080,6 +3168,8 @@ void FOServer::ProcessMove(Critter* cr)
 
 void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!cr->Moving.Steps.empty());
     RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
     RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
@@ -3235,6 +3325,8 @@ label_Done:
 
 void FOServer::MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
 {
+    PROFILER_ENTRY();
+
     cr->ClearMove();
 
     const auto* map = MapMngr.GetMap(cr->GetMapId());
@@ -3317,6 +3409,8 @@ void FOServer::MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort st
 
 auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
 {
+    PROFILER_ENTRY();
+
     if (base_dlg.Id < 2) {
         WriteLog("Wrong dialog id {}", base_dlg.Id);
         return false;
@@ -3344,6 +3438,8 @@ auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, 
 
 auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool
 {
+    PROFILER_ENTRY();
+
     if (answer.Demands.empty()) {
         return true;
     }
@@ -3508,6 +3604,8 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer
 
 auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint
 {
+    PROFILER_ENTRY();
+
     if (answer.Results.empty()) {
         return 0;
     }
@@ -3638,6 +3736,8 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
 
 void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
 {
+    PROFILER_ENTRY();
+
     if (cl->Talk.Locked) {
         WriteLog("Dialog locked, client '{}'", cl->GetName());
         return;
@@ -3854,6 +3954,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
 void FOServer::Process_Dialog(Player* player)
 {
+    PROFILER_ENTRY();
+
     Critter* cr = player->GetOwnedCritter();
 
     uchar is_npc = 0;
@@ -4057,6 +4159,8 @@ void FOServer::Process_Dialog(Player* player)
 
 void FOServer::Process_RemoteCall(Player* player)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     uint msg_len;
@@ -4071,6 +4175,8 @@ void FOServer::Process_RemoteCall(Player* player)
 
 auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*
 {
+    PROFILER_ENTRY();
+
     // Checks
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
     if (proto_item == nullptr || count == 0u) {
@@ -4104,6 +4210,8 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint
 
 auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     bool result;
@@ -4128,6 +4236,8 @@ auto FOServer::DialogScriptDemand(const DialogAnswerReq& demand, Critter* master
 
 auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     switch (result.ValuesCount) {
@@ -4205,6 +4315,8 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
 
 auto FOServer::MakePlayerId(string_view player_name) const -> uint
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!player_name.empty());
     const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(player_name.data()), static_cast<uint>(player_name.length()));
     RUNTIME_ASSERT(hash_value);

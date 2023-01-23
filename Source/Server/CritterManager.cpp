@@ -44,10 +44,13 @@
 
 CritterManager::CritterManager(FOServer* engine) : _engine {engine}
 {
+    PROFILER_ENTRY();
 }
 
 void CritterManager::LinkCritters()
 {
+    PROFILER_ENTRY();
+
     WriteLog("Link critters");
 
     int errors = 0;
@@ -101,12 +104,10 @@ void CritterManager::LinkCritters()
     }
 }
 
-void CritterManager::InitAfterLoad()
-{
-}
-
 void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cr);
@@ -146,6 +147,8 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cr);
@@ -182,6 +185,8 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
 
 auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(map);
@@ -270,6 +275,8 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
 
 void CritterManager::DeleteCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cr->IsNpc());
@@ -314,6 +321,8 @@ void CritterManager::DeleteCritter(Critter* cr)
 
 void CritterManager::DeleteInventory(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     while (!cr->_invItems.empty()) {
@@ -323,6 +332,8 @@ void CritterManager::DeleteInventory(Critter* cr)
 
 auto CritterManager::GetAllCritters() -> vector<Critter*>
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
@@ -339,6 +350,8 @@ auto CritterManager::GetAllCritters() -> vector<Critter*>
 
 auto CritterManager::GetAllNpc() -> vector<Critter*>
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
@@ -357,6 +370,8 @@ auto CritterManager::GetAllNpc() -> vector<Critter*>
 
 auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
@@ -375,6 +390,8 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
 
 auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto& all_critters = _engine->EntityMngr.GetCritters();
@@ -393,6 +410,8 @@ auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, Cri
 
 auto CritterManager::GetCritter(uint cr_id) -> Critter*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     return _engine->EntityMngr.GetCritter(cr_id);
@@ -400,11 +419,15 @@ auto CritterManager::GetCritter(uint cr_id) -> Critter*
 
 auto CritterManager::GetCritter(uint cr_id) const -> const Critter*
 {
+    PROFILER_ENTRY();
+
     return const_cast<CritterManager*>(this)->GetCritter(cr_id);
 }
 
 auto CritterManager::GetPlayerById(uint id) -> Player*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     return _engine->EntityMngr.GetPlayer(id);
@@ -412,6 +435,8 @@ auto CritterManager::GetPlayerById(uint id) -> Player*
 
 auto CritterManager::GetPlayerByName(string_view name) -> Player*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto player_id = _engine->MakePlayerId(name);
@@ -420,6 +445,8 @@ auto CritterManager::GetPlayerByName(string_view name) -> Player*
 
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto* proto_item = _engine->ProtoMngr.GetProtoItem(item_pid);
@@ -451,6 +478,8 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
 
 void CritterManager::ProcessTalk(Critter* cr, bool force)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (!force && _engine->GameTime.GameTick() < cr->_talkNextTick) {
@@ -516,6 +545,8 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
 void CritterManager::CloseTalk(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (cr->Talk.Type != TalkType::None) {
@@ -554,15 +585,21 @@ void CritterManager::CloseTalk(Critter* cr)
 
 auto CritterManager::PlayersInGame() const -> uint
 {
+    PROFILER_ENTRY();
+
     return static_cast<uint>(_engine->EntityMngr.GetPlayers().size());
 }
 
 auto CritterManager::NpcInGame() const -> uint
 {
+    PROFILER_ENTRY();
+
     return static_cast<uint>(_engine->EntityMngr.GetCritters().size());
 }
 
 auto CritterManager::CrittersInGame() const -> uint
 {
+    PROFILER_ENTRY();
+
     return PlayersInGame() + NpcInGame();
 }

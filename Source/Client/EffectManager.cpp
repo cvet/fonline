@@ -37,10 +37,14 @@
 
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
+    PROFILER_ENTRY();
+
 }
 
 auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*
 {
+    PROFILER_ENTRY();
+
     if (const auto it = _loadedEffects.find(string(path)); it != _loadedEffects.end()) {
         return it->second.get();
     }
@@ -62,6 +66,8 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
+    PROFILER_ENTRY();
+
     for (auto&& [name, effect] : _loadedEffects) {
         PerFrameEffectUpdate(effect.get(), game_time);
     }
@@ -69,6 +75,8 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 
 void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (effect->TimeBuf) {
@@ -96,6 +104,8 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 
 void EffectManager::LoadMinimalEffects()
 {
+    PROFILER_ENTRY();
+
     auto effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");
@@ -110,6 +120,8 @@ void EffectManager::LoadMinimalEffects()
 
 void EffectManager::LoadDefaultEffects()
 {
+    PROFILER_ENTRY();
+
     auto effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "Effects/ImGui_Default.fofx");

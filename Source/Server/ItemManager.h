@@ -72,7 +72,6 @@ public:
     auto SetItemCritter(Critter* cr, hstring pid, uint count) -> bool;
 
     void LinkItems();
-    void InitAfterLoad();
     void DeleteItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
     void MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks);

@@ -41,6 +41,8 @@ namespace SPK::FO
 {
     SparkRenderBuffer::SparkRenderBuffer(size_t vertices)
     {
+        PROFILER_ENTRY();
+
         RUNTIME_ASSERT(vertices > 0);
         RUNTIME_ASSERT(vertices % 4 == 0);
 
@@ -64,12 +66,16 @@ namespace SPK::FO
 
     void SparkRenderBuffer::PositionAtStart()
     {
+        PROFILER_ENTRY();
+
         _curVertexIndex = 0;
         _curTexCoordIndex = 0;
     }
 
     void SparkRenderBuffer::SetNextVertex(const Vector3D& pos, const Color& color)
     {
+        PROFILER_ENTRY();
+
 #if FO_ENABLE_3D
         auto& v = _renderBuf->Vertices3D[_curVertexIndex++];
 
@@ -80,6 +86,8 @@ namespace SPK::FO
 
     void SparkRenderBuffer::SetNextTexCoord(float tu, float tv)
     {
+        PROFILER_ENTRY();
+
 #if FO_ENABLE_3D
         auto& v = _renderBuf->Vertices3D[_curTexCoordIndex++];
 
@@ -90,6 +98,8 @@ namespace SPK::FO
 
     void SparkRenderBuffer::Render(size_t vertices, RenderEffect* effect) const
     {
+        PROFILER_ENTRY();
+
         if (vertices == 0) {
             return;
         }
@@ -100,12 +110,22 @@ namespace SPK::FO
         effect->DrawBuffer(_renderBuf.get(), 0, vertices / 4 * 6);
     }
 
-    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset) { }
+    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset)
+    {
+        PROFILER_ENTRY();
+    }
 
-    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer> { return SPK_NEW(SparkQuadRenderer); }
+    auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer>
+    {
+        PROFILER_ENTRY();
+
+        return SPK_NEW(SparkQuadRenderer);
+    }
 
     void SparkQuadRenderer::Setup(string_view path, ParticleManager& particle_mngr)
     {
+        PROFILER_ENTRY();
+
         RUNTIME_ASSERT(!_particleMngr);
 
         _path = path;
@@ -121,6 +141,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::AddPosAndColor(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         render_buffer.SetNextVertex(particle.position() + quadSide() + quadUp(), particle.getColor()); // top right vertex
         render_buffer.SetNextVertex(particle.position() - quadSide() + quadUp(), particle.getColor()); // top left vertex
         render_buffer.SetNextVertex(particle.position() - quadSide() - quadUp(), particle.getColor()); // bottom left vertex
@@ -129,6 +151,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::AddTexture2D(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 1.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 1.0f * _textureAtlasOffsets[3]);
@@ -137,6 +161,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         computeAtlasCoordinates(particle);
 
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV0() * _textureAtlasOffsets[3]);
@@ -145,10 +171,17 @@ namespace SPK::FO
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + textureAtlasU1() * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + textureAtlasV1() * _textureAtlasOffsets[3]);
     }
 
-    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const { return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2); }
+    RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const
+    {
+        PROFILER_ENTRY();
+
+        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2);
+    }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
     {
+        PROFILER_ENTRY();
+
         RUNTIME_ASSERT(_particleMngr);
 
         RUNTIME_ASSERT(renderBuffer);
@@ -208,6 +241,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
     {
+        PROFILER_ENTRY();
+
         const float diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
         const Vector3D diag_v(diagonal, diagonal, diagonal);
 
@@ -230,6 +265,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2D(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         scaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2D(particle, render_buffer);
@@ -237,6 +274,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2DRot(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         rotateAndScaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2D(particle, render_buffer);
@@ -244,6 +283,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         scaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2DAtlas(particle, render_buffer);
@@ -251,15 +292,24 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, SparkRenderBuffer& render_buffer) const
     {
+        PROFILER_ENTRY();
+
         rotateAndScaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2DAtlas(particle, render_buffer);
     }
 
-    auto SparkQuadRenderer::GetEffectName() const -> const string& { return _effectName; }
+    auto SparkQuadRenderer::GetEffectName() const -> const string&
+    {
+        PROFILER_ENTRY();
+
+        return _effectName;
+    }
 
     void SparkQuadRenderer::SetEffectName(const string& name)
     {
+        PROFILER_ENTRY();
+
         _effectName = name;
 
         if (!_effectName.empty() && _particleMngr != nullptr) {
@@ -272,10 +322,17 @@ namespace SPK::FO
         }
     }
 
-    auto SparkQuadRenderer::GetTextureName() const -> const string& { return _textureName; }
+    auto SparkQuadRenderer::GetTextureName() const -> const string&
+    {
+        PROFILER_ENTRY();
+
+        return _textureName;
+    }
 
     void SparkQuadRenderer::SetTextureName(const string& name)
     {
+        PROFILER_ENTRY();
+
         _textureName = name;
 
         if (!_textureName.empty() && _particleMngr != nullptr) {
@@ -291,6 +348,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::innerImport(const IO::Descriptor& descriptor)
     {
+        PROFILER_ENTRY();
+
         Renderer::innerImport(descriptor);
 
         _effectName = "";
@@ -398,6 +457,8 @@ namespace SPK::FO
 
     void SparkQuadRenderer::innerExport(IO::Descriptor& descriptor) const
     {
+        PROFILER_ENTRY();
+
         Renderer::innerExport(descriptor);
 
         descriptor.getAttribute("effect")->setValue(_effectName);

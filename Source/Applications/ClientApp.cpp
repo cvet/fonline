@@ -55,6 +55,8 @@ GLOBAL_DATA(ClientAppData, Data);
 
 static void MainEntry(void*)
 {
+    PROFILER_ENTRY();
+
     try {
 #if FO_WEB
         // Wait file system synchronization
@@ -143,6 +145,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
 #endif
 {
+    PROFILER_ENTRY();
+
     try {
         ShowExceptionMessageBox(true);
         InitApp(argc, argv, "");

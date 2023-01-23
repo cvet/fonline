@@ -36,11 +36,15 @@
 
 ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(proto);
 }
 
 void ItemView::MarkAsDestroyed()
 {
+    PROFILER_ENTRY();
+
     for (auto* item : _innerItems) {
         item->MarkAsDestroyed();
         item->Release();
@@ -53,6 +57,8 @@ void ItemView::MarkAsDestroyed()
 
 auto ItemView::CreateRefClone() const -> ItemView*
 {
+    PROFILER_ENTRY();
+
     auto* clone = new ItemView(_engine, 0u, dynamic_cast<const ProtoItem*>(_proto));
     clone->SetProperties(GetProperties());
     return clone;
@@ -60,51 +66,71 @@ auto ItemView::CreateRefClone() const -> ItemView*
 
 auto ItemView::IsStatic() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetIsStatic();
 }
 
 auto ItemView::IsAnyScenery() const -> bool
 {
+    PROFILER_ENTRY();
+
     return IsScenery() || IsWall();
 }
 
 auto ItemView::IsScenery() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetIsScenery();
 }
 
 auto ItemView::IsWall() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetIsWall();
 }
 
 auto ItemView::IsColorize() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetIsColorize();
 }
 
 auto ItemView::GetColor() const -> uint
 {
+    PROFILER_ENTRY();
+
     return GetLightColor() & 0xFFFFFF;
 }
 
 auto ItemView::GetAlpha() const -> uchar
 {
+    PROFILER_ENTRY();
+
     return GetLightColor() >> 24;
 }
 
 auto ItemView::GetInvColor() const -> uint
 {
+    PROFILER_ENTRY();
+
     return GetIsColorizeInv() ? GetLightColor() : 0;
 }
 
 auto ItemView::LightGetHash() const -> uint
 {
+    PROFILER_ENTRY();
+
     return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
 }
 
 auto ItemView::AddInnerItem(uint id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
+    PROFILER_ENTRY();
+
     auto* item = new ItemView(_engine, id, proto);
     item->RestoreData(properties_data);
 
@@ -121,6 +147,8 @@ auto ItemView::AddInnerItem(uint id, const ProtoItem* proto, uint stack_id, cons
 
 void ItemView::DeleteInnerItem(ItemView* item)
 {
+    PROFILER_ENTRY();
+
     const auto it = std::find(_innerItems.begin(), _innerItems.end(), item);
     RUNTIME_ASSERT(it != _innerItems.end());
     _innerItems.erase(it);
@@ -135,5 +163,7 @@ void ItemView::DeleteInnerItem(ItemView* item)
 
 auto ItemView::GetInnerItems() -> vector<ItemView*>
 {
+    PROFILER_ENTRY();
+
     return _innerItems;
 }

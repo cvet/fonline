@@ -43,6 +43,8 @@
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(settings, PropertiesRelationType::BothRelative), FOClient(settings, window, true)
 {
+    PROFILER_ENTRY();
+
     Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("FullProtos"));
     if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
         Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("MapperAngelScript"));
@@ -166,6 +168,8 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(s
 
 void FOMapper::InitIface()
 {
+    PROFILER_ENTRY();
+
     WriteLog("Init interface");
 
     const auto config_content = Resources.ReadFileText("mapper_default.ini");
@@ -283,6 +287,8 @@ void FOMapper::InitIface()
 
 auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
 {
+    PROFILER_ENTRY();
+
     const auto res = IfaceIni->GetStr("", name);
     if (res.empty()) {
         WriteLog("Signature '{}' not found", name);
@@ -300,6 +306,8 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
 
 void FOMapper::ChangeGameTime()
 {
+    PROFILER_ENTRY();
+
     if (CurMap != nullptr) {
         const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
         SprMngr.SetSpritesTreeColor(color);
@@ -309,6 +317,8 @@ void FOMapper::ChangeGameTime()
 
 void FOMapper::ProcessMapperInput()
 {
+    PROFILER_ENTRY();
+
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
     if ((Settings.Fullscreen && Settings.FullscreenMouseScroll) || (!Settings.Fullscreen && Settings.WindowedMouseScroll)) {
@@ -740,6 +750,8 @@ void FOMapper::ProcessMapperInput()
 
 void FOMapper::MapperMainLoop()
 {
+    PROFILER_ENTRY();
+
     GameTime.FrameAdvance();
 
     // FPS counter
@@ -784,6 +796,8 @@ void FOMapper::MapperMainLoop()
 
 void FOMapper::RefreshTiles(int tab)
 {
+    PROFILER_ENTRY();
+
     const string formats[] = {"frm", "fofrm", "bmp", "dds", "dib", "hdr", "jpg", "jpeg", "pfm", "png", "tga", "spr", "til", "zar", "art"};
 
     // Clear old tile names
@@ -906,6 +920,8 @@ void FOMapper::RefreshTiles(int tab)
 
 auto FOMapper::GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint
 {
+    PROFILER_ENTRY();
+
     auto* anim = ResMngr.GetItemAnim(proto_item->GetPicMap());
     if (anim == nullptr) {
         return 0;
@@ -938,6 +954,8 @@ auto FOMapper::GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint
 
 void FOMapper::IntDraw()
 {
+    PROFILER_ENTRY();
+
     if (!IntVisible) {
         return;
     }
@@ -1264,6 +1282,8 @@ void FOMapper::IntDraw()
 
 void FOMapper::ObjDraw()
 {
+    PROFILER_ENTRY();
+
     if (!ObjVisible) {
         return;
     }
@@ -1329,6 +1349,8 @@ void FOMapper::ObjDraw()
 
 void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r)
 {
+    PROFILER_ENTRY();
+
     const auto x = r.Left;
     const auto y = r.Top;
     const auto w = r.Width();
@@ -1359,6 +1381,8 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
 void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 {
+    PROFILER_ENTRY();
+
     if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
         if (ObjCurLineInitValue != ObjCurLineValue) {
             auto* entity = GetInspectorEntity();
@@ -1397,6 +1421,8 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 
 void FOMapper::ObjKeyDownApply(Entity* entity)
 {
+    PROFILER_ENTRY();
+
     const auto start_line = 3;
     if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size())) {
         const auto* prop = ShowProps[ObjCurLine - start_line];
@@ -1421,6 +1447,8 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 
 void FOMapper::SelectEntityProp(int line)
 {
+    PROFILER_ENTRY();
+
     const auto start_line = 3;
     ObjCurLine = line;
     if (ObjCurLine < 0) {
@@ -1442,6 +1470,8 @@ void FOMapper::SelectEntityProp(int line)
 
 auto FOMapper::GetInspectorEntity() -> ClientEntity*
 {
+    PROFILER_ENTRY();
+
     auto* entity = (IntMode == INT_MODE_INCONT && (InContItem != nullptr) ? InContItem : (!SelectedEntities.empty() ? SelectedEntities[0] : nullptr));
     if (entity == InspectorEntity) {
         return entity;
@@ -1464,6 +1494,8 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 
 void FOMapper::IntLMouseDown()
 {
+    PROFILER_ENTRY();
+
     IntHold = INT_NONE;
 
     // Sub tabs
@@ -1924,6 +1956,8 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
+    PROFILER_ENTRY();
+
     if (IntHold == INT_SELECT && CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2, nullptr, nullptr)) {
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHexX1 != SelectHexX2 || SelectHexY1 != SelectHexY2) {
@@ -2020,6 +2054,8 @@ void FOMapper::IntLMouseUp()
 
 void FOMapper::IntMouseMove()
 {
+    PROFILER_ENTRY();
+
     if (IntHold == INT_SELECT) {
         CurMap->ClearHexTrack();
         if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2, nullptr, nullptr)) {
@@ -2079,6 +2115,8 @@ void FOMapper::IntMouseMove()
 
 auto FOMapper::GetTabIndex() const -> uint
 {
+    PROFILER_ENTRY();
+
     if (IntMode < TAB_COUNT) {
         return TabsActive[IntMode]->Index;
     }
@@ -2087,6 +2125,8 @@ auto FOMapper::GetTabIndex() const -> uint
 
 void FOMapper::SetTabIndex(uint index)
 {
+    PROFILER_ENTRY();
+
     if (IntMode < TAB_COUNT) {
         TabsActive[IntMode]->Index = index;
     }
@@ -2095,6 +2135,8 @@ void FOMapper::SetTabIndex(uint index)
 
 void FOMapper::RefreshCurProtos()
 {
+    PROFILER_ENTRY();
+
     // Select protos and scroll
     CurItemProtos = nullptr;
     CurProtoScroll = nullptr;
@@ -2140,6 +2182,8 @@ void FOMapper::RefreshCurProtos()
 
 void FOMapper::IntSetMode(int mode)
 {
+    PROFILER_ENTRY();
+
     if (SubTabsActive && mode == SubTabsActiveTab) {
         SubTabsActive = false;
         return;
@@ -2213,6 +2257,8 @@ void FOMapper::IntSetMode(int mode)
 
 void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
@@ -2229,6 +2275,8 @@ void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
 
 void FOMapper::DeleteEntity(ClientEntity* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
@@ -2244,6 +2292,8 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
 
 void FOMapper::SelectClear()
 {
+    PROFILER_ENTRY();
+
     // Clear map objects
     for (auto* entity : SelectedEntities) {
         if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2264,18 +2314,24 @@ void FOMapper::SelectClear()
 
 void FOMapper::SelectAddItem(ItemHexView* item)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(item);
     SelectAdd(item);
 }
 
 void FOMapper::SelectAddCrit(CritterView* npc)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(npc);
     SelectAdd(npc);
 }
 
 void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
 {
+    PROFILER_ENTRY();
+
     auto& f = CurMap->GetField(hx, hy);
     if (!is_roof && (f.GetTilesCount(false) == 0u)) {
         return;
@@ -2301,6 +2357,8 @@ void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
 
 void FOMapper::SelectAdd(ClientEntity* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
     if (it == SelectedEntities.end()) {
         SelectedEntities.push_back(entity);
@@ -2316,6 +2374,8 @@ void FOMapper::SelectAdd(ClientEntity* entity)
 
 void FOMapper::SelectErase(ClientEntity* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
@@ -2331,6 +2391,8 @@ void FOMapper::SelectErase(ClientEntity* entity)
 
 void FOMapper::SelectAll()
 {
+    PROFILER_ENTRY();
+
     SelectClear();
 
     for (const auto hx : xrange(CurMap->GetWidth())) {
@@ -2380,6 +2442,8 @@ struct TileToMove
 
 auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool
 {
+    PROFILER_ENTRY();
+
     if (!hex_move && ((offs_x == 0) && (offs_y == 0))) {
         return false;
     }
@@ -2622,6 +2686,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
 
 void FOMapper::SelectDelete()
 {
+    PROFILER_ENTRY();
+
     auto entities = SelectedEntities;
     for (auto* entity : entities) {
         DeleteEntity(entity);
@@ -2653,6 +2719,8 @@ void FOMapper::SelectDelete()
 
 auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(CurMap);
 
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
@@ -2681,6 +2749,8 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 
 auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(CurMap);
 
     // Checks
@@ -2730,6 +2800,8 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
 
 void FOMapper::AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(CurMap);
 
     hx -= hx % Settings.MapTileStep;
@@ -2747,6 +2819,8 @@ void FOMapper::AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, u
 
 auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(CurMap);
 
     ClientEntity* owner;
@@ -2808,6 +2882,8 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 
 void FOMapper::BufferCopy()
 {
+    PROFILER_ENTRY();
+
     // Clear buffers
     std::function<void(EntityBuf*)> free_entity = [&free_entity](EntityBuf* entity_buf) {
         delete entity_buf->Props;
@@ -2875,12 +2951,16 @@ void FOMapper::BufferCopy()
 
 void FOMapper::BufferCut()
 {
+    PROFILER_ENTRY();
+
     BufferCopy();
     SelectDelete();
 }
 
 void FOMapper::BufferPaste(int, int)
 {
+    PROFILER_ENTRY();
+
     if (CurMap == nullptr) {
         return;
     }
@@ -2983,6 +3063,8 @@ void FOMapper::BufferPaste(int, int)
 
 void FOMapper::CurDraw()
 {
+    PROFILER_ENTRY();
+
     switch (CurMode) {
     case CUR_MODE_DEFAULT:
     case CUR_MODE_MOVE_SELECTION: {
@@ -3076,6 +3158,8 @@ void FOMapper::CurDraw()
 
 void FOMapper::CurRMouseUp()
 {
+    PROFILER_ENTRY();
+
     if (IntHold == INT_NONE) {
         if (CurMode == CUR_MODE_MOVE_SELECTION) {
             CurMode = CUR_MODE_DEFAULT;
@@ -3096,6 +3180,8 @@ void FOMapper::CurRMouseUp()
 
 void FOMapper::CurMMouseDown()
 {
+    PROFILER_ENTRY();
+
     if (SelectedEntities.empty()) {
         NpcDir++;
         if (NpcDir >= GameSettings::MAP_DIR_COUNT) {
@@ -3119,21 +3205,29 @@ void FOMapper::CurMMouseDown()
 
 auto FOMapper::IsCurInRect(const IRect& rect, int ax, int ay) const -> bool
 {
+    PROFILER_ENTRY();
+
     return Settings.MouseX >= rect[0] + ax && Settings.MouseY >= rect[1] + ay && Settings.MouseX <= rect[2] + ax && Settings.MouseY <= rect[3] + ay;
 }
 
 auto FOMapper::IsCurInRect(const IRect& rect) const -> bool
 {
+    PROFILER_ENTRY();
+
     return Settings.MouseX >= rect[0] && Settings.MouseY >= rect[1] && Settings.MouseX <= rect[2] && Settings.MouseY <= rect[3];
 }
 
 auto FOMapper::IsCurInRectNoTransp(uint spr_id, const IRect& rect, int ax, int ay) const -> bool
 {
+    PROFILER_ENTRY();
+
     return IsCurInRect(rect, ax, ay) && SprMngr.IsPixNoTransp(spr_id, Settings.MouseX - rect.Left - ax, Settings.MouseY - rect.Top - ay, false);
 }
 
 auto FOMapper::IsCurInInterface() const -> bool
 {
+    PROFILER_ENTRY();
+
     if (IntVisible && SubTabsActive && IsCurInRectNoTransp(SubTabsPic->GetCurSprId(GameTime.GameTick()), SubTabsRect, SubTabsX, SubTabsY)) {
         return true;
     }
@@ -3148,6 +3242,8 @@ auto FOMapper::IsCurInInterface() const -> bool
 
 auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
 {
+    PROFILER_ENTRY();
+
     hx = hy = 0;
     if (!ignore_interface && IsCurInInterface()) {
         return false;
@@ -3157,6 +3253,8 @@ auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
 
 void FOMapper::ConsoleDraw()
 {
+    PROFILER_ENTRY();
+
     if (ConsoleEdit) {
         SprMngr.DrawSprite(ConsolePic->GetSprId(), IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
 
@@ -3168,6 +3266,8 @@ void FOMapper::ConsoleDraw()
 
 void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 {
+    PROFILER_ENTRY();
+
     if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
         if (ConsoleEdit) {
             if (ConsoleStr.empty()) {
@@ -3246,12 +3346,16 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 
 void FOMapper::ConsoleKeyUp(KeyCode /*key*/)
 {
+    PROFILER_ENTRY();
+
     ConsoleLastKey = KeyCode::None;
     ConsoleLastKeyText = "";
 }
 
 void FOMapper::ConsoleProcess()
 {
+    PROFILER_ENTRY();
+
     if (ConsoleLastKey == KeyCode::None) {
         return;
     }
@@ -3265,6 +3369,8 @@ void FOMapper::ConsoleProcess()
 
 void FOMapper::ParseCommand(string_view command)
 {
+    PROFILER_ENTRY();
+
     if (command.empty()) {
         return;
     }
@@ -3431,6 +3537,8 @@ void FOMapper::ParseCommand(string_view command)
 
 auto FOMapper::LoadMap(string_view map_name) -> MapView*
 {
+    PROFILER_ENTRY();
+
     const auto* pmap = ProtoMngr.GetProtoMap(ToHashedString(map_name));
     if (pmap == nullptr) {
         AddMess("Map prototype not found");
@@ -3480,6 +3588,8 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
 void FOMapper::ShowMap(MapView* map)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!map->IsDestroyed());
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
@@ -3496,6 +3606,8 @@ void FOMapper::ShowMap(MapView* map)
 
 void FOMapper::SaveMap(MapView* map, string_view custom_name)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!map->IsDestroyed());
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
@@ -3534,6 +3646,8 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
 
 void FOMapper::UnloadMap(MapView* map)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!map->IsDestroyed());
 
     if (map == CurMap) {
@@ -3551,6 +3665,8 @@ void FOMapper::UnloadMap(MapView* map)
 
 void FOMapper::ResizeMap(MapView* map, ushort width, ushort height)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!map->IsDestroyed());
 
     // Todo: map resizing
@@ -3613,6 +3729,8 @@ void FOMapper::ResizeMap(MapView* map, ushort width, ushort height)
 
 void FOMapper::AddMess(string_view message_text)
 {
+    PROFILER_ENTRY();
+
     const string str = _str("|{} - {}\n", COLOR_TEXT, message_text);
 
     const auto dt = Timer::GetCurrentDateTime();
@@ -3648,6 +3766,8 @@ void FOMapper::AddMess(string_view message_text)
 
 void FOMapper::MessBoxDraw()
 {
+    PROFILER_ENTRY();
+
     if (!IntVisible) {
         return;
     }
@@ -3660,6 +3780,8 @@ void FOMapper::MessBoxDraw()
 
 void FOMapper::DrawIfaceLayer(uint layer)
 {
+    PROFILER_ENTRY();
+
     SpritesCanDraw = true;
     OnRenderIface.Fire(); // Todo: mapper render iface layer
     SpritesCanDraw = false;
@@ -3667,6 +3789,8 @@ void FOMapper::DrawIfaceLayer(uint layer)
 
 auto FOMapper::GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>
 {
+    PROFILER_ENTRY();
+
     if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
         return cr->GetItems();
     }

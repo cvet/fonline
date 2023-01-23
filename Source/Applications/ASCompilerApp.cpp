@@ -66,6 +66,8 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
 #endif
 {
+    PROFILER_ENTRY();
+
     try {
         InitApp(argc, argv, "ASCompiler");
         LogWithoutTimestamp();

@@ -70,6 +70,8 @@ int GlobalDataCallbacksCount;
 
 void CreateGlobalData()
 {
+    PROFILER_ENTRY();
+
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         CreateGlobalDataCallbacks[i]();
     }
@@ -77,12 +79,16 @@ void CreateGlobalData()
 
 void DeleteGlobalData()
 {
+    PROFILER_ENTRY();
+
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
     }
 }
 void ReportExceptionAndExit(const std::exception& ex)
 {
+    PROFILER_ENTRY();
+
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
@@ -110,6 +116,8 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
+    PROFILER_ENTRY();
+
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
@@ -135,11 +143,15 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
 void ShowExceptionMessageBox(bool enabled)
 {
+    PROFILER_ENTRY();
+
     ExceptionMessageBox = enabled;
 }
 
 auto GetStackTrace() -> string
 {
+    PROFILER_ENTRY();
+
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
     }
@@ -193,6 +205,8 @@ static std::once_flag RunInDebuggerOnce;
 
 auto IsRunInDebugger() -> bool
 {
+    PROFILER_ENTRY();
+
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
 
@@ -236,6 +250,8 @@ auto IsRunInDebugger() -> bool
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 {
+    PROFILER_ENTRY();
+
     if (IsRunInDebugger()) {
 #if FO_WINDOWS
         ::DebugBreak();
@@ -258,6 +274,8 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 
 void CreateDumpMessage(string_view appendix, string_view message)
 {
+    PROFILER_ENTRY();
+
     const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
     const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
@@ -281,21 +299,29 @@ void CreateDumpMessage(string_view appendix, string_view message)
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
+    PROFILER_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
+    PROFILER_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void SDL_UnloadObject(void* handle)
 {
+    PROFILER_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void emscripten_sleep(unsigned int ms)
 {
+    PROFILER_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif

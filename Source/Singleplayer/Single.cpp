@@ -39,6 +39,8 @@ FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
     FOServer(settings),
     FOClient(settings, window, false)
 {
+    PROFILER_ENTRY();
+
     extern void Single_RegisterData(FOEngineBase*);
     Single_RegisterData(this);
 
@@ -48,6 +50,8 @@ FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
 
 void FOSingle::SingleMainLoop()
 {
+    PROFILER_ENTRY();
+
     FOServer::MainLoop();
     FOClient::MainLoop();
 }

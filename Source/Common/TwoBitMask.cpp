@@ -35,6 +35,8 @@
 
 TwoBitMask::TwoBitMask(uint width, uint height, uchar* ptr)
 {
+    PROFILER_ENTRY();
+
     if (width == 0u) {
         width = 1;
     }
@@ -63,6 +65,8 @@ TwoBitMask::TwoBitMask(uint width, uint height, uchar* ptr)
 
 TwoBitMask::~TwoBitMask()
 {
+    PROFILER_ENTRY();
+
     if (_isAlloc) {
         delete[] _data;
     }
@@ -70,6 +74,8 @@ TwoBitMask::~TwoBitMask()
 
 void TwoBitMask::Set2Bit(uint x, uint y, int val)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (x >= _width || y >= _height) {
@@ -85,6 +91,8 @@ void TwoBitMask::Set2Bit(uint x, uint y, int val)
 
 auto TwoBitMask::Get2Bit(uint x, uint y) const -> int
 {
+    PROFILER_ENTRY();
+
     if (x >= _width || y >= _height) {
         return 0;
     }
@@ -94,6 +102,8 @@ auto TwoBitMask::Get2Bit(uint x, uint y) const -> int
 
 void TwoBitMask::Fill(int fill)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     std::memset(_data, fill, static_cast<size_t>(_widthBytes) * _height);
@@ -101,6 +111,8 @@ void TwoBitMask::Fill(int fill)
 
 auto TwoBitMask::GetData() -> uchar*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     return _data;

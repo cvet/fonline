@@ -1819,6 +1819,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     (engineEntityType + '* self' + (', ' if params else '')) +
                     ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
             globalLines.append('{')
+            globalLines.append('    PROFILER_ENTRY();')
             
             if not isASCompiler:
                 globalLines.append('    ENTITY_VERIFY_NULL(self);')
@@ -1899,6 +1900,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if not isASCompiler:
                         globalLines.append('static bool ' + funcEntry + '_Callback(' + entityArg + ', asIScriptFunction* func, const initializer_list<void*>& args)')
                         globalLines.append('{')
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         argIndex = 0
@@ -1935,6 +1937,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
@@ -1954,6 +1957,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
@@ -1968,6 +1972,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_UnsubscribeAll(' + entityArg + ')')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
@@ -1982,6 +1987,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('static bool ' + funcEntry + '_Fire(' + entityArg + (', ' if evArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in evArgs]) + ')')
                         globalLines.append('{')
                         if not isASCompiler:
+                            globalLines.append('    PROFILER_ENTRY();')
                             globalLines.append('    ENTITY_VERIFY_NULL(self);')
                             globalLines.append('    ENTITY_VERIFY(self);')
                             for p in evArgs:
@@ -2013,6 +2019,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 globalLines.append('static ' + metaTypeToASEngineType(keyType, True) + ' ASSetting_Get_' + keyName + '(' + settEntity + ')')
                 globalLines.append('{')
                 if not isASCompiler:
+                    globalLines.append('    PROFILER_ENTRY();')
                     globalLines.append('    return ' + marshalBack(keyType, 'self->Settings.' + keyName) + ';')
                 else:
                     globalLines.append('    UNUSED_VARIABLE(self);')
@@ -2022,6 +2029,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ASSetting_Set_' + keyName + '(' + settEntity + ', ' + metaTypeToASEngineType(keyType, False) + ' value)')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    self->Settings.' + keyName + ' = ' + marshalIn(keyType, 'value') + ';')
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
@@ -2036,6 +2044,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('static ' + metaTypeToASEngineType(type, True) + ' ASSetting_Get_' + name + '(' + settEntity + ')')
             globalLines.append('{')
             if not isASCompiler:
+                globalLines.append('    PROFILER_ENTRY();')
                 globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
                 globalLines.append('    auto&& value = script_sys->GameEngine->Settings.Custom["' + name + '"];')
                 if type == 'string':
@@ -2051,6 +2060,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('static void ASSetting_Set_' + name + '(' + settEntity + ', ' + metaTypeToASEngineType(type, False) + ' value)')
             globalLines.append('{')
             if not isASCompiler:
+                globalLines.append('    PROFILER_ENTRY();')
                 globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
                 globalLines.append('    script_sys->GameEngine->Settings.Custom["' + name + '"] = _str("{' + '}", ' + marshalIn(type, 'value') + ');')
             else:
@@ -2070,6 +2080,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ASRemoteCall_Send_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(uint);')
@@ -2108,6 +2119,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('[[maybe_unused]] static void ASRemoteCall_Receive_' + rcName + '(' + selfArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    PROFILER_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if target == 'Server':

@@ -37,6 +37,8 @@
 
 auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
 {
+    PROFILER_ENTRY();
+
     if (!func_desc.CallSupported) {
         return false;
     }
@@ -61,6 +63,8 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc& func_desc, initializer_lis
 
 void ScriptSystem::InitModules()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     for (const auto* func : _initFunc) {
@@ -72,6 +76,8 @@ void ScriptSystem::InitModules()
 
 void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
 {
+    PROFILER_ENTRY();
+
     const auto it = _rpcReceivers.find(rpc_num);
     if (it == _rpcReceivers.end()) {
         throw ScriptException("Invalid remote call", rpc_num);
@@ -82,6 +88,8 @@ void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
 
 void ScriptSystem::Process()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     for (auto&& callback : _loopCallbacks) {
@@ -96,6 +104,8 @@ void ScriptSystem::Process()
 
 auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
 {
+    PROFILER_ENTRY();
+
     const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
     RUNTIME_ASSERT(prop_reg);
     const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));

@@ -43,6 +43,8 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int
 #endif
 {
+    PROFILER_ENTRY();
+
     try {
         InitApp(argc, argv, "Baker");
         LogWithoutTimestamp();

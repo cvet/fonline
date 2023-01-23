@@ -37,15 +37,21 @@
 
 FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
 {
+    PROFILER_ENTRY();
+
 }
 
 FileHeader::operator bool() const
 {
+    PROFILER_ENTRY();
+
     return _isLoaded;
 }
 
 auto FileHeader::GetName() const -> const string&
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(!_fileName.empty());
 
@@ -54,6 +60,8 @@ auto FileHeader::GetName() const -> const string&
 
 auto FileHeader::GetPath() const -> const string&
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(!_filePath.empty());
 
@@ -62,11 +70,15 @@ auto FileHeader::GetPath() const -> const string&
 
 auto FileHeader::GetFullPath() const -> string
 {
+    PROFILER_ENTRY();
+
     return _str(_dataSource->GetPackName()).combinePath(_filePath).str();
 }
 
 auto FileHeader::GetSize() const -> size_t
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
 
     return _fileSize;
@@ -74,6 +86,8 @@ auto FileHeader::GetSize() const -> size_t
 
 auto FileHeader::GetWriteTime() const -> uint64
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
 
     return _writeTime;
@@ -81,6 +95,8 @@ auto FileHeader::GetWriteTime() const -> uint64
 
 auto FileHeader::GetDataSource() const -> DataSource*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
 
     return _dataSource;
@@ -88,6 +104,8 @@ auto FileHeader::GetDataSource() const -> DataSource*
 
 auto FileHeader::Duplicate() const -> FileHeader
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
 
     return {_fileName, _filePath, _fileSize, _writeTime, _dataSource};
@@ -95,10 +113,14 @@ auto FileHeader::Duplicate() const -> FileHeader
 
 File::File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uchar>&& buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {std::move(buf)}
 {
+    PROFILER_ENTRY();
+
 }
 
 File::File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uchar> buf, bool make_copy) : FileHeader(name, path, static_cast<uint>(buf.size()), write_time, ds)
 {
+    PROFILER_ENTRY();
+
     if (make_copy) {
         auto* buf_copy = new uchar[buf.size()];
         std::memcpy(buf_copy, buf.data(), buf.size());
@@ -111,6 +133,8 @@ File::File(string_view name, string_view path, uint64 write_time, DataSource* ds
 
 auto File::GetStr() const -> string
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -119,6 +143,8 @@ auto File::GetStr() const -> string
 
 auto File::GetData() const -> vector<uchar>
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -130,6 +156,8 @@ auto File::GetData() const -> vector<uchar>
 
 auto File::GetBuf() const -> const uchar*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -138,6 +166,8 @@ auto File::GetBuf() const -> const uchar*
 
 auto File::GetCurBuf() const -> const uchar*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -146,6 +176,8 @@ auto File::GetCurBuf() const -> const uchar*
 
 auto File::GetCurPos() const -> size_t
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -154,6 +186,8 @@ auto File::GetCurPos() const -> size_t
 
 void File::SetCurPos(size_t pos)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(pos <= _fileSize);
@@ -163,6 +197,8 @@ void File::SetCurPos(size_t pos)
 
 void File::GoForward(size_t offs)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(_curPos + offs <= _fileSize);
@@ -172,6 +208,8 @@ void File::GoForward(size_t offs)
 
 void File::GoBack(size_t offs)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(offs <= _curPos);
@@ -181,6 +219,8 @@ void File::GoBack(size_t offs)
 
 auto File::FindFragment(string_view fragment) -> bool
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(!fragment.empty());
@@ -211,6 +251,8 @@ auto File::FindFragment(string_view fragment) -> bool
 
 void File::CopyData(void* ptr, size_t size)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(size);
@@ -226,6 +268,8 @@ void File::CopyData(void* ptr, size_t size)
 // ReSharper disable once CppInconsistentNaming
 auto File::GetStrNT() -> string
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -245,6 +289,8 @@ auto File::GetStrNT() -> string
 
 auto File::GetUChar() -> uchar
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -258,6 +304,8 @@ auto File::GetUChar() -> uchar
 // ReSharper disable once CppInconsistentNaming
 auto File::GetBEUShort() -> ushort
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -275,6 +323,8 @@ auto File::GetBEUShort() -> ushort
 // ReSharper disable once CppInconsistentNaming
 auto File::GetLEUShort() -> ushort
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -292,6 +342,8 @@ auto File::GetLEUShort() -> ushort
 // ReSharper disable once CppInconsistentNaming
 auto File::GetBEUInt() -> uint
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -310,6 +362,8 @@ auto File::GetBEUInt() -> uint
 // ReSharper disable once CppInconsistentNaming
 auto File::GetLEUInt() -> uint
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
@@ -327,6 +381,8 @@ auto File::GetLEUInt() -> uint
 
 FileCollection::FileCollection(initializer_list<FileHeader> files)
 {
+    PROFILER_ENTRY();
+
     _allFiles.reserve(files.size());
 
     for (const auto& file : files) {
@@ -336,10 +392,14 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
 
 FileCollection::FileCollection(vector<FileHeader> files) : _allFiles {std::move(files)}
 {
+    PROFILER_ENTRY();
+
 }
 
 auto FileCollection::MoveNext() -> bool
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     return ++_curFileIndex < static_cast<int>(_allFiles.size());
@@ -347,11 +407,15 @@ auto FileCollection::MoveNext() -> bool
 
 void FileCollection::ResetCounter()
 {
+    PROFILER_ENTRY();
+
     _curFileIndex = -1;
 }
 
 auto FileCollection::GetCurFile() const -> File
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_curFileIndex >= 0);
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
@@ -365,6 +429,8 @@ auto FileCollection::GetCurFile() const -> File
 
 auto FileCollection::GetCurFileHeader() const -> FileHeader
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_curFileIndex >= 0);
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
@@ -374,6 +440,8 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
 
 auto FileCollection::FindFileByName(string_view name) const -> File
 {
+    PROFILER_ENTRY();
+
     if (_allFiles.empty()) {
         return {};
     }
@@ -400,6 +468,8 @@ auto FileCollection::FindFileByName(string_view name) const -> File
 
 auto FileCollection::FindFileByPath(string_view path) const -> File
 {
+    PROFILER_ENTRY();
+
     if (_allFiles.empty()) {
         return {};
     }
@@ -426,26 +496,36 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
 
 auto FileCollection::GetFilesCount() const -> size_t
 {
+    PROFILER_ENTRY();
+
     return _allFiles.size();
 }
 
 void FileSystem::AddDataSource(string_view path, DataSourceType type)
 {
+    PROFILER_ENTRY();
+
     _dataSources.emplace(_dataSources.begin(), DataSource::Create(path, type));
 }
 
 void FileSystem::AddDataSource(unique_ptr<DataSource> data_source)
 {
+    PROFILER_ENTRY();
+
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
 }
 
 auto FileSystem::GetAllFiles() const -> FileCollection
 {
+    PROFILER_ENTRY();
+
     return FilterFiles("");
 }
 
 auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subdirs) const -> FileCollection
 {
+    PROFILER_ENTRY();
+
     vector<FileHeader> files;
     unordered_set<string> processed_files;
 
@@ -470,6 +550,8 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
 
 auto FileSystem::ReadFile(string_view path) const -> File
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
@@ -488,12 +570,16 @@ auto FileSystem::ReadFile(string_view path) const -> File
 
 auto FileSystem::ReadFileText(string_view path) const -> string
 {
+    PROFILER_ENTRY();
+
     const auto file = ReadFile(path);
     return file ? file.GetStr() : string();
 }
 
 auto FileSystem::ReadFileHeader(string_view path) const -> FileHeader
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 

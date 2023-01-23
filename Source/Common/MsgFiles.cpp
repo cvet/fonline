@@ -57,6 +57,8 @@ GLOBAL_DATA(MsgFilesData, Data);
 
 static void HexToStr(uchar hex, char* str)
 {
+    PROFILER_ENTRY();
+
     for (auto i = 0; i < 2; i++) {
         const auto val = i == 0 ? hex >> 4 : hex & 0xF;
         if (val < 10) {
@@ -70,6 +72,8 @@ static void HexToStr(uchar hex, char* str)
 
 static auto StrToHex(const char* str) -> uchar
 {
+    PROFILER_ENTRY();
+
     uchar result = 0;
     for (auto i = 0; i < 2; i++) {
         const auto c = *str++;
@@ -85,6 +89,8 @@ static auto StrToHex(const char* str) -> uchar
 
 auto FOMsg::operator+=(const FOMsg& other) -> FOMsg&
 {
+    PROFILER_ENTRY();
+
     for (auto&& [key, value] : other._strData) {
         EraseStr(key);
         AddStr(key, value);
@@ -94,11 +100,15 @@ auto FOMsg::operator+=(const FOMsg& other) -> FOMsg&
 
 void FOMsg::AddStr(uint num, string_view str)
 {
+    PROFILER_ENTRY();
+
     _strData.insert(std::make_pair(num, str));
 }
 
 void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
 {
+    PROFILER_ENTRY();
+
     vector<char> str;
     str.resize(len * 2 + 1);
 
@@ -113,6 +123,8 @@ void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
 
 auto FOMsg::GetStr(uint num) const -> string
 {
+    PROFILER_ENTRY();
+
     const auto str_count = static_cast<uint>(_strData.count(num));
     auto it = _strData.find(num);
 
@@ -133,6 +145,8 @@ auto FOMsg::GetStr(uint num) const -> string
 
 auto FOMsg::GetStr(uint num, uint skip) const -> string
 {
+    PROFILER_ENTRY();
+
     const auto str_count = static_cast<uint>(_strData.count(num));
     auto it = _strData.find(num);
 
@@ -148,6 +162,8 @@ auto FOMsg::GetStr(uint num, uint skip) const -> string
 
 auto FOMsg::GetStrNumUpper(uint num) const -> uint
 {
+    PROFILER_ENTRY();
+
     const auto it = _strData.upper_bound(num);
     if (it == _strData.end()) {
         return 0;
@@ -157,6 +173,8 @@ auto FOMsg::GetStrNumUpper(uint num) const -> uint
 
 auto FOMsg::GetStrNumLower(uint num) const -> uint
 {
+    PROFILER_ENTRY();
+
     const auto it = _strData.lower_bound(num);
     if (it == _strData.end()) {
         return 0;
@@ -166,6 +184,8 @@ auto FOMsg::GetStrNumLower(uint num) const -> uint
 
 auto FOMsg::GetInt(uint num) const -> int
 {
+    PROFILER_ENTRY();
+
     const auto str_count = static_cast<uint>(_strData.count(num));
     auto it = _strData.find(num);
 
@@ -186,6 +206,8 @@ auto FOMsg::GetInt(uint num) const -> int
 
 auto FOMsg::GetBinary(uint num) const -> vector<uchar>
 {
+    PROFILER_ENTRY();
+
     vector<uchar> result;
 
     if (Count(num) == 0u) {
@@ -204,11 +226,15 @@ auto FOMsg::GetBinary(uint num) const -> vector<uchar>
 
 auto FOMsg::Count(uint num) const -> uint
 {
+    PROFILER_ENTRY();
+
     return static_cast<uint>(_strData.count(num));
 }
 
 void FOMsg::EraseStr(uint num)
 {
+    PROFILER_ENTRY();
+
     while (true) {
         auto it = _strData.find(num);
         if (it != _strData.end()) {
@@ -222,11 +248,15 @@ void FOMsg::EraseStr(uint num)
 
 auto FOMsg::GetSize() const -> uint
 {
+    PROFILER_ENTRY();
+
     return static_cast<uint>(_strData.size());
 }
 
 auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
 {
+    PROFILER_ENTRY();
+
     for (auto&& [key, value] : _strData) {
         if (other._strData.count(key) != 0u) {
             return true;
@@ -237,6 +267,8 @@ auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
 
 auto FOMsg::GetBinaryData() const -> vector<uchar>
 {
+    PROFILER_ENTRY();
+
     // Fill raw data
     const auto count = static_cast<uint>(_strData.size());
 
@@ -261,6 +293,8 @@ auto FOMsg::GetBinaryData() const -> vector<uchar>
 
 auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
 {
+    PROFILER_ENTRY();
+
     Clear();
 
     // Read count of strings
@@ -294,6 +328,8 @@ auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
 
 auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
 {
+    PROFILER_ENTRY();
+
     auto fail = false;
 
     const auto sstr = string(str);
@@ -344,6 +380,8 @@ auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
 
 void FOMsg::LoadFromMap(const map<string, string>& kv)
 {
+    PROFILER_ENTRY();
+
     for (auto&& [key, value] : kv) {
         const auto num = _str(key).toUInt();
         if (num != 0u) {
@@ -359,6 +397,8 @@ void FOMsg::Clear()
 
 auto FOMsg::GetMsgType(string_view type_name) -> int
 {
+    PROFILER_ENTRY();
+
     if (_str(type_name).compareIgnoreCase("text")) {
         return TEXTMSG_TEXT;
     }
@@ -394,6 +434,8 @@ auto FOMsg::GetMsgType(string_view type_name) -> int
 
 void LanguagePack::ParseTexts(FileSystem& resources, NameResolver& name_resolver, string_view lang_name)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());
@@ -424,6 +466,8 @@ void LanguagePack::ParseTexts(FileSystem& resources, NameResolver& name_resolver
 
 void LanguagePack::SaveTextsToDisk(string_view dir) const
 {
+    PROFILER_ENTRY();
+
     for (auto i = 0; i < TEXTMSG_COUNT; i++) {
         auto file = DiskFileSystem::OpenFile(_str("{}/{}-{}.fotxtb", dir, Name, Data->TextMsgFileName[i]), true);
         RUNTIME_ASSERT(file);
@@ -434,6 +478,8 @@ void LanguagePack::SaveTextsToDisk(string_view dir) const
 
 void LanguagePack::LoadTexts(FileSystem& resources, string_view lang_name)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());

@@ -35,10 +35,13 @@
 
 GeometryHelper::GeometryHelper(GeometrySettings& settings) : _settings {settings}
 {
+    PROFILER_ENTRY();
 }
 
 GeometryHelper::~GeometryHelper()
 {
+    PROFILER_ENTRY();
+
     if (_sxEven != nullptr) {
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             delete[] _sxEven;
@@ -55,6 +58,8 @@ GeometryHelper::~GeometryHelper()
 
 void GeometryHelper::InitializeHexOffsets() const
 {
+    PROFILER_ENTRY();
+
     const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -145,6 +150,8 @@ void GeometryHelper::InitializeHexOffsets() const
 
 auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) const -> uint
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const auto dx = x1 > x2 ? x1 - x2 : x2 - x1;
 
@@ -175,6 +182,8 @@ auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) const -> uint
 
 auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uchar
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         if ((x1 & 1) != 0) {
             if (x1 > x2 && y1 > y2) {
@@ -248,6 +257,8 @@ auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uchar
 
 auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uchar
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const auto hx = static_cast<float>(x1);
         const auto hy = static_cast<float>(y1);
@@ -307,6 +318,8 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uchar
 
 auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         const auto hx = static_cast<float>(x1);
         const auto hy = static_cast<float>(y1);
@@ -379,6 +392,8 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) con
 
 auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) const -> float
 {
+    PROFILER_ENTRY();
+
     const auto hx = static_cast<float>(x1);
     const auto hy = static_cast<float>(y1);
     const auto tx = static_cast<float>(x2);
@@ -405,6 +420,8 @@ auto GeometryHelper::GetDirAngle(int x1, int y1, int x2, int y2) const -> float
 
 auto GeometryHelper::GetDirAngleDiff(float a1, float a2) const -> float
 {
+    PROFILER_ENTRY();
+
     const auto r = 180.0f - std::abs(std::abs(a1 - a2) - 180.0f);
     RUNTIME_ASSERT(r >= 0.0f);
     RUNTIME_ASSERT(r <= 180.0f);
@@ -413,6 +430,8 @@ auto GeometryHelper::GetDirAngleDiff(float a1, float a2) const -> float
 
 auto GeometryHelper::GetDirAngleDiffSided(float a1, float a2) const -> float
 {
+    PROFILER_ENTRY();
+
     const auto a1_r = a1 * DEG_TO_RAD_FLOAT;
     const auto a2_r = a2 * DEG_TO_RAD_FLOAT;
     const auto r = std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT;
@@ -423,6 +442,8 @@ auto GeometryHelper::GetDirAngleDiffSided(float a1, float a2) const -> float
 
 auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float
 {
+    PROFILER_ENTRY();
+
     const auto x1_f = static_cast<float>(x1);
     const auto y1_f = static_cast<float>(y1) * GetYProj();
     const auto x2_f = static_cast<float>(x2);
@@ -443,11 +464,15 @@ auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> fl
 
 auto GeometryHelper::GetYProj() const -> float
 {
+    PROFILER_ENTRY();
+
     return 1.0f / std::sin(_settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
 }
 
 auto GeometryHelper::DirToAngle(uchar dir) const -> short
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         return static_cast<short>(dir * 60 + 30);
     }
@@ -458,6 +483,8 @@ auto GeometryHelper::DirToAngle(uchar dir) const -> short
 
 auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         return static_cast<uchar>(NormalizeAngle(dir_angle) / 60);
     }
@@ -468,6 +495,8 @@ auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
 
 auto GeometryHelper::NormalizeAngle(short dir_angle) const -> short
 {
+    PROFILER_ENTRY();
+
     while (dir_angle < 0) {
         dir_angle += 360;
     }
@@ -476,16 +505,22 @@ auto GeometryHelper::NormalizeAngle(short dir_angle) const -> short
 
 auto GeometryHelper::CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool
 {
+    PROFILER_ENTRY();
+
     return DistGame(x1, y1, x2, y2) <= dist;
 }
 
 auto GeometryHelper::ReverseDir(uchar dir) const -> uchar
 {
+    PROFILER_ENTRY();
+
     return static_cast<uchar>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
 auto GeometryHelper::MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool
 {
+    PROFILER_ENTRY();
+
     int hx_ = hx;
     int hy_ = hy;
 
@@ -499,12 +534,16 @@ auto GeometryHelper::MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxh
 
 auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool
 {
+    PROFILER_ENTRY();
+
     MoveHexByDirUnsafe(hx, hy, dir);
     return hx >= 0 && hx < maxhx && hy >= 0 && hy < maxhy;
 }
 
 void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         switch (dir) {
         case 0:
@@ -579,6 +618,8 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
 
 auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const short*, const short*>
 {
+    PROFILER_ENTRY();
+
     if (_sxEven == nullptr) {
         InitializeHexOffsets();
     }
@@ -590,6 +631,8 @@ auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const short*, const 
 
 auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>
 {
+    PROFILER_ENTRY();
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         auto dx = to_hx - from_hx;
         const auto dy = to_hy - from_hy;
@@ -624,6 +667,8 @@ auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_
 
 void GeometryHelper::ForEachBlockLines(const vector<uchar>& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const
 {
+    PROFILER_ENTRY();
+
     int hx_ = hx;
     int hy_ = hy;
 

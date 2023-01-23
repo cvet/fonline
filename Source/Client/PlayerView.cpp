@@ -36,10 +36,14 @@
 
 PlayerView::PlayerView(FOClient* engine, uint id) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef())
 {
+    PROFILER_ENTRY();
+
 }
 
 void PlayerView::MarkAsDestroyed()
 {
+    PROFILER_ENTRY();
+
     Entity::MarkAsDestroying();
     Entity::MarkAsDestroyed();
 }

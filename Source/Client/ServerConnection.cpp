@@ -78,6 +78,8 @@ ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
     _netIn(_settings.NetBufferSize),
     _netOut(_settings.NetBufferSize)
 {
+    PROFILER_ENTRY();
+
     _incomeBuf.resize(_settings.NetBufferSize);
 
     AddMessageHandler(NETMSG_DISCONNECT, [this] { Disconnect(); });
@@ -86,6 +88,8 @@ ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
 
 ServerConnection::~ServerConnection()
 {
+    PROFILER_ENTRY();
+
     if (_impl->NetSock != INVALID_SOCKET) {
         ::closesocket(_impl->NetSock);
     }
@@ -97,16 +101,22 @@ ServerConnection::~ServerConnection()
 
 void ServerConnection::AddConnectHandler(ConnectCallback handler)
 {
+    PROFILER_ENTRY();
+
     _connectCallback = std::move(handler);
 }
 
 void ServerConnection::AddDisconnectHandler(DisconnectCallback handler)
 {
+    PROFILER_ENTRY();
+
     _disconnectCallback = std::move(handler);
 }
 
 void ServerConnection::AddMessageHandler(uint msg, MessageCallback handler)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_handlers.count(msg) == 0u);
 
     _handlers.emplace(msg, std::move(handler));
@@ -114,6 +124,8 @@ void ServerConnection::AddMessageHandler(uint msg, MessageCallback handler)
 
 void ServerConnection::Connect()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!_isConnected);
     RUNTIME_ASSERT(!_isConnecting);
 
@@ -126,6 +138,8 @@ void ServerConnection::Connect()
 
 void ServerConnection::Process()
 {
+    PROFILER_ENTRY();
+
     if (_isConnecting) {
         if (!CheckSocketStatus(true)) {
             return;
@@ -178,6 +192,8 @@ void ServerConnection::Process()
 
 auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
 {
+    PROFILER_ENTRY();
+
     if (_interthreadCommunication) {
         return for_write ? true : !_interthreadReceived.empty();
     }
@@ -236,6 +252,8 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
 
 auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 {
+    PROFILER_ENTRY();
+
     _netIn.SetEncryptKey(0);
     _netOut.SetEncryptKey(0);
 
@@ -550,6 +568,8 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 
 void ServerConnection::Disconnect()
 {
+    PROFILER_ENTRY();
+
     if (_interthreadCommunication) {
         _interthreadCommunication = false;
 
@@ -597,6 +617,8 @@ void ServerConnection::Disconnect()
 
 auto ServerConnection::DispatchData() -> bool
 {
+    PROFILER_ENTRY();
+
     if (!_isConnected) {
         return false;
     }
@@ -643,6 +665,8 @@ auto ServerConnection::DispatchData() -> bool
 
 auto ServerConnection::ReceiveData(bool unpack) -> int
 {
+    PROFILER_ENTRY();
+
     if (!CheckSocketStatus(false)) {
         return 0;
     }

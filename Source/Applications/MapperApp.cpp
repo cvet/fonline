@@ -53,6 +53,8 @@ GLOBAL_DATA(MapperAppData, Data);
 
 static void MapperEntry(void*)
 {
+    PROFILER_ENTRY();
+
 #if FO_WEB
     // Wait file system synchronization
     if (EM_ASM_INT(return Module.syncfsDone) != 1) {
@@ -87,6 +89,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
 #endif
 {
+    PROFILER_ENTRY();
+
     try {
         ShowExceptionMessageBox(true);
         InitApp(argc, argv, "Mapper");

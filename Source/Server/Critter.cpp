@@ -42,6 +42,8 @@
 
 Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef()), _player {owner}
 {
+    PROFILER_ENTRY();
+
     if (_player != nullptr) {
         _player->AddRef();
     }
@@ -49,6 +51,8 @@ Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* p
 
 Critter::~Critter()
 {
+    PROFILER_ENTRY();
+
     if (_player != nullptr) {
         _player->Release();
     }
@@ -56,26 +60,36 @@ Critter::~Critter()
 
 auto Critter::GetOfflineTime() const -> uint
 {
+    PROFILER_ENTRY();
+
     return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;
 }
 
 auto Critter::IsAlive() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetCond() == CritterCondition::Alive;
 }
 
 auto Critter::IsDead() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetCond() == CritterCondition::Dead;
 }
 
 auto Critter::IsKnockout() const -> bool
 {
+    PROFILER_ENTRY();
+
     return GetCond() == CritterCondition::Knockout;
 }
 
 auto Critter::CheckFind(CritterFindType find_type) const -> bool
 {
+    PROFILER_ENTRY();
+
     if (find_type == CritterFindType::Any) {
         return true;
     }
@@ -96,6 +110,8 @@ auto Critter::CheckFind(CritterFindType find_type) const -> bool
 
 void Critter::DetachPlayer()
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_player != nullptr);
     RUNTIME_ASSERT(!_playerDetached);
 
@@ -107,6 +123,8 @@ void Critter::DetachPlayer()
 
 void Critter::AttachPlayer(Player* owner)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(_player == nullptr);
     RUNTIME_ASSERT(_playerDetached);
 
@@ -117,6 +135,8 @@ void Critter::AttachPlayer(Player* owner)
 
 void Critter::ClearMove()
 {
+    PROFILER_ENTRY();
+
     Moving.Uid++;
     Moving.Steps = {};
     Moving.ControlSteps = {};
@@ -136,6 +156,8 @@ void Critter::ClearMove()
 
 void Critter::ClearVisible()
 {
+    PROFILER_ENTRY();
+
     for (auto* cr : VisCr) {
         auto it_ = std::find(cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this);
         if (it_ != cr->VisCrSelf.end()) {
@@ -166,12 +188,16 @@ void Critter::ClearVisible()
 
 auto Critter::GetCrSelf(uint crid) -> Critter*
 {
+    PROFILER_ENTRY();
+
     const auto it = VisCrSelfMap.find(crid);
     return it != VisCrSelfMap.end() ? it->second : nullptr;
 }
 
 auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto& vis_cr = vis_cr_self ? VisCrSelf : VisCr;
@@ -187,6 +213,8 @@ auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vec
 
 auto Critter::GetGlobalMapCritter(uint cr_id) const -> Critter*
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(GlobalMapGroup);
     const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](Critter* other) { return other->GetId() == cr_id; });
     return it != GlobalMapGroup->end() ? *it : nullptr;
@@ -194,6 +222,8 @@ auto Critter::GetGlobalMapCritter(uint cr_id) const -> Critter*
 
 auto Critter::AddCrIntoVisVec(Critter* add_cr) -> bool
 {
+    PROFILER_ENTRY();
+
     if (VisCrMap.count(add_cr->GetId()) != 0u) {
         return false;
     }
@@ -208,6 +238,8 @@ auto Critter::AddCrIntoVisVec(Critter* add_cr) -> bool
 
 auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
 {
+    PROFILER_ENTRY();
+
     const auto it_map = VisCrMap.find(del_cr->GetId());
     if (it_map == VisCrMap.end()) {
         return false;
@@ -226,51 +258,71 @@ auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
 
 auto Critter::AddCrIntoVisSet1(uint crid) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisCr1.insert(crid).second;
 }
 
 auto Critter::AddCrIntoVisSet2(uint crid) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisCr2.insert(crid).second;
 }
 
 auto Critter::AddCrIntoVisSet3(uint crid) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisCr3.insert(crid).second;
 }
 
 auto Critter::DelCrFromVisSet1(uint crid) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisCr1.erase(crid) != 0;
 }
 
 auto Critter::DelCrFromVisSet2(uint crid) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisCr2.erase(crid) != 0;
 }
 
 auto Critter::DelCrFromVisSet3(uint crid) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisCr3.erase(crid) != 0;
 }
 
 auto Critter::AddIdVisItem(uint item_id) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisItem.insert(item_id).second;
 }
 
 auto Critter::DelIdVisItem(uint item_id) -> bool
 {
+    PROFILER_ENTRY();
+
     return VisItem.erase(item_id) != 0;
 }
 
 auto Critter::CountIdVisItem(uint item_id) const -> bool
 {
+    PROFILER_ENTRY();
+
     return VisItem.count(item_id) != 0;
 }
 
 void Critter::ChangeDir(uchar dir)
 {
+    PROFILER_ENTRY();
+
     const auto normalized_dir = static_cast<uchar>(dir % GameSettings::MAP_DIR_COUNT);
 
     if (normalized_dir == GetDir()) {
@@ -283,6 +335,8 @@ void Critter::ChangeDir(uchar dir)
 
 void Critter::ChangeDirAngle(int dir_angle)
 {
+    PROFILER_ENTRY();
+
     const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
 
     if (normalized_dir_angle == GetDirAngle()) {
@@ -295,6 +349,8 @@ void Critter::ChangeDirAngle(int dir_angle)
 
 void Critter::SetItem(Item* item)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(item);
 
     _invItems.push_back(item);
@@ -309,6 +365,8 @@ void Critter::SetItem(Item* item)
 
 auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (item_id == 0u) {
@@ -328,6 +386,8 @@ auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
 
 auto Critter::GetItemByPid(hstring item_pid) -> Item*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
@@ -340,6 +400,8 @@ auto Critter::GetItemByPid(hstring item_pid) -> Item*
 
 auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
@@ -352,6 +414,8 @@ auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
 
 auto Critter::GetItemSlot(int slot) -> Item*
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
@@ -364,6 +428,8 @@ auto Critter::GetItemSlot(int slot) -> Item*
 
 auto Critter::GetItemsSlot(int slot) -> vector<Item*>
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
@@ -379,6 +445,8 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
 
 auto Critter::CountItemPid(hstring pid) const -> uint
 {
+    PROFILER_ENTRY();
+
     uint res = 0;
     for (const auto* item : _invItems) {
         if (item->GetProtoId() == pid) {
@@ -390,6 +458,8 @@ auto Critter::CountItemPid(hstring pid) const -> uint
 
 auto Critter::CountItems() const -> uint
 {
+    PROFILER_ENTRY();
+
     uint count = 0;
     for (const auto* item : _invItems) {
         count += item->GetCount();
@@ -399,11 +469,15 @@ auto Critter::CountItems() const -> uint
 
 auto Critter::GetInventory() -> vector<Item*>&
 {
+    PROFILER_ENTRY();
+
     return _invItems;
 }
 
 auto Critter::IsHaveGeckItem() const -> bool
 {
+    PROFILER_ENTRY();
+
     for (const auto* item : _invItems) {
         if (item->GetIsGeck()) {
             return true;
@@ -414,6 +488,8 @@ auto Critter::IsHaveGeckItem() const -> bool
 
 void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (VisCr.empty()) {
@@ -427,6 +503,8 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerE
 
 void Critter::Broadcast_Move()
 {
+    PROFILER_ENTRY();
+
     if (VisCr.empty()) {
         return;
     }
@@ -438,6 +516,8 @@ void Critter::Broadcast_Move()
 
 void Critter::Broadcast_Position()
 {
+    PROFILER_ENTRY();
+
     if (VisCr.empty()) {
         return;
     }
@@ -449,6 +529,8 @@ void Critter::Broadcast_Position()
 
 void Critter::Broadcast_Action(int action, int action_ext, Item* item)
 {
+    PROFILER_ENTRY();
+
     if (VisCr.empty()) {
         return;
     }
@@ -460,6 +542,8 @@ void Critter::Broadcast_Action(int action, int action_ext, Item* item)
 
 void Critter::Broadcast_Dir()
 {
+    PROFILER_ENTRY();
+
     if (VisCr.empty()) {
         return;
     }
@@ -471,6 +555,8 @@ void Critter::Broadcast_Dir()
 
 void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
 {
+    PROFILER_ENTRY();
+
     if (VisCr.empty()) {
         return;
     }
@@ -482,6 +568,8 @@ void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
 
 void Critter::SendAndBroadcast_Action(int action, int action_ext, Item* item)
 {
+    PROFILER_ENTRY();
+
     Send_Action(this, action, action_ext, item);
 
     if (VisCr.empty()) {
@@ -495,6 +583,8 @@ void Critter::SendAndBroadcast_Action(int action, int action_ext, Item* item)
 
 void Critter::SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot)
 {
+    PROFILER_ENTRY();
+
     Send_MoveItem(this, item, action, prev_slot);
 
     if (VisCr.empty()) {
@@ -508,6 +598,8 @@ void Critter::SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slo
 
 void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
 {
+    PROFILER_ENTRY();
+
     Send_Animate(this, anim1, anim2, item, clear_sequence, delay_play);
 
     if (VisCr.empty()) {
@@ -521,6 +613,8 @@ void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool 
 
 void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2)
 {
+    PROFILER_ENTRY();
+
     Send_SetAnims(this, cond, anim1, anim2);
 
     if (VisCr.empty()) {
@@ -534,6 +628,8 @@ void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint 
 
 void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text)
 {
+    PROFILER_ENTRY();
+
     if (text.empty()) {
         return;
     }
@@ -571,6 +667,8 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
 
 void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg)
 {
+    PROFILER_ENTRY();
+
     Send_TextMsg(this, num_str, how_say, num_msg);
 
     if (to_cr.empty()) {
@@ -602,6 +700,8 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
 
 void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
 
     if (to_cr.empty()) {
@@ -633,6 +733,8 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
 
 auto Critter::IsTransferTimeouts(bool send) -> bool
 {
+    PROFILER_ENTRY();
+
     if (GetTimeoutTransfer() > _engine->GameTime.GetFullSecond()) {
         if (send) {
             Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
@@ -650,11 +752,15 @@ auto Critter::IsTransferTimeouts(bool send) -> bool
 
 auto Critter::IsTalking() const -> bool
 {
+    PROFILER_ENTRY();
+
     return Talk.Type != TalkType::None;
 }
 
 auto Critter::GetTalkedPlayers() const -> uint
 {
+    PROFILER_ENTRY();
+
     auto talk = 0u;
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
@@ -666,6 +772,8 @@ auto Critter::GetTalkedPlayers() const -> uint
 
 auto Critter::IsTalkedPlayers() const -> bool
 {
+    PROFILER_ENTRY();
+
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId()) {
             return true;
@@ -676,6 +784,8 @@ auto Critter::IsTalkedPlayers() const -> bool
 
 auto Critter::GetBarterPlayers() const -> uint
 {
+    PROFILER_ENTRY();
+
     auto barter = 0u;
     for (const auto* cr : VisCr) {
         if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == GetId() && cr->Talk.Barter) {
@@ -687,6 +797,8 @@ auto Critter::GetBarterPlayers() const -> uint
 
 auto Critter::IsFreeToTalk() const -> bool
 {
+    PROFILER_ENTRY();
+
     auto max_talkers = GetMaxTalkers();
     if (max_talkers == 0u) {
         max_talkers = _engine->Settings.NpcMaxTalkers;
@@ -697,6 +809,8 @@ auto Critter::IsFreeToTalk() const -> bool
 
 void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity* entity)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -706,6 +820,8 @@ void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity
 
 void Critter::Send_Move(Critter* from_cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -715,6 +831,8 @@ void Critter::Send_Move(Critter* from_cr)
 
 void Critter::Send_Dir(Critter* from_cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -724,6 +842,8 @@ void Critter::Send_Dir(Critter* from_cr)
 
 void Critter::Send_AddCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -733,6 +853,8 @@ void Critter::Send_AddCritter(Critter* cr)
 
 void Critter::Send_RemoveCritter(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -742,6 +864,8 @@ void Critter::Send_RemoveCritter(Critter* cr)
 
 void Critter::Send_LoadMap(Map* map)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -751,6 +875,8 @@ void Critter::Send_LoadMap(Map* map)
 
 void Critter::Send_Position(Critter* cr)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -760,6 +886,8 @@ void Critter::Send_Position(Critter* cr)
 
 void Critter::Send_AddItemOnMap(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -769,6 +897,8 @@ void Critter::Send_AddItemOnMap(Item* item)
 
 void Critter::Send_EraseItemFromMap(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -778,6 +908,8 @@ void Critter::Send_EraseItemFromMap(Item* item)
 
 void Critter::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -787,6 +919,8 @@ void Critter::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 
 void Critter::Send_AddItem(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -796,6 +930,8 @@ void Critter::Send_AddItem(Item* item)
 
 void Critter::Send_EraseItem(Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -805,6 +941,8 @@ void Critter::Send_EraseItem(Item* item)
 
 void Critter::Send_GlobalInfo(uchar flags)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -814,6 +952,8 @@ void Critter::Send_GlobalInfo(uchar flags)
 
 void Critter::Send_GlobalLocation(Location* loc, bool add)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -823,6 +963,8 @@ void Critter::Send_GlobalLocation(Location* loc, bool add)
 
 void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -832,6 +974,8 @@ void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
 
 void Critter::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -841,6 +985,8 @@ void Critter::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 
 void Critter::Send_AllProperties()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -850,6 +996,8 @@ void Critter::Send_AllProperties()
 
 void Critter::Send_Talk()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -859,6 +1007,8 @@ void Critter::Send_Talk()
 
 void Critter::Send_TimeSync()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -868,6 +1018,8 @@ void Critter::Send_TimeSync()
 
 void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -877,6 +1029,8 @@ void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
 
 void Critter::Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -886,6 +1040,8 @@ void Critter::Send_TextEx(uint from_id, string_view text, uchar how_say, bool un
 
 void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -895,6 +1051,8 @@ void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort
 
 void Critter::Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -904,6 +1062,8 @@ void Critter::Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num
 
 void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -913,6 +1073,8 @@ void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ush
 
 void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -922,6 +1084,8 @@ void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort 
 
 void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -931,6 +1095,8 @@ void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* it
 
 void Critter::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -940,6 +1106,8 @@ void Critter::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pr
 
 void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -949,6 +1117,8 @@ void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item,
 
 void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -958,6 +1128,8 @@ void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1,
 
 void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -967,6 +1139,8 @@ void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
 
 void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -976,6 +1150,8 @@ void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 
 void Critter::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -985,6 +1161,8 @@ void Critter::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, usho
 
 void Critter::Send_PlaySound(uint crid_synchronize, string_view sound_name)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -994,6 +1172,8 @@ void Critter::Send_PlaySound(uint crid_synchronize, string_view sound_name)
 
 void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1003,6 +1183,8 @@ void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, b
 
 void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1012,6 +1194,8 @@ void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, 
 
 void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1021,6 +1205,8 @@ void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_ms
 
 void Critter::Send_ViewMap()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1030,6 +1216,8 @@ void Critter::Send_ViewMap()
 
 void Critter::Send_PlaceToGameComplete()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1039,6 +1227,8 @@ void Critter::Send_PlaceToGameComplete()
 
 void Critter::Send_AddAllItems()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1048,6 +1238,8 @@ void Critter::Send_AddAllItems()
 
 void Critter::Send_AllAutomapsInfo()
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1057,6 +1249,8 @@ void Critter::Send_AllAutomapsInfo()
 
 void Critter::Send_SomeItems(const vector<Item*>* items, int param)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
@@ -1066,6 +1260,8 @@ void Critter::Send_SomeItems(const vector<Item*>* items, int param)
 
 void Critter::AddTimeEvent(hstring func_name, uint rate, uint duration, int identifier)
 {
+    PROFILER_ENTRY();
+
     auto te_identifiers = GetTE_Identifier();
     auto te_fire_times = GetTE_FireTime();
     auto te_func_names = GetTE_FuncName();
@@ -1099,6 +1295,8 @@ void Critter::AddTimeEvent(hstring func_name, uint rate, uint duration, int iden
 
 void Critter::EraseTimeEvent(size_t index)
 {
+    PROFILER_ENTRY();
+
     auto te_identifiers = GetTE_Identifier();
     auto te_fire_times = GetTE_FireTime();
     auto te_func_names = GetTE_FuncName();
@@ -1121,6 +1319,8 @@ void Critter::EraseTimeEvent(size_t index)
 
 void Critter::ProcessTimeEvents()
 {
+    PROFILER_ENTRY();
+
     // Fast checking
     uint data_size = 0;
     const auto* data = GetProperties().GetRawData(GetPropertyTE_FireTime(), data_size);

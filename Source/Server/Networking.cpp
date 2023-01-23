@@ -71,15 +71,20 @@ using ssl_context = asio::ssl::context;
 
 NetConnection::NetConnection(ServerNetworkSettings& settings) : Bin(settings.NetBufferSize), Bout(settings.NetBufferSize)
 {
+    PROFILER_ENTRY();
 }
 
 void NetConnection::AddRef() const
 {
+    PROFILER_ENTRY();
+
     ++_refCount;
 }
 
 void NetConnection::Release() const
 {
+    PROFILER_ENTRY();
+
     if (--_refCount == 0) {
         delete this;
     }
@@ -90,6 +95,8 @@ class NetConnectionImpl : public NetConnection
 public:
     explicit NetConnectionImpl(ServerNetworkSettings& settings) : NetConnection(settings), _settings {settings}
     {
+        PROFILER_ENTRY();
+
         _outBuf.resize(_settings.NetBufferSize);
 
         if (!settings.DisableZlibCompression) {
@@ -112,18 +119,45 @@ public:
 
     ~NetConnectionImpl() override
     {
+        PROFILER_ENTRY();
+
         if (_zStreamActive) {
             deflateEnd(&_zStream);
         }
     }
 
-    [[nodiscard]] auto GetIp() const -> uint override { return _ip; }
-    [[nodiscard]] auto GetHost() const -> string_view override { return _host; }
-    [[nodiscard]] auto GetPort() const -> ushort override { return _port; }
-    [[nodiscard]] auto IsDisconnected() const -> bool override { return _isDisconnected; }
+    [[nodiscard]] auto GetIp() const -> uint override
+    {
+        PROFILER_ENTRY();
+
+        return _ip;
+    }
+
+    [[nodiscard]] auto GetHost() const -> string_view override
+    {
+        PROFILER_ENTRY();
+
+        return _host;
+    }
+
+    [[nodiscard]] auto GetPort() const -> ushort override
+    {
+        PROFILER_ENTRY();
+
+        return _port;
+    }
+
+    [[nodiscard]] auto IsDisconnected() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return _isDisconnected;
+    }
 
     void DisableCompression() override
     {
+        PROFILER_ENTRY();
+
         if (_zStreamActive) {
             deflateEnd(&_zStream);
             _zStreamActive = false;
@@ -132,6 +166,8 @@ public:
 
     void Dispatch() override
     {
+        PROFILER_ENTRY();
+
         if (_isDisconnected) {
             return;
         }
@@ -149,6 +185,8 @@ public:
 
     void Disconnect() override
     {
+        PROFILER_ENTRY();
+
         auto expected = false;
         if (_isDisconnected.compare_exchange_strong(expected, true)) {
             DisconnectImpl();
@@ -161,6 +199,8 @@ protected:
 
     auto SendCallback(size_t& out_len) -> const uchar*
     {
+        PROFILER_ENTRY();
+
         std::lock_guard locker(BoutLocker);
 
         if (Bout.IsEmpty()) {
@@ -218,6 +258,8 @@ protected:
 
     void ReceiveCallback(const uchar* buf, size_t len)
     {
+        PROFILER_ENTRY();
+
         std::lock_guard locker(BinLocker);
 
         if (Bin.GetReadPos() + len < _settings.FloodSize) {
@@ -321,6 +363,8 @@ class NetConnectionAsio final : public NetConnectionImpl
 public:
     NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) : NetConnectionImpl(settings), _socket {socket}
     {
+        PROFILER_ENTRY();
+
         const auto& address = socket->remote_endpoint().address();
         _ip = address.is_v4() ? address.to_v4().to_uint() : static_cast<uint>(-1);
         _host = address.to_string();
@@ -342,23 +386,40 @@ public:
     auto operator=(NetConnectionAsio&&) noexcept = delete;
     ~NetConnectionAsio() override
     {
+        PROFILER_ENTRY();
+
         if (!_isDisconnected) {
             _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
             _socket->close(_dummyError);
         }
     }
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return false; }
+    [[nodiscard]] auto IsWebConnection() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return false;
+    }
+
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return false;
+    }
 
 private:
     void NextAsyncRead()
     {
+        PROFILER_ENTRY();
+
         async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this_ = this, socket = _socket](std::error_code error, size_t bytes) { AsyncRead(this_, socket, error, bytes); });
     }
 
     static void AsyncRead(NetConnectionAsio* this_, asio::ip::tcp::socket* socket, std::error_code error, size_t bytes)
     {
+        PROFILER_ENTRY();
+
         if (!error) {
             this_->ReceiveCallback(this_->_inBuf.data(), bytes);
             this_->NextAsyncRead();
@@ -374,6 +435,8 @@ private:
 
     void AsyncWrite(std::error_code error, size_t bytes)
     {
+        PROFILER_ENTRY();
+
         UNUSED_VARIABLE(bytes);
 
         _writePending = false;
@@ -388,6 +451,8 @@ private:
 
     void DispatchImpl() override
     {
+        PROFILER_ENTRY();
+
         auto expected = false;
         if (_writePending.compare_exchange_strong(expected, true)) {
             size_t len = 0;
@@ -408,6 +473,8 @@ private:
 
     void DisconnectImpl() override
     {
+        PROFILER_ENTRY();
+
         _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
         _socket->close(_dummyError);
     }
@@ -427,6 +494,8 @@ class NetConnectionWebSocket final : public NetConnectionImpl
 public:
     NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) : NetConnectionImpl(settings), _server {server}, _connection {connection}
     {
+        PROFILER_ENTRY();
+
         const auto& address = connection->get_raw_socket().remote_endpoint().address();
         _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
         _host = address.to_string();
@@ -451,18 +520,33 @@ public:
 
     ~NetConnectionWebSocket() override
     {
+        PROFILER_ENTRY();
+
         if (_isDisconnected) {
             std::error_code error;
             _connection->terminate(error);
         }
     }
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override { return true; }
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return false; }
+    [[nodiscard]] auto IsWebConnection() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return true;
+    }
+
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return false;
+    }
 
 private:
     void OnMessage(message_ptr msg)
     {
+        PROFILER_ENTRY();
+
         const auto& payload = msg->get_payload();
         RUNTIME_ASSERT(!payload.empty());
         ReceiveCallback(reinterpret_cast<const uchar*>(payload.data()), payload.length());
@@ -470,20 +554,31 @@ private:
 
     void OnFail()
     {
+        PROFILER_ENTRY();
+
         WriteLog("Failed: {}", _connection->get_ec().message());
         Disconnect();
     }
 
-    void OnClose() { Disconnect(); }
+    void OnClose()
+    {
+        PROFILER_ENTRY();
+
+        Disconnect();
+    }
 
     void OnHttp()
     {
+        PROFILER_ENTRY();
+
         // Prevent use this feature
         Disconnect();
     }
 
     void DispatchImpl() override
     {
+        PROFILER_ENTRY();
+
         size_t len = 0;
         const auto* buf = SendCallback(len);
         if (buf != nullptr) {
@@ -499,6 +594,8 @@ private:
 
     void DisconnectImpl() override
     {
+        PROFILER_ENTRY();
+
         std::error_code error;
         _connection->terminate(error);
     }
@@ -509,6 +606,8 @@ private:
 
 NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}, _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
 {
+    PROFILER_ENTRY();
+
     _connectionCallback = std::move(callback);
     AcceptNext();
     _runThread = std::thread(&NetTcpServer::Run, this);
@@ -516,12 +615,16 @@ NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback c
 
 void NetTcpServer::Shutdown()
 {
+    PROFILER_ENTRY();
+
     _ioService.stop();
     _runThread.join();
 }
 
 void NetTcpServer::Run()
 {
+    PROFILER_ENTRY();
+
     try {
         _ioService.run();
     }
@@ -532,12 +635,16 @@ void NetTcpServer::Run()
 
 void NetTcpServer::AcceptNext()
 {
+    PROFILER_ENTRY();
+
     auto* socket = new asio::ip::tcp::socket(_ioService);
     _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, socket); });
 }
 
 void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
 {
+    PROFILER_ENTRY();
+
     if (!error) {
         _connectionCallback(new NetConnectionAsio(_settings, socket));
     }
@@ -551,6 +658,8 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
 
 NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
 {
+    PROFILER_ENTRY();
+
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
@@ -564,12 +673,16 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
 
 void NetNoTlsWebSocketsServer::Shutdown()
 {
+    PROFILER_ENTRY();
+
     _server.stop();
     _runThread.join();
 }
 
 void NetNoTlsWebSocketsServer::Run()
 {
+    PROFILER_ENTRY();
+
     try {
         _server.run();
     }
@@ -580,12 +693,16 @@ void NetNoTlsWebSocketsServer::Run()
 
 void NetNoTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 {
+    PROFILER_ENTRY();
+
     const auto connection = _server.get_con_from_hdl(std::move(hdl));
     _connectionCallback(new NetConnectionWebSocket<web_sockets_no_tls>(_settings, &_server, connection));
 }
 
 auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
+    PROFILER_ENTRY();
+
     auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
     connection->select_subprotocol("binary", error);
@@ -594,6 +711,8 @@ auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bo
 
 NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
 {
+    PROFILER_ENTRY();
+
     if (settings.WssPrivateKey.empty()) {
         throw GenericException("'WssPrivateKey' not provided");
     }
@@ -615,12 +734,16 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
 
 void NetTlsWebSocketsServer::Shutdown()
 {
+    PROFILER_ENTRY();
+
     _server.stop();
     _runThread.join();
 }
 
 void NetTlsWebSocketsServer::Run()
 {
+    PROFILER_ENTRY();
+
     try {
         _server.run();
     }
@@ -631,12 +754,16 @@ void NetTlsWebSocketsServer::Run()
 
 void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 {
+    PROFILER_ENTRY();
+
     const auto connection = _server.get_con_from_hdl(std::move(hdl));
     _connectionCallback(new NetConnectionWebSocket<web_sockets_tls>(_settings, &_server, connection));
 }
 
 auto NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
+    PROFILER_ENTRY();
+
     auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
     connection->select_subprotocol("binary", error);
@@ -645,6 +772,8 @@ auto NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 
 auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) const -> shared_ptr<ssl_context>
 {
+    PROFILER_ENTRY();
+
     UNUSED_VARIABLE(hdl);
 
     shared_ptr<ssl_context> ctx(new ssl_context(ssl_context::tlsv1));
@@ -657,6 +786,8 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) co
 
 auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
+    PROFILER_ENTRY();
+
 #if FO_HAVE_ASIO
     WriteLog("Listen TCP connections on port {}", settings.ServerPort);
 
@@ -668,6 +799,8 @@ auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCa
 
 auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
+    PROFILER_ENTRY();
+
 #if FO_HAVE_ASIO
     if (settings.SecuredWebSockets) {
         WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
@@ -687,7 +820,12 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
 class InterthreadConnection : public NetConnectionImpl
 {
 public:
-    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) : NetConnectionImpl(settings), _send {std::move(send)} { }
+    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) : NetConnectionImpl(settings), _send {std::move(send)}
+    {
+        PROFILER_ENTRY();
+
+        //
+    }
 
     InterthreadConnection(const InterthreadConnection&) = delete;
     InterthreadConnection(InterthreadConnection&&) noexcept = delete;
@@ -695,11 +833,24 @@ public:
     auto operator=(InterthreadConnection&&) noexcept = delete;
     ~InterthreadConnection() override = default;
 
-    [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
-    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return true; }
+    [[nodiscard]] auto IsWebConnection() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return false;
+    }
+
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override
+    {
+        PROFILER_ENTRY();
+
+        return true;
+    }
 
     void Receive(const_span<uchar> buf)
     {
+        PROFILER_ENTRY();
+
         if (!buf.empty()) {
             ReceiveCallback(buf.data(), buf.size());
         }
@@ -712,6 +863,8 @@ public:
 private:
     void DispatchImpl() override
     {
+        PROFILER_ENTRY();
+
         size_t len = 0;
         const auto* buf = SendCallback(len);
         if (buf != nullptr) {
@@ -721,6 +874,8 @@ private:
 
     void DisconnectImpl() override
     {
+        PROFILER_ENTRY();
+
         if (_send) {
             _send({});
             _send = nullptr;
@@ -742,6 +897,8 @@ public:
 
     InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _virtualPort {static_cast<ushort>(settings.ServerPort)}
     {
+        PROFILER_ENTRY();
+
         if (InterthreadListeners.count(_virtualPort) != 0u) {
             throw NetworkException("Port is busy", _virtualPort);
         }
@@ -755,6 +912,8 @@ public:
 
     void Shutdown() override
     {
+        PROFILER_ENTRY();
+
         RUNTIME_ASSERT(InterthreadListeners.count(_virtualPort) != 0u);
         InterthreadListeners.erase(_virtualPort);
     }
@@ -765,5 +924,7 @@ private:
 
 auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
+    PROFILER_ENTRY();
+
     return new InterthreadServer(settings, std::move(callback));
 }

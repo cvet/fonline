@@ -39,6 +39,8 @@
 
 void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
 {
+    PROFILER_ENTRY();
+
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     _animFileName.resize(len);
@@ -92,6 +94,8 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
 
 void ModelAnimation::SetData(string_view fname, string_view name, float ticks, float tps)
 {
+    PROFILER_ENTRY();
+
     _animFileName = fname;
     _animName = name;
     _durationTicks = ticks;
@@ -100,6 +104,8 @@ void ModelAnimation::SetData(string_view fname, string_view name, float ticks, f
 
 void ModelAnimation::AddBoneOutput(vector<hstring> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv)
 {
+    PROFILER_ENTRY();
+
     auto& o = _boneOutputs.emplace_back();
     o.BoneName = hierarchy.back();
     o.ScaleTime = st;
@@ -113,31 +119,43 @@ void ModelAnimation::AddBoneOutput(vector<hstring> hierarchy, const vector<float
 
 auto ModelAnimation::GetFileName() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return _animFileName;
 }
 
 auto ModelAnimation::GetName() const -> string_view
 {
+    PROFILER_ENTRY();
+
     return _animName;
 }
 
 auto ModelAnimation::GetBoneOutputCount() const -> uint
 {
+    PROFILER_ENTRY();
+
     return static_cast<uint>(_boneOutputs.size());
 }
 
 auto ModelAnimation::GetDuration() const -> float
 {
+    PROFILER_ENTRY();
+
     return _durationTicks / _ticksPerSecond;
 }
 
 auto ModelAnimation::GetBonesHierarchy() const -> const vector<vector<hstring>>&
 {
+    PROFILER_ENTRY();
+
     return _bonesHierarchy;
 }
 
 ModelAnimationController::ModelAnimationController(uint track_count)
 {
+    PROFILER_ENTRY();
+
     if (track_count != 0u) {
         _sets = new vector<ModelAnimation*>();
         _outputs = new vector<Output>();
@@ -147,6 +165,8 @@ ModelAnimationController::ModelAnimationController(uint track_count)
 
 ModelAnimationController::~ModelAnimationController()
 {
+    PROFILER_ENTRY();
+
     if (!_cloned) {
         delete _sets;
         delete _outputs;
@@ -155,6 +175,8 @@ ModelAnimationController::~ModelAnimationController()
 
 auto ModelAnimationController::Clone() const -> ModelAnimationController*
 {
+    PROFILER_ENTRY();
+
     auto* clone = new ModelAnimationController(0);
     clone->_cloned = true;
     clone->_sets = _sets;
@@ -167,6 +189,8 @@ auto ModelAnimationController::Clone() const -> ModelAnimationController*
 
 void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44& output_matrix)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     auto& o = _outputs->emplace_back();
@@ -181,6 +205,8 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
 
 void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _sets->push_back(animation);
@@ -188,6 +214,8 @@ void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 
 auto ModelAnimationController::GetAnimationSet(uint index) const -> const ModelAnimation*
 {
+    PROFILER_ENTRY();
+
     if (index >= _sets->size()) {
         return nullptr;
     }
@@ -196,6 +224,8 @@ auto ModelAnimationController::GetAnimationSet(uint index) const -> const ModelA
 
 auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> const ModelAnimation*
 {
+    PROFILER_ENTRY();
+
     for (const auto* s : *_sets) {
         if (s->_animName == name) {
             return s;
@@ -206,21 +236,29 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> 
 
 auto ModelAnimationController::GetTrackEnable(uint track) const -> bool
 {
+    PROFILER_ENTRY();
+
     return _tracks[track].Enabled;
 }
 
 auto ModelAnimationController::GetTrackPosition(uint track) const -> float
 {
+    PROFILER_ENTRY();
+
     return _tracks[track].Position;
 }
 
 auto ModelAnimationController::GetNumAnimationSets() const -> uint
 {
+    PROFILER_ENTRY();
+
     return static_cast<uint>(_sets->size());
 }
 
 void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
 {
+    PROFILER_ENTRY();
+
     _tracks[track].Anim = anim;
     const auto count = anim->GetBoneOutputCount();
     _tracks[track].AnimOutput.resize(count);
@@ -241,6 +279,8 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
 
 void ModelAnimationController::ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names)
 {
+    PROFILER_ENTRY();
+
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
         for (uint i = 0, j = static_cast<uint>(_tracks.size()); i < j; i++) {
@@ -260,6 +300,8 @@ void ModelAnimationController::ResetBonesTransition(uint skip_track, const vecto
 
 void ModelAnimationController::Reset()
 {
+    PROFILER_ENTRY();
+
     _curTime = 0.0f;
 
     for (auto& t : _tracks) {
@@ -269,41 +311,57 @@ void ModelAnimationController::Reset()
 
 auto ModelAnimationController::GetTime() const -> float
 {
+    PROFILER_ENTRY();
+
     return _curTime;
 }
 
 void ModelAnimationController::AddEventEnable(uint track, bool enable, float start_time)
 {
+    PROFILER_ENTRY();
+
     _tracks[track].Events.push_back({Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
 void ModelAnimationController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
 {
+    PROFILER_ENTRY();
+
     _tracks[track].Events.push_back({Track::EventType::Speed, speed, start_time, smooth_time});
 }
 
 void ModelAnimationController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
 {
+    PROFILER_ENTRY();
+
     _tracks[track].Events.push_back({Track::EventType::Weight, weight, start_time, smooth_time});
 }
 
 void ModelAnimationController::SetTrackEnable(uint track, bool enable)
 {
+    PROFILER_ENTRY();
+
     _tracks[track].Enabled = enable;
 }
 
 void ModelAnimationController::SetTrackPosition(uint track, float position)
 {
+    PROFILER_ENTRY();
+
     _tracks[track].Position = position;
 }
 
 void ModelAnimationController::SetInterpolation(bool enabled)
 {
+    PROFILER_ENTRY();
+
     _interpolationDisabled = !enabled;
 }
 
 void ModelAnimationController::AdvanceTime(float time)
 {
+    PROFILER_ENTRY();
+
     // Animation time
     _curTime += time;
 
@@ -426,6 +484,8 @@ void ModelAnimationController::AdvanceTime(float time)
 
 void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float factor) const
 {
+    PROFILER_ENTRY();
+
     if (!_interpolationDisabled) {
         quaternion::Interpolate(q1, q1, q2, factor);
     }
@@ -436,6 +496,8 @@ void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2,
 
 void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float factor) const
 {
+    PROFILER_ENTRY();
+
     if (!_interpolationDisabled) {
         v1.x = v1.x + (v2.x - v1.x) * factor;
         v1.y = v1.y + (v2.y - v1.y) * factor;

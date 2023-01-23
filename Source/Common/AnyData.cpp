@@ -40,6 +40,8 @@ static auto ReadToken(const char* str, string& result) -> const char*;
 
 auto AnyData::ValueToString(const Value& value) -> string
 {
+    PROFILER_ENTRY();
+
     constexpr auto default_buf_size = 1024;
 
     switch (value.index()) {
@@ -170,6 +172,8 @@ auto AnyData::ValueToString(const Value& value) -> string
 
 auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int value_type) -> Value
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(value_type == INT_VALUE || value_type == INT64_VALUE || value_type == DOUBLE_VALUE || value_type == BOOL_VALUE || value_type == STRING_VALUE);
 
     if (as_dict) {
@@ -285,6 +289,8 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
 
 static auto CodeString(string_view str, bool strong_protect, bool just_escape) -> string
 {
+    PROFILER_ENTRY();
+
     auto protect = false;
 
     if (!just_escape) {
@@ -344,6 +350,8 @@ static auto CodeString(string_view str, bool strong_protect, bool just_escape) -
 
 static auto DecodeString(string_view str) -> string
 {
+    PROFILER_ENTRY();
+
     if (str.empty()) {
         return string();
     }
@@ -397,6 +405,8 @@ static auto DecodeString(string_view str) -> string
 
 static auto ReadToken(const char* str, string& result) -> const char*
 {
+    PROFILER_ENTRY();
+
     if (*str == 0) {
         return nullptr;
     }

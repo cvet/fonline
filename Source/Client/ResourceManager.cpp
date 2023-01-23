@@ -43,10 +43,14 @@ static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
 ResourceManager::ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _resources {resources}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
 {
+    PROFILER_ENTRY();
+
 }
 
 void ResourceManager::IndexFiles()
 {
+    PROFILER_ENTRY();
+
     for (const auto* splash_ext : {"rix", "png", "jpg"}) {
         auto splashes = _resources.FilterFiles(splash_ext, "Splash/", true);
         while (splashes.MoveNext()) {
@@ -68,6 +72,8 @@ void ResourceManager::IndexFiles()
 
 void ResourceManager::FreeResources(AtlasType atlas_type)
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(atlas_type == AtlasType::Static || atlas_type == AtlasType::Dynamic);
 
     _sprMngr.DestroyAtlases(atlas_type);
@@ -99,6 +105,8 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
 
 void ResourceManager::ReinitializeDynamicAtlas()
 {
+    PROFILER_ENTRY();
+
     FreeResources(AtlasType::Dynamic);
     _sprMngr.DestroyAnyFrames(CritterDefaultAnim);
     _sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
@@ -114,6 +122,8 @@ void ResourceManager::ReinitializeDynamicAtlas()
 
 auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 {
+    PROFILER_ENTRY();
+
     const auto it = _loadedAnims.find(name);
     if (it != _loadedAnims.end()) {
         return it->second.Anim;
@@ -133,12 +143,16 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 
 static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallout) -> uint
 {
+    PROFILER_ENTRY();
+
     const uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
 auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*
 {
+    PROFILER_ENTRY();
+
     // Make animation id
     auto id = AnimMapId(model_name, anim1, anim2, false);
 
@@ -261,6 +275,8 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
 
 auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2) -> AnyFrames*
 {
+    PROFILER_ENTRY();
+
     // Convert from common to fallout specific
     uint anim1_ex = 0;
     uint anim2_ex = 0;
@@ -348,6 +364,8 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
 
 void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
@@ -377,6 +395,8 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
 
 void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base)
 {
+    PROFILER_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
@@ -414,6 +434,8 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
 
 auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint anim2) -> AnyFrames*
 {
+    PROFILER_ENTRY();
+
 #define LOADSPR_ADDOFFS(a1, a2) FixAnimOffs(frames, LoadFalloutAnimSpr(model_name, a1, a2))
 #define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimOffsNext(frames, LoadFalloutAnimSpr(model_name, a1, a2))
 
@@ -544,6 +566,8 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 #if FO_ENABLE_3D
 auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*
 {
+    PROFILER_ENTRY();
+
     if (_critterModels.count(model_name) != 0u) {
         _critterModels[model_name]->SetDir(dir, false);
         _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
@@ -569,6 +593,8 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
 
 auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint
 {
+    PROFILER_ENTRY();
+
     const string ext = _str().getFileExtension();
     if (ext != "fo3d") {
         const auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
@@ -587,6 +613,8 @@ auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2
 
 auto ResourceManager::GetRandomSplash() -> AnyFrames*
 {
+    PROFILER_ENTRY();
+
     if (_splashNames.empty()) {
         return nullptr;
     }

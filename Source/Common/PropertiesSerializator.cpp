@@ -37,6 +37,8 @@
 
 auto PropertiesSerializator::SaveToDocument(const Properties* props, const Properties* base, NameResolver& name_resolver) -> AnyData::Document
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(!base || props->_registrator == base->_registrator);
 
     AnyData::Document doc;
@@ -91,6 +93,8 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
 
 auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::Document& doc, NameResolver& name_resolver) -> bool
 {
+    PROFILER_ENTRY();
+
     bool is_error = false;
 
     for (const auto& [key, value] : doc) {
@@ -118,6 +122,8 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
 
 auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const Property* prop, NameResolver& name_resolver) -> AnyData::Value
 {
+    PROFILER_ENTRY();
+
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
     RUNTIME_ASSERT(!prop->_isTemporary);
 
@@ -463,6 +469,8 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 
 auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, NameResolver& name_resolver) -> bool
 {
+    PROFILER_ENTRY();
+
     if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
         WriteLog("Invalid property {} for reading", prop->GetName());
         return false;
