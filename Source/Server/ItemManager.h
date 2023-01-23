@@ -93,6 +93,6 @@ private:
     void EraseItemHolder(Item* item, Entity* holder);
 
     FOServer* _engine;
-    vector<Item*> _radioItems {};
+    unordered_set<Item*> _radioItems {};
     bool _nonConstHelper {};
 };

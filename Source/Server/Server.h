@@ -79,6 +79,7 @@ public:
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
 
+    void Start();
     void Shutdown();
     void MainLoop();
     void DrawGui(string_view server_name);
@@ -145,8 +146,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGlobalMapIdle, Critter* /*cr*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*fromSlot*/);
@@ -177,7 +176,6 @@ public:
     DialogManager DlgMngr;
 
     DataBase DbStorage {};
-    DataBase DbHistory {}; // Todo: remove history DB system?
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};

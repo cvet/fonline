@@ -166,12 +166,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Critter_GetAnim1(CritterView* self)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    return hex_cr->GetAnim1();
+    return self->GetAnim1();
 }
 
 ///# ...
@@ -428,15 +423,14 @@
     }
 
 #if FO_ENABLE_3D
-    if (!hex_cr->IsModel()) {
-        throw ScriptException("Critter is not 3D model");
+    if (hex_cr->IsModel()) {
+        hex_cr->GetModel()->RunParticles(particlesName, boneName, vec3(moveX, moveY, moveZ));
     }
-
-    hex_cr->GetModel()->RunParticles(particlesName, boneName, vec3(moveX, moveY, moveZ));
-
-#else
-    throw NotEnabled3DException("3D submodule not enabled");
+    else
 #endif
+    {
+        // Todo: improve run particles for 2D animations
+    }
 }
 
 ///# ...
@@ -453,24 +447,20 @@
     }
 
 #if FO_ENABLE_3D
-    if (!hex_cr->IsModel()) {
-        throw ScriptException("Critter is not 3D model");
+    if (hex_cr->IsModel()) {
+        hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, std::clamp(normalizedTime, 0.0f, 1.0f), [self, animCallback] {
+                                                              if (!self->IsDestroyed()) {
+                                                                  const auto func_name = static_cast<hstring>(animCallback);
+                                                                  const auto result = self->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(func_name, self);
+                                                                  UNUSED_VARIABLE(result);
+                                                              }
+                                                          }});
     }
-    if (normalizedTime < 0.0f || normalizedTime > 1.0f) {
-        throw ScriptException("Normalized time is not in range 0..1", normalizedTime);
-    }
-
-    hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [hex_cr, animCallback] {
-                                                          if (!hex_cr->IsDestroyed()) {
-                                                              // Todo: call animCallback
-                                                              UNUSED_VARIABLE(animCallback);
-                                                              // animCallback(hex_cr);
-                                                          }
-                                                      }});
-
-#else
-    throw NotEnabled3DException("3D submodule not enabled");
+    else
 #endif
+    {
+        // Todo: improve animation callbacks for 2D animations
+    }
 }
 
 ///# ...
@@ -488,7 +478,7 @@
     }
 
     if (!hex_cr->IsModel()) {
-        throw ScriptException("Critter is not 3D model");
+        return false;
     }
 
     const auto bone_pos = hex_cr->GetModel()->GetBonePos(boneName);
@@ -524,7 +514,7 @@
         throw ScriptException("Critter is not on map");
     }
 
-    self->GetEngine()->CritterMoveTo(hex_cr, dir, 0);
+    self->GetEngine()->CritterMoveTo(hex_cr, dir, speed);
 }
 
 ///@ ExportMethod

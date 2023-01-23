@@ -34,15 +34,9 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "GenericUtils.h"
 #include "Server.h"
 #include "Settings.h"
-
-#if FO_LINUX || FO_MAC
-#include <errno.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
@@ -51,31 +45,12 @@ int main(int argc, char** argv)
 #endif
 {
     try {
+        GenericUtils::ForkProcess();
+
         InitApp(argc, argv, "ServerDaemon");
 
-#if FO_LINUX || FO_MAC
-        // Start daemon
-        pid_t parpid = ::fork();
-        if (parpid < 0) {
-            throw GenericException("Create child process (fork) failed", strerror(errno));
-        }
-        else if (parpid != 0) {
-            // Close parent process
-            return 0;
-        }
-
-        ::close(STDIN_FILENO);
-        ::close(STDOUT_FILENO);
-        ::close(STDERR_FILENO);
-
-        if (::setsid() < 0) {
-            throw GenericException("Create child process (fork) failed", strerror(errno));
-        }
-
-        ::umask(0);
-#endif
-
         auto* server = new FOServer(App->Settings);
+        server->Start();
 
         while (!App->Settings.Quit) {
             try {

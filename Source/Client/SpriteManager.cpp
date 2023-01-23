@@ -39,7 +39,7 @@
 constexpr int SPRITES_BUFFER_SIZE = 10000;
 constexpr int ATLAS_SPRITES_PADDING = 1;
 
-static inline auto ApplyColorBrightness(uint color, int brightness) -> uint
+static auto ApplyColorBrightness(uint color, int brightness) -> uint
 {
     if (brightness != 0) {
         const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
@@ -933,7 +933,7 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
     }
 
     // Load fresh
-    return LoadAnimation(fname, true);
+    return LoadAnimation(fname, false);
 }
 
 #if FO_ENABLE_3D
@@ -1221,7 +1221,9 @@ void SpriteManager::Flush()
     for (const auto& dip : _dipQueue) {
         RUNTIME_ASSERT(dip.SourceEffect->Usage == EffectUsage::QuadSprite);
 
-        dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+        if (_sprEgg != nullptr) {
+            dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+        }
 
         if (dip.SourceEffect->MapSpriteBuf) {
             dip.SourceEffect->MapSpriteBuf->ZoomFactor = _settings.SpritesZoom;
@@ -1249,6 +1251,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     }
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    RUNTIME_ASSERT(effect);
 
     if (_dipQueue.empty() || _dipQueue.back().SourceEffect->CanBatch(effect)) {
         _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
@@ -1341,6 +1344,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     }
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    RUNTIME_ASSERT(effect);
 
     if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
         _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
@@ -1426,6 +1430,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
     color = COLOR_SWAP_RB(color);
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    RUNTIME_ASSERT(effect);
 
     const auto last_right_offs = (si->SprRect.Right - si->SprRect.Left) / width;
     const auto last_bottom_offs = (si->SprRect.Bottom - si->SprRect.Top) / height;
@@ -1503,23 +1508,46 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(const Sprite* prep) const -> IRect
+auto SpriteManager::GetDrawRect(const Sprite* spr) const -> IRect
 {
-    const auto id = prep->PSprId != nullptr ? *prep->PSprId : prep->SprId;
+    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
     RUNTIME_ASSERT(id < _sprData.size());
     const auto* si = _sprData[id];
     RUNTIME_ASSERT(si);
 
-    auto x = prep->ScrX - si->Width / 2 + si->OffsX + *prep->PScrX;
-    auto y = prep->ScrY - si->Height + si->OffsY + *prep->PScrY;
-    if (prep->OffsX != nullptr) {
-        x += *prep->OffsX;
+    auto x = spr->ScrX - si->Width / 2 + si->OffsX + *spr->PScrX;
+    auto y = spr->ScrY - si->Height + si->OffsY + *spr->PScrY;
+    if (spr->OffsX != nullptr) {
+        x += *spr->OffsX;
     }
-    if (prep->OffsY != nullptr) {
-        y += *prep->OffsY;
+    if (spr->OffsY != nullptr) {
+        y += *spr->OffsY;
     }
 
     return {x, y, x + si->Width, y + si->Height};
+}
+
+auto SpriteManager::GetViewRect(const Sprite* spr) const -> IRect
+{
+    auto rect = GetDrawRect(spr);
+
+    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
+    RUNTIME_ASSERT(id < _sprData.size());
+    const auto* si = _sprData[id];
+    RUNTIME_ASSERT(si);
+
+#if FO_ENABLE_3D
+    if (si->Model != nullptr) {
+        auto&& [view_width, view_height] = si->Model->GetViewSize();
+
+        rect.Left = rect.CenterX() - view_width / 2;
+        rect.Right = rect.Left + view_width;
+        rect.Bottom = rect.Bottom - rect.Height() / 4 + _settings.MapHexHeight / 2;
+        rect.Top = rect.Bottom - view_height;
+    }
+#endif
+
+    return rect;
 }
 
 void SpriteManager::InitializeEgg(string_view egg_name)
@@ -1601,7 +1629,6 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         return;
     }
 
-    // Todo: restore ShowSpriteBorders
     vector<PrimitivePoint> borders;
 
     if (!_eggValid) {
@@ -1740,6 +1767,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         if (effect == nullptr) {
             effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Generic;
         }
+        RUNTIME_ASSERT(effect);
 
         // Choose atlas
         if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
@@ -1858,6 +1886,17 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
             CollectContour(x, y, si, contour_color);
         }
+
+        if (_settings.ShowSpriteBorders && spr->DrawOrder > DrawOrderType::TileEnd) {
+            auto rect = GetViewRect(spr);
+
+            rect.Left += _settings.ScrOx;
+            rect.Right += _settings.ScrOx;
+            rect.Top += _settings.ScrOy;
+            rect.Bottom += _settings.ScrOy;
+
+            PrepareSquare(borders, rect, COLOR_RGBA(50, 0, 0, 255));
+        }
     }
 
     Flush();
@@ -1935,6 +1974,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     Flush();
 
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.Primitive;
+    RUNTIME_ASSERT(effect);
 
     // Check primitives
     const auto count = points.size();

@@ -377,11 +377,11 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     GL(glEnable(GL_BLEND));
     GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
     GL(glDisable(GL_CULL_FACE));
-    GL(glEnable(GL_TEXTURE_2D));
     GL(glActiveTexture(GL_TEXTURE0));
     GL(glPixelStorei(GL_PACK_ALIGNMENT, 1));
     GL(glPixelStorei(GL_UNPACK_ALIGNMENT, 1));
 #if !FO_OPENGL_ES
+    GL(glEnable(GL_TEXTURE_2D));
     GL(glDisable(GL_LIGHTING));
     GL(glDisable(GL_COLOR_MATERIAL));
     GL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));

@@ -71,9 +71,9 @@ public:
 
     [[nodiscard]] auto IsConnecting() const -> bool { return _isConnecting; }
     [[nodiscard]] auto IsConnected() const -> bool { return _isConnected; }
-    [[nodiscard]] auto GetBytesSend() const -> bool { return _bytesSend; }
-    [[nodiscard]] auto GetBytesReceived() const -> bool { return _bytesReceive; }
-    [[nodiscard]] auto GetUnpackedBytesReceived() const -> bool { return _bytesRealReceive; }
+    [[nodiscard]] auto GetBytesSend() const -> size_t { return _bytesSend; }
+    [[nodiscard]] auto GetBytesReceived() const -> size_t { return _bytesReceived; }
+    [[nodiscard]] auto GetUnpackedBytesReceived() const -> size_t { return _bytesRealReceived; }
 
     void AddConnectHandler(ConnectCallback handler);
     void AddDisconnectHandler(DisconnectCallback handler);
@@ -93,6 +93,7 @@ private:
     auto DispatchData() -> bool;
     auto CheckSocketStatus(bool for_write) -> bool;
 
+    void Net_SendHandshake();
     void Net_OnPing();
 
     ClientNetworkSettings& _settings;
@@ -100,13 +101,13 @@ private:
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
     vector<uchar> _incomeBuf {};
-    NetInBuffer _netIn {};
-    NetOutBuffer _netOut {};
+    NetInBuffer _netIn;
+    NetOutBuffer _netOut;
     bool _isConnecting {};
     bool _isConnected {};
-    uint _bytesSend {};
-    uint _bytesReceive {};
-    uint _bytesRealReceive {};
+    size_t _bytesSend {};
+    size_t _bytesReceived {};
+    size_t _bytesRealReceived {};
     unordered_map<uint, MessageCallback> _handlers {};
     double _pingTick {};
     double _pingCallTick {};

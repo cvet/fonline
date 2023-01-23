@@ -177,6 +177,7 @@ public:
     [[nodiscard]] auto GetMapDayTime() -> int*;
     [[nodiscard]] auto GetMapDayColor() -> uchar*;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
+    [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
     void MarkAsDestroyed() override;
     void EnableMapperMode();
@@ -218,7 +219,7 @@ public:
 
     // Critters
     auto AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
-    auto AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterHexView*;
+    auto AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*;
     auto GetCritter(uint id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
@@ -244,9 +245,9 @@ public:
     void SkipItemsFade();
 
     auto GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_ox, int* hex_oy) const -> bool;
-    auto GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, bool wide_rangle) -> CritterHexView*;
-    auto GetEntityAtScreenPos(int x, int y) -> ClientEntity*;
+    auto GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, bool check_transparent) -> ItemHexView*; // With transparent egg
+    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, int extra_range, bool check_transparent) -> CritterHexView*;
+    auto GetEntityAtScreenPos(int x, int y, int extra_range, bool check_transparent) -> ClientEntity*;
 
     void ClearHexLight();
     void RebuildLight() { _requestRebuildLight = _requestRenderLight = true; }

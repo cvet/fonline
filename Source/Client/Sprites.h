@@ -121,7 +121,7 @@ public:
     auto operator=(Sprite&&) noexcept = delete;
     ~Sprite() = default;
 
-    [[nodiscard]] auto GetIntersected(int ox, int oy) -> Sprite*;
+    [[nodiscard]] auto GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*;
 
     void Unvalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);

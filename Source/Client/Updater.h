@@ -67,6 +67,7 @@ private:
         uint Hash {};
     };
 
+    auto MakeWritePath(string_view fname) const -> string;
     void AddText(uint num_str, string_view num_str_str);
     void Abort(uint num_str, string_view num_str_str);
     void GetNextFile();
@@ -88,8 +89,10 @@ private:
     vector<UpdateFile> _filesToUpdate {};
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
+    vector<uchar> _updateFileBuf {};
     AnyFrames* _splashPic {};
     vector<vector<uchar>> _globalsPropertiesData {};
+    size_t _bytesRealReceivedCheckpoint {};
 };
 
 #endif

@@ -313,11 +313,12 @@ void ProtoManager::ParseProtos(FileSystem& resources)
 
 void ProtoManager::LoadFromResources()
 {
-    string protos_fname;
+    string protos_fname = "Protos.foprob";
 
+#if !FO_SINGLEPLAYER
     switch (_engine->GetPropertiesRelation()) {
     case PropertiesRelationType::BothRelative:
-        protos_fname = "Protos.foprob";
+        protos_fname = "FullProtos.foprob";
         break;
     case PropertiesRelationType::ServerRelative:
         protos_fname = "ServerProtos.foprob";
@@ -326,6 +327,7 @@ void ProtoManager::LoadFromResources()
         protos_fname = "ClientProtos.foprob";
         break;
     }
+#endif
 
     const auto protos_file = _engine->Resources.ReadFile(protos_fname);
     if (!protos_file) {

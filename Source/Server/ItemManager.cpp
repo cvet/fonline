@@ -46,20 +46,26 @@ ItemManager::ItemManager(FOServer* engine) : _engine {engine}
 
 void ItemManager::LinkItems()
 {
-    WriteLog("Link items...");
+    WriteLog("Link items");
+
+    int errors = 0;
 
     for (auto&& [id, item] : GetItems()) {
         RUNTIME_ASSERT(!item->IsDestroyed());
 
         if (item->IsStatic()) {
-            throw EntitiesLoadException("Can't link static item", item->GetName(), item->GetId());
+            WriteLog("Can't link static item {} {}", item->GetName(), item->GetId());
+            errors++;
+            continue;
         }
 
         switch (item->GetOwnership()) {
         case ItemOwnership::CritterInventory: {
             Critter* cr = _engine->CrMngr.GetCritter(item->GetCritterId());
             if (cr == nullptr) {
-                throw EntitiesLoadException("Item critter not found", item->GetName(), item->GetId(), item->GetCritterId());
+                WriteLog("Item {} critter {} not found", item->GetName(), item->GetCritterId());
+                errors++;
+                continue;
             }
 
             cr->SetItem(item);
@@ -67,11 +73,15 @@ void ItemManager::LinkItems()
         case ItemOwnership::MapHex: {
             auto* map = _engine->MapMngr.GetMap(item->GetMapId());
             if (map == nullptr) {
-                throw EntitiesLoadException("Item map not found", item->GetName(), item->GetId(), item->GetMapId(), item->GetHexX(), item->GetHexY());
+                WriteLog("Item {} map {} (hex {} {}) not found", item->GetName(), item->GetMapId(), item->GetHexX(), item->GetHexY());
+                errors++;
+                continue;
             }
 
             if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
-                throw EntitiesLoadException("Item invalid hex position", item->GetName(), item->GetId(), item->GetHexX(), item->GetHexY());
+                WriteLog("Item {} invalid hex position {} {}", item->GetName(), item->GetHexX(), item->GetHexY());
+                errors++;
+                continue;
             }
 
             map->SetItem(item, item->GetHexX(), item->GetHexY());
@@ -79,17 +89,23 @@ void ItemManager::LinkItems()
         case ItemOwnership::ItemContainer: {
             auto* cont = GetItem(item->GetContainerId());
             if (cont == nullptr) {
-                throw EntitiesLoadException("Item container not found", item->GetName(), item->GetId(), item->GetContainerId());
+                WriteLog("Item {} container {} not found", item->GetName(), item->GetContainerId());
+                errors++;
+                continue;
             }
 
             SetItemToContainer(cont, item);
         } break;
         default:
-            throw EntitiesLoadException("Unknown item accessory id", item->GetName(), item->GetId(), item->GetOwnership());
+            WriteLog("Unknown item {} ownership {}", item->GetName(), item->GetOwnership());
+            errors++;
+            continue;
         }
     }
 
-    WriteLog("Link items complete");
+    if (errors != 0) {
+        throw ServerInitException("Link items failed");
+    }
 }
 
 void ItemManager::InitAfterLoad()
@@ -113,35 +129,40 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 
 void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 {
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(holder);
+
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (holder != nullptr) {
-            _engine->CrMngr.EraseItemFromCritter(dynamic_cast<Critter*>(holder), item, true);
+        if (auto* cr = dynamic_cast<Critter*>(holder); cr != nullptr) {
+            _engine->CrMngr.EraseItemFromCritter(cr, item, true);
         }
-        else if (item->GetIsRadio()) {
-            RegisterRadio(item);
+        else {
+            throw GenericException("Item owner (critter inventory) not found");
         }
-        item->SetCritterId(0u);
-        item->SetCritterSlot(0u);
     } break;
     case ItemOwnership::MapHex: {
-        if (holder != nullptr) {
-            dynamic_cast<Map*>(holder)->EraseItem(item->GetId());
+        if (auto* map = dynamic_cast<Map*>(holder); map != nullptr) {
+            map->EraseItem(item->GetId());
         }
-        item->SetMapId(0u);
-        item->SetHexX(0u);
-        item->SetHexY(0u);
+        else {
+            throw GenericException("Item owner (map) not found");
+        }
     } break;
     case ItemOwnership::ItemContainer: {
-        if (holder != nullptr) {
-            EraseItemFromContainer(dynamic_cast<Item*>(holder), item);
+        if (auto* cont = dynamic_cast<Item*>(holder); cont != nullptr) {
+            EraseItemFromContainer(cont, item);
         }
-        item->SetContainerId(0u);
-        item->SetContainerStack(0u);
+        else {
+            throw GenericException("Item owner (container) not found");
+        }
     } break;
     default:
         break;
     }
+
     item->SetOwnership(ItemOwnership::Nowhere);
 }
 
@@ -185,6 +206,11 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     item->SetContainerStack(stack_id);
     item->EvaluateSortValue(*cont->_childItems);
     SetItemToContainer(cont, item);
+
+    auto sub_item_ids = cont->GetSubItemIds();
+    RUNTIME_ASSERT(std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId()) == sub_item_ids.end());
+    sub_item_ids.emplace_back(item->GetId());
+    cont->SetSubItemIds(std::move(sub_item_ids));
 }
 
 void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
@@ -207,6 +233,12 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
         delete cont->_childItems;
         cont->_childItems = nullptr;
     }
+
+    auto sub_item_ids = cont->GetSubItemIds();
+    const auto sub_item_id_it = std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(sub_item_id_it != sub_item_ids.end());
+    sub_item_ids.erase(sub_item_id_it);
+    cont->SetSubItemIds(std::move(sub_item_ids));
 }
 
 auto ItemManager::GetItems() -> const unordered_map<uint, Item*>&
@@ -249,6 +281,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     // Scripts
     _engine->OnItemInit.Fire(item, true);
+
     if (!item->IsDestroyed()) {
         ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), true);
     }
@@ -315,21 +348,9 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
         return nullptr;
     }
 
-    new_item->SetOwnership(ItemOwnership::Nowhere);
-    new_item->SetCritterId(0u);
-    new_item->SetCritterSlot(0u);
-    new_item->SetMapId(0u);
-    new_item->SetHexX(0u);
-    new_item->SetHexY(0u);
-    new_item->SetContainerId(0u);
-    new_item->SetContainerStack(0u);
+    RUNTIME_ASSERT(new_item->GetOwnership() == ItemOwnership::Nowhere);
 
     item->SetCount(item_count - count);
-
-    // Radio collection
-    if (new_item->GetIsRadio()) {
-        RegisterRadio(new_item);
-    }
 
     return new_item;
 }
@@ -601,19 +622,19 @@ auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to
 
 void ItemManager::RegisterRadio(Item* radio)
 {
-    const auto it = std::find(_radioItems.begin(), _radioItems.end(), radio);
+    const auto it = _radioItems.find(radio);
     if (it == _radioItems.end()) {
+        _radioItems.emplace(radio);
         radio->AddRef();
-        _radioItems.push_back(radio);
     }
 }
 
 void ItemManager::UnregisterRadio(Item* radio)
 {
-    const auto it = std::find(_radioItems.begin(), _radioItems.end(), radio);
+    const auto it = _radioItems.find(radio);
     if (it != _radioItems.end()) {
-        radio->Release();
         _radioItems.erase(it);
+        radio->Release();
     }
 }
 

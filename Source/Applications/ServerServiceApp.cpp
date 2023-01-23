@@ -65,6 +65,7 @@ static void ServerEntry()
     try {
         try {
             Data->Server = new FOServer(App->Settings);
+            Data->Server->Start();
         }
         catch (const std::exception& ex) {
             ReportExceptionAndExit(ex);
@@ -83,8 +84,9 @@ static void ServerEntry()
         }
 
         try {
-            const auto* server = Data->Server;
+            auto* server = Data->Server;
             Data->Server = nullptr;
+            server->Shutdown();
             delete server;
         }
         catch (const std::exception& ex) {

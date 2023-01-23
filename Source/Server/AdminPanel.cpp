@@ -314,7 +314,7 @@ static void AdminWork(FOServer* server, Session* session)
                     }
                 };
 
-                NetOutBuffer buf;
+                auto buf = NetOutBuffer(server->Settings.NetBufferSize);
                 PackNetCommand(cmd.substr(1), &buf, func, *server);
                 if (!buf.IsEmpty()) {
                     // uint msg = 0;

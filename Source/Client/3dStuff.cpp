@@ -370,10 +370,9 @@ void ModelInstance::SetupFrame()
     auto draw_width = _modelInfo->_drawWidth;
     auto draw_height = _modelInfo->_drawHeight;
 
-    const auto draw_size_scale = std::max(std::max(_matScaleBase.a1, _matScaleBase.b2), _matScaleBase.c3);
-    const auto draw_size_scale2 = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
-    draw_width = iround(static_cast<float>(draw_width) * draw_size_scale * draw_size_scale2);
-    draw_height = iround(static_cast<float>(draw_height) * draw_size_scale * draw_size_scale2);
+    const auto draw_size_scale = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
+    draw_width = iround(static_cast<float>(draw_width) * draw_size_scale);
+    draw_height = iround(static_cast<float>(draw_height) * draw_size_scale);
 
     _frameWidth = draw_width * FRAME_SCALE;
     _frameHeight = draw_height * FRAME_SCALE;
@@ -823,11 +822,6 @@ void ModelInstance::SetCombatMode(bool enabled)
     _isCombatMode = enabled;
 }
 
-auto ModelInstance::GetViewHeight() const -> int
-{
-    return _modelInfo->_viewHeight;
-}
-
 void ModelInstance::RefreshMoveAnimation()
 {
     if (_moveAnimController == nullptr) {
@@ -967,6 +961,16 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 auto ModelInstance::GetDrawSize() const -> tuple<int, int>
 {
     return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
+}
+
+auto ModelInstance::GetViewSize() const -> tuple<int, int>
+{
+    const auto draw_size_scale = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
+
+    const auto view_width = iround(static_cast<float>(_modelInfo->_viewWidth) * draw_size_scale);
+    const auto view_height = iround(static_cast<float>(_modelInfo->_viewHeight) * draw_size_scale);
+
+    return {view_width, view_height};
 }
 
 auto ModelInstance::GetSpeed() const -> float
@@ -1937,9 +1941,10 @@ void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, 
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
-    _viewHeight = _modelMngr._settings.DefaultModelViewHeight;
     _drawWidth = _modelMngr._settings.DefaultModelDrawWidth;
     _drawHeight = _modelMngr._settings.DefaultModelDrawHeight;
+    _viewWidth = _modelMngr._settings.DefaultModelViewWidth != 0 ? _modelMngr._settings.DefaultModelViewWidth : _drawWidth / 4;
+    _viewHeight = _modelMngr._settings.DefaultModelViewHeight != 0 ? _modelMngr._settings.DefaultModelViewHeight : _drawHeight / 2;
 }
 
 auto ModelInformation::Load(string_view name) -> bool
@@ -2482,7 +2487,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 (*istr) >> buf;
                 _drawHeight = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
-            else if (token == "ViewHeight") {
+            else if (token == "ViewSize") {
+                (*istr) >> buf;
+                _viewWidth = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
                 _viewHeight = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }

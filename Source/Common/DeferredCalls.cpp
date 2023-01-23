@@ -44,7 +44,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> 
 
     auto call = DeferredCall();
     call.EmptyFunc = func;
-    return ApplyDeferredCall(delay, call);
+    return AddDeferredCall(delay, call);
 }
 
 auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
@@ -54,7 +54,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func
     auto call = DeferredCall();
     call.SignedIntFunc = func;
     call.FuncValue = value;
-    return ApplyDeferredCall(delay, call);
+    return AddDeferredCall(delay, call);
 }
 
 auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
@@ -64,7 +64,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> fun
     auto call = DeferredCall();
     call.UnsignedIntFunc = func;
     call.FuncValue = value;
-    return ApplyDeferredCall(delay, call);
+    return AddDeferredCall(delay, call);
 }
 
 auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
@@ -74,7 +74,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<in
     auto call = DeferredCall();
     call.SignedIntArrayFunc = func;
     call.FuncValue = values;
-    return ApplyDeferredCall(delay, call);
+    return AddDeferredCall(delay, call);
 }
 
 auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
@@ -84,21 +84,21 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<ui
     auto call = DeferredCall();
     call.UnsignedIntArrayFunc = func;
     call.FuncValue = values;
-    return ApplyDeferredCall(delay, call);
+    return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::ApplyDeferredCall(uint delay, DeferredCall& call) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> uint
 {
-    if (call.Id == 0u) {
-        call.Id = ++_idCounter;
-    }
+    call.Id = GetNextCallId();
 
-    const auto time_mul = _engine->GetTimeMultiplier();
-    call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+    if (delay > 0) {
+        const auto time_mul = _engine->GetTimeMultiplier();
+        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+    }
 
     _deferredCalls.emplace_back(std::move(call));
 
-    return call.Id;
+    return _deferredCalls.back().Id;
 }
 
 auto DeferredCallManager::IsDeferredCallPending(uint id) const -> bool
@@ -150,6 +150,11 @@ void DeferredCallManager::Process()
             }
         }
     }
+}
+
+auto DeferredCallManager::GetNextCallId() -> uint
+{
+    return ++_idCounter;
 }
 
 auto DeferredCallManager::RunDeferredCall(DeferredCall& call) const -> bool

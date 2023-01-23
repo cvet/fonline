@@ -105,6 +105,8 @@ public:
     [[nodiscard]] auto GetConnection() -> ServerConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
+    [[nodiscard]] auto GetWorldmapCritter(uint cr_id) -> CritterView*;
+    [[nodiscard]] auto GetWorldmapCritters() -> vector<CritterView*> { return _worldmapCritters; }
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
@@ -300,7 +302,6 @@ protected:
     void LmapPrepareMap();
     void GmapNullParams();
 
-    void Net_SendHandshake();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);

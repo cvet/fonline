@@ -53,8 +53,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         ShowExceptionMessageBox(true);
         InitApp(argc, argv, "Editor");
 
-        WriteLog("Starting Editor {}...", FO_GAME_VERSION);
-
         auto* editor = new FOEditor(App->Settings);
 
         while (!App->Settings.Quit) {

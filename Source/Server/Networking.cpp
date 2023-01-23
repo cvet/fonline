@@ -69,6 +69,10 @@ using ssl_context = asio::ssl::context;
 #include "WinApi-Include.h" // After all because ASIO using WinAPI
 #endif
 
+NetConnection::NetConnection(ServerNetworkSettings& settings) : Bin(settings.NetBufferSize), Bout(settings.NetBufferSize)
+{
+}
+
 void NetConnection::AddRef() const
 {
     ++_refCount;
@@ -84,9 +88,9 @@ void NetConnection::Release() const
 class NetConnectionImpl : public NetConnection
 {
 public:
-    explicit NetConnectionImpl(ServerNetworkSettings& settings) : _settings {settings}
+    explicit NetConnectionImpl(ServerNetworkSettings& settings) : NetConnection(settings), _settings {settings}
     {
-        std::memset(_outBuf, 0, sizeof(_outBuf));
+        _outBuf.resize(_settings.NetBufferSize);
 
         if (!settings.DisableZlibCompression) {
             _zStream.zalloc = [](void*, unsigned int items, unsigned int size) { return std::calloc(items, size); };
@@ -155,7 +159,7 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback(uint& out_len) -> const uchar*
+    auto SendCallback(size_t& out_len) -> const uchar*
     {
         std::lock_guard locker(BoutLocker);
 
@@ -165,33 +169,39 @@ protected:
 
         // Compress
         if (_zStreamActive) {
-            auto to_compr = Bout.GetEndPos();
-            if (to_compr > sizeof(_outBuf) - 32) {
-                to_compr = sizeof(_outBuf) - 32;
+            const auto to_compr = Bout.GetEndPos();
+
+            _outBuf.resize(to_compr + 32);
+
+            if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
+                _outBuf.shrink_to_fit();
             }
 
-            _zStream.next_in = Bout.GetData();
-            _zStream.avail_in = to_compr;
-            _zStream.next_out = _outBuf;
-            _zStream.avail_out = sizeof(_outBuf);
+            _zStream.next_in = static_cast<Bytef*>(Bout.GetData());
+            _zStream.avail_in = static_cast<uInt>(to_compr);
+            _zStream.next_out = static_cast<Bytef*>(_outBuf.data());
+            _zStream.avail_out = static_cast<uInt>(_outBuf.size());
 
             const auto result = deflate(&_zStream, Z_SYNC_FLUSH);
             RUNTIME_ASSERT(result == Z_OK);
 
-            const auto compr = static_cast<uint>(_zStream.next_out - _outBuf);
-            const auto real = static_cast<uint>(_zStream.next_in - Bout.GetData());
+            const auto compr = static_cast<size_t>(_zStream.next_out - _outBuf.data());
+            const auto real = static_cast<size_t>(_zStream.next_in - Bout.GetData());
             out_len = compr;
 
             Bout.Cut(real);
         }
         // Without compressing
         else {
-            auto len = Bout.GetEndPos();
-            if (len > sizeof(_outBuf)) {
-                len = sizeof(_outBuf);
+            const auto len = Bout.GetEndPos();
+
+            _outBuf.resize(len);
+
+            if (_outBuf.size() <= _settings.NetBufferSize && _outBuf.capacity() > _settings.NetBufferSize) {
+                _outBuf.shrink_to_fit();
             }
 
-            std::memcpy(_outBuf, Bout.GetData(), len);
+            std::memcpy(_outBuf.data(), Bout.GetData(), len);
             out_len = len;
 
             Bout.Cut(len);
@@ -203,10 +213,10 @@ protected:
         }
 
         RUNTIME_ASSERT(out_len > 0);
-        return _outBuf;
+        return _outBuf.data();
     }
 
-    void ReceiveCallback(const uchar* buf, uint len)
+    void ReceiveCallback(const uchar* buf, size_t len)
     {
         std::lock_guard locker(BinLocker);
 
@@ -228,7 +238,7 @@ protected:
 private:
     bool _zStreamActive {};
     z_stream _zStream {};
-    uchar _outBuf[NetBuffer::DEFAULT_BUF_SIZE] {};
+    vector<uchar> _outBuf {};
 };
 
 #if FO_HAVE_ASIO
@@ -320,7 +330,7 @@ public:
             socket->set_option(asio::ip::tcp::no_delay(true), _dummyError);
         }
 
-        std::memset(_inBuf, 0, sizeof(_inBuf));
+        _inBuf.resize(_settings.NetBufferSize);
         _writePending = false;
         NextAsyncRead();
     }
@@ -350,7 +360,7 @@ private:
     static void AsyncRead(NetConnectionAsio* this_, asio::ip::tcp::socket* socket, std::error_code error, size_t bytes)
     {
         if (!error) {
-            this_->ReceiveCallback(this_->_inBuf, static_cast<uint>(bytes));
+            this_->ReceiveCallback(this_->_inBuf.data(), bytes);
             this_->NextAsyncRead();
         }
         else {
@@ -380,7 +390,7 @@ private:
     {
         auto expected = false;
         if (_writePending.compare_exchange_strong(expected, true)) {
-            uint len = 0;
+            size_t len = 0;
             const auto* buf = SendCallback(len);
             if (buf != nullptr) {
                 async_write(*_socket, asio::buffer(buf, len), [this](std::error_code error, size_t bytes) { AsyncWrite(error, bytes); });
@@ -404,7 +414,7 @@ private:
 
     asio::ip::tcp::socket* _socket {};
     std::atomic_bool _writePending {};
-    uchar _inBuf[NetBuffer::DEFAULT_BUF_SIZE] {};
+    vector<uchar> _inBuf {};
     asio::error_code _dummyError {};
 };
 
@@ -455,7 +465,7 @@ private:
     {
         const auto& payload = msg->get_payload();
         RUNTIME_ASSERT(!payload.empty());
-        ReceiveCallback(reinterpret_cast<const uchar*>(payload.data()), static_cast<uint>(payload.length()));
+        ReceiveCallback(reinterpret_cast<const uchar*>(payload.data()), payload.length());
     }
 
     void OnFail()
@@ -474,7 +484,7 @@ private:
 
     void DispatchImpl() override
     {
-        uint len = 0;
+        size_t len = 0;
         const auto* buf = SendCallback(len);
         if (buf != nullptr) {
             const std::error_code error = _connection->send(buf, len, websocketpp::frame::opcode::binary);
@@ -648,6 +658,8 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) co
 auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
 {
 #if FO_HAVE_ASIO
+    WriteLog("Listen TCP connections on port {}", settings.ServerPort);
+
     return new NetTcpServer(settings, std::move(callback));
 #else
     throw NotSupportedException("NetServerBase::StartTcpServer");
@@ -658,9 +670,13 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
 {
 #if FO_HAVE_ASIO
     if (settings.SecuredWebSockets) {
+        WriteLog("Listen WebSockets (with TLS) connections on port {}", settings.ServerPort + 1);
+
         return new NetTlsWebSocketsServer(settings, std::move(callback));
     }
     else {
+        WriteLog("Listen WebSockets (no TLS) connections on port {}", settings.ServerPort + 1);
+
         return new NetNoTlsWebSocketsServer(settings, std::move(callback));
     }
 #else
@@ -685,7 +701,7 @@ public:
     void Receive(const_span<uchar> buf)
     {
         if (!buf.empty()) {
-            ReceiveCallback(buf.data(), static_cast<uint>(buf.size()));
+            ReceiveCallback(buf.data(), buf.size());
         }
         else {
             _send = nullptr;
@@ -696,7 +712,7 @@ public:
 private:
     void DispatchImpl() override
     {
-        uint len = 0;
+        size_t len = 0;
         const auto* buf = SendCallback(len);
         if (buf != nullptr) {
             _send({buf, len});

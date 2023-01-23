@@ -1907,6 +1907,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             if argType[-1] == '&':
                                 argType = argType[:-1]
                             globalLines.append('    auto&& arg_' + p[1] + ' = *reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')));')
+                            if p[0] in gameEntities:
+                                globalLines.append('    ENTITY_VERIFY(arg_' + p[1] + ');')
                             argIndex += 1
                         for p in evArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
@@ -3308,8 +3310,8 @@ try:
     preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
     assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {0x00, ' + ('0x42, ' * 42) + '0x00};')
-
+    writeFile('volatile const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(preserveBufSize)]) + '};')
+    
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)
 
@@ -3331,7 +3333,7 @@ createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gamename + '";')
-writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = 0x12345678;') # Todo: FO_COMPATIBILITY_VERSION
+writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHash(args.buildhash) + ';')
 
 # Actual writing of generated files
 try:

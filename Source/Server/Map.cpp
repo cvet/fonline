@@ -228,12 +228,17 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
     SetItem(item, hx, hy);
 
+    auto item_ids = GetItemIds();
+    RUNTIME_ASSERT(std::find(item_ids.begin(), item_ids.end(), item->GetId()) == item_ids.end());
+    item_ids.emplace_back(item->GetId());
+    SetItemIds(std::move(item_ids));
+
     // Process critters view
     item->ViewPlaceOnMap = true;
     for (auto* cr : GetCritters()) {
         if (!item->GetIsHidden() || item->GetIsAlwaysView()) {
-            if (!item->GetIsAlwaysView()) // Check distance for non-hide items
-            {
+            if (!item->GetIsAlwaysView()) {
+                // Check distance for non-hide items
                 bool allowed;
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
@@ -311,6 +316,12 @@ void Map::EraseItem(uint item_id)
     item->SetMapId(0);
     item->SetHexX(0);
     item->SetHexY(0);
+
+    auto item_ids = GetItemIds();
+    const auto item_id_it = std::find(item_ids.begin(), item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(item_id_it != item_ids.end());
+    item_ids.erase(item_id_it);
+    SetItemIds(std::move(item_ids));
 
     if (item->GetIsGeck()) {
         _mapLocation->GeckCount--;
@@ -947,19 +958,6 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
     }
 }
 
-auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>
-{
-    NON_CONST_METHOD_HINT();
-
-    vector<StaticItem*> triggers;
-    for (auto* item : _staticMap->TriggerItems) {
-        if (item->GetHexX() == hx && item->GetHexY() == hy) {
-            triggers.push_back(item);
-        }
-    }
-    return triggers;
-}
-
 auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 {
     NON_CONST_METHOD_HINT();
@@ -1009,4 +1007,17 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
         }
     }
     return items;
+}
+
+auto Map::GetStaticItemsTrigger(ushort hx, ushort hy) -> vector<StaticItem*>
+{
+    NON_CONST_METHOD_HINT();
+
+    vector<StaticItem*> triggers;
+    for (auto* item : _staticMap->TriggerItems) {
+        if (item->GetHexX() == hx && item->GetHexY() == hy) {
+            triggers.push_back(item);
+        }
+    }
+    return triggers;
 }

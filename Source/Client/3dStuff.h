@@ -250,11 +250,11 @@ public:
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
     [[nodiscard]] auto GetDrawSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetViewSize() const -> tuple<int, int>;
     [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> uint;
     [[nodiscard]] auto IsCombatMode() const -> bool;
-    [[nodiscard]] auto GetViewHeight() const -> int;
 
     void SetupFrame();
     void StartMeshGeneration();
@@ -419,6 +419,7 @@ private:
     bool _shadowDisabled {};
     int _drawWidth {};
     int _drawHeight {};
+    int _viewWidth {};
     int _viewHeight {};
     hstring _rotationBone {};
 };

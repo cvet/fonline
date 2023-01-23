@@ -390,21 +390,21 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 
         // Find property
         const auto* prop = _registrator->Find(key);
-        if (prop == nullptr || (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1))) {
-            if (prop == nullptr) {
-                WriteLog("Unknown property {}", key);
-            }
-            else {
-                if (_registrator->_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
-                    continue;
-                }
-                if (_registrator->_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
-                    continue;
-                }
+        if (prop == nullptr) {
+            WriteLog("Unknown property {}", key);
+            is_error = true;
+            continue;
+        }
 
-                WriteLog("Invalid property {} for reading", prop->GetName());
+        if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
+            if (_registrator->_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+                continue;
+            }
+            if (_registrator->_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+                continue;
             }
 
+            WriteLog("Invalid property {} for reading", prop->GetName());
             is_error = true;
             continue;
         }

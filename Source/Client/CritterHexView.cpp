@@ -408,19 +408,6 @@ void CritterHexView::ResetOk()
     _needReset = false;
 }
 
-auto CritterHexView::GetAnim1() const -> uint
-{
-    switch (GetCond()) {
-    case CritterCondition::Alive:
-        return GetAnim1Alive() != 0u ? GetAnim1Alive() : ANIM1_UNARMED;
-    case CritterCondition::Knockout:
-        return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
-    case CritterCondition::Dead:
-        return GetAnim1Dead() != 0u ? GetAnim1Dead() : ANIM1_UNARMED;
-    }
-    return ANIM1_UNARMED;
-}
-
 auto CritterHexView::GetAnim2() const -> uint
 {
     switch (GetCond()) {
@@ -466,11 +453,14 @@ void CritterHexView::RefreshModel()
 {
     _model = nullptr;
 
-    const string ext = _str(GetModelName()).getFileExtension();
+    const auto model_name = GetModelName();
+    const auto ext = _str(model_name).getFileExtension();
+
     if (ext == "fo3d") {
         _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-        _model = _engine->SprMngr.LoadModel(GetModelName(), true);
+        _model = _engine->SprMngr.LoadModel(model_name, true);
+
         if (_model) {
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
@@ -622,19 +612,19 @@ void CritterHexView::Process()
 
     // Combat mode
 #if FO_ENABLE_3D
-    const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond();
+    if (_model != nullptr) {
+        if (const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond(); is_combat != _model->IsCombatMode()) {
+            if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
+                if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
+                    Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
+                }
+                else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
+                    Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
+                }
+            }
 
-    if (is_combat != _model->IsCombatMode()) {
-        if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
-            if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
-                Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
-            }
-            else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
-                Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
-            }
+            _model->SetCombatMode(is_combat);
         }
-
-        _model->SetCombatMode(is_combat);
     }
 #endif
 }
@@ -798,11 +788,11 @@ void CritterHexView::ProcessMoving()
     }
 }
 
-auto CritterHexView::GetDrawRect() const -> IRect
+auto CritterHexView::GetViewRect() const -> IRect
 {
     RUNTIME_ASSERT(SprDrawValid);
 
-    return _engine->SprMngr.GetDrawRect(SprDraw);
+    return _engine->SprMngr.GetViewRect(SprDraw);
 }
 
 void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
@@ -864,20 +854,11 @@ void CritterHexView::SetText(string_view str, uint color, uint text_delay)
 void CritterHexView::GetNameTextPos(int& x, int& y) const
 {
     if (SprDrawValid) {
-        const auto dr = GetDrawRect();
-        const auto dr_half_width = dr.Width() / 2;
-        x = iround(static_cast<float>(dr.Left + dr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+        const auto rect = GetViewRect();
+        const auto rect_half_width = rect.Width() / 2;
 
-#if FO_ENABLE_3D
-        if (const auto view_height = _model != nullptr ? _model->GetViewHeight() : 0; view_height != 0) {
-            auto&& [draw_width, draw_height] = _model->GetDrawSize();
-            y = iround(static_cast<float>(dr.Bottom - static_cast<int>(draw_height / 4) - view_height + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
-        }
-        else
-#endif
-        {
-            y = iround(static_cast<float>(dr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
-        }
+        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
     }
     else {
         // Offscreen

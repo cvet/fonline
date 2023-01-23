@@ -39,6 +39,8 @@
 
 #include "DeferredCalls.h"
 
+DECLARE_EXCEPTION(DeferredCallsLoadException);
+
 class FOServer;
 
 class ServerDeferredCallManager final : public DeferredCallManager
@@ -60,7 +62,8 @@ public:
     auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint;
 
 private:
-    auto ApplyDeferredCall(uint delay, DeferredCall& call) -> uint override;
+    auto GetNextCallId() -> uint override;
+    auto AddSavedDeferredCall(uint delay, DeferredCall& call) -> uint;
     void OnDeferredCallRemoved(const DeferredCall& call) override;
 
     FOServer* _serverEngine;

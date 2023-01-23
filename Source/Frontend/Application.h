@@ -233,6 +233,7 @@ public:
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
+    void GrabInput(bool enable);
     void SetSize(int w, int h);
     void SetPosition(int x, int y);
     void Minimize();
@@ -247,6 +248,7 @@ private:
     AppWindow() = default;
 
     WindowInternalHandle* _windowHandle {};
+    bool _grabbed {};
     int _nonConstHelper {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
 };
@@ -331,7 +333,7 @@ class Application final
 {
     friend void InitApp(int argc, char** argv, string_view name_appendix);
 
-    Application(int argc, char** argv, string_view name);
+    Application(int argc, char** argv);
 
 public:
     Application(const Application&) = delete;
@@ -339,8 +341,6 @@ public:
     auto operator=(const Application&) = delete;
     auto operator=(Application&&) noexcept = delete;
     ~Application() = default;
-
-    [[nodiscard]] auto GetName() const -> string_view;
 
     [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 
@@ -370,7 +370,6 @@ public:
 private:
     [[nodiscard]] auto CreateInternalWindow(int width, int height) -> WindowInternalHandle*;
 
-    string _name {};
     uint64 _time {};
     uint64 _timeFrequency {};
     bool _isTablet {};

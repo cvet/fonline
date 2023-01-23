@@ -33,6 +33,7 @@
 
 #include "Application.h"
 #include "DiskFileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
@@ -52,6 +53,10 @@
 #endif
 #endif
 
+#if FO_LINUX || FO_MAC
+#include <signal.h>
+#endif
+
 Application* App;
 
 #if FO_WINDOWS && FO_DEBUG
@@ -67,6 +72,15 @@ const int& AppRender::MAX_BONES {MAX_BONES_};
 const int AppAudio::AUDIO_FORMAT_U8 = 0;
 const int AppAudio::AUDIO_FORMAT_S16 = 1;
 
+#if FO_LINUX || FO_MAC
+static void SignalHandler(int sig)
+{
+    signal(sig, SignalHandler);
+
+    App->Settings.Quit = true;
+}
+#endif
+
 void InitApp(int argc, char** argv, string_view name_appendix)
 {
     // Ensure that we call init only once
@@ -76,6 +90,20 @@ void InitApp(int argc, char** argv, string_view name_appendix)
     if (!first_call) {
         throw AppInitException("InitApp must be called only once");
     }
+
+#if FO_LINUX || FO_MAC
+    const auto need_fork = [&] {
+        for (int i = 0; i < argc; i++) {
+            if (string_view(argv[i]) == "--fork") {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (need_fork()) {
+        GenericUtils::ForkProcess();
+    }
+#endif
 
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
@@ -87,17 +115,29 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     CreateGlobalData();
 
-    string name = FO_DEV_NAME;
-    if (!name_appendix.empty()) {
-        name.append("_");
-        name.append(name_appendix);
+#if !FO_WEB
+    if (const auto exe_path = DiskFileSystem::GetExePath()) {
+        LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
+    }
+    else {
+        LogToFile(_str("{}.log", FO_DEV_NAME));
     }
 
-#if !FO_WEB
-    LogToFile(_str("{}.log", name));
+    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv, name);
+    App = new Application(argc, argv);
+
+#if FO_LINUX || FO_MAC
+    const auto set_signal = [](int sig) {
+        void (*ohandler)(int) = signal(sig, SignalHandler);
+        if (ohandler != SIG_DFL) {
+            signal(sig, ohandler);
+        }
+    };
+    set_signal(SIGINT);
+    set_signal(SIGTERM);
+#endif
 }
 
 void ExitApp(bool success)
@@ -117,7 +157,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv, string_view name) : Settings(argc, argv), _name {name}
+Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
     UNUSED_VARIABLE(_time);
     UNUSED_VARIABLE(_timeFrequency);
@@ -148,11 +188,6 @@ void Application::HideCursor()
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
     UNUSED_VARIABLE(effect);
-}
-
-auto Application::GetName() const -> string_view
-{
-    return _name;
 }
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
@@ -243,6 +278,11 @@ void AppWindow::Blink()
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
+{
+    UNUSED_VARIABLE(enable);
+}
+
+void AppWindow::GrabInput(bool enable)
 {
     UNUSED_VARIABLE(enable);
 }

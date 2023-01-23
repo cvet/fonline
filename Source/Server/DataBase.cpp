@@ -33,6 +33,7 @@
 
 #include "DataBase.h"
 #include "DiskFileSystem.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 #if FO_HAVE_JSON
@@ -1036,14 +1037,9 @@ public:
         bson_t filter;
         bson_init(&filter);
 
-        if (!bson_append_int32(&filter, "_id", 3, 1)) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name);
-        }
+        auto* opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
 
-        bson_t opts;
-        bson_init(&opts);
-
-        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
+        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, opts, nullptr);
         if (cursor == nullptr) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
@@ -1073,7 +1069,7 @@ public:
 
         mongoc_cursor_destroy(cursor);
         bson_destroy(&filter);
-        bson_destroy(&opts);
+        bson_destroy(opts);
         return ids;
     }
 
@@ -1088,7 +1084,7 @@ protected:
         bson_t filter;
         bson_init(&filter);
 
-        if (!bson_append_int32(&filter, "_id", 3, id)) {
+        if (!bson_append_int32(&filter, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1133,7 +1129,7 @@ protected:
         bson_t insert;
         bson_init(&insert);
 
-        if (!bson_append_int32(&insert, "_id", 3, id)) {
+        if (!bson_append_int32(&insert, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1159,7 +1155,7 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        if (!bson_append_int32(&selector, "_id", 3, id)) {
+        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1196,7 +1192,7 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        if (!bson_append_int32(&selector, "_id", 3, id)) {
+        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1320,22 +1316,24 @@ private:
 auto ConnectToDataBase(string_view connection_info) -> DataBase
 {
     if (const auto options = _str(connection_info).split(' '); !options.empty()) {
+        WriteLog("Connect to {} data base", options.front());
+
 #if FO_HAVE_JSON
-        if (options[0] == "JSON" && options.size() == 2) {
+        if (options.front() == "JSON" && options.size() == 2) {
             return DataBase(new DbJson(options[1]));
         }
 #endif
 #if FO_HAVE_UNQLITE
-        if (options[0] == "DbUnQLite" && options.size() == 2) {
+        if (options.front() == "DbUnQLite" && options.size() == 2) {
             return DataBase(new DbUnQLite(options[1]));
         }
 #endif
 #if FO_HAVE_MONGO && !FO_SINGLEPLAYER
-        if (options[0] == "Mongo" && options.size() == 3) {
+        if (options.front() == "Mongo" && options.size() == 3) {
             return DataBase(new DbMongo(options[1], options[2]));
         }
 #endif
-        if (options[0] == "Memory" && options.size() == 1) {
+        if (options.front() == "Memory" && options.size() == 1) {
             return DataBase(new DbMemory());
         }
     }

@@ -60,13 +60,12 @@ public:
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
-    [[nodiscard]] auto GetAnim1() const -> uint;
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto GetDrawRect() const -> IRect;
+    [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }

@@ -41,6 +41,7 @@ enum class DataSourceType
 {
     Default,
     DirRoot,
+    MaybeNotAvailable,
 };
 
 class DataSource

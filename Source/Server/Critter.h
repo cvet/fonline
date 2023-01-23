@@ -60,7 +60,6 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
-    [[nodiscard]] auto GetStorageName() const -> string_view override;
     [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _player != nullptr || _playerDetached; }
     [[nodiscard]] auto IsNpc() const -> bool { return !IsOwnedByPlayer(); }
     [[nodiscard]] auto GetOwner() const -> const Player* { return _player; }

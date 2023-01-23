@@ -55,7 +55,9 @@ MapManager::~MapManager()
 
 void MapManager::LinkMaps()
 {
-    WriteLog("Link maps...");
+    WriteLog("Link maps");
+
+    int errors = 0;
 
     // Link maps to locations
     for (auto&& [id, map] : GetMaps()) {
@@ -64,7 +66,9 @@ void MapManager::LinkMaps()
 
         auto* loc = GetLocation(loc_id);
         if (loc == nullptr) {
-            throw EntitiesLoadException("Location for map not found", loc_id, map->GetName(), map->GetId());
+            WriteLog("Location {} for map {} not found", loc_id, map->GetName());
+            errors++;
+            continue;
         }
 
         auto& loc_maps = loc->GetMapsRaw();
@@ -81,12 +85,16 @@ void MapManager::LinkMaps()
         auto& loc_maps = loc->GetMapsRaw();
         for (size_t i = 0; i < loc_maps.size(); i++) {
             if (loc_maps[i] == nullptr) {
-                throw EntitiesLoadException("Location map is empty", loc->GetName(), loc->GetId(), i);
+                WriteLog("Location {} map index {} is empty", loc->GetName(), i);
+                errors++;
+                continue;
             }
         }
     }
 
-    WriteLog("Link maps complete");
+    if (errors != 0) {
+        throw ServerInitException("Link maps failed");
+    }
 }
 
 void MapManager::LoadFromResources()
@@ -440,8 +448,11 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
     }
 
     auto* loc = new Location(_engine, 0, proto);
+
     loc->SetWorldX(wx);
     loc->SetWorldY(wy);
+
+    vector<uint> map_ids;
 
     for (const auto map_pid : loc->GetMapProtos()) {
         const auto* map = CreateMap(map_pid, loc);
@@ -453,8 +464,12 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
 
             throw MapManagerException("Create map for location failed", proto_id, map_pid);
         }
+
+        RUNTIME_ASSERT(std::find(map_ids.begin(), map_ids.end(), map->GetId()) == map_ids.end());
+        map_ids.emplace_back(map->GetId());
     }
 
+    loc->SetMapIds(map_ids);
     loc->BindScript();
 
     _engine->EntityMngr.RegisterEntity(loc);
@@ -1457,13 +1472,20 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
         RUNTIME_ASSERT(hx < map->GetWidth() && hy < map->GetHeight());
 
         cr->SetMapId(map->GetId());
-        cr->SetRefMapId(map->GetId());
-        cr->SetRefMapPid(map->GetProtoId());
-        cr->SetRefLocationId(map->GetLocation() != nullptr ? map->GetLocation()->GetId() : 0u);
-        cr->SetRefLocationPid(map->GetLocation() != nullptr ? map->GetLocation()->GetProtoId() : hstring());
+        cr->SetLastMapId(map->GetId());
+        cr->SetLastMapPid(map->GetProtoId());
+        cr->SetLastLocationId(map->GetLocation() != nullptr ? map->GetLocation()->GetId() : 0u);
+        cr->SetLastLocationPid(map->GetLocation() != nullptr ? map->GetLocation()->GetProtoId() : hstring());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         cr->ChangeDir(dir);
+
+        if (!cr->IsOwnedByPlayer()) {
+            auto cr_ids = map->GetCritterIds();
+            RUNTIME_ASSERT(std::find(cr_ids.begin(), cr_ids.end(), cr->GetId()) == cr_ids.end());
+            cr_ids.emplace_back(cr->GetId());
+            map->SetCritterIds(cr_ids);
+        }
 
         map->AddCritter(cr);
 
@@ -1522,6 +1544,14 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         map->UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead());
 
         cr->SetMapId(0);
+
+        if (!cr->IsOwnedByPlayer()) {
+            auto cr_ids = map->GetCritterIds();
+            const auto cr_id_it = std::find(cr_ids.begin(), cr_ids.end(), cr->GetId());
+            RUNTIME_ASSERT(cr_id_it != cr_ids.end());
+            cr_ids.erase(cr_id_it);
+            map->SetCritterIds(std::move(cr_ids));
+        }
 
         _runGarbager = true;
     }

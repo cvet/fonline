@@ -32,9 +32,18 @@
 //
 
 #include "GenericUtils.h"
+#include "Application.h"
 #include "Log.h"
 
 #include "zlib.h"
+
+// For ForkProcess
+#if FO_LINUX || FO_MAC
+#include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 auto Math::FloatCompare(float f1, float f2) -> bool
 {
@@ -189,6 +198,30 @@ auto Compressor::Uncompress(const_span<uchar> data, size_t mul_approx) -> vector
 
     buf.resize(buf_len);
     return buf;
+}
+
+void GenericUtils::ForkProcess()
+{
+#if FO_LINUX || FO_MAC
+    pid_t pid = ::fork();
+    if (pid < 0) {
+        throw GenericException("fork() failed");
+    }
+    else if (pid != 0) {
+        ExitApp(true);
+    }
+
+    ::close(STDIN_FILENO);
+    ::close(STDOUT_FILENO);
+    ::close(STDERR_FILENO);
+
+    if (::setsid() < 0) {
+        throw GenericException("setsid() failed");
+    }
+
+#else
+    throw InvalidCallException(LINE_STR);
+#endif
 }
 
 // Default randomizer

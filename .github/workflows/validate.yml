@@ -22,11 +22,13 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
+    - run: BuildTools/prepare-workspace.sh linux
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
+    - run: BuildTools/prepare-workspace.sh linux
     - run: BuildTools/validate.sh code-coverage
     - uses: codecov/codecov-action@v3
       with:
@@ -79,6 +81,16 @@ jobs:
         - linux-gcc-baker
     steps:
     - uses: actions/checkout@v3
+    - if: ${{ startsWith(matrix.app, 'linux-') }}
+      run: BuildTools/prepare-workspace.sh linux
+    - if: ${{ startsWith(matrix.app, 'web-') }}
+      run: BuildTools/prepare-workspace.sh web
+    - if: ${{ startsWith(matrix.app, 'android-arm-') }}
+      run: BuildTools/prepare-workspace.sh android
+    - if: ${{ startsWith(matrix.app, 'android-arm64-') }}
+      run: BuildTools/prepare-workspace.sh android-arm64
+    - if: ${{ startsWith(matrix.app, 'android-x86-') }}
+      run: BuildTools/prepare-workspace.sh android-x86
     - run: BuildTools/validate.sh ${{ matrix.app }}
   macos:
     runs-on: macos-11

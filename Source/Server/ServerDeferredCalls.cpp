@@ -32,6 +32,7 @@
 //
 
 #include "ServerDeferredCalls.h"
+#include "AnyData.h"
 #include "DataBase.h"
 #include "Server.h"
 
@@ -41,73 +42,115 @@ ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) : Deferre
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> uint
 {
-    const auto id = AddDeferredCall(delay, func);
-    return id;
+    RUNTIME_ASSERT(func);
+    RUNTIME_ASSERT(!func.IsDelegate());
+
+    auto call = DeferredCall();
+    call.EmptyFunc = func;
+    return AddSavedDeferredCall(delay, call);
 }
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
 {
-    const auto id = AddDeferredCall(delay, func, value);
-    return id;
+    RUNTIME_ASSERT(func);
+    RUNTIME_ASSERT(!func.IsDelegate());
+
+    auto call = DeferredCall();
+    call.SignedIntFunc = func;
+    call.FuncValue = value;
+    return AddSavedDeferredCall(delay, call);
 }
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
 {
-    const auto id = AddDeferredCall(delay, func, value);
-    return id;
+    RUNTIME_ASSERT(func);
+    RUNTIME_ASSERT(!func.IsDelegate());
+
+    auto call = DeferredCall();
+    call.UnsignedIntFunc = func;
+    call.FuncValue = value;
+    return AddSavedDeferredCall(delay, call);
 }
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
 {
-    const auto id = AddDeferredCall(delay, func, values);
-    return id;
+    RUNTIME_ASSERT(func);
+    RUNTIME_ASSERT(!func.IsDelegate());
+
+    auto call = DeferredCall();
+    call.SignedIntArrayFunc = func;
+    call.FuncValue = values;
+    return AddSavedDeferredCall(delay, call);
 }
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
 {
-    const auto id = AddDeferredCall(delay, func, values);
-    return id;
+    RUNTIME_ASSERT(func);
+    RUNTIME_ASSERT(!func.IsDelegate());
+
+    auto call = DeferredCall();
+    call.UnsignedIntArrayFunc = func;
+    call.FuncValue = values;
+    return AddSavedDeferredCall(delay, call);
 }
 
-/*auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, hstring func_name) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& call) -> uint
 {
-    const auto id = AddDeferredCall(delay, func_name, value, values, value2, values2);
+    call.Id = GetNextCallId();
 
-    if (id != 0u) {
-        _savedCalls.emplace(id);
-
-        / *
-            DataBase::Document call_doc;
-            call_doc["Script"] = _str().parseHash(call.FuncNum);
-            call_doc["FireFullSecond"] = (int64)call.FireFullSecond;
-
-            if (call.IsValue) {
-                call_doc["ValueSigned"] = call.ValueSigned;
-                call_doc["Value"] = call.Value;
-            }
-
-            if (call.IsValues) {
-                call_doc["ValuesSigned"] = call.ValuesSigned;
-                DataBase::Array values;
-                for (int v : call.Values)
-                    values.push_back(v);
-                call_doc["Values"] = values;
-            }
-
-            DbStorage->Insert("DeferredCalls", call.Id, call_doc);
-        * /
+    if (delay > 0) {
+        const auto time_mul = _engine->GetTimeMultiplier();
+        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
     }
 
-    return id;
-}*/
+    _savedCalls.emplace(call.Id);
 
-auto ServerDeferredCallManager::ApplyDeferredCall(uint delay, DeferredCall& call) -> uint
+    AnyData::Document call_doc;
+
+    if (call.EmptyFunc) {
+        call_doc["Script"] = string(call.EmptyFunc.GetName());
+    }
+    else if (call.SignedIntFunc) {
+        call_doc["Script"] = string(call.SignedIntFunc.GetName());
+        call_doc["Value"] = static_cast<int64>(std::get<int>(call.FuncValue));
+    }
+    else if (call.UnsignedIntFunc) {
+        call_doc["Script"] = string(call.UnsignedIntFunc.GetName());
+        call_doc["Value"] = static_cast<int64>(std::get<uint>(call.FuncValue));
+    }
+    else if (call.SignedIntArrayFunc) {
+        call_doc["Script"] = string(call.SignedIntArrayFunc.GetName());
+        AnyData::Array values;
+        for (const auto i : std::get<vector<int>>(call.FuncValue)) {
+            values.push_back(static_cast<int64>(i));
+        }
+        call_doc["Values"] = values;
+    }
+    else if (call.UnsignedIntArrayFunc) {
+        call_doc["Script"] = string(call.UnsignedIntArrayFunc.GetName());
+        AnyData::Array values;
+        for (const auto i : std::get<vector<uint>>(call.FuncValue)) {
+            values.push_back(static_cast<int64>(i));
+        }
+        call_doc["Values"] = values;
+    }
+
+    RUNTIME_ASSERT(call_doc.count("Script") && !std::get<string>(call_doc["Script"]).empty());
+
+    call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond);
+
+    _serverEngine->DbStorage.Insert("DeferredCalls", call.Id, call_doc);
+
+    _deferredCalls.emplace_back(std::move(call));
+
+    return _deferredCalls.back().Id;
+}
+
+auto ServerDeferredCallManager::GetNextCallId() -> uint
 {
     const auto next_id = _serverEngine->GetLastDeferredCallId() + 1;
     _serverEngine->SetLastDeferredCallId(next_id);
-    call.Id = next_id;
-
-    return DeferredCallManager::ApplyDeferredCall(delay, call);
+    return next_id;
 }
 
 void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
@@ -120,84 +163,98 @@ void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
 
 void ServerDeferredCallManager::LoadDeferredCalls()
 {
-    // WriteLog("Load deferred calls...");
+    WriteLog("Load deferred calls");
 
-    const auto ids = _serverEngine->DbStorage.GetAllIds("DeferredCalls");
-    for (const auto id : ids) {
-        throw NotImplementedException(LINE_STR);
-
-        _savedCalls.emplace(id);
-        _deferredCalls.push_back({});
-    }
-
-    /*Uvector<int> call_ids = DbStorage->GetAllIds("DeferredCalls");
     int errors = 0;
-    for (uint call_id : call_ids) {
-        DataBase::Document call_doc = DbStorage->Get("DeferredCalls", call_id);
+
+    const auto call_ids = _serverEngine->DbStorage.GetAllIds("DeferredCalls");
+    for (const auto call_id : call_ids) {
+        auto call_doc = _serverEngine->DbStorage.Get("DeferredCalls", call_id);
 
         DeferredCall call;
-        call.Id = call_doc["Id"].get<int>();
-        call.FireFullSecond = (uint)call_doc["FireFullSecond"].get<int64>();
-        RUNTIME_ASSERT(call.FireFullSecond != 0);
 
-        call.IsValue = (call_doc.count("Value") > 0);
-        if (call.IsValue) {
-            call.ValueSigned = call_doc["ValueSigned"].get<bool>();
-            call.Value = call_doc["Value"].get<int>();
+        call.Id = call_id;
+        call.FireFullSecond = static_cast<uint>(std::get<int64>(call_doc["FireFullSecond"]));
+
+        const auto func_name = _serverEngine->ToHashedString(std::get<string>(call_doc["Script"]));
+        call.EmptyFunc = _serverEngine->ScriptSys->FindFunc<void>(func_name);
+        call.SignedIntFunc = _serverEngine->ScriptSys->FindFunc<void, int>(func_name);
+        call.UnsignedIntFunc = _serverEngine->ScriptSys->FindFunc<void, uint>(func_name);
+        call.SignedIntArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<int>>(func_name);
+        call.UnsignedIntArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<uint>>(func_name);
+
+        const auto func_count = static_cast<int>(!!call.EmptyFunc) + //
+            static_cast<int>(!!call.SignedIntFunc) + static_cast<int>(!!call.UnsignedIntFunc) + //
+            static_cast<int>(!!call.SignedIntArrayFunc) + static_cast<int>(!!call.UnsignedIntArrayFunc);
+
+        if (func_count != 1) {
+            WriteLog("Unable to find function {} for deferred call {}", func_name, call.Id);
+            errors++;
+            continue;
+        }
+
+        if (call_doc.count("Value") != 0) {
+            if (call.SignedIntFunc) {
+                call.FuncValue = static_cast<int>(std::get<int64>(call_doc["Value"]));
+            }
+            else if (call.UnsignedIntFunc) {
+                call.FuncValue = static_cast<uint>(std::get<int64>(call_doc["Value"]));
+            }
+            else if (call.SignedIntArrayFunc) {
+                call.FuncValue = vector {static_cast<int>(std::get<int64>(call_doc["Value"]))};
+            }
+            else if (call.UnsignedIntArrayFunc) {
+                call.FuncValue = vector {static_cast<uint>(std::get<int64>(call_doc["Value"]))};
+            }
+            else {
+                WriteLog("Value present for empty func {} in deferred call {}", func_name, call.Id);
+                errors++;
+                continue;
+            }
+        }
+        else if (call_doc.count("Values") != 0) {
+            if (call.SignedIntArrayFunc) {
+                vector<int> values;
+                for (auto&& arr_value : std::get<AnyData::Array>(call_doc["Values"])) {
+                    values.push_back(static_cast<int>(std::get<int64>(arr_value)));
+                }
+                call.FuncValue = values;
+            }
+            else if (call.UnsignedIntArrayFunc) {
+                vector<uint> values;
+                for (auto&& arr_value : std::get<AnyData::Array>(call_doc["Values"])) {
+                    values.push_back(static_cast<uint>(std::get<int64>(arr_value)));
+                }
+                call.FuncValue = values;
+            }
+            else {
+                WriteLog("Array of values present for func {} in deferred call {}", func_name, call.Id);
+                errors++;
+                continue;
+            }
         }
         else {
-            call.ValueSigned = false;
-            call.Value = 0;
+            if (call.SignedIntFunc) {
+                call.FuncValue = static_cast<int>(0);
+            }
+            else if (call.UnsignedIntFunc) {
+                call.FuncValue = static_cast<uint>(0);
+            }
+            else if (call.SignedIntArrayFunc) {
+                call.FuncValue = vector<int>();
+            }
+            else if (call.UnsignedIntArrayFunc) {
+                call.FuncValue = vector<uint>();
+            }
         }
 
-        call.IsValues = (call_doc.count("Values") > 0);
-        if (call.IsValues) {
-            call.ValuesSigned = call_doc["ValuesSigned"].get<bool>();
-            const DataBase::Array& arr = call_doc["Values"].get<DataBase::Array>();
-            for (auto& v : arr)
-                call.Values.push_back(v.get<int>());
-        }
-        else {
-            call.ValuesSigned = false;
-            call.Values.clear();
-        }
-
-        if (call.IsValue && call.IsValues) {
-            WriteLog("Deferred call {} have value and values", call.Id);
-            errors++;
-            continue;
-        }
-
-        const char* decl;
-        if (call.IsValue && call.ValueSigned)
-            decl = "void %s(int)";
-        else if (call.IsValue && !call.ValueSigned)
-            decl = "void %s(uint)";
-        else if (call.IsValues && call.ValuesSigned)
-            decl = "void %s(int[]&)";
-        else if (call.IsValues && !call.ValuesSigned)
-            decl = "void %s(uint[]&)";
-        else
-            decl = "void %s()";
-
-        call.FuncNum = Script::BindScriptFuncNumByFuncName(call_doc["Script"].get<string>(), decl);
-        if (!call.FuncNum) {
-            WriteLog("Unable to find function '{}' with declaration '{}' for deferred call {}", call_doc["Script"].get<string>(), decl, call.Id);
-            errors++;
-            continue;
-        }
-
-        call.BindId = Script::BindByFuncNum(call.FuncNum, false);
-        if (!call.BindId) {
-            WriteLog("Unable to bind script function '{}' for deferred call {}", _str().parseHash(call.FuncNum), call.Id);
-            errors++;
-            continue;
-        }
-
-        call.Saved = true;
-        _deferredCalls.push_back(call);
+        _savedCalls.emplace(call_id);
+        _deferredCalls.emplace_back(std::move(call));
     }
 
-    WriteLog("Load deferred calls complete, count {}", (uint)_deferredCalls.size());
-    return errors == 0;*/
+    if (errors != 0) {
+        throw DeferredCallsLoadException("Not all deffered calls can be loaded");
+    }
+
+    WriteLog("Loaded {} deferred calls", _savedCalls.size());
 }

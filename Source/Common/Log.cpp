@@ -33,11 +33,11 @@
 
 // Todo: server logs append not rewrite (with checking of size)
 // Todo: add timestamps and process id and thread id to file logs
-// Todo: delete \n appendix from WriteLog
 
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if FO_ANDROID
@@ -115,9 +115,9 @@ void WriteLogMessage(LogType type, string_view message)
     // Make message
     string result;
     if (!Data->LogDisableTimestamp) {
-        const auto now = ::time(nullptr);
-        const auto* t = ::localtime(&now);
-        result += _str("[{}:{}:{}] ", t->tm_hour, t->tm_min, t->tm_sec);
+        const auto now = std::time(nullptr);
+        const auto* t = std::localtime(&now);
+        result += _str("[{:02}:{:02}:{:02}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
 
     result.reserve(result.size() + message.length() + 1u);
@@ -142,7 +142,7 @@ void WriteLogMessage(LogType type, string_view message)
 #endif
 
 #if FO_ANDROID
-    __android_log_print(ANDROID_LOG_INFO, "FOnline", "%s", result.c_str());
+    __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
 #endif
 
     // Todo: colorize log texts

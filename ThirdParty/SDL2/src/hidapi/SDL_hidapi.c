@@ -47,12 +47,18 @@
 #include <IOKit/IOKitLib.h>
 #include <IOKit/hid/IOHIDDevice.h>
 #include <IOKit/usb/USBSpec.h>
+#include <AvailabilityMacros.h>
+/* Things named "Master" were renamed to "Main" in macOS 12.0's SDK. */
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 120000
+#define kIOMainPortDefault kIOMasterPortDefault
+#endif
 #endif
 
 #include "../core/linux/SDL_udev.h"
 #ifdef SDL_USE_LIBUDEV
 #include <poll.h>
 #include <unistd.h>
+#include "../core/linux/SDL_sandbox.h"
 #endif
 
 #ifdef HAVE_INOTIFY
@@ -249,7 +255,7 @@ HIDAPI_InitializeDiscovery()
 #endif /* defined(__WIN32__) || defined(__WINGDK__) */
 
 #if defined(__MACOSX__)
-    SDL_HIDAPI_discovery.m_notificationPort = IONotificationPortCreate(kIOMasterPortDefault);
+    SDL_HIDAPI_discovery.m_notificationPort = IONotificationPortCreate(kIOMainPortDefault);
     if (SDL_HIDAPI_discovery.m_notificationPort) {
         {
             io_iterator_t portIterator = 0;
@@ -550,7 +556,6 @@ HIDAPI_ShutdownDiscovery()
 #undef HIDAPI_H__
 #if __LINUX__
 
-#include "../core/linux/SDL_udev.h"
 #if SDL_USE_LIBUDEV
 static const SDL_UDEV_Symbols *udev_ctx = NULL;
 
@@ -1048,11 +1053,7 @@ int SDL_hid_init(void)
         SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
                      "udev disabled by SDL_HIDAPI_JOYSTICK_DISABLE_UDEV");
         linux_enumeration_method = ENUMERATION_FALLBACK;
-    } else if (access("/.flatpak-info", F_OK) == 0
-               || access("/run/host/container-manager", F_OK) == 0) {
-        /* Explicitly check `/.flatpak-info` because, for old versions of
-         * Flatpak, this was the only available way to tell if we were in
-         * a Flatpak container. */
+    } else if (SDL_DetectSandbox() != SDL_SANDBOX_NONE) {
         SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
                      "Container detected, disabling HIDAPI udev integration");
         linux_enumeration_method = ENUMERATION_FALLBACK;
@@ -1078,13 +1079,8 @@ int SDL_hid_init(void)
         if (libusb_ctx.libhandle != NULL) {
             SDL_bool loaded = SDL_TRUE;
 #ifdef SDL_LIBUSB_DYNAMIC
-            #ifdef __OS2__
-            #define LOAD_LIBUSB_SYMBOL(func) \
-                if (!(libusb_ctx.func = SDL_LoadFunction(libusb_ctx.libhandle,"_libusb_" #func))) {loaded = SDL_FALSE;}
-            #else
             #define LOAD_LIBUSB_SYMBOL(func) \
                 if (!(libusb_ctx.func = SDL_LoadFunction(libusb_ctx.libhandle, "libusb_" #func))) {loaded = SDL_FALSE;}
-            #endif
 #else
             #define LOAD_LIBUSB_SYMBOL(func) \
                 libusb_ctx.func = libusb_##func;

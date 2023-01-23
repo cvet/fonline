@@ -147,8 +147,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         ShowExceptionMessageBox(true);
         InitApp(argc, argv, "");
 
-        WriteLog("Starting {} {}", App->GetName(), FO_GAME_VERSION);
-
         if (App->Settings.HideNativeCursor) {
             App->HideCursor();
         }
@@ -197,8 +195,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
-        Data->Client->Shutdown();
-        delete Data->Client;
+        if (Data->Client != nullptr) {
+            Data->Client->Shutdown();
+            delete Data->Client;
+        }
 
         ExitApp(true);
     }

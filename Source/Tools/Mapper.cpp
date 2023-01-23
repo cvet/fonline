@@ -43,6 +43,11 @@
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(settings, PropertiesRelationType::BothRelative), FOClient(settings, window, true)
 {
+    Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("FullProtos"));
+    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+        Resources.AddDataSource(_str(Settings.ResourcesDir).combinePath("MapperAngelScript"));
+    }
+
     for (const auto& dir : settings.BakeContentEntries) {
         ContentFileSys.AddDataSource(dir, DataSourceType::DirRoot);
     }
@@ -1989,7 +1994,7 @@ void FOMapper::IntLMouseUp()
                 }
             }
             else {
-                auto* entity = CurMap->GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
+                auto* entity = CurMap->GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY, 0, true);
 
                 if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                     if (!CurMap->IsIgnorePid(item->GetProtoId())) {
@@ -2664,8 +2669,8 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 
     SelectClear();
 
-    CritterHexView* cr = CurMap->AddCritter(0, proto, hx, hy, {});
-    cr->ChangeDir(NpcDir);
+    CritterHexView* cr = CurMap->AddCritter(0, proto, hx, hy, Geometry.DirToAngle(NpcDir), {});
+
     SelectAdd(cr);
 
     CurMap->RefreshMap();
@@ -2769,7 +2774,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         }
 
         // Todo: clone entities
-        owner = CurMap->AddCritter(CurMap->GetTempEntityId(), dynamic_cast<const ProtoCritter*>(cr->GetProto()), hx, hy, {});
+        owner = CurMap->AddCritter(CurMap->GetTempEntityId(), dynamic_cast<const ProtoCritter*>(cr->GetProto()), hx, hy, cr->GetDirAngle(), {});
     }
     else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         owner = CurMap->AddItem(CurMap->GetTempEntityId(), item->GetProtoId(), item->GetHexX(), item->GetHexY(), true, nullptr);

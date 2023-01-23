@@ -64,6 +64,7 @@ public:
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
     [[nodiscard]] auto GetItems() -> const vector<ItemView*>&;
+    [[nodiscard]] auto GetAnim1() const -> uint;
 
     virtual void Init();
     virtual void Finish();

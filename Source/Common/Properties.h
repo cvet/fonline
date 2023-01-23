@@ -163,6 +163,7 @@ public:
     [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
     [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
+    [[nodiscard]] auto IsDictKeyEnum() const -> bool { return _isDictKeyEnum; }
 
     [[nodiscard]] auto IsInt() const -> bool { return _isInt; }
     [[nodiscard]] auto IsSignedInt() const -> bool { return _isSignedInt; }

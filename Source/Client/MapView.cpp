@@ -871,11 +871,11 @@ auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
         if (field.Critters != nullptr) {
             for (const auto* cr : *field.Critters) {
                 if (cr->SprDrawValid) {
-                    const auto r = cr->GetDrawRect();
-                    result.Left = std::min(result.Left, r.Left);
-                    result.Top = std::min(result.Top, r.Top);
-                    result.Right = std::max(result.Right, r.Right);
-                    result.Bottom = std::max(result.Bottom, r.Bottom);
+                    const auto rect = cr->GetViewRect();
+                    result.Left = std::min(result.Left, rect.Left);
+                    result.Top = std::min(result.Top, rect.Top);
+                    result.Right = std::max(result.Right, rect.Right);
+                    result.Bottom = std::max(result.Bottom, rect.Bottom);
                 }
             }
         }
@@ -2649,6 +2649,13 @@ void MapView::PrepareFogToDraw()
     }
 }
 
+auto MapView::IsScrollEnabled() const -> bool
+{
+    return _engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft || _engine->Settings.ScrollMouseRight || //
+        _engine->Settings.ScrollKeybRight || _engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp || //
+        _engine->Settings.ScrollMouseDown || _engine->Settings.ScrollKeybDown;
+}
+
 auto MapView::Scroll() -> bool
 {
     // Scroll delay
@@ -2663,7 +2670,7 @@ auto MapView::Scroll() -> bool
         last_tick = tick;
     }
 
-    const auto is_scroll = (_engine->Settings.ScrollMouseLeft || _engine->Settings.ScrollKeybLeft || _engine->Settings.ScrollMouseRight || _engine->Settings.ScrollKeybRight || _engine->Settings.ScrollMouseUp || _engine->Settings.ScrollKeybUp || _engine->Settings.ScrollMouseDown || _engine->Settings.ScrollKeybDown);
+    const auto is_scroll = IsScrollEnabled();
     auto scr_ox = _engine->Settings.ScrOx;
     auto scr_oy = _engine->Settings.ScrOy;
     const auto prev_scr_ox = scr_ox;
@@ -2674,14 +2681,14 @@ auto MapView::Scroll() -> bool
     }
 
     // Check critter scroll lock
-    if ((AutoScroll.HardLockedCritter != 0u) && !is_scroll) {
+    if (AutoScroll.HardLockedCritter != 0u && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.HardLockedCritter);
         if ((cr != nullptr) && (cr->GetHexX() != _screenHexX || cr->GetHexY() != _screenHexY)) {
             ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.02f, true);
         }
     }
 
-    if ((AutoScroll.SoftLockedCritter != 0u) && !is_scroll) {
+    if (AutoScroll.SoftLockedCritter != 0u && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
         if (cr != nullptr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
             const auto [ox, oy] = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
@@ -3097,12 +3104,13 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, s
     return cr;
 }
 
-auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterHexView*
+auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*
 {
     auto* cr = new CritterHexView(this, id, proto);
     cr->RestoreData(data);
     cr->SetHexX(hx);
     cr->SetHexY(hy);
+    cr->ChangeDirAngle(dir_angle);
 
     AddCritterInternal(cr);
     return cr;
@@ -3317,7 +3325,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
     return false;
 }
 
-auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*
+auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, bool check_transparent) -> ItemHexView*
 {
     NON_CONST_METHOD_HINT();
 
@@ -3372,13 +3380,13 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*
         }
 
         const auto& field = GetField(item->GetHexX(), item->GetHexY());
-        const auto l = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx - si->Width / 2) / _engine->Settings.SpritesZoom);
-        const auto r = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx + si->Width / 2) / _engine->Settings.SpritesZoom);
-        const auto t = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy - si->Height) / _engine->Settings.SpritesZoom);
-        const auto b = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
+        const auto l = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx - si->Width / 2) / _engine->Settings.SpritesZoom) - extra_range;
+        const auto r = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx + si->Width / 2) / _engine->Settings.SpritesZoom) + extra_range;
+        const auto t = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy - si->Height) / _engine->Settings.SpritesZoom) - extra_range;
+        const auto b = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + extra_range;
 
         if (x >= l && x <= r && y >= t && y <= b) {
-            const auto* spr = item->SprDraw->GetIntersected(x - l, y - t);
+            const auto* spr = item->SprDraw->GetIntersected(x - l, y - t, check_transparent);
             if (spr != nullptr) {
                 if (is_egg && _engine->SprMngr.CheckEggAppearence(hx, hy, item->GetEggType())) {
                     pix_item_egg.push_back(item);
@@ -3420,7 +3428,7 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*
     return pix_item[0];
 }
 
-auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, bool wide_rangle) -> CritterHexView*
+auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, int extra_range, bool check_transparent) -> CritterHexView*
 {
     NON_CONST_METHOD_HINT();
 
@@ -3437,35 +3445,15 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, b
             continue;
         }
 
-        const auto rect = cr->GetDrawRect();
-        const auto l = static_cast<int>(static_cast<float>(rect.Left + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-        const auto r = static_cast<int>(static_cast<float>(rect.Right + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-        const auto t = static_cast<int>(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
-        const auto b = static_cast<int>(static_cast<float>(rect.Bottom + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
+        const auto rect = cr->GetViewRect();
+        const auto l = iround(static_cast<float>(rect.Left + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom) - extra_range;
+        const auto r = iround(static_cast<float>(rect.Right + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom) + extra_range;
+        const auto t = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) - extra_range;
+        const auto b = iround(static_cast<float>(rect.Bottom + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + extra_range;
 
-        if (wide_rangle) {
-            const auto check_pixel = [this, cr, l, r, t, b](int xx, int yy) -> bool {
-                if (xx >= l && xx <= r && yy >= t && yy <= b) {
-                    return _engine->SprMngr.IsPixNoTransp(cr->SprId, xx - l, yy - t, true);
-                }
-                return false;
-            };
-
-            bool ok = false;
-            for (int sx = -6; sx <= 6 && !ok; sx++) {
-                for (int sy = -6; sy <= 6 && !ok; sy++) {
-                    if (check_pixel(x + sx * 7, y + sy * 7)) {
-                        crits.push_back(cr);
-                        ok = true;
-                    }
-                }
-            }
-        }
-        else {
-            if (x >= l && x <= r && y >= t && y <= b) {
-                if (_engine->SprMngr.IsPixNoTransp(cr->SprId, x - l, y - t, true)) {
-                    crits.push_back(cr);
-                }
+        if (x >= l && x <= r && y >= t && y <= b) {
+            if (!check_transparent || _engine->SprMngr.IsPixNoTransp(cr->SprId, x - l, y - t, true)) {
+                crits.push_back(cr);
             }
         }
     }
@@ -3480,11 +3468,11 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, b
     return crits[0];
 }
 
-auto MapView::GetEntityAtScreenPos(int x, int y) -> ClientEntity*
+auto MapView::GetEntityAtScreenPos(int x, int y, int extra_range, bool check_transparent) -> ClientEntity*
 {
     auto item_egg = false;
-    ItemHexView* item = GetItemAtScreenPos(x, y, item_egg);
-    CritterHexView* cr = GetCritterAtScreenPos(x, y, false, false);
+    ItemHexView* item = GetItemAtScreenPos(x, y, item_egg, extra_range, check_transparent);
+    CritterHexView* cr = GetCritterAtScreenPos(x, y, false, extra_range, check_transparent);
 
     if (cr != nullptr && item != nullptr) {
         if (item->IsTransparent() || item_egg || item->SprDraw->TreeIndex <= cr->SprDraw->TreeIndex) {

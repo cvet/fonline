@@ -288,7 +288,12 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
         return std::make_unique<FalloutDat>(_str("{}.dat", path));
     }
 
-    throw DataSourceException("Data pack not found", path, type);
+    if (type == DataSourceType::MaybeNotAvailable) {
+        return std::make_unique<DummySpace>();
+    }
+    else {
+        throw DataSourceException("Data pack not found", path, type);
+    }
 }
 
 NonCachedDir::NonCachedDir(string_view fname)
@@ -669,7 +674,7 @@ ZipFile::ZipFile(string_view fname)
     _zipHandle = nullptr;
 
     zlib_filefunc_def ffunc;
-    if (fname[0] != '$') {
+    if (fname[0] != '@') {
         auto* p_file = new DiskFile {DiskFileSystem::OpenFile(fname, false)};
         if (!*p_file) {
             delete p_file;
@@ -723,7 +728,7 @@ ZipFile::ZipFile(string_view fname)
 
         struct MemStream
         {
-            const uchar* Buf;
+            volatile const uchar* Buf;
             uint Length;
             uint Pos;
         };
@@ -732,28 +737,20 @@ ZipFile::ZipFile(string_view fname)
             if (string(filename) == "@Embedded") {
                 static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
                 auto default_array = true;
-                for (size_t i = 0; i < 1 && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != 0x00) {
+
+                for (size_t i = 0; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
+                    if (EMBEDDED_RESOURCES[i] != static_cast<uchar>((i + 42) % 200)) {
                         default_array = false;
                     }
                 }
-                for (size_t i = 1; i < 43 && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != 0x42) {
-                        default_array = false;
-                    }
-                }
-                for (size_t i = 43; i < 44 && default_array; i++) {
-                    if (EMBEDDED_RESOURCES[i] != 0x00) {
-                        default_array = false;
-                    }
-                }
+
                 if (default_array) {
                     throw DataSourceException("Embedded resources not really embed");
                 }
 
                 auto* mem_stream = new MemStream();
                 mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint);
-                mem_stream->Length = *reinterpret_cast<const uint*>(EMBEDDED_RESOURCES);
+                mem_stream->Length = *reinterpret_cast<volatile const uint*>(EMBEDDED_RESOURCES);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }
@@ -761,7 +758,9 @@ ZipFile::ZipFile(string_view fname)
         };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
             auto* mem_stream = static_cast<MemStream*>(stream);
-            std::memcpy(buf, mem_stream->Buf + mem_stream->Pos, size);
+            for (size_t i = 0; i < size; i++) {
+                static_cast<uchar*>(buf)[i] = mem_stream->Buf[mem_stream->Pos + i];
+            }
             mem_stream->Pos += static_cast<uint>(size);
             return size;
         };

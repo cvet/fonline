@@ -21,6 +21,7 @@ float4 test_vector()
     bool4 geq = bool4(!(A.x < B.x), !(A.y < B.y), !(A.z < B.z), !(A.w < B.w));
     bool4 eq = bool4(A.x == B.x, A.y == B.y, A.z == B.z, A.w == B.w);
     bool4 neq = bool4(A.x != B.x, A.y != B.y, A.z != B.z, A.w != B.w);
+    neq = bool4(A.x != B.x, A.y != B.y, A.z != B.z, A.w != B.w);
     return ((((float4(le) + float4(leq)) + float4(ge)) + float4(geq)) + float4(eq)) + float4(neq);
 }
 

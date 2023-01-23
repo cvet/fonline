@@ -50,7 +50,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
-FIXED_SETTING(string, ResourcesDir, "Data");
+FIXED_SETTING(string, ResourcesDir, "Resources"); // Todo: remove hardcoded ResourcesDir in package.py
 FIXED_SETTING(vector<string>, ClientResourceEntries);
 FIXED_SETTING(vector<string>, ServerResourceEntries);
 FIXED_SETTING(string, EmbeddedResources, "@Embedded");
@@ -92,6 +92,8 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
 FIXED_SETTING(uint, ServerPort, 4000);
+FIXED_SETTING(uint, NetBufferSize, 4096);
+FIXED_SETTING(uint, UpdateFileSendSize, 1000000);
 FIXED_SETTING(bool, SecuredWebSockets, false);
 FIXED_SETTING(bool, DisableTcpNagle, true);
 FIXED_SETTING(bool, DisableZlibCompression, false);
@@ -185,6 +187,7 @@ FIXED_SETTING(int, FogExtraLength, 0);
 FIXED_SETTING(float, CritterTurnAngle, 100.0f);
 FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
 FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
+FIXED_SETTING(int, DefaultModelViewWidth, 0);
 FIXED_SETTING(int, DefaultModelViewHeight, 0);
 FIXED_SETTING(int, DefaultModelDrawWidth, 128);
 FIXED_SETTING(int, DefaultModelDrawHeight, 128);
@@ -296,6 +299,10 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
 FIXED_SETTING(uint, TextDelay, 3000);
+FIXED_SETTING(uint, UpdaterInfoDelay, 1000);
+FIXED_SETTING(int, UpdaterInfoPos, 0); // <1 - top, 0 - center, >1 - bottom
+FIXED_SETTING(string, DefaultSplash, "");
+FIXED_SETTING(string, DefaultSplashPack, "");
 VARIABLE_SETTING(string, Language, "engl");
 VARIABLE_SETTING(bool, WinNotify, true);
 VARIABLE_SETTING(bool, SoundNotify, false);
@@ -310,7 +317,6 @@ FIXED_SETTING(vector<string>, AccessModer);
 FIXED_SETTING(vector<string>, AccessTester);
 FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
-FIXED_SETTING(string, DbHistory, "None");
 FIXED_SETTING(bool, NoStart, false);
 FIXED_SETTING(int, ServerSleep, 0);
 SETTING_GROUP_END();

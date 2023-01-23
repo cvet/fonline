@@ -86,10 +86,10 @@ void ReportExceptionAndExit(const std::exception& ex)
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}\nShutdown!", ex.what(), ex_info->GetVerbStackTrace(), GetStackTrace(true));
+        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}\nShutdown!", ex.what(), ex_info->StackTrace(), GetStackTrace());
     }
     else {
-        WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace(true));
+        WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
     }
 
     if (BreakIntoDebugger(ex.what())) {
@@ -99,10 +99,10 @@ void ReportExceptionAndExit(const std::exception& ex)
     CreateDumpMessage("FatalException", ex.what());
 
     if (ex_info != nullptr) {
-        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetBriefStackTrace());
+        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->StackTrace());
     }
     else {
-        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace(false)));
+        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
     }
 
     ExitApp(false);
@@ -113,10 +113,10 @@ void ReportExceptionAndContinue(const std::exception& ex)
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}", ex.what(), ex_info != nullptr ? ex_info->GetVerbStackTrace() : "", GetStackTrace(true));
+        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}", ex.what(), ex_info != nullptr ? ex_info->StackTrace() : "", GetStackTrace());
     }
     else {
-        WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace(true));
+        WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
     }
 
     if (BreakIntoDebugger(ex.what())) {
@@ -125,10 +125,10 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
     if (ExceptionMessageBox) {
         if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->GetBriefStackTrace());
+            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->StackTrace());
         }
         else {
-            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace(false)));
+            MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
         }
     }
 }
@@ -138,7 +138,7 @@ void ShowExceptionMessageBox(bool enabled)
     ExceptionMessageBox = enabled;
 }
 
-auto GetStackTrace(bool verb) -> string
+auto GetStackTrace() -> string
 {
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
@@ -154,32 +154,25 @@ auto GetStackTrace(bool verb) -> string
 
     std::stringstream ss;
 
-    if (verb) {
-        backward::Printer printer;
-        printer.snippet = false;
-        printer.print(st, ss);
-    }
-    else {
-        ss << "Stack trace (most recent call first):\n";
+    ss << "Stack trace (most recent call first):\n";
 
-        for (size_t i = 0; i < st.size(); ++i) {
-            backward::ResolvedTrace trace = resolver.resolve(st[i]);
+    for (size_t i = 0; i < st.size(); ++i) {
+        backward::ResolvedTrace trace = resolver.resolve(st[i]);
 
-            auto obj_func = trace.object_function;
-            if (obj_func.length() > 100) {
-                obj_func.resize(97);
-                obj_func.append("...");
-            }
-
-            auto file_name = _str(trace.source.filename).extractFileName().str();
-            if (!file_name.empty()) {
-                file_name.append(" ");
-            }
-
-            file_name += _str("{}", trace.source.line).str();
-
-            ss << "- " << obj_func << " (" << file_name << ")\n";
+        auto obj_func = trace.object_function;
+        if (obj_func.length() > 100) {
+            obj_func.resize(97);
+            obj_func.append("...");
         }
+
+        auto file_name = _str(trace.source.filename).extractFileName().str();
+        if (!file_name.empty()) {
+            file_name.append(" ");
+        }
+
+        file_name += _str("{}", trace.source.line).str();
+
+        ss << "- " << obj_func << " (" << file_name << ")\n";
     }
 
     auto st_str = ss.str();
@@ -265,7 +258,7 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 
 void CreateDumpMessage(string_view appendix, string_view message)
 {
-    const auto traceback = GetStackTrace(true);
+    const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
     const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 

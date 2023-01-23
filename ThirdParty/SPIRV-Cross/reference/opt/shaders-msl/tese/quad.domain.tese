@@ -55,19 +55,20 @@ struct main0_patchIn
     float2 gl_TessLevelInner [[attribute(1)]];
 };
 
-[[ patch(quad, 0) ]] vertex main0_out main0(main0_patchIn patchIn [[stage_in]], float2 gl_TessCoord [[position_in_patch]])
+[[ patch(quad, 0) ]] vertex main0_out main0(main0_patchIn patchIn [[stage_in]], float2 gl_TessCoordIn [[position_in_patch]])
 {
     main0_out out = {};
     spvUnsafeArray<float, 2> gl_TessLevelInner = {};
     spvUnsafeArray<float, 4> gl_TessLevelOuter = {};
-    gl_TessLevelInner[0] = patchIn.gl_TessLevelInner.x;
-    gl_TessLevelInner[1] = patchIn.gl_TessLevelInner.y;
-    gl_TessLevelOuter[0] = patchIn.gl_TessLevelOuter.x;
-    gl_TessLevelOuter[1] = patchIn.gl_TessLevelOuter.y;
-    gl_TessLevelOuter[2] = patchIn.gl_TessLevelOuter.z;
-    gl_TessLevelOuter[3] = patchIn.gl_TessLevelOuter.w;
+    gl_TessLevelInner[0] = patchIn.gl_TessLevelInner[0];
+    gl_TessLevelInner[1] = patchIn.gl_TessLevelInner[1];
+    gl_TessLevelOuter[0] = patchIn.gl_TessLevelOuter[0];
+    gl_TessLevelOuter[1] = patchIn.gl_TessLevelOuter[1];
+    gl_TessLevelOuter[2] = patchIn.gl_TessLevelOuter[2];
+    gl_TessLevelOuter[3] = patchIn.gl_TessLevelOuter[3];
+    float3 gl_TessCoord = float3(gl_TessCoordIn.x, gl_TessCoordIn.y, 0.0);
     gl_TessCoord.y = 1.0 - gl_TessCoord.y;
-    out.gl_Position = float4(((gl_TessCoord.x * gl_TessLevelInner[0]) * gl_TessLevelOuter[0]) + (((1.0 - gl_TessCoord.x) * gl_TessLevelInner[0]) * gl_TessLevelOuter[2]), ((gl_TessCoord.y * gl_TessLevelInner[1]) * gl_TessLevelOuter[3]) + (((1.0 - gl_TessCoord.y) * gl_TessLevelInner[1]) * gl_TessLevelOuter[1]), 0.0, 1.0);
+    out.gl_Position = float4(fma(gl_TessCoord.x * gl_TessLevelInner[0], gl_TessLevelOuter[0], ((1.0 - gl_TessCoord.x) * gl_TessLevelInner[0]) * gl_TessLevelOuter[2]), fma(gl_TessCoord.y * gl_TessLevelInner[1], gl_TessLevelOuter[3], ((1.0 - gl_TessCoord.y) * gl_TessLevelInner[1]) * gl_TessLevelOuter[1]), 0.0, 1.0);
     return out;
 }
 

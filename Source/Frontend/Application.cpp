@@ -35,6 +35,7 @@
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
@@ -96,6 +97,20 @@ void InitApp(int argc, char** argv, string_view name_appendix)
         throw AppInitException("InitApp must be called only once");
     }
 
+#if FO_LINUX || FO_MAC
+    const auto need_fork = [&] {
+        for (int i = 0; i < argc; i++) {
+            if (string_view(argv[i]) == "--fork") {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (need_fork()) {
+        GenericUtils::ForkProcess();
+    }
+#endif
+
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     if (!IsRunInDebugger()) {
@@ -106,17 +121,18 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     CreateGlobalData();
 
-    string name = FO_DEV_NAME;
-    if (!name_appendix.empty()) {
-        name.append("_");
-        name.append(name_appendix);
+#if !FO_WEB
+    if (const auto exe_path = DiskFileSystem::GetExePath()) {
+        LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));
+    }
+    else {
+        LogToFile(_str("{}.log", FO_DEV_NAME));
     }
 
-#if !FO_WEB
-    LogToFile(_str("{}.log", name));
+    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv, name);
+    App = new Application(argc, argv);
 }
 
 void ExitApp(bool success)
@@ -157,8 +173,22 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv, string_view name) : Settings(argc, argv), _name {name}
+Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
+    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+    SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
+
+    if (Settings.NullRenderer) {
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "dummy");
+        SDL_SetHint(SDL_HINT_VIDEODRIVER, "dummy");
+    }
+
+    if constexpr (FO_ANDROID) {
+        SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
+    }
+
     if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_TIMER failed", SDL_GetError());
     }
@@ -409,6 +439,8 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
+        SDL_DisableScreenSaver();
+
         if (_isTablet) {
             SDL_DisplayMode mode;
             if (const auto r = SDL_GetCurrentDisplayMode(0, &mode); r != 0) {
@@ -487,10 +519,12 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
         io.ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
-        SDL_SysWMinfo info;
-        SDL_VERSION(&info.version);
-        if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(MainWindow._windowHandle), &info) != 0) {
-            ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<void*>(info.info.win.window);
+        if (ActiveRendererType != RenderType::Null) {
+            SDL_SysWMinfo info;
+            SDL_VERSION(&info.version);
+            if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(MainWindow._windowHandle), &info) != 0) {
+                ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<void*>(info.info.win.window);
+            }
         }
 #endif
 
@@ -553,11 +587,6 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::GetName() const -> string_view
-{
-    return _name;
-}
-
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
     throw NotImplementedException(LINE_STR);
@@ -572,6 +601,11 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
 {
     NON_CONST_METHOD_HINT();
+
+    // Dummy window pointer
+    if (Settings.NullRenderer) {
+        return new int(42);
+    }
 
     // Initialize window
     Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
@@ -698,24 +732,14 @@ void Application::BeginFrame()
             }
         } break;
         case SDL_FINGERMOTION: {
-            InputEvent::MouseMoveEvent ev;
-            ev.MouseX = sdl_event.motion.x;
-            ev.MouseY = sdl_event.motion.y;
-            EventsQueue->emplace_back(ev);
-        } break;
+            throw InvalidCallException("SDL_FINGERMOTION");
+        }
         case SDL_FINGERDOWN: {
-            InputEvent::MouseMoveEvent ev1;
-            SDL_GetMouseState(&ev1.MouseX, &ev1.MouseY);
-            EventsQueue->emplace_back(ev1);
-            InputEvent::MouseDownEvent ev2;
-            ev2.Button = MouseButton::Left;
-            EventsQueue->emplace_back(ev2);
-        } break;
+            throw InvalidCallException("SDL_FINGERDOWN");
+        }
         case SDL_FINGERUP: {
-            InputEvent::MouseUpEvent ev;
-            ev.Button = MouseButton::Left;
-            EventsQueue->emplace_back(ev);
-        } break;
+            throw InvalidCallException("SDL_FINGERUP");
+        }
         case SDL_MOUSEWHEEL: {
             InputEvent::MouseWheelEvent ev;
             ev.Delta = -sdl_event.wheel.y;
@@ -808,6 +832,8 @@ void Application::BeginFrame()
             _onLowMemoryDispatcher();
         } break;
         case SDL_WINDOWEVENT: {
+            RUNTIME_ASSERT(ActiveRendererType != RenderType::Null);
+
             Uint8 window_event = sdl_event.window.event;
             if (window_event == SDL_WINDOWEVENT_CLOSE) {
                 Settings.Quit = true;
@@ -855,30 +881,32 @@ void Application::BeginFrame()
     }
 
     // Setup display size
-    int w;
-    int h;
-    SDL_GetWindowSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &w, &h);
+    if (ActiveRendererType != RenderType::Null) {
+        int w;
+        int h;
+        SDL_GetWindowSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &w, &h);
 
-    if ((SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_MINIMIZED) != 0u) {
-        w = h = 0;
-    }
+        if ((SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_MINIMIZED) != 0u) {
+            w = h = 0;
+        }
 
-    int display_w;
-    int display_h;
-    SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &display_w, &display_h);
+        int display_w;
+        int display_h;
+        SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &display_w, &display_h);
 
-    io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
-    if (w > 0 && h > 0) {
-        io.DisplayFramebufferScale = ImVec2(static_cast<float>(display_w) / static_cast<float>(w), static_cast<float>(display_h) / static_cast<float>(h));
-    }
+        io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
+        if (w > 0 && h > 0) {
+            io.DisplayFramebufferScale = ImVec2(static_cast<float>(display_w) / static_cast<float>(w), static_cast<float>(display_h) / static_cast<float>(h));
+        }
 
-    if (display_w != Settings.ScreenWidth || display_h != Settings.ScreenHeight) {
-        Settings.ScreenWidth = display_w;
-        Settings.ScreenHeight = display_h;
-        MainWindow._onWindowSizeChangedDispatcher();
+        if (display_w != Settings.ScreenWidth || display_h != Settings.ScreenHeight) {
+            Settings.ScreenWidth = display_w;
+            Settings.ScreenHeight = display_h;
+            MainWindow._onWindowSizeChangedDispatcher();
 
-        // Refresh viewport
-        Render.SetRenderTarget(nullptr);
+            // Refresh viewport
+            Render.SetRenderTarget(nullptr);
+        }
     }
 
     // Setup time step
@@ -887,30 +915,33 @@ void Application::BeginFrame()
     _time = cur_time;
 
     // Mouse state
-    if (_pendingMouseLeaveFrame != 0 && _pendingMouseLeaveFrame >= ImGui::GetFrameCount() && _mouseButtonsDown == 0) {
-        io.AddMousePosEvent(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
-        _pendingMouseLeaveFrame = 0;
-    }
-
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-    SDL_CaptureMouse(_mouseButtonsDown != 0 ? SDL_TRUE : SDL_FALSE);
-    const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
-#else
-    const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
-#endif
-    if (is_app_focused) {
-        if (io.WantSetMousePos) {
-            Input.SetMousePosition(static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y), &MainWindow);
+    if (ActiveRendererType != RenderType::Null) {
+        if (_pendingMouseLeaveFrame != 0 && _pendingMouseLeaveFrame >= ImGui::GetFrameCount() && _mouseButtonsDown == 0) {
+            io.AddMousePosEvent(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+            _pendingMouseLeaveFrame = 0;
         }
 
-        if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
-            int mouse_x_global;
-            int mouse_y_global;
-            SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
-            int window_x;
-            int window_y;
-            SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
-            io.AddMousePosEvent(static_cast<float>(mouse_x_global - window_x), static_cast<float>(mouse_y_global - window_y));
+        SDL_SetWindowGrab(static_cast<SDL_Window*>(MainWindow._windowHandle), MainWindow._grabbed ? SDL_TRUE : SDL_FALSE);
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+        const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
+#else
+        const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
+#endif
+        if (is_app_focused) {
+            if (io.WantSetMousePos) {
+                Input.SetMousePosition(static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y), &MainWindow);
+            }
+
+            if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
+                int mouse_x_global;
+                int mouse_y_global;
+                SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
+                int window_x;
+                int window_y;
+                SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
+                io.AddMousePosEvent(static_cast<float>(mouse_x_global - window_x), static_cast<float>(mouse_y_global - window_y));
+            }
         }
     }
 
@@ -1122,9 +1153,18 @@ void AppWindow::AlwaysOnTop(bool enable)
 #endif
 }
 
+void AppWindow::GrabInput(bool enable)
+{
+    _grabbed = enable;
+}
+
 void AppWindow::Destroy()
 {
     NON_CONST_METHOD_HINT();
+
+    if (ActiveRendererType == RenderType::Null) {
+        return;
+    }
 
     if (_windowHandle != nullptr && this != &App->MainWindow) {
         SDL_DestroyWindow(static_cast<SDL_Window*>(_windowHandle));
