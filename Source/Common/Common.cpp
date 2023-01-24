@@ -283,8 +283,6 @@ auto GetRealStackTrace() -> string
         return "Stack trace disabled (debugger detected)";
     }
 
-    // Todo: apply scripts strack trace
-
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     backward::TraceResolver resolver;
     backward::StackTrace st;
