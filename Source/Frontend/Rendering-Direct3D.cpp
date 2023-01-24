@@ -572,7 +572,6 @@ void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)

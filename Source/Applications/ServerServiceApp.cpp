@@ -62,7 +62,7 @@ static void SetFOServiceStatus(uint state);
 
 static void ServerEntry()
 {
-    STACK_TRACE_ENTRY();
+    STACK_TRACE_FIRST_ENTRY();
 
     try {
         try {
@@ -106,8 +106,6 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ServerServiceApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
-
     try {
         InitApp(argc, argv, "ServerService");
 
@@ -219,8 +217,6 @@ int main(int argc, char** argv)
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
-    STACK_TRACE_ENTRY();
-
     try {
         // Todo: convert argv from wchar_t** to char**
         InitApp(argc, nullptr, "ServerService");
@@ -251,8 +247,6 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
 static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
 {
-    STACK_TRACE_ENTRY();
-
     try {
         if (opcode == SERVICE_CONTROL_STOP) {
             SetFOServiceStatus(SERVICE_STOP_PENDING);
@@ -276,8 +270,6 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
 
 static void SetFOServiceStatus(uint state)
 {
-    STACK_TRACE_ENTRY();
-
     if (state == 0u) {
         state = Data->LastState;
     }

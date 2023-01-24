@@ -37,7 +37,6 @@
 ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 auto ClientEntity::GetId() const -> uint

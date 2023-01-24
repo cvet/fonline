@@ -58,6 +58,8 @@
 #endif
 #endif
 
+static std::thread::id MainThreadId;
+
 static bool ExceptionMessageBox = false;
 
 hstring::entry hstring::_zeroEntry;
@@ -67,6 +69,37 @@ map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> Int
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
+
+static constexpr size_t STACK_TRACE_MAX_SIZE = 100;
+static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
+
+struct StackTraceData
+{
+    struct EntryData
+    {
+        bool copied {};
+        array<char, STACK_TRACE_BUF_SIZE> name {};
+        array<char, STACK_TRACE_BUF_SIZE> function {};
+        array<char, STACK_TRACE_BUF_SIZE> file {};
+        uint32_t line {};
+    };
+
+    size_t Count = {};
+    array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> Locations = {};
+    array<EntryData, STACK_TRACE_MAX_SIZE> LocationStorage = {};
+};
+
+static StackTraceData StackTrace;
+
+void SetMainThread() noexcept
+{
+    MainThreadId = std::this_thread::get_id();
+}
+
+auto IsMainThread() noexcept -> bool
+{
+    return MainThreadId == std::this_thread::get_id();
+}
 
 void CreateGlobalData()
 {
@@ -85,6 +118,7 @@ void DeleteGlobalData()
         DeleteGlobalDataCallbacks[i]();
     }
 }
+
 void ReportExceptionAndExit(const std::exception& ex)
 {
     STACK_TRACE_ENTRY();
@@ -148,7 +182,114 @@ void ShowExceptionMessageBox(bool enabled)
     ExceptionMessageBox = enabled;
 }
 
+void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
+{
+    if (!IsMainThread()) {
+        return;
+    }
+
+    if (StackTrace.Count < STACK_TRACE_MAX_SIZE) {
+        auto&& storage = StackTrace.LocationStorage[StackTrace.Count];
+
+        if (make_copy) {
+            storage.copied = true;
+            StackTrace.Locations[StackTrace.Count] = nullptr;
+
+            const auto safe_copy = [](auto& to, const char* from) {
+                if (from != nullptr) {
+                    const auto len = std::min(std::strlen(from), to.size() - 1);
+                    std::memcpy(to.data(), from, len);
+                    to[len] = 0;
+                }
+                else {
+                    to[0] = 0;
+                }
+            };
+
+            safe_copy(storage.name, loc.name);
+            safe_copy(storage.function, loc.function);
+            safe_copy(storage.file, loc.file);
+            storage.line = loc.line;
+        }
+        else {
+            storage.copied = false;
+            StackTrace.Locations[StackTrace.Count] = &loc;
+        }
+    }
+
+    StackTrace.Count++;
+}
+
+void PopStackTrace() noexcept
+{
+    if (!IsMainThread()) {
+        return;
+    }
+
+    if (StackTrace.Count <= 1) {
+        DebugBreak();
+    }
+
+    if (StackTrace.Count > 0) {
+        StackTrace.Count--;
+    }
+}
+
+extern auto GetStackTraceLevel() noexcept -> size_t
+{
+    if (!IsMainThread()) {
+        return 0;
+    }
+
+    return StackTrace.Count;
+}
+
+extern void SetStackTraceLevel(size_t level) noexcept
+{
+    if (!IsMainThread()) {
+        return;
+    }
+
+    StackTrace.Count = level;
+}
+
 auto GetStackTrace() -> string
+{
+    if (!IsMainThread()) {
+        return "Stack trace disabled for non main thread";
+    }
+
+    std::stringstream ss;
+
+    ss << "Stack trace (most recent call first):\n";
+
+    for (int i = std::min(static_cast<int>(StackTrace.Count), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+        const auto* loc = StackTrace.Locations[i];
+        const auto& storage = StackTrace.LocationStorage[i];
+
+        if (storage.copied) {
+            ss << "- " << storage.function.data() << " (" << _str(storage.file.data()).extractFileName().str() << " line " << storage.line << ")\n";
+        }
+        else {
+            ss << "- " << loc->function << " (" << _str(loc->file).extractFileName().str() << " line " << loc->line << ")\n";
+        }
+    }
+
+    if (StackTrace.Count > STACK_TRACE_MAX_SIZE) {
+        ss << "- ..."
+           << "and " << (StackTrace.Count - STACK_TRACE_MAX_SIZE) << " more entries\n";
+    }
+
+    auto st_str = ss.str();
+
+    if (!st_str.empty() && st_str.back() == '\n') {
+        st_str.pop_back();
+    }
+
+    return st_str;
+}
+
+auto GetRealStackTrace() -> string
 {
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
@@ -297,29 +438,21 @@ void CreateDumpMessage(string_view appendix, string_view message)
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
-    STACK_TRACE_ENTRY();
-
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
-    STACK_TRACE_ENTRY();
-
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void SDL_UnloadObject(void* handle)
 {
-    STACK_TRACE_ENTRY();
-
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void emscripten_sleep(unsigned int ms)
 {
-    STACK_TRACE_ENTRY();
-
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif

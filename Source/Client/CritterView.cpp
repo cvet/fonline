@@ -46,13 +46,11 @@ CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) :
 void CritterView::Init()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void CritterView::Finish()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void CritterView::MarkAsDestroyed()

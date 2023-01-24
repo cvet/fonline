@@ -38,7 +38,6 @@
 EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*

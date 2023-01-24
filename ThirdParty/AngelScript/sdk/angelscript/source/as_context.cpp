@@ -53,20 +53,20 @@
 #endif
 
 // (FOnline Patch)
-using ScriptCallFuncType = void(*)(asIScriptFunction*);
+using ScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*);
 
-static void BeginScriptCall(asIScriptFunction* func)
+static void BeginScriptCall(asIScriptContext* ctx, asIScriptFunction* func)
 {
-	auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(1));
-
-	callback(func);
+	if (auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(1))) {
+		callback(ctx, func);
+	}
 }
 
-static void EndScriptCall(asIScriptFunction* func)
+static void EndScriptCall(asIScriptContext* ctx, asIScriptFunction* func)
 {
-	auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(2));
-
-	callback(func);
+	if (auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(2))) {
+		callback(ctx, func);
+	}
 }
 
 BEGIN_AS_NAMESPACE
@@ -1320,6 +1320,9 @@ int asCContext::Execute()
 	if( m_engine->ep.autoGarbageCollect )
 		m_engine->gc.GetStatistics(&gcPreObjects, 0, 0, 0, 0);
 
+	// (FOnline Patch)
+	BeginScriptCall(this, m_currentFunction);
+
 	while( m_status == asEXECUTION_ACTIVE )
 		ExecuteNext();
 
@@ -1712,7 +1715,7 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 {
 	asASSERT( func->scriptData );
 
-	BeginScriptCall(func); // (FOnline Patch)
+	BeginScriptCall(this, func); // (FOnline Patch)
 
 	// Push the framepointer, function id and programCounter on the stack
 	PushCallState();
@@ -1974,6 +1977,8 @@ void asCContext::ExecuteNext()
 	// Return to the caller, and remove the arguments from the stack
 	case asBC_RET:
 		{
+			EndScriptCall(this, m_currentFunction); // (FOnline Patch)
+
 			// Return if this was the first function, or a nested execution
 			if( m_callStack.GetLength() == 0 ||
 				m_callStack[m_callStack.GetLength() - CALLSTACK_FRAME_SIZE] == 0 )
@@ -4905,8 +4910,6 @@ void asCContext::CleanArgsOnStack()
 
 void asCContext::CleanStackFrame()
 {
-	EndScriptCall(m_currentFunction); // (FOnline Patch)
-
 	// Clean object variables on the stack
 	// If the stack memory is not allocated or the program pointer
 	// is not set, then there is nothing to clean up on the stack frame

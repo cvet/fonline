@@ -2905,7 +2905,6 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
 ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint depth)

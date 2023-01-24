@@ -153,7 +153,9 @@ void WriteLogMessage(LogType type, string_view message)
     __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
 #endif
 
-    PROFILER_LOG(result.c_str(), result.length());
+#ifdef TRACY_ENABLE
+    TracyMessage(result.c_str(), result.length());
+#endif
 
     // Todo: colorize log texts
     const char* color = nullptr;

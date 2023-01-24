@@ -1052,7 +1052,9 @@ void Application::EndFrame()
 
     _onFrameEndDispatcher();
 
-    PROFILER_FRAME_MARK();
+#ifdef TRACY_ENABLE
+    FrameMark;
+#endif
 }
 
 auto AppWindow::GetSize() const -> tuple<int, int>
@@ -1391,8 +1393,6 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
 struct AppAudio::AudioConverter
 {
-    STACK_TRACE_ENTRY();
-
     int Format {};
     int Channels {};
     int Rate {};

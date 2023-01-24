@@ -44,7 +44,6 @@ static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 ResourceManager::ResourceManager(FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _resources {resources}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void ResourceManager::IndexFiles()

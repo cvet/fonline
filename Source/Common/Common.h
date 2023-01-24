@@ -159,38 +159,6 @@ inline auto format_as(T v)
 #include "WinApi-Include.h"
 #endif
 
-// Profiling
-#ifdef TRACY_ENABLE
-#include "tracy/Tracy.hpp"
-#include "tracy/TracyC.h"
-
-#define STACK_TRACE_ENTRY() ZoneScoped
-#define STACK_TRACE_ENTRY_BEGIN(name) \
-    [n = name]() -> void* { \
-        TracyCZone(ctx, true); \
-        TracyCZoneName(ctx, n, strlen(n)); \
-        return ctx.active ? reinterpret_cast<void*>(static_cast<size_t>(ctx.id)) : nullptr; \
-    }()
-#define STACK_TRACE_ENTRY_END(ptr) \
-    [p = ptr]() { \
-        TracyCZoneCtx ctx; \
-        ctx.id = static_cast<uint32_t>(reinterpret_cast<size_t>(p)); \
-        ctx.active = !!ctx.id; \
-        TracyCZoneEnd(ctx); \
-    }()
-
-#define PROFILER_FRAME_MARK() FrameMark
-#define PROFILER_LOG(text, len) TracyMessage(text, len)
-
-#else
-#define STACK_TRACE_ENTRY()
-#define STACK_TRACE_ENTRY_BEGIN(name) nullptr
-#define STACK_TRACE_ENTRY_END(ptr)
-
-#define PROFILER_FRAME_MARK()
-#define PROFILER_LOG(text, len)
-#endif
-
 // Base types
 // Todo: split meanings if int8 and char in code
 // Todo: move from 32 bit hashes to 64 bit
@@ -291,8 +259,87 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 };
 // ReSharper restore CppInconsistentNaming
 
-// Engine exception handling
+// Profiling & stack trace obtaining
+#define CONCAT(x, y) CONCAT_INDIRECT(x, y)
+#define CONCAT_INDIRECT(x, y) x##y
+#if defined(__GNUC__)
+#define FORCE_INLINE __attribute__((always_inline)) inline
+#elif defined(_MSC_VER)
+#define FORCE_INLINE __forceinline
+#else
+#define FORCE_INLINE inline
+#endif
+
+#ifdef TRACY_ENABLE
+#include "tracy/Tracy.hpp"
+#include "tracy/TracyC.h"
+
+using tracy::SourceLocationData;
+
+#define STACK_TRACE_FIRST_ENTRY() \
+    SetMainThread(); \
+    SetStackTraceLevel(0); \
+    STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY() \
+    ZoneScoped; \
+    auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+#define STACK_TRACE_ENTRY_BEGIN(function, file, line) PushStackTrace(SourceLocationData {nullptr, function, file, (uint32_t)line}, true)
+#define STACK_TRACE_ENTRY_END() PopStackTrace()
+/*#define STACK_TRACE_ENTRY_BEGIN(name) \
+    [n = name]() -> void* { \
+        TracyCZone(ctx, true); \
+        TracyCZoneName(ctx, n, std::strlen(n)); \
+        return ctx.active ? reinterpret_cast<void*>(static_cast<size_t>(ctx.id)) : nullptr; \
+    }()
+#define STACK_TRACE_ENTRY_END(ptr) \
+    [p = ptr]() { \
+        TracyCZoneCtx ctx; \
+        ctx.id = static_cast<uint32_t>(reinterpret_cast<size_t>(p)); \
+        ctx.active = !!ctx.id; \
+        TracyCZoneEnd(ctx); \
+    }()*/
+
+#else
+struct SourceLocationData
+{
+    const char* name;
+    const char* function;
+    const char* file;
+    uint32_t line;
+};
+
+#define STACK_TRACE_FIRST_ENTRY() \
+    SetMainThread(); \
+    SetStackTraceLevel(0); \
+    STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY() \
+    static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
+    auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
+#define STACK_TRACE_ENTRY_BEGIN(function, file, line) PushStackTrace(SourceLocationData {nullptr, function, file, (uint32_t)line}, true)
+#define STACK_TRACE_ENTRY_END() PopStackTrace()
+#endif
+
+extern void SetMainThread() noexcept;
+extern auto IsMainThread() noexcept -> bool;
+extern void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept;
+extern void PopStackTrace() noexcept;
+extern auto GetStackTraceLevel() noexcept -> size_t;
+extern void SetStackTraceLevel(size_t level) noexcept;
 extern auto GetStackTrace() -> string;
+
+struct StackTraceScopeEntry
+{
+    FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept { PushStackTrace(loc, false); }
+    FORCE_INLINE ~StackTraceScopeEntry() noexcept { PopStackTrace(); }
+
+    StackTraceScopeEntry(const StackTraceScopeEntry&) = delete;
+    StackTraceScopeEntry(StackTraceScopeEntry&&) noexcept = delete;
+    auto operator=(const StackTraceScopeEntry&) -> StackTraceScopeEntry& = delete;
+    auto operator=(StackTraceScopeEntry&&) noexcept -> StackTraceScopeEntry& = delete;
+};
+
+// Engine exception handling
+extern auto GetRealStackTrace() -> string;
 extern auto IsRunInDebugger() -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
@@ -307,6 +354,11 @@ public:
     [[nodiscard]] virtual auto StackTrace() const noexcept -> const string& = 0;
 };
 
+struct ExceptionStackTraceData
+{
+    string StackTrace {};
+};
+
 // Todo: pass name to exceptions context args
 #define DECLARE_EXCEPTION(exception_name) \
     class exception_name : public std::exception, public ExceptionInfo \
@@ -319,7 +371,6 @@ public:
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
         template<typename... Args> \
-\
         explicit exception_name(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
         { \
             _exceptionMessage = #exception_name ": "; \
@@ -328,6 +379,16 @@ public:
                 _exceptionMessage.append("\n  - ").append(param); \
             } \
             _stackTrace = GetStackTrace(); \
+        } \
+        template<typename... Args> \
+        exception_name(ExceptionStackTraceData data, string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        { \
+            _exceptionMessage = #exception_name ": "; \
+            _exceptionMessage.append(message); \
+            for (auto& param : _exceptionParams) { \
+                _exceptionMessage.append("\n  - ").append(param); \
+            } \
+            _stackTrace = std::move(data.StackTrace); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override \
         { \

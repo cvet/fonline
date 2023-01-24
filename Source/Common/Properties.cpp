@@ -95,7 +95,6 @@ void PropertyRawData::StoreIfPassed()
 Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void Property::SetGetter(PropertyGetCallback getter) const
@@ -1014,7 +1013,6 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) : _className {class_name}, _relation {relation}, _nameResolver {name_resolver}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 PropertyRegistrator::~PropertyRegistrator()

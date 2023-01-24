@@ -227,7 +227,6 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
     STACK_TRACE_ENTRY();
-
 }
 #endif
 
@@ -244,7 +243,9 @@ void Application::EndFrame()
 
     _onFrameEndDispatcher();
 
-    PROFILER_FRAME_MARK();
+#ifdef TRACY_ENABLE
+    FrameMark;
+#endif
 }
 
 auto AppWindow::GetSize() const -> tuple<int, int>
@@ -293,7 +294,6 @@ auto AppWindow::IsFocused() const -> bool
 void AppWindow::Minimize()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 auto AppWindow::IsFullscreen() const -> bool
@@ -317,7 +317,6 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 void AppWindow::Blink()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
@@ -337,7 +336,6 @@ void AppWindow::GrabInput(bool enable)
 void AppWindow::Destroy()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
@@ -388,7 +386,6 @@ void AppRender::EnableScissor(int x, int y, int width, int height)
 void AppRender::DisableScissor()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
@@ -440,7 +437,6 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 void AppInput::ClearEvents()
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void AppInput::PushEvent(const InputEvent& ev)

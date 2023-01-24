@@ -272,19 +272,14 @@ template<typename T>
 constexpr bool is_script_enum_v = std::is_same_v<T, ScriptEnum_uint8> || std::is_same_v<T, ScriptEnum_uint16> || std::is_same_v<T, ScriptEnum_int> || std::is_same_v<T, ScriptEnum_uint>;
 
 #if !COMPILER_MODE
-static void CallbackException(asIScriptContext* ctx, void* param)
-{
-    STACK_TRACE_ENTRY();
-
-    // string str = ctx->GetExceptionString();
-    // if (str != "Pass")
-    //    HandleException(ctx, _str("Script exception: {}{}", str, !_str(str).endsWith('.') ? "." : ""));
-}
+static void AngelScriptException(asIScriptContext* ctx, void* param);
 
 struct SCRIPTING_CLASS::AngelScriptImpl
 {
     struct ContextData
     {
+        bool ExecutionActive {};
+        size_t ExecutionCalls {};
         string Info {};
         asIScriptContext* Parent {};
         uint SuspendEndTick {};
@@ -303,7 +298,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         asIScriptContext* ctx = Engine->CreateContext();
         RUNTIME_ASSERT(ctx);
 
-        int r = ctx->SetExceptionCallback(asFUNCTION(CallbackException), nullptr, asCALL_CDECL);
+        int r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
         RUNTIME_ASSERT(r >= 0);
 
         auto* ctx_data = new ContextData();
@@ -380,7 +375,23 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
         ctx_data->Parent = asGetActiveContext();
 
-        const auto exec_result = ctx->Execute();
+        int exec_result = 0;
+
+        {
+            const auto orig_stack_trace_level = GetStackTraceLevel();
+            ctx_data->ExecutionActive = true;
+            ctx_data->ExecutionCalls = 0;
+
+            auto after_execution = ScopeCallback([&]() noexcept {
+                SetStackTraceLevel(orig_stack_trace_level);
+                ctx_data->ExecutionActive = false;
+                ctx_data->ExecutionCalls = 0;
+            });
+
+            exec_result = ctx->Execute();
+
+            RUNTIME_ASSERT(orig_stack_trace_level <= GetStackTraceLevel());
+        }
 
         if (exec_result == asEXECUTION_SUSPENDED) {
             if (!can_suspend) {
@@ -396,20 +407,11 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         if (exec_result != asEXECUTION_FINISHED) {
             if (exec_result == asEXECUTION_EXCEPTION) {
                 const string ex_string = ctx->GetExceptionString();
-                auto* ex_func = ctx->GetExceptionFunction();
-                const string ex_func_name = ex_func->GetName();
-                const auto ex_line = ctx->GetExceptionLineNumber();
-
-                auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ex_func->GetModule()->GetUserData());
-                const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
-                const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
-
-                auto stack_trace = GetContextTraceback(ctx);
 
                 ctx->Abort();
                 ReturnContext(ctx);
 
-                throw ScriptException("Script execution exception", ex_string, ex_orig_file, ex_func_name, ex_orig_line, std::move(stack_trace));
+                throw ScriptException(ExceptionStackTraceData {ExceptionStackTrace}, "Script execution exception", ex_string);
             }
 
             if (exec_result == asEXECUTION_ABORTED) {
@@ -457,68 +459,6 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         }
     }
 
-    auto GetContextTraceback(asIScriptContext* top_ctx) -> string
-    {
-        STACK_TRACE_ENTRY();
-
-        string result;
-        result.reserve(2048);
-
-        auto* ctx = top_ctx;
-        while (ctx != nullptr) {
-            auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
-
-            result += _str("AngelScript stack trace (most recent call first):\n");
-
-            asIScriptFunction* sys_func = ctx->GetSystemFunction();
-            if (sys_func != nullptr) {
-                result += _str("  {}\n", sys_func->GetDeclaration(true, true, true));
-            }
-
-            int line;
-            asIScriptFunction* func;
-
-            if (ctx->GetState() == asEXECUTION_EXCEPTION) {
-                line = ctx->GetExceptionLineNumber();
-                func = ctx->GetExceptionFunction();
-            }
-            else {
-                line = ctx->GetLineNumber(0);
-                func = ctx->GetFunction(0);
-            }
-
-            if (func != nullptr) {
-                auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(func->GetModule()->GetUserData());
-                result += _str("  {} : Line {}\n", func->GetDeclaration(true, true), Preprocessor::ResolveOriginalLine(line, lnt));
-            }
-            else {
-                result += _str("  ??? : Line ???\n");
-            }
-
-            const asUINT stack_size = ctx->GetCallstackSize();
-
-            for (asUINT i = 1; i < stack_size; i++) {
-                func = ctx->GetFunction(i);
-                line = ctx->GetLineNumber(i);
-                if (func != nullptr) {
-                    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(func->GetModule()->GetUserData());
-                    result += _str("  {} : Line {}\n", func->GetDeclaration(true, true), Preprocessor::ResolveOriginalLine(line, lnt));
-                }
-                else {
-                    result += _str("  ??? : Line ???\n");
-                }
-            }
-
-            ctx = ctx_data->Parent;
-        }
-
-        if (!result.empty() && result.back() == '\n') {
-            result.pop_back();
-        }
-
-        return result;
-    }
-
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
     set<CScriptArray*> EnumArrays {};
@@ -527,7 +467,59 @@ struct SCRIPTING_CLASS::AngelScriptImpl
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
+    string ExceptionStackTrace {};
 };
+
+static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func)
+{
+    auto* ctx_data = static_cast<SCRIPTING_CLASS::AngelScriptImpl::ContextData*>(ctx->GetUserData());
+    if (ctx_data == nullptr || !ctx_data->ExecutionActive) {
+        return;
+    }
+
+    const auto ctx_line = ctx->GetLineNumber();
+
+    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
+    const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
+    const auto orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt);
+
+    STACK_TRACE_ENTRY_BEGIN(func->GetDeclaration(true), orig_file.c_str(), orig_line);
+
+    ctx_data->ExecutionCalls++;
+}
+
+static void AngelScriptEndCall(asIScriptContext* ctx, asIScriptFunction* func)
+{
+    auto* ctx_data = static_cast<SCRIPTING_CLASS::AngelScriptImpl::ContextData*>(ctx->GetUserData());
+    if (ctx_data == nullptr || !ctx_data->ExecutionActive) {
+        return;
+    }
+
+    if (ctx_data->ExecutionCalls > 0) {
+        STACK_TRACE_ENTRY_END();
+
+        ctx_data->ExecutionCalls--;
+    }
+}
+
+static void AngelScriptException(asIScriptContext* ctx, void* param)
+{
+    const string ex_string = ctx->GetExceptionString();
+    auto* ex_func = ctx->GetExceptionFunction();
+    const auto ex_line = ctx->GetExceptionLineNumber();
+
+    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
+    const auto& ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
+    const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
+
+    {
+        STACK_TRACE_ENTRY_BEGIN(ex_func->GetDeclaration(true), ex_orig_file.c_str(), ex_orig_line);
+        auto stack_trace_entry_end = ScopeCallback([]() noexcept { STACK_TRACE_ENTRY_END(); });
+
+        // Write to ExceptionStackTrace
+        *static_cast<string*>(param) = GetStackTrace();
+    }
+}
 #endif
 
 template<typename T>
@@ -2884,24 +2876,6 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
     WriteLog("{}", formatted_message);
 }
 
-static void AngelScriptBeginCall(asIScriptFunction* func)
-{
-    const auto* func_decl = func->GetDeclaration(true, true);
-    void* entry_ptr = STACK_TRACE_ENTRY_BEGIN(func_decl);
-
-    func->SetUserData(entry_ptr);
-}
-
-static void AngelScriptEndCall(asIScriptFunction* func)
-{
-    void* entry_ptr = func->GetUserData();
-
-    if (entry_ptr != nullptr) {
-        func->SetUserData(nullptr);
-        STACK_TRACE_ENTRY_END(entry_ptr);
-    }
-}
-
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources);
 #else
@@ -2929,8 +2903,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RUNTIME_ASSERT(engine);
 
     engine->SetUserData(game_engine);
+
+#if !COMPILER_MODE
     engine->SetUserData(&AngelScriptBeginCall, 1);
     engine->SetUserData(&AngelScriptEndCall, 2);
+#endif
 
 #if !COMPILER_MODE
     AngelScriptData = std::make_unique<AngelScriptImpl>();
@@ -3785,9 +3762,8 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_
         throw ScriptException("Create root module fail");
     }
 
-    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
-    UNUSED_VARIABLE(lnt);
-    mod->SetUserData(lnt);
+    auto* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
+    engine->SetUserData(lnt, 5);
 
     BinaryStream binary {buf};
     int as_result = mod->LoadByteCode(&binary);

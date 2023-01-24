@@ -391,7 +391,6 @@ auto EntityWithProto::GetProto() const -> const ProtoEntity*
 EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) : _entity {entity}, _callbackName {callback_name}
 {
     STACK_TRACE_ENTRY();
-
 }
 
 void EntityEventBase::Subscribe(Entity::EventCallbackData callback)

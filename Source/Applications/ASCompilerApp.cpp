@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_ENTRY();
+    STACK_TRACE_FIRST_ENTRY();
 
     try {
         InitApp(argc, argv, "ASCompiler");
