@@ -215,7 +215,7 @@ macro( AddConfiguration name parent )
 	set( CMAKE_MODULE_LINKER_FLAGS_${nameUpper} ${CMAKE_MODULE_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE )
 endmacro()
 
-AddConfiguration( Profiling Release )
+AddConfiguration( Profiling RelWithDebInfo )
 # Todo: add configs with sanitizers
 
 if( FO_MULTICONFIG )

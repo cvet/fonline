@@ -70,23 +70,28 @@ GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
-static constexpr size_t STACK_TRACE_MAX_SIZE = 100;
-static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
+static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
+static constexpr size_t STACK_TRACE_BUF_SIZE = 256;
 
 struct StackTraceData
 {
-    struct EntryData
+    struct StackTraceEntry
     {
-        bool copied {};
-        array<char, STACK_TRACE_BUF_SIZE> name {};
-        array<char, STACK_TRACE_BUF_SIZE> function {};
-        array<char, STACK_TRACE_BUF_SIZE> file {};
-        uint32_t line {};
+        const char* Func {};
+        const char* File {};
+        size_t Line {};
+        const SourceLocationData* Location {};
     };
 
-    size_t Count = {};
-    array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> Locations = {};
-    array<EntryData, STACK_TRACE_MAX_SIZE> LocationStorage = {};
+    struct StackTraceEntryStorage
+    {
+        array<char, STACK_TRACE_BUF_SIZE> FuncBuf {};
+        array<char, STACK_TRACE_BUF_SIZE> FileBuf {};
+    };
+
+    size_t CallsCount = {};
+    array<StackTraceEntry, STACK_TRACE_MAX_SIZE> CallTree = {};
+    array<StackTraceEntryStorage, STACK_TRACE_MAX_SIZE> CallTreeStorage = {};
 };
 
 static StackTraceData StackTrace;
@@ -188,12 +193,13 @@ void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
         return;
     }
 
-    if (StackTrace.Count < STACK_TRACE_MAX_SIZE) {
-        auto&& storage = StackTrace.LocationStorage[StackTrace.Count];
+    if (StackTrace.CallsCount < STACK_TRACE_MAX_SIZE) {
+        auto&& entry = StackTrace.CallTree[StackTrace.CallsCount];
+
+        entry.Line = loc.line;
 
         if (make_copy) {
-            storage.copied = true;
-            StackTrace.Locations[StackTrace.Count] = nullptr;
+            auto&& storage = StackTrace.CallTreeStorage[StackTrace.CallsCount];
 
             const auto safe_copy = [](auto& to, const char* from) {
                 if (from != nullptr) {
@@ -206,18 +212,23 @@ void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
                 }
             };
 
-            safe_copy(storage.name, loc.name);
-            safe_copy(storage.function, loc.function);
-            safe_copy(storage.file, loc.file);
-            storage.line = loc.line;
+            safe_copy(storage.FuncBuf, loc.function);
+            safe_copy(storage.FileBuf, loc.file);
+
+            entry.Func = storage.FuncBuf.data();
+            entry.File = storage.FileBuf.data();
+
+            entry.Location = nullptr;
         }
         else {
-            storage.copied = false;
-            StackTrace.Locations[StackTrace.Count] = &loc;
+            entry.Func = loc.function;
+            entry.File = loc.file;
+
+            entry.Location = &loc;
         }
     }
 
-    StackTrace.Count++;
+    StackTrace.CallsCount++;
 }
 
 void PopStackTrace() noexcept
@@ -226,8 +237,8 @@ void PopStackTrace() noexcept
         return;
     }
 
-    if (StackTrace.Count > 0) {
-        StackTrace.Count--;
+    if (StackTrace.CallsCount > 0) {
+        StackTrace.CallsCount--;
     }
 }
 
@@ -237,7 +248,7 @@ extern auto GetStackTraceLevel() noexcept -> size_t
         return 0;
     }
 
-    return StackTrace.Count;
+    return StackTrace.CallsCount;
 }
 
 extern void SetStackTraceLevel(size_t level) noexcept
@@ -246,7 +257,7 @@ extern void SetStackTraceLevel(size_t level) noexcept
         return;
     }
 
-    StackTrace.Count = level;
+    StackTrace.CallsCount = level;
 }
 
 auto GetStackTrace() -> string
@@ -259,21 +270,15 @@ auto GetStackTrace() -> string
 
     ss << "Stack trace (most recent call first):\n";
 
-    for (int i = std::min(static_cast<int>(StackTrace.Count), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
-        const auto* loc = StackTrace.Locations[i];
-        const auto& storage = StackTrace.LocationStorage[i];
+    for (int i = std::min(static_cast<int>(StackTrace.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+        const auto& entry = StackTrace.CallTree[i];
 
-        if (storage.copied) {
-            ss << "- " << storage.function.data() << " (" << _str(storage.file.data()).extractFileName().str() << " line " << storage.line << ")\n";
-        }
-        else {
-            ss << "- " << loc->function << " (" << _str(loc->file).extractFileName().str() << " line " << loc->line << ")\n";
-        }
+        ss << "- " << entry.Func << " (" << _str(entry.File).extractFileName().str() << " line " << entry.Line << ")\n";
     }
 
-    if (StackTrace.Count > STACK_TRACE_MAX_SIZE) {
+    if (StackTrace.CallsCount > STACK_TRACE_MAX_SIZE) {
         ss << "- ..."
-           << "and " << (StackTrace.Count - STACK_TRACE_MAX_SIZE) << " more entries\n";
+           << "and " << (StackTrace.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
     }
 
     auto st_str = ss.str();
