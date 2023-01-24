@@ -50,6 +50,7 @@ struct ServerAppData
     FOServer* Server {};
     vector<FOClient*> Clients {};
     bool HideControls {};
+    size_t ServerStartCycles {100};
 };
 GLOBAL_DATA(ServerAppData, Data);
 
@@ -93,14 +94,18 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             Data->Server = nullptr;
         };
 
-        // Autostart
         if (!App->Settings.NoStart) {
-            start_server();
+            WriteLog("Auto start server");
         }
 
         // Gui loop
         while (true) {
             App->BeginFrame();
+
+            // Autostart
+            if (!App->Settings.NoStart && Data->ServerStartCycles > 0 && --Data->ServerStartCycles == 0) {
+                start_server();
+            }
 
             if (Data->HideControls) {
                 if (ImGui::Begin("Restore controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
