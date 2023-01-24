@@ -226,10 +226,6 @@ void PopStackTrace() noexcept
         return;
     }
 
-    if (StackTrace.Count <= 1) {
-        DebugBreak();
-    }
-
     if (StackTrace.Count > 0) {
         StackTrace.Count--;
     }

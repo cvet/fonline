@@ -57,14 +57,14 @@ using ScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*);
 
 static void BeginScriptCall(asIScriptContext* ctx, asIScriptFunction* func)
 {
-	if (auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(1))) {
+	if (auto&& callback = reinterpret_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(1))) {
 		callback(ctx, func);
 	}
 }
 
 static void EndScriptCall(asIScriptContext* ctx, asIScriptFunction* func)
 {
-	if (auto&& callback = static_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(2))) {
+	if (auto&& callback = reinterpret_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(2))) {
 		callback(ctx, func);
 	}
 }

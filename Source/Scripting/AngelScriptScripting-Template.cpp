@@ -2905,8 +2905,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     engine->SetUserData(game_engine);
 
 #if !COMPILER_MODE
-    engine->SetUserData(&AngelScriptBeginCall, 1);
-    engine->SetUserData(&AngelScriptEndCall, 2);
+    engine->SetUserData(reinterpret_cast<void*>(AngelScriptBeginCall), 1);
+    engine->SetUserData(reinterpret_cast<void*>(AngelScriptEndCall), 2);
 #endif
 
 #if !COMPILER_MODE
