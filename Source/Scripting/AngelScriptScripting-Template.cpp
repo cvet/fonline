@@ -399,7 +399,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 
 #ifdef TRACY_ENABLE
             while (!ctx_data->TracyExecutionCalls.empty()) {
-                TracyCZoneEnd(ctx_data->TracyExecutionCalls.back());
+                ___tracy_emit_zone_end(ctx_data->TracyExecutionCalls.back());
                 ctx_data->TracyExecutionCalls.pop_back();
             }
 #endif
@@ -502,7 +502,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func)
     ctx_data->ExecutionCalls++;
 
 #ifdef TRACY_ENABLE
-    const auto tracy_srcloc = ___tracy_alloc_srcloc(orig_line, orig_file.c_str(), orig_file.length(), func_decl, std::strlen(func_decl));
+    const auto tracy_srcloc = ___tracy_alloc_srcloc(orig_line, orig_file.c_str(), orig_file.length(), func_decl, string_view(func_decl).length());
     const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
     ctx_data->TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif

@@ -208,7 +208,7 @@ void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
 
             const auto safe_copy = [](auto& to, const char* from) {
                 if (from != nullptr) {
-                    const auto len = std::min(std::strlen(from), to.size() - 1);
+                    const auto len = std::min(string_view(from).length(), to.size() - 1);
                     std::memcpy(to.data(), from, len);
                     to[len] = 0;
                 }
