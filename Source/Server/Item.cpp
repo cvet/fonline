@@ -38,10 +38,13 @@
 
 Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
 {
+    STACK_TRACE_ENTRY();
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)
 {
+    STACK_TRACE_ENTRY();
+
     short sort_value = 0;
     for (const auto* item : items) {
         if (item == this) {
@@ -58,6 +61,8 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
 
 auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(item_id);
@@ -79,6 +84,8 @@ auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
 
 auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_childItems == nullptr) {
@@ -98,6 +105,8 @@ auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
 
 auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_childItems == nullptr) {
@@ -114,6 +123,8 @@ auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
 
 auto Item::ContGetItems(uint stack_id) -> vector<Item*>
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_childItems == nullptr) {
@@ -131,5 +142,7 @@ auto Item::ContGetItems(uint stack_id) -> vector<Item*>
 
 auto Item::ContIsItems() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _childItems != nullptr && !_childItems->empty();
 }

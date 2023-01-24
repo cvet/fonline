@@ -62,6 +62,8 @@ static void SetFOServiceStatus(uint state);
 
 static void ServerEntry()
 {
+    STACK_TRACE_FIRST_ENTRY();
+
     try {
         try {
             Data->Server = new FOServer(App->Settings);

@@ -14,6 +14,7 @@
 * SHA - SHA-1 & SHA-2 hash generators
 * span - [span](https://github.com/tcbrindle/span)
 * SPIRV-Cross - [SPIRV-Cross-1.3.236.0](https://github.com/KhronosGroup/SPIRV-Cross)
+* tracy - [tracy-0.9](https://github.com/wolfpld/tracy)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)

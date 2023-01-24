@@ -38,9 +38,9 @@
 
 // ReSharper disable CppInconsistentNaming
 
-auto _str::length() const -> uint
+auto _str::length() const -> size_t
 {
-    return static_cast<uint>(_s.length());
+    return _s.length();
 }
 
 auto _str::empty() const -> bool
@@ -104,9 +104,9 @@ auto _str::isValidUtf8() const -> bool
     return true;
 }
 
-auto _str::lengthUtf8() const -> uint
+auto _str::lengthUtf8() const -> size_t
 {
-    uint length = 0;
+    size_t length = 0;
     const auto* str = _s.c_str();
 
     while (*str != 0) {

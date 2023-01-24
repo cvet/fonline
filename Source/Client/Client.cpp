@@ -57,6 +57,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
+    STACK_TRACE_ENTRY();
+
     Resources.AddDataSource(Settings.EmbeddedResources);
     Resources.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
@@ -266,42 +268,58 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
 FOClient::~FOClient()
 {
+    STACK_TRACE_ENTRY();
+
     delete ScriptSys;
 }
 
 void FOClient::Shutdown()
 {
+    STACK_TRACE_ENTRY();
+
     App->Render.SetRenderTarget(nullptr);
     _conn.Disconnect();
 }
 
 auto FOClient::ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return OnCritterAnimation.Fire(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 auto FOClient::ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return OnCritterAnimationSubstitute.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 auto FOClient::ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return OnCritterAnimationFallout.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 auto FOClient::IsConnecting() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _conn.IsConnecting();
 }
 
 auto FOClient::IsConnected() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _conn.IsConnected();
 }
 
 auto FOClient::GetChosen() -> CritterView*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (_chosen != nullptr && _chosen->IsDestroyed()) {
@@ -314,17 +332,23 @@ auto FOClient::GetChosen() -> CritterView*
 
 auto FOClient::GetMapChosen() -> CritterHexView*
 {
+    STACK_TRACE_ENTRY();
+
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
 auto FOClient::GetWorldmapCritter(uint cr_id) -> CritterView*
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
     return it != _worldmapCritters.end() ? *it : nullptr;
 }
 
 void FOClient::ProcessAutoLogin()
 {
+    STACK_TRACE_ENTRY();
+
     auto auto_login = Settings.AutoLogin;
 
 #if FO_WEB
@@ -371,6 +395,8 @@ void FOClient::ProcessAutoLogin()
 
 void FOClient::MainLoop()
 {
+    STACK_TRACE_ENTRY();
+
     const auto time_changed = GameTime.FrameAdvance();
 
     // FPS counter
@@ -465,6 +491,8 @@ void FOClient::MainLoop()
 
 void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
 {
+    STACK_TRACE_ENTRY();
+
     if (!push_back || _screenEffects.empty()) {
         _screenEffects.push_back({GameTime.FrameTick(), time, from_color, to_color});
     }
@@ -481,6 +509,8 @@ void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_b
 
 void FOClient::ScreenQuake(int noise, uint time)
 {
+    STACK_TRACE_ENTRY();
+
     Settings.ScrOx -= _screenOffsX;
     Settings.ScrOy -= _screenOffsY;
     _screenOffsX = (GenericUtils::Random(0, 1) != 0 ? noise : -noise);
@@ -495,6 +525,8 @@ void FOClient::ScreenQuake(int noise, uint time)
 
 void FOClient::ProcessScreenEffectFading()
 {
+    STACK_TRACE_ENTRY();
+
     SprMngr.Flush();
 
     vector<PrimitivePoint> full_screen_quad;
@@ -533,6 +565,8 @@ void FOClient::ProcessScreenEffectFading()
 
 void FOClient::ProcessScreenEffectQuake()
 {
+    STACK_TRACE_ENTRY();
+
     if ((_screenOffsX != 0 || _screenOffsY != 0) && GameTime.GameTick() >= _screenOffsNextTick) {
         Settings.ScrOx -= _screenOffsX;
         Settings.ScrOy -= _screenOffsY;
@@ -565,6 +599,8 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
+    STACK_TRACE_ENTRY();
+
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
         while (App->Input.PollEvent(ev)) {
@@ -581,6 +617,8 @@ void FOClient::ProcessInputEvents()
 
 void FOClient::ProcessInputEvent(const InputEvent& ev)
 {
+    STACK_TRACE_ENTRY();
+
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         const auto key_code = ev.KeyDown.Code;
         const auto key_text = ev.KeyDown.Text;
@@ -641,6 +679,8 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
 
 void FOClient::Net_OnConnect(bool success)
 {
+    STACK_TRACE_ENTRY();
+
     if (success) {
         // Reason
         const auto reason = _initNetReason;
@@ -671,6 +711,8 @@ void FOClient::Net_OnConnect(bool success)
 
 void FOClient::Net_OnDisconnect()
 {
+    STACK_TRACE_ENTRY();
+
     if (CurMap != nullptr) {
         CurMap->MarkAsDestroyed();
         CurMap->Release();
@@ -688,6 +730,8 @@ void FOClient::Net_OnDisconnect()
 
 void FOClient::Net_SendLogIn()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Player login");
 
     const uint msg_len = sizeof(uint) + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
@@ -702,6 +746,8 @@ void FOClient::Net_SendLogIn()
 
 void FOClient::Net_SendCreatePlayer()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     WriteLog("Player registration");
@@ -716,6 +762,8 @@ void FOClient::Net_SendCreatePlayer()
 
 void FOClient::Net_SendText(string_view send_str, uchar how_say)
 {
+    STACK_TRACE_ENTRY();
+
     int say_type = how_say;
     auto str = string(send_str);
     const auto result = OnOutMessage.Fire(str, say_type);
@@ -736,6 +784,8 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 
 void FOClient::Net_SendDir(CritterHexView* cr)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_DIR;
@@ -746,6 +796,8 @@ void FOClient::Net_SendDir(CritterHexView* cr)
 
 void FOClient::Net_SendMove(CritterHexView* cr)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(!cr->Moving.Steps.empty());
@@ -780,6 +832,8 @@ void FOClient::Net_SendMove(CritterHexView* cr)
 
 void FOClient::Net_SendStopMove(CritterHexView* cr)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_SEND_STOP_MOVE;
@@ -794,6 +848,8 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(entity);
 
@@ -871,6 +927,8 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
 void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_SEND_TALK_NPC;
@@ -881,6 +939,8 @@ void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 
 void FOClient::Net_SendPing(uchar ping)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_PING;
@@ -889,6 +949,8 @@ void FOClient::Net_SendPing(uchar ping)
 
 void FOClient::Net_OnUpdateFilesResponse()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     bool outdated;
     uint data_size;
@@ -950,11 +1012,15 @@ void FOClient::Net_OnUpdateFilesResponse()
 
 void FOClient::Net_OnWrongNetProto()
 {
+    STACK_TRACE_ENTRY();
+
     AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnRegisterSuccess()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Registration success");
 
     OnRegistrationSuccess.Fire();
@@ -962,6 +1028,8 @@ void FOClient::Net_OnRegisterSuccess()
 
 void FOClient::Net_OnLoginSuccess()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Authentication success");
 
     AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
@@ -992,6 +1060,8 @@ void FOClient::Net_OnLoginSuccess()
 
 void FOClient::Net_OnAddCritter()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     _conn.InBuf >> msg_len;
 
@@ -1077,6 +1147,8 @@ void FOClient::Net_OnAddCritter()
 
 void FOClient::Net_OnRemoveCritter()
 {
+    STACK_TRACE_ENTRY();
+
     uint cr_id;
     _conn.InBuf >> cr_id;
 
@@ -1110,6 +1182,8 @@ void FOClient::Net_OnRemoveCritter()
 
 void FOClient::Net_OnText()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint crid;
     uchar how_say;
@@ -1136,6 +1210,8 @@ void FOClient::Net_OnText()
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
 {
+    STACK_TRACE_ENTRY();
+
     if (with_lexems) {
         uint msg_len;
         _conn.InBuf >> msg_len;
@@ -1176,6 +1252,8 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
 void FOClient::OnText(string_view str, uint crid, int how_say)
 {
+    STACK_TRACE_ENTRY();
+
     auto fstr = string(str);
     if (fstr.empty()) {
         return;
@@ -1278,6 +1356,8 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
 
 void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 {
+    STACK_TRACE_ENTRY();
+
     auto show_time = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
 
     auto sstr = _str(str).str();
@@ -1295,6 +1375,8 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 
 void FOClient::Net_OnMapText()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     ushort hx;
     ushort hy;
@@ -1329,6 +1411,8 @@ void FOClient::Net_OnMapText()
 
 void FOClient::Net_OnMapTextMsg()
 {
+    STACK_TRACE_ENTRY();
+
     ushort hx;
     ushort hy;
     uint color;
@@ -1354,6 +1438,8 @@ void FOClient::Net_OnMapTextMsg()
 
 void FOClient::Net_OnMapTextMsgLex()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     ushort hx;
     ushort hy;
@@ -1383,6 +1469,8 @@ void FOClient::Net_OnMapTextMsgLex()
 
 void FOClient::Net_OnCritterDir()
 {
+    STACK_TRACE_ENTRY();
+
     uint crid;
     short dir_angle;
     _conn.InBuf >> crid;
@@ -1403,6 +1491,8 @@ void FOClient::Net_OnCritterDir()
 
 void FOClient::Net_OnCritterMove()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint cr_id;
     uint whole_time;
@@ -1526,6 +1616,8 @@ void FOClient::Net_OnCritterMove()
 
 void FOClient::Net_OnCritterStopMove()
 {
+    STACK_TRACE_ENTRY();
+
     uint cr_id;
     ushort start_hx;
     ushort start_hy;
@@ -1558,6 +1650,8 @@ void FOClient::Net_OnCritterStopMove()
 
 void FOClient::Net_OnSomeItem()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint item_id;
     _conn.InBuf >> msg_len;
@@ -1581,6 +1675,8 @@ void FOClient::Net_OnSomeItem()
 
 void FOClient::Net_OnCritterAction()
 {
+    STACK_TRACE_ENTRY();
+
     uint crid;
     int action;
     int action_ext;
@@ -1607,6 +1703,8 @@ void FOClient::Net_OnCritterAction()
 
 void FOClient::Net_OnCritterMoveItem()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint cr_id;
     uchar action;
@@ -1688,6 +1786,8 @@ void FOClient::Net_OnCritterMoveItem()
 
 void FOClient::Net_OnCritterAnimate()
 {
+    STACK_TRACE_ENTRY();
+
     uint crid;
     uint anim1;
     uint anim2;
@@ -1723,6 +1823,8 @@ void FOClient::Net_OnCritterAnimate()
 
 void FOClient::Net_OnCritterSetAnims()
 {
+    STACK_TRACE_ENTRY();
+
     uint crid;
     CritterCondition cond;
     uint anim1;
@@ -1764,6 +1866,8 @@ void FOClient::Net_OnCritterSetAnims()
 
 void FOClient::Net_OnCritterTeleport()
 {
+    STACK_TRACE_ENTRY();
+
     uint crid;
     ushort to_hx;
     ushort to_hy;
@@ -1800,6 +1904,8 @@ void FOClient::Net_OnCritterTeleport()
 
 void FOClient::Net_OnCritterPos()
 {
+    STACK_TRACE_ENTRY();
+
     uint crid;
     ushort hx;
     ushort hy;
@@ -1861,6 +1967,8 @@ void FOClient::Net_OnCritterPos()
 
 void FOClient::Net_OnAllProperties()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Chosen properties");
 
     uint msg_len;
@@ -1890,6 +1998,8 @@ void FOClient::Net_OnAllProperties()
 
 void FOClient::Net_OnChosenClearItems()
 {
+    STACK_TRACE_ENTRY();
+
     _initialItemsSend = true;
 
     auto* chosen = GetChosen();
@@ -1908,6 +2018,8 @@ void FOClient::Net_OnChosenClearItems()
 
 void FOClient::Net_OnChosenAddItem()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint item_id;
     hstring pid;
@@ -1961,6 +2073,8 @@ void FOClient::Net_OnChosenAddItem()
 
 void FOClient::Net_OnChosenEraseItem()
 {
+    STACK_TRACE_ENTRY();
+
     uint item_id;
     _conn.InBuf >> item_id;
 
@@ -1994,6 +2108,8 @@ void FOClient::Net_OnChosenEraseItem()
 
 void FOClient::Net_OnAllItemsSend()
 {
+    STACK_TRACE_ENTRY();
+
     _initialItemsSend = false;
 
     auto* chosen = GetChosen();
@@ -2014,6 +2130,8 @@ void FOClient::Net_OnAllItemsSend()
 
 void FOClient::Net_OnAddItemOnMap()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint item_id;
     ushort item_hx;
@@ -2048,6 +2166,8 @@ void FOClient::Net_OnAddItemOnMap()
 
 void FOClient::Net_OnEraseItemFromMap()
 {
+    STACK_TRACE_ENTRY();
+
     uint item_id;
     bool is_deleted;
     _conn.InBuf >> item_id;
@@ -2079,6 +2199,8 @@ void FOClient::Net_OnEraseItemFromMap()
 
 void FOClient::Net_OnAnimateItem()
 {
+    STACK_TRACE_ENTRY();
+
     uint item_id;
     uchar from_frm;
     uchar to_frm;
@@ -2101,6 +2223,8 @@ void FOClient::Net_OnAnimateItem()
 
 void FOClient::Net_OnEffect()
 {
+    STACK_TRACE_ENTRY();
+
     hstring eff_pid;
     ushort hx;
     ushort hy;
@@ -2142,6 +2266,8 @@ void FOClient::Net_OnEffect()
 // Todo: synchronize effects showing (for example shot and kill)
 void FOClient::Net_OnFlyEffect()
 {
+    STACK_TRACE_ENTRY();
+
     hstring eff_pid;
     uint eff_cr1_id;
     uint eff_cr2_id;
@@ -2183,6 +2309,8 @@ void FOClient::Net_OnFlyEffect()
 
 void FOClient::Net_OnPlaySound()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uint synchronize_crid;
     string sound_name;
@@ -2197,6 +2325,8 @@ void FOClient::Net_OnPlaySound()
 
 void FOClient::Net_OnPlaceToGameComplete()
 {
+    STACK_TRACE_ENTRY();
+
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
         WriteLog("Chosen is not created in end parse to game");
@@ -2222,6 +2352,8 @@ void FOClient::Net_OnPlaceToGameComplete()
 
 void FOClient::Net_OnProperty(uint data_size)
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     if (data_size == 0u) {
         _conn.InBuf >> msg_len;
@@ -2353,6 +2485,8 @@ void FOClient::Net_OnProperty(uint data_size)
 
 void FOClient::Net_OnChosenTalk()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uchar is_npc;
     uint talk_id;
@@ -2428,6 +2562,8 @@ void FOClient::Net_OnChosenTalk()
 
 void FOClient::Net_OnTimeSync()
 {
+    STACK_TRACE_ENTRY();
+
     ushort year;
     ushort month;
     ushort day;
@@ -2460,6 +2596,8 @@ void FOClient::Net_OnTimeSync()
 
 void FOClient::Net_OnLoadMap()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Change map..");
 
     uint msg_len;
@@ -2529,6 +2667,8 @@ void FOClient::Net_OnLoadMap()
 
 void FOClient::Net_OnGlobalInfo()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     uchar info_flags;
     _conn.InBuf >> msg_len;
@@ -2615,6 +2755,8 @@ void FOClient::Net_OnGlobalInfo()
 
 void FOClient::Net_OnSomeItems()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     int param;
     bool is_null;
@@ -2649,6 +2791,8 @@ void FOClient::Net_OnSomeItems()
 
 void FOClient::Net_OnAutomapsInfo()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     bool clear;
     _conn.InBuf >> msg_len;
@@ -2710,6 +2854,8 @@ void FOClient::Net_OnAutomapsInfo()
 
 void FOClient::Net_OnViewMap()
 {
+    STACK_TRACE_ENTRY();
+
     ushort hx;
     ushort hy;
     uint loc_id;
@@ -2739,6 +2885,8 @@ void FOClient::Net_OnViewMap()
 
 void FOClient::Net_OnRemoteCall()
 {
+    STACK_TRACE_ENTRY();
+
     uint msg_len;
     _conn.InBuf >> msg_len;
     uint rpc_num;
@@ -2751,6 +2899,8 @@ void FOClient::Net_OnRemoteCall()
 
 void FOClient::SetDayTime(bool refresh)
 {
+    STACK_TRACE_ENTRY();
+
     if (refresh) {
         _prevDayTimeColor.reset();
     }
@@ -2770,6 +2920,8 @@ void FOClient::SetDayTime(bool refresh)
 
 void FOClient::TryExit()
 {
+    STACK_TRACE_ENTRY();
+
     const auto active = GetActiveScreen(nullptr);
     if (active != SCREEN_NONE) {
         HideScreen(SCREEN_NONE);
@@ -2790,6 +2942,8 @@ void FOClient::TryExit()
 
 void FOClient::FlashGameWindow()
 {
+    STACK_TRACE_ENTRY();
+
     if (SprMngr.IsWindowFocused()) {
         return;
     }
@@ -2801,6 +2955,8 @@ void FOClient::FlashGameWindow()
 
 auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     auto* anim = ResMngr.GetAnim(name, res_type);
     if (anim == nullptr) {
         return 0u;
@@ -2827,6 +2983,8 @@ auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
 
 void FOClient::AnimFree(uint anim_id)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(anim_id < _ifaceAnimations.size());
 
     if (_ifaceAnimations[anim_id]) {
@@ -2837,6 +2995,8 @@ void FOClient::AnimFree(uint anim_id)
 
 auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
     }
@@ -2845,6 +3005,8 @@ auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 
 auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
     }
@@ -2853,6 +3015,8 @@ auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
 
 auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
     }
@@ -2861,6 +3025,8 @@ auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 
 auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
@@ -2871,6 +3037,8 @@ auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 
 void FOClient::AnimRun(uint anim_id, uint flags)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
@@ -2901,6 +3069,8 @@ void FOClient::AnimRun(uint anim_id, uint flags)
 
 void FOClient::AnimProcess()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto cur_tick = GameTime.GameTick();
@@ -2950,6 +3120,8 @@ void FOClient::AnimProcess()
 
 void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(entity == this);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -2962,6 +3134,8 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(entity == _curPlayer);
 
     if (_curPlayer->GetId() == 0u) {
@@ -2973,6 +3147,8 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     auto* cr = dynamic_cast<CritterView*>(entity);
     if (cr->IsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
@@ -2987,6 +3163,8 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
@@ -3016,6 +3194,8 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(entity == CurMap);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -3028,6 +3208,8 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(entity == _curLocation);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -3040,6 +3222,8 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
@@ -3052,6 +3236,8 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 
 void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->SprDrawValid) {
@@ -3061,6 +3247,8 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -3092,6 +3280,8 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
     UNUSED_VARIABLE(entity);
@@ -3104,6 +3294,8 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -3113,6 +3305,8 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     // OffsetX, OffsetY
 
     UNUSED_VARIABLE(prop);
@@ -3125,6 +3319,8 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 
 void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -3141,12 +3337,16 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
 
 void FOClient::AddMessage(uchar mess_type, string_view msg)
 {
+    STACK_TRACE_ENTRY();
+
     OnMessageBox.Fire(mess_type, string(msg));
 }
 
 // Todo: move targs formatting to scripts
 void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (text == "error") {
@@ -3279,6 +3479,8 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
 
 void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
 {
+    STACK_TRACE_ENTRY();
+
     while (GetActiveScreen(nullptr) != SCREEN_NONE) {
         HideScreen(SCREEN_NONE);
     }
@@ -3319,6 +3521,8 @@ void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
 
 auto FOClient::GetActiveScreen(vector<int>* screens) -> int
 {
+    STACK_TRACE_ENTRY();
+
     vector<int> active_screens;
     OnGetActiveScreens.Fire(active_screens);
 
@@ -3335,6 +3539,8 @@ auto FOClient::GetActiveScreen(vector<int>* screens) -> int
 
 auto FOClient::IsScreenPresent(int screen) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     vector<int> active_screens;
     GetActiveScreen(&active_screens);
     return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
@@ -3342,11 +3548,15 @@ auto FOClient::IsScreenPresent(int screen) -> bool
 
 void FOClient::ShowScreen(int screen, map<string, string> params)
 {
+    STACK_TRACE_ENTRY();
+
     RunScreenScript(true, screen, std::move(params));
 }
 
 void FOClient::HideScreen(int screen)
 {
+    STACK_TRACE_ENTRY();
+
     if (screen == SCREEN_NONE) {
         screen = GetActiveScreen(nullptr);
     }
@@ -3359,11 +3569,15 @@ void FOClient::HideScreen(int screen)
 
 void FOClient::RunScreenScript(bool show, int screen, map<string, string> params)
 {
+    STACK_TRACE_ENTRY();
+
     OnScreenChange.Fire(show, screen, std::move(params));
 }
 
 void FOClient::LmapPrepareMap()
 {
+    STACK_TRACE_ENTRY();
+
     _lmapPrepPix.clear();
 
     if (CurMap == nullptr) {
@@ -3438,6 +3652,8 @@ void FOClient::LmapPrepareMap()
 
 void FOClient::GmapNullParams()
 {
+    STACK_TRACE_ENTRY();
+
     _worldmapLoc.clear();
     _worldmapFog.Fill(0);
 
@@ -3450,6 +3666,8 @@ void FOClient::GmapNullParams()
 
 void FOClient::WaitDraw()
 {
+    STACK_TRACE_ENTRY();
+
     if (_waitPic != nullptr) {
         SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameTick()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
         SprMngr.Flush();
@@ -3458,6 +3676,8 @@ void FOClient::WaitDraw()
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string
 {
+    STACK_TRACE_ENTRY();
+
     // Parse command
     vector<string> args;
     const auto command_str = string(command);
@@ -3784,6 +4004,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
 void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed)
 {
+    STACK_TRACE_ENTRY();
+
     const auto prev_moving = cr->IsMoving();
 
     cr->ClearMove();
@@ -3910,6 +4132,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
 
 void FOClient::CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle)
 {
+    STACK_TRACE_ENTRY();
+
     if (dir_or_angle.index() == 0) {
         cr->ChangeDir(std::get<0>(dir_or_angle));
     }

@@ -65,6 +65,8 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
 
 SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
     UNUSED_VARIABLE(OV_CALLBACKS_STREAMONLY);
@@ -90,6 +92,8 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _se
 
 SoundManager::~SoundManager()
 {
+    STACK_TRACE_ENTRY();
+
     if (_isActive) {
         App->Audio.SetSource(nullptr);
         StopSounds();
@@ -99,6 +103,8 @@ SoundManager::~SoundManager()
 
 void SoundManager::ProcessSounds(uchar* output)
 {
+    STACK_TRACE_ENTRY();
+
     for (auto it = _soundsActive.begin(); it != _soundsActive.end();) {
         auto* sound = *it;
         if (ProcessSound(sound, _outputBuf.data())) {
@@ -114,6 +120,8 @@ void SoundManager::ProcessSounds(uchar* output)
 
 auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     // Playing
     const auto whole = _outputBuf.size();
     if (sound->ConvertedBufCur < sound->ConvertedBuf.size()) {
@@ -187,6 +195,8 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
 
 auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
 {
+    STACK_TRACE_ENTRY();
+
     auto fixed_fname = string(fname);
     string ext = _str(fname).getFileExtension();
 
@@ -215,6 +225,8 @@ auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
 
 auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     auto file = _resources.ReadFile(fname);
@@ -307,6 +319,8 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
 auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     const auto file = _resources.ReadFile(fname);
@@ -338,6 +352,8 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 
 auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     auto file = _resources.ReadFile(fname);
     if (!file) {
         return false;
@@ -456,6 +472,8 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
 auto SoundManager::StreamOgg(Sound* sound) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     long result;
@@ -484,6 +502,8 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
 
 auto SoundManager::ConvertData(Sound* sound) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
@@ -497,6 +517,8 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
 
 auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view name) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (!_isActive || _settings.SoundVolume == 0) {
         return true;
     }
@@ -524,6 +546,8 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
 
 auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (!_isActive) {
         return true;
     }
@@ -542,6 +566,8 @@ auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 
 void SoundManager::StopSounds()
 {
+    STACK_TRACE_ENTRY();
+
     if (!_isActive) {
         return;
     }
@@ -553,6 +579,8 @@ void SoundManager::StopSounds()
 
 void SoundManager::StopMusic()
 {
+    STACK_TRACE_ENTRY();
+
     if (!_isActive) {
         return;
     }

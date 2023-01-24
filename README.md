@@ -100,9 +100,8 @@ Also our build scripts download and install following packages:
 List of tools for Windows operating system *(some optional)*:
 * [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
 * [Python](https://python.org) - needed for additional game code generation
-* [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
-* [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com) - just build tools without full IDE
-* [WiX Toolset](https://wixtoolset.org) - building installation packages (like .msi)
+* [Visual Studio 2022](https://visualstudio.microsoft.com) - IDE for Windows
+* [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com) - just build tools without full IDE
 
 List of tools for Mac operating system:
 * [CMake](https://cmake.org)
@@ -131,6 +130,7 @@ They are located in ThirdParty directory.
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
+* [tracy](https://github.com/wolfpld/tracy) - profiler
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
 * [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
@@ -185,51 +185,27 @@ Please follow these instructions to understand how to use this engine by design:
 
 ### Todo list *(generated from source code)*
 
-* Common: rework all commented code during refactoring
 * Common: make entities positioning free in space, without hard-linking to hex
 * Common: add third 'up' coordinate to positioning that allow create multidimensional maps
-* Common: use Common.h as precompiled header
+* Common: use Common.h as precompiled header?
 * Common: use smart pointers instead raw
 * Common: fix all PVS Studio warnings
 * Common: SHA replace to openssl SHA
-* Common: add #undef for every local #define
 * Common: improve valgrind
-* Common: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
-* Common: move defines to const and enums
-* Common: don't use rtti/typeid and remove from compilation options?
-* Common: wrap fonline code to namespace?
-* Common: fix build warnings for all platforms
-* Common: enable threating warnings as errors
+* Common: wrap fonline code to namespace
 * Common: id and hash to 8 byte integer
 * Common: research about std::filesystem
-* Common: compile with -fpedantic
 * Common: c-style arrays to std::array
-* Common: use more STL (for ... -> auto p = find(begin(v), end(v), val); find_if, begin, end...)
-* Common: use par (for_each(par, v, [](int x))
-* Common: improve some single standard to initialize objects ({} or ())
-* Common: add constness as much as nessesary
-* Common: iterator -> const_iterator, auto -> const auto
-* Common: use using instead of typedef
-* Common: rework unscoped enums to scoped enums
 * Common: use more noexcept
 * Common: use more constexpr
 * Common: improve BitReader/BitWriter to better network/disk space utilization
-* Common: organize class members as public, protected, private; methods, fields
-* Common: prefer this construction if(auto i = do(); i < 0) i... else i...
-* Common: improve std::to_string or fmt::format to string conversions
 * Common: cast between numeric types via numeric_cast<to>(from)
-* Common: minimize platform specific API (ifdef FO_os, WinApi-Include.h...)
 * Common: clang debug builds with sanitiziers
 * Common: time ticks to uint64
 * Common: improve custom exceptions for every subsustem
-* Common: improve particle system based on SPARK engine
-* Common: research about Steam integration
-* Common: speed up content loading from server
 * Common: temporary entities, disable writing to data base
-* Common: RUNTIME_ASSERT to assert
+* Common: RUNTIME_ASSERT to assert?
 * Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-* Common: review all SDL_hints.h entries
-* Common: fix all warnings (especially under clang) and enable threating warnings as errors
 * Common: improve named enums
 * Common: split meanings if int8 and char in code
 * Common: move from 32 bit hashes to 64 bit
@@ -248,7 +224,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: optimize copy() to pass placement storage for value
-* Common: apply scripts strack trace
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: move texcoord offset calculation to gpu
@@ -257,23 +232,18 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: process default animations
 * 3dStuff: remove unnecessary allocations from 3d
 * 3dStuff: fix AtlasType referencing in 3dStuff
-* Client: run updater if resources changed
 * Client: synchronize effects showing (for example shot and kill)
-* Client: global map critters
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
-* CritterHexView: restore 2D sprite moving
+* CritterHexView: fidget animation to scripts
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
 * MapView: optimize, collect separate collection with IsNeedProcess
 * MapView: rework smooth item re-appearing before same item still on map
 * MapView: optimize lighting rebuilding to skip unvisible lights
-* MapView: generate unique entity id
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
 * SparkExtension: improve particles in 2D
-* SpriteManager: restore ShowSpriteBorders
 * SpriteManager: improve DirectX rendering
-* SpriteManager: maybe restrict fps at 60?
 * SpriteManager: optimize sprite atlas filling
 * SpriteManager: convert FT_ font flags to enum
 * SpriteManager: fix FT_CENTERY_ENGINE workaround
@@ -281,13 +251,13 @@ Please follow these instructions to understand how to use this engine by design:
 * SpriteManager: optimize text formatting - cache previous results
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
+* Updater: support restoring file downloading from interrupted position
+* Updater: add update file files checking by hashes
 * VisualParticles: improve particles in 2D
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * DeferredCalls: improve deferred calls
-* Dialogs: validate script entries, hashes
-* Dialogs: verify DlgScriptFunc
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
@@ -295,7 +265,6 @@ Please follow these instructions to understand how to use this engine by design:
 * EntityProperties: implement Location InitScript
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
-* Log: delete \n appendix from WriteLog
 * Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
 * MapLoader: remove mapper specific IsSelected from MapTile
@@ -305,8 +274,8 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
-* ScriptSystem: remove commented code
 * Settings-Include: rework global Quit setting
+* Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
 * Settings-Include: move LegBones to fo3d settings
 * Settings-Include: move resource files control (include/exclude/pack rules) to cmake
@@ -315,24 +284,22 @@ Please follow these instructions to understand how to use this engine by design:
 * Application: rework sdl_event.text.text
 * Rendering-Direct3D: pass additional defines to shaders (passed + internal)
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
-* Rendering-OpenGL: map all framebuffer ext functions
 * Rendering-OpenGL: bind time, random, anim
 * Rendering: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * AngelScriptScripting-Template: GetASObjectInfo add detailed info about object
-* ClientCritterScriptMethods: handle AbstractItem in Animate
-* ClientCritterScriptMethods: call animCallback
-* ClientItemScriptMethods: solve recursion in GetMapPos
+* ClientCritterScriptMethods: improve run particles for 2D animations
+* ClientCritterScriptMethods: improve animation callbacks for 2D animations
 * MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
 * AdminPanel: admin panel network to Asio
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
-* EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: EntranceScriptBindId
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
+* MapManager: make dynamic path growth and move max value to settings
 * Networking: catch exceptions in network servers
 * Player: restore automaps
 * Player: allow attach many critters to sigle player
@@ -342,10 +309,8 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: verify property data from client
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
-* Server: restore DialogUseResult
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: improve ban system
-* Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ServerDeferredCalls: improve deferred calls
 * EffectBaker: pre-compile HLSH shaders with D3DCompile

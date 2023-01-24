@@ -71,12 +71,16 @@ GLOBAL_DATA(TimerData, Data);
 
 GameTimer::GameTimer(TimerSettings& settings) : _settings {settings}
 {
+    STACK_TRACE_ENTRY();
+
     Reset(static_cast<ushort>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
     FrameAdvance();
 }
 
 void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier)
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_SINGLEPLAYER
     _isPaused = false;
 #endif
@@ -92,6 +96,8 @@ void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort
 
 auto GameTimer::FrameAdvance() -> bool
 {
+    STACK_TRACE_ENTRY();
+
     _timerTick = iround(Timer::RealtimeTick());
     RUNTIME_ASSERT(_timerTick != 0);
 
@@ -114,12 +120,16 @@ auto GameTimer::FrameAdvance() -> bool
 
 auto GameTimer::FrameTick() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_timerTick != 0);
     return _timerTick;
 }
 
 auto GameTimer::GameTick() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_SINGLEPLAYER
     if (_isPaused) {
         return _gameTickBase;
@@ -130,11 +140,15 @@ auto GameTimer::GameTick() const -> uint
 
 auto GameTimer::GetFullSecond() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return _fullSecond;
 }
 
 auto GameTimer::EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     auto ft = Timer::DateTimeToFullTime(dt);
     ft -= _yearStartFullTime;
@@ -143,12 +157,16 @@ auto GameTimer::EvaluateFullSecond(ushort year, ushort month, ushort day, ushort
 
 auto GameTimer::GetGameTime(uint full_second) const -> DateTimeStamp
 {
+    STACK_TRACE_ENTRY();
+
     const auto ft = _yearStartFullTime + static_cast<uint64>(full_second) * 10000000ULL;
     return Timer::FullTimeToDateTime(ft);
 }
 
 auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     switch (month) {
     case 1:
     case 3:
@@ -171,6 +189,8 @@ auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
 #if FO_SINGLEPLAYER
 void GameTimer::SetGamePause(bool pause)
 {
+    STACK_TRACE_ENTRY();
+
     if (_isPaused == pause) {
         return;
     }
@@ -182,12 +202,16 @@ void GameTimer::SetGamePause(bool pause)
 
 auto GameTimer::IsGamePaused() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _isPaused;
 }
 #endif
 
 auto Timer::RealtimeTick() -> double
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WINDOWS
     LARGE_INTEGER qpc_value;
     ::QueryPerformanceCounter(&qpc_value);
@@ -205,6 +229,8 @@ auto Timer::RealtimeTick() -> double
 
 auto Timer::GetCurrentDateTime() -> DateTimeStamp
 {
+    STACK_TRACE_ENTRY();
+
     DateTimeStamp dt;
 
 #if FO_WINDOWS
@@ -237,6 +263,8 @@ auto Timer::GetCurrentDateTime() -> DateTimeStamp
 
 auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     // Minor year
     auto ft = static_cast<uint64>(dt.Year - 1601) * 365ULL * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
 
@@ -269,6 +297,8 @@ auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) -> uint64
 
 auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
 {
+    STACK_TRACE_ENTRY();
+
     DateTimeStamp dt;
 
     // Base
@@ -329,6 +359,8 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
 
 auto Timer::GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2) -> int
 {
+    STACK_TRACE_ENTRY();
+
     const auto ft1 = DateTimeToFullTime(dt1);
     const auto ft2 = DateTimeToFullTime(dt2);
     return static_cast<int>((ft1 - ft2) / 10000000ULL);
@@ -336,6 +368,8 @@ auto Timer::GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2
 
 auto Timer::AdvanceTime(const DateTimeStamp& dt, int seconds) -> DateTimeStamp
 {
+    STACK_TRACE_ENTRY();
+
     auto ft = DateTimeToFullTime(dt);
     ft += static_cast<uint64>(seconds) * 10000000ULL;
     return FullTimeToDateTime(ft);

@@ -38,16 +38,21 @@
 
 AssetExplorer::AssetExplorer(FOEditor& editor) : EditorView("Asset Explorer", editor)
 {
+    STACK_TRACE_ENTRY();
 }
 
 void AssetExplorer::OnPreDraw()
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
     ImGui::SetNextWindowSize({300.0f, static_cast<float>(std::get<1>(App->MainWindow.GetSize()))}, ImGuiCond_Always);
 }
 
 void AssetExplorer::OnDraw()
 {
+    STACK_TRACE_ENTRY();
+
     if (ImGui::TreeNodeEx("Opened", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
         for (const auto* asset_view : _editor.GetAssetViews()) {
             ImGui::SetNextItemOpen(false);
@@ -77,6 +82,8 @@ void AssetExplorer::OnDraw()
 
 void AssetExplorer::DrawSection(const string& section_name, string_view file_ext) const
 {
+    STACK_TRACE_ENTRY();
+
     if (ImGui::TreeNodeEx(section_name.c_str(), ImGuiTreeNodeFlags_Framed)) {
         for (auto files = _editor.InputResources.FilterFiles(file_ext); files.MoveNext();) {
             auto file_header = files.GetCurFileHeader();

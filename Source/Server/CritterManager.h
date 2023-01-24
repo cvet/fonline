@@ -74,7 +74,6 @@ public:
     [[nodiscard]] auto CrittersInGame() const -> uint;
 
     void LinkCritters();
-    void InitAfterLoad();
     auto CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
     void DeleteCritter(Critter* cr);
     void DeleteInventory(Critter* cr);

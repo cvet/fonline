@@ -60,6 +60,8 @@ struct MeshData
 {
     void Save(DataWriter& writer) const
     {
+        STACK_TRACE_ENTRY();
+
         auto len = static_cast<uint>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(Vertices.data(), len * sizeof(Vertices[0]));
@@ -93,6 +95,8 @@ struct Bone
 {
     auto Find(string name) -> Bone*
     {
+        STACK_TRACE_ENTRY();
+
         if (Name == name) {
             return this;
         }
@@ -108,6 +112,8 @@ struct Bone
 
     void Save(DataWriter& writer) const
     {
+        STACK_TRACE_ENTRY();
+
         writer.Write<uint>(static_cast<uint>(Name.length()));
         writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
@@ -145,6 +151,8 @@ struct AnimSet
 
     void Save(DataWriter& writer) const
     {
+        STACK_TRACE_ENTRY();
+
         auto len = static_cast<uint>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(AnimFileName.data(), len);
@@ -195,6 +203,8 @@ struct AnimSet
 
 ModelBaker::ModelBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_HAVE_FBXSDK
     _fbxManager = FbxManager::Create();
     if (_fbxManager == nullptr) {
@@ -212,6 +222,8 @@ ModelBaker::ModelBaker(BakerSettings& settings, FileCollection files, BakeChecke
 
 ModelBaker::~ModelBaker()
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_HAVE_FBXSDK
     _fbxManager->Destroy();
 #endif
@@ -219,6 +231,8 @@ ModelBaker::~ModelBaker()
 
 void ModelBaker::AutoBake()
 {
+    STACK_TRACE_ENTRY();
+
     _errors = 0;
 
     _files.ResetCounter();
@@ -266,12 +280,16 @@ class FbxStreamImpl : public FbxStream
 public:
     FbxStreamImpl()
     {
+        STACK_TRACE_ENTRY();
+
         _file = nullptr;
         _curState = FbxStream::eClosed;
     }
 
     auto Open(void* stream) -> bool override
     {
+        STACK_TRACE_ENTRY();
+
         _file = static_cast<File*>(stream);
         _file->SetCurPos(0);
         _curState = FbxStream::eOpen;
@@ -280,6 +298,8 @@ public:
 
     auto Close() -> bool override
     {
+        STACK_TRACE_ENTRY();
+
         _file->SetCurPos(0);
         _file = nullptr;
         _curState = FbxStream::eClosed;
@@ -288,6 +308,8 @@ public:
 
     auto ReadString(char* buffer, int max_size, bool stop_at_first_white_space) -> char* override
     {
+        STACK_TRACE_ENTRY();
+
         const auto* str = reinterpret_cast<const char*>(_file->GetCurBuf());
         auto len = 0;
         while ((*str != 0) && len < max_size - 1) {
@@ -306,6 +328,8 @@ public:
 
     void Seek(const FbxInt64& offset, const FbxFile::ESeekPos& seek_pos) override
     {
+        STACK_TRACE_ENTRY();
+
         if (seek_pos == FbxFile::eBegin) {
             _file->SetCurPos(static_cast<uint>(offset));
         }
@@ -319,19 +343,74 @@ public:
 
     auto Read(void* data, int size) const -> int override
     {
+        STACK_TRACE_ENTRY();
+
         _file->CopyData(data, size);
         return size;
     }
 
-    auto GetState() -> EState override { return _curState; }
-    auto Flush() -> bool override { return true; }
-    auto Write(const void* /*data*/, int /*size*/) -> int override { return 0; }
-    [[nodiscard]] auto GetReaderID() const -> int override { return 0; }
-    [[nodiscard]] auto GetWriterID() const -> int override { return -1; }
-    [[nodiscard]] auto GetPosition() const -> long override { return static_cast<long>(_file->GetCurPos()); }
-    void SetPosition(long position) override { _file->SetCurPos(static_cast<uint>(position)); }
-    [[nodiscard]] auto GetError() const -> int override { return 0; }
-    void ClearError() override { }
+    auto GetState() -> EState override
+    {
+        STACK_TRACE_ENTRY();
+
+        return _curState;
+    }
+
+    auto Flush() -> bool override
+    {
+        STACK_TRACE_ENTRY();
+
+        return true;
+    }
+
+    auto Write(const void* /*data*/, int /*size*/) -> int override
+    {
+        STACK_TRACE_ENTRY();
+
+        return 0;
+    }
+
+    [[nodiscard]] auto GetReaderID() const -> int override
+    {
+        STACK_TRACE_ENTRY();
+
+        return 0;
+    }
+
+    [[nodiscard]] auto GetWriterID() const -> int override
+    {
+        STACK_TRACE_ENTRY();
+
+        return -1;
+    }
+
+    [[nodiscard]] auto GetPosition() const -> long override
+    {
+        STACK_TRACE_ENTRY();
+
+        return static_cast<long>(_file->GetCurPos());
+    }
+
+    void SetPosition(long position) override
+    {
+        STACK_TRACE_ENTRY();
+
+        _file->SetCurPos(static_cast<uint>(position));
+    }
+
+    [[nodiscard]] auto GetError() const -> int override
+    {
+        STACK_TRACE_ENTRY();
+
+        return 0;
+    }
+
+    void ClearError() override
+    {
+        STACK_TRACE_ENTRY();
+
+        //
+    }
 
 private:
     File* _file {};
@@ -344,6 +423,8 @@ static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44;
 
 auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 {
+    STACK_TRACE_ENTRY();
+
     // Result bone
     Bone* root_bone = nullptr;
     vector<AnimSet*> loaded_animations;
@@ -512,6 +593,8 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 
 static void FixTexCoord(float& x, float& y)
 {
+    STACK_TRACE_ENTRY();
+
     if (x < 0.0f) {
         x = 1.0f - std::fmod(-x, 1.0f);
     }
@@ -528,6 +611,8 @@ static void FixTexCoord(float& x, float& y)
 
 static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) -> Bone*
 {
+    STACK_TRACE_ENTRY();
+
     fbx_all_nodes.push_back(fbx_node);
 
     Bone* bone = new Bone();
@@ -546,6 +631,8 @@ static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) 
 template<class T, class T2>
 static auto FbxGetElement(T* elements, int index, int* vertices) -> T2
 {
+    STACK_TRACE_ENTRY();
+
     if (elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
         if (elements->GetReferenceMode() == FbxGeometryElement::eDirect) {
             return elements->GetDirectArray().GetAt(index);
@@ -569,6 +656,8 @@ static auto FbxGetElement(T* elements, int index, int* vertices) -> T2
 
 static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 {
+    STACK_TRACE_ENTRY();
+
     auto* fbx_mesh = fbx_node->GetMesh();
     if ((fbx_mesh != nullptr) && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0) {
         bone->AttachedMesh = std::make_unique<MeshData>();
@@ -755,6 +844,8 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 
 static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 {
+    STACK_TRACE_ENTRY();
+
     return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), //
         static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), //
         static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), //
@@ -764,6 +855,8 @@ static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 #else
 auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 {
+    STACK_TRACE_ENTRY();
+
     throw NotSupportedException("ModelBaker::BakeFile");
 }
 #endif

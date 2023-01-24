@@ -42,10 +42,13 @@
 
 ItemManager::ItemManager(FOServer* engine) : _engine {engine}
 {
+    STACK_TRACE_ENTRY();
 }
 
 void ItemManager::LinkItems()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Link items");
 
     int errors = 0;
@@ -108,12 +111,10 @@ void ItemManager::LinkItems()
     }
 }
 
-void ItemManager::InitAfterLoad()
-{
-}
-
 auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
+    STACK_TRACE_ENTRY();
+
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory:
         return _engine->CrMngr.GetCritter(item->GetCritterId());
@@ -129,6 +130,8 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 
 void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(item);
@@ -168,6 +171,8 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 
 void ItemManager::SetItemToContainer(Item* cont, Item* item)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cont);
@@ -186,6 +191,8 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
 
 void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
 
@@ -215,6 +222,8 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
 
 void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cont);
@@ -243,6 +252,8 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 
 auto ItemManager::GetItems() -> const unordered_map<uint, Item*>&
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     return _engine->EntityMngr.GetItems();
@@ -250,11 +261,15 @@ auto ItemManager::GetItems() -> const unordered_map<uint, Item*>&
 
 auto ItemManager::GetItemsCount() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return static_cast<uint>(_engine->EntityMngr.GetItems().size());
 }
 
 auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto == nullptr) {
         WriteLog("Proto item {} not found", pid);
@@ -297,6 +312,8 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
 void ItemManager::DeleteItem(Item* item)
 {
+    STACK_TRACE_ENTRY();
+
     // Redundant calls
     if (item->IsDestroying() || item->IsDestroyed()) {
         return;
@@ -337,6 +354,8 @@ void ItemManager::DeleteItem(Item* item)
 
 auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     const auto item_count = item->GetCount();
     RUNTIME_ASSERT(item->GetStackable());
     RUNTIME_ASSERT(count > 0);
@@ -357,16 +376,22 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 
 auto ItemManager::GetItem(uint item_id) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     return _engine->EntityMngr.GetItem(item_id);
 }
 
 auto ItemManager::GetItem(uint item_id) const -> const Item*
 {
+    STACK_TRACE_ENTRY();
+
     return const_cast<ItemManager*>(this)->GetItem(item_id);
 }
 
 void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
 {
+    STACK_TRACE_ENTRY();
+
     if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
         return;
     }
@@ -394,6 +419,8 @@ void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_che
 
 void ItemManager::MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks)
 {
+    STACK_TRACE_ENTRY();
+
     if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy) {
         return;
     }
@@ -421,6 +448,8 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, us
 
 void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks)
 {
+    STACK_TRACE_ENTRY();
+
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
         return;
     }
@@ -448,6 +477,8 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id,
 
 auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(cont);
 
     auto* item = cont->ContGetItemByPid(pid, stack_id);
@@ -507,6 +538,8 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
 
 auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     if (count == 0u) {
         return nullptr;
     }
@@ -552,6 +585,8 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 
 auto ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count, vector<Item*>* erased_items) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (count == 0u) {
         return true;
     }
@@ -605,6 +640,8 @@ auto ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count, vector<It
 
 auto ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     const auto cur_count = cr->CountItemPid(pid);
     if (cur_count > count) {
         return SubItemCritter(cr, pid, cur_count - count, nullptr);
@@ -617,11 +654,15 @@ auto ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count) -> bool
 
 auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _engine->OnItemCheckMove.Fire(item, count, from, to);
 }
 
 void ItemManager::RegisterRadio(Item* radio)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _radioItems.find(radio);
     if (it == _radioItems.end()) {
         _radioItems.emplace(radio);
@@ -631,6 +672,8 @@ void ItemManager::RegisterRadio(Item* radio)
 
 void ItemManager::UnregisterRadio(Item* radio)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _radioItems.find(radio);
     if (it != _radioItems.end()) {
         _radioItems.erase(it);
@@ -640,6 +683,8 @@ void ItemManager::UnregisterRadio(Item* radio)
 
 void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
 {
+    STACK_TRACE_ENTRY();
+
     vector<Item*> radios;
     for (auto* item : cr->GetRawItems()) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
@@ -655,6 +700,8 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
 
 void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems)
 {
+    STACK_TRACE_ENTRY();
+
     // Broadcast
     if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {
         return;
@@ -789,6 +836,8 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
 
 void ItemManager::ChangeItemStatistics(hstring pid, int val) const
 {
+    STACK_TRACE_ENTRY();
+
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto != nullptr) {
         proto->InstanceCount += val;
@@ -797,12 +846,16 @@ void ItemManager::ChangeItemStatistics(hstring pid, int val) const
 
 auto ItemManager::GetItemStatistics(hstring pid) const -> int64
 {
+    STACK_TRACE_ENTRY();
+
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     return proto != nullptr ? proto->InstanceCount : 0;
 }
 
 auto ItemManager::GetItemsStatistics() const -> string
 {
+    STACK_TRACE_ENTRY();
+
     string result = "Name                                     Count\n";
     for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoItems()) {
         result += _str("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);

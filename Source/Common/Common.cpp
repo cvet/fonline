@@ -58,6 +58,8 @@
 #endif
 #endif
 
+static std::thread::id MainThreadId;
+
 static bool ExceptionMessageBox = false;
 
 hstring::entry hstring::_zeroEntry;
@@ -68,8 +70,46 @@ GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
+static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
+static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
+
+struct StackTraceData
+{
+    struct StackTraceEntry
+    {
+        const char* Func {};
+        const char* File {};
+        size_t Line {};
+        const SourceLocationData* Location {};
+    };
+
+    struct StackTraceEntryStorage
+    {
+        array<char, STACK_TRACE_BUF_SIZE> FuncBuf {};
+        array<char, STACK_TRACE_BUF_SIZE> FileBuf {};
+    };
+
+    size_t CallsCount = {};
+    array<StackTraceEntry, STACK_TRACE_MAX_SIZE> CallTree = {};
+    array<StackTraceEntryStorage, STACK_TRACE_MAX_SIZE> CallTreeStorage = {};
+};
+
+static StackTraceData StackTrace;
+
+void SetMainThread() noexcept
+{
+    MainThreadId = std::this_thread::get_id();
+}
+
+auto IsMainThread() noexcept -> bool
+{
+    return MainThreadId == std::this_thread::get_id();
+}
+
 void CreateGlobalData()
 {
+    STACK_TRACE_ENTRY();
+
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         CreateGlobalDataCallbacks[i]();
     }
@@ -77,12 +117,17 @@ void CreateGlobalData()
 
 void DeleteGlobalData()
 {
+    STACK_TRACE_ENTRY();
+
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
     }
 }
+
 void ReportExceptionAndExit(const std::exception& ex)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
@@ -110,6 +155,8 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
@@ -135,16 +182,106 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
 void ShowExceptionMessageBox(bool enabled)
 {
+    STACK_TRACE_ENTRY();
+
     ExceptionMessageBox = enabled;
+}
+
+void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept
+{
+    PushStackTrace(SourceLocationData {nullptr, func, file, static_cast<uint32_t>(line)}, make_copy);
+}
+
+void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
+{
+    if (!IsMainThread()) {
+        return;
+    }
+
+    if (StackTrace.CallsCount < STACK_TRACE_MAX_SIZE) {
+        auto&& entry = StackTrace.CallTree[StackTrace.CallsCount];
+
+        entry.Line = loc.line;
+
+        if (make_copy) {
+            auto&& storage = StackTrace.CallTreeStorage[StackTrace.CallsCount];
+
+            const auto safe_copy = [](auto& to, const char* from) {
+                if (from != nullptr) {
+                    const auto len = std::min(std::strlen(from), to.size() - 1);
+                    std::memcpy(to.data(), from, len);
+                    to[len] = 0;
+                }
+                else {
+                    to[0] = 0;
+                }
+            };
+
+            safe_copy(storage.FuncBuf, loc.function);
+            safe_copy(storage.FileBuf, loc.file);
+
+            entry.Func = storage.FuncBuf.data();
+            entry.File = storage.FileBuf.data();
+
+            entry.Location = nullptr;
+        }
+        else {
+            entry.Func = loc.function;
+            entry.File = loc.file;
+
+            entry.Location = &loc;
+        }
+    }
+
+    StackTrace.CallsCount++;
+}
+
+void PopStackTrace() noexcept
+{
+    if (!IsMainThread()) {
+        return;
+    }
+
+    if (StackTrace.CallsCount > 0) {
+        StackTrace.CallsCount--;
+    }
 }
 
 auto GetStackTrace() -> string
 {
+    if (!IsMainThread()) {
+        return "Stack trace disabled for non main thread";
+    }
+
+    std::stringstream ss;
+
+    ss << "Stack trace (most recent call first):\n";
+
+    for (int i = std::min(static_cast<int>(StackTrace.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+        const auto& entry = StackTrace.CallTree[i];
+
+        ss << "- " << entry.Func << " (" << _str(entry.File).extractFileName().str() << " line " << entry.Line << ")\n";
+    }
+
+    if (StackTrace.CallsCount > STACK_TRACE_MAX_SIZE) {
+        ss << "- ..."
+           << "and " << (StackTrace.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
+    }
+
+    auto st_str = ss.str();
+
+    if (!st_str.empty() && st_str.back() == '\n') {
+        st_str.pop_back();
+    }
+
+    return st_str;
+}
+
+auto GetRealStackTrace() -> string
+{
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
     }
-
-    // Todo: apply scripts strack trace
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     backward::TraceResolver resolver;
@@ -193,6 +330,8 @@ static std::once_flag RunInDebuggerOnce;
 
 auto IsRunInDebugger() -> bool
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
 
@@ -236,6 +375,8 @@ auto IsRunInDebugger() -> bool
 
 auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (IsRunInDebugger()) {
 #if FO_WINDOWS
         ::DebugBreak();
@@ -258,6 +399,8 @@ auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 
 void CreateDumpMessage(string_view appendix, string_view message)
 {
+    STACK_TRACE_ENTRY();
+
     const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
     const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);

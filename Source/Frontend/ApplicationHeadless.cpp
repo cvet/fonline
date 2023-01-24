@@ -83,6 +83,8 @@ static void SignalHandler(int sig)
 
 void InitApp(int argc, char** argv, string_view name_appendix)
 {
+    STACK_TRACE_ENTRY();
+
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -142,6 +144,8 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
 void ExitApp(bool success)
 {
+    STACK_TRACE_ENTRY();
+
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     std::quick_exit(code);
@@ -152,6 +156,8 @@ void ExitApp(bool success)
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(other);
 
     return false;
@@ -159,6 +165,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 
 Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(_time);
     UNUSED_VARIABLE(_timeFrequency);
     UNUSED_VARIABLE(_isTablet);
@@ -178,20 +186,27 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
 
 void Application::OpenLink(string_view link)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(link);
 }
 
 void Application::HideCursor()
 {
+    STACK_TRACE_ENTRY();
 }
 
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(effect);
 }
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
 
@@ -200,6 +215,8 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
 
@@ -209,21 +226,32 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
+    STACK_TRACE_ENTRY();
 }
 #endif
 
 void Application::BeginFrame()
 {
+    STACK_TRACE_ENTRY();
+
     _onFrameBeginDispatcher();
 }
 
 void Application::EndFrame()
 {
+    STACK_TRACE_ENTRY();
+
     _onFrameEndDispatcher();
+
+#ifdef TRACY_ENABLE
+    FrameMark;
+#endif
 }
 
 auto AppWindow::GetSize() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto w = 1000;
     auto h = 1000;
 
@@ -232,12 +260,16 @@ auto AppWindow::GetSize() const -> tuple<int, int>
 
 void AppWindow::SetSize(int w, int h)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(w);
     UNUSED_VARIABLE(h);
 }
 
 auto AppWindow::GetPosition() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto x = 0;
     auto y = 0;
 
@@ -246,26 +278,35 @@ auto AppWindow::GetPosition() const -> tuple<int, int>
 
 void AppWindow::SetPosition(int x, int y)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
 }
 
 auto AppWindow::IsFocused() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return true;
 }
 
 void AppWindow::Minimize()
 {
+    STACK_TRACE_ENTRY();
 }
 
 auto AppWindow::IsFullscreen() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return false;
 }
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     UNUSED_VARIABLE(enable);
@@ -275,24 +316,32 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
 void AppWindow::Blink()
 {
+    STACK_TRACE_ENTRY();
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(enable);
 }
 
 void AppWindow::GrabInput(bool enable)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(enable);
 }
 
 void AppWindow::Destroy()
 {
+    STACK_TRACE_ENTRY();
 }
 
 auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
     UNUSED_VARIABLE(linear_filtered);
@@ -303,16 +352,22 @@ auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool 
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(tex);
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
 {
+    STACK_TRACE_ENTRY();
+
     return nullptr;
 }
 
 void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(color);
     UNUSED_VARIABLE(depth);
     UNUSED_VARIABLE(stencil);
@@ -320,6 +375,8 @@ void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil
 
 void AppRender::EnableScissor(int x, int y, int width, int height)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
     UNUSED_VARIABLE(width);
@@ -328,10 +385,13 @@ void AppRender::EnableScissor(int x, int y, int width, int height)
 
 void AppRender::DisableScissor()
 {
+    STACK_TRACE_ENTRY();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(is_static);
 
     return nullptr;
@@ -339,6 +399,8 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(usage);
     UNUSED_VARIABLE(name);
     UNUSED_VARIABLE(file_loader);
@@ -348,6 +410,8 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto x = 100;
     auto y = 100;
     return {x, y};
@@ -355,12 +419,16 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
 }
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(ev);
 
     return false;
@@ -368,30 +436,41 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 
 void AppInput::ClearEvents()
 {
+    STACK_TRACE_ENTRY();
 }
 
 void AppInput::PushEvent(const InputEvent& ev)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(ev);
 }
 
 void AppInput::SetClipboardText(string_view text)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(text);
 }
 
 auto AppInput::GetClipboardText() -> const string&
 {
+    STACK_TRACE_ENTRY();
+
     return _clipboardTextStorage;
 }
 
 auto AppAudio::IsEnabled() -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return false;
 }
 
 auto AppAudio::GetStreamSize() -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     return 0u;
@@ -399,6 +478,8 @@ auto AppAudio::GetStreamSize() -> uint
 
 auto AppAudio::GetSilence() -> uchar
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     return 0u;
@@ -406,6 +487,8 @@ auto AppAudio::GetSilence() -> uchar
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(stream_callback);
 
     RUNTIME_ASSERT(IsEnabled());
@@ -413,6 +496,8 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(format);
     UNUSED_VARIABLE(channels);
     UNUSED_VARIABLE(rate);
@@ -425,6 +510,8 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
 
 void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(output);
     UNUSED_VARIABLE(buf);
     UNUSED_VARIABLE(volume);
@@ -434,16 +521,22 @@ void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 
 void AppAudio::LockDevice()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 }
 
 void AppAudio::UnlockDevice()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 }
 
 void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(title);
     UNUSED_VARIABLE(message);
     UNUSED_VARIABLE(traceback);

@@ -109,6 +109,8 @@
 
 static auto ErrCodeToString(GLenum err_code) -> string
 {
+    STACK_TRACE_ENTRY();
+
 #define ERR_CODE_CASE(err_code_variant) \
     case err_code_variant: \
         return #err_code_variant
@@ -251,6 +253,8 @@ public:
 
 void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
+    STACK_TRACE_ENTRY();
+
     RenderDebug = settings.RenderDebug;
     ForceGlslEsProfile = settings.ForceGlslEsProfile;
     SdlWindow = static_cast<SDL_Window*>(window);
@@ -426,6 +430,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 
 void OpenGL_Renderer::Present()
 {
+    STACK_TRACE_ENTRY();
+
 #if !FO_WEB
     SDL_GL_SwapWindow(SdlWindow);
 #endif
@@ -437,6 +443,8 @@ void OpenGL_Renderer::Present()
 
 auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
+    STACK_TRACE_ENTRY();
+
     auto&& opengl_tex = std::make_unique<OpenGL_Texture>(width, height, linear_filtered, with_depth);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
@@ -472,6 +480,8 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
 
 auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
+    STACK_TRACE_ENTRY();
+
     auto&& opengl_dbuf = std::make_unique<OpenGL_DrawBuffer>(is_static);
 
     return opengl_dbuf.release();
@@ -479,6 +489,8 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 
 auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
+    STACK_TRACE_ENTRY();
+
     auto&& opengl_effect = std::make_unique<OpenGL_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
@@ -825,6 +837,8 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
+    STACK_TRACE_ENTRY();
+
     int w;
     int h;
 
@@ -883,6 +897,8 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 
 void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
+    STACK_TRACE_ENTRY();
+
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
@@ -912,17 +928,23 @@ void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool s
 
 void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 {
+    STACK_TRACE_ENTRY();
+
     GL(glEnable(GL_SCISSOR_TEST));
     GL(glScissor(x, y, width, height));
 }
 
 void OpenGL_Renderer::DisableScissor()
 {
+    STACK_TRACE_ENTRY();
+
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
 static void EnableVertAtribs(EffectUsage usage)
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         GL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Position))));
@@ -953,6 +975,8 @@ static void EnableVertAtribs(EffectUsage usage)
 
 static void DisableVertAtribs(EffectUsage usage)
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         for (uint i = 0; i <= 7; i++) {
@@ -970,12 +994,16 @@ static void DisableVertAtribs(EffectUsage usage)
 
 OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static)
 {
+    STACK_TRACE_ENTRY();
+
     GL(glGenBuffers(1, &VertexBufObj));
     GL(glGenBuffers(1, &IndexBufObj));
 }
 
 OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
+    STACK_TRACE_ENTRY();
+
     if (VertexBufObj != 0u) {
         glDeleteBuffers(1, &VertexBufObj);
     }
@@ -989,6 +1017,8 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 
 void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
 {
+    STACK_TRACE_ENTRY();
+
     if (IsStatic && !StaticDataChanged) {
         return;
     }
@@ -1094,6 +1124,8 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 {
+    STACK_TRACE_ENTRY();
+
     switch (name) {
 #define CHECK_ENTRY(name, glname) \
     case BlendFuncType::name: \
@@ -1118,6 +1150,8 @@ static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 
 static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 {
+    STACK_TRACE_ENTRY();
+
     switch (name) {
 #define CHECK_ENTRY(name, glname) \
     case BlendEquationType::name: \
@@ -1134,6 +1168,8 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 
 OpenGL_Effect::~OpenGL_Effect()
 {
+    STACK_TRACE_ENTRY();
+
     for (size_t i = 0; i < _passCount; i++) {
         if (Program[i] != 0u) {
             glDeleteProgram(Program[i]);
@@ -1143,6 +1179,8 @@ OpenGL_Effect::~OpenGL_Effect()
 
 void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
     GLenum draw_mode = GL_TRIANGLES;

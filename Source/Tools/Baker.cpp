@@ -115,20 +115,27 @@ BaseBaker::BaseBaker(BakerSettings& settings, FileCollection&& files, BakeChecke
     _bakeChecker {std::move(bake_checker)},
     _writeData {std::move(write_data)}
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_writeData);
 }
 
 Baker::Baker(BakerSettings& settings) : _settings {settings}
 {
+    STACK_TRACE_ENTRY();
 }
 
 auto Baker::MakeOutputPath(string_view path) const -> string
 {
+    STACK_TRACE_ENTRY();
+
     return _str(_settings.BakeOutput).combinePath(path).str();
 }
 
 void Baker::BakeAll()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Start bakering");
 
     const auto start_time = Timer::RealtimeTick();
@@ -1067,6 +1074,8 @@ void Baker::BakeAll()
 
 auto Baker::ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
 {
+    STACK_TRACE_ENTRY();
+
     unordered_map<string, std::function<bool(hstring)>> script_func_verify = {
         {"ItemInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
         {"ItemScenery", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
@@ -1131,10 +1140,13 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
 BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& settings) : _inputResources {input_resources}, _settings {settings}
 {
+    STACK_TRACE_ENTRY();
 }
 
 auto BakerDataSource::FindFile(const string& path) const -> File*
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _bakedFiles.find(path); it != _bakedFiles.end()) {
         return it->second ? it->second.get() : nullptr;
     }
@@ -1184,6 +1196,8 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
 
 auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto* file = FindFile(string(path)); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
@@ -1194,6 +1208,8 @@ auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& writ
 
 auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto* file = FindFile(string(path)); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
@@ -1204,5 +1220,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
 
 auto BakerDataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
 {
+    STACK_TRACE_ENTRY();
+
     throw NotImplementedException(LINE_STR);
 }

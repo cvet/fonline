@@ -38,6 +38,8 @@
 
 auto PropertyRawData::GetPtr() -> void*
 {
+    STACK_TRACE_ENTRY();
+
     if (_passedPtr != nullptr) {
         return _passedPtr;
     }
@@ -47,11 +49,15 @@ auto PropertyRawData::GetPtr() -> void*
 
 auto PropertyRawData::GetSize() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return static_cast<uint>(_dataSize);
 }
 
 auto PropertyRawData::Alloc(size_t size) -> uchar*
 {
+    STACK_TRACE_ENTRY();
+
     _dataSize = size;
     _passedPtr = nullptr;
 
@@ -68,6 +74,8 @@ auto PropertyRawData::Alloc(size_t size) -> uchar*
 
 void PropertyRawData::Pass(const void* value, size_t size)
 {
+    STACK_TRACE_ENTRY();
+
     _passedPtr = static_cast<uchar*>(const_cast<void*>(value));
     _dataSize = size;
     _useDynamic = false;
@@ -75,6 +83,8 @@ void PropertyRawData::Pass(const void* value, size_t size)
 
 void PropertyRawData::StoreIfPassed()
 {
+    STACK_TRACE_ENTRY();
+
     if (_passedPtr != nullptr) {
         PropertyRawData tmp_data;
         tmp_data.Set(_passedPtr, _dataSize);
@@ -84,25 +94,34 @@ void PropertyRawData::StoreIfPassed()
 
 Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
+    STACK_TRACE_ENTRY();
 }
 
 void Property::SetGetter(PropertyGetCallback getter) const
 {
+    STACK_TRACE_ENTRY();
+
     _getter = std::move(getter);
 }
 
 void Property::AddSetter(PropertySetCallback setter) const
 {
+    STACK_TRACE_ENTRY();
+
     _setters.emplace(_setters.begin(), std::move(setter));
 }
 
 void Property::AddPostSetter(PropertyPostSetCallback setter) const
 {
+    STACK_TRACE_ENTRY();
+
     _postSetters.emplace(_postSetters.begin(), std::move(setter));
 }
 
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_registrator);
 
     if (!_registrator->_registeredProperties.empty()) {
@@ -112,6 +131,8 @@ Properties::Properties(const PropertyRegistrator* registrator) : _registrator {r
 
 Properties::Properties(const Properties& other) : Properties(other._registrator)
 {
+    STACK_TRACE_ENTRY();
+
     // Copy PlainData data
     std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
@@ -128,6 +149,8 @@ Properties::Properties(const Properties& other) : Properties(other._registrator)
 
 Properties::~Properties()
 {
+    STACK_TRACE_ENTRY();
+
     // Hide warning about throwing desctructor
     try {
         _registrator->_podDataPool.push_back(_podData);
@@ -142,6 +165,8 @@ Properties::~Properties()
 
 auto Properties::operator=(const Properties& other) -> Properties&
 {
+    STACK_TRACE_ENTRY();
+
     if (this == &other) {
         return *this;
     }
@@ -163,6 +188,8 @@ auto Properties::operator=(const Properties& other) -> Properties&
 
 void Properties::AllocData()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_podData == nullptr);
     RUNTIME_ASSERT(!_registrator->_registeredProperties.empty());
 
@@ -184,6 +211,8 @@ void Properties::AllocData()
 
 void Properties::StoreAllData(vector<uchar>& all_data) const
 {
+    STACK_TRACE_ENTRY();
+
     all_data.clear();
     auto writer = DataWriter(all_data);
 
@@ -259,6 +288,8 @@ void Properties::StoreAllData(vector<uchar>& all_data) const
 
 void Properties::RestoreAllData(const vector<uchar>& all_data)
 {
+    STACK_TRACE_ENTRY();
+
     auto reader = DataReader(all_data);
 
     // Read plain properties data
@@ -290,6 +321,8 @@ void Properties::RestoreAllData(const vector<uchar>& all_data)
 
 auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     uint whole_size = 0u;
     *all_data = &_storeData;
     *all_data_sizes = &_storeDataSizes;
@@ -338,6 +371,8 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
 
 void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
+    STACK_TRACE_ENTRY();
+
     // Restore plain data
     RUNTIME_ASSERT(!all_data_sizes.empty());
     RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
@@ -369,6 +404,8 @@ void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<
 
 void Properties::RestoreData(const vector<vector<uchar>>& all_data)
 {
+    STACK_TRACE_ENTRY();
+
     vector<const uchar*> all_data_ext(all_data.size());
     vector<uint> all_data_sizes(all_data.size());
     for (size_t i = 0; i < all_data.size(); i++) {
@@ -380,6 +417,8 @@ void Properties::RestoreData(const vector<vector<uchar>>& all_data)
 
 auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     bool is_error = false;
 
     for (auto&& [key, value] : key_values) {
@@ -420,6 +459,8 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 
 auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(!base || _registrator == base->_registrator);
 
     map<string, string> key_values;
@@ -474,6 +515,8 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 
 auto Properties::LoadPropertyFromText(const Property* prop, string_view text) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(_registrator == prop->_registrator);
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
@@ -507,6 +550,8 @@ auto Properties::LoadPropertyFromText(const Property* prop, string_view text) ->
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(_registrator == prop->_registrator);
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
@@ -517,6 +562,8 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
 
 auto Properties::GetRawDataSize(const Property* prop) const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     uint data_size = 0;
     const auto* data = GetRawData(prop, data_size);
     UNUSED_VARIABLE(data);
@@ -525,6 +572,8 @@ auto Properties::GetRawDataSize(const Property* prop) const -> uint
 
 auto Properties::GetRawData(const Property* prop, uint& data_size) const -> const uchar*
 {
+    STACK_TRACE_ENTRY();
+
     if (prop->_dataType == Property::DataType::PlainData) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         data_size = prop->_baseSize;
@@ -538,11 +587,15 @@ auto Properties::GetRawData(const Property* prop, uint& data_size) const -> cons
 
 auto Properties::GetRawData(const Property* prop, uint& data_size) -> uchar*
 {
+    STACK_TRACE_ENTRY();
+
     return const_cast<uchar*>(const_cast<const Properties*>(this)->GetRawData(prop, data_size));
 }
 
 void Properties::SetRawData(const Property* prop, const uchar* data, uint data_size)
 {
+    STACK_TRACE_ENTRY();
+
     if (prop->IsPlainData()) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         RUNTIME_ASSERT(prop->_baseSize == data_size);
@@ -571,6 +624,8 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
 
 void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(!prop->IsDisabled());
 
     if (prop->IsVirtual()) {
@@ -599,6 +654,8 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
 
 auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
@@ -646,6 +703,8 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
 
 auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
@@ -693,6 +752,8 @@ auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
 
 void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
@@ -741,6 +802,8 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
 
 void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
@@ -789,6 +852,8 @@ void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
 
 auto Properties::GetValueAsInt(int property_index) const -> int
 {
+    STACK_TRACE_ENTRY();
+
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
@@ -806,6 +871,8 @@ auto Properties::GetValueAsInt(int property_index) const -> int
 
 auto Properties::GetValueAsFloat(int property_index) const -> float
 {
+    STACK_TRACE_ENTRY();
+
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
@@ -823,6 +890,8 @@ auto Properties::GetValueAsFloat(int property_index) const -> float
 
 void Properties::SetValueAsInt(int property_index, int value)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
@@ -840,6 +909,8 @@ void Properties::SetValueAsInt(int property_index, int value)
 
 void Properties::SetValueAsFloat(int property_index, float value)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
@@ -857,6 +928,8 @@ void Properties::SetValueAsFloat(int property_index, float value)
 
 void Properties::SetValueAsIntProps(int property_index, int value)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
@@ -932,15 +1005,20 @@ void Properties::SetValueAsIntProps(int property_index, int value)
 
 auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 {
+    STACK_TRACE_ENTRY();
+
     return _registrator->_nameResolver.ResolveHash(h);
 }
 
 PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) : _className {class_name}, _relation {relation}, _nameResolver {name_resolver}
 {
+    STACK_TRACE_ENTRY();
 }
 
 PropertyRegistrator::~PropertyRegistrator()
 {
+    STACK_TRACE_ENTRY();
+
     for (const auto* prop : _registeredProperties) {
         delete prop;
     }
@@ -951,6 +1029,8 @@ PropertyRegistrator::~PropertyRegistrator()
 
 void PropertyRegistrator::RegisterComponent(string_view name)
 {
+    STACK_TRACE_ENTRY();
+
     const auto name_hash = _nameResolver.ToHashedString(name);
 
     RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
@@ -959,16 +1039,22 @@ void PropertyRegistrator::RegisterComponent(string_view name)
 
 auto PropertyRegistrator::GetClassName() const -> const string&
 {
+    STACK_TRACE_ENTRY();
+
     return _className;
 }
 
 auto PropertyRegistrator::GetCount() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return static_cast<uint>(_registeredProperties.size());
 }
 
 auto PropertyRegistrator::GetByIndex(int property_index) const -> const Property*
 {
+    STACK_TRACE_ENTRY();
+
     if (property_index >= 0 && property_index < static_cast<int>(_registeredProperties.size())) {
         return _registeredProperties[property_index];
     }
@@ -977,6 +1063,8 @@ auto PropertyRegistrator::GetByIndex(int property_index) const -> const Property
 
 auto PropertyRegistrator::Find(string_view property_name) const -> const Property*
 {
+    STACK_TRACE_ENTRY();
+
     auto key = string(property_name);
     if (const auto separator = property_name.find('.'); separator != string::npos) {
         key[separator] = '_';
@@ -991,26 +1079,36 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 
 auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _registeredComponents.count(component_name) > 0u;
 }
 
 auto PropertyRegistrator::GetWholeDataSize() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return _wholePodDataSize;
 }
 
 auto PropertyRegistrator::GetPropertyGroups() const -> const map<string, vector<const Property*>>&
 {
+    STACK_TRACE_ENTRY();
+
     return _propertyGroups;
 }
 
 auto PropertyRegistrator::GetComponents() const -> const unordered_set<hstring>&
 {
+    STACK_TRACE_ENTRY();
+
     return _registeredComponents;
 }
 
 void PropertyRegistrator::AppendProperty(Property* prop, const const_span<string_view>& flags)
 {
+    STACK_TRACE_ENTRY();
+
     // Todo: validate property name identifier
 
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {

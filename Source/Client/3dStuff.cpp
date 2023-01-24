@@ -42,6 +42,8 @@
 
 void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
 {
+    STACK_TRACE_ENTRY();
+
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
@@ -69,6 +71,8 @@ void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
 
 void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
 {
+    STACK_TRACE_ENTRY();
+
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     string tmp;
@@ -96,6 +100,8 @@ void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
 
 void ModelBone::FixAfterLoad(ModelBone* root_bone)
 {
+    STACK_TRACE_ENTRY();
+
     if (AttachedMesh) {
         auto* mesh = AttachedMesh.get();
         for (size_t i = 0, j = mesh->SkinBoneNames.size(); i < j; i++) {
@@ -115,6 +121,8 @@ void ModelBone::FixAfterLoad(ModelBone* root_bone)
 
 auto ModelBone::Find(hstring bone_name) -> ModelBone*
 {
+    STACK_TRACE_ENTRY();
+
     if (Name == bone_name) {
         return this;
     }
@@ -139,6 +147,8 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
     _geometry(settings),
     _particleMngr(settings, effect_mngr, resources, std::move(tex_loader))
 {
+    STACK_TRACE_ENTRY();
+
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
         _moveTransitionTime = 0.001f;
@@ -157,11 +167,15 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
 
 auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
+    STACK_TRACE_ENTRY();
+
     return _nameResolver.ToHashedString(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 {
+    STACK_TRACE_ENTRY();
+
     // Find already loaded
     auto name_hashed = _nameResolver.ToHashedString(fname);
     for (auto&& root_bone : _loadedModels) {
@@ -208,6 +222,8 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
 auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*
 {
+    STACK_TRACE_ENTRY();
+
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
     const auto name_hashed = _nameResolver.ToHashedString(anim_fname);
@@ -234,6 +250,8 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
 
 auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*
 {
+    STACK_TRACE_ENTRY();
+
     // Skip empty
     if (texture_name.empty()) {
         return nullptr;
@@ -259,6 +277,8 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
 
 auto ModelManager::CreateModel(string_view name) -> ModelInstance*
 {
+    STACK_TRACE_ENTRY();
+
     auto* model_info = GetInformation(name);
     if (model_info == nullptr) {
         return nullptr;
@@ -288,12 +308,16 @@ auto ModelManager::CreateModel(string_view name) -> ModelInstance*
 
 void ModelManager::PreloadModel(string_view name)
 {
+    STACK_TRACE_ENTRY();
+
     const auto* model_info = GetInformation(name);
     UNUSED_VARIABLE(model_info);
 }
 
 auto ModelManager::GetInformation(string_view name) -> ModelInformation*
 {
+    STACK_TRACE_ENTRY();
+
     // Try find instance
     for (auto&& model_info : _allModelInfos) {
         if (model_info->_fileName == name) {
@@ -313,6 +337,8 @@ auto ModelManager::GetInformation(string_view name) -> ModelInformation*
 
 auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
 {
+    STACK_TRACE_ENTRY();
+
     for (auto&& model_hierarchy : _hierarchyFiles) {
         if (model_hierarchy->_fileName == name) {
             return model_hierarchy.get();
@@ -337,6 +363,8 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
 
 ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
 {
+    STACK_TRACE_ENTRY();
+
     _speedAdjustBase = 1.0f;
     _speedAdjustCur = 1.0f;
     _speedAdjustLink = 1.0f;
@@ -350,6 +378,8 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
 
 ModelInstance::~ModelInstance()
 {
+    STACK_TRACE_ENTRY();
+
     delete _bodyAnimController;
     delete _moveAnimController;
 
@@ -367,6 +397,8 @@ ModelInstance::~ModelInstance()
 
 void ModelInstance::SetupFrame()
 {
+    STACK_TRACE_ENTRY();
+
     auto draw_width = _modelInfo->_drawWidth;
     auto draw_height = _modelInfo->_drawHeight;
 
@@ -388,6 +420,8 @@ void ModelInstance::SetupFrame()
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
 {
+    STACK_TRACE_ENTRY();
+
     const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
     vec3 out;
     MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
@@ -396,6 +430,8 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
 
 auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
 {
+    STACK_TRACE_ENTRY();
+
     const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
     const auto xf = static_cast<float>(x) * static_cast<float>(FRAME_SCALE);
     const auto yf = static_cast<float>(y) * static_cast<float>(FRAME_SCALE);
@@ -407,6 +443,8 @@ auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
 
 void ModelInstance::StartMeshGeneration()
 {
+    STACK_TRACE_ENTRY();
+
     if (!_allowMeshGeneration) {
         _allowMeshGeneration = true;
         GenerateCombinedMeshes();
@@ -415,6 +453,8 @@ void ModelInstance::StartMeshGeneration()
 
 auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     _curAnim1 = anim1;
     _curAnim2 = anim2;
 
@@ -780,6 +820,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
 void ModelInstance::MoveModel(int ox, int oy)
 {
+    STACK_TRACE_ENTRY();
+
     const vec3 pos_zero = Convert2dTo3d(0, 0);
     const vec3 pos = Convert2dTo3d(ox, oy);
     const vec3 diff = pos - pos_zero;
@@ -790,6 +832,8 @@ void ModelInstance::MoveModel(int ox, int oy)
 
 void ModelInstance::SetMoving(bool enabled, uint speed)
 {
+    STACK_TRACE_ENTRY();
+
     _isMoving = enabled;
 
     if (_isMoving) {
@@ -814,16 +858,22 @@ void ModelInstance::SetMoving(bool enabled, uint speed)
 
 auto ModelInstance::IsCombatMode() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _isCombatMode;
 }
 
 void ModelInstance::SetCombatMode(bool enabled)
 {
+    STACK_TRACE_ENTRY();
+
     _isCombatMode = enabled;
 }
 
 void ModelInstance::RefreshMoveAnimation()
 {
+    STACK_TRACE_ENTRY();
+
     if (_moveAnimController == nullptr) {
         return;
     }
@@ -916,6 +966,8 @@ void ModelInstance::RefreshMoveAnimation()
 
 auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     const auto index = static_cast<int>((anim1 << 16) | anim2);
     const auto it = _modelInfo->_animIndexes.find(index);
     return it != _modelInfo->_animIndexes.end();
@@ -923,26 +975,36 @@ auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
 
 auto ModelInstance::ResolveAnimation(uint& anim1, uint& anim2) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _modelInfo->GetAnimationIndex(anim1, anim2, nullptr, _isCombatMode) != -1;
 }
 
 auto ModelInstance::GetAnim1() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return _currentLayers[LAYERS3D_COUNT] >> 16;
 }
 
 auto ModelInstance::GetAnim2() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
 }
 
 auto ModelInstance::IsAnimationPlaying() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return GetTick() < _endTick;
 }
 
 auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto period = 0.0f;
     if (_bodyAnimController != nullptr) {
         const auto* anim_set = _bodyAnimController->GetAnimationSet(_modelInfo->_renderAnim);
@@ -960,11 +1022,15 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 
 auto ModelInstance::GetDrawSize() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
 }
 
 auto ModelInstance::GetViewSize() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     const auto draw_size_scale = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
 
     const auto view_width = iround(static_cast<float>(_modelInfo->_viewWidth) * draw_size_scale);
@@ -975,11 +1041,15 @@ auto ModelInstance::GetViewSize() const -> tuple<int, int>
 
 auto ModelInstance::GetSpeed() const -> float
 {
+    STACK_TRACE_ENTRY();
+
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
 auto ModelInstance::GetTick() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     if (_useGameTimer) {
         return _modelMngr._gameTime.GameTick();
     }
@@ -988,6 +1058,8 @@ auto ModelInstance::GetTick() const -> uint
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 {
+    STACK_TRACE_ENTRY();
+
     // Transformations
     if (clear) {
         _matScaleBase = mat44();
@@ -1128,6 +1200,8 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
 void ModelInstance::SetDir(uchar dir, bool smooth_rotation)
 {
+    STACK_TRACE_ENTRY();
+
     const auto dir_angle = _modelMngr._geometry.DirToAngle(dir);
 
     SetMoveDirAngle(dir_angle, smooth_rotation);
@@ -1136,6 +1210,8 @@ void ModelInstance::SetDir(uchar dir, bool smooth_rotation)
 
 void ModelInstance::SetLookDirAngle(int dir_angle)
 {
+    STACK_TRACE_ENTRY();
+
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
     if (!_noRotate) {
@@ -1151,6 +1227,8 @@ void ModelInstance::SetLookDirAngle(int dir_angle)
 
 void ModelInstance::SetMoveDirAngle(int dir_angle, bool smooth_rotation)
 {
+    STACK_TRACE_ENTRY();
+
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
     if (!Math::FloatCompare(new_angle, _targetMoveDirAngle)) {
@@ -1170,6 +1248,8 @@ void ModelInstance::SetMoveDirAngle(int dir_angle, bool smooth_rotation)
 
 void ModelInstance::SetRotation(float rx, float ry, float rz)
 {
+    STACK_TRACE_ENTRY();
+
     mat44 my;
     mat44 mx;
     mat44 mz;
@@ -1182,21 +1262,29 @@ void ModelInstance::SetRotation(float rx, float ry, float rz)
 
 void ModelInstance::SetScale(float sx, float sy, float sz)
 {
+    STACK_TRACE_ENTRY();
+
     mat44::Scaling(vec3(sx, sy, sz), _matScale);
 }
 
 void ModelInstance::SetSpeed(float speed)
 {
+    STACK_TRACE_ENTRY();
+
     _speedAdjustBase = speed;
 }
 
 void ModelInstance::SetTimer(bool use_game_timer)
 {
+    STACK_TRACE_ENTRY();
+
     _useGameTimer = use_game_timer;
 }
 
 void ModelInstance::GenerateCombinedMeshes()
 {
+    STACK_TRACE_ENTRY();
+
     // Generation disabled
     if (!_allowMeshGeneration) {
         return;
@@ -1231,6 +1319,8 @@ void ModelInstance::GenerateCombinedMeshes()
 
 void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
 {
+    STACK_TRACE_ENTRY();
+
     // Combine meshes
     for (const auto* mesh : cur->_allMeshes) {
         CombineMesh(mesh, cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
@@ -1244,6 +1334,8 @@ void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
 
 void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int anim_layer)
 {
+    STACK_TRACE_ENTRY();
+
     // Skip disabled meshes
     if (mesh_instance->Disabled) {
         return;
@@ -1271,6 +1363,8 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int anim_laye
 
 auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (combined_mesh->EncapsulatedMeshCount == 0) {
         return true;
     }
@@ -1287,6 +1381,8 @@ auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, cons
 
 void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer)
 {
+    STACK_TRACE_ENTRY();
+
     auto* mesh_data = mesh_instance->Mesh;
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
@@ -1359,6 +1455,8 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
 void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
 {
+    STACK_TRACE_ENTRY();
+
     // Cut meshes
     if (!cur->_allCuts.empty()) {
         for (const auto* cut : cur->_allCuts) {
@@ -1381,6 +1479,8 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
 // 1 - one point
 static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float r, Vertex3D& in) -> int
 {
+    STACK_TRACE_ENTRY();
+
     auto sq = [](float f) -> float { return f * f; };
     const auto a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
     const auto b = 2 * ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) + (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) + (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
@@ -1433,6 +1533,8 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
 
 void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
@@ -1668,6 +1770,8 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
 auto ModelInstance::NeedDraw() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (_forceRedraw) {
         return true;
     }
@@ -1677,6 +1781,8 @@ auto ModelInstance::NeedDraw() const -> bool
 
 void ModelInstance::Draw()
 {
+    STACK_TRACE_ENTRY();
+
     _forceRedraw = false;
 
     // Move timer
@@ -1700,6 +1806,8 @@ void ModelInstance::Draw()
 
 void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 {
+    STACK_TRACE_ENTRY();
+
     // Update world matrix, only for root
     if (_parentBone == nullptr) {
         const auto pos = Convert2dTo3d(x, y);
@@ -1808,6 +1916,8 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 
 void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix)
 {
+    STACK_TRACE_ENTRY();
+
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
         mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
@@ -1830,6 +1940,8 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 
 void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
 {
+    STACK_TRACE_ENTRY();
+
     auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
     effect->ProjBuf = RenderEffect::ProjBuffer();
@@ -1882,6 +1994,8 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
 
 void ModelInstance::DrawAllParticles()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     for (auto&& particle_system : _particleSystems) {
@@ -1895,6 +2009,8 @@ void ModelInstance::DrawAllParticles()
 
 auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
 {
+    STACK_TRACE_ENTRY();
+
     const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
         for (const auto* child : _children) {
@@ -1910,6 +2026,8 @@ auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
 
 auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
 {
+    STACK_TRACE_ENTRY();
+
     const auto* bone = FindBone(bone_name);
     if (bone == nullptr) {
         return std::nullopt;
@@ -1927,11 +2045,15 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
 
 auto ModelInstance::GetAnimDuration() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return static_cast<uint>(_animPosPeriod * 1000.0f);
 }
 
 void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, vec3 move)
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto* to_bone = FindBone(bone_name)) {
         if (auto&& particles = _modelMngr._particleMngr.CreateParticles(particles_name)) {
             _particleSystems.push_back({0u, std::move(particles), to_bone, move, _lookDirAngle});
@@ -1941,6 +2063,8 @@ void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, 
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
+    STACK_TRACE_ENTRY();
+
     _drawWidth = _modelMngr._settings.DefaultModelDrawWidth;
     _drawHeight = _modelMngr._settings.DefaultModelDrawHeight;
     _viewWidth = _modelMngr._settings.DefaultModelViewWidth != 0 ? _modelMngr._settings.DefaultModelViewWidth : _drawWidth / 4;
@@ -1949,6 +2073,8 @@ ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model
 
 auto ModelInformation::Load(string_view name) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     string ext = _str(name).getFileExtension();
     if (ext.empty()) {
         return false;
@@ -2611,6 +2737,8 @@ auto ModelInformation::Load(string_view name) -> bool
 
 auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int
 {
+    STACK_TRACE_ENTRY();
+
     // Find index
     auto index = -1;
     if (combat_first) {
@@ -2647,6 +2775,8 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
 
 auto ModelInformation::GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int
 {
+    STACK_TRACE_ENTRY();
+
     // Check equals
     const auto it1 = _anim1Equals.find(anim1);
     if (it1 != _anim1Equals.end()) {
@@ -2682,6 +2812,8 @@ auto ModelInformation::GetAnimationIndexEx(uint anim1, uint anim2, float* speed)
 
 auto ModelInformation::CreateInstance() -> ModelInstance*
 {
+    STACK_TRACE_ENTRY();
+
     auto* model = new ModelInstance(_modelMngr);
     model->_modelInfo = this;
     model->SetupFrame();
@@ -2699,6 +2831,8 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 
 auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape
 {
+    STACK_TRACE_ENTRY();
+
     ModelCutData::Shape shape;
     shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
 
@@ -2770,10 +2904,13 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
 
 ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
+    STACK_TRACE_ENTRY();
 }
 
 void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint depth)
 {
+    STACK_TRACE_ENTRY();
+
     bones.emplace(depth, bone);
 
     for (auto&& child : bone->Children) {
@@ -2783,6 +2920,8 @@ void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint dept
 
 void ModelHierarchy::SetupBones()
 {
+    STACK_TRACE_ENTRY();
+
     multimap<uint, ModelBone*> bones;
     SetupBonesExt(bones, _rootBone, 0);
 
@@ -2796,6 +2935,8 @@ void ModelHierarchy::SetupBones()
 
 static void SetupAnimationOutputExt(ModelAnimationController* anim_controller, ModelBone* bone)
 {
+    STACK_TRACE_ENTRY();
+
     anim_controller->RegisterAnimationOutput(bone->Name, bone->TransformationMatrix);
 
     for (auto& it : bone->Children) {
@@ -2805,6 +2946,8 @@ static void SetupAnimationOutputExt(ModelAnimationController* anim_controller, M
 
 void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_controller)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     SetupAnimationOutputExt(anim_controller, _rootBone);
@@ -2812,6 +2955,8 @@ void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_control
 
 auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     auto* texture = _modelMngr.LoadTexture(tex_name, _fileName);
@@ -2823,6 +2968,8 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 
 auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name);

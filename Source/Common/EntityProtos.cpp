@@ -35,16 +35,20 @@
 
 ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), ItemProperties(GetInitRef())
 {
+    STACK_TRACE_ENTRY();
 }
 
 ProtoCritter::ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), CritterProperties(GetInitRef())
 {
+    STACK_TRACE_ENTRY();
 }
 
 ProtoMap::ProtoMap(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), MapProperties(GetInitRef())
 {
+    STACK_TRACE_ENTRY();
 }
 
 ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), LocationProperties(GetInitRef())
 {
+    STACK_TRACE_ENTRY();
 }

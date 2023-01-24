@@ -31,51 +31,27 @@
 // SOFTWARE.
 //
 
-// Todo: rework all commented code during refactoring
 // Todo: make entities positioning free in space, without hard-linking to hex
 // Todo: add third 'up' coordinate to positioning that allow create multidimensional maps
-// Todo: use Common.h as precompiled header
+// Todo: use Common.h as precompiled header?
 // Todo: use smart pointers instead raw
 // Todo: fix all PVS Studio warnings
 // Todo: SHA replace to openssl SHA
-// Todo: add #undef for every local #define
 // Todo: improve valgrind
-// Todo: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
-// Todo: move defines to const and enums
-// Todo: don't use rtti/typeid and remove from compilation options?
-// Todo: wrap fonline code to namespace?
-// Todo: fix build warnings for all platforms
-// Todo: enable threating warnings as errors
+// Todo: wrap fonline code to namespace
 // Todo: id and hash to 8 byte integer
 // Todo: research about std::filesystem
-// Todo: compile with -fpedantic
 // Todo: c-style arrays to std::array
-// Todo: use more STL (for ... -> auto p = find(begin(v), end(v), val); find_if, begin, end...)
-// Todo: use par (for_each(par, v, [](int x))
-// Todo: improve some single standard to initialize objects ({} or ())
-// Todo: add constness as much as nessesary
-// Todo: iterator -> const_iterator, auto -> const auto
-// Todo: use using instead of typedef
-// Todo: rework unscoped enums to scoped enums
 // Todo: use more noexcept
 // Todo: use more constexpr
 // Todo: improve BitReader/BitWriter to better network/disk space utilization
-// Todo: organize class members as public, protected, private; methods, fields
-// Todo: prefer this construction if(auto i = do(); i < 0) i... else i...
-// Todo: improve std::to_string or fmt::format to string conversions
 // Todo: cast between numeric types via numeric_cast<to>(from)
-// Todo: minimize platform specific API (ifdef FO_os, WinApi-Include.h...)
 // Todo: clang debug builds with sanitiziers
 // Todo: time ticks to uint64
 // Todo: improve custom exceptions for every subsustem
-// Todo: improve particle system based on SPARK engine
-// Todo: research about Steam integration
-// Todo: speed up content loading from server
 // Todo: temporary entities, disable writing to data base
-// Todo: RUNTIME_ASSERT to assert
+// Todo: RUNTIME_ASSERT to assert?
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-// Todo: review all SDL_hints.h entries
-// Todo: fix all warnings (especially under clang) and enable threating warnings as errors
 
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
 
@@ -259,8 +235,67 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 };
 // ReSharper restore CppInconsistentNaming
 
-// Engine exception handling
+// Profiling & stack trace obtaining
+#define CONCAT(x, y) CONCAT_INDIRECT(x, y)
+#define CONCAT_INDIRECT(x, y) x##y
+#if defined(__GNUC__)
+#define FORCE_INLINE __attribute__((always_inline)) inline
+#elif defined(_MSC_VER)
+#define FORCE_INLINE __forceinline
+#else
+#define FORCE_INLINE inline
+#endif
+
+#ifdef TRACY_ENABLE
+#include "tracy/Tracy.hpp"
+#include "tracy/TracyC.h"
+
+using tracy::SourceLocationData;
+
+#define STACK_TRACE_FIRST_ENTRY() \
+    SetMainThread(); \
+    STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY() \
+    ZoneScoped; \
+    auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+
+#else
+struct SourceLocationData // Same as tracy::SourceLocationData
+{
+    const char* name;
+    const char* function;
+    const char* file;
+    uint32_t line;
+};
+
+#define STACK_TRACE_FIRST_ENTRY() \
+    SetMainThread(); \
+    STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY() \
+    static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
+    auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
+#endif
+
+extern void SetMainThread() noexcept;
+extern auto IsMainThread() noexcept -> bool;
+extern void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept;
+extern void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept;
+extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
+
+struct StackTraceScopeEntry
+{
+    FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept { PushStackTrace(loc, false); }
+    FORCE_INLINE ~StackTraceScopeEntry() noexcept { PopStackTrace(); }
+
+    StackTraceScopeEntry(const StackTraceScopeEntry&) = delete;
+    StackTraceScopeEntry(StackTraceScopeEntry&&) noexcept = delete;
+    auto operator=(const StackTraceScopeEntry&) -> StackTraceScopeEntry& = delete;
+    auto operator=(StackTraceScopeEntry&&) noexcept -> StackTraceScopeEntry& = delete;
+};
+
+// Engine exception handling
+extern auto GetRealStackTrace() -> string;
 extern auto IsRunInDebugger() -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
@@ -275,6 +310,11 @@ public:
     [[nodiscard]] virtual auto StackTrace() const noexcept -> const string& = 0;
 };
 
+struct ExceptionStackTraceData
+{
+    string StackTrace {};
+};
+
 // Todo: pass name to exceptions context args
 #define DECLARE_EXCEPTION(exception_name) \
     class exception_name : public std::exception, public ExceptionInfo \
@@ -287,7 +327,6 @@ public:
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
         template<typename... Args> \
-\
         explicit exception_name(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
         { \
             _exceptionMessage = #exception_name ": "; \
@@ -296,6 +335,16 @@ public:
                 _exceptionMessage.append("\n  - ").append(param); \
             } \
             _stackTrace = GetStackTrace(); \
+        } \
+        template<typename... Args> \
+        exception_name(ExceptionStackTraceData data, string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        { \
+            _exceptionMessage = #exception_name ": "; \
+            _exceptionMessage.append(message); \
+            for (auto& param : _exceptionParams) { \
+                _exceptionMessage.append("\n  - ").append(param); \
+            } \
+            _stackTrace = std::move(data.StackTrace); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
         [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; } \

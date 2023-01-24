@@ -36,11 +36,15 @@
 
 Keyboard::Keyboard(InputSettings& settings, SpriteManager& spr_mngr) : _settings {settings}, _sprMngr {spr_mngr}
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(_settings);
 }
 
 void Keyboard::Lost()
 {
+    STACK_TRACE_ENTRY();
+
     CtrlDwn = false;
     AltDwn = false;
     ShiftDwn = false;
@@ -48,6 +52,8 @@ void Keyboard::Lost()
 
 void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const
 {
+    STACK_TRACE_ENTRY();
+
     if (AltDwn) {
         return;
     }
@@ -152,6 +158,8 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
 
 void Keyboard::EraseInvalidChars(string& str, int flags) const
 {
+    STACK_TRACE_ENTRY();
+
     for (size_t i = 0; i < str.length();) {
         uint length = 0;
         if (IsInvalidChar(str.c_str() + i, flags, length)) {
@@ -165,6 +173,8 @@ void Keyboard::EraseInvalidChars(string& str, int flags) const
 
 auto Keyboard::IsInvalidChar(string_view str, uint flags, uint& length) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     const auto ucs = utf8::Decode(str, &length);
     if (!utf8::IsValid(ucs)) {
         return true;

@@ -38,10 +38,13 @@
 
 ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) : DeferredCallManager(engine), _serverEngine {engine}
 {
+    STACK_TRACE_ENTRY();
 }
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(func);
     RUNTIME_ASSERT(!func.IsDelegate());
 
@@ -52,6 +55,8 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(func);
     RUNTIME_ASSERT(!func.IsDelegate());
 
@@ -63,6 +68,8 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(func);
     RUNTIME_ASSERT(!func.IsDelegate());
 
@@ -74,6 +81,8 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(func);
     RUNTIME_ASSERT(!func.IsDelegate());
 
@@ -85,6 +94,8 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(func);
     RUNTIME_ASSERT(!func.IsDelegate());
 
@@ -96,6 +107,8 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
 
 auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& call) -> uint
 {
+    STACK_TRACE_ENTRY();
+
     call.Id = GetNextCallId();
 
     if (delay > 0) {
@@ -148,6 +161,8 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
 auto ServerDeferredCallManager::GetNextCallId() -> uint
 {
+    STACK_TRACE_ENTRY();
+
     const auto next_id = _serverEngine->GetLastDeferredCallId() + 1;
     _serverEngine->SetLastDeferredCallId(next_id);
     return next_id;
@@ -155,6 +170,8 @@ auto ServerDeferredCallManager::GetNextCallId() -> uint
 
 void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _savedCalls.find(call.Id); it != _savedCalls.end()) {
         _serverEngine->DbStorage.Delete("DeferredCalls", call.Id);
         _savedCalls.erase(it);
@@ -163,6 +180,8 @@ void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
 
 void ServerDeferredCallManager::LoadDeferredCalls()
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Load deferred calls");
 
     int errors = 0;

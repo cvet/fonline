@@ -89,6 +89,8 @@ const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
 void InitApp(int argc, char** argv, string_view name_appendix)
 {
+    STACK_TRACE_ENTRY();
+
     // Ensure that we call init only once
     static std::once_flag once;
     auto first_call = false;
@@ -137,6 +139,8 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
 void ExitApp(bool success)
 {
+    STACK_TRACE_ENTRY();
+
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     std::quick_exit(code);
@@ -147,6 +151,8 @@ void ExitApp(bool success)
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (_name != other->_name) {
         return false;
     }
@@ -175,6 +181,8 @@ static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
 Application::Application(int argc, char** argv) : Settings(argc, argv)
 {
+    STACK_TRACE_ENTRY();
+
     SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
@@ -565,11 +573,15 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
 
 void Application::OpenLink(string_view link)
 {
+    STACK_TRACE_ENTRY();
+
     SDL_OpenURL(string(link).c_str());
 }
 
 void Application::HideCursor()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     SDL_ShowCursor(SDL_DISABLE);
@@ -577,18 +589,24 @@ void Application::HideCursor()
 
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
+    STACK_TRACE_ENTRY();
+
     _imguiEffect = effect;
 }
 
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
+    STACK_TRACE_ENTRY();
+
     SDL_iPhoneSetAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
 }
 #endif
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
+    STACK_TRACE_ENTRY();
+
     throw NotImplementedException(LINE_STR);
 
     auto* sdl_window = CreateInternalWindow(width, height);
@@ -600,6 +618,8 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     // Dummy window pointer
@@ -671,6 +691,8 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
 
 void Application::BeginFrame()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
     ActiveRenderer->ClearRenderTarget(COLOR_RGB(150, 150, 150));
 
@@ -952,6 +974,8 @@ void Application::BeginFrame()
 
 void Application::EndFrame()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
 
     // Skip unprocessed events
@@ -1027,10 +1051,16 @@ void Application::EndFrame()
     ActiveRenderer->Present();
 
     _onFrameEndDispatcher();
+
+#ifdef TRACY_ENABLE
+    FrameMark;
+#endif
 }
 
 auto AppWindow::GetSize() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto w = 1000;
     auto h = 1000;
     if (ActiveRendererType != RenderType::Null) {
@@ -1041,6 +1071,8 @@ auto AppWindow::GetSize() const -> tuple<int, int>
 
 void AppWindow::SetSize(int w, int h)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
@@ -1050,6 +1082,8 @@ void AppWindow::SetSize(int w, int h)
 
 auto AppWindow::GetPosition() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto x = 0;
     auto y = 0;
     if (ActiveRendererType != RenderType::Null) {
@@ -1060,6 +1094,8 @@ auto AppWindow::GetPosition() const -> tuple<int, int>
 
 void AppWindow::SetPosition(int x, int y)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
@@ -1069,6 +1105,8 @@ void AppWindow::SetPosition(int x, int y)
 
 auto AppWindow::IsFocused() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0u;
     }
@@ -1078,6 +1116,8 @@ auto AppWindow::IsFocused() const -> bool
 
 void AppWindow::Minimize()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType != RenderType::Null) {
@@ -1087,6 +1127,8 @@ void AppWindow::Minimize()
 
 auto AppWindow::IsFullscreen() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (ActiveRendererType != RenderType::Null) {
         return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
     }
@@ -1096,6 +1138,8 @@ auto AppWindow::IsFullscreen() const -> bool
 
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
@@ -1121,6 +1165,8 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 
 void AppWindow::Blink()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
@@ -1138,6 +1184,8 @@ void AppWindow::Blink()
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
@@ -1155,11 +1203,15 @@ void AppWindow::AlwaysOnTop(bool enable)
 
 void AppWindow::GrabInput(bool enable)
 {
+    STACK_TRACE_ENTRY();
+
     _grabbed = enable;
 }
 
 void AppWindow::Destroy()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (ActiveRendererType == RenderType::Null) {
@@ -1174,47 +1226,65 @@ void AppWindow::Destroy()
 
 auto AppRender::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
+    STACK_TRACE_ENTRY();
+
     return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
 }
 
 void AppRender::SetRenderTarget(RenderTexture* tex)
 {
+    STACK_TRACE_ENTRY();
+
     ActiveRenderer->SetRenderTarget(tex);
     RenderTargetTex = tex;
 }
 
 auto AppRender::GetRenderTarget() -> RenderTexture*
 {
+    STACK_TRACE_ENTRY();
+
     return RenderTargetTex;
 }
 
 void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
+    STACK_TRACE_ENTRY();
+
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(int x, int y, int width, int height)
 {
+    STACK_TRACE_ENTRY();
+
     ActiveRenderer->EnableScissor(x, y, width, height);
 }
 
 void AppRender::DisableScissor()
 {
+    STACK_TRACE_ENTRY();
+
     ActiveRenderer->DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
+    STACK_TRACE_ENTRY();
+
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
+    STACK_TRACE_ENTRY();
+
     return ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>
 {
+    STACK_TRACE_ENTRY();
+
     auto x = 100;
     auto y = 100;
     if (ActiveRendererType != RenderType::Null) {
@@ -1225,6 +1295,8 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
 
 void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 {
+    STACK_TRACE_ENTRY();
+
     if (ActiveRendererType != RenderType::Null) {
         App->Settings.MouseX = x;
         App->Settings.MouseY = y;
@@ -1244,6 +1316,8 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     if (!EventsQueue->empty()) {
         ev = EventsQueue->front();
         EventsQueue->erase(EventsQueue->begin());
@@ -1254,32 +1328,44 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 
 void AppInput::ClearEvents()
 {
+    STACK_TRACE_ENTRY();
+
     EventsQueue->clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev)
 {
+    STACK_TRACE_ENTRY();
+
     NextFrameEventsQueue->push_back(ev);
 }
 
 void AppInput::SetClipboardText(string_view text)
 {
+    STACK_TRACE_ENTRY();
+
     SDL_SetClipboardText(string(text).c_str());
 }
 
 auto AppInput::GetClipboardText() -> const string&
 {
+    STACK_TRACE_ENTRY();
+
     _clipboardTextStorage = SDL_GetClipboardText();
     return _clipboardTextStorage;
 }
 
 auto AppAudio::IsEnabled() -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return AudioDeviceId >= 2;
 }
 
 auto AppAudio::GetStreamSize() -> uint
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     return AudioSpec.size;
@@ -1287,6 +1373,8 @@ auto AppAudio::GetStreamSize() -> uint
 
 auto AppAudio::GetSilence() -> uchar
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     return AudioSpec.silence;
@@ -1294,6 +1382,8 @@ auto AppAudio::GetSilence() -> uchar
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     LockDevice();
@@ -1312,6 +1402,8 @@ struct AppAudio::AudioConverter
 
 auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     auto get_converter = [this, format, channels, rate]() -> AudioConverter* {
@@ -1353,6 +1445,8 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
 
 void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
@@ -1361,6 +1455,8 @@ void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 
 void AppAudio::LockDevice()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     SDL_LockAudioDevice(AudioDeviceId);
@@ -1368,6 +1464,8 @@ void AppAudio::LockDevice()
 
 void AppAudio::UnlockDevice()
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(IsEnabled());
 
     SDL_UnlockAudioDevice(AudioDeviceId);
@@ -1375,6 +1473,8 @@ void AppAudio::UnlockDevice()
 
 void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WEB || FO_ANDROID || FO_IOS
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, string(title).c_str(), string(message).c_str(), nullptr);
 
@@ -1417,6 +1517,8 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
 
 static ImGuiKey KeycodeToImGuiKey(int keycode)
 {
+    STACK_TRACE_ENTRY();
+
     switch (keycode) {
     case SDLK_TAB:
         return ImGuiKey_Tab;

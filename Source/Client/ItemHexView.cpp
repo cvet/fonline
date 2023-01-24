@@ -42,11 +42,15 @@
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto), _map {map}
 {
+    STACK_TRACE_ENTRY();
+
     DrawEffect = _engine->EffectMngr.Effects.Generic;
 }
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(map, id, proto)
 {
+    STACK_TRACE_ENTRY();
+
     SetProperties(props);
 
     AfterConstruction();
@@ -54,6 +58,8 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Pr
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(props_data);
     RestoreData(*props_data);
 
@@ -62,6 +68,8 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const ve
 
 ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy) : ItemHexView(map, id, proto)
 {
+    STACK_TRACE_ENTRY();
+
     if (props_data != nullptr) {
         RestoreData(*props_data);
     }
@@ -74,6 +82,8 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const ve
 
 void ItemHexView::AfterConstruction()
 {
+    STACK_TRACE_ENTRY();
+
     SetOwnership(ItemOwnership::MapHex);
 
     RefreshAnim();
@@ -90,6 +100,8 @@ void ItemHexView::AfterConstruction()
 
 void ItemHexView::Finish()
 {
+    STACK_TRACE_ENTRY();
+
     SetFade(false);
 
     _finishing = true;
@@ -102,16 +114,22 @@ void ItemHexView::Finish()
 
 auto ItemHexView::IsFinishing() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _finishing;
 }
 
 auto ItemHexView::IsFinished() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _finishing && _engine->GameTime.GameTick() >= _finishingTime;
 }
 
 void ItemHexView::StopFinishing()
 {
+    STACK_TRACE_ENTRY();
+
     _finishing = false;
     SetFade(true);
     RefreshAnim();
@@ -119,6 +137,8 @@ void ItemHexView::StopFinishing()
 
 void ItemHexView::Process()
 {
+    STACK_TRACE_ENTRY();
+
     // Animation
     if (_begFrm != _endFrm) {
         const auto anim_proc = GenericUtils::Percent(_anim->Ticks, _engine->GameTime.GameTick() - _animTick);
@@ -220,6 +240,8 @@ void ItemHexView::Process()
 
 void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
 {
+    STACK_TRACE_ENTRY();
+
     const auto from_hx = GetHexX();
     const auto from_hy = GetHexY();
 
@@ -256,6 +278,8 @@ void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
 
 void ItemHexView::SetFade(bool fade_up)
 {
+    STACK_TRACE_ENTRY();
+
     const auto tick = _engine->GameTime.GameTick();
     _fadingEndTick = tick + _engine->Settings.FadingDuration - (_fadingEndTick > tick ? _fadingEndTick - tick : 0);
     _fadeUp = fade_up;
@@ -264,6 +288,8 @@ void ItemHexView::SetFade(bool fade_up)
 
 void ItemHexView::SkipFade()
 {
+    STACK_TRACE_ENTRY();
+
     if (_fading) {
         _fading = false;
         Alpha = _fadeUp ? _maxAlpha : 0;
@@ -272,6 +298,8 @@ void ItemHexView::SkipFade()
 
 void ItemHexView::RefreshAnim()
 {
+    STACK_TRACE_ENTRY();
+
     _anim = nullptr;
 
     const auto pic_name = GetPicMap();
@@ -305,6 +333,8 @@ void ItemHexView::RefreshAnim()
 
 void ItemHexView::SetSprite(Sprite* spr)
 {
+    STACK_TRACE_ENTRY();
+
     if (spr != nullptr) {
         SprDraw = spr;
     }
@@ -320,6 +350,8 @@ void ItemHexView::SetSprite(Sprite* spr)
 
 auto ItemHexView::GetEggType() const -> EggAppearenceType
 {
+    STACK_TRACE_ENTRY();
+
     if (GetDisableEgg() || GetIsFlat()) {
         return EggAppearenceType::None;
     }
@@ -339,6 +371,8 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
 
 void ItemHexView::StartAnimate()
 {
+    STACK_TRACE_ENTRY();
+
     SetStayAnim();
     _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
     _isAnimated = true;
@@ -346,6 +380,8 @@ void ItemHexView::StartAnimate()
 
 void ItemHexView::StopAnimate()
 {
+    STACK_TRACE_ENTRY();
+
     SetSpr(_animBegFrm);
     _begFrm = _animBegFrm;
     _endFrm = _animBegFrm;
@@ -354,6 +390,8 @@ void ItemHexView::StopAnimate()
 
 void ItemHexView::SetAnimFromEnd()
 {
+    STACK_TRACE_ENTRY();
+
     _begFrm = _animEndFrm;
     _endFrm = _animBegFrm;
     SetSpr(_begFrm);
@@ -362,6 +400,8 @@ void ItemHexView::SetAnimFromEnd()
 
 void ItemHexView::SetAnimFromStart()
 {
+    STACK_TRACE_ENTRY();
+
     _begFrm = _animBegFrm;
     _endFrm = _animEndFrm;
     SetSpr(_begFrm);
@@ -370,6 +410,8 @@ void ItemHexView::SetAnimFromStart()
 
 void ItemHexView::SetAnim(uint beg, uint end)
 {
+    STACK_TRACE_ENTRY();
+
     if (beg > _anim->CntFrm - 1) {
         beg = _anim->CntFrm - 1;
     }
@@ -385,6 +427,8 @@ void ItemHexView::SetAnim(uint beg, uint end)
 
 void ItemHexView::SetSprStart()
 {
+    STACK_TRACE_ENTRY();
+
     SetSpr(_animBegFrm);
     _begFrm = _curFrm;
     _endFrm = _curFrm;
@@ -392,6 +436,8 @@ void ItemHexView::SetSprStart()
 
 void ItemHexView::SetSprEnd()
 {
+    STACK_TRACE_ENTRY();
+
     SetSpr(_animEndFrm);
     _begFrm = _curFrm;
     _endFrm = _curFrm;
@@ -399,6 +445,8 @@ void ItemHexView::SetSprEnd()
 
 void ItemHexView::SetSpr(uint num_spr)
 {
+    STACK_TRACE_ENTRY();
+
     _curFrm = num_spr;
     SprId = _anim->GetSprId(_curFrm);
     RefreshOffs();
@@ -406,6 +454,8 @@ void ItemHexView::SetSpr(uint num_spr)
 
 void ItemHexView::RefreshOffs()
 {
+    STACK_TRACE_ENTRY();
+
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
 
@@ -422,6 +472,8 @@ void ItemHexView::RefreshOffs()
 
 void ItemHexView::SetStayAnim()
 {
+    STACK_TRACE_ENTRY();
+
     if (GetIsShowAnimExt()) {
         SetAnim(GetAnimStay0(), GetAnimStay1());
     }
@@ -432,6 +484,8 @@ void ItemHexView::SetStayAnim()
 
 void ItemHexView::SetShowAnim()
 {
+    STACK_TRACE_ENTRY();
+
     if (GetIsShowAnimExt()) {
         SetAnim(GetAnimShow0(), GetAnimShow1());
     }
@@ -442,6 +496,8 @@ void ItemHexView::SetShowAnim()
 
 void ItemHexView::SetHideAnim()
 {
+    STACK_TRACE_ENTRY();
+
     if (GetIsShowAnimExt()) {
         SetAnim(GetAnimHide0(), GetAnimHide1());
         _animBegFrm = GetAnimHide1();

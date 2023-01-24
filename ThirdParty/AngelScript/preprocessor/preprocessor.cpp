@@ -1209,10 +1209,11 @@ Preprocessor::LineNumberTranslator* Preprocessor::RestoreLineNumberTranslator( c
     return lnt;
 }
 
-std::string Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
+const std::string& Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
 {
+    static std::string error = "ERROR";
     lnt = ( lnt ? lnt : LNT );
-    return lnt ? lnt->Search( line_number ).File : "ERROR";
+    return lnt ? lnt->Search( line_number ).File : error;
 }
 
 unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt )

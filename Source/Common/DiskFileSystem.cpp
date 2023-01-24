@@ -59,32 +59,44 @@
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
 {
+    STACK_TRACE_ENTRY();
+
     return {fname, write, false};
 }
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write, bool write_through) -> DiskFile
 {
+    STACK_TRACE_ENTRY();
+
     return {fname, write, write_through};
 }
 
 auto DiskFileSystem::FindFiles(string_view path, string_view ext) -> DiskFind
 {
+    STACK_TRACE_ENTRY();
+
     return {path, ext};
 }
 
 #if FO_WINDOWS
 static auto FileTimeToUInt64(FILETIME ft) -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     return static_cast<uint64>(ft.dwHighDateTime) << 32 | static_cast<uint64>(ft.dwLowDateTime);
 }
 
 static auto WinMultiByteToWideChar(string_view mb) -> std::wstring
 {
+    STACK_TRACE_ENTRY();
+
     return _str(mb).toWideChar();
 }
 
 static auto WinWideCharToMultiByte(const wchar_t* wc) -> string
 {
+    STACK_TRACE_ENTRY();
+
     return _str().parseWideChar(wc).normalizePathSlashes();
 }
 
@@ -95,6 +107,8 @@ struct DiskFile::Impl
 
 DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 {
+    STACK_TRACE_ENTRY();
+
     HANDLE h;
 
     if (write) {
@@ -126,6 +140,8 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
 DiskFile::~DiskFile()
 {
+    STACK_TRACE_ENTRY();
+
     if (_pImpl) {
         ::CloseHandle(_pImpl->FileHandle);
     }
@@ -135,11 +151,15 @@ DiskFile::DiskFile(DiskFile&&) noexcept = default;
 
 DiskFile::operator bool() const
 {
+    STACK_TRACE_ENTRY();
+
     return !!_pImpl;
 }
 
 auto DiskFile::Read(void* buf, size_t len) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -155,6 +175,8 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -170,6 +192,8 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
 
 auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -180,6 +204,8 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 
 auto DiskFile::GetPos() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
@@ -188,6 +214,8 @@ auto DiskFile::GetPos() const -> size_t
 
 auto DiskFile::GetWriteTime() const -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
 
     FILETIME tc;
@@ -201,6 +229,8 @@ auto DiskFile::GetWriteTime() const -> uint64
 
 auto DiskFile::GetSize() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
 
     LARGE_INTEGER li;
@@ -220,6 +250,8 @@ struct DiskFile::Impl
 
 DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 {
+    STACK_TRACE_ENTRY();
+
     SDL_RWops* ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     if (!ops) {
         if (write) {
@@ -239,6 +271,8 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
 DiskFile::~DiskFile()
 {
+    STACK_TRACE_ENTRY();
+
     if (_pImpl) {
         SDL_RWclose(_pImpl->Ops);
     }
@@ -248,11 +282,15 @@ DiskFile::DiskFile(DiskFile&&) noexcept = default;
 
 DiskFile::operator bool() const
 {
+    STACK_TRACE_ENTRY();
+
     return !!_pImpl;
 }
 
 auto DiskFile::Read(void* buf, size_t len) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -267,6 +305,8 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -295,6 +335,8 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
 
 auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -305,6 +347,8 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 
 auto DiskFile::GetPos() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
@@ -313,6 +357,8 @@ auto DiskFile::GetPos() const -> size_t
 
 auto DiskFile::GetWriteTime() const -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
 
 #if !defined(__WIN32__) && !defined(HAVE_STDIO_H)
@@ -341,6 +387,8 @@ auto DiskFile::GetWriteTime() const -> uint64
 
 auto DiskFile::GetSize() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     Sint64 size = SDL_RWsize(_pImpl->Ops);
     return size <= 0 ? 0u : static_cast<size_t>(size);
 }
@@ -355,6 +403,8 @@ struct DiskFile::Impl
 
 DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 {
+    STACK_TRACE_ENTRY();
+
     FILE* f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     if (!f) {
         if (write) {
@@ -374,6 +424,8 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
 DiskFile::~DiskFile()
 {
+    STACK_TRACE_ENTRY();
+
     if (_pImpl) {
         ::fclose(_pImpl->File);
 
@@ -389,11 +441,15 @@ DiskFile::DiskFile(DiskFile&&) noexcept = default;
 
 DiskFile::operator bool() const
 {
+    STACK_TRACE_ENTRY();
+
     return !!_pImpl;
 }
 
 auto DiskFile::Read(void* buf, size_t len) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -408,6 +464,8 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -426,6 +484,8 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
 
 auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -436,6 +496,8 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 
 auto DiskFile::GetPos() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
@@ -444,6 +506,8 @@ auto DiskFile::GetPos() const -> size_t
 
 auto DiskFile::GetWriteTime() const -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
 
     int fd = ::fileno(_pImpl->File);
@@ -454,6 +518,8 @@ auto DiskFile::GetWriteTime() const -> uint64
 
 auto DiskFile::GetSize() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_pImpl);
 
     int fd = ::fileno(_pImpl->File);
@@ -472,6 +538,8 @@ struct DiskFind::Impl
 
 DiskFind::DiskFind(string_view path, string_view ext)
 {
+    STACK_TRACE_ENTRY();
+
     auto query = _str(path).combinePath("*").str();
     if (!ext.empty()) {
         query += "." + string(ext);
@@ -497,6 +565,8 @@ DiskFind::DiskFind(string_view path, string_view ext)
 
 DiskFind::~DiskFind()
 {
+    STACK_TRACE_ENTRY();
+
     if (_pImpl) {
         ::FindClose(_pImpl->FindHandle);
     }
@@ -506,6 +576,8 @@ DiskFind::DiskFind(DiskFind&&) noexcept = default;
 
 auto DiskFind::operator++(int) -> DiskFind&
 {
+    STACK_TRACE_ENTRY();
+
     _findDataValid = false;
 
     if (::FindNextFileW(_pImpl->FindHandle, &_pImpl->FindData) == 0) {
@@ -522,11 +594,15 @@ auto DiskFind::operator++(int) -> DiskFind&
 
 DiskFind::operator bool() const
 {
+    STACK_TRACE_ENTRY();
+
     return _findDataValid;
 }
 
 auto DiskFind::IsDir() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
 
     return (_pImpl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0u;
@@ -534,6 +610,8 @@ auto DiskFind::IsDir() const -> bool
 
 auto DiskFind::GetPath() const -> string
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
 
     return WinWideCharToMultiByte(_pImpl->FindData.cFileName);
@@ -541,6 +619,8 @@ auto DiskFind::GetPath() const -> string
 
 auto DiskFind::GetFileSize() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
     RUNTIME_ASSERT(!(_pImpl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY));
 
@@ -549,6 +629,8 @@ auto DiskFind::GetFileSize() const -> size_t
 
 auto DiskFind::GetWriteTime() const -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
 
     return FileTimeToUInt64(_pImpl->FindData.ftLastWriteTime);
@@ -569,6 +651,8 @@ struct DiskFind::Impl
 
 DiskFind::DiskFind(string_view path, string_view ext)
 {
+    STACK_TRACE_ENTRY();
+
     DIR* d = opendir(string(path).c_str());
     if (!d) {
         return;
@@ -592,6 +676,8 @@ DiskFind::DiskFind(string_view path, string_view ext)
 
 DiskFind::~DiskFind()
 {
+    STACK_TRACE_ENTRY();
+
     if (_pImpl) {
         closedir(_pImpl->Dir);
     }
@@ -601,6 +687,8 @@ DiskFind::DiskFind(DiskFind&&) noexcept = default;
 
 auto DiskFind::operator++(int) -> DiskFind&
 {
+    STACK_TRACE_ENTRY();
+
     _findDataValid = false;
 
     _pImpl->Ent = readdir(_pImpl->Dir);
@@ -651,11 +739,15 @@ auto DiskFind::operator++(int) -> DiskFind&
 
 DiskFind::operator bool() const
 {
+    STACK_TRACE_ENTRY();
+
     return _findDataValid;
 }
 
 auto DiskFind::IsDir() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
 
     return _pImpl->IsDir;
@@ -663,6 +755,8 @@ auto DiskFind::IsDir() const -> bool
 
 auto DiskFind::GetPath() const -> string
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
 
     return _pImpl->Ent->d_name;
@@ -670,6 +764,8 @@ auto DiskFind::GetPath() const -> string
 
 auto DiskFind::GetFileSize() const -> size_t
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
     RUNTIME_ASSERT(!_pImpl->IsDir);
 
@@ -678,6 +774,8 @@ auto DiskFind::GetFileSize() const -> size_t
 
 auto DiskFind::GetWriteTime() const -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(_findDataValid);
 
     return _pImpl->WriteTime;
@@ -686,6 +784,8 @@ auto DiskFind::GetWriteTime() const -> uint64
 
 auto DiskFile::Write(string_view str) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -699,6 +799,8 @@ auto DiskFile::Write(string_view str) -> bool
 
 auto DiskFile::Write(const_span<uchar> data) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
@@ -712,6 +814,8 @@ auto DiskFile::Write(const_span<uchar> data) -> bool
 
 auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto file = OpenFile(path, false)) {
         return file.GetWriteTime();
     }
@@ -721,18 +825,24 @@ auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
 #if !FO_IOS
 auto DiskFileSystem::IsExists(string_view path) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     return !std::filesystem::exists(path, ec) && !ec;
 }
 
 auto DiskFileSystem::IsDir(string_view path) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     return std::filesystem::is_directory(path, ec) && !ec;
 }
 
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     std::filesystem::remove(fname, ec);
     return !std::filesystem::exists(fname, ec) && !ec;
@@ -740,12 +850,16 @@ auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 
 auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     return std::filesystem::copy_file(fname, copy_fname, ec);
 }
 
 auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     std::filesystem::rename(fname, new_fname, ec);
     return !ec;
@@ -753,6 +867,8 @@ auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> boo
 
 void DiskFileSystem::ResolvePath(string& path)
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     const auto resolved = std::filesystem::absolute(path, ec);
     if (!ec) {
@@ -766,12 +882,16 @@ void DiskFileSystem::ResolvePath(string& path)
 
 void DiskFileSystem::MakeDirTree(string_view path)
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     std::filesystem::create_directories(path, ec);
 }
 
 auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     std::error_code ec;
     std::filesystem::remove_all(dir, ec);
     return !std::filesystem::exists(dir, ec) && !ec;
@@ -781,12 +901,16 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 
 auto DiskFileSystem::IsExists(string_view path) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     struct stat st;
     return ::stat(string(path).c_str(), &st) == 0;
 }
 
 auto DiskFileSystem::IsDir(string_view path) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     struct stat st;
     if (::stat(string(path).c_str(), &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -799,11 +923,15 @@ auto DiskFileSystem::IsDir(string_view path) -> bool
 
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return remove(string(fname).c_str()) != 0;
 }
 
 auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     bool ok = false;
     FILE* from = fopen(string(fname).c_str(), "rb");
     if (from) {
@@ -831,11 +959,15 @@ auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
 
 auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
 }
 
 void DiskFileSystem::ResolvePath(string& path)
 {
+    STACK_TRACE_ENTRY();
+
     char* buf = realpath(path.c_str(), nullptr);
     if (buf) {
         path = buf;
@@ -845,6 +977,8 @@ void DiskFileSystem::ResolvePath(string& path)
 
 void DiskFileSystem::MakeDirTree(string_view path)
 {
+    STACK_TRACE_ENTRY();
+
     const string work = _str(path).normalizePathSlashes();
     for (size_t i = 0; i < work.length(); i++) {
         if (work[i] == '/') {
@@ -856,6 +990,8 @@ void DiskFileSystem::MakeDirTree(string_view path)
 
 auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     MakeDirTree(dir);
 
     vector<string> file_paths;
@@ -877,6 +1013,8 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool include_subdirs, string_view ext, DiskFileSystem::FileVisitor& visitor)
 {
+    STACK_TRACE_ENTRY();
+
     for (auto find = DiskFileSystem::FindFiles(_str(base_dir).combinePath(cur_dir), ""); find; find++) {
         auto path = find.GetPath();
         RUNTIME_ASSERT(!path.empty());
@@ -897,11 +1035,15 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool inc
 
 void DiskFileSystem::IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor)
 {
+    STACK_TRACE_ENTRY();
+
     RecursiveDirLook(dir, "", include_subdirs, ext, visitor);
 }
 
 auto DiskFileSystem::GetExePath() -> optional<string>
 {
+    STACK_TRACE_ENTRY();
+
 #if FO_WINDOWS
     vector<wchar_t> path;
     path.resize(FILENAME_MAX);

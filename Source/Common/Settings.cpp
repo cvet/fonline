@@ -43,6 +43,8 @@
 
 static void SetEntry(string& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry.clear();
     }
@@ -54,11 +56,15 @@ static void SetEntry(string& entry, string_view value, bool append)
 }
 static void SetEntry(uchar& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
     entry += static_cast<uchar>(std::get<AnyData::INT_VALUE>(any_value));
 }
 static void SetEntry(short& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry = 0;
     }
@@ -67,6 +73,8 @@ static void SetEntry(short& entry, string_view value, bool append)
 }
 static void SetEntry(int& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry = 0;
     }
@@ -75,6 +83,8 @@ static void SetEntry(int& entry, string_view value, bool append)
 }
 static void SetEntry(uint& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry = 0u;
     }
@@ -83,6 +93,8 @@ static void SetEntry(uint& entry, string_view value, bool append)
 }
 static void SetEntry(bool& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry = false;
     }
@@ -91,6 +103,8 @@ static void SetEntry(bool& entry, string_view value, bool append)
 }
 static void SetEntry(float& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry = 0.0f;
     }
@@ -99,6 +113,8 @@ static void SetEntry(float& entry, string_view value, bool append)
 }
 static void SetEntry(vector<string>& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry.clear();
     }
@@ -110,6 +126,8 @@ static void SetEntry(vector<string>& entry, string_view value, bool append)
 }
 static void SetEntry(vector<int>& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry.clear();
     }
@@ -121,6 +139,8 @@ static void SetEntry(vector<int>& entry, string_view value, bool append)
 }
 static void SetEntry(vector<uint>& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry.clear();
     }
@@ -132,6 +152,8 @@ static void SetEntry(vector<uint>& entry, string_view value, bool append)
 }
 static void SetEntry(vector<float>& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry.clear();
     }
@@ -143,6 +165,8 @@ static void SetEntry(vector<float>& entry, string_view value, bool append)
 }
 static void SetEntry(vector<bool>& entry, string_view value, bool append)
 {
+    STACK_TRACE_ENTRY();
+
     if (!append) {
         entry.clear();
     }
@@ -155,34 +179,50 @@ static void SetEntry(vector<bool>& entry, string_view value, bool append)
 
 static void DrawEntry(string_view name, string_view entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const uchar& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const short& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const int& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const uint& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const bool& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const float& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const vector<string>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     string value;
     for (const auto& e : entry) {
         value += e;
@@ -191,6 +231,8 @@ static void DrawEntry(string_view name, const vector<string>& entry)
 }
 static void DrawEntry(string_view name, const vector<int>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     string value;
     for (const auto& e : entry) {
         value += std::to_string(e);
@@ -199,6 +241,8 @@ static void DrawEntry(string_view name, const vector<int>& entry)
 }
 static void DrawEntry(string_view name, const vector<uint>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     string value;
     for (const auto& e : entry) {
         value += std::to_string(e);
@@ -207,6 +251,8 @@ static void DrawEntry(string_view name, const vector<uint>& entry)
 }
 static void DrawEntry(string_view name, const vector<float>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     string value;
     for (const auto& e : entry) {
         value += std::to_string(e);
@@ -215,6 +261,8 @@ static void DrawEntry(string_view name, const vector<float>& entry)
 }
 static void DrawEntry(string_view name, const vector<bool>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     string value;
     for (const auto& e : entry) {
         value += e ? "True" : "False";
@@ -224,61 +272,87 @@ static void DrawEntry(string_view name, const vector<bool>& entry)
 
 static void DrawEditableEntry(string_view name, string& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, uchar& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, short& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, int& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, uint& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, bool& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, float& entry)
 {
+    STACK_TRACE_ENTRY();
+
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEditableEntry(string_view name, vector<string>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     // Todo: improve editable entry for arrays
     UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<int>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<uint>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<float>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<bool>& entry)
 {
+    STACK_TRACE_ENTRY();
+
     UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 
 GlobalSettings::GlobalSettings(int argc, char** argv)
 {
+    STACK_TRACE_ENTRY();
+
     const auto volatile_char_to_string = [](volatile const char* str, size_t len) -> string {
         string result;
         result.resize(len);
@@ -469,6 +543,8 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value)
 {
+    STACK_TRACE_ENTRY();
+
 #define SET_SETTING(sett) \
     if (!setting_value.empty() && setting_value[0] == '+') { \
         SetEntry(sett, setting_value.substr(1), true); \
@@ -497,6 +573,8 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 
 void GlobalSettings::Draw(bool editable)
 {
+    STACK_TRACE_ENTRY();
+
 #define FIXED_SETTING(type, name, ...) \
     if (editable) { \
         DrawEditableEntry(#name, const_cast<type&>(name)); \

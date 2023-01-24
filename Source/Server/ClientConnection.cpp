@@ -39,52 +39,72 @@
 
 ClientConnection::ClientConnection(NetConnection* net_connection) : Bin {net_connection->Bin}, BinLocker {net_connection->BinLocker}, Bout {net_connection->Bout}, BoutLocker {net_connection->BoutLocker}, _netConnection {net_connection}
 {
+    STACK_TRACE_ENTRY();
+
     _netConnection->AddRef();
 }
 
 ClientConnection::~ClientConnection()
 {
+    STACK_TRACE_ENTRY();
+
     _netConnection->Disconnect();
     _netConnection->Release();
 }
 
 auto ClientConnection::GetIp() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return _netConnection->GetIp();
 }
 
 auto ClientConnection::GetHost() const -> string_view
 {
+    STACK_TRACE_ENTRY();
+
     return _netConnection->GetHost();
 }
 
 auto ClientConnection::GetPort() const -> ushort
 {
+    STACK_TRACE_ENTRY();
+
     return _netConnection->GetPort();
 }
 
 auto ClientConnection::IsHardDisconnected() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _netConnection->IsDisconnected();
 }
 
 auto ClientConnection::IsGracefulDisconnected() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _gracefulDisconnected;
 }
 
 auto ClientConnection::IsWebConnection() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _netConnection->IsWebConnection();
 }
 
 auto ClientConnection::IsInterthreadConnection() const -> bool
 {
+    STACK_TRACE_ENTRY();
+
     return _netConnection->IsInterthreadConnection();
 }
 
 void ClientConnection::DisableCompression()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _netConnection->Dispatch();
@@ -92,6 +112,8 @@ void ClientConnection::DisableCompression()
 
 void ClientConnection::Dispatch()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _netConnection->Dispatch();
@@ -99,6 +121,8 @@ void ClientConnection::Dispatch()
 
 void ClientConnection::HardDisconnect()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _netConnection->Disconnect();
@@ -106,6 +130,8 @@ void ClientConnection::HardDisconnect()
 
 void ClientConnection::GracefulDisconnect()
 {
+    STACK_TRACE_ENTRY();
+
     _gracefulDisconnected = true;
 
     CONNECTION_OUTPUT_BEGIN(this);

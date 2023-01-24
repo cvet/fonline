@@ -36,6 +36,8 @@
 
 void Sprite::Unvalidate()
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -107,6 +109,8 @@ void Sprite::Unvalidate()
 
 auto Sprite::GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*
 {
+    STACK_TRACE_ENTRY();
+
     if (ox < 0 || oy < 0) {
         return nullptr;
     }
@@ -116,6 +120,8 @@ auto Sprite::GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*
 
 void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -133,6 +139,8 @@ void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
 
 void Sprite::SetContour(ContourType contour)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -150,6 +158,8 @@ void Sprite::SetContour(ContourType contour)
 
 void Sprite::SetContour(ContourType contour, uint color)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -168,6 +178,8 @@ void Sprite::SetContour(ContourType contour, uint color)
 
 void Sprite::SetColor(uint color)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -185,6 +197,8 @@ void Sprite::SetColor(uint color)
 
 void Sprite::SetAlpha(uchar* alpha)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -202,6 +216,8 @@ void Sprite::SetAlpha(uchar* alpha)
 
 void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -251,6 +267,8 @@ void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxh
 
 void Sprite::SetFixedAlpha(uchar alpha)
 {
+    STACK_TRACE_ENTRY();
+
     if (!Valid) {
         return;
     }
@@ -272,6 +290,8 @@ void Sprite::SetFixedAlpha(uchar alpha)
 
 void Sprites::GrowPool()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
@@ -283,6 +303,8 @@ void Sprites::GrowPool()
 
 auto Sprites::RootSprite() -> Sprite*
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     return _rootSprite;
@@ -290,6 +312,8 @@ auto Sprites::RootSprite() -> Sprite*
 
 auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
+    STACK_TRACE_ENTRY();
+
     _spriteCount++;
 
     Sprite* spr;
@@ -395,11 +419,15 @@ auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, usho
 
 auto Sprites::AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
+    STACK_TRACE_ENTRY();
+
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
 auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
+    STACK_TRACE_ENTRY();
+
     // Find place
     uint pos;
     if (draw_order < DrawOrderType::Normal) {
@@ -425,6 +453,8 @@ auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x
 
 void Sprites::Unvalidate()
 {
+    STACK_TRACE_ENTRY();
+
     while (_rootSprite != nullptr) {
         _rootSprite->Unvalidate();
     }
@@ -433,6 +463,8 @@ void Sprites::Unvalidate()
 
 void Sprites::SortByMapPos()
 {
+    STACK_TRACE_ENTRY();
+
     if (_rootSprite == nullptr) {
         return;
     }
@@ -479,11 +511,15 @@ void Sprites::SortByMapPos()
 
 auto Sprites::Size() const -> uint
 {
+    STACK_TRACE_ENTRY();
+
     return _spriteCount;
 }
 
 void Sprites::Clear()
 {
+    STACK_TRACE_ENTRY();
+
     Unvalidate();
 
     for (auto* spr : _unvalidatedSprites) {

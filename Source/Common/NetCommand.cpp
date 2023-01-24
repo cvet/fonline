@@ -66,6 +66,8 @@ static const CmdDef CMD_LIST[] = {
 
 auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, NameResolver& name_resolver) -> bool
 {
+    STACK_TRACE_ENTRY();
+
     string args = _str(str).trim();
     auto cmd_str = args;
     auto space = cmd_str.find(' ');

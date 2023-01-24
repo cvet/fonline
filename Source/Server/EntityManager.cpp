@@ -40,10 +40,13 @@
 
 EntityManager::EntityManager(FOServer* engine) : _engine {engine}
 {
+    STACK_TRACE_ENTRY();
 }
 
 void EntityManager::RegisterEntity(Player* entity, uint id)
 {
+    STACK_TRACE_ENTRY();
+
     RUNTIME_ASSERT(id != 0u);
     entity->SetId(id);
     RegisterEntityEx(entity);
@@ -53,6 +56,8 @@ void EntityManager::RegisterEntity(Player* entity, uint id)
 
 void EntityManager::UnregisterEntity(Player* entity)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _allPlayers.find(entity->GetId());
     RUNTIME_ASSERT(it != _allPlayers.end());
     _allPlayers.erase(it);
@@ -61,6 +66,8 @@ void EntityManager::UnregisterEntity(Player* entity)
 
 void EntityManager::RegisterEntity(Location* entity)
 {
+    STACK_TRACE_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allLocations.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -68,6 +75,8 @@ void EntityManager::RegisterEntity(Location* entity)
 
 void EntityManager::UnregisterEntity(Location* entity)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _allLocations.find(entity->GetId());
     RUNTIME_ASSERT(it != _allLocations.end());
     _allLocations.erase(it);
@@ -76,6 +85,8 @@ void EntityManager::UnregisterEntity(Location* entity)
 
 void EntityManager::RegisterEntity(Map* entity)
 {
+    STACK_TRACE_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allMaps.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -83,6 +94,8 @@ void EntityManager::RegisterEntity(Map* entity)
 
 void EntityManager::UnregisterEntity(Map* entity)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _allMaps.find(entity->GetId());
     RUNTIME_ASSERT(it != _allMaps.end());
     _allMaps.erase(it);
@@ -91,6 +104,8 @@ void EntityManager::UnregisterEntity(Map* entity)
 
 void EntityManager::RegisterEntity(Critter* entity)
 {
+    STACK_TRACE_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allCritters.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -98,6 +113,8 @@ void EntityManager::RegisterEntity(Critter* entity)
 
 void EntityManager::UnregisterEntity(Critter* entity)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _allCritters.find(entity->GetId());
     RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
@@ -106,6 +123,8 @@ void EntityManager::UnregisterEntity(Critter* entity)
 
 void EntityManager::RegisterEntity(Item* entity)
 {
+    STACK_TRACE_ENTRY();
+
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allItems.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -113,6 +132,8 @@ void EntityManager::RegisterEntity(Item* entity)
 
 void EntityManager::UnregisterEntity(Item* entity)
 {
+    STACK_TRACE_ENTRY();
+
     const auto it = _allItems.find(entity->GetId());
     RUNTIME_ASSERT(it != _allItems.end());
     _allItems.erase(it);
@@ -121,6 +142,8 @@ void EntityManager::UnregisterEntity(Item* entity)
 
 void EntityManager::RegisterEntityEx(ServerEntity* entity)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     if (entity->GetId() == 0u) {
@@ -145,6 +168,8 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
 void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db)
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity->GetId() != 0u);
@@ -158,6 +183,8 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
 
 auto EntityManager::GetPlayer(uint id) -> Player*
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second;
     }
@@ -167,11 +194,15 @@ auto EntityManager::GetPlayer(uint id) -> Player*
 
 auto EntityManager::GetPlayers() -> const unordered_map<uint, Player*>&
 {
+    STACK_TRACE_ENTRY();
+
     return _allPlayers;
 }
 
 auto EntityManager::GetLocation(uint id) -> Location*
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
         return it->second;
     }
@@ -181,6 +212,8 @@ auto EntityManager::GetLocation(uint id) -> Location*
 
 auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 {
+    STACK_TRACE_ENTRY();
+
     for (auto&& [id, loc] : _allLocations) {
         if (loc->GetProtoId() == pid) {
             if (skip_count == 0u) {
@@ -195,11 +228,15 @@ auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 
 auto EntityManager::GetLocations() -> const unordered_map<uint, Location*>&
 {
+    STACK_TRACE_ENTRY();
+
     return _allLocations;
 }
 
 auto EntityManager::GetMap(uint id) -> Map*
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
         return it->second;
     }
@@ -209,6 +246,8 @@ auto EntityManager::GetMap(uint id) -> Map*
 
 auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 {
+    STACK_TRACE_ENTRY();
+
     for (auto&& [id, map] : _allMaps) {
         if (map->GetProtoId() == pid) {
             if (skip_count == 0u) {
@@ -223,11 +262,15 @@ auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 
 auto EntityManager::GetMaps() -> const unordered_map<uint, Map*>&
 {
+    STACK_TRACE_ENTRY();
+
     return _allMaps;
 }
 
 auto EntityManager::GetCritter(uint id) -> Critter*
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
         return it->second;
     }
@@ -237,11 +280,15 @@ auto EntityManager::GetCritter(uint id) -> Critter*
 
 auto EntityManager::GetCritters() -> const unordered_map<uint, Critter*>&
 {
+    STACK_TRACE_ENTRY();
+
     return _allCritters;
 }
 
 auto EntityManager::GetItem(uint id) -> Item*
 {
+    STACK_TRACE_ENTRY();
+
     if (const auto it = _allItems.find(id); it != _allItems.end()) {
         return it->second;
     }
@@ -251,11 +298,15 @@ auto EntityManager::GetItem(uint id) -> Item*
 
 auto EntityManager::GetItems() -> const unordered_map<uint, Item*>&
 {
+    STACK_TRACE_ENTRY();
+
     return _allItems;
 }
 
 auto EntityManager::GetCritterItems(uint cr_id) -> vector<Item*>
 {
+    STACK_TRACE_ENTRY();
+
     vector<Item*> items;
 
     for (auto&& [id, item] : _allItems) {
@@ -269,6 +320,8 @@ auto EntityManager::GetCritterItems(uint cr_id) -> vector<Item*>
 
 void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
 {
+    STACK_TRACE_ENTRY();
+
     WriteLog("Load entities");
 
     int errors = 0;
@@ -446,6 +499,8 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
 void EntityManager::InitAfterLoad()
 {
+    STACK_TRACE_ENTRY();
+
     NON_CONST_METHOD_HINT();
 
     WriteLog("Init entities after link");
@@ -520,6 +575,8 @@ void EntityManager::InitAfterLoad()
 
 void EntityManager::FinalizeEntities()
 {
+    STACK_TRACE_ENTRY();
+
     const auto destroy_entities = [](auto& entities) {
         auto recursion_fuse = 0;
 
@@ -549,6 +606,8 @@ void EntityManager::FinalizeEntities()
 
 auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*
 {
+    STACK_TRACE_ENTRY();
+
     auto& all_entities = _allCustomEntities[string(entity_class_name)];
     const auto it = all_entities.find(id);
 
@@ -578,6 +637,8 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> S
 
 auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerEntity*
 {
+    STACK_TRACE_ENTRY();
+
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
     auto* entity = new ServerEntity(_engine, 0u, registrator);
 
@@ -591,6 +652,8 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
 
 void EntityManager::DeleteCustomEntity(string_view entity_class_name, uint id)
 {
+    STACK_TRACE_ENTRY();
+
     auto* entity = GetCustomEntity(entity_class_name, id);
     if (entity != nullptr) {
         auto& all_entities = _allCustomEntities[string(entity_class_name)];

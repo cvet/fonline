@@ -49,6 +49,8 @@
 
 extern "C" int main(int argc, char** argv)
 {
+    STACK_TRACE_FIRST_ENTRY();
+
     InitApp(argc, argv, "Testing");
     GenericUtils::SetRandomSeed(42);
     return Catch::Session().run(argc, argv);

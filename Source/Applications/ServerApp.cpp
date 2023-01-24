@@ -45,24 +45,12 @@
 #include "SDL_main.h"
 #endif
 
-enum class ServerStateType
-{
-    Stopped,
-    PreWarmRequest,
-    PreWarmed,
-    StartRequest,
-    Started,
-    StopRequest,
-};
-
 struct ServerAppData
 {
     FOServer* Server {};
-    std::thread ServerThread {};
-    std::atomic<ServerStateType> ServerState {};
     vector<FOClient*> Clients {};
-    std::atomic<size_t> ThreadTasks {};
     bool HideControls {};
+    size_t ServerStartCycles {100};
 };
 GLOBAL_DATA(ServerAppData, Data);
 
@@ -72,6 +60,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif
 {
+    STACK_TRACE_FIRST_ENTRY();
+
     try {
         InitApp(argc, argv, "Server");
 
@@ -82,75 +72,40 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
         });
 
-        // Async server start/stop
         const auto start_server = [] {
-            RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
-            Data->ServerState = ServerStateType::PreWarmRequest;
-            Data->ThreadTasks.fetch_add(1);
-            std::thread([] {
-                try {
-                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::PreWarmRequest);
-                    Data->Server = new FOServer(App->Settings);
-                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::PreWarmRequest);
-                    Data->ServerState = ServerStateType::PreWarmed;
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                    Data->Server = nullptr;
-                    Data->ServerState = ServerStateType::Stopped;
-                }
-                Data->ThreadTasks.fetch_sub(1);
-            }).detach();
-        };
-
-        const auto start_server_step2 = [] {
-            RUNTIME_ASSERT(Data->ServerState == ServerStateType::PreWarmed);
-            Data->ServerState = ServerStateType::StartRequest;
-            Data->ThreadTasks.fetch_add(1);
-            std::thread([] {
-                try {
-                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
-                    Data->Server->Start();
-                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
-                    Data->ServerState = ServerStateType::Started;
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                    Data->Server = nullptr;
-                    Data->ServerState = ServerStateType::Stopped;
-                }
-                Data->ThreadTasks.fetch_sub(1);
-            }).detach();
+            try {
+                Data->Server = new FOServer(App->Settings);
+                Data->Server->Start();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                Data->Server = nullptr;
+            }
         };
 
         const auto stop_server = [] {
-            RUNTIME_ASSERT(Data->ServerState == ServerStateType::Started);
-            Data->ServerState = ServerStateType::StopRequest;
-            Data->ThreadTasks.fetch_add(1);
-            std::thread([] {
-                try {
-                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
-                    Data->Server->Shutdown();
-                    Data->Server->Release();
-                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-                Data->Server = nullptr;
-                Data->ServerState = ServerStateType::Stopped;
-                Data->ThreadTasks.fetch_sub(1);
-            }).detach();
+            try {
+                Data->Server->Shutdown();
+                Data->Server->Release();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            Data->Server = nullptr;
         };
 
-        // Autostart
         if (!App->Settings.NoStart) {
-            start_server();
+            WriteLog("Auto start server");
         }
 
         // Gui loop
         while (true) {
             App->BeginFrame();
+
+            // Autostart
+            if (!App->Settings.NoStart && Data->ServerStartCycles > 0 && --Data->ServerStartCycles == 0) {
+                start_server();
+            }
 
             if (Data->HideControls) {
                 if (ImGui::Begin("Restore controls", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
@@ -174,30 +129,11 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         ImGui::PopStyleColor();
                     };
 
-                    const auto some_task_running = Data->ThreadTasks > 0;
-                    if (some_task_running) {
-                        ImGui::BeginDisabled();
+                    if (ImGui::Button("Start server", control_btn_size)) {
+                        start_server();
                     }
-
-                    if (Data->ServerState == ServerStateType::Stopped) {
-                        if (ImGui::Button("Start server", control_btn_size)) {
-                            start_server();
-                        }
-                    }
-                    else if (Data->ServerState == ServerStateType::PreWarmRequest || Data->ServerState == ServerStateType::PreWarmed || Data->ServerState == ServerStateType::StartRequest) {
-                        imgui_progress_btn("Starting server...");
-
-                        if (Data->ServerState == ServerStateType::PreWarmed) {
-                            start_server_step2();
-                        }
-                    }
-                    else if (Data->ServerState == ServerStateType::Started) {
-                        if (ImGui::Button("Stop server", control_btn_size)) {
-                            stop_server();
-                        }
-                    }
-                    else if (Data->ServerState == ServerStateType::StopRequest) {
-                        imgui_progress_btn("Stopping server...");
+                    if (ImGui::Button("Stop server", control_btn_size)) {
+                        stop_server();
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
@@ -237,16 +173,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     else {
                         imgui_progress_btn("Quitting...");
                     }
-
-                    if (some_task_running) {
-                        ImGui::EndDisabled();
-                    }
                 }
                 ImGui::End();
             }
 
             // Main loop
-            if (Data->ServerState == ServerStateType::Started) {
+            if (Data->Server != nullptr) {
                 try {
                     Data->Server->MainLoop();
                 }
@@ -311,15 +243,11 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 }
                 Data->Clients.clear();
 
-                if (Data->ServerState == ServerStateType::Started) {
+                if (Data->Server != nullptr) {
                     stop_server();
                 }
-                else if (Data->ServerState == ServerStateType::Stopped || Data->ServerState == ServerStateType::PreWarmRequest || Data->ServerState == ServerStateType::PreWarmed) {
-                    if (Data->ServerState == ServerStateType::PreWarmRequest || Data->ServerState == ServerStateType::PreWarmed) {
-                        WriteLog("Abort server before start");
-                    }
-                    break;
-                }
+
+                break;
             }
         }
 

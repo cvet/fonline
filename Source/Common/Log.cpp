@@ -73,6 +73,8 @@ static void FlushLogAtExit()
 
 void LogWithoutTimestamp()
 {
+    STACK_TRACE_ENTRY();
+
     std::lock_guard locker(Data->LogLocker);
 
     Data->LogDisableTimestamp = true;
@@ -80,6 +82,8 @@ void LogWithoutTimestamp()
 
 void LogToFile(string_view fname)
 {
+    STACK_TRACE_ENTRY();
+
     std::lock_guard locker(Data->LogLocker);
 
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
@@ -87,6 +91,8 @@ void LogToFile(string_view fname)
 
 void SetLogCallback(string_view key, LogFunc callback)
 {
+    STACK_TRACE_ENTRY();
+
     std::lock_guard locker(Data->LogLocker);
 
     if (!key.empty()) {
@@ -105,6 +111,8 @@ void SetLogCallback(string_view key, LogFunc callback)
 
 void WriteLogMessage(LogType type, string_view message)
 {
+    STACK_TRACE_ENTRY();
+
     // Avoid recursive calls
     if (Data->LogFunctionsInProcess) {
         return;
@@ -143,6 +151,10 @@ void WriteLogMessage(LogType type, string_view message)
 
 #if FO_ANDROID
     __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
+#endif
+
+#ifdef TRACY_ENABLE
+    TracyMessage(result.c_str(), result.length());
 #endif
 
     // Todo: colorize log texts

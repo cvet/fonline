@@ -44,6 +44,8 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ServerDaemonApp(int argc, char** argv) -> int
 #endif
 {
+    STACK_TRACE_ENTRY();
+
     try {
         GenericUtils::ForkProcess();
 
