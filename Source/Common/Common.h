@@ -278,29 +278,13 @@ using tracy::SourceLocationData;
 
 #define STACK_TRACE_FIRST_ENTRY() \
     SetMainThread(); \
-    SetStackTraceLevel(0); \
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     ZoneScoped; \
     auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
-#define STACK_TRACE_ENTRY_BEGIN(function, file, line) PushStackTrace(SourceLocationData {nullptr, function, file, (uint32_t)line}, true)
-#define STACK_TRACE_ENTRY_END() PopStackTrace()
-/*#define STACK_TRACE_ENTRY_BEGIN(name) \
-    [n = name]() -> void* { \
-        TracyCZone(ctx, true); \
-        TracyCZoneName(ctx, n, std::strlen(n)); \
-        return ctx.active ? reinterpret_cast<void*>(static_cast<size_t>(ctx.id)) : nullptr; \
-    }()
-#define STACK_TRACE_ENTRY_END(ptr) \
-    [p = ptr]() { \
-        TracyCZoneCtx ctx; \
-        ctx.id = static_cast<uint32_t>(reinterpret_cast<size_t>(p)); \
-        ctx.active = !!ctx.id; \
-        TracyCZoneEnd(ctx); \
-    }()*/
 
 #else
-struct SourceLocationData
+struct SourceLocationData // Same as tracy::SourceLocationData
 {
     const char* name;
     const char* function;
@@ -310,21 +294,17 @@ struct SourceLocationData
 
 #define STACK_TRACE_FIRST_ENTRY() \
     SetMainThread(); \
-    SetStackTraceLevel(0); \
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
     auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
-#define STACK_TRACE_ENTRY_BEGIN(function, file, line) PushStackTrace(SourceLocationData {nullptr, function, file, (uint32_t)line}, true)
-#define STACK_TRACE_ENTRY_END() PopStackTrace()
 #endif
 
 extern void SetMainThread() noexcept;
 extern auto IsMainThread() noexcept -> bool;
+extern void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept;
 extern void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept;
 extern void PopStackTrace() noexcept;
-extern auto GetStackTraceLevel() noexcept -> size_t;
-extern void SetStackTraceLevel(size_t level) noexcept;
 extern auto GetStackTrace() -> string;
 
 struct StackTraceScopeEntry

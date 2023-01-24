@@ -283,6 +283,9 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         string Info {};
         asIScriptContext* Parent {};
         uint SuspendEndTick {};
+#ifdef TRACY_ENABLE
+        vector<TracyCZoneCtx> TracyExecutionCalls {};
+#endif
     };
 
     struct EnumInfo
@@ -378,19 +381,28 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         int exec_result = 0;
 
         {
-            const auto orig_stack_trace_level = GetStackTraceLevel();
             ctx_data->ExecutionActive = true;
             ctx_data->ExecutionCalls = 0;
+#ifdef TRACY_ENABLE
+            ctx_data->TracyExecutionCalls.clear();
+#endif
 
             auto after_execution = ScopeCallback([&]() noexcept {
-                SetStackTraceLevel(orig_stack_trace_level);
                 ctx_data->ExecutionActive = false;
-                ctx_data->ExecutionCalls = 0;
+                while (ctx_data->ExecutionCalls > 0) {
+                    ctx_data->ExecutionCalls--;
+                    PopStackTrace();
+                }
             });
 
             exec_result = ctx->Execute();
 
-            RUNTIME_ASSERT(orig_stack_trace_level <= GetStackTraceLevel());
+#ifdef TRACY_ENABLE
+            while (!ctx_data->TracyExecutionCalls.empty()) {
+                TracyCZoneEnd(ctx_data->TracyExecutionCalls.back());
+                ctx_data->TracyExecutionCalls.pop_back();
+            }
+#endif
         }
 
         if (exec_result == asEXECUTION_SUSPENDED) {
@@ -483,9 +495,17 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func)
     const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
     const auto orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt);
 
-    STACK_TRACE_ENTRY_BEGIN(func->GetDeclaration(true), orig_file.c_str(), orig_line);
+    const auto* func_decl = func->GetDeclaration(true);
+
+    PushStackTrace(func_decl, orig_file.c_str(), orig_line, true);
 
     ctx_data->ExecutionCalls++;
+
+#ifdef TRACY_ENABLE
+    const auto tracy_srcloc = ___tracy_alloc_srcloc(orig_line, orig_file.c_str(), orig_file.length(), func_decl, std::strlen(func_decl));
+    const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+    ctx_data->TracyExecutionCalls.emplace_back(tracy_ctx);
+#endif
 }
 
 static void AngelScriptEndCall(asIScriptContext* ctx, asIScriptFunction* func)
@@ -496,9 +516,14 @@ static void AngelScriptEndCall(asIScriptContext* ctx, asIScriptFunction* func)
     }
 
     if (ctx_data->ExecutionCalls > 0) {
-        STACK_TRACE_ENTRY_END();
+        PopStackTrace();
 
         ctx_data->ExecutionCalls--;
+
+#ifdef TRACY_ENABLE
+        ___tracy_emit_zone_end(ctx_data->TracyExecutionCalls.back());
+        ctx_data->TracyExecutionCalls.pop_back();
+#endif
     }
 }
 
@@ -512,9 +537,11 @@ static void AngelScriptException(asIScriptContext* ctx, void* param)
     const auto& ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
     const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
 
+    const auto* func_decl = ex_func->GetDeclaration(true);
+
     {
-        STACK_TRACE_ENTRY_BEGIN(ex_func->GetDeclaration(true), ex_orig_file.c_str(), ex_orig_line);
-        auto stack_trace_entry_end = ScopeCallback([]() noexcept { STACK_TRACE_ENTRY_END(); });
+        PushStackTrace(func_decl, ex_orig_file.c_str(), ex_orig_line, true);
+        auto stack_trace_entry_end = ScopeCallback([]() noexcept { PopStackTrace(); });
 
         // Write to ExceptionStackTrace
         *static_cast<string*>(param) = GetStackTrace();

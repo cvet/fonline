@@ -71,7 +71,7 @@ GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
 static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
-static constexpr size_t STACK_TRACE_BUF_SIZE = 256;
+static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
 
 struct StackTraceData
 {
@@ -187,6 +187,11 @@ void ShowExceptionMessageBox(bool enabled)
     ExceptionMessageBox = enabled;
 }
 
+void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept
+{
+    PushStackTrace(SourceLocationData {nullptr, func, file, static_cast<uint32_t>(line)}, make_copy);
+}
+
 void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
 {
     if (!IsMainThread()) {
@@ -240,24 +245,6 @@ void PopStackTrace() noexcept
     if (StackTrace.CallsCount > 0) {
         StackTrace.CallsCount--;
     }
-}
-
-extern auto GetStackTraceLevel() noexcept -> size_t
-{
-    if (!IsMainThread()) {
-        return 0;
-    }
-
-    return StackTrace.CallsCount;
-}
-
-extern void SetStackTraceLevel(size_t level) noexcept
-{
-    if (!IsMainThread()) {
-        return;
-    }
-
-    StackTrace.CallsCount = level;
 }
 
 auto GetStackTrace() -> string
