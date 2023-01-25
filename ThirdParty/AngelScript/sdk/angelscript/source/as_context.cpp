@@ -1547,6 +1547,8 @@ int asCContext::GetLineNumber(asUINT stackLevel, int *column, const char **secti
 		func = m_currentFunction;
 		if( func->scriptData == 0 ) return 0;
 		bytePos = m_regs.programPointer;
+
+		bytePos -= 1; // (FOnline Patch)
 	}
 	else
 	{
