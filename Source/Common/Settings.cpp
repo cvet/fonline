@@ -33,6 +33,7 @@
 
 #include "Settings.h"
 #include "AnyData.h"
+#include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "Log.h"
@@ -459,6 +460,18 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         apply_external_config(ExternalConfig);
     }
 
+    // Local config
+    {
+        auto cache = CacheStorage(_str(ResourcesDir).combinePath("Cache.fobin"));
+
+        if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
+            const auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
+            for (auto&& [key, value] : config.GetSection("")) {
+                SetValue(key, value);
+            }
+        }
+    }
+
     // Command line config
     for (auto i = 0; i < argc; i++) {
         // Skip path
@@ -491,7 +504,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         }
     }
 
-    // Constants settings
+    // Auto settings
 #if FO_WEB
     const_cast<bool&>(WebBuild) = true;
 #else

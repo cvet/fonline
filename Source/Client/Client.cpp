@@ -260,6 +260,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
+    _eventUnsubscriber += window->OnWindowSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
+
     ScreenFadeOut();
 
     // Auto login
@@ -3814,8 +3816,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto diff_w = w - Settings.ScreenWidth;
         auto diff_h = h - Settings.ScreenHeight;
 
-        Settings.ScreenWidth = w;
-        Settings.ScreenHeight = h;
         SprMngr.SetWindowSize(w, h);
 
         if (!Settings.Fullscreen) {

@@ -131,6 +131,8 @@ SETTING_GROUP_END();
 SETTING_GROUP(ViewSettings, virtual DummySettings);
 VARIABLE_SETTING(int, ScreenWidth, 1024);
 VARIABLE_SETTING(int, ScreenHeight, 768);
+FIXED_SETTING(int, MonitorWidth, 0); // Auto
+FIXED_SETTING(int, MonitorHeight, 0); // Auto
 VARIABLE_SETTING(int, ScreenHudHeight, 0);
 VARIABLE_SETTING(float, SpritesZoom, 1.0f);
 VARIABLE_SETTING(int, ScrOx, 0);
@@ -169,6 +171,7 @@ FIXED_SETTING(uint, Animation3dFPS, 30);
 FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
 FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
+VARIABLE_SETTING(bool, WindowResizable, false);
 VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, true);
 VARIABLE_SETTING(bool, ForceDirect3D, false);

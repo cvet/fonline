@@ -278,11 +278,12 @@ constexpr bool is_script_enum_v = std::is_same_v<T, ScriptEnum_uint8> || std::is
 
 struct StackTraceEntryStorage
 {
-    static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
+    static constexpr size_t STACK_TRACE_FUNC_BUF_SIZE = 64;
+    static constexpr size_t STACK_TRACE_FILE_BUF_SIZE = 128;
 
-    std::array<char, STACK_TRACE_BUF_SIZE> FuncBuf {};
+    std::array<char, STACK_TRACE_FUNC_BUF_SIZE> FuncBuf {};
     size_t FuncBufLen {};
-    std::array<char, STACK_TRACE_BUF_SIZE> FileBuf {};
+    std::array<char, STACK_TRACE_FILE_BUF_SIZE> FileBuf {};
     size_t FileBufLen {};
 
     SourceLocationData SrcLoc {};

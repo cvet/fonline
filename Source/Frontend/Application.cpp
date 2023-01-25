@@ -447,16 +447,19 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
+        SDL_DisplayMode display_mode;
+        if (const auto r = SDL_GetCurrentDisplayMode(0, &display_mode); r != 0) {
+            throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
+        }
+
+        const_cast<int&>(Settings.MonitorWidth) = display_mode.w;
+        const_cast<int&>(Settings.MonitorHeight) = display_mode.h;
+
         SDL_DisableScreenSaver();
 
         if (_isTablet) {
-            SDL_DisplayMode mode;
-            if (const auto r = SDL_GetCurrentDisplayMode(0, &mode); r != 0) {
-                throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
-            }
-
-            Settings.ScreenWidth = std::max(mode.w, mode.h);
-            Settings.ScreenHeight = std::min(mode.w, mode.h);
+            Settings.ScreenWidth = std::max(display_mode.w, display_mode.h);
+            Settings.ScreenHeight = std::min(display_mode.w, display_mode.h);
 
             const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
@@ -628,7 +631,11 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
     }
 
     // Initialize window
-    Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+    Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+
+    if (Settings.WindowResizable) {
+        window_create_flags |= SDL_WINDOW_RESIZABLE;
+    }
 
 #if FO_HAVE_OPENGL
     if (ActiveRendererType == RenderType::OpenGL) {
@@ -903,6 +910,8 @@ void Application::BeginFrame()
     }
 
     // Setup display size
+    bool call_window_size_changed = false;
+
     if (ActiveRendererType != RenderType::Null) {
         int w;
         int h;
@@ -912,22 +921,23 @@ void Application::BeginFrame()
             w = h = 0;
         }
 
-        int display_w;
-        int display_h;
-        SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &display_w, &display_h);
+        int screen_w;
+        int screen_h;
+        SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &screen_w, &screen_h);
 
         io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
         if (w > 0 && h > 0) {
-            io.DisplayFramebufferScale = ImVec2(static_cast<float>(display_w) / static_cast<float>(w), static_cast<float>(display_h) / static_cast<float>(h));
+            io.DisplayFramebufferScale = ImVec2(static_cast<float>(screen_w) / static_cast<float>(w), static_cast<float>(screen_h) / static_cast<float>(h));
         }
 
-        if (display_w != Settings.ScreenWidth || display_h != Settings.ScreenHeight) {
-            Settings.ScreenWidth = display_w;
-            Settings.ScreenHeight = display_h;
-            MainWindow._onWindowSizeChangedDispatcher();
+        if (screen_w != Settings.ScreenWidth || screen_h != Settings.ScreenHeight) {
+            Settings.ScreenWidth = screen_w;
+            Settings.ScreenHeight = screen_h;
 
             // Refresh viewport
             Render.SetRenderTarget(nullptr);
+
+            call_window_size_changed = true;
         }
     }
 
@@ -970,6 +980,10 @@ void Application::BeginFrame()
     ImGui::NewFrame();
 
     _onFrameBeginDispatcher();
+
+    if (call_window_size_changed) {
+        MainWindow._onWindowSizeChangedDispatcher();
+    }
 }
 
 void Application::EndFrame()

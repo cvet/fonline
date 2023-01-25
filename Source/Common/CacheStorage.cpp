@@ -182,15 +182,6 @@ FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real
 
     DiskFileSystem::ResolvePath(_workPath);
     DiskFileSystem::MakeDirTree(_workPath);
-
-    auto file = DiskFileSystem::OpenFile(_workPath + "/Ping.txt", true);
-    if (!file) {
-        throw CacheStorageException("Can't init ping file", _workPath);
-    }
-
-    if (!file.Write("Ping")) {
-        throw CacheStorageException("Can't write ping file", _workPath);
-    }
 }
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
@@ -296,15 +287,6 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
     }
 
     _db = {db, [](unqlite* del_db) { unqlite_close(del_db); }};
-
-    constexpr uint ping = 42;
-    if (unqlite_kv_store(_db.get(), &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
-        throw CacheStorageException("Can't store ping unqlite db", _workPath);
-    }
-
-    if (unqlite_commit(_db.get()) != UNQLITE_OK) {
-        throw CacheStorageException("Can't commit ping unqlite db", _workPath);
-    }
 }
 
 auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool

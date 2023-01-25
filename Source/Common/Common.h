@@ -1090,7 +1090,7 @@ struct fmt::formatter<hstring>
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
 // ReSharper disable CppInconsistentNaming
-static constexpr auto CONFIG_NAME = "FOnline.cfg";
+static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
