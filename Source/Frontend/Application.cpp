@@ -87,7 +87,7 @@ const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
-void InitApp(int argc, char** argv, string_view name_appendix)
+void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -134,7 +134,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
     WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv);
+    App = new Application(argc, argv, client_mode);
 }
 
 void ExitApp(bool success)
@@ -179,7 +179,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv) : Settings(argc, argv)
+Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -455,7 +455,13 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
         const_cast<int&>(Settings.MonitorWidth) = display_mode.w;
         const_cast<int&>(Settings.MonitorHeight) = display_mode.h;
 
-        SDL_DisableScreenSaver();
+        if (Settings.ClientMode) {
+            SDL_DisableScreenSaver();
+        }
+
+        if (Settings.ClientMode && Settings.HideNativeCursor) {
+            SDL_ShowCursor(SDL_DISABLE);
+        }
 
         if (_isTablet) {
             Settings.ScreenWidth = std::max(display_mode.w, display_mode.h);
@@ -491,7 +497,7 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
 
         ActiveRenderer->Init(Settings, MainWindow._windowHandle);
 
-        if (Settings.AlwaysOnTop) {
+        if (Settings.ClientMode && Settings.AlwaysOnTop) {
             MainWindow.AlwaysOnTop(true);
         }
 
@@ -581,15 +587,6 @@ void Application::OpenLink(string_view link)
     SDL_OpenURL(string(link).c_str());
 }
 
-void Application::HideCursor()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    SDL_ShowCursor(SDL_DISABLE);
-}
-
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
     STACK_TRACE_ENTRY();
@@ -633,7 +630,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
     // Initialize window
     Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
 
-    if (Settings.WindowResizable) {
+    if (!Settings.ClientMode || Settings.WindowResizable) {
         window_create_flags |= SDL_WINDOW_RESIZABLE;
     }
 

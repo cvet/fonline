@@ -81,7 +81,7 @@ static void SignalHandler(int sig)
 }
 #endif
 
-void InitApp(int argc, char** argv, string_view name_appendix)
+void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -128,7 +128,7 @@ void InitApp(int argc, char** argv, string_view name_appendix)
     WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv);
+    App = new Application(argc, argv, client_mode);
 
 #if FO_LINUX || FO_MAC
     const auto set_signal = [](int sig) {
@@ -163,7 +163,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv) : Settings(argc, argv)
+Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -189,11 +189,6 @@ void Application::OpenLink(string_view link)
     STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(link);
-}
-
-void Application::HideCursor()
-{
-    STACK_TRACE_ENTRY();
 }
 
 void Application::SetImGuiEffect(RenderEffect* effect)

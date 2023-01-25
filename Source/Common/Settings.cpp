@@ -350,9 +350,11 @@ static void DrawEditableEntry(string_view name, vector<bool>& entry)
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 
-GlobalSettings::GlobalSettings(int argc, char** argv)
+GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
+
+    const_cast<bool&>(ClientMode) = client_mode;
 
     const auto volatile_char_to_string = [](volatile const char* str, size_t len) -> string {
         string result;
@@ -365,11 +367,11 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
     // Debugging config
     if (IsRunInDebugger()) {
-        static volatile const char debug_config[] =
+        static volatile const char DEBUG_CONFIG[] =
 #include "DebugSettings-Include.h"
             ;
 
-        const auto config = ConfigFile("DebugConfig.focfg", volatile_char_to_string(debug_config, sizeof(debug_config)));
+        const auto config = ConfigFile("DebugConfig.focfg", volatile_char_to_string(DEBUG_CONFIG, sizeof(DEBUG_CONFIG)));
         for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
@@ -377,7 +379,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
     // Injected config
     {
-        static volatile const char internal_config[5022] = {"###InternalConfig###\0"
+        static volatile const char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
@@ -429,7 +431,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "12345678901234567890123456789012345678901234567890123456789012345678901234567###InternalConfigEnd###"};
 
-        const auto config = ConfigFile("InternalConfig.focfg", volatile_char_to_string(internal_config, sizeof(internal_config)));
+        const auto config = ConfigFile("InternalConfig.focfg", volatile_char_to_string(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)));
         for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
@@ -460,11 +462,40 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         apply_external_config(ExternalConfig);
     }
 
+    // Command line settings before local config and other command line settings
+    for (auto i = 0; i < argc; i++) {
+        if (i == 0 && argv[0][0] != '-') {
+            continue;
+        }
+
+        if (argv[i][0] == '-') {
+            auto key = _str("{}", argv[i]).trim().str().substr(1);
+
+            if (!key.empty() && key.front() == '-') {
+                key = key.substr(1);
+            }
+
+            if (key == "ExternalConfig" || key == "ResourcesDir") {
+                const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? _str("{}", argv[i + 1]).trim().str() : "1";
+
+                WriteLog("Command line set {} = {}", key, value);
+
+                SetValue(key, value);
+
+                if (key == "ExternalConfig" && !ExternalConfig.empty()) {
+                    apply_external_config(ExternalConfig);
+                }
+            }
+        }
+    }
+
     // Local config
-    {
-        auto cache = CacheStorage(_str(ResourcesDir).combinePath("Cache.fobin"));
+    if (ClientMode) {
+        auto&& cache = CacheStorage(_str(ResourcesDir).combinePath("Cache.fobin"));
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
+            WriteLog("Load local config {}", LOCAL_CONFIG_NAME);
+
             const auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
             for (auto&& [key, value] : config.GetSection("")) {
                 SetValue(key, value);
@@ -474,7 +505,6 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
     // Command line config
     for (auto i = 0; i < argc; i++) {
-        // Skip path
         if (i == 0 && argv[0][0] != '-') {
             continue;
         }
@@ -492,14 +522,12 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
                 key = key.substr(1);
             }
 
-            const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? _str("{}", argv[i + 1]).trim().str() : "1";
+            if (key != "ExternalConfig" && key != "ResourcesDir") {
+                const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? _str("{}", argv[i + 1]).trim().str() : "1";
 
-            WriteLog("Command line set {} = {}", key, value);
+                WriteLog("Command line set {} = {}", key, value);
 
-            SetValue(key, value);
-
-            if (key == "ExternalConfig") {
-                apply_external_config(ExternalConfig);
+                SetValue(key, value);
             }
         }
     }

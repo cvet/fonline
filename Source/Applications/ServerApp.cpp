@@ -63,7 +63,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     STACK_TRACE_FIRST_ENTRY();
 
     try {
-        InitApp(argc, argv, "Server");
+        InitApp(argc, argv);
 
         list<vector<string>> log_buffer;
         SetLogCallback("ServerApp", [&log_buffer](string_view str) {

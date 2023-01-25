@@ -69,7 +69,7 @@ int main(int argc, char** argv)
     STACK_TRACE_FIRST_ENTRY();
 
     try {
-        InitApp(argc, argv, "ASCompiler");
+        InitApp(argc, argv);
         LogWithoutTimestamp();
 
 #if !FO_SINGLEPLAYER

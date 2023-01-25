@@ -53,7 +53,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
     try {
         ShowExceptionMessageBox(true);
-        InitApp(argc, argv, "Editor");
+        InitApp(argc, argv);
 
         auto* editor = new FOEditor(App->Settings);
 

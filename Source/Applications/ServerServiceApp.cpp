@@ -107,7 +107,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp(argc, argv, "ServerService");
+        InitApp(argc, argv);
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -219,7 +219,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
         // Todo: convert argv from wchar_t** to char**
-        InitApp(argc, nullptr, "ServerService");
+        InitApp(0, nullptr);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
         if (Data->FOServiceStatusHandle == nullptr) {

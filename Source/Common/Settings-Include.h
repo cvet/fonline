@@ -39,6 +39,7 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
+FIXED_SETTING(bool, ClientMode, false); // Auto
 FIXED_SETTING(string, ExternalConfig, "");
 FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
