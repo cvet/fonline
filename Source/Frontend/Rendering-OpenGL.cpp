@@ -268,7 +268,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
 
     if (settings.VSync) {
-        if (SDL_GL_SetSwapInterval(1) == -1) {
+        if (SDL_GL_SetSwapInterval(-1) == -1) {
             SDL_GL_SetSwapInterval(1);
         }
     }
