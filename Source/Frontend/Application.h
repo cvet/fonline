@@ -147,8 +147,7 @@ enum class KeyCode : uchar
     Delete = 0xD3,
     Lwin = 0xDB,
     Rwin = 0xDC,
-    Text = 0xFE,
-    ClipboardPaste = 0xFF,
+    Text = 0xFF,
 };
 
 ///@ ExportEnum

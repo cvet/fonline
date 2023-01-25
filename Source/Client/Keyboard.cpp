@@ -124,10 +124,10 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
     else if (CtrlDwn && !ShiftDwn && dik == KeyCode::V) {
         const auto cb_text = App->Input.GetClipboardText();
-        App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::ClipboardPaste, cb_text})});
-        App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::ClipboardPaste})});
+        App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, cb_text})});
+        App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::Text})});
     }
-    else if (dik == KeyCode::ClipboardPaste) {
+    else if (dik == KeyCode::Text) {
         auto text = string(dik_text);
         EraseInvalidChars(text, flags);
         if (!text.empty()) {

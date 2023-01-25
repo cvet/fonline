@@ -426,3 +426,19 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 {
     std::tie(ox, oy) = engine->Geometry.GetHexInterval(fromHx, fromHy, toHx, toHy);
 }
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] string Common_Game_GetClipboardText([[maybe_unused]] FOEngineBase* engine)
+{
+    return App->Input.GetClipboardText();
+}
+
+///# ...
+///# param text ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_SetClipboardText([[maybe_unused]] FOEngineBase* engine, string_view text)
+{
+    return App->Input.SetClipboardText(text);
+}

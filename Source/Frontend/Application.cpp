@@ -315,7 +315,6 @@ Application::Application(int argc, char** argv, bool client_mode) : Settings(arg
         {SDL_SCANCODE_LGUI, KeyCode::Lwin},
         {SDL_SCANCODE_RGUI, KeyCode::Rwin},
         {510, KeyCode::Text},
-        {511, KeyCode::ClipboardPaste},
     };
 
     MouseButtonsMap = new unordered_map<int, MouseButton> {
@@ -781,7 +780,6 @@ void Application::BeginFrame()
             if (sdl_event.type == SDL_KEYDOWN) {
                 InputEvent::KeyDownEvent ev;
                 ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
-                ev.Text = ""; // Todo: rework sdl_event.text.text
                 EventsQueue->emplace_back(ev);
 
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
@@ -847,6 +845,9 @@ void Application::BeginFrame()
                 }
             }
             SDL_free(sdl_event.drop.file);
+        } break;
+        case SDL_TEXTEDITING_EXT: {
+            SDL_free(sdl_event.editExt.text);
         } break;
         case SDL_APP_DIDENTERFOREGROUND: {
             _onPauseDispatcher();
