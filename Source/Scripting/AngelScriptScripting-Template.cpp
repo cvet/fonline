@@ -281,7 +281,9 @@ struct StackTraceEntryStorage
     static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
 
     std::array<char, STACK_TRACE_BUF_SIZE> FuncBuf {};
+    size_t FuncBufLen {};
     std::array<char, STACK_TRACE_BUF_SIZE> FileBuf {};
+    size_t FileBufLen {};
 
     SourceLocationData SrcLoc {};
 };
@@ -522,21 +524,16 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         const auto* func_decl = func->GetDeclaration(true);
 
-        const auto safe_copy = [](auto& to, const char* from) {
-            if (from != nullptr) {
-                const auto len = std::min(string_view(from).length(), to.size() - 1);
-                std::memcpy(to.data(), from, len);
-                to[len] = 0;
-            }
-            else {
-                to[0] = 0;
-            }
+        const auto safe_copy = [](auto& to, size_t& len, string_view from) {
+            len = std::min(from.length(), to.size() - 1);
+            std::memcpy(to.data(), from.data(), len);
+            to[len] = 0;
         };
 
         auto&& storage = ctx_ext.ScriptCallCacheEntries->emplace(program_pos, StackTraceEntryStorage {}).first->second;
 
-        safe_copy(storage.FuncBuf, func_decl);
-        safe_copy(storage.FileBuf, orig_file.c_str());
+        safe_copy(storage.FuncBuf, storage.FuncBufLen, func_decl);
+        safe_copy(storage.FileBuf, storage.FileBufLen, orig_file);
 
         storage.SrcLoc.name = nullptr;
         storage.SrcLoc.function = storage.FuncBuf.data();
@@ -546,7 +543,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
         PushStackTrace(storage.SrcLoc);
 
 #ifdef TRACY_ENABLE
-        const auto tracy_srcloc = ___tracy_alloc_srcloc(orig_line, orig_file.c_str(), orig_file.length(), storage.FuncBuf.data(), storage.FuncBuf.size());
+        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif
@@ -557,7 +554,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
         PushStackTrace(storage.SrcLoc);
 
 #ifdef TRACY_ENABLE
-        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBuf.size(), storage.FuncBuf.data(), storage.FuncBuf.size());
+        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif
@@ -3571,17 +3568,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 class BinaryStream : public asIBinaryStream
 {
 public:
-    explicit BinaryStream(std::vector<asBYTE>& buf) : _binBuf {buf}
-    {
-        STACK_TRACE_ENTRY();
-
-        //
-    }
+    explicit BinaryStream(std::vector<asBYTE>& buf) : _binBuf {buf} { }
 
     void Write(const void* ptr, asUINT size) override
     {
-        STACK_TRACE_ENTRY();
-
         if (!ptr || size == 0u) {
             return;
         }
@@ -3593,8 +3583,6 @@ public:
 
     void Read(void* ptr, asUINT size) override
     {
-        STACK_TRACE_ENTRY();
-
         if (!ptr || size == 0u) {
             return;
         }
@@ -3603,12 +3591,7 @@ public:
         _readPos += size;
     }
 
-    auto GetBuf() -> std::vector<asBYTE>&
-    {
-        STACK_TRACE_ENTRY();
-
-        return _binBuf;
-    }
+    auto GetBuf() -> std::vector<asBYTE>& { return _binBuf; }
 
 private:
     std::vector<asBYTE>& _binBuf;
