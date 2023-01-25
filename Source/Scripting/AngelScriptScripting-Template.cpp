@@ -321,6 +321,9 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         static_cast<asCContext*>(ctx)->Ext = new ASContextExtendedData();
         auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.ScriptCallCacheEntries = &ScriptCallCacheEntries;
+#ifdef TRACY_ENABLE
+        ctx_ext.TracyExecutionCalls.reserve(64);
+#endif
 
         auto&& ctx_ext2 = GET_CONTEXT_EXT2(ctx);
         ctx_ext2.BeginScriptCall = AngelScriptBeginCall;
@@ -554,7 +557,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
         PushStackTrace(storage.SrcLoc);
 
 #ifdef TRACY_ENABLE
-        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBuf.size(), storage.FuncBuf.data(), storage.FuncBuf.data());
+        const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBuf.size(), storage.FuncBuf.data(), storage.FuncBuf.size());
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
 #endif
