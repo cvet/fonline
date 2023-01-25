@@ -278,14 +278,13 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 
 extern void SetMainThread() noexcept;
 extern auto IsMainThread() noexcept -> bool;
-extern void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept;
-extern void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept;
+extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
 
 struct StackTraceScopeEntry
 {
-    FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept { PushStackTrace(loc, false); }
+    FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept { PushStackTrace(loc); }
     FORCE_INLINE ~StackTraceScopeEntry() noexcept { PopStackTrace(); }
 
     StackTraceScopeEntry(const StackTraceScopeEntry&) = delete;

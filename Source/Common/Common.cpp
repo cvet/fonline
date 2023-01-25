@@ -75,23 +75,8 @@ static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
 
 struct StackTraceData
 {
-    struct StackTraceEntry
-    {
-        const char* Func {};
-        const char* File {};
-        size_t Line {};
-        const SourceLocationData* Location {};
-    };
-
-    struct StackTraceEntryStorage
-    {
-        array<char, STACK_TRACE_BUF_SIZE> FuncBuf {};
-        array<char, STACK_TRACE_BUF_SIZE> FileBuf {};
-    };
-
     size_t CallsCount = {};
-    array<StackTraceEntry, STACK_TRACE_MAX_SIZE> CallTree = {};
-    array<StackTraceEntryStorage, STACK_TRACE_MAX_SIZE> CallTreeStorage = {};
+    array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> CallTree = {};
 };
 
 static StackTraceData StackTrace;
@@ -187,50 +172,14 @@ void ShowExceptionMessageBox(bool enabled)
     ExceptionMessageBox = enabled;
 }
 
-void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept
-{
-    PushStackTrace(SourceLocationData {nullptr, func, file, static_cast<uint32_t>(line)}, make_copy);
-}
-
-void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept
+void PushStackTrace(const SourceLocationData& loc) noexcept
 {
     if (!IsMainThread()) {
         return;
     }
 
     if (StackTrace.CallsCount < STACK_TRACE_MAX_SIZE) {
-        auto&& entry = StackTrace.CallTree[StackTrace.CallsCount];
-
-        entry.Line = loc.line;
-
-        if (make_copy) {
-            auto&& storage = StackTrace.CallTreeStorage[StackTrace.CallsCount];
-
-            const auto safe_copy = [](auto& to, const char* from) {
-                if (from != nullptr) {
-                    const auto len = std::min(string_view(from).length(), to.size() - 1);
-                    std::memcpy(to.data(), from, len);
-                    to[len] = 0;
-                }
-                else {
-                    to[0] = 0;
-                }
-            };
-
-            safe_copy(storage.FuncBuf, loc.function);
-            safe_copy(storage.FileBuf, loc.file);
-
-            entry.Func = storage.FuncBuf.data();
-            entry.File = storage.FileBuf.data();
-
-            entry.Location = nullptr;
-        }
-        else {
-            entry.Func = loc.function;
-            entry.File = loc.file;
-
-            entry.Location = &loc;
-        }
+        StackTrace.CallTree[StackTrace.CallsCount] = &loc;
     }
 
     StackTrace.CallsCount++;
@@ -260,7 +209,7 @@ auto GetStackTrace() -> string
     for (int i = std::min(static_cast<int>(StackTrace.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
         const auto& entry = StackTrace.CallTree[i];
 
-        ss << "- " << entry.Func << " (" << _str(entry.File).extractFileName().str() << " line " << entry.Line << ")\n";
+        ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().str() << " line " << entry->line << ")\n";
     }
 
     if (StackTrace.CallsCount > STACK_TRACE_MAX_SIZE) {
