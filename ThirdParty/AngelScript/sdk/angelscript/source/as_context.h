@@ -61,7 +61,7 @@ public:
 	ASContextExtendedData* Ext {};
 
 	// (FOnline Patch)
-	struct ASContextExtendedData
+	struct ASContextExtendedData2
 	{
 		using BeginScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*, size_t);
 		using EndScriptCallFuncType = void(*)(asIScriptContext*);
