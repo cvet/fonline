@@ -267,7 +267,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
     RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
 
-    SDL_GL_SetSwapInterval(settings.VSync ? 1 : 0);
+    if (settings.VSync) {
+        if (SDL_GL_SetSwapInterval(1) == -1) {
+            SDL_GL_SetSwapInterval(1);
+        }
+    }
+    else {
+        SDL_GL_SetSwapInterval(0);
+    }
 
 #else
     EmscriptenWebGLContextAttributes attr;
