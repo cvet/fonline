@@ -3793,9 +3793,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "TryExit") {
         TryExit();
     }
-    else if (cmd == "Version") {
-        return _str("{}", FO_GAME_VERSION);
-    }
     else if (cmd == "BytesSend") {
         return _str("{}", _conn.GetBytesSend());
     }

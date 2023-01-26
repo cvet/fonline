@@ -130,9 +130,9 @@ void InitApp(int argc, char** argv, bool client_mode)
     else {
         LogToFile(_str("{}.log", FO_DEV_NAME));
     }
-
-    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
+
+    WriteLog("Starting {}", FO_GAME_NAME);
 
     App = new Application(argc, argv, client_mode);
 }
@@ -183,7 +183,7 @@ Application::Application(int argc, char** argv, bool client_mode) : Settings(arg
 {
     STACK_TRACE_ENTRY();
 
-    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
+    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_NAME);
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
@@ -684,7 +684,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
         win_pos = SDL_WINDOWPOS_CENTERED;
     }
 
-    auto* sdl_window = SDL_CreateWindow(FO_GAME_VERSION, win_pos, win_pos, width, height, window_create_flags);
+    auto* sdl_window = SDL_CreateWindow(FO_GAME_NAME, win_pos, win_pos, width, height, window_create_flags);
     if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }

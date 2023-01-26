@@ -124,9 +124,9 @@ void InitApp(int argc, char** argv, bool client_mode)
     else {
         LogToFile(_str("{}.log", FO_DEV_NAME));
     }
-
-    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
+
+    WriteLog("Starting {}", FO_GAME_NAME);
 
     App = new Application(argc, argv, client_mode);
 
