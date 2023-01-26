@@ -73,6 +73,28 @@ private:
     mutable std::atomic_int _refCount {1};
 };
 
+class DummyNetConnection : public NetConnection
+{
+public:
+    explicit DummyNetConnection(ServerNetworkSettings& settings) : NetConnection(settings) { }
+    DummyNetConnection(const DummyNetConnection&) = delete;
+    DummyNetConnection(DummyNetConnection&&) noexcept = delete;
+    auto operator=(const DummyNetConnection&) = delete;
+    auto operator=(DummyNetConnection&&) noexcept = delete;
+    ~DummyNetConnection() override = default;
+
+    auto GetIp() const -> uint override { return 0; }
+    auto GetHost() const -> string_view override { return "Dummy"; }
+    auto GetPort() const -> ushort override { return 0; }
+    auto IsDisconnected() const -> bool override { return false; }
+    auto IsWebConnection() const -> bool override { return false; }
+    auto IsInterthreadConnection() const -> bool override { return false; }
+
+    void DisableCompression() override { }
+    void Dispatch() override { }
+    void Disconnect() override { }
+};
+
 class NetServerBase
 {
 public:

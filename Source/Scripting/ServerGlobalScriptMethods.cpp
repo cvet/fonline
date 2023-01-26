@@ -35,6 +35,7 @@
 
 #include "FileSystem.h"
 #include "GenericUtils.h"
+#include "Networking.h"
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
@@ -870,8 +871,12 @@
     }
 
     // Load from db
-    player = new Player(server, 0u, nullptr);
+    auto* dummy_net_conn = new DummyNetConnection(server->Settings);
+
+    player = new Player(server, id, new ClientConnection(dummy_net_conn));
     player->SetName(name);
+
+    dummy_net_conn->Release();
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
         player->MarkAsDestroyed();

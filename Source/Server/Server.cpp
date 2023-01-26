@@ -460,8 +460,9 @@ void FOServer::Shutdown()
     }
 
     // Unlogined players
-    for (const auto* player : _unloginedPlayers) {
+    for (auto* player : _unloginedPlayers) {
         player->Connection->HardDisconnect();
+        player->MarkAsDestroyed();
         player->Release();
     }
     _unloginedPlayers.clear();
@@ -781,6 +782,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
         RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
+        unlogined_player->MarkAsDestroyed();
         unlogined_player->Release();
         return;
     }
@@ -2149,19 +2151,15 @@ void FOServer::Process_Login(Player* unlogined_player)
         player_reconnected = true;
 
         // Kick previous
-        auto* prev_connection = player->Connection;
-
-        player->Connection = unlogined_player->Connection;
-        unlogined_player->Connection = nullptr;
+        std::swap(player->Connection, unlogined_player->Connection);
 
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
         RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
 
+        unlogined_player->Connection->HardDisconnect();
+        unlogined_player->MarkAsDestroyed();
         unlogined_player->Release();
-
-        prev_connection->HardDisconnect();
-        delete prev_connection;
     }
 
     // Connection info
@@ -2729,28 +2727,33 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
     NON_CONST_METHOD_HINT();
 
-    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+    const auto* server_entity = dynamic_cast<ServerEntity*>(entity);
 
     uint entry_id;
 
-    if (const auto* server_entity = dynamic_cast<ServerEntity*>(entity); server_entity != nullptr) {
-        if (server_entity->GetId() == 0u) {
-            return;
-        }
-
+    if (server_entity != nullptr) {
         entry_id = server_entity->GetId();
 
+        if (entry_id == 0) {
+            return;
+        }
+    }
+    else {
+        entry_id = 1;
+    }
+
+    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+
+    if (server_entity != nullptr) {
         DbStorage.Update(_str("{}s", server_entity->GetClassName()), entry_id, prop->GetName(), value);
     }
     else {
-        entry_id = 1u;
-
         DbStorage.Update(entity->GetClassName(), entry_id, prop->GetName(), value);
     }
 
     if (prop->IsHistorical()) {
         const auto history_id = GetHistoryRecordsId();
-        SetHistoryRecordsId(history_id + 1u);
+        SetHistoryRecordsId(history_id + 1);
 
         const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
