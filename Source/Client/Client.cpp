@@ -1711,11 +1711,13 @@ void FOClient::Net_OnCritterMoveItem()
     uint cr_id;
     uchar action;
     uchar prev_slot;
+    bool is_item;
     uchar cur_slot;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> action;
     _conn.InBuf >> prev_slot;
+    _conn.InBuf >> is_item;
     _conn.InBuf >> cur_slot;
 
     // Slot items
@@ -1782,10 +1784,10 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        hex_cr->Action(action, prev_slot, _someItem, false);
+        hex_cr->Action(action, prev_slot, is_item ? _someItem : nullptr, false);
     }
 
-    if (cur_slot != prev_slot && cr->IsChosen()) {
+    if (is_item && cur_slot != prev_slot && cr->IsChosen()) {
         if (auto* item = cr->GetItem(_someItem->GetId()); item != nullptr) {
             item->SetCritterSlot(cur_slot);
             _someItem->SetCritterSlot(prev_slot);

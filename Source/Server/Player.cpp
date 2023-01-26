@@ -134,7 +134,7 @@ void Player::Send_AddCritter(Critter* cr)
 
     CONNECTION_OUTPUT_END(Connection);
 
-    if (cr != _ownedCr) {
+    if (!is_chosen) {
         Send_MoveItem(cr, nullptr, ACTION_REFRESH, 0);
     }
 
@@ -365,9 +365,11 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
 
     const auto is_chosen = from_cr == GetOwnedCritter();
 
-    Send_SomeItem(item);
+    if (item != nullptr) {
+        Send_SomeItem(item);
+    }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(uchar);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(bool) + sizeof(uchar);
 
     vector<const Item*> items;
     vector<vector<uchar*>*> items_data;
@@ -402,7 +404,8 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     Connection->Bout << from_cr->GetId();
     Connection->Bout << action;
     Connection->Bout << prev_slot;
-    Connection->Bout << item->GetCritterSlot();
+    Connection->Bout << (item != nullptr);
+    Connection->Bout << (item != nullptr ? item->GetCritterSlot() : uchar());
     Connection->Bout << static_cast<ushort>(items.size());
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];
