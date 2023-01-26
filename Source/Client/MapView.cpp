@@ -673,14 +673,14 @@ auto MapView::GetViewWidth() const -> int
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<int>(static_cast<float>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
+    return iround(static_cast<float>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
 }
 
 auto MapView::GetViewHeight() const -> int
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<int>(static_cast<float>((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) / _engine->Settings.MapHexLineHeight + (((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
+    return iround(static_cast<float>((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) / _engine->Settings.MapHexLineHeight + (((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
 }
 
 void MapView::AddItemToField(ItemHexView* item)
@@ -950,10 +950,15 @@ auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
             for (const auto* cr : *field.Critters) {
                 if (cr->SprDrawValid) {
                     const auto rect = cr->GetViewRect();
-                    result.Left = std::min(result.Left, rect.Left);
-                    result.Top = std::min(result.Top, rect.Top);
-                    result.Right = std::max(result.Right, rect.Right);
-                    result.Bottom = std::max(result.Bottom, rect.Bottom);
+                    if (result.IsZero()) {
+                        result = rect;
+                    }
+                    else {
+                        result.Left = std::min(result.Left, rect.Left);
+                        result.Top = std::min(result.Top, rect.Top);
+                        result.Right = std::max(result.Right, rect.Right);
+                        result.Bottom = std::max(result.Bottom, rect.Bottom);
+                    }
                 }
             }
         }
@@ -967,17 +972,22 @@ auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
                         const auto t = field.ScrY + _engine->Settings.MapHexHeight / 2 - si->OffsY;
                         const auto r = l + si->Width;
                         const auto b = t + si->Height;
-                        result.Left = std::min(result.Left, l);
-                        result.Top = std::min(result.Top, t);
-                        result.Right = std::max(result.Right, r);
-                        result.Bottom = std::max(result.Bottom, b);
+                        if (result.IsZero()) {
+                            result = IRect {l, t, r, b};
+                        }
+                        else {
+                            result.Left = std::min(result.Left, l);
+                            result.Top = std::min(result.Top, t);
+                            result.Right = std::max(result.Right, r);
+                            result.Bottom = std::max(result.Bottom, b);
+                        }
                     }
                 }
             }
         }
     }
 
-    return result;
+    return {-result.Width() / 2, -result.Height(), result.Width() / 2, 0};
 }
 
 auto MapView::RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool
@@ -1077,10 +1087,10 @@ void MapView::DrawCursor(uint spr_id)
     const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
     if (si != nullptr) {
         _engine->SprMngr.DrawSpriteSize(spr_id,
-            static_cast<int>(static_cast<float>(_cursorX + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom), //
-            static_cast<int>(static_cast<float>(_cursorY + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom), //
-            static_cast<int>(static_cast<float>(si->Width) / _engine->Settings.SpritesZoom), //
-            static_cast<int>(static_cast<float>(si->Height) / _engine->Settings.SpritesZoom), true, false, 0);
+            iround(static_cast<float>(_cursorX + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom), //
+            iround(static_cast<float>(_cursorY + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom), //
+            iround(static_cast<float>(si->Width) / _engine->Settings.SpritesZoom), //
+            iround(static_cast<float>(si->Height) / _engine->Settings.SpritesZoom), true, false, 0);
     }
 }
 
@@ -1094,11 +1104,12 @@ void MapView::DrawCursor(string_view text)
         return;
     }
 
-    const auto x = static_cast<int>(static_cast<float>(_cursorX + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-    const auto y = static_cast<int>(static_cast<float>(_cursorY + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
-    const auto r = IRect(x, y, static_cast<int>(static_cast<float>(x + _engine->Settings.MapHexWidth) / _engine->Settings.SpritesZoom), //
-        static_cast<int>(static_cast<float>(y + _engine->Settings.MapHexHeight) / _engine->Settings.SpritesZoom));
-    _engine->SprMngr.DrawStr(r, text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, 0);
+    const auto x = iround(static_cast<float>(_cursorX + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
+    const auto y = iround(static_cast<float>(_cursorY + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom);
+    const auto r = IRect(x, y, iround(static_cast<float>(x + _engine->Settings.MapHexWidth) / _engine->Settings.SpritesZoom), //
+        iround(static_cast<float>(y + _engine->Settings.MapHexHeight) / _engine->Settings.SpritesZoom));
+
+    _engine->SprMngr.DrawStr(r, text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, -1);
 }
 
 void MapView::RebuildMap(int rx, int ry)
@@ -1734,11 +1745,11 @@ void MapView::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy,
         const auto old_cury1_i = cury1_i;
 
         // Casts
-        curx1_i = static_cast<int>(curx1_f);
+        curx1_i = iround(curx1_f);
         if (curx1_f - static_cast<float>(curx1_i) >= 0.5f) {
             curx1_i++;
         }
-        cury1_i = static_cast<int>(cury1_f);
+        cury1_i = iround(cury1_f);
         if (cury1_f - static_cast<float>(cury1_i) >= 0.5f) {
             cury1_i++;
         }
@@ -1953,10 +1964,10 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
             auto y = static_cast<float>(dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY);
             std::tie(x, y) = GenericUtils::ChangeStepsCoords(x, y, dist_comp ? -2.5f : 2.5f);
             if (dist_comp) {
-                _lightSoftPoints.push_back({cur.PointX + static_cast<int>(x), cur.PointY + static_cast<int>(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
+                _lightSoftPoints.push_back({cur.PointX + iround(x), cur.PointY + iround(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
             }
             else {
-                _lightSoftPoints.push_back({next.PointX + static_cast<int>(x), next.PointY + static_cast<int>(y), next.PointColor, next.PointOffsX, next.PointOffsY});
+                _lightSoftPoints.push_back({next.PointX + iround(x), next.PointY + iround(y), next.PointColor, next.PointOffsX, next.PointOffsY});
             }
         }
     }
@@ -2592,68 +2603,43 @@ void MapView::DrawMapTexts()
         cr->DrawTextOnHead();
     }
 
-    if (_mapperMode) {
-        // Texts on map
-        const auto tick = _engine->GameTime.FrameTick();
-        for (auto it = _mapTexts.begin(); it != _mapTexts.end();) {
-            auto& map_text = *it;
+    const auto tick = _engine->GameTime.GameTick();
 
-            if (tick >= map_text.StartTick + map_text.Tick) {
-                it = _mapTexts.erase(it);
+    for (auto it = _mapTexts.begin(); it != _mapTexts.end();) {
+        const auto& map_text = *it;
+
+        if (tick < map_text.StartTick + map_text.Tick) {
+            const auto& field = GetField(map_text.HexX, map_text.HexY);
+            if (!field.IsView) {
+                continue;
             }
-            else {
-                const auto percent = GenericUtils::Percent(map_text.Tick, tick - map_text.StartTick);
-                const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
-                const auto& field = GetField(map_text.HexX, map_text.HexY);
 
-                const auto x = static_cast<int>((field.ScrX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
-                const auto y = static_cast<int>((field.ScrY + _engine->Settings.MapHexLineHeight / 2 - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
+            const auto dt = tick - map_text.StartTick;
+            const auto percent = GenericUtils::Percent(map_text.Tick, dt);
+            const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
+            const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
+            const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
+            const auto x = iround(static_cast<float>(field.ScrX + half_hex_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
+            const auto y = iround(static_cast<float>(field.ScrY + half_hex_height - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
 
-                auto color = map_text.Color;
-                if (map_text.Fade) {
-                    color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
+            auto color = map_text.Color;
+            if (map_text.Fade) {
+                color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
+            }
+            else if (map_text.Tick > 500) {
+                const auto hide = map_text.Tick - 200;
+                if (dt >= hide) {
+                    const auto alpha = 255u * (100u - GenericUtils::Percent(map_text.Tick - hide, dt - hide)) / 100u;
+                    color = (alpha << 24) | (color & 0xFFFFFF);
                 }
-
-                _engine->SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, FONT_DEFAULT);
-
-                ++it;
             }
+
+            _engine->SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
+
+            ++it;
         }
-    }
-    else {
-        // Texts on map
-        const auto tick = _engine->GameTime.GameTick();
-        for (auto it = _mapTexts.begin(); it != _mapTexts.end();) {
-            auto& mt = *it;
-            if (tick < mt.StartTick + mt.Tick) {
-                const auto dt = tick - mt.StartTick;
-                const auto percent = GenericUtils::Percent(mt.Tick, dt);
-                const auto r = mt.Pos.Interpolate(mt.EndPos, percent);
-                auto& f = GetField(mt.HexX, mt.HexY);
-                const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
-                const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
-                const auto x = static_cast<int>(static_cast<float>(f.ScrX + half_hex_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f - static_cast<float>(mt.Pos.Left - r.Left));
-                const auto y = static_cast<int>(static_cast<float>(f.ScrY + half_hex_height - mt.Pos.Height() - (mt.Pos.Top - r.Top) + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
-
-                auto color = mt.Color;
-                if (mt.Fade) {
-                    color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
-                }
-                else if (mt.Tick > 500) {
-                    const auto hide = mt.Tick - 200;
-                    if (dt >= hide) {
-                        const auto alpha = 255u * (100u - GenericUtils::Percent(mt.Tick - hide, dt - hide)) / 100u;
-                        color = (alpha << 24) | (color & 0xFFFFFF);
-                    }
-                }
-
-                _engine->SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), mt.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, FONT_DEFAULT);
-
-                ++it;
-            }
-            else {
-                it = _mapTexts.erase(it);
-            }
+        else {
+            it = _mapTexts.erase(it);
         }
     }
 }
@@ -2856,8 +2842,8 @@ auto MapView::Scroll() -> bool
         AutoScroll.OffsXStep += AutoScroll.OffsX * AutoScroll.Speed * time_k;
         AutoScroll.OffsYStep += AutoScroll.OffsY * AutoScroll.Speed * time_k;
 
-        xscroll = static_cast<int>(AutoScroll.OffsXStep);
-        yscroll = static_cast<int>(AutoScroll.OffsYStep);
+        xscroll = iround(AutoScroll.OffsXStep);
+        yscroll = iround(AutoScroll.OffsYStep);
 
         if (xscroll > _engine->Settings.MapHexWidth) {
             xscroll = _engine->Settings.MapHexWidth;
@@ -2885,7 +2871,7 @@ auto MapView::Scroll() -> bool
             return false;
         }
 
-        if (GenericUtils::DistSqrt(0, 0, static_cast<int>(AutoScroll.OffsX), static_cast<int>(AutoScroll.OffsY)) == 0u) {
+        if (GenericUtils::DistSqrt(0, 0, iround(AutoScroll.OffsX), iround(AutoScroll.OffsY)) == 0u) {
             AutoScroll.Active = false;
         }
     }
@@ -2910,8 +2896,8 @@ auto MapView::Scroll() -> bool
             return false;
         }
 
-        xscroll = static_cast<int>(static_cast<float>(xscroll * _engine->Settings.ScrollStep) * _engine->Settings.SpritesZoom * time_k);
-        yscroll = static_cast<int>(static_cast<float>(yscroll * (_engine->Settings.ScrollStep * (_engine->Settings.MapHexLineHeight * 2) / _engine->Settings.MapHexWidth)) * _engine->Settings.SpritesZoom * time_k);
+        xscroll = iround(static_cast<float>(xscroll * _engine->Settings.ScrollStep) * _engine->Settings.SpritesZoom * time_k);
+        yscroll = iround(static_cast<float>(yscroll * (_engine->Settings.ScrollStep * (_engine->Settings.MapHexLineHeight * 2) / _engine->Settings.MapHexWidth)) * _engine->Settings.SpritesZoom * time_k);
     }
     scr_ox += xscroll;
     scr_oy += yscroll;
@@ -3482,7 +3468,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
 
                 // Correct with hex color mask
                 if (_picHexMask != nullptr) {
-                    const auto r = (_engine->SprMngr.GetPixColor(_picHexMask->Ind[0], static_cast<int>(xf - x_), static_cast<int>(yf - y_), true) & 0x00FF0000) >> 16;
+                    const auto r = (_engine->SprMngr.GetPixColor(_picHexMask->Ind[0], iround(xf - x_), iround(yf - y_), true) & 0x00FF0000) >> 16;
                     if (r == 50) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
                     }
@@ -3502,8 +3488,8 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
                     hy = static_cast<ushort>(hy_);
 
                     if (hex_ox != nullptr && hex_oy != nullptr) {
-                        *hex_ox = static_cast<int>(xf - x_) - 16;
-                        *hex_oy = static_cast<int>(yf - y_) - 8;
+                        *hex_ox = iround(xf - x_) - 16;
+                        *hex_oy = iround(yf - y_) - 8;
                     }
                     return true;
                 }

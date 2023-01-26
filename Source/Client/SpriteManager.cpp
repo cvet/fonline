@@ -2010,7 +2010,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
                 y1 -= static_cast<int>(40.0f / zoom);
             }
 
-            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", spr->TreeIndex), 0, 0, 0);
+            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", spr->TreeIndex), 0, 0, -1);
         }
 
         // Process contour effect

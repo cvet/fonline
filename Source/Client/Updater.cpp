@@ -72,10 +72,10 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
 
     // Load font
     _sprMngr.PushAtlasType(AtlasType::Static);
-    _sprMngr.LoadFontFO(FONT_DEFAULT, "Default", false, true);
+    _sprMngr.LoadFontFO(0, "Default", false, true);
     _sprMngr.PopAtlasType();
     _sprMngr.BuildFonts();
-    _sprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
+    _sprMngr.SetDefaultFont(0, COLOR_TEXT);
 
     // Network handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
@@ -164,13 +164,13 @@ auto Updater::Process() -> bool
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {
             if (_settings.UpdaterInfoPos < 0) {
-                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else if (_settings.UpdaterInfoPos == 0) {
-                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else {
-                _sprMngr.DrawStr(IRect(0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                _sprMngr.DrawStr(IRect(0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
         }
     }

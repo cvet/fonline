@@ -1030,10 +1030,10 @@ void CritterHexView::DrawTextOnHead()
 
         if (_fadingEnabled) {
             const uint alpha = GetFadeAlpha();
-            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), 0);
+            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), -1);
         }
         else if (!IsFinishing()) {
-            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, 0);
+            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
         }
     }
 

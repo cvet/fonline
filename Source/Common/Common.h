@@ -958,7 +958,7 @@ struct TRect
         Bottom += oy;
     }
 
-    auto Interpolate(const TRect<T>& to, int procent) -> TRect<T>
+    auto Interpolate(const TRect<T>& to, int procent) const -> TRect<T>
     {
         TRect<T> result(Left, Top, Right, Bottom);
         result.Left += static_cast<T>(static_cast<int>(to.Left - Left) * procent / 100);
@@ -1001,7 +1001,7 @@ struct TPoint
         Y = 0;
     }
 
-    auto IsZero() -> bool { return !X && !Y; }
+    auto IsZero() const -> bool { return !X && !Y; }
 
     auto operator[](int index) -> T&
     {
@@ -1097,7 +1097,6 @@ static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
-static constexpr auto FONT_DEFAULT = 5;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes

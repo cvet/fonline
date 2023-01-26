@@ -122,6 +122,7 @@ public:
     static constexpr auto FONT_BIG_NUM = 2;
     static constexpr auto FONT_SAND_NUM = 3;
     static constexpr auto FONT_SPECIAL = 4;
+    static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto FONT_THIN = 6;
     static constexpr auto FONT_FAT = 7;
     static constexpr auto FONT_BIG = 8;
