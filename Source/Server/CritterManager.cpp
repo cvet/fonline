@@ -104,7 +104,7 @@ void CritterManager::LinkCritters()
     }
 }
 
-void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
+auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -119,9 +119,8 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
         if (item_already != nullptr) {
             const auto count = item->GetCount();
             _engine->ItemMngr.DeleteItem(item);
-            item = item_already;
-            item->SetCount(item->GetCount() + count);
-            return;
+            item_already->SetCount(item->GetCount() + count);
+            return item_already;
         }
     }
 
@@ -143,6 +142,8 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
 
     // Change item
     _engine->OnCritterMoveItem.Fire(cr, item, -1);
+
+    return item;
 }
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)

@@ -189,7 +189,7 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     item->SetContainerId(cont->GetId());
 }
 
-void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
+auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -205,8 +205,7 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
         if (item_ != nullptr) {
             item_->SetCount(item_->GetCount() + item->GetCount());
             DeleteItem(item);
-            item = item_;
-            return;
+            return item_;
         }
     }
 
@@ -218,6 +217,8 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     RUNTIME_ASSERT(std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId()) == sub_item_ids.end());
     sub_item_ids.emplace_back(item->GetId());
     cont->SetSubItemIds(std::move(sub_item_ids));
+
+    return item;
 }
 
 void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
@@ -498,7 +499,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
                 if (item == nullptr) {
                     continue;
                 }
-                AddItemToContainer(cont, item, stack_id);
+                item = AddItemToContainer(cont, item, stack_id);
                 result = item;
             }
         }
@@ -514,7 +515,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
             if (item == nullptr) {
                 return result;
             }
-            AddItemToContainer(cont, item, stack_id);
+            item = AddItemToContainer(cont, item, stack_id);
             result = item;
         }
         else {
@@ -527,7 +528,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
                     continue;
                 }
 
-                AddItemToContainer(cont, item, stack_id);
+                item = AddItemToContainer(cont, item, stack_id);
                 result = item;
             }
         }
@@ -562,7 +563,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
             if (item == nullptr) {
                 return result;
             }
-            _engine->CrMngr.AddItemToCritter(cr, item, true);
+            item = _engine->CrMngr.AddItemToCritter(cr, item, true);
             result = item;
         }
         else {
@@ -574,7 +575,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
                 if (item == nullptr) {
                     break;
                 }
-                _engine->CrMngr.AddItemToCritter(cr, item, true);
+                item = _engine->CrMngr.AddItemToCritter(cr, item, true);
                 result = item;
             }
         }

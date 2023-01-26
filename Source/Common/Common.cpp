@@ -71,7 +71,6 @@ GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
 static constexpr size_t STACK_TRACE_MAX_SIZE = 128;
-static constexpr size_t STACK_TRACE_BUF_SIZE = 128;
 
 struct StackTraceData
 {

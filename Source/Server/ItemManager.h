@@ -76,7 +76,7 @@ public:
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
     void MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks);
     void MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks);
-    void AddItemToContainer(Item* cont, Item*& item, uint stack_id);
+    auto AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*;
     void EraseItemFromContainer(Item* cont, Item* item);
     void SetItemToContainer(Item* cont, Item* item);
     void RegisterRadio(Item* radio);
