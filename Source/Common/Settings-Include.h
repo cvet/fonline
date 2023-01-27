@@ -135,7 +135,6 @@ VARIABLE_SETTING(int, ScreenHeight, 768);
 FIXED_SETTING(int, MonitorWidth, 0); // Auto
 FIXED_SETTING(int, MonitorHeight, 0); // Auto
 VARIABLE_SETTING(int, ScreenHudHeight, 0);
-VARIABLE_SETTING(float, SpritesZoom, 1.0f);
 VARIABLE_SETTING(int, ScrOx, 0);
 VARIABLE_SETTING(int, ScrOy, 0);
 VARIABLE_SETTING(bool, ShowCorners, false);

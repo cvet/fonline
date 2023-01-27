@@ -438,6 +438,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, vector<uchar>, DayColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, IsNoLogOut);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateClient, float, SpritesZoom);
 };
 
 class LocationProperties : public EntityProperties

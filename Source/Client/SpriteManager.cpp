@@ -1328,6 +1328,11 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
     _anyFramesPool.Put(anim);
 }
 
+void SpriteManager::SetSpritesZoom(float zoom) noexcept
+{
+    _spritesZoom = zoom;
+}
+
 void SpriteManager::Flush()
 {
     STACK_TRACE_ENTRY();
@@ -1349,7 +1354,7 @@ void SpriteManager::Flush()
         }
 
         if (dip.SourceEffect->MapSpriteBuf) {
-            dip.SourceEffect->MapSpriteBuf->ZoomFactor = _settings.SpritesZoom;
+            dip.SourceEffect->MapSpriteBuf->ZoomFactor = _spritesZoom;
         }
 
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf, pos, dip.SpritesCount * 6, dip.MainTex);
@@ -1815,7 +1820,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             y += *spr->OffsY;
         }
 
-        const auto zoom = _settings.SpritesZoom;
+        const auto zoom = _spritesZoom;
 
         // Base color
         uint color_r = 0;
@@ -2075,7 +2080,7 @@ auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_z
     }
 
     // 2d animation
-    if (with_zoom && (static_cast<float>(offs_x) > static_cast<float>(si->Width) / _settings.SpritesZoom || static_cast<float>(offs_y) > static_cast<float>(si->Height) / _settings.SpritesZoom)) {
+    if (with_zoom && (static_cast<float>(offs_x) > static_cast<float>(si->Width) / _spritesZoom || static_cast<float>(offs_y) > static_cast<float>(si->Height) / _spritesZoom)) {
         return 0;
     }
     if (!with_zoom && (offs_x > si->Width || offs_y > si->Height)) {
@@ -2083,8 +2088,8 @@ auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_z
     }
 
     if (with_zoom) {
-        offs_x = static_cast<int>(static_cast<float>(offs_x) * _settings.SpritesZoom);
-        offs_y = static_cast<int>(static_cast<float>(offs_y) * _settings.SpritesZoom);
+        offs_x = static_cast<int>(static_cast<float>(offs_x) * _spritesZoom);
+        offs_y = static_cast<int>(static_cast<float>(offs_y) * _spritesZoom);
     }
 
     offs_x += static_cast<int>(si->Atlas->MainTex->SizeData[0] * si->SprRect.Left);
@@ -2102,17 +2107,17 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
 
     const auto ex = _eggX + _settings.ScrOx;
     const auto ey = _eggY + _settings.ScrOy;
-    auto ox = pix_x - static_cast<int>(static_cast<float>(ex) / _settings.SpritesZoom);
-    auto oy = pix_y - static_cast<int>(static_cast<float>(ey) / _settings.SpritesZoom);
+    auto ox = pix_x - static_cast<int>(static_cast<float>(ex) / _spritesZoom);
+    auto oy = pix_y - static_cast<int>(static_cast<float>(ey) / _spritesZoom);
 
     if (ox < 0 || oy < 0 || //
-        ox >= static_cast<int>(static_cast<float>(_sprEgg->Width) / _settings.SpritesZoom) || //
-        oy >= static_cast<int>(static_cast<float>(_sprEgg->Height) / _settings.SpritesZoom)) {
+        ox >= static_cast<int>(static_cast<float>(_sprEgg->Width) / _spritesZoom) || //
+        oy >= static_cast<int>(static_cast<float>(_sprEgg->Height) / _spritesZoom)) {
         return false;
     }
 
-    ox = static_cast<int>(static_cast<float>(ox) * _settings.SpritesZoom);
-    oy = static_cast<int>(static_cast<float>(oy) * _settings.SpritesZoom);
+    ox = static_cast<int>(static_cast<float>(ox) * _spritesZoom);
+    oy = static_cast<int>(static_cast<float>(oy) * _spritesZoom);
 
     const auto egg_color = _eggData.at(oy * _sprEgg->Width + ox);
     return (egg_color >> 24) < 127;
@@ -2243,13 +2248,13 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     FRect textureuv;
     FRect sprite_border;
 
-    const auto zoomed_screen_width = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _settings.SpritesZoom);
-    const auto zoomed_screen_height = static_cast<int>(static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _settings.SpritesZoom);
+    const auto zoomed_screen_width = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _spritesZoom);
+    const auto zoomed_screen_height = static_cast<int>(static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _spritesZoom);
     if (borders.Left >= zoomed_screen_width || borders.Right < 0 || borders.Top >= zoomed_screen_height || borders.Bottom < 0) {
         return;
     }
 
-    if (_settings.SpritesZoom == 1.0f) {
+    if (_spritesZoom == 1.0f) {
 #if FO_ENABLE_3D
         if (si->UsedForModel) {
             const auto& sr = si->SprRect;
@@ -2272,10 +2277,10 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     }
     else {
         const auto& sr = si->SprRect;
-        const auto zoomed_x = static_cast<int>(static_cast<float>(x) / _settings.SpritesZoom);
-        const auto zoomed_y = static_cast<int>(static_cast<float>(y) / _settings.SpritesZoom);
-        const auto zoomed_x2 = static_cast<int>(static_cast<float>(x + si->Width) / _settings.SpritesZoom);
-        const auto zoomed_y2 = static_cast<int>(static_cast<float>(y + si->Height) / _settings.SpritesZoom);
+        const auto zoomed_x = static_cast<int>(static_cast<float>(x) / _spritesZoom);
+        const auto zoomed_y = static_cast<int>(static_cast<float>(y) / _spritesZoom);
+        const auto zoomed_x2 = static_cast<int>(static_cast<float>(x + si->Width) / _spritesZoom);
+        const auto zoomed_y2 = static_cast<int>(static_cast<float>(y + si->Height) / _spritesZoom);
         borders = {zoomed_x, zoomed_y, zoomed_x2, zoomed_y2};
         const auto bordersf = FRect(borders);
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];

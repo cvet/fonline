@@ -138,8 +138,8 @@ class FixedDropMenu : Gui::IDropMenu
                 if (hoveredObj.Grid != null && cast<Gui::ItemView>(hoveredObj.Grid) != null)
                     SelectedEntity = cast<Gui::ItemView>(hoveredObj.Grid).GetItem(hoveredObj.CellIndex);
             }
-            else if (screen == null || !screen.IsModal) {
-                Entity entity = Game.GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
+            else if (CurMap != null && (screen == null || !screen.IsModal)) {
+                Entity entity = CurMap.GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
                 if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null))
                     SelectedEntity = entity;
             }

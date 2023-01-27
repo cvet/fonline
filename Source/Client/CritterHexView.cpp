@@ -929,8 +929,8 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
 
-        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
+        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _map->GetSpritesZoom());
+        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
     }
     else {
         // Offscreen

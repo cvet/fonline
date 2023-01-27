@@ -252,6 +252,7 @@ public:
     void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
+    void SetSpritesZoom(float zoom) noexcept;
     void Flush();
     void DrawSprite(uint id, int x, int y, uint color);
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
@@ -333,6 +334,7 @@ private:
     const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
     vector<uint> _borderBuf {};
+    float _spritesZoom {1.0f};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};

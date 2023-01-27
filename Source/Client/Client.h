@@ -236,7 +236,6 @@ public:
     DeferredCallManager ClientDeferredCalls;
 
     MapView* CurMap {};
-    hstring CurMapPid {};
     bool CanDrawInScripts {};
     vector<string> Preload3dFiles {};
 

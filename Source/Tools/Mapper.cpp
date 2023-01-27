@@ -2478,8 +2478,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        auto ox = static_cast<float>(offs_x) * Settings.SpritesZoom + small_ox;
-        auto oy = static_cast<float>(offs_y) * Settings.SpritesZoom + small_oy;
+        auto ox = static_cast<float>(offs_x) * CurMap->GetSpritesZoom() + small_ox;
+        auto oy = static_cast<float>(offs_y) * CurMap->GetSpritesZoom() + small_oy;
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
         }
@@ -3091,8 +3091,8 @@ void FOMapper::CurDraw()
             if (si != nullptr) {
                 const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
                 const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(static_cast<float>(x) / Settings.SpritesZoom), static_cast<int>(static_cast<float>(y) / Settings.SpritesZoom), //
-                    static_cast<int>(static_cast<float>(si->Width) / Settings.SpritesZoom), static_cast<int>(static_cast<float>(si->Height) / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(static_cast<float>(x) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(y) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(static_cast<float>(si->Width) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(si->Height) / CurMap->GetSpritesZoom()), true, false, 0);
             }
         }
         else if (IsTileMode() && !CurTileNames->empty()) {
@@ -3122,7 +3122,9 @@ void FOMapper::CurDraw()
                     y += Settings.MapRoofOffsY;
                 }
 
-                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), static_cast<int>((x + Settings.ScrOx) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), //
+                    static_cast<int>((x + Settings.ScrOx) / CurMap->GetSpritesZoom()), static_cast<int>((y + Settings.ScrOy) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(si->Width / CurMap->GetSpritesZoom()), static_cast<int>(si->Height / CurMap->GetSpritesZoom()), true, false, 0);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -3143,7 +3145,11 @@ void FOMapper::CurDraw()
                 const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
                 const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(spr_id, //
+                    static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(si->Width / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(si->Height / CurMap->GetSpritesZoom()), true, false, 0);
             }
         }
         else {

@@ -2651,8 +2651,6 @@ void FOClient::Net_OnLoadMap()
     ShowMainScreen(SCREEN_WAIT, {});
     ResMngr.ReinitializeDynamicAtlas();
 
-    Settings.SpritesZoom = 1.0f;
-    CurMapPid = map_pid;
     _curMapLocPid = loc_pid;
     _curMapIndexInLoc = map_index_in_loc;
 
