@@ -204,12 +204,14 @@ public:
     void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void MeasureHexBorders(const ItemHexView* item);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
     void SetShootBorders(bool enabled);
+    auto MeasureMapBorders(uint spr_id, int ox, int oy) -> bool;
+    auto MeasureMapBorders(const ItemHexView* item) -> bool;
+    auto MeasureMapBorders(const Field::Tile& tile, bool is_roof) -> bool;
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -237,8 +239,8 @@ public:
     auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*;
     auto GetItem(uint id) -> ItemHexView*;
-    auto GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>;
-    auto GetItems() -> vector<ItemHexView*> { return _items; }
+    auto GetItems() -> const vector<ItemHexView*>&;
+    auto GetItems(ushort hx, ushort hy) -> const vector<ItemHexView*>&;
     void MoveItem(ItemHexView* item, ushort hx, ushort hy);
     void DestroyItem(ItemHexView* item);
 
@@ -320,8 +322,6 @@ private:
     void PrepareFogToDraw();
     void InitView(int cx, int cy);
     void ResizeView();
-    auto MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
-    auto ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool;
 
     // Lighting
     void PrepareLightToDraw();
@@ -344,7 +344,9 @@ private:
 
     vector<CritterHexView*> _critters {};
     map<uint, CritterHexView*> _crittersMap {};
-    vector<ItemHexView*> _items {};
+    vector<ItemHexView*> _allItems {};
+    vector<ItemHexView*> _staticItems {};
+    vector<ItemHexView*> _dynamicItems {};
     map<uint, ItemHexView*> _itemsMap {};
 
     vector<MapText> _mapTexts {};
@@ -407,7 +409,7 @@ private:
     vector<vector<PrimitivePoint>> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
     vector<LightSource> _lightSources {};
-    vector<LightSource> _lightSourcesScen {};
+    vector<LightSource> _staticLightSources {};
     int _lightCapacity {};
     int _lightMinHx {};
     int _lightMaxHx {};
@@ -431,4 +433,6 @@ private:
     vector<char> _hexTrack {};
     vector<vector<MapTile>> _tilesField {};
     vector<vector<MapTile>> _roofsField {};
+
+    const vector<ItemHexView*> _emptyList {};
 };

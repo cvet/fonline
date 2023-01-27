@@ -1984,7 +1984,7 @@ void FOMapper::IntLMouseUp()
                 vector<CritterView*> critters;
                 for (auto&& [hx, hy] : hexes) {
                     // Items, critters
-                    auto hex_items = CurMap->GetItems(hx, hy);
+                    auto&& hex_items = CurMap->GetItems(hx, hy);
                     items.insert(items.end(), hex_items.begin(), hex_items.end());
                     auto hex_critters = CurMap->GetCritters(hx, hy, CritterFindType::Any);
                     critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());

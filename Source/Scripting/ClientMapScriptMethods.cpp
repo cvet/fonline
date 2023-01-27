@@ -189,11 +189,12 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
 {
-    vector<ItemView*> items;
+    auto&& all_items = self->GetItems();
 
-    const auto items_ = self->GetItems();
-    items.reserve(items_.size());
-    for (auto* item : items_) {
+    vector<ItemView*> items;
+    items.reserve(all_items.size());
+
+    for (auto* item : all_items) {
         if (!item->IsFinishing()) {
             items.emplace_back(item);
         }
@@ -209,16 +210,15 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, ushort hx, ushort hy)
 {
-    vector<ItemHexView*> hex_items;
-    hex_items = self->GetItems(hx, hy);
-    for (auto it = hex_items.begin(); it != hex_items.end();) {
-        it = ((*it)->IsFinishing() ? hex_items.erase(it) : ++it);
-    }
+    auto&& hex_items = self->GetItems(hx, hy);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
+
     for (auto* item : hex_items) {
-        items.push_back(item);
+        if (!item->IsFinishing()) {
+            items.push_back(item);
+        }
     }
 
     return items;

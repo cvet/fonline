@@ -3323,7 +3323,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->RefreshOffs();
-        item->GetMap()->MeasureHexBorders(item);
+        item->GetMap()->MeasureMapBorders(item);
     }
 }
 

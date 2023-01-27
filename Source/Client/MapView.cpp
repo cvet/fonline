@@ -419,7 +419,7 @@ MapView::~MapView()
 {
     STACK_TRACE_ENTRY();
 
-    if (!_critters.empty() || !_crittersMap.empty() || !_items.empty() || !_itemsMap.empty()) {
+    if (!_critters.empty() || !_crittersMap.empty() || !_allItems.empty() || !_staticItems.empty() || !_dynamicItems.empty() || !_itemsMap.empty()) {
         BreakIntoDebugger();
     }
 
@@ -442,10 +442,12 @@ void MapView::MarkAsDestroyed()
     RUNTIME_ASSERT(_critters.empty());
     RUNTIME_ASSERT(_crittersMap.empty());
 
-    for (auto* item : copy(_items)) {
+    for (auto* item : copy(_allItems)) {
         DestroyItem(item);
     }
-    RUNTIME_ASSERT(_items.empty());
+    RUNTIME_ASSERT(_allItems.empty());
+    RUNTIME_ASSERT(_staticItems.empty());
+    RUNTIME_ASSERT(_dynamicItems.empty());
     RUNTIME_ASSERT(_itemsMap.empty());
 
     Entity::MarkAsDestroying();
@@ -522,7 +524,7 @@ void MapView::LoadStaticData()
             auto* anim = _engine->ResMngr.GetItemAnim(anim_name);
             if (anim != nullptr) {
                 auto& ftile = field.AddTile(anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof);
-                ProcessTileBorder(ftile, tile.IsRoof);
+                MeasureMapBorders(ftile, tile.IsRoof);
             }
             else {
                 BreakIntoDebugger();
@@ -605,7 +607,7 @@ void MapView::Process()
     {
         vector<ItemHexView*> item_to_delete;
 
-        for (auto* item : _items) {
+        for (auto* item : _allItems) {
             // Todo: optimize, collect separate collection with IsNeedProcess
             item->Process();
 
@@ -644,7 +646,7 @@ void MapView::AddTile(const MapTile& tile)
     if (anim != nullptr) {
         Field& field = GetField(tile.HexX, tile.HexY);
         Field::Tile& ftile = field.AddTile(anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof);
-        ProcessTileBorder(ftile, tile.IsRoof);
+        MeasureMapBorders(ftile, tile.IsRoof);
     }
 }
 
@@ -783,7 +785,14 @@ void MapView::AddItemInternal(ItemHexView* item)
         }
     }
 
-    _items.emplace_back(item);
+    _allItems.emplace_back(item);
+
+    if (item->IsStatic()) {
+        _staticItems.emplace_back(item);
+    }
+    else {
+        _dynamicItems.emplace_back(item);
+    }
 
     if (item->GetId() != 0u) {
         _itemsMap.emplace(item->GetId(), item);
@@ -791,7 +800,11 @@ void MapView::AddItemInternal(ItemHexView* item)
 
     AddItemToField(item);
 
-    if (!MeasureHexBorders(item->SprId, item->GetOffsetX(), item->GetOffsetY(), true)) {
+    if (item->IsStatic() && item->GetIsLight()) {
+        _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+    }
+
+    if (!MeasureMapBorders(item->SprId, item->GetOffsetX(), item->GetOffsetY())) {
         auto& field = GetField(hx, hy);
 
         if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
@@ -853,9 +866,22 @@ void MapView::DestroyItem(ItemHexView* item)
         item->SprDraw->Unvalidate();
     }
 
-    const auto it = std::find(_items.begin(), _items.end(), item);
-    RUNTIME_ASSERT(it != _items.end());
-    _items.erase(it);
+    {
+        const auto it = std::find(_allItems.begin(), _allItems.end(), item);
+        RUNTIME_ASSERT(it != _allItems.end());
+        _allItems.erase(it);
+    }
+
+    if (item->IsStatic()) {
+        const auto it = std::find(_staticItems.begin(), _staticItems.end(), item);
+        RUNTIME_ASSERT(it != _staticItems.end());
+        _staticItems.erase(it);
+    }
+    else {
+        const auto it = std::find(_dynamicItems.begin(), _dynamicItems.end(), item);
+        RUNTIME_ASSERT(it != _dynamicItems.end());
+        _dynamicItems.erase(it);
+    }
 
     if (item->GetId() != 0u) {
         const auto it_map = _itemsMap.find(item->GetId());
@@ -879,7 +905,7 @@ void MapView::SkipItemsFade()
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _items) {
+    for (auto* item : _allItems) {
         item->SkipFade();
     }
 }
@@ -929,7 +955,14 @@ auto MapView::GetItem(uint id) -> ItemHexView*
     return nullptr;
 }
 
-auto MapView::GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>
+auto MapView::GetItems() -> const vector<ItemHexView*>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _allItems;
+}
+
+auto MapView::GetItems(ushort hx, ushort hy) -> const vector<ItemHexView*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -938,7 +971,7 @@ auto MapView::GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>
         return *field.Items;
     }
 
-    return {};
+    return _emptyList;
 }
 
 auto MapView::GetRectForText(ushort hx, ushort hy) -> IRect
@@ -1000,13 +1033,15 @@ auto MapView::RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ush
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
     RUNTIME_ASSERT(proto);
+    RUNTIME_ASSERT(proto->IsStatic());
 
     auto* effect_item = new ItemHexView(this, 0, proto, nullptr, from_hx, from_hy);
     effect_item->SetEffect(to_hx, to_hy);
 
     AddItemToField(effect_item);
 
-    _items.push_back(effect_item);
+    _allItems.emplace_back(effect_item);
+    _staticItems.emplace_back(effect_item);
 
     if (IsHexToDraw(from_hx, from_hy)) {
         auto& field = GetField(from_hx, from_hy);
@@ -1575,7 +1610,7 @@ void MapView::PrepareLightToDraw()
     // Check dynamic light sources
     if (!_requestRenderLight) {
         for (auto& ls : _lightSources) {
-            if ((ls.OffsX != nullptr) && (*ls.OffsX != ls.LastOffsX || *ls.OffsY != ls.LastOffsY)) {
+            if (ls.OffsX != nullptr && (*ls.OffsX != ls.LastOffsX || *ls.OffsY != ls.LastOffsY)) {
                 ls.LastOffsX = *ls.OffsX;
                 ls.LastOffsY = *ls.OffsY;
                 _requestRenderLight = true;
@@ -2009,19 +2044,19 @@ void MapView::CollectLightSources()
 
     // Scenery
     if (_mapperMode) {
-        for (const auto* item : _items) {
-            if (item->IsStatic() && item->GetIsLight()) {
+        for (const auto* item : _staticItems) {
+            if (item->GetIsLight()) {
                 _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
             }
         }
     }
     else {
-        _lightSources = _lightSourcesScen;
+        _lightSources = _staticLightSources;
     }
 
     // Items on ground
-    for (const auto* item : _items) {
-        if (!item->IsStatic() && item->GetIsLight()) {
+    for (const auto* item : _dynamicItems) {
+        if (item->GetIsLight()) {
             _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
         }
     }
@@ -2043,15 +2078,6 @@ void MapView::CollectLightSources()
             }
         }
     }
-}
-
-auto MapView::ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    const auto ox = (is_roof ? _engine->Settings.MapRoofOffsX : _engine->Settings.MapTileOffsX) + tile.OffsX;
-    const auto oy = (is_roof ? _engine->Settings.MapRoofOffsY : _engine->Settings.MapTileOffsY) + tile.OffsY;
-    return MeasureHexBorders(tile.Anim->GetSprId(0), ox, oy, false);
 }
 
 void MapView::RebuildTiles()
@@ -2236,58 +2262,48 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
     return !(top > zoomed_screen_height || bottom < 0 || left > zoomed_screen_width || right < 0);
 }
 
-void MapView::MeasureHexBorders(const ItemHexView* item)
-{
-    STACK_TRACE_ENTRY();
-
-    MeasureHexBorders(item->SprId, item->GetOffsetX(), item->GetOffsetY(), true);
-}
-
-auto MapView::MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool
+auto MapView::MeasureMapBorders(uint spr_id, int ox, int oy) -> bool
 {
     STACK_TRACE_ENTRY();
 
     const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-    if (si == nullptr) {
-        return false;
-    }
+    RUNTIME_ASSERT(si);
 
-    auto top = si->OffsY + oy - _hTop * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2;
-    if (top < 0) {
-        top = 0;
-    }
+    const auto top = std::max(si->OffsY + oy - _hTop * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2, 0);
+    const auto bottom = std::max(si->Height - si->OffsY - oy - _hBottom * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2, 0);
+    const auto left = std::max(si->Width / 2 + si->OffsX + ox - _wLeft * _engine->Settings.MapHexWidth + _engine->Settings.MapHexWidth, 0);
+    const auto right = std::max(si->Width / 2 - si->OffsX - ox - _wRight * _engine->Settings.MapHexWidth + _engine->Settings.MapHexWidth, 0);
 
-    auto bottom = si->Height - si->OffsY - oy - _hBottom * _engine->Settings.MapHexLineHeight + _engine->Settings.MapHexLineHeight * 2;
-    if (bottom < 0) {
-        bottom = 0;
-    }
-
-    auto left = si->Width / 2 + si->OffsX + ox - _wLeft * _engine->Settings.MapHexWidth + _engine->Settings.MapHexWidth;
-    if (left < 0) {
-        left = 0;
-    }
-
-    auto right = si->Width / 2 - si->OffsX - ox - _wRight * _engine->Settings.MapHexWidth + _engine->Settings.MapHexWidth;
-    if (right < 0) {
-        right = 0;
-    }
-
-    if ((top != 0) || (bottom != 0) || (left != 0) || (right != 0)) {
-        // Resize
+    if (top > 0 || bottom > 0 || left > 0 || right > 0) {
         _hTop += top / _engine->Settings.MapHexLineHeight + ((top % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0);
         _hBottom += bottom / _engine->Settings.MapHexLineHeight + ((bottom % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0);
         _wLeft += left / _engine->Settings.MapHexWidth + ((left % _engine->Settings.MapHexWidth) != 0 ? 1 : 0);
         _wRight += right / _engine->Settings.MapHexWidth + ((right % _engine->Settings.MapHexWidth) != 0 ? 1 : 0);
 
-        if (resize_map) {
-            ResizeView();
-            RefreshMap();
-        }
+        ResizeView();
+        RefreshMap();
 
         return true;
     }
 
     return false;
+}
+
+auto MapView::MeasureMapBorders(const ItemHexView* item) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return MeasureMapBorders(item->SprId, item->GetOffsetX(), item->GetOffsetY());
+}
+
+auto MapView::MeasureMapBorders(const Field::Tile& tile, bool is_roof) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    const auto ox = (is_roof ? _engine->Settings.MapRoofOffsX : _engine->Settings.MapTileOffsX) + tile.OffsX;
+    const auto oy = (is_roof ? _engine->Settings.MapRoofOffsY : _engine->Settings.MapTileOffsY) + tile.OffsY;
+
+    return MeasureMapBorders(tile.Anim->GetSprId(0), ox, oy);
 }
 
 void MapView::SwitchShowHex()
@@ -3518,7 +3534,7 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
     vector<ItemHexView*> pix_item_egg;
     const auto is_egg = _engine->SprMngr.IsEggTransp(x, y);
 
-    for (auto* item : _items) {
+    for (auto* item : _allItems) {
         const auto hx = item->GetHexX();
         const auto hy = item->GetHexY();
 
@@ -4346,16 +4362,12 @@ void MapView::SetTile(hstring name, ushort hx, ushort hy, short ox, short oy, uc
     }
 
     auto& field = GetField(hx, hy);
-    auto& ftile = field.AddTile(anim, 0, 0, layer, is_roof);
+    const auto& ftile = field.AddTile(anim, 0, 0, layer, is_roof);
     auto& tiles = GetTiles(hx, hy, is_roof);
     tiles.push_back({name.as_hash(), hx, hy, ox, oy, layer, is_roof});
     tiles.back().IsSelected = select;
 
-    if (ProcessTileBorder(ftile, is_roof)) {
-        ResizeView();
-        RefreshMap();
-    }
-    else {
+    if (!MeasureMapBorders(ftile, is_roof)) {
         if (is_roof) {
             RebuildRoof();
         }
@@ -4611,7 +4623,7 @@ auto MapView::GetTempEntityId() const -> uint
         RUNTIME_ASSERT(cr->GetId() != 0u);
         max_id = std::min(cr->GetId(), max_id);
     }
-    for (const auto* item : _items) {
+    for (const auto* item : _allItems) {
         RUNTIME_ASSERT(item->GetId() != 0u);
         max_id = std::min(item->GetId(), max_id);
     }
@@ -4647,7 +4659,7 @@ auto MapView::SaveToText() const -> string
     }
 
     // Items
-    for (const auto* item : _items) {
+    for (const auto* item : _allItems) {
         auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
         kv["$Id"] = _str("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();

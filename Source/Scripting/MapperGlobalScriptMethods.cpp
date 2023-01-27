@@ -98,7 +98,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, ushort hx, ushort hy)
 {
-    const auto hex_items = mapper->CurMap->GetItems(hx, hy);
+    auto&& hex_items = mapper->CurMap->GetItems(hx, hy);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
