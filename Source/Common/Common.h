@@ -252,12 +252,19 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 using tracy::SourceLocationData;
 
+#if !FO_NO_MANUAL_STACK_TRACE
 #define STACK_TRACE_FIRST_ENTRY() \
     SetMainThread(); \
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     ZoneScoped; \
     auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+#else
+#define STACK_TRACE_FIRST_ENTRY() \
+    SetMainThread(); \
+    STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY() ZoneScoped
+#endif
 
 #else
 struct SourceLocationData // Same as tracy::SourceLocationData
@@ -268,12 +275,17 @@ struct SourceLocationData // Same as tracy::SourceLocationData
     uint32_t line;
 };
 
+#if !FO_NO_MANUAL_STACK_TRACE
 #define STACK_TRACE_FIRST_ENTRY() \
     SetMainThread(); \
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
     auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
+#else
+#define STACK_TRACE_FIRST_ENTRY() SetMainThread()
+#define STACK_TRACE_ENTRY()
+#endif
 #endif
 
 extern void SetMainThread() noexcept;
@@ -345,8 +357,14 @@ struct ExceptionStackTraceData
             } \
             _stackTrace = std::move(data.StackTrace); \
         } \
-        [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
-        [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; } \
+        [[nodiscard]] auto what() const noexcept -> const char* override \
+        { \
+            return _exceptionMessage.c_str(); \
+        } \
+        [[nodiscard]] auto StackTrace() const noexcept -> const string& override \
+        { \
+            return _stackTrace; \
+        } \
 \
     private: \
         string _exceptionMessage {}; \
@@ -355,12 +373,17 @@ struct ExceptionStackTraceData
     }
 
 // Todo: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
+#if !FO_NO_EXTRA_ASSERTS
 #define RUNTIME_ASSERT(expr) \
     if (!(expr)) \
     throw AssertationException(#expr, __FILE__, __LINE__)
 #define RUNTIME_ASSERT_STR(expr, str) \
     if (!(expr)) \
     throw AssertationException(str, __FILE__, __LINE__)
+#else
+#define RUNTIME_ASSERT(expr)
+#define RUNTIME_ASSERT_STR(expr, str)
+#endif
 
 // Common exceptions
 DECLARE_EXCEPTION(GenericException);
@@ -619,14 +642,20 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT() \
-    void AddRef() { ++RefCounter; } \
+    void AddRef() \
+    { \
+        ++RefCounter; \
+    } \
     void Release() \
     { \
         if (--RefCounter == 0) { \
             delete this; \
         } \
     } \
-    int RefCounter { 1 }
+    int RefCounter \
+    { \
+        1 \
+    }
 
 // Ref counted objects scope holder
 template<typename T>

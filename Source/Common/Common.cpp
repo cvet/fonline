@@ -173,6 +173,7 @@ void ShowExceptionMessageBox(bool enabled)
 
 void PushStackTrace(const SourceLocationData& loc) noexcept
 {
+#if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return;
     }
@@ -182,10 +183,12 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
     }
 
     StackTrace.CallsCount++;
+#endif
 }
 
 void PopStackTrace() noexcept
 {
+#if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return;
     }
@@ -193,10 +196,12 @@ void PopStackTrace() noexcept
     if (StackTrace.CallsCount > 0) {
         StackTrace.CallsCount--;
     }
+#endif
 }
 
 auto GetStackTrace() -> string
 {
+#if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return "Stack trace disabled for non main thread";
     }
@@ -223,6 +228,10 @@ auto GetStackTrace() -> string
     }
 
     return st_str;
+
+#else
+    return GetRealStackTrace();
+#endif
 }
 
 auto GetRealStackTrace() -> string

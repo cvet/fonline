@@ -93,7 +93,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         CHECK_ENTRY(InvConstantColor);
         CHECK_ENTRY(SrcAlphaSaturate);
 #undef CHECK_ENTRY
-        RUNTIME_ASSERT(false);
+        throw UnreachablePlaceException(LINE_STR);
     };
     static auto get_blend_equation = [](string_view s) -> BlendEquationType {
 #define CHECK_ENTRY(name) \
@@ -105,7 +105,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         CHECK_ENTRY(Max);
         CHECK_ENTRY(Min);
 #undef CHECK_ENTRY
-        RUNTIME_ASSERT(false);
+        throw UnreachablePlaceException(LINE_STR);
     };
 
     const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");

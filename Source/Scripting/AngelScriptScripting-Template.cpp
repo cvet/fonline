@@ -329,8 +329,10 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 #endif
 
         auto&& ctx_ext2 = GET_CONTEXT_EXT2(ctx);
+#if !FO_NO_MANUAL_STACK_TRACE
         ctx_ext2.BeginScriptCall = AngelScriptBeginCall;
         ctx_ext2.EndScriptCall = AngelScriptEndCall;
+#endif
 
         int r = ctx->SetExceptionCallback(asFUNCTION(AngelScriptException), &ExceptionStackTrace, asCALL_CDECL);
         RUNTIME_ASSERT(r >= 0);

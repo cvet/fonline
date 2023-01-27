@@ -218,6 +218,10 @@ macro( AddConfiguration name parent )
 	set( CMAKE_MODULE_LINKER_FLAGS_${nameUpper} ${CMAKE_MODULE_LINKER_FLAGS_${parentUpper}} CACHE STRING "Forced by FOnline" FORCE )
 endmacro()
 
+if( FO_MULTICONFIG )
+	set( CMAKE_CONFIGURATION_TYPES ${FO_CONFIGURATION_TYPES} CACHE STRING "Forced by FOnline" FORCE )
+endif()
+
 AddConfiguration( Profiling RelWithDebInfo )
 AddConfiguration( Release_Ext Release )
 AddConfiguration( San_Address RelWithDebInfo )
@@ -735,6 +739,8 @@ add_compile_definitions( FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}> )
 add_compile_definitions( FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}> )
 add_compile_definitions( FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}> )
 add_compile_definitions( FO_GEOMETRY=${FO_GEOMETRY} )
+add_compile_definitions( FO_NO_MANUAL_STACK_TRACE=$<CONFIG:Release_Ext> )
+add_compile_definitions( FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> )
 
 # Compiler options
 set( CMAKE_CXX_STANDARD 17 )
