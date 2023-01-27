@@ -208,53 +208,9 @@
     }
 
     if (item == nullptr || item->IsDestroyed()) {
-        return static_cast<ItemView*>(nullptr);
+        return nullptr;
     }
     return item;
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItems(FOClient* client)
-{
-    vector<ItemView*> items;
-
-    if (client->CurMap != nullptr) {
-        const auto items_ = client->CurMap->GetItems();
-        items.reserve(items_.size());
-        for (auto* item : items_) {
-            if (!item->IsFinishing()) {
-                items.emplace_back(item);
-            }
-        }
-    }
-
-    return items;
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItemsOnHex(FOClient* client, ushort hx, ushort hy)
-{
-    vector<ItemHexView*> hex_items;
-    if (client->CurMap != nullptr) {
-        hex_items = client->CurMap->GetItems(hx, hy);
-        for (auto it = hex_items.begin(); it != hex_items.end();) {
-            it = ((*it)->IsFinishing() ? hex_items.erase(it) : ++it);
-        }
-    }
-
-    vector<ItemView*> items;
-    items.reserve(hex_items.size());
-    for (auto* item : hex_items) {
-        items.push_back(item);
-    }
-
-    return items;
 }
 
 ///# ...
@@ -345,109 +301,6 @@
     }
 
     return critters;
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# param radius ...
-///# param findType ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
-{
-    if (client->CurMap == nullptr) {
-        return {};
-    }
-
-    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    vector<CritterView*> critters;
-
-    for (auto* cr : client->CurMap->GetCritters()) {
-        if (cr->CheckFind(findType) && client->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
-            critters.push_back(cr);
-        }
-    }
-
-    std::sort(critters.begin(), critters.end(), [client, &hx, &hy](CritterView* cr1, CritterView* cr2) { return client->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < client->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
-
-    return critters;
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param angle ...
-///# param dist ...
-///# param findType ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
-{
-    if (client->CurMap == nullptr) {
-        return {};
-    }
-
-    vector<CritterHexView*> critters;
-    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-    return vec_downcast<CritterView*>(critters);
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param angle ...
-///# param dist ...
-///# param findType ...
-///# param preBlockHx ...
-///# param preBlockHy ...
-///# param blockHx ...
-///# param blockHy ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
-{
-    if (client->CurMap == nullptr) {
-        return {};
-    }
-
-    vector<CritterHexView*> critters;
-    pair<ushort, ushort> block = {};
-    pair<ushort, ushort> pre_block = {};
-    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, &block, &pre_block, nullptr, true);
-    preBlockHx = pre_block.first;
-    preBlockHy = pre_block.second;
-    blockHx = block.first;
-    blockHy = block.second;
-    return vec_downcast<CritterView*>(critters);
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param angle ...
-///# param dist ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_GetHexInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
-{
-    if (client->CurMap == nullptr) {
-        return;
-    }
-
-    pair<ushort, ushort> pre_block = {};
-    pair<ushort, ushort> block = {};
-    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
-    toHx = pre_block.first;
-    toHy = pre_block.second;
 }
 
 ///# ...
@@ -546,25 +399,6 @@
     }
 
     client->AddMessage(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum));
-}
-
-///# ...
-///# param text ...
-///# param hx ...
-///# param hy ...
-///# param showTime ...
-///# param color ...
-///# param fade ...
-///# param endOx ...
-///# param endOy ...
-///@ ExportMethod
-[[maybe_unused]] void Client_Game_MapMessage(FOClient* client, string_view text, ushort hx, ushort hy, uint showTime, uint color, bool fade, int endOx, int endOy)
-{
-    if (client->CurMap == nullptr) {
-        return;
-    }
-
-    client->CurMap->AddMapText(text, hx, hy, color, showTime, fade, endOx, endOy);
 }
 
 ///# ...
@@ -1382,100 +1216,6 @@
     }
 
     client->SprMngr.DrawPoints(points, prim);
-}
-
-///# ...
-///# param mapSpr ...
-///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawMapSprite(FOClient* client, MapSprite* mapSpr)
-{
-    if (mapSpr == nullptr) {
-        throw ScriptException("Map sprite arg is null");
-    }
-
-    if (client->CurMap == nullptr) {
-        return;
-    }
-    if (mapSpr->HexX >= client->CurMap->GetWidth() || mapSpr->HexY >= client->CurMap->GetHeight()) {
-        return;
-    }
-    if (!client->CurMap->IsHexToDraw(mapSpr->HexX, mapSpr->HexY)) {
-        return;
-    }
-
-    const auto* anim = client->AnimGetFrames(mapSpr->SprId);
-    if (!anim || mapSpr->FrameIndex >= static_cast<int>(anim->CntFrm)) {
-        return;
-    }
-
-    auto color = mapSpr->Color;
-    auto is_flat = mapSpr->IsFlat;
-    auto no_light = mapSpr->NoLight;
-    auto draw_order = mapSpr->DrawOrder;
-    auto draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
-    auto corner = mapSpr->Corner;
-    auto disable_egg = mapSpr->DisableEgg;
-    auto contour_color = mapSpr->ContourColor;
-
-    if (mapSpr->ProtoId) {
-        const auto* const proto_item = client->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        if (!proto_item) {
-            return;
-        }
-
-        color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
-        is_flat = proto_item->GetIsFlat();
-        const auto is_item = !proto_item->IsAnyScenery();
-        no_light = (is_flat && !is_item);
-        draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
-        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
-        corner = proto_item->GetCorner();
-        disable_egg = proto_item->GetDisableEgg();
-        contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
-    }
-
-    auto& field = client->CurMap->GetField(mapSpr->HexX, mapSpr->HexY);
-    auto& tree = client->CurMap->GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, //
-        (client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
-        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
-        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
-
-    spr.MapSpr = mapSpr;
-    mapSpr->AddRef();
-
-    if (!no_light) {
-        spr.SetLight(corner, client->CurMap->GetLightHex(0, 0), client->CurMap->GetWidth(), client->CurMap->GetHeight());
-    }
-
-    if (!is_flat && !disable_egg) {
-        EggAppearenceType egg_appearence;
-        switch (corner) {
-        case CornerType::South:
-            egg_appearence = EggAppearenceType::ByXOrY;
-            break;
-        case CornerType::North:
-            egg_appearence = EggAppearenceType::ByXAndY;
-            break;
-        case CornerType::EastWest:
-        case CornerType::West:
-            egg_appearence = EggAppearenceType::ByY;
-            break;
-        default:
-            egg_appearence = EggAppearenceType::ByX;
-            break;
-        }
-        spr.SetEggAppearence(egg_appearence);
-    }
-
-    if (color != 0u) {
-        spr.SetColor(color & 0xFFFFFF);
-        spr.SetFixedAlpha(color >> 24);
-    }
-
-    if (contour_color != 0u) {
-        spr.SetContour(ContourType::Custom, contour_color);
-    }
 }
 
 ///# ...

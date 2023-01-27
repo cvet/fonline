@@ -38,10 +38,342 @@
 
 // ReSharper disable CppInconsistentNaming
 
+///# ...
+///# param text ...
+///# param hx ...
+///# param hy ...
+///# param showTime ...
+///# param color ...
+///# param fade ...
+///# param endOx ...
+///# param endOy ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, ushort hx, ushort hy, uint showTime, uint color, bool fade, int endOx, int endOy)
+{
+    self->AddMapText(text, hx, hy, color, showTime, fade, endOx, endOy);
+}
+
+///# ...
+///# param mapSpr ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_DrawMapSprite(MapView* self, MapSprite* mapSpr)
+{
+    if (mapSpr == nullptr) {
+        throw ScriptException("Map sprite arg is null");
+    }
+
+    if (mapSpr->HexX >= self->GetWidth() || mapSpr->HexY >= self->GetHeight()) {
+        return;
+    }
+    if (!self->IsHexToDraw(mapSpr->HexX, mapSpr->HexY)) {
+        return;
+    }
+
+    const auto* anim = self->GetEngine()->AnimGetFrames(mapSpr->SprId);
+    if (anim == nullptr || mapSpr->FrameIndex >= static_cast<int>(anim->CntFrm)) {
+        return;
+    }
+
+    auto color = mapSpr->Color;
+    auto is_flat = mapSpr->IsFlat;
+    auto no_light = mapSpr->NoLight;
+    auto draw_order = mapSpr->DrawOrder;
+    auto draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
+    auto corner = mapSpr->Corner;
+    auto disable_egg = mapSpr->DisableEgg;
+    auto contour_color = mapSpr->ContourColor;
+
+    if (mapSpr->ProtoId) {
+        const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        if (proto_item == nullptr) {
+            return;
+        }
+
+        color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
+        is_flat = proto_item->GetIsFlat();
+        const auto is_item = !proto_item->IsAnyScenery();
+        no_light = (is_flat && !is_item);
+        draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
+        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
+        corner = proto_item->GetCorner();
+        disable_egg = proto_item->GetDisableEgg();
+        contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
+    }
+
+    auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
+    auto& tree = self->GetDrawTree();
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<ushort>(draw_order_hy_offset), //
+        (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
+        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
+        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+
+    spr.MapSpr = mapSpr;
+    mapSpr->AddRef();
+
+    if (!no_light) {
+        spr.SetLight(corner, self->GetLightHex(0, 0), self->GetWidth(), self->GetHeight());
+    }
+
+    if (!is_flat && !disable_egg) {
+        EggAppearenceType egg_appearence;
+        switch (corner) {
+        case CornerType::South:
+            egg_appearence = EggAppearenceType::ByXOrY;
+            break;
+        case CornerType::North:
+            egg_appearence = EggAppearenceType::ByXAndY;
+            break;
+        case CornerType::EastWest:
+        case CornerType::West:
+            egg_appearence = EggAppearenceType::ByY;
+            break;
+        default:
+            egg_appearence = EggAppearenceType::ByX;
+            break;
+        }
+        spr.SetEggAppearence(egg_appearence);
+    }
+
+    if (color != 0u) {
+        spr.SetColor(color & 0xFFFFFF);
+        spr.SetFixedAlpha(color >> 24);
+    }
+
+    if (contour_color != 0u) {
+        spr.SetContour(ContourType::Custom, contour_color);
+    }
+}
+
+///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_RebuildFog(MapView* self)
 {
     self->RebuildFog();
+}
+
+///# ...
+///# param itemId ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Map_GetItem(MapView* self, uint itemId)
+{
+    if (itemId == 0u) {
+        throw ScriptException("Item id arg is zero");
+    }
+
+    // On map
+    ItemView* item = self->GetItem(itemId);
+
+    // On Chosen
+    if (item == nullptr && self->GetEngine()->GetChosen() != nullptr) {
+        item = self->GetEngine()->GetChosen()->GetItem(itemId);
+    }
+
+    // On other critters
+    if (item == nullptr) {
+        for (auto* cr : self->GetCritters()) {
+            if (!cr->IsChosen()) {
+                item = cr->GetItem(itemId);
+            }
+        }
+    }
+
+    if (item == nullptr || item->IsDestroyed()) {
+        return nullptr;
+    }
+    return item;
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItems(MapView* self)
+{
+    vector<ItemView*> items;
+
+    const auto items_ = self->GetItems();
+    items.reserve(items_.size());
+    for (auto* item : items_) {
+        if (!item->IsFinishing()) {
+            items.emplace_back(item);
+        }
+    }
+
+    return items;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, ushort hx, ushort hy)
+{
+    vector<ItemHexView*> hex_items;
+    hex_items = self->GetItems(hx, hy);
+    for (auto it = hex_items.begin(); it != hex_items.end();) {
+        it = ((*it)->IsFinishing() ? hex_items.erase(it) : ++it);
+    }
+
+    vector<ItemView*> items;
+    items.reserve(hex_items.size());
+    for (auto* item : hex_items) {
+        items.push_back(item);
+    }
+
+    return items;
+}
+
+///# ...
+///# param critterId ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] CritterView* Client_Map_GetCritter(MapView* self, uint critterId)
+{
+    if (critterId == 0u) {
+        return nullptr;
+    }
+
+    auto* cr = self->GetCritter(critterId);
+    if (cr == nullptr || cr->IsDestroyed() || cr->IsDestroying()) {
+        return nullptr;
+    }
+
+    return cr;
+}
+
+///# ...
+///# param findType ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, CritterFindType findType)
+{
+    vector<CritterView*> critters;
+
+    for (auto* cr : self->GetCritters()) {
+        if (cr->CheckFind(findType)) {
+            critters.push_back(cr);
+        }
+    }
+
+    return critters;
+}
+
+///# ...
+///# param pid ...
+///# param findType ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, hstring pid, CritterFindType findType)
+{
+    vector<CritterView*> critters;
+
+    if (!pid) {
+        for (auto* cr : self->GetCritters()) {
+            if (cr->CheckFind(findType)) {
+                critters.push_back(cr);
+            }
+        }
+    }
+    else {
+        for (auto* cr : self->GetCritters()) {
+            if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
+                critters.push_back(cr);
+            }
+        }
+    }
+
+    return critters;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param radius ...
+///# param findType ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, ushort hx, ushort hy, uint radius, CritterFindType findType)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    vector<CritterView*> critters;
+
+    for (auto* cr : self->GetCritters()) {
+        if (cr->CheckFind(findType) && self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+            critters.push_back(cr);
+        }
+    }
+
+    std::sort(critters.begin(), critters.end(), [&self, &hx, &hy](const CritterView* cr1, const CritterView* cr2) {
+        //
+        return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    });
+
+    return critters;
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# param angle ...
+///# param dist ...
+///# param findType ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
+{
+    vector<CritterHexView*> critters;
+    self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
+    return vec_downcast<CritterView*>(critters);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# param angle ...
+///# param dist ...
+///# param findType ...
+///# param preBlockHx ...
+///# param preBlockHy ...
+///# param blockHx ...
+///# param blockHy ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+{
+    vector<CritterHexView*> critters;
+    pair<ushort, ushort> block = {};
+    pair<ushort, ushort> pre_block = {};
+    self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, &block, &pre_block, nullptr, true);
+    preBlockHx = pre_block.first;
+    preBlockHy = pre_block.second;
+    blockHx = block.first;
+    blockHy = block.second;
+    return vec_downcast<CritterView*>(critters);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# param angle ...
+///# param dist ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] void Client_Map_GetHexInPath(MapView* self, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
+{
+    pair<ushort, ushort> pre_block = {};
+    pair<ushort, ushort> block = {};
+    self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
+    toHx = pre_block.first;
+    toHy = pre_block.second;
 }
 
 /// # ...
@@ -74,7 +406,7 @@
     const auto init_to_hx = to_hx;
     const auto init_to_hy = to_hy;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, static_cast<int>(cut))) {
         return {};
     }
 
@@ -121,7 +453,7 @@
     const auto init_to_hx = to_hx;
     const auto init_to_hy = to_hy;
 
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
+    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, static_cast<int>(cut))) {
         return {};
     }
 
@@ -164,7 +496,7 @@
     const auto init_to_hx = to_hx;
     const auto init_to_hy = to_hy;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
+    if (cut > 0 && !self->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, static_cast<int>(cut))) {
         return 0;
     }
 
@@ -208,7 +540,7 @@
     const auto init_to_hx = to_hx;
     const auto init_to_hy = to_hy;
 
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
+    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, static_cast<int>(cut))) {
         return 0;
     }
 
@@ -271,8 +603,8 @@
             self->AutoScroll.SoftLockedCritter = id;
         }
 
-        self->AutoScroll.CritterLastHexX = (cr ? cr->GetHexX() : 0);
-        self->AutoScroll.CritterLastHexY = (cr ? cr->GetHexY() : 0);
+        self->AutoScroll.CritterLastHexX = (cr != nullptr ? cr->GetHexX() : 0);
+        self->AutoScroll.CritterLastHexY = (cr != nullptr ? cr->GetHexY() : 0);
     }
     else {
         if (unlockIfSame && id == self->AutoScroll.HardLockedCritter) {
@@ -555,6 +887,8 @@
     return !self->GetField(hx, hy).Flags.IsShootBlocked;
 }
 
+///# ...
+///# param enabled ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled)
 {
