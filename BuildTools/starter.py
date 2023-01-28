@@ -3,7 +3,6 @@
 import os
 import argparse
 import platform
-import easygui
 import sys
 import subprocess
 import traceback
@@ -27,13 +26,36 @@ assert platform.system() in ['Linux', 'Darwin', 'Windows'], 'Invalid OS'
 def log(*text):
 	print('[Starter]', *text, flush=True)
 
+try:
+	import easygui
+	hasEasyGui = True
+except:
+	hasEasyGui = False
+	log('Please install easygui for better experience')
+	log('Type in console: pip install easygui')
+
 def error(message):
 	log(message)
-	easygui.msgbox(message, args.devname + ' Starter')
+	if hasEasyGui:
+		easygui.msgbox(message, args.devname + ' Starter')
+	else:
+		input('Press enter to continue')
 	sys.exit(1)
 
-def choicebox(message, choises):
-	return easygui.choicebox(message, args.devname + ' Starter', choices=choises)
+def choicebox(message, choices):
+	log(message)
+	if hasEasyGui:
+		return easygui.choicebox(message, args.devname + ' Starter', choices=choices)
+	else:
+		index = 1
+		for choice in choices:
+			log(f'{index}) {choice}' + (' (default)' if index == 1 else ''))
+			index += 1
+		try:
+			index = int(input(': ') or 1)
+		except:
+			index = 0
+		return choices[index - 1] if index >= 1 and index <= len(choices) else None
 
 def checkDirHash(dir, inputType):
 	buildHashPath = os.path.join(dir, inputType + '.build-hash')
@@ -51,8 +73,8 @@ try:
 
 	binaryEntries = []
 	
-	for input in args.bininput:
-		absInput = os.path.realpath(input)
+	for binInput in args.bininput:
+		absInput = os.path.realpath(binInput)
 		log('Scan for binaries', absInput)
 		
 		for entry in os.scandir(absInput):
@@ -73,7 +95,7 @@ try:
 	binaryEntries.sort(key=lambda x: BIN_TYPES.index(os.path.basename(x).split('-')[0]))
 
 	if not binaryEntries:
-		error('Binaries not found')
+		error('Binaries not found or outdated')
 
 	for binaryEntry in binaryEntries:
 		log('Found binary entry', os.path.relpath(binaryEntry))
@@ -95,26 +117,23 @@ try:
 	for binEntry in binaryEntries:
 		nameParts = os.path.basename(binEntry).split('-')
 		binType = nameParts[0]
-		osType = nameParts[1]
 		archType = nameParts[2]
 		buildType = nameParts[3] if len(nameParts) > 3 else ''
 		
-		def action(binEntry=binEntry, binType=binType, osType=osType, archType=archType, buildType=buildType):
+		def action(binEntry=binEntry, binType=binType, buildType=buildType):
 			config = None
 			
 			if binType == 'Mapper' and args.mappercfg:
 				config = args.mappercfg
 			elif binType in ['Server', 'Client', 'Single', 'Mapper']:
-				log('Select config to start')
 				config = choicebox('Select config to start', configs)
 				if not config:
 					sys.exit(0)
 			elif binType == 'Baker':
-				log('Select bakering mode')
 				bakeringType = choicebox('Select bakering mode', ['Iterative', 'Force'])
 				if not bakeringType:
 					sys.exit(0)
-			
+
 			exePath = os.path.join(binEntry, args.devname + '_' + binType + ('-' + buildType if buildType else ''))
 			if platform.system() == 'Windows':
 				exePath += '.exe'
@@ -136,7 +155,7 @@ try:
 				for r in args.resource:
 					exeArgs += ['-BakeResourceEntries', f'+{r}']
 			if (platform.system() == 'Linux' or platform.system() == 'Darwin') and binType in ['Server', 'Client', 'Single', 'Editor', 'Mapper']:
-				exeArgs =+ ['--fork']
+				exeArgs += ['--fork']
 			
 			log('Run', exePath)
 			for exeArg in exeArgs:
@@ -148,11 +167,12 @@ try:
 				proc.wait()
 				if proc.returncode:
 					error('Something went wrong\nVerify log messages')
+				else:
+					input('Press enter to continue')
 		
-		choices.append(str(len(choices) + 1) + ' ' + binType + (' ' + buildType if buildType else ''))
+		choices.append(binType + (' ' + buildType if buildType else '') + (' ' + archType if archType not in ['win64', 'x64'] else ''))
 		choiceActions.append(action)
 
-	log('Select binary to start')
 	reply = choicebox('Select binary to start', choices)
 	if reply:
 		choiceActions[choices.index(reply)]()
