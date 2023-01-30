@@ -3058,6 +3058,10 @@ auto MapView::ScrollCheck(int xmod, int ymod) -> bool
 {
     STACK_TRACE_ENTRY();
 
+    if (_mapperMode) {
+        return false;
+    }
+
     int positions_left[4] = {
         _hTop * _wVisible + _wRight + GetViewWidth(), // Left top
         (_hTop + GetViewHeight() - 1) * _wVisible + _wRight + GetViewWidth(), // Left bottom

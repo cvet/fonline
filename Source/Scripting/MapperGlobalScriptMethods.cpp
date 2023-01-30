@@ -453,13 +453,11 @@
 {
     vector<string> names;
 
-    throw NotImplementedException(LINE_STR);
-    // Todo: Settings.MapsDir
-    // auto map_files = mapper->ServerFileSys.FilterFiles("fomap", dir, false);
-    // while (map_files.MoveNext()) {
-    //    auto file_header = map_files.GetCurFileHeader();
-    //    names.emplace_back(file_header.GetName());
-    // }
+    auto map_files = mapper->ContentFileSys.FilterFiles("fomap", dir, false);
+    while (map_files.MoveNext()) {
+        auto file_header = map_files.GetCurFileHeader();
+        names.emplace_back(file_header.GetName());
+    }
 
     return names;
 }
@@ -501,8 +499,8 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    if (!subTab.empty() && !mapper->Tabs[tab].count(string(subTab))) {
-        return vector<hstring>();
+    if (!subTab.empty() && mapper->Tabs[tab].count(string(subTab)) == 0) {
+        return {};
     }
 
     vector<hstring> pids;
@@ -523,8 +521,8 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    if (!subTab.empty() && !mapper->Tabs[tab].count(string(subTab))) {
-        return vector<hstring>();
+    if (!subTab.empty() && mapper->Tabs[tab].count(string(subTab)) == 0) {
+        return {};
     }
 
     vector<hstring> pids;
@@ -723,7 +721,7 @@
         return;
     }
 
-    auto it = mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB);
+    const auto it = mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB);
     if (it != mapper->Tabs[tab].end()) {
         mapper->TabsActive[tab] = &it->second;
     }

@@ -148,7 +148,7 @@ try:
 				exeArgs += ['-ExternalConfig', os.path.relpath(os.path.join(bakeringEntry, 'Configs', f'{config}.focfg'))]
 			if binType == 'Baker':
 				exeArgs += ['-ForceBakering', 'True' if bakeringType == 'Force' else 'False']
-			if binType in ['Editor', 'Baker', 'ASCompiler']:
+			if binType in ['Editor', 'Baker', 'ASCompiler', 'Mapper']:
 				exeArgs += ['-BakeOutput', os.path.relpath(os.path.realpath(args.bakering))]
 				for c in args.content:
 					exeArgs += ['-BakeContentEntries', f'+{c}']

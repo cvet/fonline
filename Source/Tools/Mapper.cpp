@@ -54,6 +54,14 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(s
         ContentFileSys.AddDataSource(dir, DataSourceType::DirRoot);
     }
 
+    if (settings.BakeContentEntries.empty() && !Settings.MapsDir.empty()) {
+        if (!DiskFileSystem::IsDir(Settings.MapsDir)) {
+            throw MapperException("Directory with maps not found", Settings.MapsDir);
+        }
+
+        ContentFileSys.AddDataSource(Settings.MapsDir, DataSourceType::DirRoot);
+    }
+
     extern void Mapper_RegisterData(FOEngineBase*);
     Mapper_RegisterData(this);
     ScriptSys = new MapperScriptSystem(this);
