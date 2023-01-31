@@ -65,6 +65,7 @@ def checkDirHash(dir, inputType):
 	return False
 
 try:
+	log('Build hash', args.buildhash)
 	bakeringEntry = os.path.realpath(args.bakering)
 
 	if not checkDirHash(bakeringEntry, 'Resources'):
@@ -92,7 +93,7 @@ try:
 		binaryEntries = list(filter(lambda x: os.path.basename(x).split('-')[0] not in BIN_NEED_BACKED_RESOURCES, binaryEntries))
 	binaryEntries = list(filter(lambda x: len(os.path.basename(x).split('-')) >= 3, binaryEntries))
 	binaryEntries = list(filter(lambda x: os.path.basename(x).split('-')[0] in BIN_TYPES, binaryEntries))
-	binaryEntries.sort(key=lambda x: BIN_TYPES.index(os.path.basename(x).split('-')[0]))
+	binaryEntries.sort(key=lambda x: (BIN_TYPES.index(os.path.basename(x).split('-')[0]), os.path.basename(x).split('-')[3:]))
 
 	if not binaryEntries:
 		error('Binaries not found or outdated')
@@ -134,7 +135,7 @@ try:
 				if not bakeringType:
 					sys.exit(0)
 
-			exePath = os.path.join(binEntry, args.devname + '_' + binType + ('-' + buildType if buildType else ''))
+			exePath = os.path.join(binEntry, args.devname + '_' + binType)
 			if platform.system() == 'Windows':
 				exePath += '.exe'
 			exePath = os.path.relpath(exePath)
@@ -154,16 +155,17 @@ try:
 					exeArgs += ['-BakeContentEntries', f'+{c}']
 				for r in args.resource:
 					exeArgs += ['-BakeResourceEntries', f'+{r}']
-			if (platform.system() == 'Linux' or platform.system() == 'Darwin') and binType in ['Server', 'Client', 'Single', 'Editor', 'Mapper']:
+			
+			needWait = binType in ['Baker', 'ASCompiler'] or 'San_' in buildType
+			
+			if not needWait and (platform.system() == 'Linux' or platform.system() == 'Darwin'):
 				exeArgs += ['--fork']
 			
-			log('Run', exePath)
-			for exeArg in exeArgs:
-				log('-', exeArg)
+			log('Run and wait' if needWait else 'Run', exePath)
 			
 			proc = subprocess.Popen([exePath] + exeArgs)
 			
-			if binType in ['Baker', 'ASCompiler']:
+			if needWait:
 				proc.wait()
 				if proc.returncode:
 					error('Something went wrong\nVerify log messages')
