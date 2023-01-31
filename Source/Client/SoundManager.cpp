@@ -63,7 +63,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}, _playingSounds {}
 {
     STACK_TRACE_ENTRY();
 
@@ -98,7 +98,7 @@ SoundManager::~SoundManager()
         App->Audio.SetSource(nullptr);
 
         App->Audio.LockDevice();
-        _soundsActive.clear();
+        _playingSounds.clear();
         App->Audio.UnlockDevice();
     }
 }
@@ -107,7 +107,7 @@ void SoundManager::ProcessSounds(uchar* output)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto it = _soundsActive.begin(); it != _soundsActive.end();) {
+    for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
         auto&& sound = *it;
         if (ProcessSound(sound.get(), _outputBuf.data())) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
@@ -115,7 +115,7 @@ void SoundManager::ProcessSounds(uchar* output)
             ++it;
         }
         else {
-            it = _soundsActive.erase(it);
+            it = _playingSounds.erase(it);
         }
     }
 }
@@ -224,7 +224,7 @@ auto SoundManager::Load(string_view fname, bool is_music, uint repeat_time) -> b
     sound->RepeatTime = repeat_time;
 
     App->Audio.LockDevice();
-    _soundsActive.emplace_back(std::move(sound));
+    _playingSounds.emplace_back(std::move(sound));
     App->Audio.UnlockDevice();
 
     return true;
@@ -574,7 +574,7 @@ void SoundManager::StopSounds()
     }
 
     App->Audio.LockDevice();
-    _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto&& s) { return !s->IsMusic; }), _soundsActive.end());
+    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return !s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }
 
@@ -587,6 +587,6 @@ void SoundManager::StopMusic()
     }
 
     App->Audio.LockDevice();
-    _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto&& s) { return s->IsMusic; }), _soundsActive.end());
+    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }

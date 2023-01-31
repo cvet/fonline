@@ -70,7 +70,7 @@ private:
     FileSystem& _resources;
     bool _isActive {};
     uint _streamingPortion {};
-    vector<unique_ptr<Sound>> _soundsActive {};
+    vector<unique_ptr<Sound>> _playingSounds;
     vector<uchar> _outputBuf {};
     bool _nonConstHelper {};
 };
