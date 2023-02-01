@@ -927,36 +927,41 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(double)), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
     };
 
-    RUNTIME_ASSERT(func_desc);
-    RUNTIME_ASSERT(func);
-    RUNTIME_ASSERT(func_desc->ArgsType.size() == args.size());
-    RUNTIME_ASSERT(func_desc->ArgsType.size() == func->GetParamCount());
+    try {
+        RUNTIME_ASSERT(func_desc);
+        RUNTIME_ASSERT(func);
+        RUNTIME_ASSERT(func_desc->ArgsType.size() == args.size());
+        RUNTIME_ASSERT(func_desc->ArgsType.size() == func->GetParamCount());
 
-    if (ret != nullptr) {
-        RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
-        RUNTIME_ASSERT(type_index(*func_desc->RetType) != type_index(typeid(void)));
-    }
-    else {
-        RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
-        RUNTIME_ASSERT(type_index(*func_desc->RetType) == type_index(typeid(void)));
-    }
-
-    auto* ctx = script_sys->PrepareContext(func);
-
-    if (args.size() != 0u) {
-        auto it = args.begin();
-        for (asUINT i = 0; i < args.size(); i++, it++) {
-            CtxSetValueMap[type_index(*func_desc->ArgsType[i])](ctx, i, *it);
-        }
-    }
-
-    if (script_sys->RunContext(ctx, ret == nullptr)) {
         if (ret != nullptr) {
-            CtxReturnValueMap[type_index(*func_desc->RetType)](ctx, ret);
+            RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
+            RUNTIME_ASSERT(type_index(*func_desc->RetType) != type_index(typeid(void)));
+        }
+        else {
+            RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
+            RUNTIME_ASSERT(type_index(*func_desc->RetType) == type_index(typeid(void)));
         }
 
-        script_sys->ReturnContext(ctx);
-        return true;
+        auto* ctx = script_sys->PrepareContext(func);
+
+        if (args.size() != 0u) {
+            auto it = args.begin();
+            for (asUINT i = 0; i < args.size(); i++, it++) {
+                CtxSetValueMap[type_index(*func_desc->ArgsType[i])](ctx, i, *it);
+            }
+        }
+
+        if (script_sys->RunContext(ctx, ret == nullptr)) {
+            if (ret != nullptr) {
+                CtxReturnValueMap[type_index(*func_desc->RetType)](ctx, ret);
+            }
+
+            script_sys->ReturnContext(ctx);
+            return true;
+        }
+    }
+    catch (std::exception& ex) {
+        ReportExceptionAndContinue(ex);
     }
 
     return false;
