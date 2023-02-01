@@ -78,18 +78,11 @@ void CritterHexView::Finish()
     _finishingTime = FadingTick;
 }
 
-auto CritterHexView::IsFinishing() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _finishingTime != 0;
-}
-
 auto CritterHexView::IsFinished() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _finishingTime != 0u && _engine->GameTime.GameTick() > _finishingTime;
+    return _finishingTime != 0 && _engine->GameTime.GameTick() > _finishingTime;
 }
 
 void CritterHexView::SetFade(bool fade_up)

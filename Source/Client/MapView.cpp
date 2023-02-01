@@ -593,7 +593,7 @@ void MapView::Process()
                 cr->ResetOk();
             }
 
-            if (cr->IsFinished()) {
+            if (cr->IsFinishing() && cr->IsFinished()) {
                 critter_to_delete.emplace_back(cr);
             }
         }
@@ -608,10 +608,11 @@ void MapView::Process()
         vector<ItemHexView*> item_to_delete;
 
         for (auto* item : _allItems) {
-            // Todo: optimize, collect separate collection with IsNeedProcess
-            item->Process();
+            if (item->IsNeedProcess()) {
+                item->Process();
+            }
 
-            if (item->IsFinished()) {
+            if (item->IsFinishing() && item->IsFinished()) {
                 item_to_delete.emplace_back(item);
             }
         }
@@ -3527,10 +3528,20 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
     const auto is_egg = _engine->SprMngr.IsEggTransp(x, y);
 
     for (auto* item : _allItems) {
+        if (!item->SprDrawValid || item->IsFinishing()) {
+            continue;
+        }
+
+        const auto* si = _engine->SprMngr.GetSpriteInfo(item->SprId);
         const auto hx = item->GetHexX();
         const auto hy = item->GetHexY();
+        const auto& field = GetField(hx, hy);
+        const auto l = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx - si->Width / 2) / GetSpritesZoom()) - extra_range;
+        const auto r = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx + si->Width / 2) / GetSpritesZoom()) + extra_range;
+        const auto t = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy - si->Height) / GetSpritesZoom()) - extra_range;
+        const auto b = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy) / GetSpritesZoom()) + extra_range;
 
-        if (item->IsFinishing() || !item->SprDrawValid) {
+        if (x < l || x > r || y < t || y > b) {
             continue;
         }
 
@@ -3538,13 +3549,13 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
             if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
                 continue;
             }
-            if (item->IsScenery() && !_engine->Settings.ShowScen) {
+            if (!_engine->Settings.ShowScen && item->IsScenery()) {
                 continue;
             }
-            if (!item->IsAnyScenery() && !_engine->Settings.ShowItem) {
+            if (!_engine->Settings.ShowItem && !item->IsAnyScenery()) {
                 continue;
             }
-            if (item->IsWall() && !_engine->Settings.ShowWall) {
+            if (!_engine->Settings.ShowWall && item->IsWall()) {
                 continue;
             }
         }
@@ -3567,26 +3578,13 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
             }
         }
 
-        const auto* si = _engine->SprMngr.GetSpriteInfo(item->SprId);
-        if (si == nullptr) {
-            continue;
-        }
-
-        const auto& field = GetField(item->GetHexX(), item->GetHexY());
-        const auto l = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx - si->Width / 2) / GetSpritesZoom()) - extra_range;
-        const auto r = iround(static_cast<float>(field.ScrX + item->ScrX + si->OffsX + _engine->Settings.MapHexWidth / 2 + _engine->Settings.ScrOx + si->Width / 2) / GetSpritesZoom()) + extra_range;
-        const auto t = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy - si->Height) / GetSpritesZoom()) - extra_range;
-        const auto b = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy) / GetSpritesZoom()) + extra_range;
-
-        if (x >= l && x <= r && y >= t && y <= b) {
-            const auto* spr = item->SprDraw->GetIntersected(x - l + extra_range, y - t + extra_range, check_transparent);
-            if (spr != nullptr) {
-                if (is_egg && _engine->SprMngr.CheckEggAppearence(hx, hy, item->GetEggType())) {
-                    pix_item_egg.push_back(item);
-                }
-                else {
-                    pix_item.push_back(item);
-                }
+        const auto* spr = item->SprDraw->GetIntersected(x - l + extra_range, y - t + extra_range, check_transparent);
+        if (spr != nullptr) {
+            if (is_egg && _engine->SprMngr.CheckEggAppearence(hx, hy, item->GetEggType())) {
+                pix_item_egg.push_back(item);
+            }
+            else {
+                pix_item.push_back(item);
             }
         }
     }

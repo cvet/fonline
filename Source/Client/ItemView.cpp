@@ -64,62 +64,6 @@ auto ItemView::CreateRefClone() const -> ItemView*
     return clone;
 }
 
-auto ItemView::IsStatic() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsStatic();
-}
-
-auto ItemView::IsAnyScenery() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return IsScenery() || IsWall();
-}
-
-auto ItemView::IsScenery() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsScenery();
-}
-
-auto ItemView::IsWall() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsWall();
-}
-
-auto ItemView::IsColorize() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsColorize();
-}
-
-auto ItemView::GetColor() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return GetLightColor() & 0xFFFFFF;
-}
-
-auto ItemView::GetAlpha() const -> uchar
-{
-    STACK_TRACE_ENTRY();
-
-    return GetLightColor() >> 24;
-}
-
-auto ItemView::GetInvColor() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsColorizeInv() ? GetLightColor() : 0;
-}
-
 auto ItemView::LightGetHash() const -> uint
 {
     STACK_TRACE_ENTRY();

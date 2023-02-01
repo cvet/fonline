@@ -471,6 +471,11 @@ auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -
 {
     STACK_TRACE_ENTRY();
 
+#if FO_NO_TEXTURE_LOOKUP
+    return 0xFFFFFFFF;
+
+#else
+
     // Try find in last picks
     for (auto&& pix : rt->LastPixelPicks) {
         if (std::get<0>(pix) == x && std::get<1>(pix) == y) {
@@ -488,6 +493,7 @@ auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -
     }
 
     return color;
+#endif
 }
 
 void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)

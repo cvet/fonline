@@ -55,14 +55,13 @@ public:
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsAnimated() const -> bool { return _isAnimated; }
     [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
-    [[nodiscard]] auto IsFinishing() const -> bool;
+    [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isShowAnim || (_isDynamicEffect && !_finishing) || _fading; }
 
     void RefreshAnim();
     void RestoreAlpha() { Alpha = _maxAlpha; }
@@ -73,14 +72,9 @@ public:
     void Process();
     void SetEffect(ushort to_hx, ushort to_hy);
     void SkipFade();
-    void StartAnimate();
-    void StopAnimate();
     void SetAnimFromEnd();
     void SetAnimFromStart();
     void SetAnim(uint beg, uint end);
-    void SetSprStart();
-    void SetSprEnd();
-    void SetSpr(uint num_spr);
     void RefreshOffs();
     void SetStayAnim();
     void SetShowAnim();
@@ -100,6 +94,7 @@ private:
 
     void AfterConstruction();
     void SetFade(bool fade_up);
+    void SetSpr(uint num_spr);
 
     MapView* _map;
 
@@ -111,10 +106,11 @@ private:
     uint _animEndFrm {};
     uint _animTick {};
     uchar _maxAlpha {0xFF};
-    bool _isAnimated {};
+    bool _isShowAnim {};
     uint _animNextTick {};
 
     bool _isEffect {};
+    bool _isDynamicEffect {};
     float _effSx {};
     float _effSy {};
     int _effStartX {};
