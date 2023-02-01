@@ -68,7 +68,7 @@ struct LightSource
     ushort HexX {};
     ushort HexY {};
     uint ColorRGB {};
-    uchar Distance {};
+    int Distance {};
     uchar Flags {};
     int Intensity {};
     int* OffsX {};

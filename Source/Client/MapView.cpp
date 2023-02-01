@@ -1880,7 +1880,7 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
     const auto hy = ls.HexY;
 
     // Distance
-    const int dist = ls.Distance;
+    const auto dist = ls.Distance;
     if (dist < 1) {
         return;
     }
@@ -2029,11 +2029,10 @@ void MapView::RealRebuildLight()
     _lightMaxHy = _viewField[_hVisible * _wVisible - _wVisible].HexY;
 
     for (auto& ls : _lightSources) {
-        // Todo: optimize lighting rebuilding to skip unvisible lights
-        // if( (int) ls.HexX < lightMinHx - (int) ls.Distance || (int) ls.HexX > lightMaxHx + (int) ls.Distance ||
-        //    (int) ls.HexY < lightMinHy - (int) ls.Distance || (int) ls.HexY > lightMaxHy + (int) ls.Distance )
-        //    continue;
-        ParseLightTriangleFan(ls);
+        if (static_cast<int>(ls.HexX) >= _lightMinHx - ls.Distance && static_cast<int>(ls.HexX) <= _lightMaxHx + ls.Distance && //
+            static_cast<int>(ls.HexY) >= _lightMinHy - ls.Distance && static_cast<int>(ls.HexY) <= _lightMaxHy + ls.Distance) {
+            ParseLightTriangleFan(ls);
+        }
     }
 }
 
