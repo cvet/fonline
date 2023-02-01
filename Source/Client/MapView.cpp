@@ -2632,31 +2632,30 @@ void MapView::DrawMapTexts()
 
         if (tick < map_text.StartTick + map_text.Tick) {
             const auto& field = GetField(map_text.HexX, map_text.HexY);
-            if (!field.IsView) {
-                continue;
-            }
 
-            const auto dt = tick - map_text.StartTick;
-            const auto percent = GenericUtils::Percent(map_text.Tick, dt);
-            const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
-            const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
-            const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
-            const auto x = iround(static_cast<float>(field.ScrX + half_hex_width + _engine->Settings.ScrOx) / GetSpritesZoom() - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
-            const auto y = iround(static_cast<float>(field.ScrY + half_hex_height - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + _engine->Settings.ScrOy) / GetSpritesZoom() - 70.0f);
+            if (field.IsView) {
+                const auto dt = tick - map_text.StartTick;
+                const auto percent = GenericUtils::Percent(map_text.Tick, dt);
+                const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
+                const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
+                const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
+                const auto x = iround(static_cast<float>(field.ScrX + half_hex_width + _engine->Settings.ScrOx) / GetSpritesZoom() - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
+                const auto y = iround(static_cast<float>(field.ScrY + half_hex_height - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + _engine->Settings.ScrOy) / GetSpritesZoom() - 70.0f);
 
-            auto color = map_text.Color;
-            if (map_text.Fade) {
-                color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
-            }
-            else if (map_text.Tick > 500) {
-                const auto hide = map_text.Tick - 200;
-                if (dt >= hide) {
-                    const auto alpha = 255u * (100u - GenericUtils::Percent(map_text.Tick - hide, dt - hide)) / 100u;
-                    color = (alpha << 24) | (color & 0xFFFFFF);
+                auto color = map_text.Color;
+                if (map_text.Fade) {
+                    color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
                 }
-            }
+                else if (map_text.Tick > 500) {
+                    const auto hide = map_text.Tick - 200;
+                    if (dt >= hide) {
+                        const auto alpha = 255u * (100u - GenericUtils::Percent(map_text.Tick - hide, dt - hide)) / 100u;
+                        color = (alpha << 24) | (color & 0xFFFFFF);
+                    }
+                }
 
-            _engine->SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
+                _engine->SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
+            }
 
             ++it;
         }
