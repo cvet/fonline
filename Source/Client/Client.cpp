@@ -1899,7 +1899,7 @@ void FOClient::Net_OnCritterTeleport()
         return;
     }
 
-    CurMap->MoveCritter(cr, to_hx, to_hy);
+    CurMap->MoveCritter(cr, to_hx, to_hy, false);
 
     if (cr->IsChosen()) {
         if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
@@ -1953,7 +1953,7 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeMoveDirAngle(dir_angle);
 
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        CurMap->TransitCritter(cr, hx, hy, true);
+        CurMap->MoveCritter(cr, hx, hy, true);
 
         if (cr->IsChosen()) {
             CurMap->RebuildFog();

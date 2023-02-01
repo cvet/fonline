@@ -1566,7 +1566,7 @@ void FOMapper::IntLMouseDown()
                         if (const auto find_path = CurMap->FindPath(nullptr, hx, hy, SelectHexX1, SelectHexY1, -1)) {
                             for (const auto step : find_path->Steps) {
                                 if (Geometry.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
-                                    CurMap->TransitCritter(cr, hx, hy, true);
+                                    CurMap->MoveCritter(cr, hx, hy, true);
                                 }
                                 else {
                                     break;
@@ -2274,7 +2274,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
     }
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        CurMap->MoveCritter(cr, hx, hy);
+        CurMap->MoveCritter(cr, hx, hy, false);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         CurMap->MoveItem(item, hx, hy);
@@ -2611,7 +2611,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 CurMap->MoveItem(item, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
             else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy));
+                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy), false);
             }
         }
     }

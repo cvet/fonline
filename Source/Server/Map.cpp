@@ -756,7 +756,7 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
     return true;
 }
 
-auto Map::IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool
+auto Map::IsMovePassed(const Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool
 {
     STACK_TRACE_ENTRY();
 

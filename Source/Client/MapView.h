@@ -225,8 +225,7 @@ public:
     auto GetCritter(uint id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
-    void MoveCritter(CritterHexView* cr, ushort hx, ushort hy);
-    void TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly);
+    void MoveCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly);
     void DestroyCritter(CritterHexView* cr);
 
     void SetCritterContour(uint crid, ContourType contour);

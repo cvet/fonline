@@ -765,7 +765,7 @@ void CritterHexView::ProcessMoving()
             const auto old_hx = GetHexX();
             const auto old_hy = GetHexY();
 
-            _map->TransitCritter(this, hx2, hy2, false);
+            _map->MoveCritter(this, hx2, hy2, false);
 
             const auto cur_hx = GetHexX();
             const auto cur_hy = GetHexY();
@@ -1002,7 +1002,7 @@ void CritterHexView::DrawTextOnHead()
             str = _name;
 
             if (_engine->Settings.ShowCritId) {
-                str += _str(" ({})", GetId());
+                str += _str(" ({} {} {})", GetId(), GetHexX(), GetHexY());
             }
             if (_ownedByPlayer && _isPlayerOffline) {
                 str += _engine->Settings.PlayerOffAppendix;

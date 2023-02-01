@@ -3415,33 +3415,21 @@ void MapView::SetCrittersContour(ContourType contour)
     }
 }
 
-void MapView::MoveCritter(CritterHexView* cr, ushort hx, ushort hy)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(cr->GetMap() == this);
-
-    RemoveCritterFromField(cr);
-    cr->SetHexX(hx);
-    cr->SetHexY(hy);
-    AddCritterToField(cr);
-}
-
-void MapView::TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly)
+void MapView::MoveCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cr->GetMap() == this);
     RUNTIME_ASSERT(hx < _maxHexX && hy < _maxHexY);
 
-    if (cr->GetHexX() == hx && cr->GetHexY() == hy) {
+    const auto old_hx = cr->GetHexX();
+    const auto old_hy = cr->GetHexY();
+
+    if (old_hx == hx && old_hy == hy) {
         return;
     }
 
     RemoveCritterFromField(cr);
-
-    const auto old_hx = cr->GetHexX();
-    const auto old_hy = cr->GetHexY();
 
     cr->SetHexX(hx);
     cr->SetHexY(hy);
@@ -3591,7 +3579,7 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
         const auto b = iround(static_cast<float>(field.ScrY + item->ScrY + si->OffsY + _engine->Settings.MapHexHeight / 2 + _engine->Settings.ScrOy) / GetSpritesZoom()) + extra_range;
 
         if (x >= l && x <= r && y >= t && y <= b) {
-            const auto* spr = item->SprDraw->GetIntersected(x - l, y - t, check_transparent);
+            const auto* spr = item->SprDraw->GetIntersected(x - l + extra_range, y - t + extra_range, check_transparent);
             if (spr != nullptr) {
                 if (is_egg && _engine->SprMngr.CheckEggAppearence(hx, hy, item->GetEggType())) {
                     pix_item_egg.push_back(item);
@@ -3659,7 +3647,16 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, i
         const auto b = iround(static_cast<float>(rect.Bottom + _engine->Settings.ScrOy) / GetSpritesZoom()) + extra_range;
 
         if (x >= l && x <= r && y >= t && y <= b) {
-            if (!check_transparent || _engine->SprMngr.IsPixNoTransp(cr->SprId, x - l, y - t, true)) {
+            if (check_transparent) {
+                const auto rect_draw = _engine->SprMngr.GetDrawRect(cr->SprDraw);
+                const auto l_draw = iround(static_cast<float>(rect_draw.Left + _engine->Settings.ScrOx) / GetSpritesZoom());
+                const auto t_draw = iround(static_cast<float>(rect_draw.Top + _engine->Settings.ScrOy) / GetSpritesZoom());
+
+                if (_engine->SprMngr.IsPixNoTransp(cr->SprId, x - l_draw, y - t_draw, true)) {
+                    crits.push_back(cr);
+                }
+            }
+            else {
                 crits.push_back(cr);
             }
         }
