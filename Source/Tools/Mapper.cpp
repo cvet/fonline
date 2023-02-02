@@ -65,6 +65,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(s
     extern void Mapper_RegisterData(FOEngineBase*);
     Mapper_RegisterData(this);
     ScriptSys = new MapperScriptSystem(this);
+    ScriptSys->InitSubsystems();
 
     ProtoMngr.LoadFromResources();
 
@@ -660,8 +661,7 @@ void FOMapper::ProcessMapperInput()
                     step = 50;
                 }
 
-                const int data = ev.MouseWheel.Delta;
-                if (data > 0) {
+                if (ev.MouseWheel.Delta > 0) {
                     TabsScroll[SubTabsActiveTab] += step;
                 }
                 else {
@@ -683,8 +683,7 @@ void FOMapper::ProcessMapperInput()
                     step = 1000;
                 }
 
-                int data = ev.MouseWheel.Delta;
-                if (data > 0) {
+                if (ev.MouseWheel.Delta > 0) {
                     if (IsObjectMode() || IsTileMode() || IsCritMode()) {
                         (*CurProtoScroll) -= step;
                         if (*CurProtoScroll < 0) {
@@ -743,10 +742,10 @@ void FOMapper::ProcessMapperInput()
             }
         }
         else if (ev_type == InputEvent::EventType::MouseUpEvent) {
-            if (ev.MouseDown.Button == MouseButton::Left) {
+            if (ev.MouseUp.Button == MouseButton::Left) {
                 IntLMouseUp();
             }
-            if (ev.MouseDown.Button == MouseButton::Right) {
+            if (ev.MouseUp.Button == MouseButton::Right) {
                 CurRMouseUp();
             }
         }
@@ -1380,8 +1379,8 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
     string str = _str("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
     str += "........................................................................................................";
-    SprMngr.DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, 0);
-    SprMngr.DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, 0);
+    SprMngr.DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, FONT_DEFAULT);
+    SprMngr.DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, FONT_DEFAULT);
 
     r.Top += DRAW_NEXT_HEIGHT;
     r.Bottom += DRAW_NEXT_HEIGHT;
@@ -1546,6 +1545,10 @@ void FOMapper::IntLMouseDown()
     // Map
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
+
+        if (CurMap == nullptr) {
+            return;
+        }
 
         if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX1, SelectHexY1, nullptr, nullptr)) {
             return;

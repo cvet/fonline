@@ -161,7 +161,7 @@ FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of 
 FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
 FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
-FIXED_SETTING(string, MapDataPrefix, "art/geometry/fallout_"); // path and prefix for names used for geometry sprites
+FIXED_SETTING(string, MapDataPrefix, "Geometry"); // path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

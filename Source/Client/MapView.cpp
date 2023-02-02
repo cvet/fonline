@@ -367,8 +367,10 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
     _rtScreenOx = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
+#if !FO_DIRECT_MAP_DRAW
     _rtMap = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
     _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
+#endif
 
     _rtLight = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
@@ -459,6 +461,7 @@ void MapView::EnableMapperMode()
     STACK_TRACE_ENTRY();
 
     _mapperMode = true;
+    _isShowTrack = true;
 
     _tilesField.resize(_maxHexX * _maxHexY);
     _roofsField.resize(_maxHexX * _maxHexY);

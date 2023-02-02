@@ -767,11 +767,11 @@ void Application::BeginFrame()
         }
         case SDL_MOUSEWHEEL: {
             InputEvent::MouseWheelEvent ev;
-            ev.Delta = -sdl_event.wheel.y;
+            ev.Delta = sdl_event.wheel.y;
             EventsQueue->emplace_back(ev);
 
-            float wheel_x = (sdl_event.wheel.x > 0) ? 1.0f : (sdl_event.wheel.x < 0) ? -1.0f : 0.0f;
-            float wheel_y = (sdl_event.wheel.y > 0) ? 1.0f : (sdl_event.wheel.y < 0) ? -1.0f : 0.0f;
+            float wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
+            float wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
         case SDL_KEYUP:
