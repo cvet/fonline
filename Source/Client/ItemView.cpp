@@ -59,7 +59,7 @@ auto ItemView::CreateRefClone() const -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* clone = new ItemView(_engine, 0u, dynamic_cast<const ProtoItem*>(_proto));
+    auto* clone = new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto));
     clone->SetProperties(GetProperties());
     return clone;
 }
