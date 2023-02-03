@@ -125,7 +125,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 {
     STACK_TRACE_ENTRY();
 
-    _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
     _allAtlases.reserve(100);
     _dipQueue.reserve(1000);
@@ -1779,7 +1778,7 @@ void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender, int prerender_ox, int prerender_oy)
+void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender, int prerender_ox, int prerender_oy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1835,7 +1834,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             color_r = color_l = spr->Color | 0xFF000000;
         }
         else {
-            color_r = color_l = _spritesTreeColor;
+            color_r = color_l = color;
         }
 
         // Light

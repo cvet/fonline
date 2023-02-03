@@ -172,10 +172,8 @@ public:
     [[nodiscard]] auto IsHexToDraw(ushort hx, ushort hy) const -> bool { return _hexField[hy * _maxHexX + hx].IsView; }
     [[nodiscard]] auto GetHexTrack(ushort hx, ushort hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _maxHexX + hx]; }
     [[nodiscard]] auto GetLightHex(ushort hx, ushort hy) -> uchar* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _maxHexX * 3 + hx * 3]; }
-    [[nodiscard]] auto GetDayTime() const -> int;
-    [[nodiscard]] auto GetMapTime() const -> int;
-    [[nodiscard]] auto GetMapDayTime() -> int*;
-    [[nodiscard]] auto GetMapDayColor() -> uchar*;
+    [[nodiscard]] auto GetGlobalDayTime() const -> int;
+    [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
     [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
@@ -279,7 +277,7 @@ public:
     void AddIgnorePid(hstring pid);
     void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
-    void MarkPassedHexes();
+    void MarkBlockedHexes();
 
     auto GetTempEntityId() const -> uint;
 
@@ -365,10 +363,6 @@ private:
     bool _isShowTrack {};
     bool _isShowHex {};
 
-    int _curMapTime {-1};
-    int _dayTime[4] {};
-    uchar _dayColor[12] {};
-
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
     RenderTarget* _rtFog {};
@@ -404,7 +398,16 @@ private:
     bool _requestRenderLight {};
     vector<uchar> _hexLight {};
 
-    uint _lightPointsCount {};
+    int _prevMapDayTime {};
+    int _prevGlobalDayTime {};
+    uint _prevMapDayColor {};
+    uint _prevGlobalDayColor {};
+    uint _mapDayColor {};
+    uint _globalDayColor {};
+    int _mapDayLightCapacity {};
+    int _globalDayLightCapacity {};
+
+    size_t _lightPointsCount {};
     vector<vector<PrimitivePoint>> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
     vector<LightSource> _lightSources {};
@@ -417,6 +420,7 @@ private:
     int _lightProcentR {};
     int _lightProcentG {};
     int _lightProcentB {};
+    bool _hasGlobalLights {};
 
     int _roofSkip {};
 

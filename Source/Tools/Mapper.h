@@ -175,7 +175,6 @@ public:
     void MapperMainLoop();
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
-    void ChangeGameTime();
     void ProcessMapperInput();
 
     void CurDraw();

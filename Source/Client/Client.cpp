@@ -439,8 +439,6 @@ void FOClient::MainLoop()
         SetHour(st.Hour);
         SetMinute(st.Minute);
         SetSecond(st.Second);
-
-        SetDayTime(false);
     }
 
     // Script subsystems update
@@ -2602,8 +2600,6 @@ void FOClient::Net_OnTimeSync()
     SetMinute(minute);
     SetSecond(second);
     SetTimeMultiplier(multiplier);
-
-    SetDayTime(true);
 }
 
 void FOClient::Net_OnLoadMap()
@@ -2655,8 +2651,6 @@ void FOClient::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        SetDayTime(true);
-
         _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
@@ -2905,27 +2899,6 @@ void FOClient::Net_OnRemoteCall()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
-}
-
-void FOClient::SetDayTime(bool refresh)
-{
-    STACK_TRACE_ENTRY();
-
-    if (refresh) {
-        _prevDayTimeColor.reset();
-    }
-
-    if (CurMap == nullptr) {
-        return;
-    }
-
-    const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-
-    if (!_prevDayTimeColor.has_value() || _prevDayTimeColor != color) {
-        _prevDayTimeColor = color;
-        SprMngr.SetSpritesTreeColor(color);
-        CurMap->RefreshMap();
-    }
 }
 
 void FOClient::TryExit()

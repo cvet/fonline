@@ -133,9 +133,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(s
     TabsName[INT_MODE_MESS] = "Msg";
     TabsName[INT_MODE_LIST] = "Maps";
 
-    // Hex manager
-    ChangeGameTime();
-
     // Start script
     ScriptSys->InitModules();
     OnStart.Fire();
@@ -313,17 +310,6 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
     return true;
 }
 
-void FOMapper::ChangeGameTime()
-{
-    STACK_TRACE_ENTRY();
-
-    if (CurMap != nullptr) {
-        const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-        SprMngr.SetSpritesTreeColor(color);
-        CurMap->RefreshMap();
-    }
-}
-
 void FOMapper::ProcessMapperInput()
 {
     STACK_TRACE_ENTRY();
@@ -478,20 +464,18 @@ void FOMapper::ProcessMapperInput()
                     break;
                 case KeyCode::Add:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time += 60;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::Subtract:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::Tab:
@@ -516,25 +500,20 @@ void FOMapper::ProcessMapperInput()
                 case KeyCode::F11:
                     SprMngr.DumpAtlases();
                     break;
-                case KeyCode::Escape:
-                    exit(0);
-                    break;
                 case KeyCode::Add:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time += 1;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::Subtract:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::C0:
@@ -585,7 +564,7 @@ void FOMapper::ProcessMapperInput()
                     Settings.ScrollCheck = !Settings.ScrollCheck;
                     break;
                 case KeyCode::B:
-                    CurMap->MarkPassedHexes();
+                    CurMap->MarkBlockedHexes();
                     break;
                 case KeyCode::Q:
                     Settings.ShowCorners = !Settings.ShowCorners;
@@ -1274,7 +1253,7 @@ void FOMapper::IntDraw()
         if (CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
             hex_thru = true;
         }
-        auto day_time = CurMap->GetDayTime();
+        auto day_time = CurMap->GetGlobalDayTime();
         SprMngr.DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             _str("Map '{}'\n"
                  "Hex {} {}\n"

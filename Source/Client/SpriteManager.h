@@ -206,7 +206,6 @@ public:
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
-    [[nodiscard]] auto GetSpritesTreeColor() const -> uint { return _spritesTreeColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
     [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
@@ -247,7 +246,6 @@ public:
     void DumpAtlases() const;
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
-    void SetSpritesTreeColor(uint c) { _spritesTreeColor = c; }
     void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color);
     void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
     void PushScissor(int l, int t, int r, int b);
@@ -258,7 +256,7 @@ public:
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
+    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const FPoint* offset = nullptr, RenderEffect* custom_effect = nullptr);
 
     void DrawContours();
@@ -319,7 +317,6 @@ private:
     RenderDrawBuffer* _primitiveDrawBuf {};
     RenderDrawBuffer* _flushDrawBuf {};
     RenderDrawBuffer* _contourDrawBuf {};
-    uint _spritesTreeColor {};
     size_t _maxDrawQuad {};
     size_t _curDrawQuad {};
     vector<int> _scissorStack {};

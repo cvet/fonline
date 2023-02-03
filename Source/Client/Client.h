@@ -299,7 +299,6 @@ protected:
     void FlashGameWindow();
     void WaitDraw();
 
-    void SetDayTime(bool refresh);
     void LmapPrepareMap();
     void GmapNullParams();
 
@@ -432,7 +431,6 @@ protected:
     uint _lmapPrepareNextTick {};
     uchar _dlgIsNpc {};
     uint _dlgNpcId {};
-    optional<uint> _prevDayTimeColor {};
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
 };

@@ -318,9 +318,12 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint
+auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uchar>& colors, int game_time, int* light) -> uint
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(day_time.size() == 4);
+    RUNTIME_ASSERT(colors.size() == 12);
 
     uchar result[3];
     const int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};

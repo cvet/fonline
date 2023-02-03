@@ -390,23 +390,6 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
     _picHexMask = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex_mask.png", false);
     _engine->SprMngr.PopAtlasType();
 
-    _dayTime[0] = 300;
-    _dayTime[1] = 600;
-    _dayTime[2] = 1140;
-    _dayTime[3] = 1380;
-    _dayColor[0] = 18;
-    _dayColor[1] = 128;
-    _dayColor[2] = 103;
-    _dayColor[3] = 51;
-    _dayColor[4] = 18;
-    _dayColor[5] = 128;
-    _dayColor[6] = 95;
-    _dayColor[7] = 40;
-    _dayColor[8] = 53;
-    _dayColor[9] = 128;
-    _dayColor[10] = 86;
-    _dayColor[11] = 29;
-
     _maxHexX = GetWidth();
     _maxHexY = GetHeight();
 
@@ -563,10 +546,8 @@ void MapView::LoadStaticData()
         }
     }
 
-    // Visible
     ResizeView();
 
-    // Light
     CollectLightSources();
     _lightPoints.clear();
     _lightPointsCount = 0;
@@ -574,14 +555,43 @@ void MapView::LoadStaticData()
     _requestRebuildLight = false;
     _requestRenderLight = true;
 
-    // Finish
-    _curMapTime = -1;
     AutoScroll.Active = false;
 }
 
 void MapView::Process()
 {
     STACK_TRACE_ENTRY();
+
+    // Map time and color
+    {
+        const auto map_day_time = GetMapDayTime();
+        const auto global_day_time = GetGlobalDayTime();
+
+        if (map_day_time != _prevMapDayTime || global_day_time != _prevGlobalDayTime) {
+            _prevMapDayTime = map_day_time;
+            _prevGlobalDayTime = global_day_time;
+
+            auto&& day_time = GetDayTime();
+            auto&& day_color = GetDayColor();
+
+            _mapDayColor = GenericUtils::GetColorDay(day_time, day_color, map_day_time, &_mapDayLightCapacity);
+            _globalDayColor = GenericUtils::GetColorDay(day_time, day_color, global_day_time, &_globalDayLightCapacity);
+
+            if (_mapDayColor != _prevMapDayColor) {
+                _prevMapDayColor = _mapDayColor;
+
+                _requestRebuildLight = true;
+            }
+
+            if (_globalDayColor != _prevGlobalDayColor) {
+                _prevGlobalDayColor = _globalDayColor;
+
+                if (_hasGlobalLights) {
+                    _requestRebuildLight = true;
+                }
+            }
+        }
+    }
 
     // Critters
     {
@@ -1629,7 +1639,7 @@ void MapView::PrepareLightToDraw()
         _engine->SprMngr.ClearCurrentRenderTarget(0);
         const auto zoom = GetSpritesZoom();
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
-        for (uint i = 0; i < _lightPointsCount; i++) {
+        for (size_t i = 0; i < _lightPointsCount; i++) {
             _engine->SprMngr.DrawPoints(_lightPoints[i], RenderPrimitiveType::TriangleFan, &zoom, &offset, _engine->EffectMngr.Effects.Light);
         }
         _engine->SprMngr.DrawPoints(_lightSoftPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
@@ -1897,12 +1907,11 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
     inten *= 100;
 
     if (IsBitSet(ls.Flags, LIGHT_GLOBAL)) {
-        const auto color = GenericUtils::GetColorDay(GetMapDayTime(), GetMapDayColor(), GetDayTime(), &_lightCapacity);
-        UNUSED_VARIABLE(color);
+        _lightCapacity = _globalDayLightCapacity;
+        _hasGlobalLights = true;
     }
     else if (ls.Intensity >= 0) {
-        const auto color = GenericUtils::GetColorDay(GetMapDayTime(), GetMapDayColor(), GetMapTime(), &_lightCapacity);
-        UNUSED_VARIABLE(color);
+        _lightCapacity = _mapDayLightCapacity;
     }
     else {
         _lightCapacity = 100;
@@ -2021,6 +2030,7 @@ void MapView::RealRebuildLight()
 
     RUNTIME_ASSERT(!_viewField.empty());
 
+    _hasGlobalLights = false;
     _lightPointsCount = 0;
     _lightSoftPoints.clear();
     ClearHexLight();
@@ -2564,11 +2574,11 @@ void MapView::DrawMap()
 
     // Tiles
     if (_engine->Settings.ShowTile) {
-        _engine->SprMngr.DrawSprites(_tilesTree, false, false, DrawOrderType::Tile, DrawOrderType::TileEnd);
+        _engine->SprMngr.DrawSprites(_tilesTree, false, false, DrawOrderType::Tile, DrawOrderType::TileEnd, _mapDayColor);
     }
 
     // Flat sprites
-    _engine->SprMngr.DrawSprites(_mainTree, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery);
+    _engine->SprMngr.DrawSprites(_mainTree, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
 
     // Light
     if (_rtLight != nullptr) {
@@ -2581,11 +2591,11 @@ void MapView::DrawMap()
     }
 
     // Sprites
-    _engine->SprMngr.DrawSprites(_mainTree, true, true, DrawOrderType::Ligth, DrawOrderType::Last);
+    _engine->SprMngr.DrawSprites(_mainTree, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
 
     // Roof
     if (_engine->Settings.ShowRoof) {
-        _engine->SprMngr.DrawSprites(_roofTree, false, true, DrawOrderType::Tile, DrawOrderType::TileEnd);
+        _engine->SprMngr.DrawSprites(_roofTree, false, true, DrawOrderType::Tile, DrawOrderType::TileEnd, _mapDayColor);
     }
 
     // Contours
@@ -4223,35 +4233,20 @@ void MapView::SetShootBorders(bool enabled)
     }
 }
 
-auto MapView::GetDayTime() const -> int
+auto MapView::GetGlobalDayTime() const -> int
 {
     STACK_TRACE_ENTRY();
 
     return _engine->GetHour() * 60 + _engine->GetMinute();
 }
 
-auto MapView::GetMapTime() const -> int
+auto MapView::GetMapDayTime() const -> int
 {
     STACK_TRACE_ENTRY();
 
-    if (_curMapTime < 0) {
-        return GetDayTime();
-    }
-    return _curMapTime;
-}
+    const auto map_time = GetCurDayTime();
 
-auto MapView::GetMapDayTime() -> int*
-{
-    STACK_TRACE_ENTRY();
-
-    return _dayTime;
-}
-
-auto MapView::GetMapDayColor() -> uchar*
-{
-    STACK_TRACE_ENTRY();
-
-    return _dayColor;
+    return map_time >= 0 ? map_time : GetGlobalDayTime();
 }
 
 void MapView::OnWindowSizeChanged()
@@ -4586,7 +4581,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushor
     return hexes;
 }
 
-void MapView::MarkPassedHexes()
+void MapView::MarkBlockedHexes()
 {
     STACK_TRACE_ENTRY();
 
