@@ -280,6 +280,16 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     auto* item = new Item(_engine, 0, proto);
     if (props != nullptr) {
         item->SetProperties(*props);
+
+        item->SetOwnership(ItemOwnership::Nowhere);
+        item->SetMapId(0);
+        item->SetHexX(0);
+        item->SetHexY(0);
+        item->SetCritterId(0);
+        item->SetCritterSlot(0);
+        item->SetContainerId(0);
+        item->SetContainerStack(0);
+        item->SetSubItemIds({});
     }
 
     // Main collection

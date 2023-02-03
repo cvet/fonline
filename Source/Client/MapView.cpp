@@ -673,7 +673,7 @@ void MapView::AddMapText(string_view str, ushort hx, ushort hy, uint color, uint
     map_text.Color = (color != 0u ? color : COLOR_TEXT);
     map_text.Fade = fade;
     map_text.StartTick = _engine->GameTime.GameTick();
-    map_text.Tick = show_time;
+    map_text.Tick = show_time > 0 ? show_time : _engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100;
     map_text.Text = str;
     map_text.Pos = GetRectForText(hx, hy);
     map_text.EndPos = IRect(map_text.Pos, ox, oy);
@@ -683,7 +683,7 @@ void MapView::AddMapText(string_view str, ushort hx, ushort hy, uint color, uint
         _mapTexts.erase(it);
     }
 
-    _mapTexts.push_back(map_text);
+    _mapTexts.emplace_back(std::move(map_text));
 }
 
 auto MapView::GetViewWidth() const -> int

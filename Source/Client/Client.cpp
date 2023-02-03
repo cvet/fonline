@@ -1358,9 +1358,9 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    auto show_time = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
-
     auto sstr = _str(str).str();
+    uint show_time = 0;
+
     OnMapMessage.Fire(sstr, hx, hy, color, show_time);
 
     if (CurMap == nullptr) {
