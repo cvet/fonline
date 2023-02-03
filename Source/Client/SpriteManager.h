@@ -143,8 +143,8 @@ struct SpriteInfo
     int Height {};
     int OffsX {};
     int OffsY {};
+    vector<bool> HitTestData {};
     RenderEffect* DrawEffect {};
-    uint* AccData {};
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
 #if FO_ENABLE_3D
@@ -211,7 +211,6 @@ public:
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(const Sprite* spr) const -> IRect;
     [[nodiscard]] auto GetViewRect(const Sprite* spr) const -> IRect;
-    [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool;
@@ -308,7 +307,7 @@ private:
     vector<tuple<AtlasType, bool>> _targetAtlasStack {};
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
     bool _accumulatorActive {};
-    vector<SpriteInfo*> _accumulatorSprInfo {};
+    vector<pair<SpriteInfo*, uint*>> _accumulatorSprInfo {};
     vector<SpriteInfo*> _sprData {};
     MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
     unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};

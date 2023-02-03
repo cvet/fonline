@@ -1171,7 +1171,7 @@ class Panel : Object
     {
         if (Object::IsHit(x, y)) {
             if (_CheckTransparentOnHit && _BackgroundImage != null)
-                return (Game.GetSpritePixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
+                return Game.IsSpriteHit(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY);
             return true;
         }
         return false;

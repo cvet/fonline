@@ -44,29 +44,21 @@ static constexpr auto MAX_LIGHT_ALPHA = 255;
 
 static auto EvaluateItemDrawOrder(const ItemHexView* item) -> DrawOrderType
 {
-    STACK_TRACE_ENTRY();
-
     return item->GetIsFlat() ? (!item->IsAnyScenery() ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (!item->IsAnyScenery() ? DrawOrderType::Item : DrawOrderType::Scenery);
 }
 
 static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 {
-    STACK_TRACE_ENTRY();
-
     return cr->IsDead() && !cr->GetIsNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
 }
 
 static auto EvaluateTileDrawOrder(const Field::Tile& tile) -> DrawOrderType
 {
-    STACK_TRACE_ENTRY();
-
     return static_cast<DrawOrderType>(static_cast<int>(DrawOrderType::Tile) + static_cast<int>(tile.Layer));
 }
 
 Field::~Field()
 {
-    STACK_TRACE_ENTRY();
-
     delete Critters;
     delete Tiles[0];
     delete Tiles[1];
@@ -389,6 +381,13 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
     _picTrack2 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track2.png", true);
     _picHexMask = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex_mask.png", false);
     _engine->SprMngr.PopAtlasType();
+
+    if (_picHexMask != nullptr) {
+        const auto* si = _engine->SprMngr.GetSpriteInfo(_picHexMask->Ind[0]);
+        const auto mask_x = iround(static_cast<float>(si->Atlas->MainTex->Width) * si->SprRect.Left);
+        const auto mask_y = iround(static_cast<float>(si->Atlas->MainTex->Height) * si->SprRect.Top);
+        _picHexMaskData = si->Atlas->MainTex->GetTextureRegion(mask_x, mask_y, si->Width, si->Height);
+    }
 
     _maxHexX = GetWidth();
     _maxHexY = GetHeight();
@@ -3495,17 +3494,22 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
 
                 // Correct with hex color mask
                 if (_picHexMask != nullptr) {
-                    const auto r = (_engine->SprMngr.GetPixColor(_picHexMask->Ind[0], iround(xf - x_), iround(yf - y_), true) & 0x00FF0000) >> 16;
-                    if (r == 50) {
+                    const auto* si = _engine->SprMngr.GetSpriteInfo(_picHexMask->Ind[0]);
+                    const auto mask_x = std::clamp(iround((xf - x_) * GetSpritesZoom()), 0, si->Width - 1);
+                    const auto mask_y = std::clamp(iround((yf - y_) * GetSpritesZoom()), 0, si->Height - 1);
+                    const auto mask_color = _picHexMaskData[mask_y * si->Width + mask_x];
+                    const auto mask_color_r = mask_color & 0x000000FF;
+
+                    if (mask_color_r == 50) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
                     }
-                    else if (r == 100) {
+                    else if (mask_color_r == 100) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 0u);
                     }
-                    else if (r == 150) {
+                    else if (mask_color_r == 150) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 3u : 4u);
                     }
-                    else if (r == 200) {
+                    else if (mask_color_r == 200) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 2u);
                     }
                 }
@@ -3515,8 +3519,8 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
                     hy = static_cast<ushort>(hy_);
 
                     if (hex_ox != nullptr && hex_oy != nullptr) {
-                        *hex_ox = iround(xf - x_) - 16;
-                        *hex_oy = iround(yf - y_) - 8;
+                        *hex_ox = iround((xf - x_) * GetSpritesZoom()) - 16;
+                        *hex_oy = iround((yf - y_) * GetSpritesZoom()) - 8;
                     }
                     return true;
                 }

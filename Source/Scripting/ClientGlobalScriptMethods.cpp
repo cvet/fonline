@@ -932,19 +932,19 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetSpritePixelColor(FOClient* client, uint sprId, int frameIndex, int x, int y)
+[[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, int frameIndex, int x, int y)
 {
     if (sprId == 0u) {
-        return 0;
+        return false;
     }
 
     const auto* anim = client->AnimGetFrames(sprId);
     if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
-        return 0;
+        return false;
     }
 
     const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
-    return client->SprMngr.GetPixColor(spr_id_, x, y, false);
+    return client->SprMngr.IsPixNoTransp(spr_id_, x, y, false);
 }
 
 ///# ...

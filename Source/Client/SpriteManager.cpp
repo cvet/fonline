@@ -41,8 +41,6 @@ constexpr int ATLAS_SPRITES_PADDING = 1;
 
 static auto ApplyColorBrightness(uint color, int brightness) -> uint
 {
-    STACK_TRACE_ENTRY();
-
     if (brightness != 0) {
         const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
         const auto g = std::clamp(((color >> 8) & 0xFF) + brightness, 0u, 255u);
@@ -622,18 +620,19 @@ void SpriteManager::FlushAccumulatedAtlasData()
     STACK_TRACE_ENTRY();
 
     _accumulatorActive = false;
+
     if (_accumulatorSprInfo.empty()) {
         return;
     }
 
     // Sort by size
-    std::sort(_accumulatorSprInfo.begin(), _accumulatorSprInfo.end(), [](SpriteInfo* si1, SpriteInfo* si2) { return si1->Width * si1->Height > si2->Width * si2->Height; });
+    std::sort(_accumulatorSprInfo.begin(), _accumulatorSprInfo.end(), [](auto&& si1, auto&& si2) { return si1.first->Width * si1.first->Height > si2.first->Width * si2.first->Height; });
 
-    for (auto* spr_info : _accumulatorSprInfo) {
-        FillAtlas(spr_info, spr_info->AccData);
-        delete[] spr_info->AccData;
-        spr_info->AccData = nullptr;
+    for (auto&& [si, data] : _accumulatorSprInfo) {
+        FillAtlas(si, data);
+        delete[] data;
     }
+
     _accumulatorSprInfo.clear();
 }
 
@@ -857,9 +856,9 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, cons
 
     // Find place on atlas
     if (_accumulatorActive) {
-        si->AccData = new uint[width * height];
-        std::memcpy(si->AccData, data, width * height * sizeof(uint));
-        _accumulatorSprInfo.push_back(si);
+        auto* acc_data = new uint[width * height];
+        std::memcpy(acc_data, data, width * height * sizeof(uint));
+        _accumulatorSprInfo.emplace_back(si, acc_data);
     }
     else {
         FillAtlas(si, data);
@@ -885,6 +884,10 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, cons
 void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(si);
+    RUNTIME_ASSERT(si->Width > 0);
+    RUNTIME_ASSERT(si->Height > 0);
 
     const auto w = si->Width;
     const auto h = si->Height;
@@ -922,6 +925,12 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[h + 1] = _borderBuf[h];
         tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w + 1, y + h + 1), _borderBuf.data());
+
+        // Evaluate hit mask
+        si->HitTestData.resize(w * h);
+        for (size_t i = 0, j = w * h; i < j; i++) {
+            si->HitTestData[i] = (data[i] >> 24) > 0;
+        }
     }
 
     // Invalidate last pixel color picking
@@ -2067,39 +2076,36 @@ auto SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with
 {
     STACK_TRACE_ENTRY();
 
-    const auto color = GetPixColor(spr_id, offs_x, offs_y, with_zoom);
-    return (color & 0xFF000000) != 0;
-}
-
-auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (offs_x < 0 || offs_y < 0) {
-        return 0;
-    }
-
     const auto* si = _sprData[spr_id];
     if (si == nullptr) {
-        return 0;
+        return false;
     }
 
-    // 2d animation
-    if (with_zoom && (static_cast<float>(offs_x) > static_cast<float>(si->Width) / _spritesZoom || static_cast<float>(offs_y) > static_cast<float>(si->Height) / _spritesZoom)) {
-        return 0;
-    }
-    if (!with_zoom && (offs_x > si->Width || offs_y > si->Height)) {
-        return 0;
+    auto ox = offs_x;
+    auto oy = offs_y;
+
+    if (ox < 0 || oy < 0) {
+        return false;
     }
 
-    if (with_zoom) {
-        offs_x = iround(static_cast<float>(offs_x) * _spritesZoom);
-        offs_y = iround(static_cast<float>(offs_y) * _spritesZoom);
+    if (with_zoom && _spritesZoom != 1.0f) {
+        ox = iround(static_cast<float>(ox) * _spritesZoom);
+        oy = iround(static_cast<float>(oy) * _spritesZoom);
     }
 
-    offs_x += iround(si->Atlas->MainTex->SizeData[0] * si->SprRect.Left);
-    offs_y += iround(si->Atlas->MainTex->SizeData[1] * si->SprRect.Top);
-    return GetRenderTargetPixel(si->Atlas->RTarg, offs_x, offs_y);
+    if (ox >= si->Width || oy >= si->Height) {
+        return false;
+    }
+
+    if (!si->HitTestData.empty()) {
+        return si->HitTestData[oy * si->Width + ox];
+    }
+    else {
+        ox += iround(si->Atlas->MainTex->SizeData[0] * si->SprRect.Left);
+        oy += iround(si->Atlas->MainTex->SizeData[1] * si->SprRect.Top);
+
+        return (GetRenderTargetPixel(si->Atlas->RTarg, ox, oy) >> 24) > 0;
+    }
 }
 
 auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool

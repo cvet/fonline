@@ -359,6 +359,7 @@ private:
     AnyFrames* _picTrack1 {};
     AnyFrames* _picTrack2 {};
     AnyFrames* _picHexMask {};
+    vector<uint> _picHexMaskData {};
     AnyFrames* _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
