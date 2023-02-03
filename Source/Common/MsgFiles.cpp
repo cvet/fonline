@@ -498,8 +498,6 @@ void LanguagePack::LoadTexts(FileSystem& resources, string_view lang_name)
                     if (!Msg[i].LoadFromBinaryData(msg_file.GetData())) {
                         throw LanguagePackException("Invalid text file", msg_file.GetPath());
                     }
-
-                    WriteLog("Loaded {} texts for language '{}' from '{}'", Msg[i].GetSize(), lang_name, msg_file.GetPath());
                 }
             }
         }
