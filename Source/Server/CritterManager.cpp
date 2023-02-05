@@ -119,7 +119,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         if (item_already != nullptr) {
             const auto count = item->GetCount();
             _engine->ItemMngr.DeleteItem(item);
-            item_already->SetCount(item->GetCount() + count);
+            item_already->SetCount(item_already->GetCount() + count);
             return item_already;
         }
     }
