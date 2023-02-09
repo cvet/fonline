@@ -86,7 +86,6 @@ class MatrixHelper final
 public:
     MatrixHelper() = delete;
 
-    static void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp);
     static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool;
     static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) -> bool;
 };

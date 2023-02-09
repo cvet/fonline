@@ -1639,7 +1639,7 @@ void MapView::PrepareLightToDraw()
         const auto zoom = GetSpritesZoom();
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
         for (size_t i = 0; i < _lightPointsCount; i++) {
-            _engine->SprMngr.DrawPoints(_lightPoints[i], RenderPrimitiveType::TriangleFan, &zoom, &offset, _engine->EffectMngr.Effects.Light);
+            _engine->SprMngr.DrawPoints(_lightPoints[i], RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Light);
         }
         _engine->SprMngr.DrawPoints(_lightSoftPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
         _engine->SprMngr.PopRenderTarget();
@@ -1940,10 +1940,13 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
     if (_lightPoints.size() < _lightPointsCount) {
         _lightPoints.emplace_back();
     }
+
     auto& points = _lightPoints[_lightPointsCount - 1];
     points.clear();
-    points.reserve(3 + dist * GameSettings::MAP_DIR_COUNT);
-    points.push_back({base_x, base_y, color, ls.OffsX, ls.OffsY}); // Center of light
+    points.reserve(dist * GameSettings::MAP_DIR_COUNT * 2);
+
+    const auto center_point = PrimitivePoint {base_x, base_y, color, ls.OffsX, ls.OffsY};
+    size_t added_points = 0;
 
     int hx_far = hx;
     int hy_far = hy;
@@ -1995,24 +1998,37 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
                     ox = ls.OffsX;
                     oy = ls.OffsY;
                 }
+
                 const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, hx_, hy_);
-                points.push_back({base_x + x, base_y + y, color, ox, oy});
+                points.emplace_back(PrimitivePoint {base_x + x, base_y + y, color, ox, oy});
+                if (++added_points % 2 == 0) {
+                    points.emplace_back(center_point);
+                }
+
                 last_hx = hx_;
                 last_hy = hy_;
             }
         }
     }
 
-    for (uint i = 1, j = static_cast<uint>(points.size()); i < j; i++) {
-        auto& cur = points[i];
-        auto& next = points[i >= points.size() - 1 ? 1 : i + 1];
+    for (size_t i = 0, j = points.size(); i < j; i++) {
+        if (i % 3 == 0) {
+            continue;
+        }
+
+        const auto& cur = points[i];
+        const auto next_i = (i + 1) % 3 == 0 ? i + 2 : i + 1;
+        const auto& next = points[next_i >= points.size() ? 0 : next_i];
+
         if (GenericUtils::DistSqrt(cur.PointX, cur.PointY, next.PointX, next.PointY) > static_cast<uint>(_engine->Settings.MapHexWidth)) {
-            const auto dist_comp = (GenericUtils::DistSqrt(base_x, base_y, cur.PointX, cur.PointY) > GenericUtils::DistSqrt(base_x, base_y, next.PointX, next.PointY));
             _lightSoftPoints.push_back({next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY});
             _lightSoftPoints.push_back({cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY});
+
+            const auto dist_comp = GenericUtils::DistSqrt(base_x, base_y, cur.PointX, cur.PointY) > GenericUtils::DistSqrt(base_x, base_y, next.PointX, next.PointY);
             auto x = static_cast<float>(dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX);
             auto y = static_cast<float>(dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY);
             std::tie(x, y) = GenericUtils::ChangeStepsCoords(x, y, dist_comp ? -2.5f : 2.5f);
+
             if (dist_comp) {
                 _lightSoftPoints.push_back({cur.PointX + iround(x), cur.PointY + iround(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
             }
@@ -2711,6 +2727,19 @@ void MapView::PrepareFogToDraw()
             const auto dist_shoot = chosen->GetAttackDist();
             const auto maxhx = GetWidth();
             const auto maxhy = GetHeight();
+
+            const auto half_hw = _engine->Settings.MapHexWidth / 2;
+            const auto half_hh = _engine->Settings.MapHexHeight / 2;
+
+            auto base_x = 0;
+            auto base_y = 0;
+            GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
+            const auto center_look_point = PrimitivePoint {base_x + half_hw, base_y + half_hh, COLOR_RGBA(0, 0, 0, 0), &chosen->SprOx, &chosen->SprOy};
+            const auto center_shoot_point = PrimitivePoint {base_x + half_hw, base_y + half_hh, COLOR_RGBA(255, 0, 0, 0), &chosen->SprOx, &chosen->SprOy};
+
+            size_t look_points_added = 0;
+            size_t shoot_points_added = 0;
+
             auto seek_start = true;
             for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
                 const auto dir = (GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
@@ -2758,7 +2787,10 @@ void MapView::PrepareFogToDraw()
                         GetHexCurrentPosition(hx_, hy_, x, y);
                         auto* ox = (dist_look == dist ? &chosen->SprOx : nullptr);
                         auto* oy = (dist_look == dist ? &chosen->SprOy : nullptr);
-                        _fogLookPoints.push_back({x + (_engine->Settings.MapHexWidth / 2), y + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
+                        _fogLookPoints.emplace_back(PrimitivePoint {x + half_hw, y + half_hh, COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
+                        if (++look_points_added % 2 == 0) {
+                            _fogLookPoints.emplace_back(center_look_point);
+                        }
                     }
 
                     if (_drawShootBorders) {
@@ -2774,21 +2806,12 @@ void MapView::PrepareFogToDraw()
                         const auto result_shoot_dist = _engine->Geometry.DistGame(base_hx, base_hy, hx_2, hy_2);
                         auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->SprOx : nullptr);
                         auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->SprOy : nullptr);
-                        _fogShootPoints.push_back({x_ + (_engine->Settings.MapHexWidth / 2), y_ + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
+                        _fogShootPoints.emplace_back(PrimitivePoint {x_ + half_hw, y_ + half_hh, COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
+                        if (++shoot_points_added % 2 == 0) {
+                            _fogShootPoints.emplace_back(center_shoot_point);
+                        }
                     }
                 }
-            }
-
-            auto base_x = 0;
-            auto base_y = 0;
-            GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
-            if (!_fogLookPoints.empty()) {
-                _fogLookPoints.push_back(*_fogLookPoints.begin());
-                _fogLookPoints.insert(_fogLookPoints.begin(), {base_x + (_engine->Settings.MapHexWidth / 2), base_y + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
-            }
-            if (!_fogShootPoints.empty()) {
-                _fogShootPoints.push_back(*_fogShootPoints.begin());
-                _fogShootPoints.insert(_fogShootPoints.begin(), {base_x + (_engine->Settings.MapHexWidth / 2), base_y + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
             }
 
             _fogOffsX = chosen != nullptr ? &chosen->SprOx : nullptr;
@@ -2811,8 +2834,8 @@ void MapView::PrepareFogToDraw()
         _engine->SprMngr.PushRenderTarget(_rtFog);
         _engine->SprMngr.ClearCurrentRenderTarget(0);
         const float zoom = GetSpritesZoom();
-        _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleFan, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
-        _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleFan, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
+        _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
+        _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
         _engine->SprMngr.PopRenderTarget();
     }
 }

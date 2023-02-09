@@ -267,6 +267,7 @@ public:
     [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
+    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44;
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);

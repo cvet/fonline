@@ -10,8 +10,8 @@ const float CameraAngleSin = 0.4336590845875; // sin(25.7)
 const float ShadowAngleTan = 0.2548968037538; // tan(14.3)
 
 [VertexShader Pass2]
-uniform mat4 ProjectionMatrix;
-uniform mat4 WorldMatrices[MAX_BONES];
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 6, std140) uniform ModelBuf { vec4 LightColor; vec4 GroundPosition; mat4 WorldMatrices[MAX_BONES]; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec3 InNormal;
@@ -21,6 +21,7 @@ layout(location = 4) in vec3 InTangent;
 layout(location = 5) in vec3 InBinormal;
 layout(location = 6) in vec4 InBlendWeights;
 layout(location = 7) in vec4 InBlendIndices;
+layout(location = 8) in vec4 InColor;
 
 layout(location = 0) out vec4 Color;
 layout(location = 1) out vec2 TexCoord;
@@ -59,7 +60,7 @@ void main(void)
 }
 
 [FragmentShader Pass2]
-layout(binding = 0) uniform sampler2D ColorMap;
+layout(binding = 0) uniform sampler2D MainTex;
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;
@@ -68,13 +69,12 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    FragColor = texture(ColorMap, TexCoord) * Color;
+    FragColor = texture(MainTex, TexCoord) * Color;
 }
 
 [VertexShader Pass1]
-uniform mat4 ProjectionMatrix;
-uniform vec4 GroundPosition;
-uniform mat4 WorldMatrices[MAX_BONES];
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 6, std140) uniform ModelBuf { vec4 LightColor; vec4 GroundPosition; mat4 WorldMatrices[MAX_BONES]; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec3 InNormal;
@@ -84,6 +84,7 @@ layout(location = 4) in vec3 InTangent;
 layout(location = 5) in vec3 InBinormal;
 layout(location = 6) in vec4 InBlendWeights;
 layout(location = 7) in vec4 InBlendIndices;
+layout(location = 8) in vec4 InColor;
 
 layout(location = 0) out vec2 TexCoord;
 
@@ -119,7 +120,7 @@ void main(void)
 }
 
 [FragmentShader Pass1]
-layout(binding = 0) uniform sampler2D ColorMap;
+layout(binding = 0) uniform sampler2D MainTex;
 
 layout(location = 0) in vec2 TexCoord;
 
@@ -128,5 +129,5 @@ layout(location = 0) out vec4 FragColor;
 void main(void)
 {
     FragColor.rgb = vec3(0.0);
-    FragColor.a = texture(ColorMap, TexCoord).a;
+    FragColor.a = texture(MainTex, TexCoord).a;
 }

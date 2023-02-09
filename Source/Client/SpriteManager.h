@@ -234,7 +234,7 @@ public:
     void EndScene();
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
-    void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
+    void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
     void ClearCurrentRenderTarget(uint color, bool with_depth = false);
     void PushAtlasType(AtlasType atlas_type);
     void PushAtlasType(AtlasType atlas_type, bool one_image);

@@ -162,17 +162,6 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     if (MainTex != other->MainTex) {
         return false;
     }
-    if (BorderBuf || AnimBuf || RandomValueBuf) {
-        return false;
-    }
-#if FO_ENABLE_3D
-    if (ModelBuf) {
-        return false;
-    }
-#endif
-    if (CustomTexBuf && std::mismatch(std::begin(CustomTex), std::end(CustomTex), std::begin(other->CustomTex)).first != std::end(CustomTex)) {
-        return false;
-    }
     return true;
 }
 
@@ -369,37 +358,43 @@ Application::Application(int argc, char** argv, bool client_mode) : Settings(arg
         ActiveRenderer = new Null_Renderer();
     }
 #if FO_HAVE_OPENGL
-    if (Settings.ForceOpenGL) {
+    else if (Settings.ForceOpenGL) {
         ActiveRendererType = RenderType::OpenGL;
         ActiveRenderer = new OpenGL_Renderer();
     }
 #endif
 #if FO_HAVE_DIRECT_3D
-    if (Settings.ForceDirect3D) {
+    else if (Settings.ForceDirect3D) {
         ActiveRendererType = RenderType::Direct3D;
         ActiveRenderer = new Direct3D_Renderer();
     }
 #endif
 #if FO_HAVE_METAL
-    if (Settings.ForceMetal) {
+    else if (Settings.ForceMetal) {
         ActiveRendererType = RenderType::Metal;
         throw NotImplementedException(LINE_STR);
     }
 #endif
 #if FO_HAVE_VULKAN
-    if (Settings.ForceVulkan) {
+    else if (Settings.ForceVulkan) {
         ActiveRendererType = RenderType::Vulkan;
         throw NotImplementedException(LINE_STR);
     }
 #endif
 #if FO_HAVE_GNM
-    if (Settings.ForceGNM) {
+    else if (Settings.ForceGNM) {
         ActiveRendererType = RenderType::GNM;
         throw NotImplementedException(LINE_STR);
     }
 #endif
 
     // If none of selected then evaluate automatic selection
+#if FO_HAVE_OPENGL // Todo: move opengl rendering to the end of automatic choice
+    if (ActiveRenderer == nullptr) {
+        ActiveRendererType = RenderType::OpenGL;
+        ActiveRenderer = new OpenGL_Renderer();
+    }
+#endif
 #if FO_HAVE_DIRECT_3D
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Direct3D;
@@ -419,12 +414,6 @@ Application::Application(int argc, char** argv, bool client_mode) : Settings(arg
 #if FO_HAVE_GNM
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::GNM;
-    }
-#endif
-#if FO_HAVE_OPENGL
-    if (ActiveRenderer == nullptr) {
-        ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = new OpenGL_Renderer();
     }
 #endif
 
@@ -1002,19 +991,6 @@ void Application::EndFrame()
     const auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
     if (_imguiEffect != nullptr && _imguiDrawBuf != nullptr && fb_width > 0 && fb_height > 0) {
-        const auto l = draw_data->DisplayPos.x;
-        const auto r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-        const auto t = draw_data->DisplayPos.y;
-        const auto b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-        const float ortho_projection[4][4] = {
-            {2.0f / (r - l), 0.0f, 0.0f, 0.0f},
-            {0.0f, 2.0f / (t - b), 0.0f, 0.0f},
-            {0.0f, 0.0f, -1.0f, 0.0f},
-            {(r + l) / (l - r), (t + b) / (b - t), 0.0f, 1.0f},
-        };
-        _imguiEffect->ProjBuf = RenderEffect::ProjBuffer();
-        std::memcpy(_imguiEffect->ProjBuf->ProjMatrix, ortho_projection, sizeof(ortho_projection));
-
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
         const auto clip_scale = draw_data->FramebufferScale;
@@ -1045,13 +1021,13 @@ void Application::EndFrame()
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
                 RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
 
-                const auto clip_rect_x = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
-                const auto clip_rect_y = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
-                const auto clip_rect_z = static_cast<int>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
-                const auto clip_rect_w = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
+                const auto clip_rect_l = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
+                const auto clip_rect_t = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
+                const auto clip_rect_r = static_cast<int>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
+                const auto clip_rect_b = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
 
-                if (clip_rect_x < fb_width && clip_rect_y < fb_height && clip_rect_z >= 0 && clip_rect_w >= 0) {
-                    ActiveRenderer->EnableScissor(clip_rect_x, fb_height - clip_rect_w, clip_rect_z - clip_rect_x, clip_rect_w - clip_rect_y);
+                if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
+                    ActiveRenderer->EnableScissor(clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t);
                     _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
                     ActiveRenderer->DisableScissor();
                 }
@@ -1291,6 +1267,11 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     STACK_TRACE_ENTRY();
 
     return ActiveRenderer->CreateEffect(usage, name, loader);
+}
+
+auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+{
+    return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>

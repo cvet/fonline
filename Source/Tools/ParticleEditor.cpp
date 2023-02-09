@@ -239,9 +239,7 @@ void ParticleEditor::OnDraw()
     const auto proj_height = frame_height * (1.0f / _projFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    mat44 proj;
-    MatrixHelper::MatrixOrtho(proj[0], 0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    proj.Transpose();
+    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
 
     mat44 world;
     mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
@@ -256,7 +254,7 @@ void ParticleEditor::OnDraw()
 
     auto* prev_rt = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(_impl->RenderTarget.get());
-    App->Render.ClearRenderTarget(0u, true);
+    App->Render.ClearRenderTarget(0, true);
     _impl->Particles->Draw(proj, view_offset, _cameraAngle);
     App->Render.SetRenderTarget(prev_rt);
 

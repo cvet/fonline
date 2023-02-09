@@ -42,13 +42,13 @@ DECLARE_EXCEPTION(RenderingException);
 
 using WindowInternalHandle = void;
 
-constexpr int EFFECT_TEXTURES = 8;
-constexpr int EFFECT_SCRIPT_VALUES = 16;
-constexpr int EFFECT_MAX_PASSES = 6;
+constexpr size_t EFFECT_MAX_PASSES = 6;
+constexpr size_t EFFECT_SCRIPT_VALUES = 16;
 
 #if FO_ENABLE_3D
-constexpr int MODEL_MAX_BONES = 54;
-constexpr int BONES_PER_VERTEX = 4;
+constexpr size_t MODEL_MAX_TEXTURES = 8;
+constexpr size_t MODEL_MAX_BONES = 54;
+constexpr size_t BONES_PER_VERTEX = 4;
 #endif
 
 using RenderEffectLoader = std::function<string(string_view)>;
@@ -90,7 +90,6 @@ enum class RenderPrimitiveType
     LineStrip,
     TriangleList,
     TriangleStrip,
-    TriangleFan,
 };
 
 enum class BlendFuncType
@@ -149,13 +148,14 @@ static_assert(std::is_standard_layout_v<Vertex3D>);
 static_assert(sizeof(Vertex3D) == 100);
 #endif
 
-class RenderTexture : public RefCounter
+class RenderTexture
 {
 public:
     RenderTexture(const RenderTexture&) = delete;
     RenderTexture(RenderTexture&&) noexcept = delete;
     auto operator=(const RenderTexture&) = delete;
     auto operator=(RenderTexture&&) noexcept = delete;
+    virtual ~RenderTexture() = default;
 
     [[nodiscard]] virtual auto GetTexturePixel(int x, int y) -> uint = 0;
     [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> = 0;
@@ -167,18 +167,20 @@ public:
     const float SizeData[4]; // Width, Height, TexelWidth, TexelHeight
     const bool LinearFiltered;
     const bool WithDepth;
+    const bool FlippedHeight;
 
 protected:
-    RenderTexture(int width, int height, bool linear_filtered, bool with_depth);
+    RenderTexture(int width, int height, bool linear_filtered, bool with_depth, bool flipped_height);
 };
 
-class RenderDrawBuffer : public RefCounter
+class RenderDrawBuffer
 {
 public:
     RenderDrawBuffer(const RenderDrawBuffer&) = delete;
     RenderDrawBuffer(RenderDrawBuffer&&) noexcept = delete;
     auto operator=(const RenderDrawBuffer&) = delete;
     auto operator=(RenderDrawBuffer&&) noexcept = delete;
+    virtual ~RenderDrawBuffer() = default;
 
     virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1), size_t custom_indices_size = static_cast<size_t>(-1)) = 0;
 
@@ -188,6 +190,7 @@ public:
     vector<ushort> Indices {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
+    bool PrimZoomed {};
 #if FO_ENABLE_3D
     vector<Vertex3D> Vertices3D {};
 #endif
@@ -196,7 +199,7 @@ protected:
     explicit RenderDrawBuffer(bool is_static);
 };
 
-class RenderEffect : public RefCounter
+class RenderEffect
 {
 public:
     struct ProjBuffer
@@ -209,100 +212,108 @@ public:
         float MainTexSize[4] {}; // vec4
     };
 
-    struct TimeBuffer
-    {
-        float RealTime {};
-        float GameTime {};
-        float Padding[2] {};
-    };
-
-    struct MapSpriteBuffer
-    {
-        float ZoomFactor {};
-        float Padding[3] {};
-    };
-
-    struct BorderBuffer
+    struct ContourBuffer
     {
         float SpriteBorder[4] {}; // vec4
     };
 
-    struct CustomTexBuffer
+    struct TimeBuffer
     {
-        float AtlasOffset[4 * EFFECT_TEXTURES] {}; // vec4
-        float Size[4 * EFFECT_TEXTURES] {}; // vec4
-    };
-
-    struct AnimBuffer
-    {
-        float NormalizedTime {};
-        float AbsoluteTime {};
-        float Padding[2] {};
+        float FrameTime[4] {}; // vec4
+        float GameTime[4] {}; // vec4
     };
 
     struct RandomValueBuffer
     {
-        float Value[4] {};
+        float RandomValue[4] {}; // vec4
     };
 
     struct ScriptValueBuffer
     {
-        float Value[EFFECT_SCRIPT_VALUES] {};
+        float ScriptValue[EFFECT_SCRIPT_VALUES] {}; // float
     };
 
 #if FO_ENABLE_3D
-    // Todo: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
     struct ModelBuffer
     {
         float LightColor[4] {}; // vec4
         float GroundPosition[4] {}; // vec4
         float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
     };
+
+    struct ModelTexBuffer
+    {
+        float TexAtlasOffset[4 * MODEL_MAX_TEXTURES] {}; // vec4
+        float TexSize[4 * MODEL_MAX_TEXTURES] {}; // vec4
+    };
+
+    struct ModelAnimBuffer
+    {
+        float AnimNormalizedTime[4] {}; // vec4
+        float AnimAbsoluteTime[4] {}; // vec4
+    };
 #endif
 
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
     static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
-    static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 16);
-    static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 16);
-    static_assert(sizeof(BorderBuffer) % 16 == 0 && sizeof(BorderBuffer) == 16);
-    static_assert(sizeof(CustomTexBuffer) % 16 == 0 && sizeof(CustomTexBuffer) == 256);
-    static_assert(sizeof(AnimBuffer) % 16 == 0 && sizeof(AnimBuffer) == 16);
+    static_assert(sizeof(ContourBuffer) % 16 == 0 && sizeof(ContourBuffer) == 16);
+    static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 32);
     static_assert(sizeof(RandomValueBuffer) % 16 == 0 && sizeof(RandomValueBuffer) == 16);
     static_assert(sizeof(ScriptValueBuffer) % 16 == 0 && sizeof(ScriptValueBuffer) == 64);
 #if FO_ENABLE_3D
     static_assert(sizeof(ModelBuffer) % 16 == 0 && sizeof(ModelBuffer) == 3488);
+    static_assert(sizeof(ModelTexBuffer) % 16 == 0 && sizeof(ModelTexBuffer) == 256);
+    static_assert(sizeof(ModelAnimBuffer) % 16 == 0 && sizeof(ModelAnimBuffer) == 32);
 #endif
-    // Total size: 4000
-    // We must fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float))
+    // Total size: 3984
+    // Need fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float))
 
     RenderEffect(const RenderEffect&) = delete;
     RenderEffect(RenderEffect&&) noexcept = delete;
     auto operator=(const RenderEffect&) = delete;
     auto operator=(RenderEffect&&) noexcept = delete;
+    virtual ~RenderEffect() = default;
 
     [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
 
     const string Name;
     const EffectUsage Usage;
-
-    optional<ProjBuffer> ProjBuf {};
-    optional<MainTexBuffer> MainTexBuf {};
-    optional<TimeBuffer> TimeBuf {};
-    optional<MapSpriteBuffer> MapSpriteBuf {};
-    optional<BorderBuffer> BorderBuf {};
-    optional<CustomTexBuffer> CustomTexBuf {};
-    optional<AnimBuffer> AnimBuf {};
-    optional<RandomValueBuffer> RandomValueBuf {};
-    optional<ScriptValueBuffer> ScriptValueBuf {};
     RenderTexture* MainTex {};
     RenderTexture* EggTex {};
-    RenderTexture* CustomTex[EFFECT_TEXTURES] {};
     bool DisableBlending {};
 #if FO_ENABLE_3D
-    optional<ModelBuffer> ModelBuf {};
+    RenderTexture* ModelTex[MODEL_MAX_TEXTURES] {};
     bool DisableShadow {};
     bool DisableCulling {};
     size_t MatrixCount {};
+#endif
+
+    const bool NeedMainTex {};
+    const bool NeedEggTex {};
+    const bool NeedProjBuf {};
+    const bool NeedMainTexBuf {};
+    const bool NeedContourBuf {};
+    const bool NeedTimeBuf {};
+    const bool NeedRandomValueBuf {};
+    const bool NeedScriptValueBuf {};
+#if FO_ENABLE_3D
+    const bool NeedModelBuf {};
+    const bool NeedAnyModelTex {};
+    const bool NeedModelTex[MODEL_MAX_TEXTURES] {};
+    const bool NeedModelTexBuf {};
+    const bool NeedModelAnimBuf {};
+#endif
+
+    optional<ProjBuffer> ProjBuf {};
+    optional<MainTexBuffer> MainTexBuf {};
+    optional<ContourBuffer> ContourBuf {};
+    optional<TimeBuffer> TimeBuf {};
+    optional<RandomValueBuffer> RandomValueBuf {};
+    optional<ScriptValueBuffer> ScriptValueBuf {};
+#if FO_ENABLE_3D
+    optional<ModelBuffer> ModelBuf {};
+    optional<ModelTexBuffer> ModelTexBuf {};
+    optional<ModelAnimBuffer> ModelAnimBuf {};
 #endif
 
     virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), RenderTexture* custom_tex = nullptr) = 0;
@@ -320,6 +331,21 @@ protected:
 #if FO_ENABLE_3D
     bool _isShadow[EFFECT_MAX_PASSES] {};
 #endif
+
+    const int _posMainTex[EFFECT_MAX_PASSES] {};
+    const int _posEggTex[EFFECT_MAX_PASSES] {};
+    const int _posProjBuf[EFFECT_MAX_PASSES] {};
+    const int _posMainTexBuf[EFFECT_MAX_PASSES] {};
+    const int _posContourBuf[EFFECT_MAX_PASSES] {};
+    const int _posTimeBuf[EFFECT_MAX_PASSES] {};
+    const int _posRandomValueBuf[EFFECT_MAX_PASSES] {};
+    const int _posScriptValueBuf[EFFECT_MAX_PASSES] {};
+#if FO_ENABLE_3D
+    const int _posModelBuf[EFFECT_MAX_PASSES] {};
+    const int _posModelTex[EFFECT_MAX_PASSES][MODEL_MAX_TEXTURES] {};
+    const int _posModelTexBuf[EFFECT_MAX_PASSES] {};
+    const int _posModelAnimBuf[EFFECT_MAX_PASSES] {};
+#endif
 };
 
 class Renderer
@@ -330,6 +356,7 @@ public:
     [[nodiscard]] virtual auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
+    [[nodiscard]] virtual auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 = 0;
 
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
@@ -345,6 +372,7 @@ public:
     [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
+    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override { return {}; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
     void Present() override { }
@@ -364,6 +392,7 @@ public:
     [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -383,6 +412,7 @@ public:
     [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;

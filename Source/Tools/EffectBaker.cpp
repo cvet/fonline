@@ -257,11 +257,12 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
     const auto shader_version = fofx.GetInt("Effect", "Version", 310);
     const auto shader_version_str = _str("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
-    const auto shader_defines = _str("precision mediump float;\n#define MAX_BONES {}\n", MODEL_MAX_BONES).str();
+    const auto shader_defines = _str("precision mediump float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
     const auto shader_defines = _str("precision mediump float;\n").str();
 #endif
     const auto* shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+    const auto shader_defines_ex2 = _str("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
     for (auto pass = 1; pass <= passes; pass++) {
         string vertex_pass_content = fofx.GetSectionContent(_str("VertexShader Pass{}", pass));
@@ -284,8 +285,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientNone, shader_version);
         vert.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
-        const char* vertext_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_common_content.c_str(), vertex_pass_content.c_str()};
-        vert.setStrings(vertext_strings, 5);
+        const char* vertext_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), vertex_pass_content.c_str()};
+        vert.setStrings(vertext_strings, 6);
+        // vert.setAutoMapBindings(true); // Todo: enable auto map bindings
         if (!vert.parse(&GLSLANG_BUILT_IN_RESOURCE, shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse vertex shader", fname, pass, vert.getInfoLog());
         }
@@ -294,8 +296,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientNone, shader_version);
         frag.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
         frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
-        const char* fragment_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_common_content.c_str(), fragment_pass_content.c_str()};
-        frag.setStrings(fragment_strings, 5);
+        const char* fragment_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_defines_ex2.c_str(), shader_common_content.c_str(), fragment_pass_content.c_str()};
+        frag.setStrings(fragment_strings, 6);
+        // frag.setAutoMapBindings(true);
         if (!frag.parse(&GLSLANG_BUILT_IN_RESOURCE, shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse fragment shader", fname, pass, frag.getInfoLog());
         }
@@ -303,8 +306,68 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
         glslang::TProgram program;
         program.addShader(&vert);
         program.addShader(&frag);
+
         if (!program.link(EShMsgDefault)) {
             throw EffectBakerException("Failed to link shader program", fname, program.getInfoLog());
+        }
+
+        // if (!program.mapIO()) {
+        //    throw EffectBakerException("Failed to map IO shader program", fname, program.getInfoLog());
+        // }
+
+        if (!program.buildReflection()) {
+            throw EffectBakerException("Failed to build reflection shader program", fname, program.getInfoLog());
+        }
+
+        string program_info;
+        program_info.reserve(1024);
+        program_info = "[EffectInfo]\n";
+
+        for (int i = 0; i < program.getNumUniformVariables(); i++) {
+            const auto& uniform = program.getUniform(i);
+            if (uniform.getType()->getBasicType() == glslang::EbtSampler) {
+                program_info += _str("{} = {}\n", uniform.name, program.getUniformBinding(program.getReflectionIndex(uniform.name.c_str())));
+
+#define CHECK_TEX(tex_name) \
+    if (uniform.name == tex_name) { \
+        continue; \
+    }
+                CHECK_TEX("MainTex");
+                CHECK_TEX("EggTex");
+#if FO_ENABLE_3D
+                for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
+                    CHECK_TEX(_str("ModelTex{}", j).str());
+                }
+#endif
+#undef CHECK_TEX
+            }
+        }
+
+        for (int i = 0; i < program.getNumUniformBlocks(); i++) {
+            const auto& uniform_block = program.getUniformBlock(i);
+            program_info += _str("{} = {}\n", uniform_block.name, program.getUniformBlockBinding(program.getReflectionIndex(uniform_block.name.c_str())));
+
+#define CHECK_BUF(buf) \
+    if (uniform_block.name == #buf) { \
+        if (uniform_block.size != sizeof(RenderEffect::buf##fer)) { \
+            throw EffectBakerException("Invalid uniform buffer size", fname, #buf, uniform_block.size, sizeof(RenderEffect::buf##fer)); \
+        } \
+        continue; \
+    }
+            CHECK_BUF(ProjBuf);
+            CHECK_BUF(MainTexBuf);
+            CHECK_BUF(ContourBuf);
+            CHECK_BUF(TimeBuf);
+            CHECK_BUF(RandomValueBuf);
+            CHECK_BUF(ScriptValueBuf);
+#if FO_ENABLE_3D
+            CHECK_BUF(ModelBuf);
+            CHECK_BUF(ModelTexBuf);
+            CHECK_BUF(ModelAnimBuf);
+#endif
+#undef CHECK_BUF
+
+            throw EffectBakerException("Invalid uniform buffer", fname, uniform_block.name, uniform_block.size);
         }
 
         const string fname_wo_ext = _str(fname).eraseFileExtension();
@@ -315,8 +378,15 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            _writeData(fname, vector<uchar>(content.begin(), content.end()));
+            _writeData(_str("{}.{}.info", fname_wo_ext, pass), vector<uchar>(program_info.begin(), program_info.end()));
         }
+    }
+
+    {
+#if FO_ASYNC_BAKE
+        std::lock_guard locker(_bakedFilesLocker);
+#endif
+        _writeData(fname, vector<uchar>(content.begin(), content.end()));
     }
 }
 
@@ -353,6 +423,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         auto options = compiler.get_common_options();
         options.es = false;
         options.version = 330;
+        options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
@@ -367,6 +438,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         auto options = compiler.get_common_options();
         options.es = true;
         options.version = 300;
+        options.enable_420pack_extension = false;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
@@ -379,7 +451,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     auto make_hlsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerHLSL compiler {spirv};
         auto options = compiler.get_hlsl_options();
-        options.shader_model = 30;
+        options.shader_model = 40;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE

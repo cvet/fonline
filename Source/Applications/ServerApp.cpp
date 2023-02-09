@@ -225,6 +225,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             for (auto* client : Data->Clients) {
                 ShowExceptionMessageBox(true);
                 try {
+                    App->Render.ClearRenderTarget(COLOR_RGB(0, 0, 0));
                     client->MainLoop();
                 }
                 catch (const std::exception& ex) {

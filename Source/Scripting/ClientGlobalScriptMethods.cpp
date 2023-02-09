@@ -1195,11 +1195,8 @@
     case 4:
         prim = RenderPrimitiveType::TriangleStrip;
         break;
-    case 5:
-        prim = RenderPrimitiveType::TriangleFan;
-        break;
     default:
-        return;
+        throw ScriptException("Invalid primitive type");
     }
 
     vector<PrimitivePoint> points;

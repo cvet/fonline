@@ -173,7 +173,7 @@ FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
 VARIABLE_SETTING(bool, WindowResizable, false);
 VARIABLE_SETTING(bool, NullRenderer, false);
-VARIABLE_SETTING(bool, ForceOpenGL, true);
+VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
 VARIABLE_SETTING(bool, ForceGNM, false);

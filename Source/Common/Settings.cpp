@@ -579,6 +579,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
 #if FO_DEBUG
     const_cast<bool&>(DebugBuild) = true;
+    const_cast<bool&>(RenderDebug) = true;
 #endif
 }
 

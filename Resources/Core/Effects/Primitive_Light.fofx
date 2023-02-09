@@ -7,7 +7,7 @@ const float ShinePower = 5.0;
 const float ResultPower = 0.5;
 
 [VertexShader]
-uniform mat4 ProjectionMatrix;
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
