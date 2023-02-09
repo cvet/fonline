@@ -389,12 +389,6 @@ Application::Application(int argc, char** argv, bool client_mode) : Settings(arg
 #endif
 
     // If none of selected then evaluate automatic selection
-#if FO_HAVE_OPENGL // Todo: move opengl rendering to the end of automatic choice
-    if (ActiveRenderer == nullptr) {
-        ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = new OpenGL_Renderer();
-    }
-#endif
 #if FO_HAVE_DIRECT_3D
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Direct3D;
@@ -414,6 +408,12 @@ Application::Application(int argc, char** argv, bool client_mode) : Settings(arg
 #if FO_HAVE_GNM
     if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::GNM;
+    }
+#endif
+#if FO_HAVE_OPENGL
+    if (ActiveRenderer == nullptr) {
+        ActiveRendererType = RenderType::OpenGL;
+        ActiveRenderer = new OpenGL_Renderer();
     }
 #endif
 

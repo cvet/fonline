@@ -436,25 +436,21 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
         vbuf[pos].PosX = regiont.Left;
         vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Bottom : regiont.Top;
         vbuf[pos].TexU = regionf.Left / wf;
-        // vbuf[pos++].TexV = rt->MainTex->FlippedHeight ? 1.0f - regionf.Bottom / hf : regionf.Top / hf;
         vbuf[pos++].TexV = regionf.Top / hf;
 
         vbuf[pos].PosX = regiont.Left;
         vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Top : regiont.Bottom;
         vbuf[pos].TexU = regionf.Left / wf;
-        // vbuf[pos++].TexV = rt->MainTex->FlippedHeight ? 1.0f - regionf.Top / hf : regionf.Bottom / hf;
         vbuf[pos++].TexV = regionf.Bottom / hf;
 
         vbuf[pos].PosX = regiont.Right;
         vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Top : regiont.Bottom;
         vbuf[pos].TexU = regionf.Right / wf;
-        // vbuf[pos++].TexV = rt->MainTex->FlippedHeight ? 1.0f - regionf.Top / hf : regionf.Bottom / hf;
         vbuf[pos++].TexV = regionf.Bottom / hf;
 
         vbuf[pos].PosX = regiont.Right;
         vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Bottom : regiont.Top;
         vbuf[pos].TexU = regionf.Right / wf;
-        // vbuf[pos].TexV = rt->MainTex->FlippedHeight ? 1.0f - regionf.Bottom / hf : regionf.Top / hf;
         vbuf[pos].TexV = regionf.Top / hf;
     }
 
@@ -2335,22 +2331,22 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
         auto pos = 0;
 
         vbuf[pos].PosX = bordersf.Left;
-        vbuf[pos].PosY = mid_height - bordersf.Bottom;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Left;
         vbuf[pos++].TexV = sr.Bottom;
 
         vbuf[pos].PosX = bordersf.Left;
-        vbuf[pos].PosY = mid_height - bordersf.Top;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Left;
         vbuf[pos++].TexV = sr.Top;
 
         vbuf[pos].PosX = bordersf.Right;
-        vbuf[pos].PosY = mid_height - bordersf.Top;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos++].TexV = sr.Top;
 
         vbuf[pos].PosX = bordersf.Right;
-        vbuf[pos].PosY = mid_height - bordersf.Bottom;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos].TexV = sr.Bottom;
 
