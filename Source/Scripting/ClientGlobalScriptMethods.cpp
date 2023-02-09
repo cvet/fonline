@@ -1352,7 +1352,7 @@
     }
 
     if (client->OffscreenSurfaces.empty()) {
-        auto* const rt = client->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
+        auto* rt = client->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
         if (!rt) {
             throw ScriptException("Can't create offscreen surface");
         }
@@ -1360,7 +1360,7 @@
         client->OffscreenSurfaces.push_back(rt);
     }
 
-    auto* const rt = client->OffscreenSurfaces.back();
+    auto* rt = client->OffscreenSurfaces.back();
     client->OffscreenSurfaces.pop_back();
     client->ActiveOffscreenSurfaces.push_back(rt);
 
@@ -1404,7 +1404,7 @@
 
     rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
-    client->SprMngr.DrawRenderTarget(rt, true, nullptr, nullptr);
+    client->SprMngr.DrawRenderTarget(rt, true);
 }
 
 ///# ...

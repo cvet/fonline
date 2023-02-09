@@ -397,61 +397,66 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
 
     Flush();
 
-    if (region_from == nullptr && region_to == nullptr) {
-        const auto wf = static_cast<float>(rt->MainTex->Width);
-        const auto hf = static_cast<float>(rt->MainTex->Height);
+    const auto flipped_height = rt->MainTex->FlippedHeight;
+    const auto width_from_i = rt->MainTex->Width;
+    const auto height_from_i = rt->MainTex->Height;
+    const auto width_to_i = _rtStack.empty() ? _settings.ScreenWidth : _rtStack.back()->MainTex->Width;
+    const auto height_to_i = _rtStack.empty() ? _settings.ScreenHeight : _rtStack.back()->MainTex->Height;
+    const auto width_from_f = static_cast<float>(width_from_i);
+    const auto height_from_f = static_cast<float>(height_from_i);
+    const auto width_to_f = static_cast<float>(width_to_i);
+    const auto height_to_f = static_cast<float>(height_to_i);
 
+    if (region_from == nullptr && region_to == nullptr) {
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
         vbuf[pos].PosX = 0.0f;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? hf : 0.0f;
+        vbuf[pos].PosY = flipped_height ? height_to_f : 0.0f;
         vbuf[pos].TexU = 0.0f;
         vbuf[pos++].TexV = 0.0f;
 
         vbuf[pos].PosX = 0.0f;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? 0.0f : hf;
+        vbuf[pos].PosY = flipped_height ? 0.0f : height_to_f;
         vbuf[pos].TexU = 0.0f;
         vbuf[pos++].TexV = 1.0f;
 
-        vbuf[pos].PosX = wf;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? 0.0f : hf;
+        vbuf[pos].PosX = width_to_f;
+        vbuf[pos].PosY = flipped_height ? 0.0f : height_to_f;
         vbuf[pos].TexU = 1.0f;
         vbuf[pos++].TexV = 1.0f;
 
-        vbuf[pos].PosX = wf;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? hf : 0.0f;
+        vbuf[pos].PosX = width_to_f;
+        vbuf[pos].PosY = flipped_height ? height_to_f : 0.0f;
         vbuf[pos].TexU = 1.0f;
         vbuf[pos].TexV = 0.0f;
     }
     else {
-        const FRect regionf = region_from != nullptr ? *region_from : IRect(0, 0, rt->MainTex->Width, rt->MainTex->Height);
-        const FRect regiont = region_to != nullptr ? *region_to : IRect(0, 0, _rtStack.back()->MainTex->Width, _rtStack.back()->MainTex->Height);
-        const auto wf = static_cast<float>(rt->MainTex->Width);
-        const auto hf = static_cast<float>(rt->MainTex->Height);
+        const FRect rect_from = region_from != nullptr ? *region_from : IRect(0, 0, width_from_i, height_from_i);
+        const FRect rect_to = region_to != nullptr ? *region_to : IRect(0, 0, width_to_i, height_to_i);
 
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
-        vbuf[pos].PosX = regiont.Left;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Bottom : regiont.Top;
-        vbuf[pos].TexU = regionf.Left / wf;
-        vbuf[pos++].TexV = regionf.Top / hf;
+        vbuf[pos].PosX = rect_to.Left;
+        vbuf[pos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
+        vbuf[pos].TexU = rect_from.Left / width_from_f;
+        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
 
-        vbuf[pos].PosX = regiont.Left;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Top : regiont.Bottom;
-        vbuf[pos].TexU = regionf.Left / wf;
-        vbuf[pos++].TexV = regionf.Bottom / hf;
+        vbuf[pos].PosX = rect_to.Left;
+        vbuf[pos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
+        vbuf[pos].TexU = rect_from.Left / width_from_f;
+        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
 
-        vbuf[pos].PosX = regiont.Right;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Top : regiont.Bottom;
-        vbuf[pos].TexU = regionf.Right / wf;
-        vbuf[pos++].TexV = regionf.Bottom / hf;
+        vbuf[pos].PosX = rect_to.Right;
+        vbuf[pos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
+        vbuf[pos].TexU = rect_from.Right / width_from_f;
+        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
 
-        vbuf[pos].PosX = regiont.Right;
-        vbuf[pos].PosY = rt->MainTex->FlippedHeight ? regiont.Bottom : regiont.Top;
-        vbuf[pos].TexU = regionf.Right / wf;
-        vbuf[pos].TexV = regionf.Top / hf;
+        vbuf[pos].PosX = rect_to.Right;
+        vbuf[pos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
+        vbuf[pos].TexU = rect_from.Right / width_from_f;
+        vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
     }
 
     auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
@@ -496,6 +501,15 @@ void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)
     STACK_TRACE_ENTRY();
 
     App->Render.ClearRenderTarget(color, with_depth);
+}
+
+void SpriteManager::DeleteRenderTarget(RenderTarget* rt)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
+    RUNTIME_ASSERT(it != _rtAll.end());
+    _rtAll.erase(it);
 }
 
 void SpriteManager::PushScissor(int l, int t, int r, int b)
@@ -762,8 +776,7 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
     for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
         auto& atlas = *it;
         if (atlas->Type == atlas_type) {
-            for (auto& it_ : _sprData) {
-                const auto* si = it_;
+            for (auto& si : _sprData) {
                 if (si != nullptr && si->Atlas == atlas.get()) {
 #if FO_ENABLE_3D
                     if (si->Model != nullptr) {
@@ -772,9 +785,11 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
 #endif
 
                     delete si;
-                    it_ = nullptr;
+                    si = nullptr;
                 }
             }
+
+            DeleteRenderTarget(atlas->RTarg);
 
             it = _allAtlases.erase(it);
         }
@@ -855,11 +870,17 @@ void SpriteManager::DumpAtlases() const
 
 #if FO_ENABLE_3D
     cnt = 1;
-    for (const auto* rt : _rt3D) {
+    for (const auto* rt : _rtModels) {
         write_rt(_str("Model{}", cnt), rt);
         cnt++;
     }
 #endif
+
+    cnt = 1;
+    for (auto&& rt : _rtAll) {
+        write_rt(_str("All{}", cnt), rt.get());
+        cnt++;
+    }
 }
 
 auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint
@@ -1203,19 +1224,19 @@ void SpriteManager::RenderModel(ModelInstance* model)
     const auto frame_width = si->Width * ModelInstance::FRAME_SCALE;
     const auto frame_height = si->Height * ModelInstance::FRAME_SCALE;
 
-    RenderTarget* rt = nullptr;
-    for (auto* rt_ : _rt3D) {
-        if (rt_->MainTex->Width == frame_width && rt_->MainTex->Height == frame_height) {
-            rt = rt_;
+    RenderTarget* rt_model = nullptr;
+    for (auto* rt : _rtModels) {
+        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
+            rt_model = rt;
             break;
         }
     }
-    if (rt == nullptr) {
-        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
-        _rt3D.push_back(rt);
+    if (rt_model == nullptr) {
+        rt_model = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
+        _rtModels.push_back(rt_model);
     }
 
-    PushRenderTarget(rt);
+    PushRenderTarget(rt_model);
     ClearCurrentRenderTarget(0, true);
 
     // Draw model
@@ -1227,7 +1248,8 @@ void SpriteManager::RenderModel(ModelInstance* model)
     // Copy render
     IRect region_to;
 
-    if (rt->MainTex->FlippedHeight) {
+    // Render to atlas
+    if (rt_model->MainTex->FlippedHeight) {
         // Preserve flip
         const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
         const auto t = iround((1.0f - si->SprRect.Top) * static_cast<float>(si->Atlas->Height));
@@ -1244,7 +1266,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
     }
 
     PushRenderTarget(si->Atlas->RTarg);
-    DrawRenderTarget(rt, false, nullptr, &region_to);
+    DrawRenderTarget(rt_model, false, nullptr, &region_to);
     PopRenderTarget();
 }
 

@@ -236,6 +236,7 @@ public:
     void PopRenderTarget();
     void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
     void ClearCurrentRenderTarget(uint color, bool with_depth = false);
+    void DeleteRenderTarget(RenderTarget* rt);
     void PushAtlasType(AtlasType atlas_type);
     void PushAtlasType(AtlasType atlas_type, bool one_image);
     void PopAtlasType();
@@ -301,7 +302,7 @@ private:
     RenderTarget* _rtMain {};
     RenderTarget* _rtContours {};
     RenderTarget* _rtContoursMid {};
-    vector<RenderTarget*> _rt3D {};
+    vector<RenderTarget*> _rtModels {};
     vector<RenderTarget*> _rtStack {};
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<tuple<AtlasType, bool>> _targetAtlasStack {};

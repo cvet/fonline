@@ -409,6 +409,12 @@ MapView::~MapView()
         BreakIntoDebugger();
     }
 
+    if (_rtMap != nullptr) {
+        _engine->SprMngr.DeleteRenderTarget(_rtMap);
+    }
+    _engine->SprMngr.DeleteRenderTarget(_rtLight);
+    _engine->SprMngr.DeleteRenderTarget(_rtFog);
+
     _mainTree.Clear();
     _roofTree.Clear();
     _tilesTree.Clear();
