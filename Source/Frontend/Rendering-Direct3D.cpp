@@ -1091,12 +1091,15 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
         const auto d3d_map_cbuffer = D3DDeviceContext->Map(buf_handle, 0, D3D11_MAP_WRITE_DISCARD, 0, &cbuffer_resource);
         RUNTIME_ASSERT(SUCCEEDED(d3d_map_cbuffer));
 
+#if FO_ENABLE_3D
         if constexpr (std::is_same_v<std::decay_t<decltype(buf)>, ModelBuffer>) {
             const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float) * 16;
             std::memcpy(cbuffer_resource.pData, &buf, bind_size);
         }
-        else {
-            UNUSED_VARIABLE(MatrixCount);
+        else
+#endif
+        {
+            UNUSED_VARIABLE(this);
             std::memcpy(cbuffer_resource.pData, &buf, sizeof(buf));
         }
 
