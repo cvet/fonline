@@ -123,7 +123,7 @@ static bool OGL_vertex_buffer_object {};
 static bool OGL_framebuffer_object {};
 static bool OGL_framebuffer_object_ext {};
 static bool OGL_vertex_array_object {};
-static bool OGL_uniform_buffer_object {};
+static bool OGL_uniform_buffer_object {}; // Todo: make workarounds for work without ARB_uniform_buffer_object
 // ReSharper restore CppInconsistentNaming
 
 class OpenGL_Texture final : public RenderTexture
@@ -250,15 +250,15 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     const auto glew_result = glewInit();
     RUNTIME_ASSERT_STR(glew_result == GLEW_OK, _str("GLEW not initialized, result {}", glew_result));
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
-    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
-    OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0;
+    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0; // >= 2.0
+    OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0; // >= 3.0
     OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
 #if FO_MAC
     OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
 #else
-    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0; // >= 3.0
 #endif
-    OGL_uniform_buffer_object = GLEW_ARB_uniform_buffer_object != 0;
+    OGL_uniform_buffer_object = GLEW_ARB_uniform_buffer_object != 0; // >= 3.1
 #endif
 
     // OpenGL ES extensions
@@ -274,7 +274,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #if FO_IOS
     OGL_vertex_array_object = true;
 #endif
-    OGL_uniform_buffer_object = true;
+    OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
 #endif
 
     // Check OpenGL extensions
@@ -538,22 +538,24 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         opengl_effect->Program[pass] = program;
 
+        if (GL_HAS(uniform_buffer_object)) {
 #define UBO_BLOCK_BINDING(buf) \
     if (const auto index = glGetUniformBlockIndex(program, #buf); index != GL_INVALID_INDEX) { \
         GL(glUniformBlockBinding(program, index, opengl_effect->_pos##buf[pass])); \
     }
-        UBO_BLOCK_BINDING(ProjBuf);
-        UBO_BLOCK_BINDING(MainTexBuf);
-        UBO_BLOCK_BINDING(ContourBuf);
-        UBO_BLOCK_BINDING(TimeBuf);
-        UBO_BLOCK_BINDING(RandomValueBuf);
-        UBO_BLOCK_BINDING(ScriptValueBuf);
+            UBO_BLOCK_BINDING(ProjBuf);
+            UBO_BLOCK_BINDING(MainTexBuf);
+            UBO_BLOCK_BINDING(ContourBuf);
+            UBO_BLOCK_BINDING(TimeBuf);
+            UBO_BLOCK_BINDING(RandomValueBuf);
+            UBO_BLOCK_BINDING(ScriptValueBuf);
 #if FO_ENABLE_3D
-        UBO_BLOCK_BINDING(ModelBuf);
-        UBO_BLOCK_BINDING(ModelTexBuf);
-        UBO_BLOCK_BINDING(ModelAnimBuf);
+            UBO_BLOCK_BINDING(ModelBuf);
+            UBO_BLOCK_BINDING(ModelTexBuf);
+            UBO_BLOCK_BINDING(ModelAnimBuf);
 #endif
 #undef UBO_BLOCK_BINDING
+        }
     }
 
     return opengl_effect.release();
@@ -619,7 +621,7 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
-    // Todo: scretch main view
+    // Todo: scretch main view for main render target
     /*
      *int w, h;
     bool screen_size;
@@ -1012,22 +1014,24 @@ OpenGL_Effect::~OpenGL_Effect()
         }
     }
 
+    if (GL_HAS(uniform_buffer_object)) {
 #define UBO_DELETE_BUFFER(buf) \
     if (Ubo_##buf != 0) { \
         glDeleteBuffers(1, &Ubo_##buf); \
     }
-    UBO_DELETE_BUFFER(ProjBuf);
-    UBO_DELETE_BUFFER(MainTexBuf);
-    UBO_DELETE_BUFFER(ContourBuf);
-    UBO_DELETE_BUFFER(TimeBuf);
-    UBO_DELETE_BUFFER(RandomValueBuf);
-    UBO_DELETE_BUFFER(ScriptValueBuf);
+        UBO_DELETE_BUFFER(ProjBuf);
+        UBO_DELETE_BUFFER(MainTexBuf);
+        UBO_DELETE_BUFFER(ContourBuf);
+        UBO_DELETE_BUFFER(TimeBuf);
+        UBO_DELETE_BUFFER(RandomValueBuf);
+        UBO_DELETE_BUFFER(ScriptValueBuf);
 #if FO_ENABLE_3D
-    UBO_DELETE_BUFFER(ModelBuf);
-    UBO_DELETE_BUFFER(ModelTexBuf);
-    UBO_DELETE_BUFFER(ModelAnimBuf);
+        UBO_DELETE_BUFFER(ModelBuf);
+        UBO_DELETE_BUFFER(ModelTexBuf);
+        UBO_DELETE_BUFFER(ModelAnimBuf);
 #endif
 #undef UBO_DELETE_BUFFER
+    }
 }
 
 void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
@@ -1109,6 +1113,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         std::memcpy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
     }
 
+    if (GL_HAS(uniform_buffer_object)) {
 #define UBO_UPLOAD_BUFFER(buf) \
     if (Need##buf && buf.has_value()) { \
         if (Ubo_##buf == 0) { \
@@ -1119,18 +1124,19 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         GL(glBindBuffer(GL_UNIFORM_BUFFER, 0)); \
         buf.reset(); \
     }
-    UBO_UPLOAD_BUFFER(ProjBuf);
-    UBO_UPLOAD_BUFFER(MainTexBuf);
-    UBO_UPLOAD_BUFFER(ContourBuf);
-    UBO_UPLOAD_BUFFER(TimeBuf);
-    UBO_UPLOAD_BUFFER(RandomValueBuf);
-    UBO_UPLOAD_BUFFER(ScriptValueBuf);
+        UBO_UPLOAD_BUFFER(ProjBuf);
+        UBO_UPLOAD_BUFFER(MainTexBuf);
+        UBO_UPLOAD_BUFFER(ContourBuf);
+        UBO_UPLOAD_BUFFER(TimeBuf);
+        UBO_UPLOAD_BUFFER(RandomValueBuf);
+        UBO_UPLOAD_BUFFER(ScriptValueBuf);
 #if FO_ENABLE_3D
-    UBO_UPLOAD_BUFFER(ModelBuf);
-    UBO_UPLOAD_BUFFER(ModelTexBuf);
-    UBO_UPLOAD_BUFFER(ModelAnimBuf);
+        UBO_UPLOAD_BUFFER(ModelBuf);
+        UBO_UPLOAD_BUFFER(ModelTexBuf);
+        UBO_UPLOAD_BUFFER(ModelAnimBuf);
 #endif
 #undef UBO_UPLOAD_BUFFER
+    }
 
     const auto* egg_tex = static_cast<OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
@@ -1143,27 +1149,29 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
 #endif
 
+        if (GL_HAS(uniform_buffer_object)) {
 #define UBO_BIND_BUFFER(buf) \
     if (Ubo_##buf != 0 && _pos##buf[pass] != -1) { \
         GL(glBindBufferBase(GL_UNIFORM_BUFFER, _pos##buf[pass], Ubo_##buf)); \
     }
-        UBO_BIND_BUFFER(ProjBuf);
-        UBO_BIND_BUFFER(MainTexBuf);
-        UBO_BIND_BUFFER(ContourBuf);
-        UBO_BIND_BUFFER(TimeBuf);
-        UBO_BIND_BUFFER(RandomValueBuf);
-        UBO_BIND_BUFFER(ScriptValueBuf);
+            UBO_BIND_BUFFER(ProjBuf);
+            UBO_BIND_BUFFER(MainTexBuf);
+            UBO_BIND_BUFFER(ContourBuf);
+            UBO_BIND_BUFFER(TimeBuf);
+            UBO_BIND_BUFFER(RandomValueBuf);
+            UBO_BIND_BUFFER(ScriptValueBuf);
 #if FO_ENABLE_3D
-        UBO_BIND_BUFFER(ModelTexBuf);
-        UBO_BIND_BUFFER(ModelAnimBuf);
+            UBO_BIND_BUFFER(ModelTexBuf);
+            UBO_BIND_BUFFER(ModelAnimBuf);
 #endif
 #undef UBO_BIND_BUFFER
 #if FO_ENABLE_3D
-        if (Ubo_ModelBuf != 0 && _posModelBuf[pass] != -1) {
-            const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float) * 16;
-            GL(glBindBufferRange(GL_UNIFORM_BUFFER, _posModelBuf[pass], Ubo_ModelBuf, 0, static_cast<GLsizeiptr>(bind_size)));
-        }
+            if (Ubo_ModelBuf != 0 && _posModelBuf[pass] != -1) {
+                const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float) * 16;
+                GL(glBindBufferRange(GL_UNIFORM_BUFFER, _posModelBuf[pass], Ubo_ModelBuf, 0, static_cast<GLsizeiptr>(bind_size)));
+            }
 #endif
+        }
 
         GL(glUseProgram(Program[pass]));
 
@@ -1214,22 +1222,24 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             GL(glDepthMask(GL_TRUE));
         }
 
+        if (GL_HAS(uniform_buffer_object)) {
 #define UBO_UNBIND_BUFFER(buf) \
     if (Ubo_##buf != 0 && _pos##buf[pass] != -1) { \
         GL(glBindBufferBase(GL_UNIFORM_BUFFER, _pos##buf[pass], 0)); \
     }
-        UBO_UNBIND_BUFFER(ProjBuf);
-        UBO_UNBIND_BUFFER(MainTexBuf);
-        UBO_UNBIND_BUFFER(ContourBuf);
-        UBO_UNBIND_BUFFER(TimeBuf);
-        UBO_UNBIND_BUFFER(RandomValueBuf);
-        UBO_UNBIND_BUFFER(ScriptValueBuf);
+            UBO_UNBIND_BUFFER(ProjBuf);
+            UBO_UNBIND_BUFFER(MainTexBuf);
+            UBO_UNBIND_BUFFER(ContourBuf);
+            UBO_UNBIND_BUFFER(TimeBuf);
+            UBO_UNBIND_BUFFER(RandomValueBuf);
+            UBO_UNBIND_BUFFER(ScriptValueBuf);
 #if FO_ENABLE_3D
-        UBO_UNBIND_BUFFER(ModelBuf);
-        UBO_UNBIND_BUFFER(ModelTexBuf);
-        UBO_UNBIND_BUFFER(ModelAnimBuf);
+            UBO_UNBIND_BUFFER(ModelBuf);
+            UBO_UNBIND_BUFFER(ModelTexBuf);
+            UBO_UNBIND_BUFFER(ModelAnimBuf);
 #endif
 #undef UBO_UNBIND_BUFFER
+        }
     }
 
     GL(glUseProgram(0));
