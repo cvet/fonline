@@ -50,8 +50,13 @@
 #endif
 
 #if FO_OPENGL_ES
-#define GLES_SILENCE_DEPRECATION
-#include "SDL_opengles2.h"
+#if FO_IOS
+#include <OpenGLES/ES3/gl.h>
+#include <OpenGLES/ES3/glext.h>
+#else
+#include <GLES3/gl3platform.h>
+#include <GLES3/gl3.h>
+#endif
 #endif
 
 #if FO_MAC && !FO_OPENGL_ES
@@ -61,40 +66,6 @@
 #define glGenVertexArrays glGenVertexArraysAPPLE
 #define glBindVertexArray glBindVertexArrayAPPLE
 #define glDeleteVertexArrays glDeleteVertexArraysAPPLE
-#endif
-
-#if FO_OPENGL_ES
-#define glGenVertexArrays glGenVertexArraysOES
-#define glBindVertexArray glBindVertexArrayOES
-#define glDeleteVertexArrays glDeleteVertexArraysOES
-#define glGenFramebuffersEXT glGenFramebuffers
-#define glBindFramebufferEXT glBindFramebuffer
-#define glFramebufferTexture2DEXT glFramebufferTexture2D
-#define glRenderbufferStorageEXT glRenderbufferStorage
-#define glGenRenderbuffersEXT glGenRenderbuffers
-#define glBindRenderbufferEXT glBindRenderbuffer
-#define glFramebufferRenderbufferEXT glFramebufferRenderbuffer
-#define glCheckFramebufferStatusEXT glCheckFramebufferStatus
-#define glDeleteRenderbuffersEXT glDeleteRenderbuffers
-#define glDeleteFramebuffersEXT glDeleteFramebuffers
-#define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE
-#define GL_FRAMEBUFFER_EXT GL_FRAMEBUFFER
-#ifndef GL_COLOR_ATTACHMENT0_EXT
-#define GL_COLOR_ATTACHMENT0_EXT GL_COLOR_ATTACHMENT0
-#endif
-#define GL_RENDERBUFFER_EXT GL_RENDERBUFFER
-#define GL_DEPTH_ATTACHMENT_EXT GL_DEPTH_ATTACHMENT
-#define GL_RENDERBUFFER_BINDING_EXT GL_RENDERBUFFER_BINDING
-#define GL_CLAMP GL_CLAMP_TO_EDGE
-#define GL_DEPTH24_STENCIL8 GL_DEPTH24_STENCIL8_OES
-#define GL_DEPTH24_STENCIL8_EXT GL_DEPTH24_STENCIL8_OES
-#define GL_STENCIL_ATTACHMENT_EXT GL_STENCIL_ATTACHMENT
-#define glGetTexImage(a, b, c, d, e)
-#define glDrawBuffer(a)
-#ifndef GL_MAX
-#define GL_MAX GL_MAX_EXT
-#define GL_MIN GL_MIN_EXT
-#endif
 #endif
 
 #if FO_DEBUG
@@ -423,8 +394,13 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
     GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
+#if FO_OPENGL_ES
+    GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+#else
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
+#endif
     GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
     GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
 
