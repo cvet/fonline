@@ -33,12 +33,13 @@
 
 #include "LocationView.h"
 #include "Client.h"
+#include "StringUtils.h"
 
 LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(proto);
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 void LocationView::MarkAsDestroyed()

@@ -354,6 +354,8 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
 {
     STACK_TRACE_ENTRY();
 
+    _name = _str("{}_{}", proto->GetName(), id);
+
     SetSpritesZoom(1.0f);
 
     _rtScreenOx = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));

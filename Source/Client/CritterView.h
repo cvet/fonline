@@ -77,7 +77,6 @@ public:
     void SetPlayerOffline(bool is_offline);
 
 protected:
-    string _name {};
     bool _ownedByPlayer {};
     bool _isPlayerOffline {};
     bool _isChosen {};

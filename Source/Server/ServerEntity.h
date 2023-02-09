@@ -61,10 +61,10 @@ protected:
     ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator);
 
     FOServer* _engine;
+    string _name {};
 
 private:
     void SetId(uint id); // Invoked by EntityManager
 
     uint _id;
-    string _name {};
 };

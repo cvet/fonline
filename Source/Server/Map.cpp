@@ -39,13 +39,15 @@
 #include "Location.h"
 #include "Server.h"
 #include "Settings.h"
+#include "StringUtils.h"
 
 Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), MapProperties(GetInitRef()), _staticMap {static_map}, _mapLocation {location}
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(_staticMap);
+
+    _name = _str("{}_{}", proto->GetName(), id);
 
     _hexFlagsSize = GetWidth() * GetHeight();
     _hexFlags = new uchar[_hexFlagsSize];
