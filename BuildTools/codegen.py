@@ -2050,6 +2050,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 globalLines.append('    auto&& value = script_sys->GameEngine->Settings.Custom["' + name + '"];')
                 if type == 'string':
                     globalLines.append('    return value;')
+                elif type == 'bool':
+                    globalLines.append('    return _str(value).toBool();')
                 elif type in ['float', 'double']:
                     globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(_str(value).toDouble());')
                 else:
