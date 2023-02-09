@@ -592,6 +592,8 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
 auto Direct3D_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
+    STACK_TRACE_ENTRY();
+
     const auto& l = left;
     const auto& t = top;
     const auto& r = right;

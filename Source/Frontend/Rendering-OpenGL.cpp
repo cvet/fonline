@@ -561,6 +561,8 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
 {
+    STACK_TRACE_ENTRY();
+
     const auto r_l = right - left;
     const auto t_b = top - bottom;
     const auto f_n = farp - nearp;

@@ -403,6 +403,20 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return nullptr;
 }
 
+auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(left);
+    UNUSED_VARIABLE(right);
+    UNUSED_VARIABLE(bottom);
+    UNUSED_VARIABLE(top);
+    UNUSED_VARIABLE(nearp);
+    UNUSED_VARIABLE(farp);
+
+    return {};
+}
+
 auto AppInput::GetMousePosition() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();
