@@ -244,6 +244,10 @@ void Updater::Net_OnUpdateFilesResponse()
     _fileListReceived = true;
 
     if (!data.empty()) {
+        FileSystem resources;
+
+        resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
+
         auto reader = DataReader(data);
 
         for (uint file_index = 0;; file_index++) {
@@ -258,9 +262,9 @@ void Updater::Net_OnUpdateFilesResponse()
             const auto hash = reader.Read<uint>();
 
             // Check hash
-            if (auto file = _resources.ReadFileHeader(fname)) {
+            if (auto file = resources.ReadFileHeader(fname)) {
                 // Todo: add update file files checking by hashes
-                /*const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
+                /*const auto file_hash = resources.ReadFileText(_str("{}.hash", fname));
                 if (file_hash.empty()) {
                     // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
                 }
