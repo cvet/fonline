@@ -54,8 +54,8 @@
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
 #else
-#include <GLES3/gl3platform.h>
 #include <GLES3/gl3.h>
+#include <GLES3/gl3platform.h>
 #endif
 #endif
 
