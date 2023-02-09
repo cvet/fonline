@@ -86,6 +86,9 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
     // Connect
     AddText(STR_CONNECT_TO_SERVER, "Connect to server...");
     _conn.Connect();
+
+    // Unlock all resources to prevent collision with new files
+    _resources.CleanDataSources();
 }
 
 void Updater::Net_OnConnect(bool success)

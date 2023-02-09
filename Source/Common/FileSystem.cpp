@@ -512,6 +512,13 @@ void FileSystem::AddDataSource(unique_ptr<DataSource> data_source)
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
 }
 
+void FileSystem::CleanDataSources()
+{
+    STACK_TRACE_ENTRY();
+
+    _dataSources.clear();
+}
+
 auto FileSystem::GetAllFiles() const -> FileCollection
 {
     STACK_TRACE_ENTRY();
