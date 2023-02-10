@@ -113,9 +113,10 @@ static bool RenderDebug {};
 static bool VSync {};
 static SDL_Window* SdlWindow {};
 static D3D_FEATURE_LEVEL FeatureLevel {};
+static IDXGISwapChain* SwapChain {};
 static ID3D11Device* D3DDevice {};
 static ID3D11DeviceContext* D3DDeviceContext {};
-static IDXGISwapChain* SwapChain {};
+static ID3D11DeviceContext1* D3DDeviceContext1 {};
 static ID3D11RenderTargetView* MainRenderTarget {};
 static ID3D11RenderTargetView* CurRenderTarget {};
 static ID3D11DepthStencilView* CurDepthStencil {};
@@ -191,6 +192,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
     Settings = &settings;
     RenderDebug = settings.RenderDebug;
+    VSync = settings.ClientMode && settings.VSync;
     SdlWindow = static_cast<SDL_Window*>(window);
 
     SDL_SysWMinfo wminfo = {};
@@ -202,65 +204,130 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     HWND hwnd = 0;
 #endif
 
+    // Device
+    {
+        constexpr D3D_FEATURE_LEVEL feature_levels[] = {
+            D3D_FEATURE_LEVEL_11_1,
 #if !FO_UWP
-    DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
-    swap_chain_desc.BufferCount = 2;
-    swap_chain_desc.BufferDesc.Width = 0;
-    swap_chain_desc.BufferDesc.Height = 0;
-    swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swap_chain_desc.BufferDesc.RefreshRate.Numerator = 60;
-    swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
-    swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swap_chain_desc.OutputWindow = hwnd;
-    swap_chain_desc.SampleDesc.Count = 1;
-    swap_chain_desc.SampleDesc.Quality = 0;
-    swap_chain_desc.Windowed = TRUE;
-    swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+            D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_10_1,
+            D3D_FEATURE_LEVEL_10_0,
+            D3D_FEATURE_LEVEL_9_3,
+            D3D_FEATURE_LEVEL_9_2,
+            D3D_FEATURE_LEVEL_9_1,
 #endif
+        };
+        const map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
+            {D3D_FEATURE_LEVEL_11_1, "11.1"},
+#if !FO_UWP
+            {D3D_FEATURE_LEVEL_11_0, "11.0"},
+            {D3D_FEATURE_LEVEL_10_1, "10.1"},
+            {D3D_FEATURE_LEVEL_10_0, "10.0"},
+            {D3D_FEATURE_LEVEL_9_3, "9.3"},
+            {D3D_FEATURE_LEVEL_9_2, "9.2"},
+            {D3D_FEATURE_LEVEL_9_1, "9.1"},
+#endif
+        };
+        constexpr auto feature_levels_count = static_cast<UINT>(std::size(feature_levels));
 
-    UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
-    if (RenderDebug) {
-        device_flags |= D3D11_CREATE_DEVICE_DEBUG;
+        UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
+        if (RenderDebug) {
+            device_flags |= D3D11_CREATE_DEVICE_DEBUG;
+        }
+
+        const auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
+        if (!SUCCEEDED(d3d_hardware_create_device)) {
+            const auto d3d_warp_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
+            if (!SUCCEEDED(d3d_warp_create_device)) {
+                throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
+            }
+
+            WriteLog("Warp Direct3D device created with feature level {}", feature_levels_str.at(FeatureLevel));
+        }
+        else {
+            WriteLog("Direct3D device created with feature level {}", feature_levels_str.at(FeatureLevel));
+        }
+
+        if (SUCCEEDED(D3DDeviceContext->QueryInterface(IID_ID3D11DeviceContext1, reinterpret_cast<void**>(&D3DDeviceContext1)))) {
+            D3DDeviceContext->Release();
+            D3DDeviceContext = D3DDeviceContext1;
+        }
+        else {
+            WriteLog("Direct3D ID3D11DeviceContext1 not found");
+        }
     }
 
-    constexpr D3D_FEATURE_LEVEL feature_levels[] = {
-        D3D_FEATURE_LEVEL_11_1,
-#if !FO_UWP
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0,
-        D3D_FEATURE_LEVEL_9_3,
-        D3D_FEATURE_LEVEL_9_2,
-        D3D_FEATURE_LEVEL_9_1,
-#endif
-    };
-    constexpr auto feature_levels_count = static_cast<UINT>(std::size(feature_levels));
+    // Swap chain
+    {
+        IDXGIFactory* factory = nullptr;
+        const auto d3d_create_factory = ::CreateDXGIFactory(IID_IDXGIFactory, reinterpret_cast<void**>(&factory));
+        if (!SUCCEEDED(d3d_create_factory)) {
+            throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
+        }
 
-#if !FO_UWP
-    const auto d3d_create_device = ::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &swap_chain_desc, &SwapChain, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
-    if (!SUCCEEDED(d3d_create_device)) {
-        throw AppInitException("D3D11CreateDeviceAndSwapChain failed", d3d_create_device);
-    }
-#else
-    const auto d3d_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
-    if (!SUCCEEDED(d3d_create_device)) {
-        throw AppInitException("D3D11CreateDevice failed", d3d_create_device);
-    }
-#endif
+        DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
+        swap_chain_desc.BufferCount = 2;
+        swap_chain_desc.BufferDesc.Width = 0;
+        swap_chain_desc.BufferDesc.Height = 0;
+        swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        swap_chain_desc.BufferDesc.RefreshRate.Numerator = 144;
+        swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
+        swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+        swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swap_chain_desc.OutputWindow = hwnd;
+        swap_chain_desc.SampleDesc.Count = 1;
+        swap_chain_desc.SampleDesc.Quality = 0;
+        swap_chain_desc.Windowed = TRUE;
 
-    const map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
-        {D3D_FEATURE_LEVEL_11_1, "11.1"},
-#if !FO_UWP
-        {D3D_FEATURE_LEVEL_11_0, "11.0"},
-        {D3D_FEATURE_LEVEL_10_1, "10.1"},
-        {D3D_FEATURE_LEVEL_10_0, "10.0"},
-        {D3D_FEATURE_LEVEL_9_3, "9.3"},
-        {D3D_FEATURE_LEVEL_9_2, "9.2"},
-        {D3D_FEATURE_LEVEL_9_1, "9.1"},
-#endif
-    };
-    WriteLog("Direct3D device created with feature level {}", feature_levels_str.at(FeatureLevel));
+        if (VSync) {
+            swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+            const auto d3d_create_swap_chain = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
+            if (!SUCCEEDED(d3d_create_swap_chain)) {
+                swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+
+                const auto d3d_create_swap_chain_2 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
+                if (!SUCCEEDED(d3d_create_swap_chain_2)) {
+                    swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+                    const auto d3d_create_swap_chain_3 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
+                    if (!SUCCEEDED(d3d_create_swap_chain_3)) {
+                        swap_chain_desc.BufferCount = 1;
+
+                        const auto d3d_create_swap_chain_4 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
+                        if (!SUCCEEDED(d3d_create_swap_chain_4)) {
+                            throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2, d3d_create_swap_chain_3, d3d_create_swap_chain_4);
+                        }
+                        else {
+                            WriteLog("Direct3D swap chain created with one buffer count");
+                        }
+                    }
+                    else {
+                        WriteLog("Direct3D swap chain created with non-flip swap effect");
+                    }
+                }
+                else {
+                    WriteLog("Direct3D swap chain created with flip sequential swap effect");
+                }
+            }
+        }
+        else {
+            swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+            const auto d3d_create_swap_chain = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
+            if (!SUCCEEDED(d3d_create_swap_chain)) {
+                swap_chain_desc.BufferCount = 1;
+
+                const auto d3d_create_swap_chain_2 = factory->CreateSwapChain(D3DDevice, &swap_chain_desc, &SwapChain);
+                if (!SUCCEEDED(d3d_create_swap_chain_2)) {
+                    throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2);
+                }
+                else {
+                    WriteLog("Direct3D swap chain created with one buffer count");
+                }
+            }
+        }
+    }
 
     // Samplers
     {
@@ -363,6 +430,12 @@ void Direct3D_Renderer::Present()
 
     const auto d3d_swap_chain = SwapChain->Present(VSync ? 1 : 0, 0);
     RUNTIME_ASSERT(SUCCEEDED(d3d_swap_chain));
+
+    if (D3DDeviceContext1 != nullptr) {
+        D3DDeviceContext1->DiscardView(CurRenderTarget);
+    }
+
+    D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
 }
 
 auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
