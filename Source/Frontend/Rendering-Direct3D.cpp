@@ -112,6 +112,7 @@ static GlobalSettings* Settings {};
 static bool RenderDebug {};
 static bool VSync {};
 static SDL_Window* SdlWindow {};
+static D3D_FEATURE_LEVEL FeatureLevel {};
 static ID3D11Device* D3DDevice {};
 static ID3D11DeviceContext* D3DDeviceContext {};
 static IDXGISwapChain* SwapChain {};
@@ -201,23 +202,21 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     HWND hwnd = 0;
 #endif
 
-    DXGI_SWAP_CHAIN_DESC sd = {};
-    sd.BufferCount = 2;
-    sd.BufferDesc.Width = 0;
-    sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 60;
-    sd.BufferDesc.RefreshRate.Denominator = 1;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hwnd;
-    sd.SampleDesc.Count = 1;
-    sd.SampleDesc.Quality = 0;
-    sd.Windowed = TRUE;
 #if !FO_UWP
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-#else
-    sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
+    swap_chain_desc.BufferCount = 2;
+    swap_chain_desc.BufferDesc.Width = 0;
+    swap_chain_desc.BufferDesc.Height = 0;
+    swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swap_chain_desc.BufferDesc.RefreshRate.Numerator = 60;
+    swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
+    swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swap_chain_desc.OutputWindow = hwnd;
+    swap_chain_desc.SampleDesc.Count = 1;
+    swap_chain_desc.SampleDesc.Quality = 0;
+    swap_chain_desc.Windowed = TRUE;
+    swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 #endif
 
     UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
@@ -225,7 +224,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         device_flags |= D3D11_CREATE_DEVICE_DEBUG;
     }
 
-    D3D_FEATURE_LEVEL feature_level;
     constexpr D3D_FEATURE_LEVEL feature_levels[] = {
         D3D_FEATURE_LEVEL_11_1,
 #if !FO_UWP
@@ -240,12 +238,12 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     constexpr auto feature_levels_count = static_cast<UINT>(std::size(feature_levels));
 
 #if !FO_UWP
-    const auto d3d_create_device = ::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &sd, &SwapChain, &D3DDevice, &feature_level, &D3DDeviceContext);
+    const auto d3d_create_device = ::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &swap_chain_desc, &SwapChain, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
     if (!SUCCEEDED(d3d_create_device)) {
         throw AppInitException("D3D11CreateDeviceAndSwapChain failed", d3d_create_device);
     }
 #else
-    const auto d3d_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &feature_level, &D3DDeviceContext);
+    const auto d3d_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, &D3DDevice, &FeatureLevel, &D3DDeviceContext);
     if (!SUCCEEDED(d3d_create_device)) {
         throw AppInitException("D3D11CreateDevice failed", d3d_create_device);
     }
@@ -262,7 +260,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         {D3D_FEATURE_LEVEL_9_1, "9.1"},
 #endif
     };
-    WriteLog("Direct3D device created with feature level {}", feature_levels_str.at(feature_level));
+    WriteLog("Direct3D device created with feature level {}", feature_levels_str.at(FeatureLevel));
 
     // Samplers
     {
@@ -272,10 +270,15 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
             sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
             sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
             sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+            sampler_desc.MaxAnisotropy = 2;
             sampler_desc.MipLODBias = 0.0f;
             sampler_desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-            sampler_desc.MinLOD = -FLT_MAX;
+            sampler_desc.MinLOD = 0.0f;
             sampler_desc.MaxLOD = FLT_MAX;
+            sampler_desc.BorderColor[0] = 0.0f;
+            sampler_desc.BorderColor[1] = 0.0f;
+            sampler_desc.BorderColor[2] = 0.0f;
+            sampler_desc.BorderColor[3] = 0.0f;
 
             ID3D11SamplerState* sampler = nullptr;
             const auto d3d_create_sampler = D3DDevice->CreateSamplerState(&sampler_desc, &sampler);
@@ -291,32 +294,41 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     }
 
     // Calculate atlas size
-    auto atlas_w = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-    auto atlas_h = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-    if (feature_level == D3D_FEATURE_LEVEL_9_1 || feature_level == D3D_FEATURE_LEVEL_9_2) {
-        atlas_w = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-        atlas_h = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+    int atlas_w;
+    int atlas_h;
+    if (FeatureLevel >= D3D_FEATURE_LEVEL_11_0) {
+        atlas_w = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+        atlas_h = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     }
-    else if (feature_level == D3D_FEATURE_LEVEL_9_3) {
+    else if (FeatureLevel >= D3D_FEATURE_LEVEL_10_0) {
+        atlas_w = D3D10_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+        atlas_h = D3D10_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+    }
+    else if (FeatureLevel >= D3D_FEATURE_LEVEL_9_3) {
         atlas_w = D3D_FL9_3_REQ_TEXTURE2D_U_OR_V_DIMENSION;
         atlas_h = D3D_FL9_3_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     }
+    else if (FeatureLevel >= D3D_FEATURE_LEVEL_9_1) {
+        atlas_w = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+        atlas_h = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
     RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
     RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+
     const_cast<int&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
     const_cast<int&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Back buffer view
     ID3D11Texture2D* back_buf = nullptr;
-    SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
+    const auto d3d_get_back_buf = SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
+    RUNTIME_ASSERT(SUCCEEDED(d3d_get_back_buf));
     RUNTIME_ASSERT(back_buf);
-    D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
+    const auto d3d_create_back_buf_rt_view = D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
+    RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
     back_buf->Release();
-
-    // Dummy texture
-    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
-    DummyTexture = CreateTexture(1, 1, false, false);
-    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 
     // One pixel staging texture
     D3D11_TEXTURE2D_DESC one_pix_staging_desc;
@@ -334,6 +346,11 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
 
     const auto d3d_create_one_pix_staging_tex = D3DDevice->CreateTexture2D(&one_pix_staging_desc, nullptr, &OnePixStagingTex);
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_one_pix_staging_tex));
+
+    // Dummy texture
+    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
+    DummyTexture = CreateTexture(1, 1, false, false);
+    DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 
     // Init render target
     SetRenderTarget(nullptr);
@@ -364,7 +381,7 @@ auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtere
     tex_desc.SampleDesc.Quality = 0;
     tex_desc.Usage = D3D11_USAGE_DEFAULT;
     tex_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-    tex_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    tex_desc.CPUAccessFlags = 0;
     tex_desc.MiscFlags = 0;
 
     const auto d3d_create_texure_2d = D3DDevice->CreateTexture2D(&tex_desc, nullptr, &d3d_tex->TexHandle);
@@ -396,8 +413,8 @@ auto Direct3D_Renderer::CreateTexture(int width, int height, bool linear_filtere
         RUNTIME_ASSERT(SUCCEEDED(d3d_create_depth_view));
     }
 
-    const auto d3d_create_tex_rt = D3DDevice->CreateRenderTargetView(d3d_tex->TexHandle, nullptr, &d3d_tex->RenderTargetView);
-    RUNTIME_ASSERT(SUCCEEDED(d3d_create_tex_rt));
+    const auto d3d_create_tex_rt_view = D3DDevice->CreateRenderTargetView(d3d_tex->TexHandle, nullptr, &d3d_tex->RenderTargetView);
+    RUNTIME_ASSERT(SUCCEEDED(d3d_create_tex_rt_view));
 
     D3D11_SHADER_RESOURCE_VIEW_DESC tex_view_desc = {};
     tex_view_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -550,6 +567,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             rasterizer_desc.CullMode = D3D11_CULL_NONE;
             rasterizer_desc.DepthClipEnable = TRUE;
             rasterizer_desc.ScissorEnable = TRUE;
+            rasterizer_desc.DepthBiasClamp = 0;
 
             const auto d3d_create_rasterized_state = D3DDevice->CreateRasterizerState(&rasterizer_desc, &d3d_effect->RasterizerState[pass]);
             if (!SUCCEEDED(d3d_create_rasterized_state)) {
@@ -1219,7 +1237,13 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #endif
         D3DDeviceContext->RSSetScissorRects(1, ScissorEnabled ? &ScissorRect : &DisabledScissorRect);
 
-        D3DDeviceContext->DrawIndexed(draw_count, static_cast<UINT>(start_index), 0);
+        if (FeatureLevel <= D3D_FEATURE_LEVEL_9_3 && draw_mode == D3D11_PRIMITIVE_TOPOLOGY_POINTLIST) {
+            RUNTIME_ASSERT(start_index == 0);
+            D3DDeviceContext->Draw(draw_count, 0);
+        }
+        else {
+            D3DDeviceContext->DrawIndexed(draw_count, static_cast<UINT>(start_index), 0);
+        }
 
         // Unbind
         constexpr ID3D11Buffer* null_buf = nullptr;
