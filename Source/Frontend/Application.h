@@ -147,8 +147,7 @@ enum class KeyCode : uchar
     Delete = 0xD3,
     Lwin = 0xDB,
     Rwin = 0xDC,
-    Text = 0xFE,
-    ClipboardPaste = 0xFF,
+    Text = 0xFF,
 };
 
 ///@ ExportEnum
@@ -268,6 +267,7 @@ public:
     [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
+    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44;
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
@@ -331,9 +331,9 @@ private:
 
 class Application final
 {
-    friend void InitApp(int argc, char** argv, string_view name_appendix);
+    friend void InitApp(int argc, char** argv, bool client_mode);
 
-    Application(int argc, char** argv);
+    Application(int argc, char** argv, bool client_mode);
 
 public:
     Application(const Application&) = delete;
@@ -345,7 +345,6 @@ public:
     [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 
     void OpenLink(string_view link);
-    void HideCursor();
     void SetImGuiEffect(RenderEffect* effect);
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
@@ -397,5 +396,5 @@ public:
 };
 
 extern Application* App;
-extern void InitApp(int argc, char** argv, string_view name_appendix);
+extern void InitApp(int argc, char** argv, bool client_mode = false);
 [[noreturn]] extern void ExitApp(bool success);

@@ -78,18 +78,11 @@ void CritterHexView::Finish()
     _finishingTime = FadingTick;
 }
 
-auto CritterHexView::IsFinishing() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _finishingTime != 0;
-}
-
 auto CritterHexView::IsFinished() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _finishingTime != 0u && _engine->GameTime.GameTick() > _finishingTime;
+    return _finishingTime != 0 && _engine->GameTime.GameTick() > _finishingTime;
 }
 
 void CritterHexView::SetFade(bool fade_up)
@@ -765,7 +758,7 @@ void CritterHexView::ProcessMoving()
             const auto old_hx = GetHexX();
             const auto old_hy = GetHexY();
 
-            _map->TransitCritter(this, hx2, hy2, false);
+            _map->MoveCritter(this, hx2, hy2, false);
 
             const auto cur_hx = GetHexX();
             const auto cur_hy = GetHexY();
@@ -929,8 +922,8 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
 
-        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom);
-        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom) + _engine->Settings.NameOffset + GetNameOffset();
+        x = iround(static_cast<float>(rect.Left + rect_half_width + _engine->Settings.ScrOx) / _map->GetSpritesZoom());
+        y = iround(static_cast<float>(rect.Top + _engine->Settings.ScrOy) / _map->GetSpritesZoom()) + _engine->Settings.NameOffset + GetNameOffset();
     }
     else {
         // Offscreen
@@ -1002,7 +995,7 @@ void CritterHexView::DrawTextOnHead()
             str = _name;
 
             if (_engine->Settings.ShowCritId) {
-                str += _str(" ({})", GetId());
+                str += _str(" ({} {} {})", GetId(), GetHexX(), GetHexY());
             }
             if (_ownedByPlayer && _isPlayerOffline) {
                 str += _engine->Settings.PlayerOffAppendix;
@@ -1030,10 +1023,10 @@ void CritterHexView::DrawTextOnHead()
 
         if (_fadingEnabled) {
             const uint alpha = GetFadeAlpha();
-            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), 0);
+            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), -1);
         }
         else if (!IsFinishing()) {
-            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, 0);
+            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
         }
     }
 

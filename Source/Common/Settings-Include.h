@@ -39,6 +39,7 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
+FIXED_SETTING(bool, ClientMode, false); // Auto
 FIXED_SETTING(string, ExternalConfig, "");
 FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
@@ -131,8 +132,9 @@ SETTING_GROUP_END();
 SETTING_GROUP(ViewSettings, virtual DummySettings);
 VARIABLE_SETTING(int, ScreenWidth, 1024);
 VARIABLE_SETTING(int, ScreenHeight, 768);
+FIXED_SETTING(int, MonitorWidth, 0); // Auto
+FIXED_SETTING(int, MonitorHeight, 0); // Auto
 VARIABLE_SETTING(int, ScreenHudHeight, 0);
-VARIABLE_SETTING(float, SpritesZoom, 1.0f);
 VARIABLE_SETTING(int, ScrOx, 0);
 VARIABLE_SETTING(int, ScrOy, 0);
 VARIABLE_SETTING(bool, ShowCorners, false);
@@ -159,7 +161,7 @@ FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of 
 FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
 FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
-FIXED_SETTING(string, MapDataPrefix, "art/geometry/fallout_"); // path and prefix for names used for geometry sprites
+FIXED_SETTING(string, MapDataPrefix, "Geometry"); // path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
@@ -169,8 +171,9 @@ FIXED_SETTING(uint, Animation3dFPS, 30);
 FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
 FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
+VARIABLE_SETTING(bool, WindowResizable, false);
 VARIABLE_SETTING(bool, NullRenderer, false);
-VARIABLE_SETTING(bool, ForceOpenGL, true);
+VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
 VARIABLE_SETTING(bool, ForceGNM, false);
@@ -318,6 +321,7 @@ FIXED_SETTING(vector<string>, AccessTester);
 FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(bool, NoStart, false);
+FIXED_SETTING(bool, CollapseLogOnStart, false);
 FIXED_SETTING(int, ServerSleep, 0);
 SETTING_GROUP_END();
 

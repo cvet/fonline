@@ -41,7 +41,7 @@ Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : Serv
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(proto);
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 void Location::BindScript()

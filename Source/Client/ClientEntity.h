@@ -62,6 +62,7 @@ protected:
     ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator);
 
     FOClient* _engine;
+    string _name {};
 
 private:
     uint _id;

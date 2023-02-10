@@ -684,6 +684,7 @@ public:
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
+    [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index]; }
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;

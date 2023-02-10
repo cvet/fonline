@@ -55,7 +55,7 @@ struct SoundManager::Sound
     bool IsMusic {};
     uint NextPlay {};
     uint RepeatTime {};
-    unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>> OggStream {};
+    unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
 static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> uint
@@ -63,7 +63,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}, _playingSounds {}
 {
     STACK_TRACE_ENTRY();
 
@@ -96,8 +96,10 @@ SoundManager::~SoundManager()
 
     if (_isActive) {
         App->Audio.SetSource(nullptr);
-        StopSounds();
-        StopMusic();
+
+        App->Audio.LockDevice();
+        _playingSounds.clear();
+        App->Audio.UnlockDevice();
     }
 }
 
@@ -105,15 +107,15 @@ void SoundManager::ProcessSounds(uchar* output)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto it = _soundsActive.begin(); it != _soundsActive.end();) {
-        auto* sound = *it;
-        if (ProcessSound(sound, _outputBuf.data())) {
+    for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
+        auto&& sound = *it;
+        if (ProcessSound(sound.get(), _outputBuf.data())) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output, _outputBuf.data(), volume);
+            App->Audio.MixAudio(output, _outputBuf.data(), static_cast<int>(volume));
             ++it;
         }
         else {
-            it = _soundsActive.erase(it);
+            it = _playingSounds.erase(it);
         }
     }
 }
@@ -193,7 +195,7 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
     return false;
 }
 
-auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
+auto SoundManager::Load(string_view fname, bool is_music, uint repeat_time) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -206,21 +208,26 @@ auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
         fixed_fname += "." + ext;
     }
 
-    auto* sound = new Sound();
-    if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
-        return nullptr;
+    auto&& sound = std::make_unique<Sound>();
+
+    if (ext == "wav" && !LoadWav(sound.get(), fixed_fname)) {
+        return false;
     }
-    if (ext == "acm" && !LoadAcm(sound, fixed_fname, is_music)) {
-        return nullptr;
+    if (ext == "acm" && !LoadAcm(sound.get(), fixed_fname, is_music)) {
+        return false;
     }
-    if (ext == "ogg" && !LoadOgg(sound, fixed_fname)) {
-        return nullptr;
+    if (ext == "ogg" && !LoadOgg(sound.get(), fixed_fname)) {
+        return false;
     }
 
+    sound->IsMusic = is_music;
+    sound->RepeatTime = repeat_time;
+
     App->Audio.LockDevice();
-    _soundsActive.push_back(sound);
+    _playingSounds.emplace_back(std::move(sound));
     App->Audio.UnlockDevice();
-    return sound;
+
+    return true;
 }
 
 auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
@@ -400,7 +407,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return static_cast<long>(file2->GetCurPos());
     };
 
-    sound->OggStream = unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>>(new OggVorbis_File(), [](auto* vf) {
+    sound->OggStream = unique_del_ptr<OggVorbis_File>(new OggVorbis_File(), [](auto* vf) {
         ov_clear(vf);
         delete vf;
     });
@@ -524,12 +531,12 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     // Make 'NAME'
-    const string sound_name = _str(name).eraseFileExtension().upper();
+    const string sound_name = _str(name).eraseFileExtension().lower();
 
     // Find base
     const auto it = sound_names.find(sound_name);
     if (it != sound_names.end()) {
-        return Load(it->second, false) != nullptr;
+        return Load(it->second, false, 0);
     }
 
     // Check random pattern 'NAME_X'
@@ -537,8 +544,9 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     while (sound_names.find(_str("{}_{}", sound_name, count + 1)) != sound_names.end()) {
         count++;
     }
+
     if (count != 0u) {
-        return !(Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false) == nullptr);
+        return Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false, 0);
     }
 
     return false;
@@ -554,14 +562,7 @@ auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 
     StopMusic();
 
-    auto* sound = Load(fname, true);
-    if (sound == nullptr) {
-        return false;
-    }
-
-    sound->IsMusic = true;
-    sound->RepeatTime = repeat_time;
-    return true;
+    return Load(fname, true, repeat_time);
 }
 
 void SoundManager::StopSounds()
@@ -573,7 +574,7 @@ void SoundManager::StopSounds()
     }
 
     App->Audio.LockDevice();
-    _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto s) { return !s->IsMusic; }), _soundsActive.end());
+    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return !s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }
 
@@ -586,6 +587,6 @@ void SoundManager::StopMusic()
     }
 
     App->Audio.LockDevice();
-    _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto s) { return s->IsMusic; }), _soundsActive.end());
+    _playingSounds.erase(std::remove_if(_playingSounds.begin(), _playingSounds.end(), [](auto&& s) { return s->IsMusic; }), _playingSounds.end());
     App->Audio.UnlockDevice();
 }

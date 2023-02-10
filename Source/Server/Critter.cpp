@@ -39,6 +39,7 @@
 #include "Player.h"
 #include "Server.h"
 #include "Settings.h"
+#include "StringUtils.h"
 
 Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef()), _player {owner}
 {
@@ -46,6 +47,11 @@ Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* p
 
     if (_player != nullptr) {
         _player->AddRef();
+
+        _name = _player->GetName();
+    }
+    else {
+        _name = _str("{}_{}", proto->GetName(), id);
     }
 }
 

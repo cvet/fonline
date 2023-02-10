@@ -223,6 +223,8 @@ public:
     ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnScreenSizeChanged);
 
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
@@ -234,7 +236,6 @@ public:
     DeferredCallManager ClientDeferredCalls;
 
     MapView* CurMap {};
-    hstring CurMapPid {};
     bool CanDrawInScripts {};
     vector<string> Preload3dFiles {};
 
@@ -298,7 +299,6 @@ protected:
     void FlashGameWindow();
     void WaitDraw();
 
-    void SetDayTime(bool refresh);
     void LmapPrepareMap();
     void GmapNullParams();
 
@@ -381,6 +381,7 @@ protected:
     void ProcessScreenEffectQuake();
 
     ServerConnection _conn;
+    EventUnsubscriber _eventUnsubscriber {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
     int _windowResolutionDiffX {};
@@ -430,7 +431,6 @@ protected:
     uint _lmapPrepareNextTick {};
     uchar _dlgIsNpc {};
     uint _dlgNpcId {};
-    optional<uint> _prevDayTimeColor {};
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
 };

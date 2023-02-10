@@ -260,6 +260,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
+    _eventUnsubscriber += window->OnWindowSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
+
     ScreenFadeOut();
 
     // Auto login
@@ -437,8 +439,6 @@ void FOClient::MainLoop()
         SetHour(st.Hour);
         SetMinute(st.Minute);
         SetSecond(st.Second);
-
-        SetDayTime(false);
     }
 
     // Script subsystems update
@@ -668,7 +668,7 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
         OnMouseUp.Fire(ev.MouseUp.Button);
     }
     else if (ev.Type == InputEvent::EventType::MouseWheelEvent) {
-        if (ev.MouseWheel.Delta < 0) {
+        if (ev.MouseWheel.Delta > 0) {
             OnMouseDown.Fire(MouseButton::WheelUp);
         }
         else {
@@ -1358,9 +1358,9 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    auto show_time = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
-
     auto sstr = _str(str).str();
+    uint show_time = 0;
+
     OnMapMessage.Fire(sstr, hx, hy, color, show_time);
 
     if (CurMap == nullptr) {
@@ -1710,11 +1710,13 @@ void FOClient::Net_OnCritterMoveItem()
     uchar action;
     uchar prev_slot;
     bool is_item;
+    uchar cur_slot;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> action;
     _conn.InBuf >> prev_slot;
     _conn.InBuf >> is_item;
+    _conn.InBuf >> cur_slot;
 
     // Slot items
     ushort slots_data_count;
@@ -1781,6 +1783,14 @@ void FOClient::Net_OnCritterMoveItem()
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
         hex_cr->Action(action, prev_slot, is_item ? _someItem : nullptr, false);
+    }
+
+    if (is_item && cur_slot != prev_slot && cr->IsChosen()) {
+        if (auto* item = cr->GetItem(_someItem->GetId()); item != nullptr) {
+            item->SetCritterSlot(cur_slot);
+            _someItem->SetCritterSlot(prev_slot);
+            OnItemInvChanged.Fire(item, _someItem);
+        }
     }
 }
 
@@ -1887,7 +1897,7 @@ void FOClient::Net_OnCritterTeleport()
         return;
     }
 
-    CurMap->MoveCritter(cr, to_hx, to_hy);
+    CurMap->MoveCritter(cr, to_hx, to_hy, false);
 
     if (cr->IsChosen()) {
         if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
@@ -1941,7 +1951,7 @@ void FOClient::Net_OnCritterPos()
     cr->ChangeMoveDirAngle(dir_angle);
 
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        CurMap->TransitCritter(cr, hx, hy, true);
+        CurMap->MoveCritter(cr, hx, hy, true);
 
         if (cr->IsChosen()) {
             CurMap->RebuildFog();
@@ -2590,8 +2600,6 @@ void FOClient::Net_OnTimeSync()
     SetMinute(minute);
     SetSecond(second);
     SetTimeMultiplier(multiplier);
-
-    SetDayTime(true);
 }
 
 void FOClient::Net_OnLoadMap()
@@ -2639,14 +2647,10 @@ void FOClient::Net_OnLoadMap()
     ShowMainScreen(SCREEN_WAIT, {});
     ResMngr.ReinitializeDynamicAtlas();
 
-    Settings.SpritesZoom = 1.0f;
-    CurMapPid = map_pid;
     _curMapLocPid = loc_pid;
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        SetDayTime(true);
-
         _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
 
@@ -2895,27 +2899,6 @@ void FOClient::Net_OnRemoteCall()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
-}
-
-void FOClient::SetDayTime(bool refresh)
-{
-    STACK_TRACE_ENTRY();
-
-    if (refresh) {
-        _prevDayTimeColor.reset();
-    }
-
-    if (CurMap == nullptr) {
-        return;
-    }
-
-    const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-
-    if (!_prevDayTimeColor.has_value() || _prevDayTimeColor != color) {
-        _prevDayTimeColor = color;
-        SprMngr.SetSpritesTreeColor(color);
-        CurMap->RefreshMap();
-    }
 }
 
 void FOClient::TryExit()
@@ -3313,7 +3296,7 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         item->RefreshOffs();
-        item->GetMap()->MeasureHexBorders(item);
+        item->GetMap()->MeasureMapBorders(item);
     }
 }
 
@@ -3791,9 +3774,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "TryExit") {
         TryExit();
     }
-    else if (cmd == "Version") {
-        return _str("{}", FO_GAME_VERSION);
-    }
     else if (cmd == "BytesSend") {
         return _str("{}", _conn.GetBytesSend());
     }
@@ -3814,8 +3794,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto diff_w = w - Settings.ScreenWidth;
         auto diff_h = h - Settings.ScreenHeight;
 
-        Settings.ScreenWidth = w;
-        Settings.ScreenHeight = h;
         SprMngr.SetWindowSize(w, h);
 
         if (!Settings.Fullscreen) {

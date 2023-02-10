@@ -211,16 +211,20 @@ def build():
 	with open(os.path.join(bakeringPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
 		configData = str.encode(f.read())
 	
-	def patchConfig(filePath):
-		patchData(filePath, b'###InternalConfig###', configData, 5022)
+	def patchConfig(filePath, additionalConfigData=None):
+		resultData = configData + (str.encode('\n' + additionalConfigData) if additionalConfigData else b'')
+		patchData(filePath, b'###InternalConfig###', resultData, 5022)
 	log('Embedded config length', len(configData))
 	
 	if args.platform == 'Windows':
-		# Raw files
+		# Binaries
 		for arch in args.arch.split('+'):
-			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Service'] if 'Service' in args.pack else []):
-				binName = args.devname + '_' + args.target + binType
-				binOutName = binName if args.target != 'Client' else args.nicename
+			for binType in [''] + \
+					(['Headless'] if 'Headless' in args.pack else []) + \
+					(['Service'] if 'Service' in args.pack else []) + \
+					(['OGL'] if 'OGL' in args.pack else []):
+				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
+				binOutName = (binName if args.target != 'Client' else args.nicename) + ('_OpenGL' if binType == 'OGL' else '')
 				log('Setup', arch, binName)
 				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
@@ -232,7 +236,7 @@ def build():
 				else:
 					log('PDB file NOT included')
 				patchEmbedded(os.path.join(targetOutputPath, binOutName + '.exe'))
-				patchConfig(os.path.join(targetOutputPath, binOutName + '.exe'))
+				patchConfig(os.path.join(targetOutputPath, binOutName + '.exe'), 'ForceOpenGL=1' if binType == 'OGL' else None)
 		
 		# Zip
 		if 'Zip' in args.pack:

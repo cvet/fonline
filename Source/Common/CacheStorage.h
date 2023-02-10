@@ -38,8 +38,6 @@
 
 #include "Common.h"
 
-DECLARE_EXCEPTION(CacheStorageException);
-
 class CacheStorageImpl;
 
 class CacheStorage

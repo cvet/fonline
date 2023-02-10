@@ -40,7 +40,7 @@ CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) :
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{} {}", proto->GetName(), id);
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 void CritterView::Init()

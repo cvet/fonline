@@ -318,9 +318,12 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint
+auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uchar>& colors, int game_time, int* light) -> uint
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(day_time.size() == 4);
+    RUNTIME_ASSERT(colors.size() == 12);
 
     uchar result[3];
     const int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
@@ -420,38 +423,6 @@ auto GenericUtils::ChangeStepsCoords(float sx, float sy, float deq) -> tuple<flo
 static void MultMatricesf(const float a[16], const float b[16], float r[16]);
 static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]);
 static auto InvertMatrixf(const float m[16], float inv_out[16]) -> bool;
-
-void MatrixHelper::MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto r_l = right - left;
-    const auto t_b = top - bottom;
-    const auto f_n = farp - nearp;
-    const auto tx = -(right + left) / (right - left);
-    const auto ty = -(top + bottom) / (top - bottom);
-    const auto tz = -(farp + nearp) / (farp - nearp);
-
-    matrix[0] = 2.0f / r_l;
-    matrix[1] = 0.0f;
-    matrix[2] = 0.0f;
-    matrix[3] = tx;
-
-    matrix[4] = 0.0f;
-    matrix[5] = 2.0f / t_b;
-    matrix[6] = 0.0f;
-    matrix[7] = ty;
-
-    matrix[8] = 0.0f;
-    matrix[9] = 0.0f;
-    matrix[10] = -2.0f / f_n;
-    matrix[11] = tz;
-
-    matrix[12] = 0.0f;
-    matrix[13] = 0.0f;
-    matrix[14] = 0.0f;
-    matrix[15] = 1.0f;
-}
 
 auto MatrixHelper::MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool
 {

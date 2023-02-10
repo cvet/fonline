@@ -46,7 +46,7 @@ int main(int argc, char** argv)
     STACK_TRACE_FIRST_ENTRY();
 
     try {
-        InitApp(argc, argv, "Baker");
+        InitApp(argc, argv);
         LogWithoutTimestamp();
 
         auto baker = Baker(App->Settings);

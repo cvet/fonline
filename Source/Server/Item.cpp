@@ -35,10 +35,13 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Server.h"
+#include "StringUtils.h"
 
 Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
+
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)

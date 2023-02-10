@@ -90,7 +90,7 @@ public:
     [[nodiscard]] auto IsHexPassed(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexRaked(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool;
-    [[nodiscard]] auto IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool;
+    [[nodiscard]] auto IsMovePassed(const Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool;
     [[nodiscard]] auto IsHexTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexCritter(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;

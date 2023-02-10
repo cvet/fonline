@@ -72,10 +72,10 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
 
     // Load font
     _sprMngr.PushAtlasType(AtlasType::Static);
-    _sprMngr.LoadFontFO(FONT_DEFAULT, "Default", false, true);
+    _sprMngr.LoadFontFO(0, "Default", false, true);
     _sprMngr.PopAtlasType();
     _sprMngr.BuildFonts();
-    _sprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
+    _sprMngr.SetDefaultFont(0, COLOR_TEXT);
 
     // Network handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
@@ -86,6 +86,9 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
     // Connect
     AddText(STR_CONNECT_TO_SERVER, "Connect to server...");
     _conn.Connect();
+
+    // Unlock all resources to prevent collision with new files
+    _resources.CleanDataSources();
 }
 
 void Updater::Net_OnConnect(bool success)
@@ -164,13 +167,13 @@ auto Updater::Process() -> bool
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {
             if (_settings.UpdaterInfoPos < 0) {
-                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight / 2), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else if (_settings.UpdaterInfoPos == 0) {
-                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                _sprMngr.DrawStr(IRect(0, 0, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
             else {
-                _sprMngr.DrawStr(IRect(0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                _sprMngr.DrawStr(IRect(0, _settings.ScreenHeight / 2, _settings.ScreenWidth, _settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, 0);
             }
         }
     }
@@ -241,6 +244,10 @@ void Updater::Net_OnUpdateFilesResponse()
     _fileListReceived = true;
 
     if (!data.empty()) {
+        FileSystem resources;
+
+        resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
+
         auto reader = DataReader(data);
 
         for (uint file_index = 0;; file_index++) {
@@ -255,9 +262,9 @@ void Updater::Net_OnUpdateFilesResponse()
             const auto hash = reader.Read<uint>();
 
             // Check hash
-            if (auto file = _resources.ReadFileHeader(fname)) {
+            if (auto file = resources.ReadFileHeader(fname)) {
                 // Todo: add update file files checking by hashes
-                /*const auto file_hash = _resources.ReadFileText(_str("{}.hash", fname));
+                /*const auto file_hash = resources.ReadFileText(_str("{}.hash", fname));
                 if (file_hash.empty()) {
                     // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
                 }

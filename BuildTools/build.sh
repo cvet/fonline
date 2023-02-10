@@ -36,12 +36,13 @@ else
     exit 1
 fi
 
-BUILD_DIR="build-$1-$2"
-CONFIG="Release"
-if [ "$3" = "debug" ]; then
-    CONFIG="Debug"
-    BUILD_DIR="$BUILD_DIR-debug"
+if [ "$3" = "" ]; then
+    CONFIG="Release"
+else
+    CONFIG="$3"
 fi
+
+BUILD_DIR="build-$1-$2-$CONFIG"
 
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR

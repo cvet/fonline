@@ -33,6 +33,7 @@
 
 #include "CacheStorage.h"
 #include "DiskFileSystem.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 #if FO_HAVE_UNQLITE
@@ -182,15 +183,6 @@ FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real
 
     DiskFileSystem::ResolvePath(_workPath);
     DiskFileSystem::MakeDirTree(_workPath);
-
-    auto file = DiskFileSystem::OpenFile(_workPath + "/Ping.txt", true);
-    if (!file) {
-        throw CacheStorageException("Can't init ping file", _workPath);
-    }
-
-    if (!file.Write("Ping")) {
-        throw CacheStorageException("Can't write ping file", _workPath);
-    }
 }
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
@@ -208,6 +200,7 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
     if (!file) {
+        WriteLog(LogType::Warning, "Can't open read cache at '{}'", path);
         return {};
     }
 
@@ -215,7 +208,8 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     str.resize(file.GetSize());
 
     if (!file.Read(str.data(), str.length())) {
-        throw CacheStorageException("Can't read cache", path);
+        WriteLog(LogType::Warning, "Can't read cache at '{}'", path);
+        return {};
     }
 
     return str;
@@ -228,13 +222,15 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
     if (!file) {
+        WriteLog(LogType::Warning, "Can't open read cache at '{}'", path);
         return {};
     }
 
     vector<uchar> data(file.GetSize());
 
     if (!file.Read(data.data(), data.size())) {
-        throw CacheStorageException("Can't read cache", path);
+        WriteLog(LogType::Warning, "Can't read cache at '{}'", path);
+        return {};
     }
 
     return data;
@@ -247,12 +243,13 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
     if (!file) {
-        throw CacheStorageException("Can't write cache", path);
+        WriteLog(LogType::Warning, "Can't open write cache at '{}'", path);
+        return;
     }
 
     if (!file.Write(str)) {
         DiskFileSystem::DeleteFile(path);
-        throw CacheStorageException("Can't write cache", path);
+        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }
 }
 
@@ -263,12 +260,13 @@ void FileCacheStorage::SetData(string_view entry_name, const_span<uchar> data)
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
     if (!file) {
-        throw CacheStorageException("Can't write cache", path);
+        WriteLog(LogType::Warning, "Can't open write cache at '{}'", path);
+        return;
     }
 
     if (!file.Write(data)) {
         DiskFileSystem::DeleteFile(path);
-        throw CacheStorageException("Can't write cache", path);
+        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
     }
 }
 
@@ -292,29 +290,26 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
 
     unqlite* db = nullptr;
     if (unqlite_open(&db, _workPath.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
-        throw CacheStorageException("Can't open unqlite db", _workPath);
+        WriteLog(LogType::Warning, "Can't open unqlite db '{}'", _workPath);
+        return;
     }
 
     _db = {db, [](unqlite* del_db) { unqlite_close(del_db); }};
-
-    constexpr uint ping = 42;
-    if (unqlite_kv_store(_db.get(), &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
-        throw CacheStorageException("Can't store ping unqlite db", _workPath);
-    }
-
-    if (unqlite_commit(_db.get()) != UNQLITE_OK) {
-        throw CacheStorageException("Can't commit ping unqlite db", _workPath);
-    }
 }
 
 auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
     STACK_TRACE_ENTRY();
 
+    if (!_db) {
+        return false;
+    }
+
     const auto r = unqlite_kv_fetch_callback(
         _db.get(), entry_name.data(), static_cast<int>(entry_name.length()), [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
-        throw CacheStorageException("Can't fetch cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
+        return false;
     }
 
     return r == UNQLITE_OK;
@@ -324,15 +319,20 @@ void UnqliteCacheStorage::EraseEntry(string_view entry_name)
 {
     STACK_TRACE_ENTRY();
 
+    if (!_db) {
+        return;
+    }
+
     auto r = unqlite_kv_delete(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()));
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
-        throw CacheStorageException("Can't delete cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't delete cache entry '{}'", entry_name);
+        return;
     }
 
     if (r == UNQLITE_OK) {
         r = unqlite_commit(_db.get());
         if (r != UNQLITE_OK) {
-            throw CacheStorageException("Can't commit deleted cache entry", entry_name);
+            WriteLog(LogType::Warning, "Can't commit deleted cache entry '{}'", entry_name);
         }
     }
 }
@@ -341,10 +341,15 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
 {
     STACK_TRACE_ENTRY();
 
+    if (!_db) {
+        return {};
+    }
+
     unqlite_int64 size = 0;
     auto r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), nullptr, &size);
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
-        throw CacheStorageException("Can't fetch cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
+        return {};
     }
     if (r == UNQLITE_NOTFOUND) {
         return {};
@@ -355,7 +360,8 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
 
     r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), str.data(), &size);
     if (r != UNQLITE_OK) {
-        throw CacheStorageException("Can't fetch cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't fetch cache entry '{}", entry_name);
+        return {};
     }
 
     return str;
@@ -365,10 +371,15 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 {
     STACK_TRACE_ENTRY();
 
+    if (!_db) {
+        return {};
+    }
+
     unqlite_int64 size = 0;
     auto r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), nullptr, &size);
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
-        throw CacheStorageException("Can't fetch cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
+        return {};
     }
     if (r == UNQLITE_NOTFOUND) {
         return {};
@@ -379,7 +390,8 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 
     r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), data.data(), &size);
     if (r != UNQLITE_OK) {
-        throw CacheStorageException("Can't fetch cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
+        return {};
     }
 
     return data;
@@ -389,14 +401,19 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
 {
     STACK_TRACE_ENTRY();
 
+    if (!_db) {
+        return;
+    }
+
     auto r = unqlite_kv_store(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), str.data(), static_cast<unqlite_int64>(str.length()));
     if (r != UNQLITE_OK) {
-        throw CacheStorageException("Can't store cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);
+        return;
     }
 
     r = unqlite_commit(_db.get());
     if (r != UNQLITE_OK) {
-        throw CacheStorageException("Can't commit stored cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't commit stored cache entry '{}'", entry_name);
     }
 }
 
@@ -404,14 +421,19 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uchar> data
 {
     STACK_TRACE_ENTRY();
 
+    if (!_db) {
+        return;
+    }
+
     auto r = unqlite_kv_store(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), data.data(), static_cast<unqlite_int64>(data.size()));
     if (r != UNQLITE_OK) {
-        throw CacheStorageException("Can't store cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);
+        return;
     }
 
     r = unqlite_commit(_db.get());
     if (r != UNQLITE_OK) {
-        throw CacheStorageException("Can't commit stored cache entry", entry_name);
+        WriteLog(LogType::Warning, "Can't commit stored cache entry '{}'", entry_name);
     }
 }
 #endif

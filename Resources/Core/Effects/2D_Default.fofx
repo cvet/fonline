@@ -1,7 +1,7 @@
 [Effect]
 
 [VertexShader]
-uniform mat4 ProjectionMatrix;
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -21,8 +21,8 @@ void main(void)
 }
 
 [FragmentShader]
-layout(binding = 0) uniform sampler2D ColorMap;
-layout(binding = 1) uniform sampler2D EggMap;
+layout(binding = 0) uniform sampler2D MainTex;
+layout(binding = 1) uniform sampler2D EggTex;
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;
@@ -32,10 +32,10 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    vec4 texColor = texture(ColorMap, TexCoord);
+    vec4 texColor = texture(MainTex, TexCoord);
     FragColor.rgb = (texColor.rgb * Color.rgb) * 2.0;
     FragColor.a = texColor.a * Color.a;
     if (TexEggCoord.x >= 0.0) {
-        FragColor.a *= texture(EggMap, TexEggCoord).a;
+        FragColor.a *= texture(EggTex, TexEggCoord).a;
     }
 }

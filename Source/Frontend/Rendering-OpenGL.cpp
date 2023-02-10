@@ -50,8 +50,13 @@
 #endif
 
 #if FO_OPENGL_ES
-#define GLES_SILENCE_DEPRECATION
-#include "SDL_opengles2.h"
+#if FO_IOS
+#include <OpenGLES/ES3/gl.h>
+#include <OpenGLES/ES3/glext.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl3platform.h>
+#endif
 #endif
 
 #if FO_MAC && !FO_OPENGL_ES
@@ -61,40 +66,6 @@
 #define glGenVertexArrays glGenVertexArraysAPPLE
 #define glBindVertexArray glBindVertexArrayAPPLE
 #define glDeleteVertexArrays glDeleteVertexArraysAPPLE
-#endif
-
-#if FO_OPENGL_ES
-#define glGenVertexArrays glGenVertexArraysOES
-#define glBindVertexArray glBindVertexArrayOES
-#define glDeleteVertexArrays glDeleteVertexArraysOES
-#define glGenFramebuffersEXT glGenFramebuffers
-#define glBindFramebufferEXT glBindFramebuffer
-#define glFramebufferTexture2DEXT glFramebufferTexture2D
-#define glRenderbufferStorageEXT glRenderbufferStorage
-#define glGenRenderbuffersEXT glGenRenderbuffers
-#define glBindRenderbufferEXT glBindRenderbuffer
-#define glFramebufferRenderbufferEXT glFramebufferRenderbuffer
-#define glCheckFramebufferStatusEXT glCheckFramebufferStatus
-#define glDeleteRenderbuffersEXT glDeleteRenderbuffers
-#define glDeleteFramebuffersEXT glDeleteFramebuffers
-#define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE
-#define GL_FRAMEBUFFER_EXT GL_FRAMEBUFFER
-#ifndef GL_COLOR_ATTACHMENT0_EXT
-#define GL_COLOR_ATTACHMENT0_EXT GL_COLOR_ATTACHMENT0
-#endif
-#define GL_RENDERBUFFER_EXT GL_RENDERBUFFER
-#define GL_DEPTH_ATTACHMENT_EXT GL_DEPTH_ATTACHMENT
-#define GL_RENDERBUFFER_BINDING_EXT GL_RENDERBUFFER_BINDING
-#define GL_CLAMP GL_CLAMP_TO_EDGE
-#define GL_DEPTH24_STENCIL8 GL_DEPTH24_STENCIL8_OES
-#define GL_DEPTH24_STENCIL8_EXT GL_DEPTH24_STENCIL8_OES
-#define GL_STENCIL_ATTACHMENT_EXT GL_STENCIL_ATTACHMENT
-#define glGetTexImage(a, b, c, d, e)
-#define glDrawBuffer(a)
-#ifndef GL_MAX
-#define GL_MAX GL_MAX_EXT
-#define GL_MIN GL_MIN_EXT
-#endif
 #endif
 
 #if FO_DEBUG
@@ -137,6 +108,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
 
 #define GL_HAS(extension) (OGL_##extension)
 
+static GlobalSettings* Settings {};
 static bool RenderDebug {};
 static bool ForceGlslEsProfile {};
 static SDL_Window* SdlWindow {};
@@ -151,63 +123,18 @@ static bool OGL_vertex_buffer_object {};
 static bool OGL_framebuffer_object {};
 static bool OGL_framebuffer_object_ext {};
 static bool OGL_vertex_array_object {};
+static bool OGL_uniform_buffer_object {}; // Todo: make workarounds for work without ARB_uniform_buffer_object
 // ReSharper restore CppInconsistentNaming
 
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(uint width, uint height, bool linear_filtered, bool with_depth) : RenderTexture(width, height, linear_filtered, with_depth)
-    {
-        // Make object outside of constructor to guarantee destructor calling
-    }
+    OpenGL_Texture(int width, int height, bool linear_filtered, bool with_depth) : RenderTexture(width, height, linear_filtered, with_depth, true) { }
+    ~OpenGL_Texture() override;
 
-    ~OpenGL_Texture() override
-    {
-        if (DepthBuffer != 0u) {
-            glDeleteRenderbuffers(1, &DepthBuffer);
-        }
-        if (TexId != 0u) {
-            glDeleteTextures(1, &TexId);
-        }
-        if (FramebufObj != 0u) {
-            glDeleteFramebuffers(1, &FramebufObj);
-        }
-    }
-
-    [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override
-    {
-        auto prev_fbo = 0;
-        GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
-        GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-        uint result = 0;
-        GL(glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
-        GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
-        return result;
-    }
-
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override
-    {
-        RUNTIME_ASSERT(width > 0);
-        RUNTIME_ASSERT(height > 0);
-
-        const auto size = width * height;
-        vector<uint> result(size);
-
-        GLint prev_fbo;
-        GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
-        GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-        GL(glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
-        GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
-
-        return result;
-    }
-
-    void UpdateTextureRegion(const IRect& r, const uint* data) override
-    {
-        GL(glBindTexture(GL_TEXTURE_2D, TexId));
-        GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.Left, r.Top, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));
-        GL(glBindTexture(GL_TEXTURE_2D, 0));
-    }
+    [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override;
+    void UpdateTextureRegion(const IRect& r, const uint* data) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -222,9 +149,9 @@ public:
 
     void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
 
-    GLuint VertexArrObj {};
     GLuint VertexBufObj {};
     GLuint IndexBufObj {};
+    GLuint VertexArrObj {};
 };
 
 class OpenGL_Effect final : public RenderEffect
@@ -239,22 +166,26 @@ public:
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
-    GLint Location_ZoomFactor[EFFECT_MAX_PASSES] {};
-    GLint Location_ColorMap[EFFECT_MAX_PASSES] {};
-    GLint Location_ColorMapSize[EFFECT_MAX_PASSES] {};
-    GLint Location_EggMap[EFFECT_MAX_PASSES] {};
-    GLint Location_EggMapSize[EFFECT_MAX_PASSES] {};
-    GLint Location_SpriteBorder[EFFECT_MAX_PASSES] {};
-    GLint Location_ProjectionMatrix[EFFECT_MAX_PASSES] {};
-    GLint Location_GroundPosition[EFFECT_MAX_PASSES] {};
-    GLint Location_LightColor[EFFECT_MAX_PASSES] {};
-    GLint Location_WorldMatrices[EFFECT_MAX_PASSES] {};
+    GLuint Ubo_ProjBuf {};
+    GLuint Ubo_MainTexBuf {};
+    GLuint Ubo_ContourBuf {};
+    GLuint Ubo_TimeBuf {};
+    GLuint Ubo_RandomValueBuf {};
+    GLuint Ubo_ScriptValueBuf {};
+#if FO_ENABLE_3D
+    GLuint Ubo_ModelBuf {};
+    GLuint Ubo_ModelTexBuf {};
+    GLuint Ubo_ModelAnimBuf {};
+#endif
 };
 
 void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
     STACK_TRACE_ENTRY();
 
+    WriteLog("Used OpenGL rendering");
+
+    Settings = &settings;
     RenderDebug = settings.RenderDebug;
     ForceGlslEsProfile = settings.ForceGlslEsProfile;
     SdlWindow = static_cast<SDL_Window*>(window);
@@ -267,7 +198,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
     RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
 
-    SDL_GL_SetSwapInterval(settings.VSync ? 1 : 0);
+    if (settings.ClientMode && settings.VSync) {
+        if (SDL_GL_SetSwapInterval(-1) == -1) {
+            SDL_GL_SetSwapInterval(1);
+        }
+    }
+    else {
+        SDL_GL_SetSwapInterval(0);
+    }
 
 #else
     EmscriptenWebGLContextAttributes attr;
@@ -312,14 +250,15 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     const auto glew_result = glewInit();
     RUNTIME_ASSERT_STR(glew_result == GLEW_OK, _str("GLEW not initialized, result {}", glew_result));
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
-    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
-    OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0;
+    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0; // >= 2.0
+    OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0; // >= 3.0
     OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
 #if FO_MAC
     OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
 #else
-    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0; // >= 3.0
 #endif
+    OGL_uniform_buffer_object = GLEW_ARB_uniform_buffer_object != 0; // >= 3.1
 #endif
 
     // OpenGL ES extensions
@@ -335,6 +274,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #if FO_IOS
     OGL_vertex_array_object = true;
 #endif
+    OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
 #endif
 
     // Check OpenGL extensions
@@ -349,6 +289,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     uint extension_errors = 0;
     CHECK_EXTENSION(version_2_0, true);
     CHECK_EXTENSION(vertex_buffer_object, true);
+    CHECK_EXTENSION(uniform_buffer_object, true);
     CHECK_EXTENSION(vertex_array_object, false);
     CHECK_EXTENSION(framebuffer_object, false);
     if (!GL_HAS(framebuffer_object)) {
@@ -418,14 +359,13 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #endif
 #endif
 
-    GL(glViewport(0, 0, settings.ScreenWidth, settings.ScreenHeight));
-
-    MatrixHelper::MatrixOrtho(ProjectionMatrixColMaj[0], 0.0f, static_cast<float>(settings.ScreenWidth), static_cast<float>(settings.ScreenHeight), 0.0f, -10.0f, 10.0f);
-    ProjectionMatrixColMaj.Transpose(); // Convert to column major order
-
+    // Dummy texture
     constexpr uint dummy_pixel[1] = {0xFFFF00FF};
     DummyTexture = CreateTexture(1, 1, false, false);
     DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
+
+    // Init render target
+    SetRenderTarget(nullptr);
 }
 
 void OpenGL_Renderer::Present()
@@ -454,8 +394,13 @@ auto OpenGL_Renderer::CreateTexture(int width, int height, bool linear_filtered,
     GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
+#if FO_OPENGL_ES
+    GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+#else
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
     GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
+#endif
     GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
     GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
 
@@ -593,272 +538,90 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         opengl_effect->Program[pass] = program;
 
-        GL(opengl_effect->Location_ProjectionMatrix[pass] = glGetUniformLocation(program, "ProjectionMatrix"));
-        GL(opengl_effect->Location_ZoomFactor[pass] = glGetUniformLocation(program, "ZoomFactor"));
-        GL(opengl_effect->Location_ColorMap[pass] = glGetUniformLocation(program, "ColorMap"));
-        GL(opengl_effect->Location_ColorMapSize[pass] = glGetUniformLocation(program, "ColorMapSize"));
-        GL(opengl_effect->Location_EggMap[pass] = glGetUniformLocation(program, "EggMap"));
-        GL(opengl_effect->Location_EggMapSize[pass] = glGetUniformLocation(program, "EggMapSize"));
-        GL(opengl_effect->Location_SpriteBorder[pass] = glGetUniformLocation(program, "SpriteBorder"));
-        GL(opengl_effect->Location_GroundPosition[pass] = glGetUniformLocation(program, "GroundPosition"));
-        GL(opengl_effect->Location_LightColor[pass] = glGetUniformLocation(program, "LightColor"));
-        GL(opengl_effect->Location_WorldMatrices[pass] = glGetUniformLocation(program, "WorldMatrices"));
-
+        if (GL_HAS(uniform_buffer_object)) {
+#define UBO_BLOCK_BINDING(buf) \
+    if (const auto index = glGetUniformBlockIndex(program, #buf); index != GL_INVALID_INDEX) { \
+        GL(glUniformBlockBinding(program, index, opengl_effect->_pos##buf[pass])); \
+    }
+            UBO_BLOCK_BINDING(ProjBuf);
+            UBO_BLOCK_BINDING(MainTexBuf);
+            UBO_BLOCK_BINDING(ContourBuf);
+            UBO_BLOCK_BINDING(TimeBuf);
+            UBO_BLOCK_BINDING(RandomValueBuf);
+            UBO_BLOCK_BINDING(ScriptValueBuf);
 #if FO_ENABLE_3D
-        if (!opengl_effect->ModelBuf) {
-            if (usage == EffectUsage::Model) {
-                opengl_effect->ModelBuf = RenderEffect::ModelBuffer();
-            }
-        }
+            UBO_BLOCK_BINDING(ModelBuf);
+            UBO_BLOCK_BINDING(ModelTexBuf);
+            UBO_BLOCK_BINDING(ModelAnimBuf);
 #endif
-
-        if (!opengl_effect->MapSpriteBuf) {
-            if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
-                opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
-            }
+#undef UBO_BLOCK_BINDING
         }
-
-        if (!opengl_effect->MainTexBuf) {
-            if (opengl_effect->Location_ColorMapSize[pass] != -1) {
-                opengl_effect->MainTexBuf = RenderEffect::MainTexBuffer();
-            }
-        }
-
-        // Bind data
-        /*
-        GL(effect_pass.Time = glGetUniformLocation(program, "Time"));
-        effect_pass.TimeCurrent = 0.0f;
-        effect_pass.TimeLastTick = Timer::RealtimeTick();
-        GL(effect_pass.TimeGame = glGetUniformLocation(program, "TimeGame"));
-        effect_pass.TimeGameCurrent = 0.0f;
-        effect_pass.TimeGameLastTick = Timer::RealtimeTick();
-        effect_pass.IsTime = (effect_pass.Time != -1 || effect_pass.TimeGame != -1);
-        GL(effect_pass.Random1 = glGetUniformLocation(program, "Random1Effect"));
-        GL(effect_pass.Random2 = glGetUniformLocation(program, "Random2Effect"));
-        GL(effect_pass.Random3 = glGetUniformLocation(program, "Random3Effect"));
-        GL(effect_pass.Random4 = glGetUniformLocation(program, "Random4Effect"));
-        effect_pass.IsRandom = (effect_pass.Random1 != -1 || effect_pass.Random2 != -1 || effect_pass.Random3 != -1 || effect_pass.Random4 != -1);
-        effect_pass.IsTextures = false;
-        for (int i = 0; i < EFFECT_TEXTURES; i++) {
-            GL(effect_pass.Textures[i] = glGetUniformLocation(program, _str("Texture{}", i).c_str()));
-            if (effect_pass.Textures[i] != -1) {
-                effect_pass.IsTextures = true;
-                GL(effect_pass.TexturesSize[i] = glGetUniformLocation(program, _str("Texture%dSize", i).c_str()));
-                GL(effect_pass.TexturesAtlasOffset[i] = glGetUniformLocation(program, _str("Texture{}AtlasOffset", i).c_str()));
-            }
-        }
-        effect_pass.IsScriptValues = false;
-        for (int i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
-            GL(effect_pass.ScriptValues[i] = glGetUniformLocation(program, _str("EffectValue{}", i).c_str()));
-            if (effect_pass.ScriptValues[i] != -1)
-                effect_pass.IsScriptValues = true;
-        }
-        GL(effect_pass.AnimPosProc = glGetUniformLocation(program, "AnimPosProc"));
-        GL(effect_pass.AnimPosTime = glGetUniformLocation(program, "AnimPosTime"));
-        effect_pass.IsAnimPos = (effect_pass.AnimPosProc != -1 || effect_pass.AnimPosTime != -1);
-        effect_pass.IsNeedProcess = (effect_pass.IsTime || effect_pass.IsRandom || effect_pass.IsTextures || effect_pass.IsScriptValues || effect_pass.IsAnimPos || effect_pass.IsChangeStates);
-
-        // Set defaults
-        if (defaults) {
-            GL(glUseProgram(program));
-            for (uint d = 0; d < defaults_count; d++) {
-                EffectDefault& def = defaults[d];
-
-                GLint location = -1;
-                GL(location = glGetUniformLocation(program, def.Name));
-                if (!IS_EFFECT_VALUE(location))
-                    continue;
-
-                switch (def.Type) {
-                case EffectDefault::String:
-                    break;
-                case EffectDefault::Float:
-                    GL(glUniform1fv(location, def.Size / sizeof(float), (GLfloat*)def.Data));
-                    break;
-                case EffectDefault::Int:
-                    GL(glUniform1iv(location, def.Size / sizeof(int), (GLint*)def.Data));
-                    break;
-                default:
-                    break;
-                }
-            }
-            GL(glUseProgram(0));
-        }
-
-        effect_pass.Program = program;
-        effect->Passes.push_back(effect_pass);*/
     }
 
     return opengl_effect.release();
+}
 
-    /*
-#define IS_EFFECT_VALUE(pos) ((pos) != -1)
-#define SET_EFFECT_VALUE(eff, pos, value) GL(glUniform1f(pos, value))
-     // Parse effect commands
-    vector<StrVec> commands;
-    while (true)
-    {
-        string line = file.GetNonEmptyLine();
-        if (line.empty())
-            break;
+auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+{
+    STACK_TRACE_ENTRY();
 
-        if (_str(line).startsWith("Effect "))
-        {
-            StrVec tokens = _str(line.substr(_str("Effect ").length())).split(' ');
-            if (!tokens.empty())
-                commands.push_back(tokens);
-        }
-        else if (_str(line).startsWith("#version"))
-        {
-            break;
-        }
-    }
+    const auto r_l = right - left;
+    const auto t_b = top - bottom;
+    const auto f_n = farp - nearp;
+    const auto tx = -(right + left) / (right - left);
+    const auto ty = -(top + bottom) / (top - bottom);
+    const auto tz = -(farp + nearp) / (farp - nearp);
 
-    // Find passes count
-    bool fail = false;
-    uint passes = 1;
-    for (size_t i = 0; i < commands.size(); i++)
-        if (commands[i].size() >= 2 && commands[i][0] == "Passes")
-            passes = GenericUtils::ResolveGenericValue(commands[i][1], fail);
+    mat44 result;
 
-    // New effect
-    auto effect = std::make_unique<Effect>();
-    effect->Name = loaded_fname;
-    effect->Defines = defines;
-    for (uint pass = 0; pass < passes; pass++)
-    {
-        EffectPass effect_pass;
-        auto& cd = effect_pass.ConstantsDesc;
+    result.a1 = 2.0f / r_l;
+    result.a2 = 0.0f;
+    result.a3 = 0.0f;
+    result.a4 = tx;
 
-        size_t offs = offsetof(EffectPass, Constants);
-        cd.emplace_back(ShaderConstant::Sampler, "ColorMap", offs + offsetof(EffectPass, ColorMap));
-        cd.emplace_back(ShaderConstant::Sampler, "EggMap", offs + offsetof(EffectPass, EggMap));
-        cd.emplace_back(ShaderConstant::Float4, "ColorMapSize", offs + offsetof(EffectPass::ConstBuffer,
-    ColorMapSize)); cd.emplace_back(ShaderConstant::Float, "ColorMapSamples", offs +
-    offsetof(EffectPass::ConstBuffer, ColorMapSamples)); cd.emplace_back(ShaderConstant::Float4, "EggMapSize", offs
-    + offsetof(EffectPass::ConstBuffer, EggMapSize)); cd.emplace_back(ShaderConstant::Float4, "SpriteBorder", offs +
-    offsetof(EffectPass::ConstBuffer, SpriteBorder)); cd.emplace_back(ShaderConstant::Float, "ZoomFactor", offs +
-    offsetof(EffectPass::ConstBuffer, ZoomFactor)); cd.emplace_back(ShaderConstant::Matrix, "ProjMatrix", offs +
-    offsetof(EffectPass::ConstBuffer, ProjMatrix)); cd.emplace_back(ShaderConstant::Float4, "LightColor", offs +
-    offsetof(EffectPass::ConstBuffer, LightColor)); cd.emplace_back(ShaderConstant::Float, "Time", offs +
-    offsetof(EffectPass::ConstBuffer, Time)); cd.emplace_back(ShaderConstant::Float, "GameTime", offs +
-    offsetof(EffectPass::ConstBuffer, GameTime)); cd.emplace_back(ShaderConstant::Float, "Random1", offs +
-    offsetof(EffectPass::ConstBuffer, Random1)); cd.emplace_back(ShaderConstant::Float, "Random2", offs +
-    offsetof(EffectPass::ConstBuffer, Random2)); cd.emplace_back(ShaderConstant::Float, "Random3", offs +
-    offsetof(EffectPass::ConstBuffer, Random3)); cd.emplace_back(ShaderConstant::Float, "Random4", offs +
-    offsetof(EffectPass::ConstBuffer, Random4)); cd.emplace_back(ShaderConstant::Float, "AnimPosProc", offs +
-    offsetof(EffectPass::ConstBuffer, AnimPosProc)); cd.emplace_back(ShaderConstant::Float, "AnimPosTime", offs +
-    offsetof(EffectPass::ConstBuffer, AnimPosTime));
+    result.b1 = 0.0f;
+    result.b2 = 2.0f / t_b;
+    result.b3 = 0.0f;
+    result.b4 = ty;
 
-        for (uint i = 0; i < EFFECT_SCRIPT_VALUES; i++)
-        {
-            cd.emplace_back(ShaderConstant::Float, _str("ScriptValue{}", i),
-                offs + offsetof(EffectPass::ConstBuffer, ScriptValue) + i * sizeof(float));
-        }
+    result.c1 = 0.0f;
+    result.c2 = 0.0f;
+    result.c3 = -2.0f / f_n;
+    result.c4 = tz;
 
-        for (uint i = 0; i < EFFECT_TEXTURES; i++)
-        {
-            cd.emplace_back(
-                ShaderConstant::Sampler, _str("Texture{}", i), offs + offsetof(EffectPass, TexMaps) + i *
-    sizeof(Texture*));
+    result.d1 = 0.0f;
+    result.d2 = 0.0f;
+    result.d3 = 0.0f;
+    result.d4 = 1.0f;
 
-            size_t tex_offs = offsetof(EffectPass, ConstantsTex) + i * sizeof(EffectPass::ConstBufferTex);
-            cd.emplace_back(ShaderConstant::Float4, _str("Texture{}Size", i),
-                tex_offs + offsetof(EffectPass::ConstBufferTex, TextureSize));
-            cd.emplace_back(ShaderConstant::Float2, _str("Texture{}AtlasOffset", i),
-                tex_offs + offsetof(EffectPass::ConstBufferTex, TextureAtlasOffset));
-        }
-
-        effect_pass.ConstantsOffset = offsetof(EffectPass, Constants);
-
-        if (!use_in_2d)
-        {
-            cd.emplace_back(ShaderConstant::Float4, "GroundPosition",
-                offsetof(EffectPass, Constants3D) + offsetof(EffectPass::ConstBuffer3D, GroundPosition));
-            cd.emplace_back(ShaderConstant::MatrixList, "WorldMatrices",
-                offsetof(EffectPass, Constants3D) + offsetof(EffectPass::ConstBuffer3D, WorldMatrices));
-
-            effect_pass.Constants3DOffset = offsetof(EffectPass, Constants3D);
-        }
-
-        effect->Passes[pass] = std::move(effect_pass);
-        effect->PassCount++;
-    }
-
-    if (!LoadEffectPass(effect.get(), fname, file, pass, use_in_2d, defines, defaults, defaults_count))
-        return nullptr;
-
-    // Process commands
-    for (size_t i = 0; i < commands.size(); i++)
-    {
-        StrVec& tokens = commands[i];
-        if (tokens[0] == "Pass" && tokens.size() >= 3)
-        {
-            uint pass = GenericUtils::ResolveGenericValue(tokens[1], fail);
-            if (pass < passes)
-            {
-                EffectPass& effect_pass = effect->Passes[pass];
-                if (tokens[2] == "BlendFunc" && tokens.size() >= 5)
-                {
-                    effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
-                    effect_pass.BlendFuncParam1 = get_gl_blend_func(tokens[3]);
-                    effect_pass.BlendFuncParam2 = get_gl_blend_func(tokens[4]);
-                    if (effect_pass.BlendFuncParam1 == -1 || effect_pass.BlendFuncParam2 == -1)
-                        fail = true;
-                }
-                else if (tokens[2] == "BlendEquation" && tokens.size() >= 4)
-                {
-                    effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
-                    effect_pass.BlendEquation = get_gl_blend_equation(tokens[3]);
-                    if (effect_pass.BlendEquation == -1)
-                        fail = true;
-                }
-                else if (tokens[2] == "Shadow")
-                {
-                    effect_pass.IsShadow = true;
-                }
-                else
-                {
-                    fail = true;
-                }
-            }
-            else
-            {
-                fail = true;
-            }
-        }
-    }
-    if (fail)
-    {
-        WriteLog("Invalid commands in effect '{}'", fname);
-        return nullptr;
-    }*/
+    return result;
 }
 
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     STACK_TRACE_ENTRY();
 
-    int w;
-    int h;
+    int width;
+    int height;
 
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
-        w = opengl_tex->Width;
-        h = opengl_tex->Height;
+        width = opengl_tex->Width;
+        height = opengl_tex->Height;
     }
     else {
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
-        w = App->Settings.ScreenWidth;
-        h = App->Settings.ScreenHeight;
+        width = Settings->ScreenWidth;
+        height = Settings->ScreenHeight;
     }
 
-    GL(glViewport(0, 0, w, h));
+    GL(glViewport(0, 0, width, height));
 
-    MatrixHelper::MatrixOrtho(ProjectionMatrixColMaj[0], 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
+    // Todo: scretch main view for main render target
     /*
      *int w, h;
     bool screen_size;
@@ -931,7 +694,7 @@ void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
     STACK_TRACE_ENTRY();
 
     GL(glEnable(GL_SCISSOR_TEST));
-    GL(glScissor(x, y, width, height));
+    GL(glScissor(x, Settings->ScreenHeight - (y + height), width, height));
 }
 
 void OpenGL_Renderer::DisableScissor()
@@ -939,6 +702,84 @@ void OpenGL_Renderer::DisableScissor()
     STACK_TRACE_ENTRY();
 
     GL(glDisable(GL_SCISSOR_TEST));
+}
+
+OpenGL_Texture::~OpenGL_Texture()
+{
+    STACK_TRACE_ENTRY();
+
+    if (DepthBuffer != 0u) {
+        glDeleteRenderbuffers(1, &DepthBuffer);
+    }
+    if (TexId != 0u) {
+        glDeleteTextures(1, &TexId);
+    }
+    if (FramebufObj != 0u) {
+        glDeleteFramebuffers(1, &FramebufObj);
+    }
+}
+
+auto OpenGL_Texture::GetTexturePixel(int x, int y) -> uint
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(x >= 0);
+    RUNTIME_ASSERT(y >= 0);
+    RUNTIME_ASSERT(x < Width);
+    RUNTIME_ASSERT(y < Height);
+
+    uint result = 0;
+
+    auto prev_fbo = 0;
+    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
+
+    GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
+    GL(glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
+
+    GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
+
+    return result;
+}
+
+auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) -> vector<uint>
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(width > 0);
+    RUNTIME_ASSERT(height > 0);
+    RUNTIME_ASSERT(x >= 0);
+    RUNTIME_ASSERT(y >= 0);
+    RUNTIME_ASSERT(x + width <= Width);
+    RUNTIME_ASSERT(y + height <= Height);
+
+    vector<uint> result;
+    result.resize(width * height);
+
+    GLint prev_fbo;
+    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
+
+    GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
+    GL(glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
+
+    GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
+
+    return result;
+}
+
+void OpenGL_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(r.Left >= 0);
+    RUNTIME_ASSERT(r.Right >= 0);
+    RUNTIME_ASSERT(r.Right <= Width);
+    RUNTIME_ASSERT(r.Bottom <= Height);
+    RUNTIME_ASSERT(r.Right > r.Left);
+    RUNTIME_ASSERT(r.Bottom > r.Top);
+
+    GL(glBindTexture(GL_TEXTURE_2D, TexId));
+    GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.Left, r.Top, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));
+    GL(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 static void EnableVertAtribs(EffectUsage usage)
@@ -1004,13 +845,10 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
     STACK_TRACE_ENTRY();
 
-    if (VertexBufObj != 0u) {
-        glDeleteBuffers(1, &VertexBufObj);
-    }
-    if (IndexBufObj != 0u) {
-        glDeleteBuffers(1, &IndexBufObj);
-    }
-    if (VertexArrObj != 0u) {
+    glDeleteBuffers(1, &VertexBufObj);
+    glDeleteBuffers(1, &IndexBufObj);
+
+    if (VertexArrObj != 0) {
         glDeleteVertexArrays(1, &VertexArrObj);
     }
 }
@@ -1110,7 +948,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
     }
 
     // Vertex array
-    if (VertexArrObj == 0u && GL_HAS(vertex_array_object)) {
+    if (VertexArrObj == 0 && GL_HAS(vertex_array_object)) {
         GL(glGenVertexArrays(1, &VertexArrObj));
         GL(glBindVertexArray(VertexArrObj));
         GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
@@ -1175,6 +1013,25 @@ OpenGL_Effect::~OpenGL_Effect()
             glDeleteProgram(Program[i]);
         }
     }
+
+    if (GL_HAS(uniform_buffer_object)) {
+#define UBO_DELETE_BUFFER(buf) \
+    if (Ubo_##buf != 0) { \
+        glDeleteBuffers(1, &Ubo_##buf); \
+    }
+        UBO_DELETE_BUFFER(ProjBuf);
+        UBO_DELETE_BUFFER(MainTexBuf);
+        UBO_DELETE_BUFFER(ContourBuf);
+        UBO_DELETE_BUFFER(TimeBuf);
+        UBO_DELETE_BUFFER(RandomValueBuf);
+        UBO_DELETE_BUFFER(ScriptValueBuf);
+#if FO_ENABLE_3D
+        UBO_DELETE_BUFFER(ModelBuf);
+        UBO_DELETE_BUFFER(ModelTexBuf);
+        UBO_DELETE_BUFFER(ModelAnimBuf);
+#endif
+#undef UBO_DELETE_BUFFER
+    }
 }
 
 void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
@@ -1182,6 +1039,12 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     STACK_TRACE_ENTRY();
 
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
+
+#if FO_ENABLE_3D
+    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+#else
+    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
+#endif
 
     GLenum draw_mode = GL_TRIANGLES;
 
@@ -1202,13 +1065,10 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         case RenderPrimitiveType::TriangleStrip:
             draw_mode = GL_TRIANGLE_STRIP;
             break;
-        case RenderPrimitiveType::TriangleFan:
-            draw_mode = GL_TRIANGLE_FAN;
-            break;
         }
 
 #if !FO_OPENGL_ES
-        if (MapSpriteBuf && MapSpriteBuf->ZoomFactor != 1.0f) {
+        if (opengl_dbuf->PrimZoomed) {
             if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
                 GL(glEnable(GL_POINT_SMOOTH));
             }
@@ -1233,7 +1093,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 #endif
 
-    if (opengl_dbuf->VertexArrObj != 0u) {
+    if (opengl_dbuf->VertexArrObj != 0) {
         GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
     }
     else {
@@ -1242,8 +1102,43 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         EnableVertAtribs(Usage);
     }
 
-    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (CustomTex[0] != nullptr ? CustomTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
-    const auto* egg_tex = EggTex != nullptr ? EggTex : DummyTexture;
+    // Uniforms
+    if (NeedProjBuf && !ProjBuf.has_value()) {
+        auto&& proj_buf = ProjBuf = ProjBuffer();
+        std::memcpy(proj_buf->ProjMatrix, ProjectionMatrixColMaj[0], 16 * sizeof(float));
+    }
+
+    if (NeedMainTexBuf && !MainTexBuf.has_value()) {
+        auto&& main_tex_buf = MainTexBuf = MainTexBuffer();
+        std::memcpy(main_tex_buf->MainTexSize, main_tex->SizeData, 4 * sizeof(float));
+    }
+
+    if (GL_HAS(uniform_buffer_object)) {
+#define UBO_UPLOAD_BUFFER(buf) \
+    if (Need##buf && buf.has_value()) { \
+        if (Ubo_##buf == 0) { \
+            GL(glGenBuffers(1, &Ubo_##buf)); \
+        } \
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, Ubo_##buf)); \
+        GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(buf##fer), &buf.value(), GL_DYNAMIC_DRAW)); \
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, 0)); \
+        buf.reset(); \
+    }
+        UBO_UPLOAD_BUFFER(ProjBuf);
+        UBO_UPLOAD_BUFFER(MainTexBuf);
+        UBO_UPLOAD_BUFFER(ContourBuf);
+        UBO_UPLOAD_BUFFER(TimeBuf);
+        UBO_UPLOAD_BUFFER(RandomValueBuf);
+        UBO_UPLOAD_BUFFER(ScriptValueBuf);
+#if FO_ENABLE_3D
+        UBO_UPLOAD_BUFFER(ModelBuf);
+        UBO_UPLOAD_BUFFER(ModelTexBuf);
+        UBO_UPLOAD_BUFFER(ModelAnimBuf);
+#endif
+#undef UBO_UPLOAD_BUFFER
+    }
+
+    const auto* egg_tex = static_cast<OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
@@ -1254,56 +1149,54 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         }
 #endif
 
+        if (GL_HAS(uniform_buffer_object)) {
+#define UBO_BIND_BUFFER(buf) \
+    if (Ubo_##buf != 0 && _pos##buf[pass] != -1) { \
+        GL(glBindBufferBase(GL_UNIFORM_BUFFER, _pos##buf[pass], Ubo_##buf)); \
+    }
+            UBO_BIND_BUFFER(ProjBuf);
+            UBO_BIND_BUFFER(MainTexBuf);
+            UBO_BIND_BUFFER(ContourBuf);
+            UBO_BIND_BUFFER(TimeBuf);
+            UBO_BIND_BUFFER(RandomValueBuf);
+            UBO_BIND_BUFFER(ScriptValueBuf);
+#if FO_ENABLE_3D
+            UBO_BIND_BUFFER(ModelTexBuf);
+            UBO_BIND_BUFFER(ModelAnimBuf);
+#endif
+#undef UBO_BIND_BUFFER
+#if FO_ENABLE_3D
+            if (Ubo_ModelBuf != 0 && _posModelBuf[pass] != -1) {
+                const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float) * 16;
+                GL(glBindBufferRange(GL_UNIFORM_BUFFER, _posModelBuf[pass], Ubo_ModelBuf, 0, static_cast<GLsizeiptr>(bind_size)));
+            }
+#endif
+        }
+
         GL(glUseProgram(Program[pass]));
 
-        if (Location_ProjectionMatrix[pass] != -1) {
-            if (ProjBuf) {
-                GL(glUniformMatrix4fv(Location_ProjectionMatrix[pass], 1, GL_FALSE, ProjBuf->ProjMatrix));
-            }
-            else {
-                GL(glUniformMatrix4fv(Location_ProjectionMatrix[pass], 1, GL_FALSE, ProjectionMatrixColMaj[0]));
-            }
-        }
-
-        if (Location_ColorMap[pass] != -1) {
+        if (_posMainTex[pass] != -1) {
+            GL(glActiveTexture(GL_TEXTURE0 + _posMainTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, main_tex->TexId));
-            GL(glUniform1i(Location_ColorMap[pass], 0));
-
-            if (Location_ColorMapSize[pass] != -1) {
-                GL(glUniform4fv(Location_ColorMapSize[pass], 1, main_tex->SizeData));
-            }
-        }
-
-        if (Location_EggMap[pass] != -1) {
-            GL(glActiveTexture(GL_TEXTURE1));
-            GL(glBindTexture(GL_TEXTURE_2D, static_cast<const OpenGL_Texture*>(egg_tex)->TexId));
-            GL(glUniform1i(Location_EggMap[pass], 1));
             GL(glActiveTexture(GL_TEXTURE0));
-
-            if (Location_EggMapSize[pass] != -1) {
-                GL(glUniform4fv(Location_EggMapSize[pass], 1, egg_tex->SizeData));
-            }
         }
 
-        if (Location_ZoomFactor[pass] != -1) {
-            RUNTIME_ASSERT(MapSpriteBuf->ZoomFactor != 0.0f);
-            GL(glUniform1f(Location_ZoomFactor[pass], MapSpriteBuf->ZoomFactor));
-        }
-
-        if (Location_SpriteBorder[pass] != -1) {
-            GL(glUniform4fv(Location_SpriteBorder[pass], 1, BorderBuf->SpriteBorder));
+        if (_posEggTex[pass] != -1) {
+            GL(glActiveTexture(GL_TEXTURE0 + _posEggTex[pass]));
+            GL(glBindTexture(GL_TEXTURE_2D, egg_tex->TexId));
+            GL(glActiveTexture(GL_TEXTURE0));
         }
 
 #if FO_ENABLE_3D
-        if (Location_GroundPosition[pass] != -1) {
-            GL(glUniform4fv(Location_GroundPosition[pass], 1, ModelBuf->GroundPosition));
-        }
-        if (Location_LightColor[pass] != -1) {
-            GL(glUniform4fv(Location_LightColor[pass], 1, ModelBuf->LightColor));
-        }
-        if (Location_WorldMatrices[pass] != -1) {
-            RUNTIME_ASSERT(MatrixCount != 0);
-            GL(glUniformMatrix4fv(Location_WorldMatrices[pass], static_cast<GLsizei>(MatrixCount), GL_FALSE, &ModelBuf->WorldMatrices[0]));
+        if (NeedModelTex[pass]) {
+            for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
+                if (_posModelTex[pass][i] != -1) {
+                    const auto* model_tex = static_cast<OpenGL_Texture*>(ModelTex[i] != nullptr ? ModelTex[i] : DummyTexture);
+                    GL(glActiveTexture(GL_TEXTURE0 + _posModelTex[pass][i]));
+                    GL(glBindTexture(GL_TEXTURE_2D, model_tex->TexId));
+                    GL(glActiveTexture(GL_TEXTURE0));
+                }
+            }
         }
 #endif
 
@@ -1317,8 +1210,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             GL(glDepthMask(GL_FALSE));
         }
 
-        // Todo: bind time, random, anim
-
         GL(glDrawElements(draw_mode, draw_count, GL_UNSIGNED_SHORT, start_pos));
 
         if (_srcBlendFunc[pass] != BlendFuncType::SrcAlpha || _destBlendFunc[pass] != BlendFuncType::InvSrcAlpha) {
@@ -1330,11 +1221,30 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
         if (!_depthWrite[pass]) {
             GL(glDepthMask(GL_TRUE));
         }
+
+        if (GL_HAS(uniform_buffer_object)) {
+#define UBO_UNBIND_BUFFER(buf) \
+    if (Ubo_##buf != 0 && _pos##buf[pass] != -1) { \
+        GL(glBindBufferBase(GL_UNIFORM_BUFFER, _pos##buf[pass], 0)); \
+    }
+            UBO_UNBIND_BUFFER(ProjBuf);
+            UBO_UNBIND_BUFFER(MainTexBuf);
+            UBO_UNBIND_BUFFER(ContourBuf);
+            UBO_UNBIND_BUFFER(TimeBuf);
+            UBO_UNBIND_BUFFER(RandomValueBuf);
+            UBO_UNBIND_BUFFER(ScriptValueBuf);
+#if FO_ENABLE_3D
+            UBO_UNBIND_BUFFER(ModelBuf);
+            UBO_UNBIND_BUFFER(ModelTexBuf);
+            UBO_UNBIND_BUFFER(ModelAnimBuf);
+#endif
+#undef UBO_UNBIND_BUFFER
+        }
     }
 
     GL(glUseProgram(0));
 
-    if (opengl_dbuf->VertexArrObj != 0u) {
+    if (opengl_dbuf->VertexArrObj != 0) {
         GL(glBindVertexArray(0));
     }
     else {
@@ -1357,7 +1267,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 
     if (Usage == EffectUsage::Primitive) {
 #if !FO_OPENGL_ES
-        if (MapSpriteBuf && MapSpriteBuf->ZoomFactor != 1.0f) {
+        if (opengl_dbuf->PrimZoomed) {
             if (opengl_dbuf->PrimType == RenderPrimitiveType::PointList) {
                 GL(glDisable(GL_POINT_SMOOTH));
             }

@@ -68,7 +68,7 @@ struct LightSource
     ushort HexX {};
     ushort HexY {};
     uint ColorRGB {};
-    uchar Distance {};
+    int Distance {};
     uchar Flags {};
     int Intensity {};
     int* OffsX {};
@@ -172,10 +172,8 @@ public:
     [[nodiscard]] auto IsHexToDraw(ushort hx, ushort hy) const -> bool { return _hexField[hy * _maxHexX + hx].IsView; }
     [[nodiscard]] auto GetHexTrack(ushort hx, ushort hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _maxHexX + hx]; }
     [[nodiscard]] auto GetLightHex(ushort hx, ushort hy) -> uchar* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _maxHexX * 3 + hx * 3]; }
-    [[nodiscard]] auto GetDayTime() const -> int;
-    [[nodiscard]] auto GetMapTime() const -> int;
-    [[nodiscard]] auto GetMapDayTime() -> int*;
-    [[nodiscard]] auto GetMapDayColor() -> uchar*;
+    [[nodiscard]] auto GetGlobalDayTime() const -> int;
+    [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
     [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
@@ -204,12 +202,14 @@ public:
     void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void MeasureHexBorders(const ItemHexView* item);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
     void SetShootBorders(bool enabled);
+    auto MeasureMapBorders(uint spr_id, int ox, int oy) -> bool;
+    auto MeasureMapBorders(const ItemHexView* item) -> bool;
+    auto MeasureMapBorders(const Field::Tile& tile, bool is_roof) -> bool;
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -223,8 +223,7 @@ public:
     auto GetCritter(uint id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
-    void MoveCritter(CritterHexView* cr, ushort hx, ushort hy);
-    void TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly);
+    void MoveCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly);
     void DestroyCritter(CritterHexView* cr);
 
     void SetCritterContour(uint crid, ContourType contour);
@@ -237,8 +236,8 @@ public:
     auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*;
     auto GetItem(uint id) -> ItemHexView*;
-    auto GetItems(ushort hx, ushort hy) -> vector<ItemHexView*>;
-    auto GetItems() -> vector<ItemHexView*> { return _items; }
+    auto GetItems() -> const vector<ItemHexView*>&;
+    auto GetItems(ushort hx, ushort hy) -> const vector<ItemHexView*>&;
     void MoveItem(ItemHexView* item, ushort hx, ushort hy);
     void DestroyItem(ItemHexView* item);
 
@@ -278,7 +277,7 @@ public:
     void AddIgnorePid(hstring pid);
     void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
-    void MarkPassedHexes();
+    void MarkBlockedHexes();
 
     auto GetTempEntityId() const -> uint;
 
@@ -320,8 +319,6 @@ private:
     void PrepareFogToDraw();
     void InitView(int cx, int cy);
     void ResizeView();
-    auto MeasureHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
-    auto ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool;
 
     // Lighting
     void PrepareLightToDraw();
@@ -344,7 +341,9 @@ private:
 
     vector<CritterHexView*> _critters {};
     map<uint, CritterHexView*> _crittersMap {};
-    vector<ItemHexView*> _items {};
+    vector<ItemHexView*> _allItems {};
+    vector<ItemHexView*> _staticItems {};
+    vector<ItemHexView*> _dynamicItems {};
     map<uint, ItemHexView*> _itemsMap {};
 
     vector<MapText> _mapTexts {};
@@ -360,13 +359,10 @@ private:
     AnyFrames* _picTrack1 {};
     AnyFrames* _picTrack2 {};
     AnyFrames* _picHexMask {};
+    vector<uint> _picHexMaskData {};
     AnyFrames* _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
-
-    int _curMapTime {-1};
-    int _dayTime[4] {};
-    uchar _dayColor[12] {};
 
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
@@ -403,11 +399,20 @@ private:
     bool _requestRenderLight {};
     vector<uchar> _hexLight {};
 
-    uint _lightPointsCount {};
+    int _prevMapDayTime {};
+    int _prevGlobalDayTime {};
+    uint _prevMapDayColor {};
+    uint _prevGlobalDayColor {};
+    uint _mapDayColor {};
+    uint _globalDayColor {};
+    int _mapDayLightCapacity {};
+    int _globalDayLightCapacity {};
+
+    size_t _lightPointsCount {};
     vector<vector<PrimitivePoint>> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
     vector<LightSource> _lightSources {};
-    vector<LightSource> _lightSourcesScen {};
+    vector<LightSource> _staticLightSources {};
     int _lightCapacity {};
     int _lightMinHx {};
     int _lightMaxHx {};
@@ -416,6 +421,7 @@ private:
     int _lightProcentR {};
     int _lightProcentG {};
     int _lightProcentB {};
+    bool _hasGlobalLights {};
 
     int _roofSkip {};
 
@@ -431,4 +437,6 @@ private:
     vector<char> _hexTrack {};
     vector<vector<MapTile>> _tilesField {};
     vector<vector<MapTile>> _roofsField {};
+
+    const vector<ItemHexView*> _emptyList {};
 };

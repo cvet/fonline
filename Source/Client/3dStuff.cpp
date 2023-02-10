@@ -413,7 +413,8 @@ void ModelInstance::SetupFrame()
     const auto frame_ratio = static_cast<float>(_frameWidth) / static_cast<float>(_frameHeight);
     const auto proj_height = static_cast<float>(_frameHeight) * (1.0f / _modelMngr._settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
-    MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+
+    _frameProjRowMaj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     _frameProjColMaj = _frameProjRowMaj;
     _frameProjColMaj.Transpose();
 }
@@ -713,7 +714,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         // Compare changed textures
         if (!mesh_changed) {
             for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
-                for (size_t k = 0; k < EFFECT_TEXTURES && !mesh_changed; k++) {
+                for (size_t k = 0; k < MODEL_MAX_TEXTURES && !mesh_changed; k++) {
                     mesh_changed = (_allMeshes[i]->LastTexures[k] != _allMeshes[i]->CurTexures[k]);
                 }
             }
@@ -1371,8 +1372,8 @@ auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, cons
     if (combined_mesh->DrawEffect != mesh_instance->CurEffect) {
         return false;
     }
-    for (auto i = 0; i < EFFECT_TEXTURES; i++) {
-        if ((combined_mesh->Textures[i] != nullptr) && (mesh_instance->CurTexures[i] != nullptr) && combined_mesh->Textures[i]->MainTex != mesh_instance->CurTexures[i]->MainTex) {
+    for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
+        if (combined_mesh->Textures[i] != nullptr && mesh_instance->CurTexures[i] != nullptr && combined_mesh->Textures[i]->MainTex != mesh_instance->CurTexures[i]->MainTex) {
             return false;
         }
     }
@@ -1433,7 +1434,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     combined_mesh->CurBoneMatrix += mesh_data->SkinBones.size();
 
     // Add textures
-    for (auto i = 0; i < EFFECT_TEXTURES; i++) {
+    for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
         if (combined_mesh->Textures[i] == nullptr && mesh_instance->CurTexures[i] != nullptr) {
             combined_mesh->Textures[i] = mesh_instance->CurTexures[i];
         }
@@ -1731,7 +1732,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     }
 
                     // Check influences
-                    for (auto b = 0; b < BONES_PER_VERTEX; b++) {
+                    for (size_t b = 0; b < BONES_PER_VERTEX; b++) {
                         // No influence
                         auto w = v.BlendWeights[b];
                         if (w < 0.00001f) {
@@ -1944,17 +1945,15 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
 
     auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.SkinnedModel;
 
-    effect->ProjBuf = RenderEffect::ProjBuffer();
-    std::memcpy(effect->ProjBuf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
+    auto&& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
+    std::memcpy(proj_buf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0] != nullptr ? combined_mesh->Textures[0]->MainTex : nullptr;
 
-    if (effect->MainTexBuf) {
-        std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
-    }
-
     // Todo: merge all bones in one hierarchy and disable offset copying
-    auto* wm = effect->ModelBuf->WorldMatrices;
+    auto&& model_buf = effect->ModelBuf = RenderEffect::ModelBuffer();
+
+    auto* wm = model_buf->WorldMatrices;
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
         m.Transpose(); // Convert to column major order
@@ -1963,30 +1962,35 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     }
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
-    std::memcpy(effect->ModelBuf->GroundPosition, &_groundPos, 3 * sizeof(float));
-    effect->ModelBuf->GroundPosition[3] = 0.0f;
+    std::memcpy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float));
+    model_buf->GroundPosition[3] = 0.0f;
 
-    std::memcpy(effect->ModelBuf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
+    std::memcpy(model_buf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
 
-    if (effect->CustomTexBuf) {
-        for (auto i = 0; i < EFFECT_TEXTURES; i++) {
+    if (effect->NeedModelTexBuf) {
+        auto&& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
+
+        for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i] != nullptr) {
-                effect->CustomTex[i] = combined_mesh->Textures[i]->MainTex;
-                std::memcpy(&effect->CustomTexBuf->AtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
-                std::memcpy(&effect->CustomTexBuf->Size[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
+                effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
+                std::memcpy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float)], combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
+                std::memcpy(&custom_tex_buf->TexSize[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float));
             }
             else {
-                effect->CustomTex[i] = nullptr;
+                effect->ModelTex[i] = nullptr;
             }
         }
     }
 
-    if (effect->AnimBuf) {
-        effect->AnimBuf->NormalizedTime = _animPosProc;
-        effect->AnimBuf->AbsoluteTime = _animPosTime;
+    if (effect->NeedModelAnimBuf) {
+        auto&& anim_buf = effect->ModelAnimBuf = RenderEffect::ModelAnimBuffer();
+
+        anim_buf->AnimNormalizedTime[0] = _animPosProc;
+        anim_buf->AnimAbsoluteTime[0] = _animPosTime;
     }
 
     effect->DisableCulling = _disableCulling;
+    effect->DisableShadow = shadow_disabled;
 
     combined_mesh->MeshBuf->Upload(effect->Usage);
     effect->DrawBuffer(combined_mesh->MeshBuf);
@@ -2505,7 +2509,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
-                if (index >= 0 && index < EFFECT_TEXTURES) {
+                if (index >= 0 && index < MODEL_MAX_TEXTURES) {
                     link->TextureInfo.emplace_back(buf, mesh, index);
                 }
             }

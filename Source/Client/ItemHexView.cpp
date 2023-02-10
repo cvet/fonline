@@ -90,10 +90,9 @@ void ItemHexView::AfterConstruction()
     RefreshAlpha();
 
     if (GetIsShowAnim()) {
-        _isAnimated = true;
+        _isShowAnim = true;
+        _animNextTick = _engine->GameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
     }
-
-    _animNextTick = _engine->GameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
 
     SetFade(true);
 }
@@ -110,13 +109,6 @@ void ItemHexView::Finish()
     if (_isEffect) {
         _finishingTime = _engine->GameTime.GameTick();
     }
-}
-
-auto ItemHexView::IsFinishing() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _finishing;
 }
 
 auto ItemHexView::IsFinished() const -> bool
@@ -155,22 +147,23 @@ void ItemHexView::Process()
             }
         }
     }
-    else if (_isEffect && !IsFinishing()) {
-        if (IsDynamicEffect()) {
+    else if (_isEffect && !_finishing) {
+        if (_isDynamicEffect) {
             SetAnimFromStart();
         }
         else {
             Finish();
         }
     }
-    else if (IsAnimated() && _engine->GameTime.GameTick() - _animTick >= _anim->Ticks) {
+    else if (_isShowAnim) {
         if (_engine->GameTime.GameTick() >= _animNextTick) {
+            _isShowAnim = false;
             SetStayAnim();
         }
     }
 
     // Effect
-    if (IsDynamicEffect() && !IsFinishing()) {
+    if (_isDynamicEffect && !_finishing) {
         const auto dt = static_cast<float>(_engine->GameTime.GameTick() - _effLastTick);
         if (dt > 0) {
             auto speed = GetFlyEffectSpeed();
@@ -261,6 +254,7 @@ void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
     _isEffect = true;
     _effSx = sx;
     _effSy = sy;
+    _isDynamicEffect = _effSx != 0.0f || _effSy != 0.0f;
     _effDist = dist;
     _effStartX = ScrX;
     _effStartY = ScrY;
@@ -323,10 +317,14 @@ void ItemHexView::RefreshAnim()
 
     if (GetIsCanOpen()) {
         if (GetOpened()) {
-            SetSprEnd();
+            SetSpr(_animEndFrm);
+            _begFrm = _curFrm;
+            _endFrm = _curFrm;
         }
         else {
-            SetSprStart();
+            SetSpr(_animBegFrm);
+            _begFrm = _curFrm;
+            _endFrm = _curFrm;
         }
     }
 }
@@ -369,25 +367,6 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
     }
 }
 
-void ItemHexView::StartAnimate()
-{
-    STACK_TRACE_ENTRY();
-
-    SetStayAnim();
-    _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
-    _isAnimated = true;
-}
-
-void ItemHexView::StopAnimate()
-{
-    STACK_TRACE_ENTRY();
-
-    SetSpr(_animBegFrm);
-    _begFrm = _animBegFrm;
-    _endFrm = _animBegFrm;
-    _isAnimated = false;
-}
-
 void ItemHexView::SetAnimFromEnd()
 {
     STACK_TRACE_ENTRY();
@@ -425,30 +404,13 @@ void ItemHexView::SetAnim(uint beg, uint end)
     _animTick = _engine->GameTime.GameTick();
 }
 
-void ItemHexView::SetSprStart()
-{
-    STACK_TRACE_ENTRY();
-
-    SetSpr(_animBegFrm);
-    _begFrm = _curFrm;
-    _endFrm = _curFrm;
-}
-
-void ItemHexView::SetSprEnd()
-{
-    STACK_TRACE_ENTRY();
-
-    SetSpr(_animEndFrm);
-    _begFrm = _curFrm;
-    _endFrm = _curFrm;
-}
-
 void ItemHexView::SetSpr(uint num_spr)
 {
     STACK_TRACE_ENTRY();
 
     _curFrm = num_spr;
     SprId = _anim->GetSprId(_curFrm);
+
     RefreshOffs();
 }
 
@@ -464,7 +426,7 @@ void ItemHexView::RefreshOffs()
         ScrY += _anim->NextY[i];
     }
 
-    if (IsDynamicEffect()) {
+    if (_isDynamicEffect) {
         ScrX += iround(_effCurX);
         ScrY += iround(_effCurY);
     }

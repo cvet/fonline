@@ -39,6 +39,7 @@
 #include "Log.h"
 #include "ScriptSystem.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #include "sha1.h"
@@ -425,4 +426,28 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 [[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, int& ox, int& oy)
 {
     std::tie(ox, oy) = engine->Geometry.GetHexInterval(fromHx, fromHy, toHx, toHy);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] string Common_Game_GetClipboardText([[maybe_unused]] FOEngineBase* engine)
+{
+    return App->Input.GetClipboardText();
+}
+
+///# ...
+///# param text ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_SetClipboardText([[maybe_unused]] FOEngineBase* engine, string_view text)
+{
+    return App->Input.SetClipboardText(text);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] string Common_Game_GetGameVersion([[maybe_unused]] FOEngineBase* engine)
+{
+    return FO_GAME_VERSION;
 }

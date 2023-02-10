@@ -76,7 +76,6 @@ public:
 
 protected:
     virtual auto GetNextCallId() -> uint;
-    virtual auto RunDeferredCall(DeferredCall& call) const -> bool;
     virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
 
     FOEngineBase* _engine;
@@ -84,6 +83,7 @@ protected:
 
 private:
     auto AddDeferredCall(uint delay, DeferredCall& call) -> uint;
+    auto RunDeferredCall(DeferredCall& call) const -> bool;
 
     uint _idCounter {};
 };

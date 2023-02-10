@@ -143,8 +143,8 @@ struct SpriteInfo
     int Height {};
     int OffsX {};
     int OffsY {};
+    vector<bool> HitTestData {};
     RenderEffect* DrawEffect {};
-    uint* AccData {};
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
 #if FO_ENABLE_3D
@@ -206,13 +206,11 @@ public:
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
-    [[nodiscard]] auto GetSpritesTreeColor() const -> uint { return _spritesTreeColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
     [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(const Sprite* spr) const -> IRect;
     [[nodiscard]] auto GetViewRect(const Sprite* spr) const -> IRect;
-    [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool;
@@ -236,8 +234,9 @@ public:
     void EndScene();
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
-    void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
+    void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
     void ClearCurrentRenderTarget(uint color, bool with_depth = false);
+    void DeleteRenderTarget(RenderTarget* rt);
     void PushAtlasType(AtlasType atlas_type);
     void PushAtlasType(AtlasType atlas_type, bool one_image);
     void PopAtlasType();
@@ -247,17 +246,17 @@ public:
     void DumpAtlases() const;
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
-    void SetSpritesTreeColor(uint c) { _spritesTreeColor = c; }
     void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color);
     void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
+    void SetSpritesZoom(float zoom) noexcept;
     void Flush();
     void DrawSprite(uint id, int x, int y, uint color);
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
+    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const FPoint* offset = nullptr, RenderEffect* custom_effect = nullptr);
 
     void DrawContours();
@@ -303,13 +302,13 @@ private:
     RenderTarget* _rtMain {};
     RenderTarget* _rtContours {};
     RenderTarget* _rtContoursMid {};
-    vector<RenderTarget*> _rt3D {};
+    vector<RenderTarget*> _rtModels {};
     vector<RenderTarget*> _rtStack {};
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<tuple<AtlasType, bool>> _targetAtlasStack {};
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
     bool _accumulatorActive {};
-    vector<SpriteInfo*> _accumulatorSprInfo {};
+    vector<pair<SpriteInfo*, uint*>> _accumulatorSprInfo {};
     vector<SpriteInfo*> _sprData {};
     MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
     unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};
@@ -318,7 +317,6 @@ private:
     RenderDrawBuffer* _primitiveDrawBuf {};
     RenderDrawBuffer* _flushDrawBuf {};
     RenderDrawBuffer* _contourDrawBuf {};
-    uint _spritesTreeColor {};
     size_t _maxDrawQuad {};
     size_t _curDrawQuad {};
     vector<int> _scissorStack {};
@@ -333,6 +331,7 @@ private:
     const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
     vector<uint> _borderBuf {};
+    float _spritesZoom {1.0f};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};

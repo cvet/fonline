@@ -46,6 +46,9 @@
 #include "as_objecttype.h"
 #include "as_callfunc.h"
 
+// (FOnline Patch)
+struct ASContextExtendedData;
+
 BEGIN_AS_NAMESPACE
 
 class asCScriptFunction;
@@ -54,6 +57,18 @@ class asCScriptEngine;
 class asCContext : public asIScriptContext
 {
 public:
+	// (FOnline Patch)
+	ASContextExtendedData* Ext {};
+
+	// (FOnline Patch)
+	struct ASContextExtendedData2
+	{
+		using BeginScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*, size_t);
+		using EndScriptCallFuncType = void(*)(asIScriptContext*);
+		BeginScriptCallFuncType BeginScriptCall {};
+		EndScriptCallFuncType EndScriptCall {};
+	} Ext2 {};
+
 	// Memory management
 	int  AddRef() const;
 	int  Release() const;

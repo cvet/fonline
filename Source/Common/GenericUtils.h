@@ -72,7 +72,7 @@ public:
     [[nodiscard]] static auto Percent(uint full, uint peace) -> uint;
     [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
-    [[nodiscard]] static auto GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint;
+    [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uchar>& colors, int game_time, int* light) -> uint;
     [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
     [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>;
     [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
@@ -86,7 +86,6 @@ class MatrixHelper final
 public:
     MatrixHelper() = delete;
 
-    static void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp);
     static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool;
     static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) -> bool;
 };

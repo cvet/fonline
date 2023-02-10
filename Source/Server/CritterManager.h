@@ -77,7 +77,7 @@ public:
     auto CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
     void DeleteCritter(Critter* cr);
     void DeleteInventory(Critter* cr);
-    void AddItemToCritter(Critter* cr, Item*& item, bool send);
+    auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;
     void EraseItemFromCritter(Critter* cr, Item* item, bool send);
     void ProcessTalk(Critter* cr, bool force);
     void CloseTalk(Critter* cr);

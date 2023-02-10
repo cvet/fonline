@@ -56,25 +56,21 @@ public:
 
 private:
     struct Sound;
-    using SoundsFunc = std::function<void(uchar*)>;
-    using SoundVec = vector<Sound*>;
 
-    [[nodiscard]] auto ProcessSound(Sound* sound, uchar* output) -> bool;
-    [[nodiscard]] auto Load(string_view fname, bool is_music) -> Sound*;
-    [[nodiscard]] auto LoadWav(Sound* sound, string_view fname) -> bool;
-    [[nodiscard]] auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
-    [[nodiscard]] auto LoadOgg(Sound* sound, string_view fname) -> bool;
-    [[nodiscard]] auto ConvertData(Sound* sound) -> bool;
-
+    auto Load(string_view fname, bool is_music, uint repeat_time) -> bool;
+    auto LoadWav(Sound* sound, string_view fname) -> bool;
+    auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
+    auto LoadOgg(Sound* sound, string_view fname) -> bool;
     void ProcessSounds(uchar* output);
+    auto ProcessSound(Sound* sound, uchar* output) -> bool;
     auto StreamOgg(Sound* sound) -> bool;
+    auto ConvertData(Sound* sound) -> bool;
 
     AudioSettings& _settings;
     FileSystem& _resources;
     bool _isActive {};
     uint _streamingPortion {};
-    SoundVec _soundsActive {};
+    vector<unique_ptr<Sound>> _playingSounds;
     vector<uchar> _outputBuf {};
-    SoundsFunc _soundsFunc {};
     bool _nonConstHelper {};
 };

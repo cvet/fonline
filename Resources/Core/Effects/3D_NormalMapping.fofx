@@ -10,9 +10,9 @@ const float CameraAngleSin = 0.4336590845875; // sin(25.7)
 const float ShadowAngleTan = 0.2548968037538; // tan(14.3)
 
 [VertexShader Pass2]
-uniform mat4 ProjectionMatrix;
-uniform vec4 Texture1AtlasOffset;
-uniform mat4 WorldMatrices[MAX_BONES];
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 6, std140) uniform ModelBuf { vec4 LightColor; vec4 GroundPosition; mat4 WorldMatrices[MAX_BONES]; };
+layout(binding = 7, std140) uniform ModelTexBuf { vec4 TexAtlasOffset[MAX_TEXTURES]; vec4 TexSize[MAX_TEXTURES]; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec3 InNormal;
@@ -22,6 +22,7 @@ layout(location = 4) in vec3 InTangent;
 layout(location = 5) in vec3 InBinormal;
 layout(location = 6) in vec4 InBlendWeights;
 layout(location = 7) in vec4 InBlendIndices;
+layout(location = 8) in vec4 InColor;
 
 layout(location = 0) out vec2 TexCoord;
 layout(location = 1) out vec2 TexCoord2;
@@ -64,13 +65,13 @@ void main(void)
     
     // Pass to fragment shader
     TexCoord = InTexCoord;
-    TexCoord2.x = (InTexCoordBase.x * Texture1AtlasOffset.z) + Texture1AtlasOffset.x;
-    TexCoord2.y = (InTexCoordBase.y * Texture1AtlasOffset.w) + Texture1AtlasOffset.y;
+    TexCoord2.x = (InTexCoordBase.x * TexAtlasOffset[1].z) + TexAtlasOffset[1].x;
+    TexCoord2.y = (InTexCoordBase.y * TexAtlasOffset[1].w) + TexAtlasOffset[1].y;
 }
 
 [FragmentShader Pass2]
-layout(binding = 0) uniform sampler2D ColorMap;
-layout(binding = 1) uniform sampler2D Texture1;
+layout(binding = 0) uniform sampler2D MainTex;
+layout(binding = 1) uniform sampler2D ModelTex1;
 
 layout(location = 0) in vec2 TexCoord;
 layout(location = 1) in vec2 TexCoord2;
@@ -80,7 +81,7 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    vec3 normal = 2.0 * texture(Texture1, TexCoord2).rgb - 1.0;
+    vec3 normal = 2.0 * texture(ModelTex1, TexCoord2).rgb - 1.0;
     normal = normalize(normal);
     float lamberFactor = max(0.0, dot(LightVec, normal)) ;
     
@@ -88,13 +89,12 @@ void main(void)
     color.rgb = vec3(0.0, 0.0, 0.0) + max(LightPower, lamberFactor);
     color.a = 1.0;
     
-    FragColor = texture(ColorMap, TexCoord) * color;
+    FragColor = texture(MainTex, TexCoord) * color;
 }
 
 [VertexShader Pass1]
-uniform mat4 ProjectionMatrix;
-uniform vec4 GroundPosition;
-uniform mat4 WorldMatrices[MAX_BONES];
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 6, std140) uniform ModelBuf { vec4 LightColor; vec4 GroundPosition; mat4 WorldMatrices[MAX_BONES]; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec3 InNormal;
@@ -104,6 +104,7 @@ layout(location = 4) in vec3 InTangent;
 layout(location = 5) in vec3 InBinormal;
 layout(location = 6) in vec4 InBlendWeights;
 layout(location = 7) in vec4 InBlendIndices;
+layout(location = 8) in vec4 InColor;
 
 layout(location = 0) out vec2 TexCoord;
 
@@ -137,7 +138,7 @@ void main(void)
 }
 
 [FragmentShader Pass1]
-layout(binding = 0) uniform sampler2D ColorMap;
+layout(binding = 0) uniform sampler2D MainTex;
 
 layout(location = 0) in vec2 TexCoord;
 
@@ -146,5 +147,5 @@ layout(location = 0) out vec4 FragColor;
 void main(void)
 {
     FragColor.rgb = vec3(0.0);
-    FragColor.a = texture(ColorMap, TexCoord).a;
+    FragColor.a = texture(MainTex, TexCoord).a;
 }

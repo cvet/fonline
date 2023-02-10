@@ -1171,7 +1171,7 @@ class Panel : Object
     {
         if (Object::IsHit(x, y)) {
             if (_CheckTransparentOnHit && _BackgroundImage != null)
-                return (Game.GetSpritePixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
+                return Game.IsSpriteHit(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY);
             return true;
         }
         return false;
@@ -1557,6 +1557,30 @@ class TextInput : Text
 
     void _ProcessKey(KeyCode key, string text)
     {
+        if (Input::IsCtrlDown() && !Input::IsShiftDown() && !Input::IsAltDown()) {
+            if (key == KeyCode::C || key == KeyCode::X) {
+                Game.SetClipboardText(_Text);
+
+                if (key == KeyCode::X) {
+                    _Text.clear();
+                }
+            }
+            else if (key == KeyCode::V) {
+                string clipboardText = Game.GetClipboardText();
+
+                if (_InputLength != 0 && _Text.length() + clipboardText.length() > _InputLength)
+                    clipboardText = clipboardText.substr(0, _InputLength - _Text.length());
+
+                if (_CarriagePos != -1) {
+                    _Text = _Text.substr(0, _CarriagePos) + clipboardText + _Text.substr(_CarriagePos);
+                    _CarriagePos += clipboardText.length();
+                }
+                else {
+                    _Text += clipboardText;
+                }
+            }
+        }
+
         if (_CarriagePos != -1) {
             if (_CarriagePos < 0)
                 _CarriagePos = 0;

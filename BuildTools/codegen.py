@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 parser.add_argument('-devname', dest='devname', required=True, help='dev game name and version')
 parser.add_argument('-gamename', dest='gamename', required=True, help='game name and version')
+parser.add_argument('-gameversion', dest='gameversion', required=True, help='game version')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
 parser.add_argument('-singleplayer', dest='singleplayer', action='store_true', help='generate singleplayer api')
@@ -2049,6 +2050,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 globalLines.append('    auto&& value = script_sys->GameEngine->Settings.Custom["' + name + '"];')
                 if type == 'string':
                     globalLines.append('    return value;')
+                elif type == 'bool':
+                    globalLines.append('    return _str(value).toBool();')
                 elif type in ['float', 'double']:
                     globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(_str(value).toDouble());')
                 else:
@@ -3344,7 +3347,8 @@ writeFile('###DebugConfigEnd###)CONFIG"')
 createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
-writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gamename + '";')
+writeFile('static constexpr auto FO_GAME_NAME = "' + args.gamename + '";')
+writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gameversion + '";')
 writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = ' + getHash(args.buildhash) + ';')
 
 # Actual writing of generated files

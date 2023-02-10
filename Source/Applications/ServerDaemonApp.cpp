@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     try {
         GenericUtils::ForkProcess();
 
-        InitApp(argc, argv, "ServerDaemon");
+        InitApp(argc, argv);
 
         auto* server = new FOServer(App->Settings);
         server->Start();

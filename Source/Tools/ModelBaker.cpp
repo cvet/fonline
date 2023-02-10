@@ -823,8 +823,8 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         // Drop not filled indices
         for (auto& v : mesh->Vertices) {
             auto w = 0.0f;
-            auto last_bone = 0;
-            for (auto b = 0; b < BONES_PER_VERTEX; b++) {
+            size_t last_bone = 0;
+            for (size_t b = 0; b < BONES_PER_VERTEX; b++) {
                 if (v.BlendIndices[b] < 0.0f) {
                     v.BlendIndices[b] = v.BlendWeights[b] = 0.0f;
                 }

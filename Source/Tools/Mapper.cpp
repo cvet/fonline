@@ -54,9 +54,18 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(s
         ContentFileSys.AddDataSource(dir, DataSourceType::DirRoot);
     }
 
+    if (settings.BakeContentEntries.empty() && !Settings.MapsDir.empty()) {
+        if (!DiskFileSystem::IsDir(Settings.MapsDir)) {
+            throw MapperException("Directory with maps not found", Settings.MapsDir);
+        }
+
+        ContentFileSys.AddDataSource(Settings.MapsDir, DataSourceType::DirRoot);
+    }
+
     extern void Mapper_RegisterData(FOEngineBase*);
     Mapper_RegisterData(this);
     ScriptSys = new MapperScriptSystem(this);
+    ScriptSys->InitSubsystems();
 
     ProtoMngr.LoadFromResources();
 
@@ -123,9 +132,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(s
     TabsName[INT_MODE_INCONT] = "Inv";
     TabsName[INT_MODE_MESS] = "Msg";
     TabsName[INT_MODE_LIST] = "Maps";
-
-    // Hex manager
-    ChangeGameTime();
 
     // Start script
     ScriptSys->InitModules();
@@ -304,17 +310,6 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
     return true;
 }
 
-void FOMapper::ChangeGameTime()
-{
-    STACK_TRACE_ENTRY();
-
-    if (CurMap != nullptr) {
-        const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-        SprMngr.SetSpritesTreeColor(color);
-        CurMap->RefreshMap();
-    }
-}
-
 void FOMapper::ProcessMapperInput()
 {
     STACK_TRACE_ENTRY();
@@ -469,20 +464,18 @@ void FOMapper::ProcessMapperInput()
                     break;
                 case KeyCode::Add:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time += 60;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::Subtract:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::Tab:
@@ -507,25 +500,20 @@ void FOMapper::ProcessMapperInput()
                 case KeyCode::F11:
                     SprMngr.DumpAtlases();
                     break;
-                case KeyCode::Escape:
-                    exit(0);
-                    break;
                 case KeyCode::Add:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time += 1;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::Subtract:
                     if (!ConsoleEdit && SelectedEntities.empty()) {
-                        int day_time = CurMap->GetDayTime();
+                        int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
                         SetMinute(day_time % 60);
                         SetHour(day_time / 60 % 24);
-                        ChangeGameTime();
                     }
                     break;
                 case KeyCode::C0:
@@ -576,7 +564,7 @@ void FOMapper::ProcessMapperInput()
                     Settings.ScrollCheck = !Settings.ScrollCheck;
                     break;
                 case KeyCode::B:
-                    CurMap->MarkPassedHexes();
+                    CurMap->MarkBlockedHexes();
                     break;
                 case KeyCode::Q:
                     Settings.ShowCorners = !Settings.ShowCorners;
@@ -652,8 +640,7 @@ void FOMapper::ProcessMapperInput()
                     step = 50;
                 }
 
-                const int data = ev.MouseWheel.Delta;
-                if (data > 0) {
+                if (ev.MouseWheel.Delta > 0) {
                     TabsScroll[SubTabsActiveTab] += step;
                 }
                 else {
@@ -675,8 +662,7 @@ void FOMapper::ProcessMapperInput()
                     step = 1000;
                 }
 
-                int data = ev.MouseWheel.Delta;
-                if (data > 0) {
+                if (ev.MouseWheel.Delta > 0) {
                     if (IsObjectMode() || IsTileMode() || IsCritMode()) {
                         (*CurProtoScroll) -= step;
                         if (*CurProtoScroll < 0) {
@@ -735,10 +721,10 @@ void FOMapper::ProcessMapperInput()
             }
         }
         else if (ev_type == InputEvent::EventType::MouseUpEvent) {
-            if (ev.MouseDown.Button == MouseButton::Left) {
+            if (ev.MouseUp.Button == MouseButton::Left) {
                 IntLMouseUp();
             }
-            if (ev.MouseDown.Button == MouseButton::Right) {
+            if (ev.MouseUp.Button == MouseButton::Right) {
                 CurRMouseUp();
             }
         }
@@ -1267,7 +1253,7 @@ void FOMapper::IntDraw()
         if (CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
             hex_thru = true;
         }
-        auto day_time = CurMap->GetDayTime();
+        auto day_time = CurMap->GetGlobalDayTime();
         SprMngr.DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             _str("Map '{}'\n"
                  "Hex {} {}\n"
@@ -1372,8 +1358,8 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
     string str = _str("{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "");
     str += "........................................................................................................";
-    SprMngr.DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, 0);
-    SprMngr.DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, 0);
+    SprMngr.DrawStr(IRect(IRect(x, y, x + w / 2, y + h), 0, 0), str, FT_NOBREAK, color, FONT_DEFAULT);
+    SprMngr.DrawStr(IRect(IRect(x + w / 2, y, x + w, y + h), 0, 0), result_text, FT_NOBREAK, color, FONT_DEFAULT);
 
     r.Top += DRAW_NEXT_HEIGHT;
     r.Bottom += DRAW_NEXT_HEIGHT;
@@ -1539,6 +1525,10 @@ void FOMapper::IntLMouseDown()
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
 
+        if (CurMap == nullptr) {
+            return;
+        }
+
         if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX1, SelectHexY1, nullptr, nullptr)) {
             return;
         }
@@ -1558,7 +1548,7 @@ void FOMapper::IntLMouseDown()
                         if (const auto find_path = CurMap->FindPath(nullptr, hx, hy, SelectHexX1, SelectHexY1, -1)) {
                             for (const auto step : find_path->Steps) {
                                 if (Geometry.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
-                                    CurMap->TransitCritter(cr, hx, hy, true);
+                                    CurMap->MoveCritter(cr, hx, hy, true);
                                 }
                                 else {
                                     break;
@@ -1984,7 +1974,7 @@ void FOMapper::IntLMouseUp()
                 vector<CritterView*> critters;
                 for (auto&& [hx, hy] : hexes) {
                     // Items, critters
-                    auto hex_items = CurMap->GetItems(hx, hy);
+                    auto&& hex_items = CurMap->GetItems(hx, hy);
                     items.insert(items.end(), hex_items.begin(), hex_items.end());
                     auto hex_critters = CurMap->GetCritters(hx, hy, CritterFindType::Any);
                     critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
@@ -2266,7 +2256,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
     }
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        CurMap->MoveCritter(cr, hx, hy);
+        CurMap->MoveCritter(cr, hx, hy, false);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         CurMap->MoveItem(item, hx, hy);
@@ -2478,8 +2468,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        auto ox = static_cast<float>(offs_x) * Settings.SpritesZoom + small_ox;
-        auto oy = static_cast<float>(offs_y) * Settings.SpritesZoom + small_oy;
+        auto ox = static_cast<float>(offs_x) * CurMap->GetSpritesZoom() + small_ox;
+        auto oy = static_cast<float>(offs_y) * CurMap->GetSpritesZoom() + small_oy;
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
         }
@@ -2603,7 +2593,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 CurMap->MoveItem(item, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
             else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy));
+                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy), false);
             }
         }
     }
@@ -3091,8 +3081,8 @@ void FOMapper::CurDraw()
             if (si != nullptr) {
                 const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
                 const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(static_cast<float>(x) / Settings.SpritesZoom), static_cast<int>(static_cast<float>(y) / Settings.SpritesZoom), //
-                    static_cast<int>(static_cast<float>(si->Width) / Settings.SpritesZoom), static_cast<int>(static_cast<float>(si->Height) / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(static_cast<float>(x) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(y) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(static_cast<float>(si->Width) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(si->Height) / CurMap->GetSpritesZoom()), true, false, 0);
             }
         }
         else if (IsTileMode() && !CurTileNames->empty()) {
@@ -3122,7 +3112,9 @@ void FOMapper::CurDraw()
                     y += Settings.MapRoofOffsY;
                 }
 
-                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), static_cast<int>((x + Settings.ScrOx) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), //
+                    static_cast<int>((x + Settings.ScrOx) / CurMap->GetSpritesZoom()), static_cast<int>((y + Settings.ScrOy) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(si->Width / CurMap->GetSpritesZoom()), static_cast<int>(si->Height / CurMap->GetSpritesZoom()), true, false, 0);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -3143,7 +3135,11 @@ void FOMapper::CurDraw()
                 const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
                 const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(spr_id, //
+                    static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(si->Width / CurMap->GetSpritesZoom()), //
+                    static_cast<int>(si->Height / CurMap->GetSpritesZoom()), true, false, 0);
             }
         }
         else {

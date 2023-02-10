@@ -63,7 +63,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     STACK_TRACE_FIRST_ENTRY();
 
     try {
-        InitApp(argc, argv, "Server");
+        InitApp(argc, argv);
 
         list<vector<string>> log_buffer;
         SetLogCallback("ServerApp", [&log_buffer](string_view str) {
@@ -199,6 +199,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Log
             if (!Data->HideControls) {
+                ImGui::SetNextWindowCollapsed(App->Settings.CollapseLogOnStart, ImGuiCond_Once);
                 ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
@@ -225,6 +226,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             for (auto* client : Data->Clients) {
                 ShowExceptionMessageBox(true);
                 try {
+                    App->Render.ClearRenderTarget(COLOR_RGB(0, 0, 0));
                     client->MainLoop();
                 }
                 catch (const std::exception& ex) {

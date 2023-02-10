@@ -252,12 +252,19 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 using tracy::SourceLocationData;
 
+#if !FO_NO_MANUAL_STACK_TRACE
 #define STACK_TRACE_FIRST_ENTRY() \
     SetMainThread(); \
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     ZoneScoped; \
     auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+#else
+#define STACK_TRACE_FIRST_ENTRY() \
+    SetMainThread(); \
+    STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY() ZoneScoped
+#endif
 
 #else
 struct SourceLocationData // Same as tracy::SourceLocationData
@@ -268,24 +275,28 @@ struct SourceLocationData // Same as tracy::SourceLocationData
     uint32_t line;
 };
 
+#if !FO_NO_MANUAL_STACK_TRACE
 #define STACK_TRACE_FIRST_ENTRY() \
     SetMainThread(); \
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
     auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
+#else
+#define STACK_TRACE_FIRST_ENTRY() SetMainThread()
+#define STACK_TRACE_ENTRY()
+#endif
 #endif
 
 extern void SetMainThread() noexcept;
 extern auto IsMainThread() noexcept -> bool;
-extern void PushStackTrace(const char* func, const char* file, size_t line, bool make_copy) noexcept;
-extern void PushStackTrace(const SourceLocationData& loc, bool make_copy) noexcept;
+extern void PushStackTrace(const SourceLocationData& loc) noexcept;
 extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
 
 struct StackTraceScopeEntry
 {
-    FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept { PushStackTrace(loc, false); }
+    FORCE_INLINE explicit StackTraceScopeEntry(const SourceLocationData& loc) noexcept { PushStackTrace(loc); }
     FORCE_INLINE ~StackTraceScopeEntry() noexcept { PopStackTrace(); }
 
     StackTraceScopeEntry(const StackTraceScopeEntry&) = delete;
@@ -356,12 +367,17 @@ struct ExceptionStackTraceData
     }
 
 // Todo: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
+#if !FO_NO_EXTRA_ASSERTS
 #define RUNTIME_ASSERT(expr) \
     if (!(expr)) \
     throw AssertationException(#expr, __FILE__, __LINE__)
 #define RUNTIME_ASSERT_STR(expr, str) \
     if (!(expr)) \
     throw AssertationException(str, __FILE__, __LINE__)
+#else
+#define RUNTIME_ASSERT(expr)
+#define RUNTIME_ASSERT_STR(expr, str)
+#endif
 
 // Common exceptions
 DECLARE_EXCEPTION(GenericException);
@@ -959,7 +975,7 @@ struct TRect
         Bottom += oy;
     }
 
-    auto Interpolate(const TRect<T>& to, int procent) -> TRect<T>
+    auto Interpolate(const TRect<T>& to, int procent) const -> TRect<T>
     {
         TRect<T> result(Left, Top, Right, Bottom);
         result.Left += static_cast<T>(static_cast<int>(to.Left - Left) * procent / 100);
@@ -1002,7 +1018,7 @@ struct TPoint
         Y = 0;
     }
 
-    auto IsZero() -> bool { return !X && !Y; }
+    auto IsZero() const -> bool { return !X && !Y; }
 
     auto operator[](int index) -> T&
     {
@@ -1091,14 +1107,13 @@ struct fmt::formatter<hstring>
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
 // ReSharper disable CppInconsistentNaming
-static constexpr auto CONFIG_NAME = "FOnline.cfg";
+static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
-static constexpr auto FONT_DEFAULT = 5;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes

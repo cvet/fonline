@@ -35,12 +35,13 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth) :
+RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth, bool flipped_height) :
     Width {width}, //
     Height {height},
     SizeData {static_cast<float>(width), static_cast<float>(height), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height)},
     LinearFiltered {linear_filtered},
-    WithDepth {with_depth}
+    WithDepth {with_depth},
+    FlippedHeight {flipped_height}
 {
     STACK_TRACE_ENTRY();
 
@@ -57,17 +58,17 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 {
     STACK_TRACE_ENTRY();
 
-    const auto content = loader(name);
-    const auto fofx = ConfigFile(name, content, nullptr, ConfigFileOption::CollectContent);
+    const auto fofx_content = loader(name);
+    const auto fofx = ConfigFile(name, fofx_content, nullptr, ConfigFileOption::CollectContent);
     RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
     RUNTIME_ASSERT(passes >= 1);
-    RUNTIME_ASSERT(passes <= EFFECT_MAX_PASSES);
+    RUNTIME_ASSERT(passes <= static_cast<int>(EFFECT_MAX_PASSES));
 
 #if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetInt("Effect", "ShadowPass", -1);
-    RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= EFFECT_MAX_PASSES));
+    RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= static_cast<int>(EFFECT_MAX_PASSES)));
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
@@ -93,7 +94,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         CHECK_ENTRY(InvConstantColor);
         CHECK_ENTRY(SrcAlphaSaturate);
 #undef CHECK_ENTRY
-        RUNTIME_ASSERT(false);
+        throw UnreachablePlaceException(LINE_STR);
     };
     static auto get_blend_equation = [](string_view s) -> BlendEquationType {
 #define CHECK_ENTRY(name) \
@@ -105,7 +106,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         CHECK_ENTRY(Max);
         CHECK_ENTRY(Min);
 #undef CHECK_ENTRY
-        RUNTIME_ASSERT(false);
+        throw UnreachablePlaceException(LINE_STR);
     };
 
     const auto blend_func_default = fofx.GetStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
@@ -123,5 +124,39 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", _str("BlendEquation{}", pass_str), blend_equation_default));
 
         _depthWrite[pass] = _str(fofx.GetStr("Effect", _str("DepthWrite{}", pass_str), depth_write_default)).toBool();
+
+        const auto pass_info_content = loader(_str("{}.{}.info", _str(name).eraseFileExtension(), pass + 1));
+        const auto pass_info = ConfigFile(name, pass_info_content);
+        RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
+
+        const_cast<int&>(_posMainTex[pass]) = pass_info.GetInt("EffectInfo", "MainTex", -1);
+        const_cast<bool&>(NeedMainTex) |= _posMainTex[pass] != -1;
+        const_cast<int&>(_posEggTex[pass]) = pass_info.GetInt("EffectInfo", "EggTex", -1);
+        const_cast<bool&>(NeedEggTex) |= _posEggTex[pass] != -1;
+        const_cast<int&>(_posProjBuf[pass]) = pass_info.GetInt("EffectInfo", "ProjBuf", -1);
+        const_cast<bool&>(NeedProjBuf) |= _posProjBuf[pass] != -1;
+        const_cast<int&>(_posMainTexBuf[pass]) = pass_info.GetInt("EffectInfo", "MainTexBuf", -1);
+        const_cast<bool&>(NeedMainTexBuf) |= _posMainTexBuf[pass] != -1;
+        const_cast<int&>(_posContourBuf[pass]) = pass_info.GetInt("EffectInfo", "ContourBuf", -1);
+        const_cast<bool&>(NeedContourBuf) |= _posContourBuf[pass] != -1;
+        const_cast<int&>(_posTimeBuf[pass]) = pass_info.GetInt("EffectInfo", "TimeBuf", -1);
+        const_cast<bool&>(NeedTimeBuf) |= _posTimeBuf[pass] != -1;
+        const_cast<int&>(_posRandomValueBuf[pass]) = pass_info.GetInt("EffectInfo", "RandomValueBuf", -1);
+        const_cast<bool&>(NeedRandomValueBuf) |= _posRandomValueBuf[pass] != -1;
+        const_cast<int&>(_posScriptValueBuf[pass]) = pass_info.GetInt("EffectInfo", "ScriptValueBuf", -1);
+        const_cast<bool&>(NeedScriptValueBuf) |= _posScriptValueBuf[pass] != -1;
+#if FO_ENABLE_3D
+        const_cast<int&>(_posModelBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelBuf", -1);
+        const_cast<bool&>(NeedModelBuf) |= _posModelBuf[pass] != -1;
+        for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
+            const_cast<int&>(_posModelTex[pass][i]) = pass_info.GetInt("EffectInfo", _str("ModelTex{}", i), -1);
+            const_cast<bool&>(NeedModelTex[i]) |= _posModelTex[pass][i] != -1;
+            const_cast<bool&>(NeedAnyModelTex) |= NeedModelTex[i];
+        }
+        const_cast<int&>(_posModelTexBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelTexBuf", -1);
+        const_cast<bool&>(NeedModelTexBuf) |= _posModelTexBuf[pass] != -1;
+        const_cast<int&>(_posModelAnimBuf[pass]) = pass_info.GetInt("EffectInfo", "ModelAnimBuf", -1);
+        const_cast<bool&>(NeedModelAnimBuf) |= _posModelAnimBuf[pass] != -1;
+#endif
     }
 }

@@ -155,6 +155,7 @@ public:
 
     void AddDataSource(string_view path, DataSourceType type = DataSourceType::Default);
     void AddDataSource(unique_ptr<DataSource> data_source);
+    void CleanDataSources();
 
 private:
     string _rootPath {};

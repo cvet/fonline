@@ -65,16 +65,16 @@ if [%2] == [client] (
     exit /b 1
 )
 
-if [%3] == [debug] (
-    set CONFIG=Debug
-) else (
+if [%3] == [] (
     set CONFIG=Release
+) else (
+    set CONFIG=%3
 )
 
 if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
 cd %FO_WORKSPACE%
 
-set BUILD_DIR=build-%1-%2
+set BUILD_DIR=build-%1-%2-%CONFIG%
 if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
 

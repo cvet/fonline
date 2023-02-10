@@ -78,21 +78,27 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 
     NON_CONST_METHOD_HINT();
 
-    if (effect->TimeBuf) {
-        effect->TimeBuf->GameTime = static_cast<float>(game_time.GameTick());
-        effect->TimeBuf->RealTime = static_cast<float>(game_time.FrameTick());
+    if (effect->NeedTimeBuf) {
+        auto&& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
+
+        time_buf->FrameTime[0] = static_cast<float>(game_time.FrameTick()) / 1000.0f;
+        time_buf->GameTime[0] = static_cast<float>(game_time.GameTick()) / 1000.0f;
     }
 
-    if (effect->RandomValueBuf) {
-        for (auto i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
-            const auto rnd = static_cast<float>(static_cast<double>(GenericUtils::Random(0, 2000000000)) / (2000000000.0 - 1000.0));
-            effect->RandomValueBuf->Value[i] = rnd;
-        }
+    if (effect->NeedRandomValueBuf) {
+        auto&& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
+
+        random_value_buf->RandomValue[0] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[1] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[2] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
+        random_value_buf->RandomValue[3] = static_cast<float>(GenericUtils::Random(0, 99999)) / 100000.0f;
     }
 
-    if (effect->ScriptValueBuf) {
-        for (auto i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
-            effect->ScriptValueBuf->Value[i] = _settings.EffectValues[i];
+    if (effect->NeedScriptValueBuf) {
+        auto&& script_value_buf = effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
+
+        for (size_t i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
+            script_value_buf->ScriptValue[i] = i < _settings.EffectValues.size() ? _settings.EffectValues[i] : 0.0f;
         }
     }
 }

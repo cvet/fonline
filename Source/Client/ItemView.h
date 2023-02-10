@@ -50,14 +50,13 @@ public:
     auto operator=(ItemView&&) noexcept = delete;
     ~ItemView() override = default;
 
-    [[nodiscard]] auto IsStatic() const -> bool;
-    [[nodiscard]] auto IsAnyScenery() const -> bool;
-    [[nodiscard]] auto IsScenery() const -> bool;
-    [[nodiscard]] auto IsWall() const -> bool;
-    [[nodiscard]] auto IsColorize() const -> bool;
-    [[nodiscard]] auto GetColor() const -> uint;
-    [[nodiscard]] auto GetAlpha() const -> uchar;
-    [[nodiscard]] auto GetInvColor() const -> uint;
+    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
+    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
+    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
+    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
+    [[nodiscard]] auto IsColorize() const -> bool { return GetIsColorize(); }
+    [[nodiscard]] auto GetColor() const -> uint { return GetLightColor() & 0xFFFFFF; }
+    [[nodiscard]] auto GetAlpha() const -> uchar { return GetLightColor() >> 24; }
     [[nodiscard]] auto LightGetHash() const -> uint;
     [[nodiscard]] auto GetInnerItems() -> vector<ItemView*>;
 

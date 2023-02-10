@@ -51,7 +51,7 @@ struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual 
 {
 public:
     GlobalSettings() = default;
-    GlobalSettings(int argc, char** argv);
+    GlobalSettings(int argc, char** argv, bool client_mode);
     GlobalSettings(const GlobalSettings&) = default;
     GlobalSettings(GlobalSettings&&) = default;
     auto operator=(const GlobalSettings&) = delete;

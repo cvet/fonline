@@ -33,12 +33,13 @@
 
 #include "ItemView.h"
 #include "Client.h"
+#include "StringUtils.h"
 
 ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(proto);
+    _name = _str("{}_{}", proto->GetName(), id);
 }
 
 void ItemView::MarkAsDestroyed()
@@ -59,65 +60,9 @@ auto ItemView::CreateRefClone() const -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* clone = new ItemView(_engine, 0u, dynamic_cast<const ProtoItem*>(_proto));
+    auto* clone = new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto));
     clone->SetProperties(GetProperties());
     return clone;
-}
-
-auto ItemView::IsStatic() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsStatic();
-}
-
-auto ItemView::IsAnyScenery() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return IsScenery() || IsWall();
-}
-
-auto ItemView::IsScenery() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsScenery();
-}
-
-auto ItemView::IsWall() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsWall();
-}
-
-auto ItemView::IsColorize() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsColorize();
-}
-
-auto ItemView::GetColor() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return GetLightColor() & 0xFFFFFF;
-}
-
-auto ItemView::GetAlpha() const -> uchar
-{
-    STACK_TRACE_ENTRY();
-
-    return GetLightColor() >> 24;
-}
-
-auto ItemView::GetInvColor() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIsColorizeInv() ? GetLightColor() : 0;
 }
 
 auto ItemView::LightGetHash() const -> uint

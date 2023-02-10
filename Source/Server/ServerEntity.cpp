@@ -40,7 +40,7 @@ ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator*
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}", _id);
+    _name = _str("{}_{}", GetClassName(), _id);
 }
 
 auto ServerEntity::GetId() const -> uint

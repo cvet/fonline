@@ -41,8 +41,6 @@ constexpr int ATLAS_SPRITES_PADDING = 1;
 
 static auto ApplyColorBrightness(uint color, int brightness) -> uint
 {
-    STACK_TRACE_ENTRY();
-
     if (brightness != 0) {
         const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
         const auto g = std::clamp(((color >> 8) & 0xFF) + brightness, 0u, 255u);
@@ -125,7 +123,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 {
     STACK_TRACE_ENTRY();
 
-    _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
     _allAtlases.reserve(100);
     _dipQueue.reserve(1000);
@@ -142,7 +139,9 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _sprData.resize(SPRITES_BUFFER_SIZE);
     _borderBuf.resize(App->Render.MAX_ATLAS_SIZE);
 
+#if !FO_DIRECT_SPRITES_DRAW
     _rtMain = CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, true);
+#endif
     _rtContours = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
     _rtContoursMid = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
 
@@ -265,6 +264,7 @@ void SpriteManager::BeginScene(uint clear_color)
 
     if (_rtMain != nullptr) {
         PushRenderTarget(_rtMain);
+        ClearCurrentRenderTarget(clear_color);
     }
 
 #if FO_ENABLE_3D
@@ -277,11 +277,6 @@ void SpriteManager::BeginScene(uint clear_color)
         }
     }
 #endif
-
-    // Clear window
-    if (clear_color != 0u) {
-        ClearCurrentRenderTarget(clear_color);
-    }
 }
 
 void SpriteManager::EndScene()
@@ -396,67 +391,72 @@ void SpriteManager::PopRenderTarget()
     }
 }
 
-void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
+void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
 {
     STACK_TRACE_ENTRY();
 
     Flush();
 
-    if (region_from == nullptr && region_to == nullptr) {
-        const auto w = static_cast<float>(rt->MainTex->Width);
-        const auto h = static_cast<float>(rt->MainTex->Height);
+    const auto flipped_height = rt->MainTex->FlippedHeight;
+    const auto width_from_i = rt->MainTex->Width;
+    const auto height_from_i = rt->MainTex->Height;
+    const auto width_to_i = _rtStack.empty() ? _settings.ScreenWidth : _rtStack.back()->MainTex->Width;
+    const auto height_to_i = _rtStack.empty() ? _settings.ScreenHeight : _rtStack.back()->MainTex->Height;
+    const auto width_from_f = static_cast<float>(width_from_i);
+    const auto height_from_f = static_cast<float>(height_from_i);
+    const auto width_to_f = static_cast<float>(width_to_i);
+    const auto height_to_f = static_cast<float>(height_to_i);
 
+    if (region_from == nullptr && region_to == nullptr) {
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
         vbuf[pos].PosX = 0.0f;
-        vbuf[pos].PosY = h;
+        vbuf[pos].PosY = flipped_height ? height_to_f : 0.0f;
         vbuf[pos].TexU = 0.0f;
         vbuf[pos++].TexV = 0.0f;
 
         vbuf[pos].PosX = 0.0f;
-        vbuf[pos].PosY = 0.0f;
+        vbuf[pos].PosY = flipped_height ? 0.0f : height_to_f;
         vbuf[pos].TexU = 0.0f;
         vbuf[pos++].TexV = 1.0f;
 
-        vbuf[pos].PosX = w;
-        vbuf[pos].PosY = 0.0f;
+        vbuf[pos].PosX = width_to_f;
+        vbuf[pos].PosY = flipped_height ? 0.0f : height_to_f;
         vbuf[pos].TexU = 1.0f;
         vbuf[pos++].TexV = 1.0f;
 
-        vbuf[pos].PosX = w;
-        vbuf[pos].PosY = h;
+        vbuf[pos].PosX = width_to_f;
+        vbuf[pos].PosY = flipped_height ? height_to_f : 0.0f;
         vbuf[pos].TexU = 1.0f;
         vbuf[pos].TexV = 0.0f;
     }
     else {
-        const FRect regionf = region_from != nullptr ? *region_from : IRect(0, 0, rt->MainTex->Width, rt->MainTex->Height);
-        const FRect regiont = region_to != nullptr ? *region_to : IRect(0, 0, _rtStack.back()->MainTex->Width, _rtStack.back()->MainTex->Height);
-        const auto wf = static_cast<float>(rt->MainTex->Width);
-        const auto hf = static_cast<float>(rt->MainTex->Height);
+        const FRect rect_from = region_from != nullptr ? *region_from : IRect(0, 0, width_from_i, height_from_i);
+        const FRect rect_to = region_to != nullptr ? *region_to : IRect(0, 0, width_to_i, height_to_i);
 
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
 
-        vbuf[pos].PosX = regiont.Left;
-        vbuf[pos].PosY = regiont.Bottom;
-        vbuf[pos].TexU = regionf.Left / wf;
-        vbuf[pos++].TexV = 1.0f - regionf.Bottom / hf;
+        vbuf[pos].PosX = rect_to.Left;
+        vbuf[pos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
+        vbuf[pos].TexU = rect_from.Left / width_from_f;
+        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
 
-        vbuf[pos].PosX = regiont.Left;
-        vbuf[pos].PosY = regiont.Top;
-        vbuf[pos].TexU = regionf.Left / wf;
-        vbuf[pos++].TexV = 1.0f - regionf.Top / hf;
+        vbuf[pos].PosX = rect_to.Left;
+        vbuf[pos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
+        vbuf[pos].TexU = rect_from.Left / width_from_f;
+        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
 
-        vbuf[pos].PosX = regiont.Right;
-        vbuf[pos].PosY = regiont.Top;
-        vbuf[pos].TexU = regionf.Right / wf;
-        vbuf[pos++].TexV = 1.0f - regionf.Top / hf;
+        vbuf[pos].PosX = rect_to.Right;
+        vbuf[pos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
+        vbuf[pos].TexU = rect_from.Right / width_from_f;
+        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
 
-        vbuf[pos].PosX = regiont.Right;
-        vbuf[pos].PosY = regiont.Bottom;
-        vbuf[pos].TexU = regionf.Right / wf;
-        vbuf[pos].TexV = 1.0f - regionf.Bottom / hf;
+        vbuf[pos].PosX = rect_to.Right;
+        vbuf[pos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
+        vbuf[pos].TexU = rect_from.Right / width_from_f;
+        vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
     }
 
     auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
@@ -470,6 +470,11 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
 auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
 {
     STACK_TRACE_ENTRY();
+
+#if FO_NO_TEXTURE_LOOKUP
+    return 0xFFFFFFFF;
+
+#else
 
     // Try find in last picks
     for (auto&& pix : rt->LastPixelPicks) {
@@ -488,6 +493,7 @@ auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -
     }
 
     return color;
+#endif
 }
 
 void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)
@@ -495,6 +501,15 @@ void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)
     STACK_TRACE_ENTRY();
 
     App->Render.ClearRenderTarget(color, with_depth);
+}
+
+void SpriteManager::DeleteRenderTarget(RenderTarget* rt)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
+    RUNTIME_ASSERT(it != _rtAll.end());
+    _rtAll.erase(it);
 }
 
 void SpriteManager::PushScissor(int l, int t, int r, int b)
@@ -565,11 +580,7 @@ void SpriteManager::EnableScissor()
     NON_CONST_METHOD_HINT();
 
     if (!_scissorStack.empty() && !_rtStack.empty() && _rtStack.back() == _rtMain) {
-        const auto x = _scissorRect.Left;
-        const auto y = static_cast<int>(_rtStack.back()->MainTex->Height) - _scissorRect.Bottom;
-        const auto w = static_cast<uint>(_scissorRect.Right - _scissorRect.Left);
-        const auto h = static_cast<uint>(_scissorRect.Bottom - _scissorRect.Top);
-        App->Render.EnableScissor(x, y, w, h);
+        App->Render.EnableScissor(_scissorRect.Left, _scissorRect.Top, _scissorRect.Width(), _scissorRect.Height());
     }
 }
 
@@ -617,18 +628,19 @@ void SpriteManager::FlushAccumulatedAtlasData()
     STACK_TRACE_ENTRY();
 
     _accumulatorActive = false;
+
     if (_accumulatorSprInfo.empty()) {
         return;
     }
 
     // Sort by size
-    std::sort(_accumulatorSprInfo.begin(), _accumulatorSprInfo.end(), [](SpriteInfo* si1, SpriteInfo* si2) { return si1->Width * si1->Height > si2->Width * si2->Height; });
+    std::sort(_accumulatorSprInfo.begin(), _accumulatorSprInfo.end(), [](auto&& si1, auto&& si2) { return si1.first->Width * si1.first->Height > si2.first->Width * si2.first->Height; });
 
-    for (auto* spr_info : _accumulatorSprInfo) {
-        FillAtlas(spr_info, spr_info->AccData);
-        delete[] spr_info->AccData;
-        spr_info->AccData = nullptr;
+    for (auto&& [si, data] : _accumulatorSprInfo) {
+        FillAtlas(si, data);
+        delete[] data;
     }
+
     _accumulatorSprInfo.clear();
 }
 
@@ -764,8 +776,7 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
     for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
         auto& atlas = *it;
         if (atlas->Type == atlas_type) {
-            for (auto& it_ : _sprData) {
-                const auto* si = it_;
+            for (auto& si : _sprData) {
                 if (si != nullptr && si->Atlas == atlas.get()) {
 #if FO_ENABLE_3D
                     if (si->Model != nullptr) {
@@ -774,9 +785,11 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
 #endif
 
                     delete si;
-                    it_ = nullptr;
+                    si = nullptr;
                 }
             }
+
+            DeleteRenderTarget(atlas->RTarg);
 
             it = _allAtlases.erase(it);
         }
@@ -814,7 +827,10 @@ void SpriteManager::DumpAtlases() const
         atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
-    const string dir = _str("{}_{}.{:03}mb", Timer::RealtimeTick(), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
+    const auto date = Timer::GetCurrentDateTime();
+    const string dir = _str("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+        date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
+        atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
     const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
         if (rt != nullptr) {
@@ -828,11 +844,41 @@ void SpriteManager::DumpAtlases() const
     write_rt("Contours", _rtContours);
     write_rt("ContoursMid", _rtContoursMid);
 
-    auto cnt = 0;
+    auto cnt = 1;
     for (auto&& atlas : _allAtlases) {
-        const string fname = _str("{}/{}_{}_{}x{}.tga", dir, cnt, atlas->Type, atlas->Width, atlas->Height);
+        string atlas_type_name;
+        switch (atlas->Type) {
+        case AtlasType::Static:
+            atlas_type_name = "Static";
+            break;
+        case AtlasType::Dynamic:
+            atlas_type_name = "Dynamic";
+            break;
+        case AtlasType::Splash:
+            atlas_type_name = "Splash";
+            break;
+        case AtlasType::MeshTextures:
+            atlas_type_name = "MeshTextures";
+            break;
+        }
+
+        const string fname = _str("{}/{}{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
         auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
         WriteSimpleTga(fname, atlas->Width, atlas->Height, std::move(tex_data));
+        cnt++;
+    }
+
+#if FO_ENABLE_3D
+    cnt = 1;
+    for (const auto* rt : _rtModels) {
+        write_rt(_str("Model{}", cnt), rt);
+        cnt++;
+    }
+#endif
+
+    cnt = 1;
+    for (auto&& rt : _rtAll) {
+        write_rt(_str("All{}", cnt), rt.get());
         cnt++;
     }
 }
@@ -852,9 +898,9 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, cons
 
     // Find place on atlas
     if (_accumulatorActive) {
-        si->AccData = new uint[width * height];
-        std::memcpy(si->AccData, data, width * height * sizeof(uint));
-        _accumulatorSprInfo.push_back(si);
+        auto* acc_data = new uint[width * height];
+        std::memcpy(acc_data, data, width * height * sizeof(uint));
+        _accumulatorSprInfo.emplace_back(si, acc_data);
     }
     else {
         FillAtlas(si, data);
@@ -880,6 +926,10 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, int width, int height, cons
 void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 {
     STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(si);
+    RUNTIME_ASSERT(si->Width > 0);
+    RUNTIME_ASSERT(si->Height > 0);
 
     const auto w = si->Width;
     const auto h = si->Height;
@@ -917,6 +967,12 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[h + 1] = _borderBuf[h];
         tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w + 1, y + h + 1), _borderBuf.data());
+
+        // Evaluate hit mask
+        si->HitTestData.resize(w * h);
+        for (size_t i = 0, j = w * h; i < j; i++) {
+            si->HitTestData[i] = (data[i] >> 24) > 0;
+        }
     }
 
     // Invalidate last pixel color picking
@@ -1114,7 +1170,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     const auto period_to = period * static_cast<float>(proc_to) / 100.0f;
     const auto period_len = fabs(period_to - period_from);
     const auto proc_step = static_cast<float>(proc_to - proc_from) / (period_len / frame_time);
-    const auto frames_count = static_cast<int>(std::ceil(period_len / frame_time));
+    const auto frames_count = iround(std::ceil(period_len / frame_time));
 
     // If no animations available than render just one
     if (period == 0.0f || proc_from == proc_to || frames_count <= 1) {
@@ -1131,7 +1187,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     auto prev_cur_proci = -1;
 
     for (auto i = 0; i < frames_count; i++) {
-        const auto cur_proci = (proc_to > proc_from ? static_cast<int>(10.0f * cur_proc + 0.5f) : static_cast<int>(10.0f * cur_proc));
+        const auto cur_proci = proc_to > proc_from ? iround(10.0f * cur_proc + 0.5f) : iround(10.0f * cur_proc);
 
         // Previous frame is different
         if (cur_proci != prev_cur_proci) {
@@ -1165,22 +1221,22 @@ void SpriteManager::RenderModel(ModelInstance* model)
 
     // Find place for render
     const auto* si = _sprData[model->SprId];
-    const uint frame_width = si->Width * ModelInstance::FRAME_SCALE;
-    const uint frame_height = si->Height * ModelInstance::FRAME_SCALE;
+    const auto frame_width = si->Width * ModelInstance::FRAME_SCALE;
+    const auto frame_height = si->Height * ModelInstance::FRAME_SCALE;
 
-    RenderTarget* rt = nullptr;
-    for (auto* rt_ : _rt3D) {
-        if (rt_->MainTex->Width == frame_width && rt_->MainTex->Height == frame_height) {
-            rt = rt_;
+    RenderTarget* rt_model = nullptr;
+    for (auto* rt : _rtModels) {
+        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
+            rt_model = rt;
             break;
         }
     }
-    if (rt == nullptr) {
-        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
-        _rt3D.push_back(rt);
+    if (rt_model == nullptr) {
+        rt_model = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
+        _rtModels.push_back(rt_model);
     }
 
-    PushRenderTarget(rt);
+    PushRenderTarget(rt_model);
     ClearCurrentRenderTarget(0, true);
 
     // Draw model
@@ -1190,14 +1246,27 @@ void SpriteManager::RenderModel(ModelInstance* model)
     PopRenderTarget();
 
     // Copy render
-    const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
-    const auto t = iround((1.0f - si->SprRect.Top) * static_cast<float>(si->Atlas->Height));
-    const auto r = iround(si->SprRect.Right * static_cast<float>(si->Atlas->Width));
-    const auto b = iround((1.0f - si->SprRect.Bottom) * static_cast<float>(si->Atlas->Height));
-    const auto region_to = IRect(l, t, r, b);
+    IRect region_to;
+
+    // Render to atlas
+    if (rt_model->MainTex->FlippedHeight) {
+        // Preserve flip
+        const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
+        const auto t = iround((1.0f - si->SprRect.Top) * static_cast<float>(si->Atlas->Height));
+        const auto r = iround(si->SprRect.Right * static_cast<float>(si->Atlas->Width));
+        const auto b = iround((1.0f - si->SprRect.Bottom) * static_cast<float>(si->Atlas->Height));
+        region_to = IRect(l, t, r, b);
+    }
+    else {
+        const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
+        const auto t = iround(si->SprRect.Top * static_cast<float>(si->Atlas->Height));
+        const auto r = iround(si->SprRect.Right * static_cast<float>(si->Atlas->Width));
+        const auto b = iround(si->SprRect.Bottom * static_cast<float>(si->Atlas->Height));
+        region_to = IRect(l, t, r, b);
+    }
 
     PushRenderTarget(si->Atlas->RTarg);
-    DrawRenderTarget(rt, false, nullptr, &region_to);
+    DrawRenderTarget(rt_model, false, nullptr, &region_to);
     PopRenderTarget();
 }
 
@@ -1328,6 +1397,11 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
     _anyFramesPool.Put(anim);
 }
 
+void SpriteManager::SetSpritesZoom(float zoom) noexcept
+{
+    _spritesZoom = zoom;
+}
+
 void SpriteManager::Flush()
 {
     STACK_TRACE_ENTRY();
@@ -1346,10 +1420,6 @@ void SpriteManager::Flush()
 
         if (_sprEgg != nullptr) {
             dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
-        }
-
-        if (dip.SourceEffect->MapSpriteBuf) {
-            dip.SourceEffect->MapSpriteBuf->ZoomFactor = _settings.SpritesZoom;
         }
 
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf, pos, dip.SpritesCount * 6, dip.MainTex);
@@ -1378,7 +1448,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
 
-    if (_dipQueue.empty() || _dipQueue.back().SourceEffect->CanBatch(effect)) {
+    if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
         _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
     }
     else {
@@ -1703,8 +1773,8 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 
     DestroyAnyFrames(egg_frames);
 
-    const auto x = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
-    const auto y = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
+    const auto x = iround(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
+    const auto y = iround(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
     _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _sprEgg->Width, _sprEgg->Height);
 }
 
@@ -1768,7 +1838,7 @@ void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender, int prerender_ox, int prerender_oy)
+void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender, int prerender_ox, int prerender_oy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1815,7 +1885,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             y += *spr->OffsY;
         }
 
-        const auto zoom = _settings.SpritesZoom;
+        const auto zoom = _spritesZoom;
 
         // Base color
         uint color_r = 0;
@@ -1824,7 +1894,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             color_r = color_l = spr->Color | 0xFF000000;
         }
         else {
-            color_r = color_l = _spritesTreeColor;
+            color_r = color_l = color;
         }
 
         // Light
@@ -2003,14 +2073,14 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Draw order
         if (_settings.ShowDrawOrder) {
-            const auto x1 = static_cast<int>(static_cast<float>(spr->ScrX + _settings.ScrOx) / zoom);
-            auto y1 = static_cast<int>(static_cast<float>(spr->ScrY + _settings.ScrOy) / zoom);
+            const auto x1 = iround(static_cast<float>(spr->ScrX + _settings.ScrOx) / zoom);
+            auto y1 = iround(static_cast<float>(spr->ScrY + _settings.ScrOy) / zoom);
 
             if (spr->DrawOrder < DrawOrderType::Normal) {
-                y1 -= static_cast<int>(40.0f / zoom);
+                y1 -= iround(40.0f / zoom);
             }
 
-            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", spr->TreeIndex), 0, 0, 0);
+            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", spr->TreeIndex), 0, 0, -1);
         }
 
         // Process contour effect
@@ -2057,39 +2127,36 @@ auto SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with
 {
     STACK_TRACE_ENTRY();
 
-    const auto color = GetPixColor(spr_id, offs_x, offs_y, with_zoom);
-    return (color & 0xFF000000) != 0;
-}
-
-auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (offs_x < 0 || offs_y < 0) {
-        return 0;
-    }
-
     const auto* si = _sprData[spr_id];
     if (si == nullptr) {
-        return 0;
+        return false;
     }
 
-    // 2d animation
-    if (with_zoom && (static_cast<float>(offs_x) > static_cast<float>(si->Width) / _settings.SpritesZoom || static_cast<float>(offs_y) > static_cast<float>(si->Height) / _settings.SpritesZoom)) {
-        return 0;
-    }
-    if (!with_zoom && (offs_x > si->Width || offs_y > si->Height)) {
-        return 0;
+    auto ox = offs_x;
+    auto oy = offs_y;
+
+    if (ox < 0 || oy < 0) {
+        return false;
     }
 
-    if (with_zoom) {
-        offs_x = static_cast<int>(static_cast<float>(offs_x) * _settings.SpritesZoom);
-        offs_y = static_cast<int>(static_cast<float>(offs_y) * _settings.SpritesZoom);
+    if (with_zoom && _spritesZoom != 1.0f) {
+        ox = iround(static_cast<float>(ox) * _spritesZoom);
+        oy = iround(static_cast<float>(oy) * _spritesZoom);
     }
 
-    offs_x += static_cast<int>(si->Atlas->MainTex->SizeData[0] * si->SprRect.Left);
-    offs_y += static_cast<int>(si->Atlas->MainTex->SizeData[1] * si->SprRect.Top);
-    return GetRenderTargetPixel(si->Atlas->RTarg, offs_x, offs_y);
+    if (ox >= si->Width || oy >= si->Height) {
+        return false;
+    }
+
+    if (!si->HitTestData.empty()) {
+        return si->HitTestData[oy * si->Width + ox];
+    }
+    else {
+        ox += iround(si->Atlas->MainTex->SizeData[0] * si->SprRect.Left);
+        oy += iround(si->Atlas->MainTex->SizeData[1] * si->SprRect.Top);
+
+        return (GetRenderTargetPixel(si->Atlas->RTarg, ox, oy) >> 24) > 0;
+    }
 }
 
 auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
@@ -2102,17 +2169,17 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
 
     const auto ex = _eggX + _settings.ScrOx;
     const auto ey = _eggY + _settings.ScrOy;
-    auto ox = pix_x - static_cast<int>(static_cast<float>(ex) / _settings.SpritesZoom);
-    auto oy = pix_y - static_cast<int>(static_cast<float>(ey) / _settings.SpritesZoom);
+    auto ox = pix_x - iround(static_cast<float>(ex) / _spritesZoom);
+    auto oy = pix_y - iround(static_cast<float>(ey) / _spritesZoom);
 
     if (ox < 0 || oy < 0 || //
-        ox >= static_cast<int>(static_cast<float>(_sprEgg->Width) / _settings.SpritesZoom) || //
-        oy >= static_cast<int>(static_cast<float>(_sprEgg->Height) / _settings.SpritesZoom)) {
+        ox >= iround(static_cast<float>(_sprEgg->Width) / _spritesZoom) || //
+        oy >= iround(static_cast<float>(_sprEgg->Height) / _spritesZoom)) {
         return false;
     }
 
-    ox = static_cast<int>(static_cast<float>(ox) * _settings.SpritesZoom);
-    oy = static_cast<int>(static_cast<float>(oy) * _settings.SpritesZoom);
+    ox = iround(static_cast<float>(ox) * _spritesZoom);
+    oy = iround(static_cast<float>(oy) * _spritesZoom);
 
     const auto egg_color = _eggData.at(oy * _sprEgg->Width + ox);
     return (egg_color >> 24) < 127;
@@ -2147,8 +2214,6 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
         prim_count /= 3;
         break;
     case RenderPrimitiveType::TriangleStrip:
-        [[fallthrough]];
-    case RenderPrimitiveType::TriangleFan:
         prim_count -= 2;
         break;
     }
@@ -2192,6 +2257,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     }
 
     _primitiveDrawBuf->PrimType = prim;
+    _primitiveDrawBuf->PrimZoomed = _spritesZoom != 1.0f;
 
     _primitiveDrawBuf->Upload(effect->Usage);
     EnableScissor();
@@ -2229,12 +2295,12 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     STACK_TRACE_ENTRY();
 
 #if FO_ENABLE_3D
-    auto* border_effect = si->UsedForModel ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
+    auto* contour_effect = si->UsedForModel ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
 #else
-    auto* border_effect = _effectMngr.Effects.ContourSprite;
+    auto* contour_effect = _effectMngr.Effects.ContourSprite;
 #endif
 
-    if (border_effect == nullptr || _rtContours == nullptr || _rtContoursMid == nullptr) {
+    if (contour_effect == nullptr || _rtContours == nullptr || _rtContoursMid == nullptr) {
         return;
     }
 
@@ -2243,13 +2309,13 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     FRect textureuv;
     FRect sprite_border;
 
-    const auto zoomed_screen_width = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _settings.SpritesZoom);
-    const auto zoomed_screen_height = static_cast<int>(static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _settings.SpritesZoom);
+    const auto zoomed_screen_width = iround(static_cast<float>(_settings.ScreenWidth) * _spritesZoom);
+    const auto zoomed_screen_height = iround(static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _spritesZoom);
     if (borders.Left >= zoomed_screen_width || borders.Right < 0 || borders.Top >= zoomed_screen_height || borders.Bottom < 0) {
         return;
     }
 
-    if (_settings.SpritesZoom == 1.0f) {
+    if (_spritesZoom == 1.0f) {
 #if FO_ENABLE_3D
         if (si->UsedForModel) {
             const auto& sr = si->SprRect;
@@ -2272,10 +2338,10 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     }
     else {
         const auto& sr = si->SprRect;
-        const auto zoomed_x = static_cast<int>(static_cast<float>(x) / _settings.SpritesZoom);
-        const auto zoomed_y = static_cast<int>(static_cast<float>(y) / _settings.SpritesZoom);
-        const auto zoomed_x2 = static_cast<int>(static_cast<float>(x + si->Width) / _settings.SpritesZoom);
-        const auto zoomed_y2 = static_cast<int>(static_cast<float>(y + si->Height) / _settings.SpritesZoom);
+        const auto zoomed_x = iround(static_cast<float>(x) / _spritesZoom);
+        const auto zoomed_y = iround(static_cast<float>(y) / _spritesZoom);
+        const auto zoomed_x2 = iround(static_cast<float>(x + si->Width) / _spritesZoom);
+        const auto zoomed_y2 = iround(static_cast<float>(y + si->Height) / _spritesZoom);
         borders = {zoomed_x, zoomed_y, zoomed_x2, zoomed_y2};
         const auto bordersf = FRect(borders);
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
@@ -2287,22 +2353,22 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
         auto pos = 0;
 
         vbuf[pos].PosX = bordersf.Left;
-        vbuf[pos].PosY = mid_height - bordersf.Bottom;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Left;
         vbuf[pos++].TexV = sr.Bottom;
 
         vbuf[pos].PosX = bordersf.Left;
-        vbuf[pos].PosY = mid_height - bordersf.Top;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Left;
         vbuf[pos++].TexV = sr.Top;
 
         vbuf[pos].PosX = bordersf.Right;
-        vbuf[pos].PosY = mid_height - bordersf.Top;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos++].TexV = sr.Top;
 
         vbuf[pos].PosX = bordersf.Right;
-        vbuf[pos].PosY = mid_height - bordersf.Bottom;
+        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos].TexV = sr.Bottom;
 
@@ -2358,18 +2424,15 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     vbuf[pos].TexV = textureuv.Bottom;
     vbuf[pos].Color = contour_color;
 
-    if (!border_effect->BorderBuf) {
-        border_effect->BorderBuf = RenderEffect::BorderBuffer();
-    }
+    auto&& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
 
-    auto& border_buf = border_effect->BorderBuf->SpriteBorder;
-    border_buf[0] = sprite_border[0];
-    border_buf[1] = sprite_border[1];
-    border_buf[2] = sprite_border[2];
-    border_buf[3] = sprite_border[3];
+    contour_buf->SpriteBorder[0] = sprite_border[0];
+    contour_buf->SpriteBorder[1] = sprite_border[1];
+    contour_buf->SpriteBorder[2] = sprite_border[2];
+    contour_buf->SpriteBorder[3] = sprite_border[3];
 
-    _contourDrawBuf->Upload(border_effect->Usage);
-    border_effect->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
+    _contourDrawBuf->Upload(contour_effect->Usage);
+    contour_effect->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
 
     PopRenderTarget();
     _contoursAdded = true;
@@ -2470,10 +2533,10 @@ void SpriteManager::BuildFont(int index)
     const auto* si_bordered = (font.ImageBordered != nullptr ? GetSpriteInfo(font.ImageBordered->GetSprId(0)) : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
-    const auto normal_ox = static_cast<int>(tex_w * si->SprRect.Left);
-    const auto normal_oy = static_cast<int>(tex_h * si->SprRect.Top);
-    const auto bordered_ox = (si_bordered != nullptr ? static_cast<int>(static_cast<float>(si_bordered->Atlas->Width) * si_bordered->SprRect.Left) : 0);
-    const auto bordered_oy = (si_bordered != nullptr ? static_cast<int>(static_cast<float>(si_bordered->Atlas->Height) * si_bordered->SprRect.Top) : 0);
+    const auto normal_ox = iround(tex_w * si->SprRect.Left);
+    const auto normal_oy = iround(tex_h * si->SprRect.Top);
+    const auto bordered_ox = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Width) * si_bordered->SprRect.Left) : 0);
+    const auto bordered_oy = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Height) * si_bordered->SprRect.Top) : 0);
 
     // Read texture data
     auto data_normal = si->Atlas->MainTex->GetTextureRegion(normal_ox, normal_oy, si->Width, si->Height);
@@ -3313,10 +3376,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
     // Align Y
     if (IsBitSet(flags, FT_CENTERY)) {
-        fi.CurY = r.Top + static_cast<int>(r.Bottom - r.Top + 1 - fi.LinesInRect * font->LineHeight - (fi.LinesInRect - 1) * font->YAdvance) / 2 + (IsBitSet(flags, FT_CENTERY_ENGINE) ? 1 : 0);
+        fi.CurY = r.Top + (r.Bottom - r.Top + 1 - fi.LinesInRect * font->LineHeight - (fi.LinesInRect - 1) * font->YAdvance) / 2 + (IsBitSet(flags, FT_CENTERY_ENGINE) ? 1 : 0);
     }
     else if (IsBitSet(flags, FT_BOTTOM)) {
-        fi.CurY = r.Bottom - static_cast<int>(fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance);
+        fi.CurY = r.Bottom - (fi.LinesInRect * font->LineHeight + (fi.LinesInRect - 1) * font->YAdvance);
     }
 }
 

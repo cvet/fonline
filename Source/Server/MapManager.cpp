@@ -339,7 +339,7 @@ void MapManager::GenerateMapContent(Map* map)
             item->SetIsLightThru(true);
         }
 
-        if (!map->AddItem(item, item->GetHexX(), item->GetHexY())) {
+        if (!map->AddItem(item, base_item->GetHexX(), base_item->GetHexY())) {
             WriteLog("Add item '{}' to map '{}' failure, continue generate", item->GetName(), map->GetName());
             _engine->ItemMngr.DeleteItem(item);
         }

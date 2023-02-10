@@ -87,7 +87,7 @@ const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
-void InitApp(int argc, char** argv, string_view name_appendix)
+void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -130,11 +130,11 @@ void InitApp(int argc, char** argv, string_view name_appendix)
     else {
         LogToFile(_str("{}.log", FO_DEV_NAME));
     }
-
-    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv);
+    WriteLog("Starting {}", FO_GAME_NAME);
+
+    App = new Application(argc, argv, client_mode);
 }
 
 void ExitApp(bool success)
@@ -162,28 +162,17 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     if (MainTex != other->MainTex) {
         return false;
     }
-    if (BorderBuf || AnimBuf || RandomValueBuf) {
-        return false;
-    }
-#if FO_ENABLE_3D
-    if (ModelBuf) {
-        return false;
-    }
-#endif
-    if (CustomTexBuf && std::mismatch(std::begin(CustomTex), std::end(CustomTex), std::begin(other->CustomTex)).first != std::end(CustomTex)) {
-        return false;
-    }
     return true;
 }
 
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv) : Settings(argc, argv)
+Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 
-    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_VERSION);
+    SDL_SetHint(SDL_HINT_APP_NAME, FO_GAME_NAME);
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
@@ -315,7 +304,6 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
         {SDL_SCANCODE_LGUI, KeyCode::Lwin},
         {SDL_SCANCODE_RGUI, KeyCode::Rwin},
         {510, KeyCode::Text},
-        {511, KeyCode::ClipboardPaste},
     };
 
     MouseButtonsMap = new unordered_map<int, MouseButton> {
@@ -370,31 +358,31 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
         ActiveRenderer = new Null_Renderer();
     }
 #if FO_HAVE_OPENGL
-    if (Settings.ForceOpenGL) {
+    else if (Settings.ForceOpenGL) {
         ActiveRendererType = RenderType::OpenGL;
         ActiveRenderer = new OpenGL_Renderer();
     }
 #endif
 #if FO_HAVE_DIRECT_3D
-    if (Settings.ForceDirect3D) {
+    else if (Settings.ForceDirect3D) {
         ActiveRendererType = RenderType::Direct3D;
         ActiveRenderer = new Direct3D_Renderer();
     }
 #endif
 #if FO_HAVE_METAL
-    if (Settings.ForceMetal) {
+    else if (Settings.ForceMetal) {
         ActiveRendererType = RenderType::Metal;
         throw NotImplementedException(LINE_STR);
     }
 #endif
 #if FO_HAVE_VULKAN
-    if (Settings.ForceVulkan) {
+    else if (Settings.ForceVulkan) {
         ActiveRendererType = RenderType::Vulkan;
         throw NotImplementedException(LINE_STR);
     }
 #endif
 #if FO_HAVE_GNM
-    if (Settings.ForceGNM) {
+    else if (Settings.ForceGNM) {
         ActiveRendererType = RenderType::GNM;
         throw NotImplementedException(LINE_STR);
     }
@@ -447,16 +435,25 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
-        SDL_DisableScreenSaver();
+        SDL_DisplayMode display_mode;
+        if (const auto r = SDL_GetCurrentDisplayMode(0, &display_mode); r != 0) {
+            throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
+        }
+
+        const_cast<int&>(Settings.MonitorWidth) = display_mode.w;
+        const_cast<int&>(Settings.MonitorHeight) = display_mode.h;
+
+        if (Settings.ClientMode) {
+            SDL_DisableScreenSaver();
+        }
+
+        if (Settings.ClientMode && Settings.HideNativeCursor) {
+            SDL_ShowCursor(SDL_DISABLE);
+        }
 
         if (_isTablet) {
-            SDL_DisplayMode mode;
-            if (const auto r = SDL_GetCurrentDisplayMode(0, &mode); r != 0) {
-                throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
-            }
-
-            Settings.ScreenWidth = std::max(mode.w, mode.h);
-            Settings.ScreenHeight = std::min(mode.w, mode.h);
+            Settings.ScreenWidth = std::max(display_mode.w, display_mode.h);
+            Settings.ScreenHeight = std::min(display_mode.w, display_mode.h);
 
             const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
             Settings.ScreenHeight = 768;
@@ -488,7 +485,7 @@ Application::Application(int argc, char** argv) : Settings(argc, argv)
 
         ActiveRenderer->Init(Settings, MainWindow._windowHandle);
 
-        if (Settings.AlwaysOnTop) {
+        if (Settings.ClientMode && Settings.AlwaysOnTop) {
             MainWindow.AlwaysOnTop(true);
         }
 
@@ -578,15 +575,6 @@ void Application::OpenLink(string_view link)
     SDL_OpenURL(string(link).c_str());
 }
 
-void Application::HideCursor()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    SDL_ShowCursor(SDL_DISABLE);
-}
-
 void Application::SetImGuiEffect(RenderEffect* effect)
 {
     STACK_TRACE_ENTRY();
@@ -628,7 +616,11 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
     }
 
     // Initialize window
-    Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+    Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+
+    if (!Settings.ClientMode || Settings.WindowResizable) {
+        window_create_flags |= SDL_WINDOW_RESIZABLE;
+    }
 
 #if FO_HAVE_OPENGL
     if (ActiveRendererType == RenderType::OpenGL) {
@@ -646,7 +638,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
 
 #if FO_OPENGL_ES
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #else
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -681,7 +673,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
         win_pos = SDL_WINDOWPOS_CENTERED;
     }
 
-    auto* sdl_window = SDL_CreateWindow(FO_GAME_VERSION, win_pos, win_pos, width, height, window_create_flags);
+    auto* sdl_window = SDL_CreateWindow(FO_GAME_NAME, win_pos, win_pos, width, height, window_create_flags);
     if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
@@ -764,11 +756,11 @@ void Application::BeginFrame()
         }
         case SDL_MOUSEWHEEL: {
             InputEvent::MouseWheelEvent ev;
-            ev.Delta = -sdl_event.wheel.y;
+            ev.Delta = sdl_event.wheel.y;
             EventsQueue->emplace_back(ev);
 
-            float wheel_x = (sdl_event.wheel.x > 0) ? 1.0f : (sdl_event.wheel.x < 0) ? -1.0f : 0.0f;
-            float wheel_y = (sdl_event.wheel.y > 0) ? 1.0f : (sdl_event.wheel.y < 0) ? -1.0f : 0.0f;
+            float wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
+            float wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
         case SDL_KEYUP:
@@ -777,7 +769,6 @@ void Application::BeginFrame()
             if (sdl_event.type == SDL_KEYDOWN) {
                 InputEvent::KeyDownEvent ev;
                 ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
-                ev.Text = ""; // Todo: rework sdl_event.text.text
                 EventsQueue->emplace_back(ev);
 
                 if (ev.Code == KeyCode::Escape && io.KeyShift) {
@@ -844,6 +835,9 @@ void Application::BeginFrame()
             }
             SDL_free(sdl_event.drop.file);
         } break;
+        case SDL_TEXTEDITING_EXT: {
+            SDL_free(sdl_event.editExt.text);
+        } break;
         case SDL_APP_DIDENTERFOREGROUND: {
             _onPauseDispatcher();
         } break;
@@ -903,6 +897,8 @@ void Application::BeginFrame()
     }
 
     // Setup display size
+    bool call_window_size_changed = false;
+
     if (ActiveRendererType != RenderType::Null) {
         int w;
         int h;
@@ -912,22 +908,23 @@ void Application::BeginFrame()
             w = h = 0;
         }
 
-        int display_w;
-        int display_h;
-        SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &display_w, &display_h);
+        int screen_w;
+        int screen_h;
+        SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &screen_w, &screen_h);
 
         io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
         if (w > 0 && h > 0) {
-            io.DisplayFramebufferScale = ImVec2(static_cast<float>(display_w) / static_cast<float>(w), static_cast<float>(display_h) / static_cast<float>(h));
+            io.DisplayFramebufferScale = ImVec2(static_cast<float>(screen_w) / static_cast<float>(w), static_cast<float>(screen_h) / static_cast<float>(h));
         }
 
-        if (display_w != Settings.ScreenWidth || display_h != Settings.ScreenHeight) {
-            Settings.ScreenWidth = display_w;
-            Settings.ScreenHeight = display_h;
-            MainWindow._onWindowSizeChangedDispatcher();
+        if (screen_w != Settings.ScreenWidth || screen_h != Settings.ScreenHeight) {
+            Settings.ScreenWidth = screen_w;
+            Settings.ScreenHeight = screen_h;
 
             // Refresh viewport
             Render.SetRenderTarget(nullptr);
+
+            call_window_size_changed = true;
         }
     }
 
@@ -970,6 +967,10 @@ void Application::BeginFrame()
     ImGui::NewFrame();
 
     _onFrameBeginDispatcher();
+
+    if (call_window_size_changed) {
+        MainWindow._onWindowSizeChangedDispatcher();
+    }
 }
 
 void Application::EndFrame()
@@ -990,19 +991,6 @@ void Application::EndFrame()
     const auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
     if (_imguiEffect != nullptr && _imguiDrawBuf != nullptr && fb_width > 0 && fb_height > 0) {
-        const auto l = draw_data->DisplayPos.x;
-        const auto r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-        const auto t = draw_data->DisplayPos.y;
-        const auto b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-        const float ortho_projection[4][4] = {
-            {2.0f / (r - l), 0.0f, 0.0f, 0.0f},
-            {0.0f, 2.0f / (t - b), 0.0f, 0.0f},
-            {0.0f, 0.0f, -1.0f, 0.0f},
-            {(r + l) / (l - r), (t + b) / (b - t), 0.0f, 1.0f},
-        };
-        _imguiEffect->ProjBuf = RenderEffect::ProjBuffer();
-        std::memcpy(_imguiEffect->ProjBuf->ProjMatrix, ortho_projection, sizeof(ortho_projection));
-
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
         const auto clip_scale = draw_data->FramebufferScale;
@@ -1033,13 +1021,13 @@ void Application::EndFrame()
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
                 RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
 
-                const auto clip_rect_x = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
-                const auto clip_rect_y = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
-                const auto clip_rect_z = static_cast<int>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
-                const auto clip_rect_w = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
+                const auto clip_rect_l = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
+                const auto clip_rect_t = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
+                const auto clip_rect_r = static_cast<int>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
+                const auto clip_rect_b = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
 
-                if (clip_rect_x < fb_width && clip_rect_y < fb_height && clip_rect_z >= 0 && clip_rect_w >= 0) {
-                    ActiveRenderer->EnableScissor(clip_rect_x, fb_height - clip_rect_w, clip_rect_z - clip_rect_x, clip_rect_w - clip_rect_y);
+                if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
+                    ActiveRenderer->EnableScissor(clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t);
                     _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
                     ActiveRenderer->DisableScissor();
                 }
@@ -1279,6 +1267,13 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     STACK_TRACE_ENTRY();
 
     return ActiveRenderer->CreateEffect(usage, name, loader);
+}
+
+auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+{
+    STACK_TRACE_ENTRY();
+
+    return ActiveRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>

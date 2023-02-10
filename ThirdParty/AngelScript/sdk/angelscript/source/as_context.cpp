@@ -52,23 +52,6 @@
 #pragma warning(disable:4702) // unreachable code
 #endif
 
-// (FOnline Patch)
-using ScriptCallFuncType = void(*)(asIScriptContext*, asIScriptFunction*);
-
-static void BeginScriptCall(asIScriptContext* ctx, asIScriptFunction* func)
-{
-	if (auto&& callback = reinterpret_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(1))) {
-		callback(ctx, func);
-	}
-}
-
-static void EndScriptCall(asIScriptContext* ctx, asIScriptFunction* func)
-{
-	if (auto&& callback = reinterpret_cast<ScriptCallFuncType>(func->GetEngine()->GetUserData(2))) {
-		callback(ctx, func);
-	}
-}
-
 BEGIN_AS_NAMESPACE
 
 // We need at least 2 PTRs reserved for exception handling
@@ -1321,7 +1304,8 @@ int asCContext::Execute()
 		m_engine->gc.GetStatistics(&gcPreObjects, 0, 0, 0, 0);
 
 	// (FOnline Patch)
-	BeginScriptCall(this, m_currentFunction);
+	if (Ext2.BeginScriptCall)
+		Ext2.BeginScriptCall(this, m_currentFunction, (size_t)m_regs.programPointer);
 
 	while( m_status == asEXECUTION_ACTIVE )
 		ExecuteNext();
@@ -1563,6 +1547,8 @@ int asCContext::GetLineNumber(asUINT stackLevel, int *column, const char **secti
 		func = m_currentFunction;
 		if( func->scriptData == 0 ) return 0;
 		bytePos = m_regs.programPointer;
+
+		bytePos -= 1; // (FOnline Patch)
 	}
 	else
 	{
@@ -1715,7 +1701,9 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 {
 	asASSERT( func->scriptData );
 
-	BeginScriptCall(this, func); // (FOnline Patch)
+	// (FOnline Patch)
+	if (Ext2.BeginScriptCall)
+		Ext2.BeginScriptCall(this, func, (size_t)m_regs.programPointer);
 
 	// Push the framepointer, function id and programCounter on the stack
 	PushCallState();
@@ -1977,7 +1965,9 @@ void asCContext::ExecuteNext()
 	// Return to the caller, and remove the arguments from the stack
 	case asBC_RET:
 		{
-			EndScriptCall(this, m_currentFunction); // (FOnline Patch)
+			// (FOnline Patch)
+			if (Ext2.EndScriptCall)
+				Ext2.EndScriptCall(this);
 
 			// Return if this was the first function, or a nested execution
 			if( m_callStack.GetLength() == 0 ||

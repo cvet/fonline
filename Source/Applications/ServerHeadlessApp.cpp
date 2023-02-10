@@ -46,7 +46,7 @@ extern "C" int main(int argc, char** argv)
     STACK_TRACE_FIRST_ENTRY();
 
     try {
-        InitApp(argc, argv, "ServerHeadless");
+        InitApp(argc, argv);
 
         auto* server = new FOServer(App->Settings);
         server->Start();

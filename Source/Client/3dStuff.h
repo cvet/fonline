@@ -88,9 +88,9 @@ struct MeshInstance
 {
     MeshData* Mesh {};
     bool Disabled {};
-    MeshTexture* CurTexures[EFFECT_TEXTURES] {};
-    MeshTexture* DefaultTexures[EFFECT_TEXTURES] {};
-    MeshTexture* LastTexures[EFFECT_TEXTURES] {};
+    MeshTexture* CurTexures[MODEL_MAX_TEXTURES] {};
+    MeshTexture* DefaultTexures[MODEL_MAX_TEXTURES] {};
+    MeshTexture* LastTexures[MODEL_MAX_TEXTURES] {};
     RenderEffect* CurEffect {};
     RenderEffect* DefaultEffect {};
     RenderEffect* LastEffect {};
@@ -290,7 +290,7 @@ private:
         size_t CurBoneMatrix {};
         vector<ModelBone*> SkinBones {};
         vector<mat44> SkinBoneOffsets {};
-        MeshTexture* Textures[EFFECT_TEXTURES] {};
+        MeshTexture* Textures[MODEL_MAX_TEXTURES] {};
     };
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;

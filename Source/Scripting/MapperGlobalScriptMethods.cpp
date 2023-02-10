@@ -54,7 +54,7 @@
     }
 
     const auto* proto = mapper->ProtoMngr.GetProtoItem(pid);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Invalid item prototype");
     }
 
@@ -74,7 +74,7 @@
     }
 
     const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Invalid critter prototype");
     }
 
@@ -98,7 +98,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, ushort hx, ushort hy)
 {
-    const auto hex_items = mapper->CurMap->GetItems(hx, hy);
+    auto&& hex_items = mapper->CurMap->GetItems(hx, hy);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
@@ -436,12 +436,14 @@
 [[maybe_unused]] vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int& index)
 {
     index = -1;
+
     for (auto i = 0, j = static_cast<int>(mapper->LoadedMaps.size()); i < j; i++) {
         const auto* map = mapper->LoadedMaps[i];
         if (map == mapper->CurMap) {
             index = i;
         }
     }
+
     return mapper->LoadedMaps;
 }
 
@@ -453,13 +455,11 @@
 {
     vector<string> names;
 
-    throw NotImplementedException(LINE_STR);
-    // Todo: Settings.MapsDir
-    // auto map_files = mapper->ServerFileSys.FilterFiles("fomap", dir, false);
-    // while (map_files.MoveNext()) {
-    //    auto file_header = map_files.GetCurFileHeader();
-    //    names.emplace_back(file_header.GetName());
-    // }
+    auto map_files = mapper->ContentFileSys.FilterFiles("fomap", dir, false);
+    while (map_files.MoveNext()) {
+        auto file_header = map_files.GetCurFileHeader();
+        names.emplace_back(file_header.GetName());
+    }
 
     return names;
 }
@@ -501,8 +501,8 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    if (!subTab.empty() && !mapper->Tabs[tab].count(string(subTab))) {
-        return vector<hstring>();
+    if (!subTab.empty() && mapper->Tabs[tab].count(string(subTab)) == 0) {
+        return {};
     }
 
     vector<hstring> pids;
@@ -523,8 +523,8 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    if (!subTab.empty() && !mapper->Tabs[tab].count(string(subTab))) {
-        return vector<hstring>();
+    if (!subTab.empty() && mapper->Tabs[tab].count(string(subTab)) == 0) {
+        return {};
     }
 
     vector<hstring> pids;
@@ -545,27 +545,19 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    /*if (dirNames && includeSubdirs && dirNames->GetSize() != includeSubdirs->GetSize())
-        return;
 
-    TileTab& ttab = mapper->TabsTiles[tab];
+    auto& ttab = mapper->TabsTiles[tab];
     ttab.TileDirs.clear();
     ttab.TileSubDirs.clear();
 
-    if (dirNames)
-    {
-        for (uint i = 0, j = dirNames->GetSize(); i < j; i++)
-        {
-            string& name = *(string*)dirNames->At(i);
-            if (!name.empty())
-            {
-                ttab.TileDirs.push_back(name);
-                ttab.TileSubDirs.push_back(includeSubdirs ? *(bool*)includeSubdirs->At(i) : false);
-            }
+    for (size_t i = 0; i < dirNames.size(); i++) {
+        if (!dirNames[i].empty()) {
+            ttab.TileDirs.push_back(dirNames[i]);
+            ttab.TileSubDirs.push_back(i < includeSubdirs.size() ? includeSubdirs[i] : false);
         }
     }
 
-    mapper->RefreshTiles(tab);*/
+    mapper->RefreshTiles(tab);
 }
 
 ///# ...
@@ -578,55 +570,57 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    /*if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
+
+    if (subTab.empty() || subTab == FOMapper::DEFAULT_SUB_TAB) {
         return;
+    }
 
     // Add protos to sub tab
-    if (itemPids && itemPids->GetSize())
-    {
-        ProtoItemVec proto_items;
-        for (int i = 0, j = itemPids->GetSize(); i < j; i++)
-        {
-            hash pid = *(hash*)itemPids->At(i);
-            ProtoItem* proto_item = mapper->ProtoMngr.GetProtoItem(pid);
-            if (proto_item)
+    if (!itemPids.empty()) {
+        vector<const ProtoItem*> proto_items;
+
+        for (size_t i = 0; i < itemPids.size(); i++) {
+            const auto* proto_item = mapper->ProtoMngr.GetProtoItem(itemPids[i]);
+            if (proto_item != nullptr) {
                 proto_items.push_back(proto_item);
+            }
         }
 
-        if (proto_items.size())
-        {
-            SubTab& stab = mapper->Tabs[tab][subTab];
+        if (!proto_items.empty()) {
+            auto& stab = mapper->Tabs[tab][string(subTab)];
             stab.ItemProtos = proto_items;
         }
     }
-    // Delete sub tab
-    else
-    {
-        auto it = mapper->Tabs[tab].find(subTab);
-        if (it != mapper->Tabs[tab].end())
-        {
-            if (mapper->TabsActive[tab] == &it->second)
+    else {
+        // Delete sub tab
+        const auto it = mapper->Tabs[tab].find(string(subTab));
+        if (it != mapper->Tabs[tab].end()) {
+            if (mapper->TabsActive[tab] == &it->second) {
                 mapper->TabsActive[tab] = nullptr;
+            }
             mapper->Tabs[tab].erase(it);
         }
     }
 
     // Recalculate whole pids
-    SubTab& stab_default = mapper->Tabs[tab][DEFAULT_SUB_TAB];
+    auto& stab_default = mapper->Tabs[tab][FOMapper::DEFAULT_SUB_TAB];
     stab_default.ItemProtos.clear();
-    for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it)
-    {
-        SubTab& stab = it->second;
-        if (&stab == &stab_default)
-            continue;
-        for (uint i = 0, j = (uint)stab.ItemProtos.size(); i < j; i++)
-            stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
-    }
-    if (!mapper->TabsActive[tab])
-        mapper->TabsActive[tab] = &stab_default;
 
-    // Refresh
-    mapper->RefreshCurProtos();*/
+    for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
+        auto& stab = it->second;
+        if (&stab == &stab_default) {
+            continue;
+        }
+        for (uint i = 0; i < stab.ItemProtos.size(); i++) {
+            stab_default.ItemProtos.push_back(stab.ItemProtos[i]);
+        }
+    }
+
+    if (mapper->TabsActive[tab] == nullptr) {
+        mapper->TabsActive[tab] = &stab_default;
+    }
+
+    mapper->RefreshCurProtos();
 }
 
 ///# ...
@@ -639,55 +633,58 @@
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
-    /*if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
+
+    if (subTab.empty() || subTab == FOMapper::DEFAULT_SUB_TAB) {
         return;
+    }
 
     // Add protos to sub tab
-    if (critterPids && critterPids->GetSize())
-    {
-        ProtoCritterVec cr_protos;
-        for (int i = 0, j = critterPids->GetSize(); i < j; i++)
-        {
-            hash pid = *(hash*)critterPids->At(i);
-            ProtoCritter* cr_data = mapper->ProtoMngr.GetProtoCritter(pid);
-            if (cr_data)
-                cr_protos.push_back(cr_data);
+    if (!critterPids.empty()) {
+        vector<const ProtoCritter*> cr_protos;
+
+        for (size_t i = 0; i < critterPids.size(); i++) {
+            const auto* cr_proto = mapper->ProtoMngr.GetProtoCritter(critterPids[i]);
+            if (cr_proto != nullptr) {
+                cr_protos.push_back(cr_proto);
+            }
         }
 
-        if (cr_protos.size())
-        {
-            SubTab& stab = mapper->Tabs[tab][subTab];
+        if (!cr_protos.empty()) {
+            auto& stab = mapper->Tabs[tab][string(subTab)];
             stab.NpcProtos = cr_protos;
         }
     }
-    // Delete sub tab
-    else
-    {
-        auto it = mapper->Tabs[tab].find(subTab);
-        if (it != mapper->Tabs[tab].end())
-        {
-            if (mapper->TabsActive[tab] == &it->second)
+    else {
+        // Delete sub tab
+        const auto it = mapper->Tabs[tab].find(string(subTab));
+        if (it != mapper->Tabs[tab].end()) {
+            if (mapper->TabsActive[tab] == &it->second) {
                 mapper->TabsActive[tab] = nullptr;
+            }
             mapper->Tabs[tab].erase(it);
         }
     }
 
     // Recalculate whole pids
-    SubTab& stab_default = mapper->Tabs[tab][DEFAULT_SUB_TAB];
+    auto& stab_default = mapper->Tabs[tab][FOMapper::DEFAULT_SUB_TAB];
     stab_default.NpcProtos.clear();
-    for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it)
-    {
-        SubTab& stab = it->second;
-        if (&stab == &stab_default)
+
+    for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
+        auto& stab = it->second;
+        if (&stab == &stab_default) {
             continue;
-        for (uint i = 0, j = (uint)stab.NpcProtos.size(); i < j; i++)
+        }
+        for (uint i = 0; i < stab.NpcProtos.size(); i++) {
             stab_default.NpcProtos.push_back(stab.NpcProtos[i]);
+        }
     }
-    if (!mapper->TabsActive[tab])
+
+    if (mapper->TabsActive[tab] == nullptr) {
         mapper->TabsActive[tab] = &stab_default;
+    }
 
     // Refresh
-    mapper->RefreshCurProtos();*/
+    mapper->RefreshCurProtos();
 }
 
 ///# ...
@@ -699,9 +696,9 @@
         throw ScriptException("Wrong tab arg");
     }
 
-    /*mapper->Tabs[tab].clear();
-    SubTab& stab_default = mapper->Tabs[tab][DEFAULT_SUB_TAB];
-    mapper->TabsActive[tab] = &stab_default;*/
+    mapper->Tabs[tab].clear();
+    auto& stab_default = mapper->Tabs[tab][FOMapper::DEFAULT_SUB_TAB];
+    mapper->TabsActive[tab] = &stab_default;
 }
 
 ///# ...
@@ -723,7 +720,7 @@
         return;
     }
 
-    auto it = mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB);
+    const auto it = mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB);
     if (it != mapper->Tabs[tab].end()) {
         mapper->TabsActive[tab] = &it->second;
     }

@@ -149,11 +149,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
     try {
         ShowExceptionMessageBox(true);
-        InitApp(argc, argv, "");
-
-        if (App->Settings.HideNativeCursor) {
-            App->HideCursor();
-        }
+        InitApp(argc, argv, true);
 
 #if FO_IOS
         MainEntry(nullptr);

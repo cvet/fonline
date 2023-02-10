@@ -81,7 +81,7 @@ static void SignalHandler(int sig)
 }
 #endif
 
-void InitApp(int argc, char** argv, string_view name_appendix)
+void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -124,11 +124,11 @@ void InitApp(int argc, char** argv, string_view name_appendix)
     else {
         LogToFile(_str("{}.log", FO_DEV_NAME));
     }
-
-    WriteLog("Starting {}", FO_GAME_VERSION);
 #endif
 
-    App = new Application(argc, argv);
+    WriteLog("Starting {}", FO_GAME_NAME);
+
+    App = new Application(argc, argv, client_mode);
 
 #if FO_LINUX || FO_MAC
     const auto set_signal = [](int sig) {
@@ -163,7 +163,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv) : Settings(argc, argv)
+Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -189,11 +189,6 @@ void Application::OpenLink(string_view link)
     STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(link);
-}
-
-void Application::HideCursor()
-{
-    STACK_TRACE_ENTRY();
 }
 
 void Application::SetImGuiEffect(RenderEffect* effect)
@@ -406,6 +401,20 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     UNUSED_VARIABLE(file_loader);
 
     return nullptr;
+}
+
+auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(left);
+    UNUSED_VARIABLE(right);
+    UNUSED_VARIABLE(bottom);
+    UNUSED_VARIABLE(top);
+    UNUSED_VARIABLE(nearp);
+    UNUSED_VARIABLE(farp);
+
+    return {};
 }
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>

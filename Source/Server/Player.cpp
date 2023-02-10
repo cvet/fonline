@@ -134,7 +134,7 @@ void Player::Send_AddCritter(Critter* cr)
 
     CONNECTION_OUTPUT_END(Connection);
 
-    if (cr != _ownedCr) {
+    if (!is_chosen) {
         Send_MoveItem(cr, nullptr, ACTION_REFRESH, 0);
     }
 
@@ -363,28 +363,39 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
 {
     STACK_TRACE_ENTRY();
 
+    const auto is_chosen = from_cr == GetOwnedCritter();
+
     if (item != nullptr) {
         Send_SomeItem(item);
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(bool);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(bool) + sizeof(uchar);
 
-    const auto& inv_items = from_cr->GetInventory();
     vector<const Item*> items;
-    items.reserve(inv_items.size());
-    for (const auto* item_ : inv_items) {
-        const auto slot = item_->GetCritterSlot();
-        if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
-            items.push_back(item_);
-        }
-    }
+    vector<vector<uchar*>*> items_data;
+    vector<vector<uint>*> items_data_sizes;
 
-    msg_len += sizeof(ushort);
-    vector<vector<uchar*>*> items_data(items.size());
-    vector<vector<uint>*> items_data_sizes(items.size());
-    for (const auto i : xrange(items)) {
-        const auto whole_data_size = items[i]->StoreData(false, &items_data[i], &items_data_sizes[i]);
-        msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) + whole_data_size;
+    if (!is_chosen) {
+        const auto& inv_items = from_cr->GetInventory();
+        items.reserve(inv_items.size());
+        for (const auto* item_ : inv_items) {
+            const auto slot = item_->GetCritterSlot();
+            if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && //
+                slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
+                items.push_back(item_);
+            }
+        }
+
+        msg_len += sizeof(ushort);
+
+        if (!items.empty()) {
+            items_data.resize(items.size());
+            items_data_sizes.resize(items.size());
+            for (const auto i : xrange(items)) {
+                const auto whole_data_size = items[i]->StoreData(false, &items_data[i], &items_data_sizes[i]);
+                msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) + whole_data_size;
+            }
+        }
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -394,6 +405,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     Connection->Bout << action;
     Connection->Bout << prev_slot;
     Connection->Bout << (item != nullptr);
+    Connection->Bout << (item != nullptr ? item->GetCritterSlot() : uchar());
     Connection->Bout << static_cast<ushort>(items.size());
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];
