@@ -245,6 +245,7 @@ public:
     [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto GetAnim1() const -> uint;
     [[nodiscard]] auto GetAnim2() const -> uint;
+    [[nodiscard]] auto GetMovingAnim2() const -> uint;
     [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;

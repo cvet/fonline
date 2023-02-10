@@ -759,8 +759,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         _bodyAnimController->Reset();
 
         // Smooth time
-        auto smooth_time = (IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime);
-        auto start_time = period * period_proc / 100.0f;
+        const auto smooth_time = IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime;
+        const auto start_time = period * period_proc / 100.0f;
         if (IsBitSet(flags, ANIMATION_STAY)) {
             period = start_time + 0.0002f;
         }
@@ -993,6 +993,13 @@ auto ModelInstance::GetAnim2() const -> uint
     STACK_TRACE_ENTRY();
 
     return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
+}
+
+auto ModelInstance::GetMovingAnim2() const -> uint
+{
+    STACK_TRACE_ENTRY();
+
+    return _curMovingAnim & 0xFFFF;
 }
 
 auto ModelInstance::IsAnimationPlaying() const -> bool

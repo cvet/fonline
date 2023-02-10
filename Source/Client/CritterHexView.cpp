@@ -343,12 +343,10 @@ void CritterHexView::AnimateStay()
         if (IsMoving()) {
             _model->SetMoving(true, static_cast<uint>(static_cast<float>(Moving.Speed) / scale));
 
-            anim2 = ANIM2_WALK;
+            anim2 = _model->GetMovingAnim2();
         }
         else {
             _model->SetMoving(false);
-
-            anim2 = GetAnim2();
         }
 
         if (!_model->ResolveAnimation(anim1, anim2)) {
