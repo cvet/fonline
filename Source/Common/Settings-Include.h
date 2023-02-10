@@ -321,6 +321,7 @@ FIXED_SETTING(vector<string>, AccessTester);
 FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(bool, NoStart, false);
+FIXED_SETTING(bool, CollapseLogOnStart, false);
 FIXED_SETTING(int, ServerSleep, 0);
 SETTING_GROUP_END();
 
