@@ -4103,6 +4103,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
     }
 
     if (prev_moving && !cr->IsMoving()) {
+        cr->ClearMove();
         cr->AnimateStay();
         Net_SendStopMove(cr);
     }
