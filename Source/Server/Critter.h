@@ -179,7 +179,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMoved, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnItemMove, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent

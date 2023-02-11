@@ -141,7 +141,9 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     }
 
     // Change item
-    _engine->OnCritterMoveItem.Fire(cr, item, -1);
+    _engine->OnCritterMoveItem.Fire(cr, item, static_cast<uchar>(-1));
+    cr->OnItemMove.Fire(item, static_cast<uchar>(-1));
+    item->OnCritterMove.Fire(cr, static_cast<uchar>(-1));
 
     return item;
 }
@@ -172,7 +174,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
         cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
     }
 
-    _engine->OnCritterMoveItem.Fire(cr, item, item->GetCritterSlot());
+    const auto prev_slot = item->GetCritterSlot();
 
     item->SetCritterId(0);
     item->SetCritterSlot(0);
@@ -182,6 +184,10 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     RUNTIME_ASSERT(item_id_it != item_ids.end());
     item_ids.erase(item_id_it);
     cr->SetItemIds(std::move(item_ids));
+
+    _engine->OnCritterMoveItem.Fire(cr, item, prev_slot);
+    cr->OnItemMove.Fire(item, prev_slot);
+    item->OnCritterMove.Fire(cr, prev_slot);
 }
 
 auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
