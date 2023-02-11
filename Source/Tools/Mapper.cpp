@@ -2772,7 +2772,7 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
         }
     }
     else {
-        item = CurMap->AddItem(0u, proto_item->GetProtoId(), hx, hy, true, nullptr);
+        item = CurMap->AddItem(CurMap->GetTempEntityId(), proto_item->GetProtoId(), hx, hy, true, nullptr);
     }
 
     // Select
