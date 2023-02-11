@@ -697,7 +697,7 @@ if (NOT ENABLE_SSL STREQUAL OFF)
          ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-libressl.c
          ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-libressl.c
       )
-      set (SSL_LIBRARIES -ltls -lcrypto)
+      set (SSL_LIBRARIES tls crypto) #!
    endif ()
 else ()
    message (STATUS "SSL disabled")
