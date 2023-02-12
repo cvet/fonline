@@ -113,7 +113,8 @@ public:
 
     void Shutdown();
     void MainLoop();
-    void AddMessage(uchar mess_type, string_view msg);
+    void ConsoleMessage(string_view msg);
+    void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }

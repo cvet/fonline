@@ -1144,6 +1144,10 @@ enum class CritterFindType : uchar
 static constexpr uchar PING_SERVER = 0;
 static constexpr uchar PING_CLIENT = 2;
 
+// Message box types
+static constexpr int FOMB_GAME = 0;
+static constexpr int FOMB_TALK = 1;
+
 // Say types
 static constexpr uchar SAY_NORM = 1;
 static constexpr uchar SAY_NORM_ON_HEAD = 2;
@@ -1161,9 +1165,9 @@ static constexpr uchar SAY_APPEND = 13;
 static constexpr uchar SAY_FLASH_WINDOW = 41;
 
 // Global map
-static constexpr auto GM_MAXZONEX = 100;
-static constexpr auto GM_MAXZONEY = 100;
-static constexpr auto GM_ZONES_FOG_SIZE = ((GM_MAXZONEX / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
+static constexpr int GM_MAXZONEX = 100;
+static constexpr int GM_MAXZONEY = 100;
+static constexpr size_t GM_ZONES_FOG_SIZE = ((GM_MAXZONEX / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
 static constexpr uchar GM_FOG_FULL = 0;
 static constexpr uchar GM_FOG_HALF = 1;
 static constexpr uchar GM_FOG_NONE = 3;

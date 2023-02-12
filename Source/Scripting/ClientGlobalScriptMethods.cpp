@@ -360,9 +360,17 @@
 ///# ...
 ///# param msg ...
 ///@ ExportMethod
+[[maybe_unused]] void Client_Game_ConsoleMessage(FOClient* client, string_view msg)
+{
+    client->ConsoleMessage(msg);
+}
+
+///# ...
+///# param msg ...
+///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
 {
-    client->AddMessage(0, msg);
+    client->AddMessage(FOMB_GAME, msg);
 }
 
 ///# ...
@@ -371,7 +379,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, int type, string_view msg)
 {
-    client->AddMessage(static_cast<uchar>(type), msg);
+    client->AddMessage(type, msg);
 }
 
 ///# ...
@@ -384,7 +392,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMessage(0, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(FOMB_GAME, client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...
@@ -398,7 +406,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMessage(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(type, client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...

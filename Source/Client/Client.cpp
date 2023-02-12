@@ -705,7 +705,7 @@ void FOClient::Net_OnConnect(bool success)
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
-        AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
+        AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
     }
 }
 
@@ -741,7 +741,7 @@ void FOClient::Net_SendLogIn()
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
 
-    AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
+    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -764,22 +764,14 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 {
     STACK_TRACE_ENTRY();
 
-    int say_type = how_say;
-    auto str = string(send_str);
-    const auto result = OnOutMessage.Fire(str, say_type);
+    NON_CONST_METHOD_HINT();
 
-    how_say = static_cast<uchar>(say_type);
-
-    if (!result || str.empty()) {
-        return;
-    }
-
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(str.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(send_str.length());
 
     _conn.OutBuf << NETMSG_SEND_TEXT;
     _conn.OutBuf << msg_len;
     _conn.OutBuf << how_say;
-    _conn.OutBuf << str;
+    _conn.OutBuf << send_str;
 }
 
 void FOClient::Net_SendDir(CritterHexView* cr)
@@ -1014,7 +1006,7 @@ void FOClient::Net_OnWrongNetProto()
 {
     STACK_TRACE_ENTRY();
 
-    AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnRegisterSuccess()
@@ -1032,7 +1024,7 @@ void FOClient::Net_OnLoginSuccess()
 
     WriteLog("Authentication success");
 
-    AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
+    AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
     uint msg_len;
     uint encrypt_key;
@@ -1326,28 +1318,28 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr) : nullptr);
 
     // Critter text on head
-    if (fstr_cr != 0u && cr != nullptr) {
+    if (fstr_cr != 0 && cr != nullptr) {
         cr->SetText(_str(get_format(fstr_cr), fstr), COLOR_TEXT, text_delay);
     }
 
     // Message box text
-    if (fstr_mb != 0u) {
+    if (fstr_mb != 0) {
         if (how_say == SAY_NETMSG) {
-            AddMessage(0, _str(get_format(fstr_mb), fstr));
+            AddMessage(FOMB_GAME, _str(get_format(fstr_mb), fstr));
         }
         else if (how_say == SAY_RADIO) {
-            ushort channel = 0u;
+            ushort channel = 0;
             if (auto* chosen = GetChosen(); chosen != nullptr) {
                 const auto* radio = chosen->GetItem(crid);
                 if (radio != nullptr) {
                     channel = radio->GetRadioChannel();
                 }
             }
-            AddMessage(0, _str(get_format(fstr_mb), channel, fstr));
+            AddMessage(FOMB_TALK, _str(get_format(fstr_mb), channel, fstr));
         }
         else {
             const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMessage(0, _str(get_format(fstr_mb), cr_name, fstr));
+            AddMessage(FOMB_TALK, _str(get_format(fstr_mb), cr_name, fstr));
         }
     }
 
@@ -3318,7 +3310,18 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::AddMessage(uchar mess_type, string_view msg)
+void FOClient::ConsoleMessage(string_view msg)
+{
+    auto str = string(msg);
+    int how_say = SAY_NORM;
+    const auto result = OnOutMessage.Fire(str, how_say);
+
+    if (result && !str.empty()) {
+        Net_SendText(str, static_cast<uchar>(how_say));
+    }
+}
+
+void FOClient::AddMessage(int mess_type, string_view msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -3827,9 +3830,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
 
         return buf;
-    }
-    else if (cmd == "ConsoleMessage" && args.size() >= 2) {
-        Net_SendText(args[1], SAY_NORM);
     }
     else if (cmd == "SaveLog" && args.size() == 3) {
         //              if( file_name == "" )

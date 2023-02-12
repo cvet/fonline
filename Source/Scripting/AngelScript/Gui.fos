@@ -2720,13 +2720,13 @@ class Console : TextInput
         // Send
         bool[] keyPressed = Screen._InputKeyPressed;
         if (keyPressed[KeyCode::Lcontrol] || keyPressed[KeyCode::Rcontrol])
-            Game.CustomCall("ConsoleMessage\n/s" + _Text, "\n");
+            Game.ConsoleMessage("/s" + _Text);
         else if (keyPressed[KeyCode::Lmenu] || keyPressed[KeyCode::Rmenu])
-            Game.CustomCall("ConsoleMessage\n/w" + _Text, "\n");
+            Game.ConsoleMessage("/w" + _Text);
         else if (keyPressed[KeyCode::Lshift] || keyPressed[KeyCode::Rshift])
-            Game.CustomCall("ConsoleMessage\n/r" + _Text, "\n");
+            Game.ConsoleMessage("/r" + _Text);
         else
-            Game.CustomCall("ConsoleMessage\n" + _Text, "\n");
+            Game.ConsoleMessage(_Text);
 
         // Clear text
         _Text = "";
