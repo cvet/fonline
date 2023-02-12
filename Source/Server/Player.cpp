@@ -44,6 +44,8 @@
 Player::Player(FOServer* engine, uint id, ClientConnection* connection) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef()), Connection {connection}, _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
 {
     STACK_TRACE_ENTRY();
+
+    _name = "(Unlogined)";
 }
 
 Player::~Player()
@@ -66,13 +68,6 @@ void Player::SetOwnedCritter(Critter* cr)
 
     RUNTIME_ASSERT(!_ownedCr);
     _ownedCr = cr;
-}
-
-auto Player::GetName() const -> string_view
-{
-    STACK_TRACE_ENTRY();
-
-    return _name;
 }
 
 auto Player::GetIp() const -> uint

@@ -53,9 +53,9 @@ public:
     auto operator=(ServerEntity&&) noexcept = delete;
     ~ServerEntity() override = default;
 
-    [[nodiscard]] auto GetId() const -> uint;
-    [[nodiscard]] auto GetEngine() -> FOServer*;
-    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetId() const -> uint { return _id; }
+    [[nodiscard]] auto GetEngine() -> FOServer* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
+    [[nodiscard]] auto GetName() const -> string_view override { return _name; }
 
 protected:
     ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator);

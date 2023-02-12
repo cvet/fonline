@@ -57,8 +57,6 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const -> string_view override;
-
     [[nodiscard]] auto GetIp() const -> uint;
     [[nodiscard]] auto GetHost() const -> string_view;
     [[nodiscard]] auto GetPort() const -> ushort;
@@ -128,7 +126,6 @@ public:
     const Property* SendIgnoreProperty {};
 
 private:
-    string _name {"(Unlogined)"};
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
     uint _talkNextTick {};
 };

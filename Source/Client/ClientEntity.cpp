@@ -41,34 +41,11 @@ ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator*
     _name = _str("{}_{}", GetClassName(), _id);
 }
 
-auto ClientEntity::GetId() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return _id;
-}
-
 void ClientEntity::SetId(uint id)
 {
     STACK_TRACE_ENTRY();
 
     _id = id;
-}
-
-auto ClientEntity::GetEngine() -> FOClient*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine;
-}
-
-auto ClientEntity::GetName() const -> string_view
-{
-    STACK_TRACE_ENTRY();
-
-    return GetProperties().GetRegistrator()->GetClassName();
 }
 
 void ClientEntity::MarkAsDestroyed()
