@@ -590,34 +590,68 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     const bool append = !setting_value.empty() && setting_value[0] == '+';
     string_view value = append ? string_view(setting_value).substr(1) : setting_value;
 
-    // Resolve environment variables
-    string env_fixed_value;
-    size_t prev_env_pos = 0;
-    size_t env_pos = setting_value.find('$');
+    // Resolve environment variables and files
+    string resolved_value;
+    size_t prev_pos = 0;
+    size_t pos = setting_value.find('$');
 
-    if (env_pos != string::npos) {
-        while (env_pos != string::npos) {
-            const size_t end_env_pos = setting_value.find_first_of(" \t", env_pos + 1);
-            const string env_name = setting_value.substr(env_pos + 1, end_env_pos - env_pos - 1);
+    if (pos != string::npos) {
+        while (pos != string::npos) {
+            const bool is_env = setting_value.compare(pos + 1, "ENV{"_len, "ENV{") == 0;
+            const bool is_file = setting_value.compare(pos + 1, "FILE{"_len, "FILE{") == 0;
 
-            const char* env = !env_name.empty() ? std::getenv(env_name.c_str()) : nullptr;
-            if (env != nullptr) {
-                env_fixed_value += setting_value.substr(prev_env_pos, env_pos - prev_env_pos) + string(env);
+            if (is_env || is_file) {
+                pos += is_env ? "$ENV{"_len : "$FILE{"_len;
+                size_t end_pos = setting_value.find('}', pos);
+
+                if (end_pos != string::npos) {
+                    const string name = setting_value.substr(pos, end_pos - pos);
+
+                    if (is_env) {
+                        const char* env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+                        if (env != nullptr) {
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - "$ENV{"_len) + string(env);
+                            end_pos++;
+                        }
+                        else {
+                            WriteLog(LogType::Warning, "Environment variable $ENV{{{}}} for setting {} is not found", name, setting_name);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
+                        }
+                    }
+                    else {
+                        auto file = DiskFileSystem::OpenFile(name, false);
+                        if (file) {
+                            string file_content;
+                            file_content.resize(file.GetSize());
+                            file.Read(file_content.data(), file_content.size());
+                            file_content = _str(file_content).trim();
+
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - "$FILE{"_len) + string(file_content);
+                            end_pos++;
+                        }
+                        else {
+                            WriteLog(LogType::Warning, "File $FILE{{{}}} for setting {} is not found", name, setting_name);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
+                        }
+                    }
+
+                    prev_pos = end_pos;
+                    pos = setting_value.find('$', end_pos);
+                }
+                else {
+                    WriteLog(LogType::Warning, "Not closed $ tag in setting {}: {}", setting_name, setting_value);
+                }
             }
             else {
-                WriteLog(LogType::Warning, "Environment variable ${} for setting {} is not found", env_name, setting_name);
-                env_fixed_value += setting_value.substr(prev_env_pos, env_pos - prev_env_pos) + string("$") + env_name;
+                pos = setting_value.find('$', pos + 1);
             }
-
-            prev_env_pos = end_env_pos;
-            env_pos = setting_value.find('$', end_env_pos);
         }
 
-        if (prev_env_pos != string::npos) {
-            env_fixed_value += setting_value.substr(prev_env_pos);
+        if (prev_pos != string::npos) {
+            resolved_value += setting_value.substr(prev_pos);
         }
 
-        value = env_fixed_value;
+        value = resolved_value;
     }
 
 #define SET_SETTING(sett) \
