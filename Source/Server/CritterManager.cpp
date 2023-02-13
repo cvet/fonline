@@ -96,7 +96,24 @@ void CritterManager::LinkCritters()
             continue;
         }
 
-        _engine->MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
+        const auto leader_id = cr->GetGlobalMapLeaderId();
+        RUNTIME_ASSERT(leader_id != 0 && leader_id != cr->GetId());
+
+        const auto* leader = _engine->CrMngr.GetCritter(leader_id);
+        if (leader == nullptr) {
+            WriteLog("Error parsing npc {} to group leader {}", cr->GetName(), leader_id);
+            errors++;
+            continue;
+        }
+
+        if (leader->GetMapId() != 0) {
+            WriteLog("Npc {} group leader {} is on map", cr->GetName(), leader->GetName());
+            errors++;
+            continue;
+        }
+
+        cr->GlobalMapGroup = leader->GlobalMapGroup;
+        cr->GlobalMapGroup->push_back(cr);
     }
 
     if (errors != 0) {

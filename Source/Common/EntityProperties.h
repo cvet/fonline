@@ -369,10 +369,6 @@ public:
     ENTITY_PROPERTY(Public, bool, IsNoTalk);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoFlatten);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, TimeoutBattle);
-    ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, uint, TimeoutTransfer);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame);
     ///@ ExportProperty
@@ -389,6 +385,8 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
 };
 
 class MapProperties : public EntityProperties

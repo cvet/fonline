@@ -1285,7 +1285,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, 0, true)) {
+        if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, 0)) {
             logcb("Critter move success.");
         }
         else {
@@ -1332,7 +1332,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (MapMngr.TransitToGlobal(cl_, 0, false)) {
+        if (MapMngr.TransitToGlobal(cl_, 0)) {
             logcb("To global success.");
         }
         else {
@@ -1534,7 +1534,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         auto hy = cl_->GetHexY();
         auto dir = cl_->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.Transit(cl_, map, hx, hy, dir, 5, 0, true);
+        MapMngr.Transit(cl_, map, hx, hy, dir, 5, 0);
         logcb("Regenerate map complete.");
     } break;
     case CMD_SETTIME: {

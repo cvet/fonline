@@ -662,7 +662,7 @@ void CritterHexView::Process()
     // Combat mode
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        if (const auto is_combat = GetTimeoutBattle() > _engine->GameTime.GetFullSecond(); is_combat != _model->IsCombatMode()) {
+        if (const auto is_combat = GetIsModelInCombatMode(); is_combat != _model->IsCombatMode()) {
             if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
                 if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
                     Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);

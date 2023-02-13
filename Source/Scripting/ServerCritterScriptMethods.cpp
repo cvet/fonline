@@ -121,7 +121,7 @@
         if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
             self->ChangeDir(dir);
         }
-        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, 0, true)) {
+        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, 0)) {
             throw ScriptException("Transit fail");
         }
     }
@@ -152,7 +152,7 @@
         dir_ = 0;
     }
 
-    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, 0, true)) {
+    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, 0)) {
         throw ScriptException("Transit to map hex fail");
     }
 
@@ -171,7 +171,7 @@
         throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId() != 0u && !self->GetEngine()->MapMngr.TransitToGlobal(self, 0, true)) {
+    if (self->GetMapId() != 0 && !self->GetEngine()->MapMngr.TransitToGlobal(self, 0)) {
         throw ScriptException("Transit to global failed");
     }
 }
@@ -188,13 +188,13 @@
         throw ScriptException("Critter already on global");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, 0, true)) {
+    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, 0)) {
         throw ScriptException("Transit to global failed");
     }
 
     for (auto* cr_ : group) {
         if (cr_ != nullptr && !cr_->IsDestroyed()) {
-            self->GetEngine()->MapMngr.TransitToGlobal(cr_, self->GetId(), true);
+            self->GetEngine()->MapMngr.TransitToGlobal(cr_, self->GetId());
         }
     }
 }
@@ -218,7 +218,7 @@
         throw ScriptException("Leader is not on global map");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, leader->GetId(), true)) {
+    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, leader->GetId())) {
         throw ScriptException("Transit fail");
     }
 }

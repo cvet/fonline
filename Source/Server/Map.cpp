@@ -206,8 +206,6 @@ void Map::AddCritter(Critter* cr)
     }
 
     SetFlagCritter(cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead());
-
-    cr->SetTimeoutBattle(0);
 }
 
 void Map::EraseCritter(Critter* cr)
@@ -236,8 +234,6 @@ void Map::EraseCritter(Critter* cr)
         RUNTIME_ASSERT(it != _nonPlayerCritters.end());
         _nonPlayerCritters.erase(it);
     }
-
-    cr->SetTimeoutBattle(0);
 }
 
 auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool

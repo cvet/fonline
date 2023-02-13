@@ -737,25 +737,6 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
     }
 }
 
-auto Critter::IsTransferTimeouts(bool send) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetTimeoutTransfer() > _engine->GameTime.GetFullSecond()) {
-        if (send) {
-            Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
-        }
-        return true;
-    }
-    if (GetTimeoutBattle() > _engine->GameTime.GetFullSecond()) {
-        if (send) {
-            Send_TextMsg(this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME);
-        }
-        return true;
-    }
-    return false;
-}
-
 auto Critter::IsTalking() const -> bool
 {
     STACK_TRACE_ENTRY();

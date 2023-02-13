@@ -168,8 +168,8 @@ public:
     void TraceBullet(TraceData& trace);
     void AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id);
     void EraseCrFromMap(Critter* cr, Map* map);
-    auto TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool;
-    auto Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool;
+    auto TransitToGlobal(Critter* cr, uint leader_id) -> bool;
+    auto Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id) -> bool;
     void KickPlayersToGlobalMap(Map* map);
     void ProcessVisibleCritters(Critter* view_cr);
     void ProcessVisibleItems(Critter* view_cr);

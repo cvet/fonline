@@ -83,7 +83,6 @@ public:
     [[nodiscard]] auto GetCrSelf(uint crid) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
-    [[nodiscard]] auto IsTransferTimeouts(bool send) -> bool;
     [[nodiscard]] auto IsTalking() const -> bool;
     [[nodiscard]] auto GetTalkedPlayers() const -> uint;
     [[nodiscard]] auto IsTalkedPlayers() const -> bool;

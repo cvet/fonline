@@ -679,7 +679,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
     STACK_TRACE_ENTRY();
 
     for (auto* cl : map->GetPlayers()) {
-        TransitToGlobal(cl, 0, true);
+        TransitToGlobal(cl, 0);
     }
 }
 
@@ -1375,7 +1375,7 @@ label_FindOk:
     return output;
 }
 
-auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool
+auto MapManager::TransitToGlobal(Critter* cr, uint leader_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1384,10 +1384,10 @@ auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> boo
         return false;
     }
 
-    return Transit(cr, nullptr, 0, 0, 0, 0, leader_id, force);
+    return Transit(cr, nullptr, 0, 0, 0, 0, leader_id);
 }
 
-auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool
+auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1404,20 +1404,8 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
         return false;
     }
 
-    // Check force
-    if (!force) {
-        if (cr->GetTimeoutTransfer() > _engine->GameTime.GetFullSecond() || cr->GetTimeoutBattle() > _engine->GameTime.GetFullSecond()) {
-            return false;
-        }
-        if (cr->IsDead()) {
-            return false;
-        }
-        if (cr->IsKnockout()) {
-            return false;
-        }
-        if (loc != nullptr && !loc->IsCanEnter(1)) {
-            return false;
-        }
+    if (loc != nullptr && !loc->IsCanEnter(1)) {
+        return false;
     }
 
     const auto map_id = map != nullptr ? map->GetId() : 0;
@@ -1530,9 +1518,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
     NON_CONST_METHOD_HINT();
 
     cr->LockMapTransfers++;
-
-    cr->SetTimeoutBattle(0);
-    cr->SetTimeoutTransfer(_engine->GameTime.GetFullSecond() + _engine->Settings.TimeoutTransfer);
+    auto decrease_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
         RUNTIME_ASSERT(hx < map->GetWidth() && hy < map->GetHeight());
@@ -1590,8 +1576,6 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
 
         _engine->OnGlobalMapCritterIn.Fire(cr);
     }
-
-    cr->LockMapTransfers--;
 }
 
 void MapManager::EraseCrFromMap(Critter* cr, Map* map)
@@ -1599,8 +1583,11 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
     STACK_TRACE_ENTRY();
 
     cr->LockMapTransfers++;
+    auto decrease_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
     if (map != nullptr) {
+        RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+
         _engine->OnMapCritterOut.Fire(map, cr);
 
         for (auto* other : copy(cr->VisCr)) {
@@ -1624,6 +1611,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         _runGarbager = true;
     }
     else {
+        RUNTIME_ASSERT(cr->GetMapId() == 0);
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
         _engine->OnGlobalMapCritterOut.Fire(cr);
@@ -1647,8 +1635,6 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
         cr->SetGlobalMapLeaderId(0);
     }
-
-    cr->LockMapTransfers--;
 }
 
 void MapManager::ProcessVisibleCritters(Critter* view_cr)
