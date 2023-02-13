@@ -68,8 +68,8 @@ public:
     auto SplitItem(Item* item, uint count) -> Item*;
     auto AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*;
     auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
-    auto SubItemCritter(Critter* cr, hstring pid, uint count, vector<Item*>* erased_items) -> bool;
-    auto SetItemCritter(Critter* cr, hstring pid, uint count) -> bool;
+    void SubItemCritter(Critter* cr, hstring pid, uint count);
+    void SetItemCritter(Critter* cr, hstring pid, uint count);
 
     void LinkItems();
     void DeleteItem(Item* item);

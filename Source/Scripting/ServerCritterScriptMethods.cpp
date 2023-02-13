@@ -504,21 +504,36 @@
 
 ///# ...
 ///# param pid ...
-///# param count ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_DeleteItem(Critter* self, hstring pid, uint count)
+[[maybe_unused]] void Server_Critter_DeleteItem(Critter* self, hstring pid)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = self->CountItemPid(pid);
+    const auto count = self->CountItemPid(pid);
+    if (count == 0) {
+        return;
     }
 
-    return self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count_, nullptr);
+    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
+}
+
+///# ...
+///# param pid ...
+///# param count ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_DeleteItem(Critter* self, hstring pid, uint count)
+{
+    if (!pid) {
+        throw ScriptException("Proto id arg is zero");
+    }
+
+    if (count == 0) {
+        return;
+    }
+
+    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
 }
 
 ///# ...

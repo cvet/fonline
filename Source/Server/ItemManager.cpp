@@ -594,73 +594,50 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
     return result;
 }
 
-auto ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count, vector<Item*>* erased_items) -> bool
+void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
 {
     STACK_TRACE_ENTRY();
 
-    if (count == 0u) {
-        return true;
+    if (count == 0) {
+        return;
     }
 
     auto* item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
     if (item == nullptr) {
-        return true;
+        return;
     }
 
     if (item->GetStackable()) {
         if (count >= item->GetCount()) {
-            _engine->CrMngr.EraseItemFromCritter(cr, item, true);
-            if (erased_items == nullptr) {
-                DeleteItem(item);
-            }
-            else {
-                erased_items->push_back(item);
-            }
+            DeleteItem(item);
         }
         else {
-            if (erased_items != nullptr) {
-                auto* item_ = SplitItem(item, count);
-                if (item_ != nullptr) {
-                    erased_items->push_back(item_);
-                }
-            }
-            else {
-                RUNTIME_ASSERT(count > item->GetCount());
-                item->SetCount(item->GetCount() - count);
-            }
+            item->SetCount(item->GetCount() - count);
         }
     }
     else {
         for (uint i = 0; i < count; ++i) {
-            _engine->CrMngr.EraseItemFromCritter(cr, item, true);
-            if (erased_items == nullptr) {
-                DeleteItem(item);
-            }
-            else {
-                erased_items->push_back(item);
-            }
+            DeleteItem(item);
+
             item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
             if (item == nullptr) {
-                return true;
+                break;
             }
         }
     }
-
-    return true;
 }
 
-auto ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count) -> bool
+void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
 {
     STACK_TRACE_ENTRY();
 
     const auto cur_count = cr->CountItemPid(pid);
     if (cur_count > count) {
-        return SubItemCritter(cr, pid, cur_count - count, nullptr);
+        SubItemCritter(cr, pid, cur_count - count);
     }
     if (cur_count < count) {
-        return AddItemCritter(cr, pid, count - cur_count) != nullptr;
+        AddItemCritter(cr, pid, count - cur_count);
     }
-    return true;
 }
 
 auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool
