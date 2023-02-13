@@ -168,7 +168,7 @@ set( FO_DEBUGGING_CONFIG "" )
 set( FO_MAPPER_CONFIG "" )
 set( FO_GENERATE_ANGELSCRIPT_CONTENT "" )
 set( FO_PACKAGES "" )
-set( FO_APP_ICON "${FOnlineProject_BINARY_DIR}/Resources/Radiation.ico" )
+set( FO_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Radiation.ico" )
 set( FO_RC_FILE "" )
 
 # Evaluate build hash
