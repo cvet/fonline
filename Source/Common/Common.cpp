@@ -108,14 +108,33 @@ void DeleteGlobalData()
     }
 }
 
+static auto InsertCatchedMark(const string& st) -> string
+{
+    const auto catched_st = GetStackTrace();
+
+    // Skip 'Stack trace (most recent ...'
+    auto pos = catched_st.find('\n');
+    if (pos == string::npos) {
+        return st;
+    }
+
+    // Find stack traces intercection
+    pos = st.find(catched_st.substr(pos + 1));
+    if (pos == string::npos) {
+        return st;
+    }
+
+    // Insert in end of line
+    pos = st.find('\n', pos);
+    return st.substr(0, pos).append(" <- Catched here").append(pos != string::npos ? st.substr(pos) : "");
+}
+
 void ReportExceptionAndExit(const std::exception& ex)
 {
-    STACK_TRACE_ENTRY();
-
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}\nShutdown!", ex.what(), ex_info->StackTrace(), GetStackTrace());
+        WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
     }
     else {
         WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
@@ -128,7 +147,7 @@ void ReportExceptionAndExit(const std::exception& ex)
     CreateDumpMessage("FatalException", ex.what());
 
     if (ex_info != nullptr) {
-        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->StackTrace());
+        MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
     }
     else {
         MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
@@ -139,12 +158,10 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
-    STACK_TRACE_ENTRY();
-
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}", ex.what(), ex_info != nullptr ? ex_info->StackTrace() : "", GetStackTrace());
+        WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
     }
     else {
         WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
@@ -156,7 +173,7 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
     if (ExceptionMessageBox) {
         if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->StackTrace());
+            MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
         }
         else {
             MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
