@@ -85,7 +85,6 @@ public:
     [[nodiscard]] auto GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<ushort, ushort>>;
-    [[nodiscard]] auto FindPlaceOnMap(ushort hx, ushort hy, Critter* cr, uint radius) const -> optional<tuple<ushort, ushort>>;
     [[nodiscard]] auto GetHexFlags(ushort hx, ushort hy) const -> ushort;
     [[nodiscard]] auto IsHexPassed(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexRaked(ushort hx, ushort hy) const -> bool;

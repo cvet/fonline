@@ -177,18 +177,6 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
     return tuple {static_cast<ushort>(hx_), static_cast<ushort>(hy_)};
 }
 
-auto Map::FindPlaceOnMap(ushort hx, ushort hy, Critter* cr, uint radius) const -> optional<tuple<ushort, ushort>>
-{
-    STACK_TRACE_ENTRY();
-
-    const auto multihex = cr->GetMultihex();
-    auto r = FindStartHex(hx, hy, multihex, radius, true);
-    if (r) {
-        return r;
-    }
-    return FindStartHex(hx, hy, multihex, radius, false);
-}
-
 void Map::AddCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();

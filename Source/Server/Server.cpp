@@ -870,6 +870,8 @@ void FOServer::ProcessPlayer(Player* player)
     STACK_TRACE_ENTRY();
 
     if (player->Connection->IsHardDisconnected()) {
+        WriteLog("Disconnected player {}", player->GetName());
+
         if (auto* cr = player->GetOwnedCritter(); cr != nullptr) {
             cr->DetachPlayer();
         }
@@ -1731,36 +1733,45 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 
     // Remove player critter from game
-    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
-        if (cr->GetClientToDelete()) {
-            OnCritterFinish.Fire(cr);
-        }
-
-        cr->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
-
-        auto* map = MapMngr.GetMap(cr->GetMapId());
-        MapMngr.EraseCrFromMap(cr, map);
-
-        // Destroy
-        const auto full_delete = cr->GetClientToDelete();
-        EntityMngr.UnregisterEntity(cr);
-        cr->MarkAsDestroyed();
-
-        // Erase radios from collection
-        for (auto* item : cr->GetRawItems()) {
-            if (item->GetIsRadio()) {
-                ItemMngr.UnregisterRadio(item);
-            }
-        }
-
-        // Full delete
-        if (full_delete) {
-            CrMngr.DeleteInventory(cr);
-            DbStorage.Delete("Critters", cr->GetId());
-        }
-
-        cr->Release();
+    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
+        LogoutCritter(cr);
     }
+}
+
+void FOServer::LogoutCritter(Critter* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    WriteLog("Logout critter {}", cr->GetName());
+
+    if (cr->GetClientToDelete()) {
+        OnCritterFinish.Fire(cr);
+    }
+
+    cr->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
+
+    auto* map = MapMngr.GetMap(cr->GetMapId());
+    MapMngr.EraseCrFromMap(cr, map);
+
+    // Destroy
+    const auto full_delete = cr->GetClientToDelete();
+    EntityMngr.UnregisterEntity(cr);
+    cr->MarkAsDestroyed();
+
+    // Erase radios from collection
+    for (auto* item : cr->GetRawItems()) {
+        if (item->GetIsRadio()) {
+            ItemMngr.UnregisterRadio(item);
+        }
+    }
+
+    // Full delete
+    if (full_delete) {
+        CrMngr.DeleteInventory(cr);
+        DbStorage.Delete("Critters", cr->GetId());
+    }
+
+    cr->Release();
 }
 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
@@ -2048,6 +2059,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     DbStorage.Insert("Players", player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
+    WriteLog("Registered player {} with id {}", name, player_id);
+
     // Notify
     unlogined_player->Send_TextMsg(0u, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
 
@@ -2146,6 +2159,8 @@ void FOServer::Process_Login(Player* unlogined_player)
         EntityMngr.RegisterEntity(player, player_id);
         player->SetName(name);
 
+        WriteLog("Connected player {}", name);
+
         OnPlayerInit.Fire(player);
     }
     else {
@@ -2161,6 +2176,8 @@ void FOServer::Process_Login(Player* unlogined_player)
         unlogined_player->Connection->HardDisconnect();
         unlogined_player->MarkAsDestroyed();
         unlogined_player->Release();
+
+        WriteLog("Reconnected player {}", name);
     }
 
     // Connection info
@@ -2242,6 +2259,8 @@ void FOServer::Process_Login(Player* unlogined_player)
                 cr->AttachPlayer(player);
                 player->SetOwnedCritter(cr);
                 critter_reconnected = true;
+
+                WriteLog("Critter for player found in game");
             }
         }
 
@@ -2269,12 +2288,17 @@ void FOServer::Process_Login(Player* unlogined_player)
                 return;
             }
 
+            cr->SetMapId(0);
+            cr->SetGlobalMapLeaderId(0);
+
             EntityMngr.RegisterEntity(cr);
             player->SetOwnedCritter(cr);
 
-            const auto can = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0u);
-            RUNTIME_ASSERT(can);
-            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0u);
+            WriteLog("Critter for player loaded from data base");
+
+            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0);
+            RUNTIME_ASSERT(can_add_to_global_map);
+            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0);
 
             cr->Send_TimeSync();
             cr->Send_LoadMap(nullptr);
@@ -2298,9 +2322,11 @@ void FOServer::Process_Login(Player* unlogined_player)
             player->SetOwnedCritterIds({cr->GetId()});
             player->SetOwnedCritter(cr);
 
-            const auto can = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0u);
-            RUNTIME_ASSERT(can);
-            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0u);
+            WriteLog("Critter for player created from scratch");
+
+            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0);
+            RUNTIME_ASSERT(can_add_to_global_map);
+            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0);
 
             cr->Send_TimeSync();
             cr->Send_LoadMap(nullptr);

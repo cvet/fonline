@@ -61,13 +61,14 @@ void CritterManager::LinkCritters()
 
     // Move all critters to local maps and global map leaders
     for (auto* cr : critters) {
-        if (cr->GetMapId() == 0u && cr->GetGlobalMapLeaderId() != 0u && cr->GetGlobalMapLeaderId() != cr->GetId()) {
+        if (cr->GetMapId() == 0 && cr->GetGlobalMapLeaderId() != cr->GetId()) {
+            RUNTIME_ASSERT(cr->GetGlobalMapLeaderId() != 0);
             critter_groups.push_back(cr);
             continue;
         }
 
         auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
-        if (cr->GetMapId() != 0u && map == nullptr) {
+        if (cr->GetMapId() != 0 && map == nullptr) {
             WriteLog("Map {} not found for critter {} at hex {} {}", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY());
             errors++;
             continue;
@@ -97,7 +98,7 @@ void CritterManager::LinkCritters()
         }
 
         const auto leader_id = cr->GetGlobalMapLeaderId();
-        RUNTIME_ASSERT(leader_id != 0 && leader_id != cr->GetId());
+        RUNTIME_ASSERT(cr->GetMapId() == 0 && leader_id != 0 && leader_id != cr->GetId());
 
         const auto* leader = _engine->CrMngr.GetCritter(leader_id);
         if (leader == nullptr) {
@@ -152,7 +153,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     // Send
     if (send) {
         cr->Send_AddItem(item);
-        if (item->GetCritterSlot() != 0u) {
+        if (item->GetCritterSlot() != 0) {
             cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
         }
     }
@@ -264,7 +265,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         hy = hy_;
     }
 
-    auto* cr = new Critter(_engine, 0u, nullptr, proto);
+    auto* cr = new Critter(_engine, 0, nullptr, proto);
     if (props != nullptr) {
         cr->SetProperties(*props);
     }
@@ -283,8 +284,6 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     cr->SetHomeHexX(hx);
     cr->SetHomeHexY(hy);
     cr->SetHomeDir(dir);
-    cr->SetHexX(hx);
-    cr->SetHexY(hy);
 
     const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hx, hy, 0);
     RUNTIME_ASSERT(can);
@@ -316,24 +315,26 @@ void CritterManager::DeleteCritter(Critter* cr)
     _engine->OnCritterFinish.Fire(cr);
 
     // Tear off from environment
-    cr->LockMapTransfers++;
-    while (cr->GetMapId() != 0u || cr->GlobalMapGroup != nullptr || cr->RealCountItems() != 0u) {
-        // Delete inventory
-        DeleteInventory(cr);
+    {
+        cr->LockMapTransfers++;
+        auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        // Delete from maps
-        auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
-        if (map != nullptr) {
-            _engine->MapMngr.EraseCrFromMap(cr, map);
-        }
-        else if (cr->GlobalMapGroup != nullptr) {
-            _engine->MapMngr.EraseCrFromMap(cr, nullptr);
-        }
-        else if (cr->GetMapId() != 0u) {
-            cr->SetMapId(0);
+        while (cr->GetMapId() != 0 || cr->GlobalMapGroup != nullptr || cr->RealCountItems() != 0) {
+            // Delete inventory
+            DeleteInventory(cr);
+
+            // Delete from map
+            if (cr->GetMapId() != 0) {
+                auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
+                RUNTIME_ASSERT(map);
+                _engine->MapMngr.EraseCrFromMap(cr, map);
+            }
+            else {
+                RUNTIME_ASSERT(cr->GlobalMapGroup);
+                _engine->MapMngr.EraseCrFromMap(cr, nullptr);
+            }
         }
     }
-    cr->LockMapTransfers--;
 
     // Erase from main collection
     _engine->EntityMngr.UnregisterEntity(cr);
@@ -404,7 +405,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     player_critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (cr->IsOwnedByPlayer() && (!on_global_map_only || cr->GetMapId() == 0u)) {
+        if (cr->IsOwnedByPlayer() && (!on_global_map_only || cr->GetMapId() == 0)) {
             player_critters.push_back(cr);
         }
     }
@@ -424,7 +425,7 @@ auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, Cri
     critters.reserve(all_critters.size());
 
     for (auto&& [id, cr] : all_critters) {
-        if (cr->GetMapId() == 0u && GenericUtils::DistSqrt(cr->GetWorldX(), cr->GetWorldY(), wx, wy) <= radius && cr->CheckFind(find_type)) {
+        if (cr->GetMapId() == 0 && GenericUtils::DistSqrt(cr->GetWorldX(), cr->GetWorldY(), wx, wy) <= radius && cr->CheckFind(find_type)) {
             critters.push_back(cr);
         }
     }
@@ -489,7 +490,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
         Item* another_slot = nullptr;
         for (auto* item : cr->_invItems) {
             if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == 0u) {
+                if (item->GetCritterSlot() == 0) {
                     return item;
                 }
                 another_slot = item;
@@ -517,7 +518,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     }
 
     // Check time of talk
-    if (cr->Talk.TalkTime != 0u && _engine->GameTime.GameTick() - cr->Talk.StartTick > cr->Talk.TalkTime) {
+    if (cr->Talk.TalkTime != 0 && _engine->GameTime.GameTick() - cr->Talk.StartTick > cr->Talk.TalkTime) {
         CloseTalk(cr);
         return;
     }
@@ -551,7 +552,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
             hx = talker->GetHexX();
             hy = talker->GetHexY();
             talk_distance = talker->GetTalkDistance();
-            talk_distance = (talk_distance != 0u ? talk_distance : _engine->Settings.TalkDistance) + cr->GetMultihex();
+            talk_distance = (talk_distance != 0 ? talk_distance : _engine->Settings.TalkDistance) + cr->GetMultihex();
         }
         else if (cr->Talk.Type == TalkType::Hex) {
             map_id = cr->Talk.TalkHexMap;

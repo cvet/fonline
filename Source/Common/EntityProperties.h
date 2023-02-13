@@ -261,6 +261,14 @@ public:
     ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, MapId);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Protected, ushort, WorldX);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Protected, ushort, WorldY);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(Protected, uint, GlobalMapLeaderId);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LastMapId);
     ///@ ExportProperty ReadOnly
@@ -269,6 +277,8 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, LastLocationId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexX);
     ///@ ExportProperty ReadOnly
@@ -287,22 +297,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, bool, ClientToDelete);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ushort, WorldX);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ushort, WorldY);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, uint, GlobalMapLeaderId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapTripId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapLeaderId);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexX);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexY);
     ///@ ExportProperty ReadOnly Alias = Anim1Life
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Alive);
     ///@ ExportProperty ReadOnly
