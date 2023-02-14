@@ -293,7 +293,8 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
     }
 }
 
-ProtoManager::ProtoManager(FOEngineBase* engine) : _engine {engine}
+ProtoManager::ProtoManager(FOEngineBase* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 }

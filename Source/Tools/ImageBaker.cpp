@@ -47,7 +47,8 @@
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
 static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*;
 
-ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
+ImageBaker::ImageBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+    BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
     STACK_TRACE_ENTRY();
 

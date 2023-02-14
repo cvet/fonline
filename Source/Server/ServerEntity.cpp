@@ -36,7 +36,10 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
+ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator) :
+    Entity(registrator),
+    _engine {engine},
+    _id {id}
 {
     STACK_TRACE_ENTRY();
 

@@ -69,7 +69,9 @@ using ssl_context = asio::ssl::context;
 #include "WinApi-Include.h" // After all because ASIO using WinAPI
 #endif
 
-NetConnection::NetConnection(ServerNetworkSettings& settings) : Bin(settings.NetBufferSize), Bout(settings.NetBufferSize)
+NetConnection::NetConnection(ServerNetworkSettings& settings) :
+    Bin(settings.NetBufferSize),
+    Bout(settings.NetBufferSize)
 {
     STACK_TRACE_ENTRY();
 }
@@ -93,7 +95,9 @@ void NetConnection::Release() const
 class NetConnectionImpl : public NetConnection
 {
 public:
-    explicit NetConnectionImpl(ServerNetworkSettings& settings) : NetConnection(settings), _settings {settings}
+    explicit NetConnectionImpl(ServerNetworkSettings& settings) :
+        NetConnection(settings),
+        _settings {settings}
     {
         STACK_TRACE_ENTRY();
 
@@ -361,7 +365,9 @@ private:
 class NetConnectionAsio final : public NetConnectionImpl
 {
 public:
-    NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) : NetConnectionImpl(settings), _socket {socket}
+    NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) :
+        NetConnectionImpl(settings),
+        _socket {socket}
     {
         STACK_TRACE_ENTRY();
 
@@ -492,7 +498,10 @@ class NetConnectionWebSocket final : public NetConnectionImpl
     using message_ptr = typename WebSockets::message_ptr;
 
 public:
-    NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) : NetConnectionImpl(settings), _server {server}, _connection {connection}
+    NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) :
+        NetConnectionImpl(settings),
+        _server {server},
+        _connection {connection}
     {
         STACK_TRACE_ENTRY();
 
@@ -604,7 +613,9 @@ private:
     connection_ptr _connection {};
 };
 
-NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}, _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
+NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+    _settings {settings},
+    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
 {
     STACK_TRACE_ENTRY();
 
@@ -656,7 +667,8 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
     AcceptNext();
 }
 
-NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
+NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 
@@ -709,7 +721,8 @@ auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bo
     return !error;
 }
 
-NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
+NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 
@@ -820,7 +833,9 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
 class InterthreadConnection : public NetConnectionImpl
 {
 public:
-    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) : NetConnectionImpl(settings), _send {std::move(send)}
+    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) :
+        NetConnectionImpl(settings),
+        _send {std::move(send)}
     {
         STACK_TRACE_ENTRY();
 
@@ -895,7 +910,8 @@ public:
     auto operator=(InterthreadServer&&) noexcept = delete;
     ~InterthreadServer() override = default;
 
-    InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _virtualPort {static_cast<ushort>(settings.ServerPort)}
+    InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+        _virtualPort {static_cast<ushort>(settings.ServerPort)}
     {
         STACK_TRACE_ENTRY();
 

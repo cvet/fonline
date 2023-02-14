@@ -43,7 +43,8 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-MapManager::MapManager(FOServer* engine) : _engine {engine}
+MapManager::MapManager(FOServer* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 

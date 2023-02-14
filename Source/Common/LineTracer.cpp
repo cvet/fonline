@@ -37,7 +37,8 @@
 
 constexpr auto BIAS_FLOAT = 0.02f;
 
-LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _geometry {geometry}
+LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) :
+    _geometry {geometry}
 {
     STACK_TRACE_ENTRY();
 

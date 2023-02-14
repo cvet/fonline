@@ -34,7 +34,9 @@
 #include "PlayerView.h"
 #include "Client.h"
 
-PlayerView::PlayerView(FOClient* engine, uint id) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef())
+PlayerView::PlayerView(FOClient* engine, uint id) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
+    PlayerProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 }

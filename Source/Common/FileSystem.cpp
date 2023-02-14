@@ -35,7 +35,13 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
+FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds) :
+    _isLoaded {true},
+    _fileName {name},
+    _filePath {path},
+    _fileSize {size},
+    _writeTime {write_time},
+    _dataSource {ds}
 {
     STACK_TRACE_ENTRY();
 }
@@ -110,12 +116,15 @@ auto FileHeader::Duplicate() const -> FileHeader
     return {_fileName, _filePath, _fileSize, _writeTime, _dataSource};
 }
 
-File::File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uchar>&& buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {std::move(buf)}
+File::File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uchar>&& buf) :
+    FileHeader(name, path, size, write_time, ds),
+    _fileBuf {std::move(buf)}
 {
     STACK_TRACE_ENTRY();
 }
 
-File::File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uchar> buf, bool make_copy) : FileHeader(name, path, static_cast<uint>(buf.size()), write_time, ds)
+File::File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uchar> buf, bool make_copy) :
+    FileHeader(name, path, static_cast<uint>(buf.size()), write_time, ds)
 {
     STACK_TRACE_ENTRY();
 
@@ -388,7 +397,8 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
     }
 }
 
-FileCollection::FileCollection(vector<FileHeader> files) : _allFiles {std::move(files)}
+FileCollection::FileCollection(vector<FileHeader> files) :
+    _allFiles {std::move(files)}
 {
     STACK_TRACE_ENTRY();
 }

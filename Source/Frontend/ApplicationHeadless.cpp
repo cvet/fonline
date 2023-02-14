@@ -163,7 +163,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
+Application::Application(int argc, char** argv, bool client_mode) :
+    Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 

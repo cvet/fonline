@@ -40,14 +40,17 @@
 #include "Sprites.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto), _map {map}
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) :
+    ItemView(map->GetEngine(), id, proto),
+    _map {map}
 {
     STACK_TRACE_ENTRY();
 
     DrawEffect = _engine->EffectMngr.Effects.Generic;
 }
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(map, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props) :
+    ItemHexView(map, id, proto)
 {
     STACK_TRACE_ENTRY();
 
@@ -56,7 +59,8 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Pr
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) :
+    ItemHexView(map, id, proto)
 {
     STACK_TRACE_ENTRY();
 
@@ -66,7 +70,8 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const ve
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy) : ItemHexView(map, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy) :
+    ItemHexView(map, id, proto)
 {
     STACK_TRACE_ENTRY();
 

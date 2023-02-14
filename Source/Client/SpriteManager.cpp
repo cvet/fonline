@@ -52,7 +52,11 @@ static auto ApplyColorBrightness(uint color, int brightness) -> uint
     }
 }
 
-TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) : PosX {x}, PosY {y}, Width {width}, Height {height}
+TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) :
+    PosX {x},
+    PosY {y},
+    Width {width},
+    Height {height}
 {
     STACK_TRACE_ENTRY();
 }
@@ -119,7 +123,11 @@ auto AnyFrames::GetDir(uint dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _resources {resources}, _effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) :
+    _settings {settings},
+    _window {window},
+    _resources {resources},
+    _effectMngr {effect_mngr}
 {
     STACK_TRACE_ENTRY();
 

@@ -52,7 +52,8 @@
 class BakerEngine : public FOEngineBase
 {
 public:
-    explicit BakerEngine(PropertiesRelationType props_relation) : FOEngineBase(_dummySettings, props_relation)
+    explicit BakerEngine(PropertiesRelationType props_relation) :
+        FOEngineBase(_dummySettings, props_relation)
     {
         extern void Baker_RegisterData(FOEngineBase*);
         Baker_RegisterData(this);
@@ -120,7 +121,8 @@ BaseBaker::BaseBaker(BakerSettings& settings, FileCollection&& files, BakeChecke
     RUNTIME_ASSERT(_writeData);
 }
 
-Baker::Baker(BakerSettings& settings) : _settings {settings}
+Baker::Baker(BakerSettings& settings) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 }
@@ -1138,7 +1140,9 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
     return errors;
 }
 
-BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& settings) : _inputResources {input_resources}, _settings {settings}
+BakerDataSource::BakerDataSource(FileSystem& input_resources, BakerSettings& settings) :
+    _inputResources {input_resources},
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 }

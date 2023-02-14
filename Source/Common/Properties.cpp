@@ -92,7 +92,8 @@ void PropertyRawData::StoreIfPassed()
     }
 }
 
-Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
+Property::Property(const PropertyRegistrator* registrator) :
+    _registrator {registrator}
 {
     STACK_TRACE_ENTRY();
 }
@@ -118,7 +119,8 @@ void Property::AddPostSetter(PropertyPostSetCallback setter) const
     _postSetters.emplace(_postSetters.begin(), std::move(setter));
 }
 
-Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
+Properties::Properties(const PropertyRegistrator* registrator) :
+    _registrator {registrator}
 {
     STACK_TRACE_ENTRY();
 
@@ -129,7 +131,8 @@ Properties::Properties(const PropertyRegistrator* registrator) : _registrator {r
     }
 }
 
-Properties::Properties(const Properties& other) : Properties(other._registrator)
+Properties::Properties(const Properties& other) :
+    Properties(other._registrator)
 {
     STACK_TRACE_ENTRY();
 
@@ -1010,7 +1013,10 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
     return _registrator->_nameResolver.ResolveHash(h);
 }
 
-PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) : _className {class_name}, _relation {relation}, _nameResolver {name_resolver}
+PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) :
+    _className {class_name},
+    _relation {relation},
+    _nameResolver {name_resolver}
 {
     STACK_TRACE_ENTRY();
 }

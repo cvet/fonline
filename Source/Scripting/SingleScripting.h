@@ -44,7 +44,10 @@ class FOSingle;
 class SingleScriptSystem : public ScriptSystem
 {
 public:
-    explicit SingleScriptSystem(FOSingle* engine) : _engine {engine} { }
+    explicit SingleScriptSystem(FOSingle* engine) :
+        _engine {engine}
+    {
+    }
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};

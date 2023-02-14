@@ -42,7 +42,11 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 
-Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _resources), _sprMngr(_settings, window, _resources, _effectMngr)
+Updater::Updater(GlobalSettings& settings, AppWindow* window) :
+    _settings {settings},
+    _conn(settings),
+    _effectMngr(_settings, _resources),
+    _sprMngr(_settings, window, _resources, _effectMngr)
 {
     STACK_TRACE_ENTRY();
 

@@ -37,7 +37,10 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
+Item::Item(FOServer* engine, uint id, const ProtoItem* proto) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
+    EntityWithProto(this, proto),
+    ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 

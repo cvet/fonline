@@ -87,7 +87,8 @@ DataBase::DataBase(DataBase&&) noexcept = default;
 auto DataBase::operator=(DataBase&&) noexcept -> DataBase& = default;
 DataBase::~DataBase() = default;
 
-DataBase::DataBase(DataBaseImpl* impl) : _impl {impl}
+DataBase::DataBase(DataBaseImpl* impl) :
+    _impl {impl}
 {
     STACK_TRACE_ENTRY();
 }
@@ -615,7 +616,11 @@ public:
     auto operator=(DbJson&&) noexcept = delete;
     ~DbJson() override = default;
 
-    explicit DbJson(string_view storage_dir) : _storageDir {storage_dir} { DiskFileSystem::MakeDirTree(storage_dir); }
+    explicit DbJson(string_view storage_dir) :
+        _storageDir {storage_dir}
+    {
+        DiskFileSystem::MakeDirTree(storage_dir);
+    }
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {

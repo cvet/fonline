@@ -338,7 +338,8 @@ struct ExceptionStackTraceData
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
         template<typename... Args> \
-        explicit exception_name(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        explicit exception_name(string_view message, Args... args) : \
+            _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
         { \
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
@@ -348,7 +349,8 @@ struct ExceptionStackTraceData
             _stackTrace = GetStackTrace(); \
         } \
         template<typename... Args> \
-        exception_name(ExceptionStackTraceData data, string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        exception_name(ExceptionStackTraceData data, string_view message, Args... args) : \
+            _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
         { \
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
@@ -411,7 +413,10 @@ public:
 
 private:
     using Callback = std::function<void()>;
-    explicit EventUnsubscriberCallback(Callback cb) : _unsubscribeCallback {std::move(cb)} { }
+    explicit EventUnsubscriberCallback(Callback cb) :
+        _unsubscribeCallback {std::move(cb)}
+    {
+    }
     Callback _unsubscribeCallback {};
 };
 
@@ -494,7 +499,10 @@ public:
     using ObserverType = EventObserver<Args...>;
 
     EventDispatcher() = delete;
-    explicit EventDispatcher(ObserverType& obs) : _observer {obs} { }
+    explicit EventDispatcher(ObserverType& obs) :
+        _observer {obs}
+    {
+    }
     EventDispatcher(const EventDispatcher&) = delete;
     EventDispatcher(EventDispatcher&&) noexcept = default;
     auto operator=(const EventDispatcher&) = delete;
@@ -558,7 +566,8 @@ class ptr final
 public:
     ptr() = default;
 
-    explicit ptr(T* p) : _value {p}
+    explicit ptr(T* p) :
+        _value {p}
     {
         if (_value) {
             ++_value->ptrCounter;
@@ -626,7 +635,7 @@ private:
 
 // C-strings literal helpers
 // ReSharper disable once CppInconsistentNaming
-constexpr uint const_hash(char const* input)
+constexpr uint const_hash(const char* input)
 {
     return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
 }
@@ -664,9 +673,21 @@ template<typename T>
 class [[nodiscard]] RefCountHolder
 {
 public:
-    explicit RefCountHolder(T* ref) : _ref {ref} { _ref->AddRef(); }
-    RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref->AddRef(); }
-    RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref->AddRef(); }
+    explicit RefCountHolder(T* ref) :
+        _ref {ref}
+    {
+        _ref->AddRef();
+    }
+    RefCountHolder(const RefCountHolder& other) :
+        _ref {other._ref}
+    {
+        _ref->AddRef();
+    }
+    RefCountHolder(RefCountHolder&& other) noexcept :
+        _ref {other._ref}
+    {
+        _ref->AddRef();
+    }
     auto operator=(const RefCountHolder& other) = delete;
     auto operator=(RefCountHolder&& other) = delete;
     ~RefCountHolder() { _ref->Release(); }
@@ -684,7 +705,10 @@ class [[nodiscard]] ScopeCallback
 {
 public:
     static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
-    explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
+    explicit ScopeCallback(T safe_callback) :
+        _safeCallback {std::move(safe_callback)}
+    {
+    }
     ScopeCallback(ScopeCallback&& other) noexcept = default;
     ScopeCallback(const ScopeCallback& other) = delete;
     auto operator=(const ScopeCallback& other) = delete;
@@ -702,7 +726,11 @@ public:
     static_assert(std::is_invocable_v<T>, "T must be invocable");
     static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
     static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
-    ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
+    ScopeCallbackExt(T unsafe_callback, T2 safe_callback) :
+        _unsafeCallback {std::move(unsafe_callback)},
+        _safeCallback {std::move(safe_callback)}
+    {
+    }
     ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
     ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
     auto operator=(const ScopeCallbackExt& other) = delete;
@@ -831,7 +859,10 @@ DECLARE_EXCEPTION(DataReadingException);
 class DataReader
 {
 public:
-    explicit DataReader(const_span<uchar> buf) : _dataBuf {buf} { }
+    explicit DataReader(const_span<uchar> buf) :
+        _dataBuf {buf}
+    {
+    }
 
     template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     auto Read() -> T
@@ -886,7 +917,8 @@ class DataWriter
 public:
     static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
-    explicit DataWriter(vector<uchar>& buf) : _dataBuf {buf}
+    explicit DataWriter(vector<uchar>& buf) :
+        _dataBuf {buf}
     {
         if (_dataBuf.capacity() < BUF_RESERVE_SIZE) {
             _dataBuf.reserve(BUF_RESERVE_SIZE);
@@ -929,14 +961,42 @@ private:
 template<typename T>
 struct TRect
 {
-    TRect() : Left(0), Top(0), Right(0), Bottom(0) { }
-    template<typename T2>
-    TRect(const TRect<T2>& fr) : Left(static_cast<T>(fr.Left)), Top(static_cast<T>(fr.Top)), Right(static_cast<T>(fr.Right)), Bottom(static_cast<T>(fr.Bottom))
+    TRect() :
+        Left(0),
+        Top(0),
+        Right(0),
+        Bottom(0)
     {
     }
-    TRect(T l, T t, T r, T b) : Left(l), Top(t), Right(r), Bottom(b) { }
-    TRect(T l, T t, T r, T b, T ox, T oy) : Left(l + ox), Top(t + oy), Right(r + ox), Bottom(b + oy) { }
-    TRect(const TRect& fr, T ox, T oy) : Left(fr.Left + ox), Top(fr.Top + oy), Right(fr.Right + ox), Bottom(fr.Bottom + oy) { }
+    template<typename T2>
+    TRect(const TRect<T2>& fr) :
+        Left(static_cast<T>(fr.Left)),
+        Top(static_cast<T>(fr.Top)),
+        Right(static_cast<T>(fr.Right)),
+        Bottom(static_cast<T>(fr.Bottom))
+    {
+    }
+    TRect(T l, T t, T r, T b) :
+        Left(l),
+        Top(t),
+        Right(r),
+        Bottom(b)
+    {
+    }
+    TRect(T l, T t, T r, T b, T ox, T oy) :
+        Left(l + ox),
+        Top(t + oy),
+        Right(r + ox),
+        Bottom(b + oy)
+    {
+    }
+    TRect(const TRect& fr, T ox, T oy) :
+        Left(fr.Left + ox),
+        Top(fr.Top + oy),
+        Right(fr.Right + ox),
+        Bottom(fr.Bottom + oy)
+    {
+    }
 
     template<typename T2>
     auto operator=(const TRect<T2>& fr) -> TRect&
@@ -1010,13 +1070,27 @@ using FRect = TRect<float>;
 template<typename T>
 struct TPoint
 {
-    TPoint() : X(0), Y(0) { }
-    template<typename T2>
-    TPoint(const TPoint<T2>& r) : X(static_cast<T>(r.X)), Y(static_cast<T>(r.Y))
+    TPoint() :
+        X(0),
+        Y(0)
     {
     }
-    TPoint(T x, T y) : X(x), Y(y) { }
-    TPoint(const TPoint& fp, T ox, T oy) : X(fp.X + ox), Y(fp.Y + oy) { }
+    template<typename T2>
+    TPoint(const TPoint<T2>& r) :
+        X(static_cast<T>(r.X)),
+        Y(static_cast<T>(r.Y))
+    {
+    }
+    TPoint(T x, T y) :
+        X(x),
+        Y(y)
+    {
+    }
+    TPoint(const TPoint& fp, T ox, T oy) :
+        X(fp.X + ox),
+        Y(fp.Y + oy)
+    {
+    }
 
     template<typename T2>
     auto operator=(const TPoint<T2>& fp) -> TPoint&
@@ -1073,7 +1147,10 @@ struct hstring
     };
 
     hstring() = default;
-    explicit hstring(entry* static_storage_entry) : _entry {static_storage_entry} { }
+    explicit hstring(entry* static_storage_entry) :
+        _entry {static_storage_entry}
+    {
+    }
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string_view() const { return _entry->Str; }
     explicit operator bool() const { return !(_entry->Hash == 0u); }
@@ -1449,7 +1526,10 @@ template<typename T>
 class irange_iterator final
 {
 public:
-    constexpr explicit irange_iterator(T v) : _value {v} { }
+    constexpr explicit irange_iterator(T v) :
+        _value {v}
+    {
+    }
     constexpr auto operator!=(const irange_iterator& other) const -> bool { return _value != other._value; }
     constexpr auto operator*() const -> const T& { return _value; }
     constexpr auto operator++() -> irange_iterator&
@@ -1466,8 +1546,16 @@ template<typename T>
 class irange_loop final
 {
 public:
-    constexpr explicit irange_loop(T to) : _fromValue {0}, _toValue {to} { }
-    constexpr explicit irange_loop(T from, T to) : _fromValue {from}, _toValue {to} { }
+    constexpr explicit irange_loop(T to) :
+        _fromValue {0},
+        _toValue {to}
+    {
+    }
+    constexpr explicit irange_loop(T from, T to) :
+        _fromValue {from},
+        _toValue {to}
+    {
+    }
     [[nodiscard]] constexpr auto begin() const -> irange_iterator<T> { return irange_iterator<T>(_fromValue); }
     [[nodiscard]] constexpr auto end() const -> irange_iterator<T> { return irange_iterator<T>(_toValue); }
 

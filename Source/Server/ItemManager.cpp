@@ -40,7 +40,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-ItemManager::ItemManager(FOServer* engine) : _engine {engine}
+ItemManager::ItemManager(FOServer* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 }

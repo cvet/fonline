@@ -39,7 +39,9 @@
 
 #include "imgui.h"
 
-EditorView::EditorView(string_view view_name, FOEditor& editor) : _viewName {view_name}, _editor {editor}
+EditorView::EditorView(string_view view_name, FOEditor& editor) :
+    _viewName {view_name},
+    _editor {editor}
 {
     STACK_TRACE_ENTRY();
 }
@@ -89,7 +91,9 @@ void EditorView::Close()
     _requestClose = true;
 }
 
-EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_view asset_path) : EditorView(asset_path, data), _assetPath {asset_path}
+EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_view asset_path) :
+    EditorView(asset_path, data),
+    _assetPath {asset_path}
 {
     STACK_TRACE_ENTRY();
 }
@@ -128,7 +132,8 @@ void EditorAssetView::OnDraw()
     }*/
 }
 
-FOEditor::FOEditor(GlobalSettings& settings) : Settings {settings}
+FOEditor::FOEditor(GlobalSettings& settings) :
+    Settings {settings}
 {
     STACK_TRACE_ENTRY();
 

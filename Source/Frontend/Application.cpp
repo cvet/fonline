@@ -168,7 +168,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
+Application::Application(int argc, char** argv, bool client_mode) :
+    Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 

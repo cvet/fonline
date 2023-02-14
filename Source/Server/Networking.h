@@ -76,7 +76,10 @@ private:
 class DummyNetConnection : public NetConnection
 {
 public:
-    explicit DummyNetConnection(ServerNetworkSettings& settings) : NetConnection(settings) { }
+    explicit DummyNetConnection(ServerNetworkSettings& settings) :
+        NetConnection(settings)
+    {
+    }
     DummyNetConnection(const DummyNetConnection&) = delete;
     DummyNetConnection(DummyNetConnection&&) noexcept = delete;
     auto operator=(const DummyNetConnection&) = delete;

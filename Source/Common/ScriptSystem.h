@@ -104,7 +104,10 @@ class ScriptFunc final
 {
 public:
     ScriptFunc() = default;
-    explicit ScriptFunc(ScriptFuncDesc* f) : _func {f} { }
+    explicit ScriptFunc(ScriptFuncDesc* f) :
+        _func {f}
+    {
+    }
     [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
     [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
     [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }
@@ -122,7 +125,10 @@ class ScriptFunc<void, Args...> final
 {
 public:
     ScriptFunc() = default;
-    explicit ScriptFunc(ScriptFuncDesc* f) : _func {f} { }
+    explicit ScriptFunc(ScriptFuncDesc* f) :
+        _func {f}
+    {
+    }
     [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
     [[nodiscard]] auto GetName() const -> hstring { return _func != nullptr ? _func->Name : hstring(); }
     [[nodiscard]] auto IsDelegate() const -> bool { return _func != nullptr && _func->Delegate; }

@@ -36,7 +36,8 @@
 
 #include "imgui.h"
 
-AssetExplorer::AssetExplorer(FOEditor& editor) : EditorView("Asset Explorer", editor)
+AssetExplorer::AssetExplorer(FOEditor& editor) :
+    EditorView("Asset Explorer", editor)
 {
     STACK_TRACE_ENTRY();
 }

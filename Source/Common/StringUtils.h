@@ -43,11 +43,21 @@ class _str final
 public:
     _str() = default;
     _str(const _str&) = default;
-    explicit _str(string s) : _s(std::move(s)) { }
-    explicit _str(const char* s) : _s(s) { }
-    explicit _str(string_view s) : _s(s) { }
+    explicit _str(string s) :
+        _s(std::move(s))
+    {
+    }
+    explicit _str(const char* s) :
+        _s(s)
+    {
+    }
+    explicit _str(string_view s) :
+        _s(s)
+    {
+    }
     template<typename... Args>
-    explicit _str(string_view format, Args... args) : _s(fmt::format(format, args...))
+    explicit _str(string_view format, Args... args) :
+        _s(fmt::format(format, args...))
     {
     }
     _str(_str&&) noexcept = default;

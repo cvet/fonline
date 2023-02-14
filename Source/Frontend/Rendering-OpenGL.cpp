@@ -129,7 +129,10 @@ static bool OGL_uniform_buffer_object {}; // Todo: make workarounds for work wit
 class OpenGL_Texture final : public RenderTexture
 {
 public:
-    OpenGL_Texture(int width, int height, bool linear_filtered, bool with_depth) : RenderTexture(width, height, linear_filtered, with_depth, true) { }
+    OpenGL_Texture(int width, int height, bool linear_filtered, bool with_depth) :
+        RenderTexture(width, height, linear_filtered, with_depth, true)
+    {
+    }
     ~OpenGL_Texture() override;
 
     [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
@@ -159,7 +162,10 @@ class OpenGL_Effect final : public RenderEffect
     friend class OpenGL_Renderer;
 
 public:
-    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : RenderEffect(usage, name, loader) { }
+    OpenGL_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
+        RenderEffect(usage, name, loader)
+    {
+    }
     ~OpenGL_Effect() override;
 
     void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
@@ -833,7 +839,8 @@ static void DisableVertAtribs(EffectUsage usage)
     }
 }
 
-OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static)
+OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) :
+    RenderDrawBuffer(is_static)
 {
     STACK_TRACE_ENTRY();
 

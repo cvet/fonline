@@ -110,7 +110,8 @@ namespace SPK::FO
         effect->DrawBuffer(_renderBuf.get(), 0, vertices / 4 * 6);
     }
 
-    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset)
+    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) :
+        Renderer(needs_dataset)
     {
         STACK_TRACE_ENTRY();
     }

@@ -429,7 +429,8 @@ auto CachedDir::GetFileNames(string_view path, bool include_subdirs, string_view
     return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext);
 }
 
-FalloutDat::FalloutDat(string_view fname) : _datFile {DiskFileSystem::OpenFile(fname, false)}
+FalloutDat::FalloutDat(string_view fname) :
+    _datFile {DiskFileSystem::OpenFile(fname, false)}
 {
     STACK_TRACE_ENTRY();
 
@@ -760,7 +761,7 @@ ZipFile::ZipFile(string_view fname)
 
         struct MemStream
         {
-            volatile const uchar* Buf;
+            const volatile uchar* Buf;
             uint Length;
             uint Pos;
         };

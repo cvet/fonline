@@ -41,7 +41,9 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(settings, PropertiesRelationType::BothRelative), FOClient(settings, window, true)
+FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
+    FOEngineBase(settings, PropertiesRelationType::BothRelative),
+    FOClient(settings, window, true)
 {
     STACK_TRACE_ENTRY();
 

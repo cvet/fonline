@@ -44,7 +44,10 @@ class FOServer;
 class ServerScriptSystem : public ScriptSystem
 {
 public:
-    explicit ServerScriptSystem(FOServer* engine) : _engine {engine} { }
+    explicit ServerScriptSystem(FOServer* engine) :
+        _engine {engine}
+    {
+    }
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};

@@ -36,7 +36,9 @@
 #include "DataBase.h"
 #include "Server.h"
 
-ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) : DeferredCallManager(engine), _serverEngine {engine}
+ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) :
+    DeferredCallManager(engine),
+    _serverEngine {engine}
 {
     STACK_TRACE_ENTRY();
 }

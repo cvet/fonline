@@ -69,7 +69,8 @@ struct TimerData
 };
 GLOBAL_DATA(TimerData, Data);
 
-GameTimer::GameTimer(TimerSettings& settings) : _settings {settings}
+GameTimer::GameTimer(TimerSettings& settings) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 

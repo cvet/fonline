@@ -361,7 +361,8 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
+ModelInstance::ModelInstance(ModelManager& model_mngr) :
+    _modelMngr(model_mngr)
 {
     STACK_TRACE_ENTRY();
 
@@ -2072,7 +2073,8 @@ void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, 
     }
 }
 
-ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
+ModelInformation::ModelInformation(ModelManager& model_mngr) :
+    _modelMngr {model_mngr}
 {
     STACK_TRACE_ENTRY();
 
@@ -2913,7 +2915,8 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
     return shape;
 }
 
-ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mngr}
+ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) :
+    _modelMngr {model_mngr}
 {
     STACK_TRACE_ENTRY();
 }

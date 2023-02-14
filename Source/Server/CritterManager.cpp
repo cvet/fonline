@@ -42,7 +42,8 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-CritterManager::CritterManager(FOServer* engine) : _engine {engine}
+CritterManager::CritterManager(FOServer* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 }

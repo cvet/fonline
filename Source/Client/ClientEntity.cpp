@@ -34,7 +34,10 @@
 #include "ClientEntity.h"
 #include "StringUtils.h"
 
-ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
+ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator) :
+    Entity(registrator),
+    _engine {engine},
+    _id {id}
 {
     STACK_TRACE_ENTRY();
 

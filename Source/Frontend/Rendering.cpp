@@ -49,12 +49,15 @@ RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool w
     RUNTIME_ASSERT(height > 0);
 }
 
-RenderDrawBuffer::RenderDrawBuffer(bool is_static) : IsStatic {is_static}
+RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
+    IsStatic {is_static}
 {
     STACK_TRACE_ENTRY();
 }
 
-RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
+RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
+    Name {name},
+    Usage {usage}
 {
     STACK_TRACE_ENTRY();
 

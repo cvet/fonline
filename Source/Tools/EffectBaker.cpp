@@ -162,7 +162,8 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
         /* .generalConstantMatrixVectorIndexing = */ true,
     }};
 
-EffectBaker::EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
+EffectBaker::EffectBaker(BakerSettings& settings, FileCollection files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+    BaseBaker(settings, std::move(files), std::move(bake_checker), std::move(write_data))
 {
     STACK_TRACE_ENTRY();
 

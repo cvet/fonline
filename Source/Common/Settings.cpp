@@ -356,7 +356,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     const_cast<bool&>(ClientMode) = client_mode;
 
-    const auto volatile_char_to_string = [](volatile const char* str, size_t len) -> string {
+    const auto volatile_char_to_string = [](const volatile char* str, size_t len) -> string {
         string result;
         result.resize(len);
         for (size_t i = 0; i < len; i++) {
@@ -367,7 +367,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Debugging config
     if (IsRunInDebugger()) {
-        static volatile const char DEBUG_CONFIG[] =
+        static const volatile char DEBUG_CONFIG[] =
 #include "DebugSettings-Include.h"
             ;
 
@@ -379,7 +379,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Injected config
     {
-        static volatile const char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
+        static const volatile char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"

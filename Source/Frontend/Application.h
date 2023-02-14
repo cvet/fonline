@@ -213,12 +213,36 @@ struct InputEvent
     } KeyUp {};
 
     InputEvent() = default;
-    explicit InputEvent(MouseMoveEvent ev) : Type {EventType::MouseMoveEvent}, MouseMove {ev} { }
-    explicit InputEvent(MouseDownEvent ev) : Type {EventType::MouseDownEvent}, MouseDown {ev} { }
-    explicit InputEvent(MouseUpEvent ev) : Type {EventType::MouseUpEvent}, MouseUp {ev} { }
-    explicit InputEvent(MouseWheelEvent ev) : Type {EventType::MouseWheelEvent}, MouseWheel {ev} { }
-    explicit InputEvent(KeyDownEvent ev) : Type {EventType::KeyDownEvent}, KeyDown {std::move(ev)} { }
-    explicit InputEvent(KeyUpEvent ev) : Type {EventType::KeyUpEvent}, KeyUp {ev} { }
+    explicit InputEvent(MouseMoveEvent ev) :
+        Type {EventType::MouseMoveEvent},
+        MouseMove {ev}
+    {
+    }
+    explicit InputEvent(MouseDownEvent ev) :
+        Type {EventType::MouseDownEvent},
+        MouseDown {ev}
+    {
+    }
+    explicit InputEvent(MouseUpEvent ev) :
+        Type {EventType::MouseUpEvent},
+        MouseUp {ev}
+    {
+    }
+    explicit InputEvent(MouseWheelEvent ev) :
+        Type {EventType::MouseWheelEvent},
+        MouseWheel {ev}
+    {
+    }
+    explicit InputEvent(KeyDownEvent ev) :
+        Type {EventType::KeyDownEvent},
+        KeyDown {std::move(ev)}
+    {
+    }
+    explicit InputEvent(KeyUpEvent ev) :
+        Type {EventType::KeyUpEvent},
+        KeyUp {ev}
+    {
+    }
 };
 
 class AppWindow final

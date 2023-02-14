@@ -186,7 +186,8 @@ class FOEngine : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
-    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative)
+    FOEngine() :
+        FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative)
     {
         STACK_TRACE_ENTRY();
 
@@ -194,7 +195,8 @@ public:
         AngelScript_ServerCompiler_RegisterData(this);
     }
 #elif CLIENT_SCRIPTING
-    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative)
+    FOEngine() :
+        FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative)
     {
         STACK_TRACE_ENTRY();
 
@@ -202,7 +204,8 @@ public:
         AngelScript_ClientCompiler_RegisterData(this);
     }
 #elif SINGLE_SCRIPTING
-    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
+    FOEngine() :
+        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
     {
         STACK_TRACE_ENTRY();
 
@@ -210,7 +213,8 @@ public:
         AngelScript_SingleCompiler_RegisterData(this);
     }
 #elif MAPPER_SCRIPTING
-    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
+    FOEngine() :
+        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
     {
         STACK_TRACE_ENTRY();
 
@@ -3576,7 +3580,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 class BinaryStream : public asIBinaryStream
 {
 public:
-    explicit BinaryStream(std::vector<asBYTE>& buf) : _binBuf {buf} { }
+    explicit BinaryStream(std::vector<asBYTE>& buf) :
+        _binBuf {buf}
+    {
+    }
 
     void Write(const void* ptr, asUINT size) override
     {
@@ -3618,7 +3625,9 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
     class ScriptLoader : public Preprocessor::FileLoader
     {
     public:
-        ScriptLoader(const string* root, const map<string, string>* files) : _rootScript {root}, _scriptFiles {files}
+        ScriptLoader(const string* root, const map<string, string>* files) :
+            _rootScript {root},
+            _scriptFiles {files}
         {
             STACK_TRACE_ENTRY();
 

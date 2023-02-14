@@ -79,7 +79,10 @@ protected:
 class NetOutBuffer final : public NetBuffer
 {
 public:
-    explicit NetOutBuffer(size_t buf_len) : NetBuffer(buf_len) { }
+    explicit NetOutBuffer(size_t buf_len) :
+        NetBuffer(buf_len)
+    {
+    }
     NetOutBuffer(const NetOutBuffer&) = delete;
     NetOutBuffer(NetOutBuffer&&) noexcept = default;
     auto operator=(const NetOutBuffer&) = delete;
@@ -117,7 +120,10 @@ public:
 class NetInBuffer final : public NetBuffer
 {
 public:
-    explicit NetInBuffer(size_t buf_len) : NetBuffer(buf_len) { }
+    explicit NetInBuffer(size_t buf_len) :
+        NetBuffer(buf_len)
+    {
+    }
     NetInBuffer(const NetInBuffer&) = delete;
     NetInBuffer(NetInBuffer&&) noexcept = default;
     auto operator=(const NetInBuffer&) = delete;

@@ -33,7 +33,8 @@
 
 #include "GeometryHelper.h"
 
-GeometryHelper::GeometryHelper(GeometrySettings& settings) : _settings {settings}
+GeometryHelper::GeometryHelper(GeometrySettings& settings) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 }

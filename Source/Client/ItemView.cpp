@@ -35,7 +35,10 @@
 #include "Client.h"
 #include "StringUtils.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
+    EntityWithProto(this, proto),
+    ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 

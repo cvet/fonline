@@ -42,7 +42,9 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto) : CritterView(map->GetEngine(), id, proto), _map {map}
+CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto) :
+    CritterView(map->GetEngine(), id, proto),
+    _map {map}
 {
     STACK_TRACE_ENTRY();
 

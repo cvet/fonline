@@ -42,7 +42,10 @@ class GameProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_CLASS_NAME = "Game";
 
-    explicit GameProperties(Properties& props) : EntityProperties(props) { }
+    explicit GameProperties(Properties& props) :
+        EntityProperties(props)
+    {
+    }
 
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, Year);
@@ -71,7 +74,10 @@ class PlayerProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_CLASS_NAME = "Player";
 
-    explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
+    explicit PlayerProperties(Properties& props) :
+        EntityProperties(props)
+    {
+    }
 
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, OwnedCritterIds);
@@ -88,7 +94,10 @@ class ItemProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_CLASS_NAME = "Item";
 
-    explicit ItemProperties(Properties& props) : EntityProperties(props) { }
+    explicit ItemProperties(Properties& props) :
+        EntityProperties(props)
+    {
+    }
 
     ///@ ExportProperty ScriptFuncType = ItemInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
@@ -249,7 +258,10 @@ class CritterProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_CLASS_NAME = "Critter";
 
-    explicit CritterProperties(Properties& props) : EntityProperties(props) { }
+    explicit CritterProperties(Properties& props) :
+        EntityProperties(props)
+    {
+    }
 
     ///@ ExportProperty ScriptFuncType = CritterInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
@@ -388,7 +400,10 @@ class MapProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_CLASS_NAME = "Map";
 
-    explicit MapProperties(Properties& props) : EntityProperties(props) { }
+    explicit MapProperties(Properties& props) :
+        EntityProperties(props)
+    {
+    }
 
     ///@ ExportProperty ScriptFuncType = MapInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
@@ -439,7 +454,10 @@ class LocationProperties : public EntityProperties
 public:
     static constexpr string_view ENTITY_CLASS_NAME = "Location";
 
-    explicit LocationProperties(Properties& props) : EntityProperties(props) { }
+    explicit LocationProperties(Properties& props) :
+        EntityProperties(props)
+    {
+    }
 
     // Todo: implement Location InitScript
     ///@ ExportProperty ScriptFuncType = LocationInit Alias = ScriptId

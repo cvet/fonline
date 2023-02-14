@@ -33,7 +33,8 @@
 
 #include "DeferredCalls.h"
 
-DeferredCallManager::DeferredCallManager(FOEngineBase* engine) : _engine {engine}
+DeferredCallManager::DeferredCallManager(FOEngineBase* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 

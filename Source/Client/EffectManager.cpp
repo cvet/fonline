@@ -35,7 +35,9 @@
 #include "GenericUtils.h"
 #include "Log.h"
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
+    _settings {settings},
+    _resources {resources}
 {
     STACK_TRACE_ENTRY();
 }

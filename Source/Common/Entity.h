@@ -237,7 +237,10 @@ template<typename... Args>
 class EntityEvent final : public EntityEventBase
 {
 public:
-    EntityEvent(Entity* entity, const char* callback_name) : EntityEventBase(entity, callback_name) { }
+    EntityEvent(Entity* entity, const char* callback_name) :
+        EntityEventBase(entity, callback_name)
+    {
+    }
 
     auto Fire(Args... args) -> bool
     {

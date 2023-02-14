@@ -291,7 +291,8 @@ static ScriptTypeOf* ScriptTypeOfFactory2(asITypeInfo* ot, void* ref)
     return new ScriptTypeOf(((asIScriptObject*)ref)->GetObjectType());
 }
 
-ScriptTypeOf::ScriptTypeOf(asITypeInfo* ot) : ScriptType(ot)
+ScriptTypeOf::ScriptTypeOf(asITypeInfo* ot) :
+    ScriptType(ot)
 {
     refCount = 1;
 }

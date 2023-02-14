@@ -177,7 +177,8 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
     return _str("{}/{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
-FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real_path).eraseFileExtension()}
+FileCacheStorage::FileCacheStorage(string_view real_path) :
+    _workPath {_str(real_path).eraseFileExtension()}
 {
     STACK_TRACE_ENTRY();
 

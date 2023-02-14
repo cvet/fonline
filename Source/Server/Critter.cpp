@@ -41,7 +41,11 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef()), _player {owner}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
+    EntityWithProto(this, proto),
+    CritterProperties(GetInitRef()),
+    _player {owner}
 {
     STACK_TRACE_ENTRY();
 

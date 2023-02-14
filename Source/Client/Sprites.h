@@ -176,7 +176,11 @@ class Sprites final
 
 public:
     Sprites() = delete;
-    Sprites(SpriteManager& spr_mngr, vector<Sprite*>& pool) : _sprMngr {spr_mngr}, _spritesPool {pool} { }
+    Sprites(SpriteManager& spr_mngr, vector<Sprite*>& pool) :
+        _sprMngr {spr_mngr},
+        _spritesPool {pool}
+    {
+    }
     Sprites(const Sprites&) = delete;
     Sprites(Sprites&&) noexcept = delete;
     auto operator=(const Sprites&) = delete;

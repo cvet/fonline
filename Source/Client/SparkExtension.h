@@ -90,7 +90,10 @@ namespace SPK::FO
         void SetTextureName(const string& name);
 
     private:
-        SparkQuadRenderer() : Renderer(false) { }
+        SparkQuadRenderer() :
+            Renderer(false)
+        {
+        }
         explicit SparkQuadRenderer(bool needs_dataset);
         SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
 

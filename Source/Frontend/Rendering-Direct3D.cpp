@@ -47,7 +47,10 @@
 class Direct3D_Texture : public RenderTexture
 {
 public:
-    Direct3D_Texture(int width, int height, bool linear_filtered, bool with_depth) : RenderTexture(width, height, linear_filtered, with_depth, false) { }
+    Direct3D_Texture(int width, int height, bool linear_filtered, bool with_depth) :
+        RenderTexture(width, height, linear_filtered, with_depth, false)
+    {
+    }
     ~Direct3D_Texture() override;
 
     [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
@@ -64,7 +67,10 @@ public:
 class Direct3D_DrawBuffer : public RenderDrawBuffer
 {
 public:
-    explicit Direct3D_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
+    explicit Direct3D_DrawBuffer(bool is_static) :
+        RenderDrawBuffer(is_static)
+    {
+    }
     ~Direct3D_DrawBuffer() override;
 
     void Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size) override;
@@ -80,7 +86,10 @@ class Direct3D_Effect : public RenderEffect
     friend class Direct3D_Renderer;
 
 public:
-    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : RenderEffect(usage, name, loader) { }
+    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
+        RenderEffect(usage, name, loader)
+    {
+    }
     ~Direct3D_Effect() override;
 
     void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;

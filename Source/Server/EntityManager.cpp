@@ -38,7 +38,8 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-EntityManager::EntityManager(FOServer* engine) : _engine {engine}
+EntityManager::EntityManager(FOServer* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 }

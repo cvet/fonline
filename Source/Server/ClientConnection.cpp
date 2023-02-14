@@ -37,7 +37,12 @@
 #include "MsgFiles.h"
 #include "Networking.h"
 
-ClientConnection::ClientConnection(NetConnection* net_connection) : Bin {net_connection->Bin}, BinLocker {net_connection->BinLocker}, Bout {net_connection->Bout}, BoutLocker {net_connection->BoutLocker}, _netConnection {net_connection}
+ClientConnection::ClientConnection(NetConnection* net_connection) :
+    Bin {net_connection->Bin},
+    BinLocker {net_connection->BinLocker},
+    Bout {net_connection->Bout},
+    BoutLocker {net_connection->BoutLocker},
+    _netConnection {net_connection}
 {
     STACK_TRACE_ENTRY();
 

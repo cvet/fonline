@@ -63,7 +63,10 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}, _playingSounds {}
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
+    _settings {settings},
+    _resources {resources},
+    _playingSounds {}
 {
     STACK_TRACE_ENTRY();
 

@@ -35,7 +35,8 @@
 #include "Application.h"
 #include "Log.h"
 
-Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
+Entity::Entity(const PropertyRegistrator* registrator) :
+    _props {registrator}
 {
     STACK_TRACE_ENTRY();
 
@@ -314,7 +315,9 @@ void Entity::SetValueAsFloat(int prop_index, float value)
     _props.SetValueAsFloat(prop_index, value);
 }
 
-ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}
+ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) :
+    Entity(registrator),
+    _protoId {proto_id}
 {
     STACK_TRACE_ENTRY();
 
@@ -357,7 +360,8 @@ auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
     return _componentHashes.count(hash) != 0u;
 }
 
-EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) : _proto {proto}
+EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) :
+    _proto {proto}
 {
     STACK_TRACE_ENTRY();
 
@@ -388,7 +392,9 @@ auto EntityWithProto::GetProto() const -> const ProtoEntity*
     return _proto;
 }
 
-EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) : _entity {entity}, _callbackName {callback_name}
+EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) :
+    _entity {entity},
+    _callbackName {callback_name}
 {
     STACK_TRACE_ENTRY();
 }

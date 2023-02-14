@@ -97,7 +97,8 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
     return prop->GetRegIndex();
 }
 
-DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
+DialogManager::DialogManager(FOEngineBase* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 }

@@ -108,7 +108,8 @@ auto ParticleManager::CreateParticles(string_view name) -> unique_ptr<ParticleSy
     return std::move(particles);
 }
 
-ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) : _particleMngr {particle_mngr}
+ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
+    _particleMngr {particle_mngr}
 {
     STACK_TRACE_ENTRY();
 
