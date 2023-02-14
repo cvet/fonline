@@ -451,7 +451,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
                 ctx->Abort();
                 ReturnContext(ctx);
 
-                throw ScriptException(ExceptionStackTraceData {ExceptionStackTrace}, "Script execution exception", ex_string);
+                throw ScriptException(ExceptionStackTraceData {ExceptionStackTrace}, ex_string);
             }
 
             if (exec_result == asEXECUTION_ABORTED) {
