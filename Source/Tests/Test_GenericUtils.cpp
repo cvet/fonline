@@ -39,14 +39,20 @@ TEST_CASE("Dummy 1")
 {
     REQUIRE(1 == 1);
 
-    SECTION("2") { REQUIRE(2 == 2); }
+    SECTION("2")
+    {
+        REQUIRE(2 == 2);
+    }
 }
 
 TEST_CASE("Dummy 2")
 {
     REQUIRE(1 == 1);
 
-    SECTION("2") { REQUIRE(2 == 2); }
+    SECTION("2")
+    {
+        REQUIRE(2 == 2);
+    }
 }
 
 TEST_CASE("MurmurHash2")

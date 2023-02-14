@@ -46,14 +46,29 @@
 ///@ ExportEntity Location Location LocationView HasProto
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
-    inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndexFast(prop##_RegIndex); } \
-    inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop(prop_type value) { _propsRef.SetValue(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; } \
+    inline auto GetProperty##prop() const->const Property* \
+    { \
+        return _propsRef.GetRegistrator()->GetByIndexFast(prop##_RegIndex); \
+    } \
+    inline prop_type Get##prop() const \
+    { \
+        return _propsRef.GetValue<prop_type>(GetProperty##prop()); \
+    } \
+    inline void Set##prop(prop_type value) \
+    { \
+        _propsRef.SetValue(GetProperty##prop(), value); \
+    } \
+    inline bool IsNonEmpty##prop() const \
+    { \
+        return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; \
+    } \
     static ushort prop##_RegIndex
 
 #define ENTITY_EVENT(event_name, ...) \
-    EntityEvent<__VA_ARGS__> event_name { this, #event_name }
+    EntityEvent<__VA_ARGS__> event_name \
+    { \
+        this, #event_name \
+    }
 
 class EntityProperties
 {

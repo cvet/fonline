@@ -357,8 +357,14 @@ struct ExceptionStackTraceData
             } \
             _stackTrace = std::move(data.StackTrace); \
         } \
-        [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
-        [[nodiscard]] auto StackTrace() const noexcept -> const string& override { return _stackTrace; } \
+        [[nodiscard]] auto what() const noexcept -> const char* override \
+        { \
+            return _exceptionMessage.c_str(); \
+        } \
+        [[nodiscard]] auto StackTrace() const noexcept -> const string& override \
+        { \
+            return _stackTrace; \
+        } \
 \
     private: \
         string _exceptionMessage {}; \
@@ -636,14 +642,20 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Scriptable object class decorator
 #define SCRIPTABLE_OBJECT() \
-    void AddRef() { ++RefCounter; } \
+    void AddRef() \
+    { \
+        ++RefCounter; \
+    } \
     void Release() \
     { \
         if (--RefCounter == 0) { \
             delete this; \
         } \
     } \
-    int RefCounter { 1 }
+    int RefCounter \
+    { \
+        1 \
+    }
 
 // Ref counted objects scope holder
 template<typename T>
