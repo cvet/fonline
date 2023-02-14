@@ -1182,7 +1182,7 @@ def flushFiles():
         else:
             verbosePrint('flushFiles', 'no file', path)
         with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines) + '\n')
+            f.write('\n'.join(lines).rstrip('\n') + '\n')
         verbosePrint('flushFiles', 'write', path)
 
 # Code
