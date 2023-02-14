@@ -292,6 +292,10 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, ushort, MapLeaveHexX);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateServer, ushort, MapLeaveHexY);
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexX);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexY);

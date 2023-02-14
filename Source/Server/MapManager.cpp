@@ -1480,6 +1480,9 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
         cr->LockMapTransfers++;
         auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
+        cr->SetMapLeaveHexX(cr->GetHexX());
+        cr->SetMapLeaveHexY(cr->GetHexY());
+
         EraseCrFromMap(cr, cur_map);
 
         AddCrToMap(cr, map, fixed_hx, fixed_hy, dir, leader_id);
