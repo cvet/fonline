@@ -194,7 +194,7 @@ SpacesInConditionalStatement: false
 SpacesInContainerLiterals: false
 SpacesInCStyleCastParentheses: false
 SpacesInLineCommentPrefix:
-  Minimum:         1
+  Minimum:         0
   Maximum:         -1
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
