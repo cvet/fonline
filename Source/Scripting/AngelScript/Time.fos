@@ -129,8 +129,9 @@ uint GetDaysInMonth(uint16 year, uint16 month)
     case 12: // 31
         return 31;
     case 2: // 28-29
-        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))
+        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) {
             return 29;
+        }
         return 28;
     default: // 30
         return 30;
@@ -150,24 +151,29 @@ string GetTimeString(const string format, int year, int month, int day, int dayO
 {
     string result = format;
 
-    if (year != -1)
+    if (year != -1) {
         result = Game.ReplaceText(result, "%YEAR%", year);
+    }
     if (month != -1) {
         result = Game.ReplaceText(result, "%MONTH%", month);
         result = Game.ReplaceText(result, "%MONTH-STR%", Game.GetMsgStr(TEXTMSG_GAME, STR_MONTH(month)));
     }
-    if (day != -1)
+    if (day != -1) {
         result = Game.ReplaceText(result, "%DAY%", day);
+    }
     if (dayOfWeek != -1) {
         result = Game.ReplaceText(result, "%DOW%", dayOfWeek);
         result = Game.ReplaceText(result, "%DOW-STR%", Game.GetMsgStr(TEXTMSG_GAME, STR_MONTH(dayOfWeek)));
     }
-    if (hour != -1)
+    if (hour != -1) {
         result = Game.ReplaceText(result, "%HOUR%", hour);
-    if (minute != -1)
+    }
+    if (minute != -1) {
         result = Game.ReplaceText(result, "%MINUTE%", minute);
-    if (second != -1)
+    }
+    if (second != -1) {
         result = Game.ReplaceText(result, "%SECOND%", second);
+    }
 
     return result;
 }

@@ -24,8 +24,9 @@ class Tween
 
     void Move(bool toEnd)
     {
-        if (end == toEnd)
+        if (end == toEnd) {
             return;
+        }
 
         x3 = CurX;
         y3 = CurY;
