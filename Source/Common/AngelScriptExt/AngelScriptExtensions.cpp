@@ -66,22 +66,25 @@ static void CScriptArray_RemoveFirst(CScriptArray* arr)
 
 static void CScriptArray_Grow(CScriptArray* arr, asUINT numElements)
 {
-    if (numElements == 0)
+    if (numElements == 0) {
         return;
+    }
 
     arr->Resize(arr->GetSize() + numElements);
 }
 
 static void CScriptArray_Reduce(CScriptArray* arr, asUINT numElements)
 {
-    if (numElements == 0)
+    if (numElements == 0) {
         return;
+    }
 
     asUINT size = arr->GetSize();
     if (numElements > size) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array size is less than reduce count");
+        }
         return;
     }
     arr->Resize(size - numElements);
@@ -99,8 +102,9 @@ static void* CScriptArray_Last(CScriptArray* arr)
 
 static void CScriptArray_Clear(CScriptArray* arr)
 {
-    if (arr->GetSize() > 0)
+    if (arr->GetSize() > 0) {
         arr->Resize(0);
+    }
 }
 
 static bool CScriptArray_Exists(const CScriptArray* arr, void* value)
@@ -139,8 +143,9 @@ static CScriptArray* CScriptArray_Factory(asITypeInfo* ti, const CScriptArray* o
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return nullptr;
     }
 
@@ -160,8 +165,9 @@ static void CScriptArray_Set(CScriptArray* arr, const CScriptArray* other)
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return;
     }
 
@@ -172,8 +178,9 @@ static void CScriptArray_InsertArrAt(CScriptArray* arr, uint index, const CScrip
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return;
     }
 
@@ -184,8 +191,9 @@ static void CScriptArray_InsertArrFirst(CScriptArray* arr, const CScriptArray* o
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return;
     }
 
@@ -196,8 +204,9 @@ static void CScriptArray_InsertArrLast(CScriptArray* arr, const CScriptArray* ot
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return;
     }
 
@@ -208,8 +217,9 @@ static bool CScriptArray_Equals(CScriptArray* arr, const CScriptArray* other)
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return false;
     }
 
@@ -262,8 +272,9 @@ static CScriptDict* ScriptDict_Factory(asITypeInfo* ti, const CScriptDict* other
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Dict is null");
+        }
         return nullptr;
     }
 
@@ -283,8 +294,9 @@ static bool ScriptDict_Equals(CScriptDict* dict, const CScriptDict* other)
 {
     if (!other) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Dict is null");
+        }
         return false;
     }
 
@@ -308,10 +320,12 @@ static bool IndexUTF8ToRaw(const string& str, int& index, uint* length = nullptr
         if (index < 0) {
             index = 0;
             if (length) {
-                if (!str.empty())
+                if (!str.empty()) {
                     utf8::Decode(str.c_str(), length);
-                else
+                }
+                else {
                     *length = 0;
+                }
             }
             return false;
         }
@@ -328,14 +342,16 @@ static bool IndexUTF8ToRaw(const string& str, int& index, uint* length = nullptr
         }
         else {
             index = (uint)(s - begin);
-            if (length)
+            if (length) {
                 *length = ch_length;
+            }
             return true;
         }
     }
     index = (uint)(s - begin);
-    if (length)
+    if (length) {
         *length = 0;
+    }
     return false;
 }
 
@@ -360,57 +376,65 @@ static void ScriptString_Clear(string& str)
 
 static string ScriptString_SubString(const string& str, int start, int count)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return "";
-    if (count >= 0)
+    }
+    if (count >= 0) {
         IndexUTF8ToRaw(str, count, nullptr, start);
+    }
     return str.substr(start, count >= 0 ? count : std::string::npos);
 }
 
 static int ScriptString_FindFirst(const string& str, const string& sub, int start)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return -1;
+    }
     int pos = (int)str.find(sub, start);
     return pos != -1 ? IndexRawToUTF8(str, pos) : -1;
 }
 
 static int ScriptString_FindLast(const string& str, const string& sub, int start)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return -1;
+    }
     int pos = (int)str.rfind(sub);
     return pos != -1 && pos >= start ? IndexRawToUTF8(str, pos) : -1;
 }
 
 static int ScriptString_FindFirstOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return -1;
+    }
     int pos = (int)str.find_first_of(chars, start);
     return pos != -1 ? IndexRawToUTF8(str, pos) : -1;
 }
 
 static int ScriptString_FindFirstNotOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return -1;
+    }
     int pos = (int)str.find_first_not_of(chars, start);
     return pos != -1 ? IndexRawToUTF8(str, pos) : -1;
 }
 
 static int ScriptString_FindLastOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return -1;
+    }
     int pos = (int)str.find_last_of(chars);
     return pos != -1 && pos >= start ? IndexRawToUTF8(str, pos) : -1;
 }
 
 static int ScriptString_FindLastNotOf(const string& str, const string& chars, int start)
 {
-    if (!IndexUTF8ToRaw(str, start))
+    if (!IndexUTF8ToRaw(str, start)) {
         return -1;
+    }
     int pos = (int)str.find_last_not_of(chars, start);
     return pos != -1 && pos >= start ? IndexRawToUTF8(str, pos) : -1;
 }
@@ -438,10 +462,12 @@ static void ScriptString_SetAt(string& str, int i, string& value)
         return;
     }
 
-    if (length)
+    if (length) {
         str.erase(i, length);
-    if (value.length())
+    }
+    if (value.length()) {
         str.insert(i, value.c_str());
+    }
 }
 
 static uint ScriptString_Length(const string& str)
@@ -466,30 +492,37 @@ static uchar ScriptString_RawGet(const string& str, uint index)
 
 static void ScriptString_RawSet(string& str, uint index, uchar value)
 {
-    if (index < (uint)str.length())
+    if (index < (uint)str.length()) {
         str[index] = (char)value;
+    }
 }
 
 static int ScriptString_ToInt(const string& str, int defaultValue)
 {
     const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t')
+    while (*p == ' ' || *p == '\t') {
         ++p;
+    }
 
     char* end_str = nullptr;
     int result;
-    if (p[0] && p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+    if (p[0] && p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
         result = (int)strtol(p + 2, &end_str, 16);
-    else
+    }
+    else {
         result = (int)strtol(p, &end_str, 10);
+    }
 
-    if (!end_str || end_str == p)
+    if (!end_str || end_str == p) {
         return defaultValue;
+    }
 
-    while (*end_str == ' ' || *end_str == '\t')
+    while (*end_str == ' ' || *end_str == '\t') {
         ++end_str;
-    if (*end_str)
+    }
+    if (*end_str) {
         return defaultValue;
+    }
 
     return result;
 }
@@ -497,19 +530,23 @@ static int ScriptString_ToInt(const string& str, int defaultValue)
 static float ScriptString_ToFloat(const string& str, float defaultValue)
 {
     const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t')
+    while (*p == ' ' || *p == '\t') {
         ++p;
+    }
 
     char* end_str = NULL;
     float result = (float)strtod(p, &end_str);
 
-    if (!end_str || end_str == p)
+    if (!end_str || end_str == p) {
         return defaultValue;
+    }
 
-    while (*end_str == ' ' || *end_str == '\t')
+    while (*end_str == ' ' || *end_str == '\t') {
         ++end_str;
-    if (*end_str)
+    }
+    if (*end_str) {
         return defaultValue;
+    }
 
     return result;
 }
@@ -517,23 +554,29 @@ static float ScriptString_ToFloat(const string& str, float defaultValue)
 static bool ScriptString_TryToInt(const string& str, int& result)
 {
     const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t')
+    while (*p == ' ' || *p == '\t') {
         ++p;
+    }
 
     char* end_str = nullptr;
     int result_;
-    if (p[0] && p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+    if (p[0] && p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
         result_ = (int)strtol(p + 2, &end_str, 16);
-    else
+    }
+    else {
         result_ = (int)strtol(p, &end_str, 10);
+    }
 
-    if (!end_str || end_str == p)
+    if (!end_str || end_str == p) {
         return false;
+    }
 
-    while (*end_str == ' ' || *end_str == '\t')
+    while (*end_str == ' ' || *end_str == '\t') {
         ++end_str;
-    if (*end_str)
+    }
+    if (*end_str) {
         return false;
+    }
 
     result = result_;
     return true;
@@ -542,19 +585,23 @@ static bool ScriptString_TryToInt(const string& str, int& result)
 static bool ScriptString_TryToFloat(const string& str, float& result)
 {
     const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t')
+    while (*p == ' ' || *p == '\t') {
         ++p;
+    }
 
     char* end_str = NULL;
     float result_ = (float)strtod(p, &end_str);
 
-    if (!end_str || end_str == p)
+    if (!end_str || end_str == p) {
         return false;
+    }
 
-    while (*end_str == ' ' || *end_str == '\t')
+    while (*end_str == ' ' || *end_str == '\t') {
         ++end_str;
-    if (*end_str)
+    }
+    if (*end_str) {
         return false;
+    }
 
     result = result_;
     return true;
@@ -562,15 +609,17 @@ static bool ScriptString_TryToFloat(const string& str, float& result)
 
 static bool ScriptString_StartsWith(const string& str, const string& other)
 {
-    if (str.length() < other.length())
+    if (str.length() < other.length()) {
         return false;
+    }
     return str.compare(0, other.length(), other) == 0;
 }
 
 static bool ScriptString_EndsWith(const string& str, const string& other)
 {
-    if (str.length() < other.length())
+    if (str.length() < other.length()) {
         return false;
+    }
     return str.compare(str.length() - other.length(), other.length(), other) == 0;
 }
 
@@ -587,8 +636,9 @@ static string ScriptString_Upper(const string& str)
 static string ScriptString_Trim(const string& str, const string& chars)
 {
     size_t first = str.find_first_not_of(chars);
-    if (first == string::npos)
+    if (first == string::npos) {
         return "";
+    }
     size_t last = str.find_last_not_of(chars);
     return str.substr(first, (last - first + 1));
 }
@@ -596,16 +646,18 @@ static string ScriptString_Trim(const string& str, const string& chars)
 static string ScriptString_TrimBegin(const string& str, const string& chars)
 {
     size_t first = str.find_first_not_of(chars);
-    if (first == string::npos)
+    if (first == string::npos) {
         return "";
+    }
     return str.substr(first);
 }
 
 static string ScriptString_TrimEnd(const string& str, const string& chars)
 {
     size_t last = str.find_last_not_of(chars);
-    if (last == string::npos)
+    if (last == string::npos) {
         return str;
+    }
     return str.substr(0, last + 1);
 }
 
@@ -637,8 +689,9 @@ static string ScriptString_Join(const CScriptArray* array, const string& delim)
 {
     if (!array) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Array is null");
+        }
         return "";
     }
 

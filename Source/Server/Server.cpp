@@ -3247,8 +3247,9 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == cr->Moving.ControlSteps.size() - 1)) {
             auto normalized_dist = (dist_pos - cur_dist) / dist;
             normalized_dist = std::clamp(normalized_dist, 0.0f, 1.0f);
-            if (normalized_time == 1.0f)
+            if (normalized_time == 1.0f) {
                 normalized_dist = 1.0f;
+            }
 
             // Evaluate current hex
             const auto step_index_f = std::round(normalized_dist * static_cast<float>(cr->Moving.ControlSteps[i] - control_step_begin));

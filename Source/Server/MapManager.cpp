@@ -1316,8 +1316,9 @@ label_FindOk:
                     uchar dir = tracer.GetNextHex(next_hx, next_hy);
                     direct_steps.push_back(dir);
 
-                    if (next_hx == trace_tx && next_hy == trace_ty)
+                    if (next_hx == trace_tx && next_hy == trace_ty) {
                         break;
+                    }
 
                     if (GridAt(next_hx, next_hy) <= 0) {
                         failed = true;

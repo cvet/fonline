@@ -91,8 +91,9 @@ CScriptDict* CScriptDict::Create(asITypeInfo* ot)
     void* mem = userAlloc(sizeof(CScriptDict));
     if (mem == 0) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Out of memory");
+        }
 
         return 0;
     }
@@ -109,8 +110,9 @@ CScriptDict* CScriptDict::Create(asITypeInfo* ot, void* initList)
     void* mem = userAlloc(sizeof(CScriptDict));
     if (mem == 0) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Out of memory");
+        }
 
         return 0;
     }
@@ -131,8 +133,9 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
     // Make sure the subtype can be instanciated with a default factory/constructor,
     // otherwise we won't be able to instanciate the elements.
     int typeId = ot->GetSubTypeId(subTypeIndex);
-    if (typeId == asTYPEID_VOID)
+    if (typeId == asTYPEID_VOID) {
         return false;
+    }
     if ((typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE)) {
         asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById(typeId);
         asDWORD flags = subtype->GetFlags();
@@ -142,8 +145,9 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
             for (asUINT n = 0; n < subtype->GetBehaviourCount(); n++) {
                 asEBehaviours beh;
                 asIScriptFunction* func = subtype->GetBehaviourByIndex(n, &beh);
-                if (beh != asBEHAVE_CONSTRUCT)
+                if (beh != asBEHAVE_CONSTRUCT) {
                     continue;
+                }
 
                 if (func->GetParamCount() == 0) {
                     // Found the default constructor
@@ -183,8 +187,9 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
         }
 
         // If the object type is not garbage collected then the dict also doesn't need to be
-        if (!(flags & asOBJ_GC))
+        if (!(flags & asOBJ_GC)) {
             dontGarbageCollect = true;
+        }
     }
     else if (!(typeId & asTYPEID_OBJHANDLE)) {
         // Dicts with primitives cannot form circular references,
@@ -232,10 +237,12 @@ static bool CScriptDict_TemplateCallback(asITypeInfo* ot, bool& dontGarbageColle
 // Registers the template dict type
 void RegisterScriptDict(asIScriptEngine* engine)
 {
-    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
+    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0) {
         RegisterScriptDict_Native(engine);
-    else
+    }
+    else {
         RegisterScriptDict_Generic(engine);
+    }
 }
 
 static void RegisterScriptDict_Native(asIScriptEngine* engine)
@@ -325,8 +332,9 @@ CScriptDict::CScriptDict(asITypeInfo* ot)
     dictMap = new DictMap(DictMapComparator(keyTypeId));
 
     // Notify the GC of the successful creation
-    if (objType->GetFlags() & asOBJ_GC)
+    if (objType->GetFlags() & asOBJ_GC) {
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
+    }
 }
 
 CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
@@ -345,18 +353,22 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     buffer += sizeof(asUINT);
 
     while (length--) {
-        if (asPWORD(buffer) & 0x3)
+        if (asPWORD(buffer) & 0x3) {
             buffer += 4 - (asPWORD(buffer) & 0x3);
+        }
 
         void* key = buffer;
         if (keyTypeId & asTYPEID_MASK_OBJECT) {
             asITypeInfo* ot = engine->GetTypeInfoById(keyTypeId);
-            if (ot->GetFlags() & asOBJ_VALUE)
+            if (ot->GetFlags() & asOBJ_VALUE) {
                 buffer += ot->GetSize();
-            else
+            }
+            else {
                 buffer += sizeof(void*);
-            if (ot->GetFlags() & asOBJ_REF && !(keyTypeId & asTYPEID_OBJHANDLE))
+            }
+            if (ot->GetFlags() & asOBJ_REF && !(keyTypeId & asTYPEID_OBJHANDLE)) {
                 key = *(void**)key;
+            }
         }
         else if (keyTypeId == asTYPEID_VOID) {
             buffer += sizeof(void*);
@@ -368,12 +380,15 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
         void* value = buffer;
         if (valueTypeId & asTYPEID_MASK_OBJECT) {
             asITypeInfo* ot = engine->GetTypeInfoById(valueTypeId);
-            if (ot->GetFlags() & asOBJ_VALUE)
+            if (ot->GetFlags() & asOBJ_VALUE) {
                 buffer += ot->GetSize();
-            else
+            }
+            else {
                 buffer += sizeof(void*);
-            if (ot->GetFlags() & asOBJ_REF && !(valueTypeId & asTYPEID_OBJHANDLE))
+            }
+            if (ot->GetFlags() & asOBJ_REF && !(valueTypeId & asTYPEID_OBJHANDLE)) {
                 value = *(void**)value;
+            }
         }
         else if (valueTypeId == asTYPEID_VOID) {
             buffer += sizeof(void*);
@@ -386,8 +401,9 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     }
 
     // Notify the GC of the successful creation
-    if (objType->GetFlags() & asOBJ_GC)
+    if (objType->GetFlags() & asOBJ_GC) {
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
+    }
 }
 
 CScriptDict::CScriptDict(const CScriptDict& other)
@@ -401,11 +417,13 @@ CScriptDict::CScriptDict(const CScriptDict& other)
     dictMap = new DictMap(DictMapComparator(keyTypeId));
 
     DictMap* dict = (DictMap*)other.dictMap;
-    for (auto it = dict->begin(); it != dict->end(); ++it)
+    for (auto it = dict->begin(); it != dict->end(); ++it) {
         Set(it->first, it->second);
+    }
 
-    if (objType->GetFlags() & asOBJ_GC)
+    if (objType->GetFlags() & asOBJ_GC) {
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
+    }
 }
 
 CScriptDict& CScriptDict::operator=(const CScriptDict& other)
@@ -415,8 +433,9 @@ CScriptDict& CScriptDict::operator=(const CScriptDict& other)
         Clear();
 
         DictMap* dict = (DictMap*)other.dictMap;
-        for (auto it = dict->begin(); it != dict->end(); ++it)
+        for (auto it = dict->begin(); it != dict->end(); ++it) {
             Set(it->first, it->second);
+        }
     }
 
     return *this;
@@ -427,8 +446,9 @@ CScriptDict::~CScriptDict()
     Clear();
     delete (DictMap*)dictMap;
 
-    if (objType)
+    if (objType) {
         objType->Release();
+    }
 }
 
 asUINT CScriptDict::GetSize() const
@@ -527,8 +547,9 @@ void* CScriptDict::Get(void* key)
     auto it = dict->find(key);
     if (it == dict->end()) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Key not found");
+        }
         return NULL;
     }
 
@@ -540,8 +561,9 @@ void* CScriptDict::GetDefault(void* key, void* defaultValue)
     DictMap* dict = (DictMap*)dictMap;
 
     auto it = dict->find(key);
-    if (it == dict->end())
+    if (it == dict->end()) {
         return defaultValue;
+    }
 
     return it->second;
 }
@@ -552,14 +574,16 @@ void* CScriptDict::GetKey(asUINT index)
 
     if (index >= (asUINT)dict->size()) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Index out of bounds");
+        }
         return NULL;
     }
 
     auto it = dict->begin();
-    while (index--)
+    while (index--) {
         it++;
+    }
 
     return it->first;
 }
@@ -570,14 +594,16 @@ void* CScriptDict::GetValue(asUINT index)
 
     if (index >= (asUINT)dict->size()) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Index out of bounds");
+        }
         return NULL;
     }
 
     auto it = dict->begin();
-    while (index--)
+    while (index--) {
         it++;
+    }
 
     return it->second;
 }
@@ -591,11 +617,13 @@ bool CScriptDict::Exists(void* key) const
 
 bool CScriptDict::operator==(const CScriptDict& other) const
 {
-    if (objType != other.objType)
+    if (objType != other.objType) {
         return false;
+    }
 
-    if (GetSize() != other.GetSize())
+    if (GetSize() != other.GetSize()) {
         return false;
+    }
 
     DictMap* dict1 = (DictMap*)dictMap;
     DictMap* dict2 = (DictMap*)other.dictMap;
@@ -606,8 +634,9 @@ bool CScriptDict::operator==(const CScriptDict& other) const
     auto end2 = dict2->end();
 
     while (it1 != end1 && it2 != end2) {
-        if (!Equals(keyTypeId, (*it1).first, (*it2).first) || !Equals(valueTypeId, (*it1).second, (*it2).second))
+        if (!Equals(keyTypeId, (*it1).first, (*it2).first) || !Equals(valueTypeId, (*it1).second, (*it2).second)) {
             return false;
+        }
         it1++;
         it2++;
     }
@@ -639,10 +668,12 @@ void CScriptDict::EnumReferences(asIScriptEngine* engine)
 
     if (keysHandle || valuesHandle) {
         for (auto it = dict->begin(), end = dict->end(); it != end; ++it) {
-            if (keysHandle)
+            if (keysHandle) {
                 engine->GCEnumCallback(it->first);
-            if (valuesHandle)
+            }
+            if (valuesHandle) {
                 engine->GCEnumCallback(it->second);
+            }
         }
     }
 }
@@ -695,8 +726,9 @@ void CScriptDict::GetMap(std::vector<std::pair<void*, void*>>& data) const
 {
     DictMap* dict = (DictMap*)dictMap;
     data.reserve(data.size() + dict->size());
-    for (const auto& kv : *dict)
+    for (const auto& kv : *dict) {
         data.push_back(std::pair<void*, void*>(kv.first, kv.second));
+    }
 }
 
 // internal
@@ -706,31 +738,39 @@ static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
     asITypeInfo* subType = objType->GetSubType(subTypeIndex);
     asIScriptEngine* engine = objType->GetEngine();
 
-    if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE))
+    if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE)) {
         return engine->CreateScriptObjectCopy(value, subType);
+    }
 
     int elementSize;
-    if (subTypeId & asTYPEID_MASK_OBJECT)
+    if (subTypeId & asTYPEID_MASK_OBJECT) {
         elementSize = sizeof(asPWORD);
-    else
+    }
+    else {
         elementSize = engine->GetSizeOfPrimitiveType(subTypeId);
+    }
 
     void* ptr = userAlloc(elementSize);
     memset(ptr, 0, elementSize);
 
     if (subTypeId & asTYPEID_OBJHANDLE) {
         *(void**)ptr = *(void**)value;
-        if (*(void**)value)
+        if (*(void**)value) {
             subType->GetEngine()->AddRefScriptObject(*(void**)value, subType);
+        }
     }
-    else if (subTypeId == asTYPEID_BOOL || subTypeId == asTYPEID_INT8 || subTypeId == asTYPEID_UINT8)
+    else if (subTypeId == asTYPEID_BOOL || subTypeId == asTYPEID_INT8 || subTypeId == asTYPEID_UINT8) {
         *(char*)ptr = *(char*)value;
-    else if (subTypeId == asTYPEID_INT16 || subTypeId == asTYPEID_UINT16)
+    }
+    else if (subTypeId == asTYPEID_INT16 || subTypeId == asTYPEID_UINT16) {
         *(short*)ptr = *(short*)value;
-    else if (subTypeId == asTYPEID_INT32 || subTypeId == asTYPEID_UINT32 || subTypeId == asTYPEID_FLOAT || subTypeId > asTYPEID_DOUBLE) // enums have a type id larger than doubles
+    }
+    else if (subTypeId == asTYPEID_INT32 || subTypeId == asTYPEID_UINT32 || subTypeId == asTYPEID_FLOAT || subTypeId > asTYPEID_DOUBLE) { // enums have a type id larger than doubles
         *(int*)ptr = *(int*)value;
-    else if (subTypeId == asTYPEID_INT64 || subTypeId == asTYPEID_UINT64 || subTypeId == asTYPEID_DOUBLE)
+    }
+    else if (subTypeId == asTYPEID_INT64 || subTypeId == asTYPEID_UINT64 || subTypeId == asTYPEID_DOUBLE) {
         *(double*)ptr = *(double*)value;
+    }
 
     return ptr;
 }
@@ -744,8 +784,9 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
         engine->ReleaseScriptObject(value, engine->GetTypeInfoById(subTypeId));
     }
     else {
-        if (subTypeId & asTYPEID_OBJHANDLE && *(void**)value)
+        if (subTypeId & asTYPEID_OBJHANDLE && *(void**)value) {
             engine->ReleaseScriptObject(*(void**)value, engine->GetTypeInfoById(subTypeId));
+        }
 
         userFree(value);
     }

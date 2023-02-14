@@ -685,18 +685,21 @@ void FOMapper::ProcessMapperInput()
                 else {
                     if (IsObjectMode() && (*CurItemProtos).size()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= static_cast<int>((*CurItemProtos).size()))
+                        if (*CurProtoScroll >= static_cast<int>((*CurItemProtos).size())) {
                             *CurProtoScroll = static_cast<int>((*CurItemProtos).size()) - 1;
+                        }
                     }
                     else if (IsTileMode() && CurTileNames->size()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= static_cast<int>(CurTileNames->size()))
+                        if (*CurProtoScroll >= static_cast<int>(CurTileNames->size())) {
                             *CurProtoScroll = static_cast<int>(CurTileNames->size()) - 1;
+                        }
                     }
                     else if (IsCritMode() && CurNpcProtos->size()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= static_cast<int>(CurNpcProtos->size()))
+                        if (*CurProtoScroll >= static_cast<int>(CurNpcProtos->size())) {
                             *CurProtoScroll = static_cast<int>(CurNpcProtos->size()) - 1;
+                        }
                     }
                     else if (IntMode == INT_MODE_INCONT) {
                         InContScroll += step;

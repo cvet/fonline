@@ -504,9 +504,11 @@ public:
     auto operator()(Args... args) -> EventDispatcher&
     {
         // Todo: recursion guard for EventDispatcher
-        if (!_observer._subscriberCallbacks.empty())
-            for (auto& cb : _observer._subscriberCallbacks)
+        if (!_observer._subscriberCallbacks.empty()) {
+            for (auto& cb : _observer._subscriberCallbacks) {
                 cb(std::forward<Args>(args)...);
+            }
+        }
         return *this;
     }
 

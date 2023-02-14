@@ -46,8 +46,9 @@ BEGIN_AS_NAMESPACE
 static asITypeInfo* GetTypeInfoById(asIScriptEngine* engine, int typeId)
 {
     asCDataType dt = ((asCScriptEngine*)engine)->GetDataTypeFromTypeId(typeId);
-    if (dt.IsValid())
+    if (dt.IsValid()) {
         return dt.GetTypeInfo();
+    }
     return nullptr;
 }
 
@@ -64,15 +65,17 @@ void ScriptType::AddRef() const
 
 void ScriptType::Release() const
 {
-    if (asAtomicDec(refCount) == 0)
+    if (asAtomicDec(refCount) == 0) {
         delete this;
+    }
 }
 
 string ScriptType::GetName() const
 {
     const char* ns = objType->GetNamespace();
-    if (ns[0])
+    if (ns[0]) {
         return string(ns).append("::").append(objType->GetName());
+    }
 
     return objType->GetName();
 }
@@ -221,8 +224,9 @@ asUINT ScriptType::GetMethodsCount() const
 
 string ScriptType::GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const
 {
-    if (index >= objType->GetMethodCount())
+    if (index >= objType->GetMethodCount()) {
         return "";
+    }
     return objType->GetMethodByIndex(index)->GetDeclaration(include_object_name, include_namespace, include_param_names);
 }
 
@@ -233,8 +237,9 @@ asUINT ScriptType::GetPropertiesCount() const
 
 string ScriptType::GetPropertyDeclaration(asUINT index, bool include_namespace) const
 {
-    if (index >= objType->GetPropertyCount())
+    if (index >= objType->GetPropertyCount()) {
         return "";
+    }
     return objType->GetPropertyDeclaration(index, include_namespace);
 }
 
@@ -248,8 +253,9 @@ CScriptArray* ScriptType::GetEnumNames() const
 {
     asCEnumType* enum_type = CastToEnumType((asCTypeInfo*)objType);
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("string[]"));
-    for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++)
+    for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(enum_type->enumValues[i]->name.AddressOf());
+    }
     return result;
 }
 
@@ -257,15 +263,17 @@ CScriptArray* ScriptType::GetEnumValues() const
 {
     asCEnumType* enum_type = CastToEnumType((asCTypeInfo*)objType);
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("int[]"));
-    for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++)
+    for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(&enum_type->enumValues[i]->value);
+    }
     return result;
 }
 
 static bool ScriptTypeOfTemplateCallback(asITypeInfo* ot, bool&)
 {
-    if (ot->GetSubTypeCount() != 1 || (ot->GetSubTypeId() & asTYPEID_MASK_SEQNBR) <= asTYPEID_DOUBLE)
+    if (ot->GetSubTypeCount() != 1 || (ot->GetSubTypeId() & asTYPEID_MASK_SEQNBR) <= asTYPEID_DOUBLE) {
         return false;
+    }
     return true;
 }
 
@@ -276,8 +284,9 @@ static ScriptTypeOf* ScriptTypeOfFactory(asITypeInfo* ot)
 
 static ScriptTypeOf* ScriptTypeOfFactory2(asITypeInfo* ot, void* ref)
 {
-    if (ot->GetSubType()->GetTypeId() <= asTYPEID_DOUBLE)
+    if (ot->GetSubType()->GetTypeId() <= asTYPEID_DOUBLE) {
         return new ScriptTypeOf(nullptr);
+    }
     ref = *(void**)ref;
     return new ScriptTypeOf(((asIScriptObject*)ref)->GetObjectType());
 }
@@ -307,10 +316,12 @@ CScriptArray* GetLoadedModules()
 
 asIScriptModule* GetModule(const char* name)
 {
-    if (name)
+    if (name) {
         return asGetActiveContext()->GetEngine()->GetModule(name, asGM_ONLY_IF_EXISTS);
-    else
+    }
+    else {
         return asGetActiveContext()->GetFunction(0)->GetModule();
+    }
 }
 
 static string GetCurrentModule()
@@ -326,17 +337,20 @@ static CScriptArray* GetEnumsInternal(bool global, const char* module_name)
     asIScriptModule* module = nullptr;
     if (!global) {
         module = GetModule(module_name);
-        if (!module)
+        if (!module) {
             return enums;
+        }
     }
 
     asUINT count = (global ? engine->GetEnumCount() : module->GetEnumCount());
     for (asUINT i = 0; i < count; i++) {
         asITypeInfo* enum_type;
-        if (global)
+        if (global) {
             enum_type = engine->GetEnumByIndex(i);
-        else
+        }
+        else {
             enum_type = module->GetEnumByIndex(i);
+        }
         ScriptType* type = new ScriptType(enum_type);
         enums->InsertLast(&type);
         type->Release();
@@ -362,8 +376,9 @@ static CScriptArray* GetEnumsModule(string module_name)
 static asUINT GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScriptArray*& lines, CScriptArray*& columns, bool include_object_name, bool include_namespace, bool include_param_names)
 {
     asIScriptContext* ctx = asGetActiveContext();
-    if (!ctx)
+    if (!ctx) {
         return 0;
+    }
 
     asUINT count = 0, stack_size = ctx->GetCallstackSize();
     int line, column;
@@ -392,10 +407,12 @@ static asUINT GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScript
 
 void RegisterScriptReflection(asIScriptEngine* engine)
 {
-    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
+    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0) {
         RegisterScriptReflection_Native(engine);
-    else
+    }
+    else {
         RegisterScriptReflection_Generic(engine);
+    }
 }
 
 static void RegisterMethod_Native(asIScriptEngine* engine, const char* declaration, const asSFuncPtr& func_pointer)
