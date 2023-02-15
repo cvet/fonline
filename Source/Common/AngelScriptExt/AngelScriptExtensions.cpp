@@ -506,7 +506,7 @@ static int ScriptString_ToInt(const string& str, int defaultValue)
 
     char* end_str = nullptr;
     int result;
-    if (p[0] && p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
         result = (int)strtol(p + 2, &end_str, 16);
     }
     else {
