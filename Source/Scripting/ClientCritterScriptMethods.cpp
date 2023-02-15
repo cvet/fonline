@@ -549,3 +549,12 @@
 
     self->GetEngine()->CritterLookTo(hex_cr, dirAngle);
 }
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uchar Client_Critter_GetAlpha(CritterView* self)
+{
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    return hex_cr != nullptr ? hex_cr->Alpha : 0xFF;
+}

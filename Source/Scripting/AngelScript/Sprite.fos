@@ -116,10 +116,10 @@ class Sprite
             Game.DrawSprite(Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color, false);
             break;
         case IMAGE_LAYOUT_STRETCH:
-            Game.DrawSprite(Id, Frame, x, y, w, h, false, color, false);
+            Game.DrawSprite(Id, Frame, x, y, w, h, color, false, false);
             break;
         case IMAGE_LAYOUT_ZOOM:
-            Game.DrawSprite(Id, Frame, x, y, w, h, true, color, false);
+            Game.DrawSprite(Id, Frame, x, y, w, h, color, true, false);
             break;
         default:
             Game.DrawSprite(Id, Frame, x, y, color, false);

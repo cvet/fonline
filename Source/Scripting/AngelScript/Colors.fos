@@ -5,6 +5,7 @@
 #define COLOR_LIGHT3         #(x, y)((x) <(y) ?(x) : (y))
 #define COLOR_LIGHT2         #(color, light, offs)(COLOR_LIGHT3((((color)>>(offs)) & 0xFF) +(light), 255) <<(offs))
 #define COLOR_LIGHT          #(color, light)(COLOR_LIGHT2(color, light, 16) | COLOR_LIGHT2(color, light, 8) | COLOR_LIGHT2(color, light, 0) |((color) & 0xFF000000))
+#define COLOR_SET_ALPHA      #(color, alpha)(((color) & 0xFFFFFF) |(((alpha) & 0xFF) << 24))
 
 #define COLOR_IFACE          COLOR_RGB(128, 128, 128)
 #define COLOR_TEXT           COLOR_RGB(80, 255, 0)    // Default text color

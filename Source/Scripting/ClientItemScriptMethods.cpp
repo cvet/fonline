@@ -125,3 +125,12 @@ static void ItemGetMapPos(ItemView* self, ushort& hx, ushort& hy)
 {
     return self->GetInnerItems();
 }
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uchar Client_Item_GetAlpha(ItemView* self)
+{
+    const auto* hex_item = dynamic_cast<ItemHexView*>(self);
+    return hex_item != nullptr ? hex_item->Alpha : 0xFF;
+}

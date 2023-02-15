@@ -586,6 +586,9 @@ void CritterHexView::Process()
     if (_fadingEnabled) {
         Alpha = GetFadeAlpha();
     }
+    else {
+        Alpha = 0xFF;
+    }
 
     // Extra offsets
     if (_offsExtNextTick != 0u && _engine->GameTime.GameTick() >= _offsExtNextTick) {
@@ -1021,13 +1024,7 @@ void CritterHexView::DrawTextOnHead()
             }
         }
 
-        if (_fadingEnabled) {
-            const uint alpha = GetFadeAlpha();
-            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), -1);
-        }
-        else if (!IsFinishing()) {
-            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, -1);
-        }
+        _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (Alpha << 24) | (color & 0xFFFFFF), -1);
     }
 
     if (_engine->GameTime.GameTick() - _tickStartText >= _tickTextDelay && !_strTextOnHead.empty()) {
