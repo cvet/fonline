@@ -469,15 +469,13 @@ void MapView::LoadStaticData()
 
     auto reader = DataReader({file.GetBuf(), file.GetSize()});
 
-    // Read scenery
+    // Read static items
     {
         vector<uchar> props_data;
 
         const auto scen_count = reader.Read<uint>();
         for (uint i = 0; i < scen_count; i++) {
-            const auto scen_id = reader.Read<uint>();
-            UNUSED_VARIABLE(scen_id);
-
+            const auto static_id = reader.Read<uint>();
             const auto item_pid_hash = reader.Read<hstring::hash_t>();
             const auto item_pid = _engine->ResolveHash(item_pid_hash);
             const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
@@ -488,9 +486,9 @@ void MapView::LoadStaticData()
             reader.ReadPtr<uchar>(props_data.data(), props_data_size);
             item_props.RestoreAllData(props_data);
 
-            auto* scenery = new ItemHexView(this, 0u, item_proto, item_props);
+            auto* static_item = new ItemHexView(this, static_id, item_proto, item_props);
 
-            AddItemInternal(scenery);
+            AddItemInternal(static_item);
         }
     }
 
@@ -905,9 +903,9 @@ void MapView::DestroyItem(ItemHexView* item)
     }
 
     if (item->GetId() != 0u) {
-        const auto it_map = _itemsMap.find(item->GetId());
-        RUNTIME_ASSERT(it_map != _itemsMap.end());
-        _itemsMap.erase(it_map);
+        const auto it = _itemsMap.find(item->GetId());
+        RUNTIME_ASSERT(it != _itemsMap.end());
+        _itemsMap.erase(it);
     }
 
     RemoveItemFromField(item);

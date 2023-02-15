@@ -190,27 +190,46 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    // On map
-    ItemView* item = client->CurMap->GetItem(itemId);
+    ItemView* item = nullptr;
 
-    // On Chosen
-    if (item == nullptr && client->GetChosen() != nullptr) {
-        item = client->GetChosen()->GetItem(itemId);
+    // On chosen
+    if (auto* chosen = client->GetChosen(); chosen != nullptr) {
+        item = chosen->GetItem(itemId);
     }
 
-    // On other critters
-    if (item == nullptr) {
-        for (auto* cr : client->CurMap->GetCritters()) {
-            if (!cr->IsChosen()) {
-                item = cr->GetItem(itemId);
+    // On map
+    if (client->CurMap != nullptr) {
+        if (item == nullptr) {
+            item = client->CurMap->GetItem(itemId);
+        }
+
+        if (item == nullptr) {
+            for (auto* cr : client->CurMap->GetCritters()) {
+                if (!cr->IsChosen()) {
+                    item = cr->GetItem(itemId);
+
+                    if (item != nullptr) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else {
+        if (item == nullptr) {
+            for (auto* cr : client->GetWorldmapCritters()) {
+                if (!cr->IsChosen()) {
+                    item = cr->GetItem(itemId);
+
+                    if (item != nullptr) {
+                        break;
+                    }
+                }
             }
         }
     }
 
-    if (item == nullptr || item->IsDestroyed()) {
-        return nullptr;
-    }
-    return item;
+    return item != nullptr && !item->IsDestroyed() ? item : nullptr;
 }
 
 ///# ...
