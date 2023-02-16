@@ -2836,7 +2836,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
+    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && !item->IsStatic() && item->GetId() != 0u) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 

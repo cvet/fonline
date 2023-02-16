@@ -3140,7 +3140,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
+    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->IsStatic() && item->GetId() != 0u) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->IsChosen()) {
@@ -3723,10 +3723,14 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
-        CurMap->SwitchShowTrack();
+        if (CurMap != nullptr) {
+            CurMap->SwitchShowTrack();
+        }
     }
     else if (cmd == "SwitchShowHex") {
-        CurMap->SwitchShowHex();
+        if (CurMap != nullptr) {
+            CurMap->SwitchShowHex();
+        }
     }
     else if (cmd == "SwitchFullscreen") {
         if (!Settings.Fullscreen) {
@@ -3887,13 +3891,17 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
     else if (cmd == "SetCrittersContour" && args.size() == 2) {
-        auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-        CurMap->SetCrittersContour(countour_type);
+        if (CurMap != nullptr) {
+            auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
+            CurMap->SetCrittersContour(countour_type);
+        }
     }
     else if (cmd == "SetCritterContour" && args.size() == 3) {
-        auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-        uint cr_id = _str(args[2]).toInt();
-        CurMap->SetCritterContour(cr_id, countour_type);
+        if (CurMap != nullptr) {
+            auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
+            uint cr_id = _str(args[2]).toInt();
+            CurMap->SetCritterContour(cr_id, countour_type);
+        }
     }
     else if (cmd == "DrawWait") {
         WaitDraw();
@@ -3933,10 +3941,12 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
 
         // Light
-        CurMap->RebuildFog();
+        if (CurMap != nullptr) {
+            CurMap->RebuildFog();
 
-        if (is_light && (to_slot == 0 || (from_slot == 0 && to_slot != -1))) {
-            CurMap->RebuildLight();
+            if (is_light && (to_slot == 0 || (from_slot == 0 && to_slot != -1))) {
+                CurMap->RebuildLight();
+            }
         }
 
         // Notify scripts about item changing
@@ -3944,9 +3954,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         old_item->Release();
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
-        auto hx = _str(args[1]).toUInt();
-        auto hy = _str(args[2]).toUInt();
-        CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
+        if (CurMap != nullptr) {
+            auto hx = _str(args[1]).toUInt();
+            auto hy = _str(args[2]).toUInt();
+            CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
+        }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
         auto alpha = _str(args[1]).toInt();
