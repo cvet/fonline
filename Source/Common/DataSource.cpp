@@ -252,12 +252,17 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     }
 
     // Dir without subdirs
-    if (type == DataSourceType::DirRoot) {
+    if (type == DataSourceType::DirRoot || type == DataSourceType::NonCachedDirRoot) {
         if (!DiskFileSystem::IsDir(path)) {
             WriteLog(LogType::Warning, "Directory '{}' not found", path);
         }
 
-        return std::make_unique<CachedDir>(path, false);
+        if (type == DataSourceType::DirRoot) {
+            return std::make_unique<CachedDir>(path, false);
+        }
+        else {
+            return std::make_unique<NonCachedDir>(path);
+        }
     }
 
     // Raw view
@@ -411,7 +416,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) con
     }
 
     size = fe.FileSize;
-    auto* buf = new uchar[static_cast<size_t>(size) + 1];
+    auto* buf = new uchar[size + 1];
     if (!file.Read(buf, size)) {
         delete[] buf;
         return nullptr;
@@ -1016,7 +1021,7 @@ auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time)
     }
 
     size = fe.FileSize;
-    auto* buf = new uchar[static_cast<size_t>(size) + 1];
+    auto* buf = new uchar[size + 1];
     if (!file.Read(buf, size)) {
         delete[] buf;
         throw DataSourceException("Can't read file in android assets", path);

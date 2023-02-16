@@ -53,7 +53,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     }
 
     for (const auto& dir : settings.BakeContentEntries) {
-        ContentFileSys.AddDataSource(dir, DataSourceType::DirRoot);
+        ContentFileSys.AddDataSource(dir, DataSourceType::NonCachedDirRoot);
     }
 
     if (settings.BakeContentEntries.empty() && !Settings.MapsDir.empty()) {
@@ -61,7 +61,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
             throw MapperException("Directory with maps not found", Settings.MapsDir);
         }
 
-        ContentFileSys.AddDataSource(Settings.MapsDir, DataSourceType::DirRoot);
+        ContentFileSys.AddDataSource(Settings.MapsDir, DataSourceType::NonCachedDirRoot);
     }
 
     extern void Mapper_RegisterData(FOEngineBase*);
