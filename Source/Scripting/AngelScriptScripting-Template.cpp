@@ -1794,7 +1794,7 @@ static auto Entity_Name(const T* self) -> string
 }
 
 template<typename T>
-static auto Entity_Id(const T* self) -> uint
+static auto Entity_Id(const T* self) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -2711,7 +2711,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static Entity* EntityDownCast(T* a)
+static auto EntityDownCast(T* a) -> Entity*
 {
     STACK_TRACE_ENTRY();
 
@@ -2725,7 +2725,7 @@ static Entity* EntityDownCast(T* a)
 }
 
 template<typename T>
-static T* EntityUpCast(Entity* a)
+static auto EntityUpCast(Entity* a) -> T*
 {
     STACK_TRACE_ENTRY();
 
@@ -2795,46 +2795,117 @@ static void HashedString_Assign(hstring& self, const hstring& other)
     self = other;
 }
 
-static bool HashedString_Equals(const hstring& self, const hstring& other)
+static auto HashedString_Equals(const hstring& self, const hstring& other) -> bool
 {
     STACK_TRACE_ENTRY();
 
     return self == other;
 }
 
-static bool HashedString_EqualsString(const hstring& self, const string& other)
+static auto HashedString_EqualsString(const hstring& self, const string& other) -> bool
 {
     STACK_TRACE_ENTRY();
 
     return self.as_str() == other;
 }
 
-static string HashedString_StringCast(const hstring& self)
+static auto HashedString_StringCast(const hstring& self) -> const string&
+{
+    STACK_TRACE_ENTRY();
+
+    return self.as_str();
+}
+
+static auto HashedString_StringConv(const hstring& self) -> string
+{
+    STACK_TRACE_ENTRY();
+
+    return self.as_str();
+}
+
+static auto HashedString_GetString(const hstring& self) -> string
 {
     STACK_TRACE_ENTRY();
 
     return string(self.as_str());
 }
 
-static string HashedString_GetString(const hstring& self)
-{
-    STACK_TRACE_ENTRY();
-
-    return string(self.as_str());
-}
-
-static int HashedString_GetHash(const hstring& self)
+static auto HashedString_GetHash(const hstring& self) -> int
 {
     STACK_TRACE_ENTRY();
 
     return self.as_int();
 }
 
-static uint HashedString_GetUHash(const hstring& self)
+static auto HashedString_GetUHash(const hstring& self) -> uint
 {
     STACK_TRACE_ENTRY();
 
     return self.as_uint();
+}
+
+template<typename T>
+static void StrongType_Construct(T* self)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) T();
+}
+
+template<typename T>
+static void StrongType_ConstructCopy(T* self, const T& other)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) T(other);
+}
+
+template<typename T>
+static void StrongType_ConstructFromUnderlying(T* self, const typename T::underlying_type& other)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) T(other);
+}
+
+template<typename T>
+static auto StrongType_Equals(const T& self, const T& other) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return self == other;
+}
+
+template<typename T>
+static auto StrongType_EqualsUnderlying(const T& self, const typename T::underlying_type& other) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return self.underlying_value() == other;
+}
+
+template<typename T>
+static auto StrongType_UnderlyingCast(const T& self) -> const typename T::underlying_type&
+{
+    STACK_TRACE_ENTRY();
+
+    return self.underlying_value();
+}
+
+template<typename T>
+static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_type
+{
+    STACK_TRACE_ENTRY();
+
+    return self.underlying_value();
+}
+
+template<typename T>
+static auto StrongType_GetUnderlying(const T& self) -> typename T::underlying_type
+{
+    STACK_TRACE_ENTRY();
+
+    return self.underlying_value();
 }
 
 template<typename T, typename U>
@@ -2856,8 +2927,8 @@ static void CustomEntity_Get(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto& entity_id = *static_cast<const uint*>(gen->GetAddressOfArg(0));
-    T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, entity_id);
+    const auto& entity_id = *static_cast<id_t::underlying_type*>(gen->GetAddressOfArg(0));
+    T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, id_t {entity_id});
     ENTITY_VERIFY(entity);
     new (gen->GetAddressOfReturnLocation()) T*(entity);
 #endif
@@ -2870,8 +2941,8 @@ static void CustomEntity_DeleteById(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto& entity_id = *static_cast<const uint*>(gen->GetAddressOfArg(0));
-    engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, entity_id);
+    const auto& entity_id = *static_cast<id_t::underlying_type*>(gen->GetAddressOfArg(0));
+    engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, id_t {entity_id});
 #endif
 }
 
@@ -3071,7 +3142,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "string opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "const string& opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "string opImplConv() const", SCRIPT_FUNC_THIS(HashedString_StringConv), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
@@ -3100,6 +3172,21 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9)", SCRIPT_FUNC(Global_ThrowException_9), SCRIPT_FUNC_CONV));
     AS_VERIFY(engine->RegisterGlobalFunction("void ThrowException(string message, ?&in obj1, ?&in obj2, ?&in obj3, ?&in obj4, ?&in obj5, ?&in obj6, ?&in obj7, ?&in obj8, ?&in obj9, ?&in obj10)", SCRIPT_FUNC(Global_ThrowException_10), SCRIPT_FUNC_CONV));
     AS_VERIFY(engine->RegisterGlobalFunction("void Yield(uint duration)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
+
+    // Strong type registrator
+#define REGISTER_HARD_STRONG_TYPE(type, underlying_type) \
+    AS_VERIFY(engine->RegisterObjectType(#type, sizeof(type), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLINTS | asGetTypeTraits<type>())); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS((StrongType_Construct<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #type " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #underlying_type " &in) const", SCRIPT_FUNC_THIS((StrongType_EqualsUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV))
+
+#define REGISTER_RELAXED_STRONG_TYPE(type, underlying_type) \
+    REGISTER_HARD_STRONG_TYPE(type, underlying_type); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_GENERIC((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, "const " #underlying_type "& opImplCast() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingCast<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " opImplConv() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV))
 
     // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name, real_class) \
@@ -3144,7 +3231,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "id_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -3155,10 +3242,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", SCRIPT_GENERIC((CustomEntity_Create<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(uint id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(uint id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(id_t id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(id_t id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", SCRIPT_GENERIC((CustomEntity_DeleteByRef<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "id_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))

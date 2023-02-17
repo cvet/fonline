@@ -46,9 +46,9 @@ class DataBase
     friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
 
 public:
-    using Collection = map<uint, AnyData::Document>;
-    using Collections = map<string, Collection>;
-    using RecordsState = map<string, set<uint>>;
+    using Collection = unordered_map<id_t, AnyData::Document>;
+    using Collections = unordered_map<string, Collection>;
+    using RecordsState = unordered_map<string, unordered_set<id_t>>;
 
     DataBase();
     DataBase(const DataBase&) = delete;
@@ -58,14 +58,14 @@ public:
     explicit operator bool() const;
     ~DataBase();
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint>;
-    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> AnyData::Document;
-    [[nodiscard]] auto Valid(string_view collection_name, uint id) const -> bool;
+    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<id_t>;
+    [[nodiscard]] auto Get(string_view collection_name, id_t id) const -> AnyData::Document;
+    [[nodiscard]] auto Valid(string_view collection_name, id_t id) const -> bool;
 
     void StartChanges();
-    void Insert(string_view collection_name, uint id, const AnyData::Document& doc);
-    void Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value);
-    void Delete(string_view collection_name, uint id);
+    void Insert(string_view collection_name, id_t id, const AnyData::Document& doc);
+    void Update(string_view collection_name, id_t id, string_view key, const AnyData::Value& value);
+    void Delete(string_view collection_name, id_t id);
     void CommitChanges();
 
 private:

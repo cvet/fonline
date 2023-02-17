@@ -101,6 +101,13 @@ public:
         return *this;
     }
 
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    auto operator<<(const T& i) -> NetBuffer&
+    {
+        Push(&i.underlying_value(), sizeof(typename T::underlying_type));
+        return *this;
+    }
+
     auto operator<<(string_view i) -> NetBuffer&
     {
         RUNTIME_ASSERT(i.length() <= std::numeric_limits<ushort>::max());
@@ -145,6 +152,13 @@ public:
     auto operator>>(T& i) -> NetBuffer&
     {
         Pop(&i, sizeof(T));
+        return *this;
+    }
+
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    auto operator>>(T& i) -> NetBuffer&
+    {
+        Pop(&i.underlying_value(), sizeof(typename T::underlying_type));
         return *this;
     }
 

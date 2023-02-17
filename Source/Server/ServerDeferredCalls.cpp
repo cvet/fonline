@@ -43,7 +43,7 @@ ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) :
     STACK_TRACE_ENTRY();
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -55,7 +55,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -68,7 +68,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -81,7 +81,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -94,7 +94,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -107,7 +107,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& call) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& call) -> id_t
 {
     STACK_TRACE_ENTRY();
 
@@ -161,12 +161,15 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
     return _deferredCalls.back().Id;
 }
 
-auto ServerDeferredCallManager::GetNextCallId() -> uint
+auto ServerDeferredCallManager::GetNextCallId() -> id_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto next_id = _serverEngine->GetLastDeferredCallId() + 1;
+    const auto next_id_num = _serverEngine->GetLastDeferredCallId().underlying_value() + 1;
+    const auto next_id = id_t {next_id_num};
+
     _serverEngine->SetLastDeferredCallId(next_id);
+
     return next_id;
 }
 

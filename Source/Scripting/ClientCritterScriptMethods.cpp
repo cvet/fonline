@@ -230,7 +230,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, uint itemId)
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, id_t itemId)
 {
     return self->GetItem(itemId);
 }

@@ -42,7 +42,7 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterHexView::CritterHexView(MapView* map, uint id, const ProtoCritter* proto) :
+CritterHexView::CritterHexView(MapView* map, id_t id, const ProtoCritter* proto) :
     CritterView(map->GetEngine(), id, proto),
     _map {map}
 {
@@ -118,7 +118,7 @@ auto CritterHexView::GetCurAnim() -> CritterAnim*
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
-auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
+auto CritterHexView::AddItem(id_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 

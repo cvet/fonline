@@ -193,6 +193,74 @@ using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
 template<typename T>
 using const_span = span<const T>;
 
+// Strong types
+template<typename T>
+// ReSharper disable CppInconsistentNaming
+struct strong_type
+{
+    using underlying_type = T;
+
+    constexpr strong_type() noexcept :
+        _value {}
+    {
+    }
+
+    constexpr explicit strong_type(T v) noexcept :
+        _value {v}
+    {
+    }
+
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != T {}; }
+
+    [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
+    [[nodiscard]] constexpr auto operator!=(const strong_type& other) const noexcept -> bool { return _value != other._value; }
+
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> T& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const T& { return _value; }
+
+private:
+    T _value;
+};
+
+template<typename T>
+struct std::hash<strong_type<T>>
+{
+    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<T>()(t.underlying_value()); }
+};
+
+template<typename T>
+struct fmt::formatter<strong_type<T>>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const strong_type<T>& s, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", s.underlying_value());
+    }
+};
+
+template<typename T>
+constexpr bool is_strong_type_func(const strong_type<T>*)
+{
+    return true;
+}
+constexpr bool is_strong_type_func(...)
+{
+    return false;
+}
+template<typename T>
+struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_cast<T*>(nullptr))>
+{
+};
+
+using id_t = strong_type<uint>;
+static_assert(sizeof(id_t) == sizeof(uint));
+
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
 #include "assimp/types.h"
@@ -1173,7 +1241,7 @@ static_assert(std::is_standard_layout_v<hstring>);
 template<>
 struct std::hash<hstring>
 {
-    size_t operator()(const hstring& s) const noexcept { return s.as_hash(); }
+    size_t operator()(const hstring& s) const noexcept { return std::hash<hstring::hash_t>()(s.as_hash()); }
 };
 
 template<>

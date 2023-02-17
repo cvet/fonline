@@ -339,7 +339,7 @@ auto FOClient::GetMapChosen() -> CritterHexView*
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
-auto FOClient::GetWorldmapCritter(uint cr_id) -> CritterView*
+auto FOClient::GetWorldmapCritter(id_t cr_id) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
@@ -701,7 +701,7 @@ void FOClient::Net_OnConnect(bool success)
         }
 
         RUNTIME_ASSERT(!_curPlayer);
-        _curPlayer = new PlayerView(this, 0u);
+        _curPlayer = new PlayerView(this, id_t {});
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
@@ -799,7 +799,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
         return;
     }
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(id_t) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
         sizeof(ushort) + static_cast<uint>(sizeof(uchar) * cr->Moving.Steps.size()) + //
         sizeof(ushort) + static_cast<uint>(sizeof(ushort) * cr->Moving.ControlSteps.size()) + sizeof(short) * 2;
 
@@ -880,7 +880,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
         _conn.OutBuf << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
     }
     else {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(uint) + sizeof(ushort) + data_size;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(id_t) + sizeof(ushort) + data_size;
         _conn.OutBuf << NETMSG_SEND_COMPLEX_PROPERTY;
         _conn.OutBuf << msg_len;
     }
@@ -917,7 +917,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     }
 }
 
-void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
+void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uchar answer)
 {
     STACK_TRACE_ENTRY();
 
@@ -925,7 +925,8 @@ void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 
     _conn.OutBuf << NETMSG_SEND_TALK_NPC;
     _conn.OutBuf << is_npc;
-    _conn.OutBuf << id_to_talk;
+    _conn.OutBuf << (is_npc ? id_t {id_to_talk} : id_t {});
+    _conn.OutBuf << (!is_npc ? ResolveHash(id_to_talk) : hstring {});
     _conn.OutBuf << answer;
 }
 
@@ -1028,7 +1029,7 @@ void FOClient::Net_OnLoginSuccess()
 
     uint msg_len;
     uint encrypt_key;
-    uint player_id;
+    id_t player_id;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> encrypt_key;
     _conn.InBuf >> player_id;
@@ -1043,7 +1044,7 @@ void FOClient::Net_OnLoginSuccess()
     RestoreData(_globalsPropertiesData);
 
     RUNTIME_ASSERT(_curPlayer);
-    RUNTIME_ASSERT(_curPlayer->GetId() == 0u);
+    RUNTIME_ASSERT(!_curPlayer->GetId());
     _curPlayer->SetId(player_id);
     _curPlayer->RestoreData(_playerPropertiesData);
 
@@ -1057,7 +1058,7 @@ void FOClient::Net_OnAddCritter()
     uint msg_len;
     _conn.InBuf >> msg_len;
 
-    uint cr_id;
+    id_t cr_id;
     ushort hx;
     ushort hy;
     short hex_ox;
@@ -1141,7 +1142,7 @@ void FOClient::Net_OnRemoveCritter()
 {
     STACK_TRACE_ENTRY();
 
-    uint cr_id;
+    id_t cr_id;
     _conn.InBuf >> cr_id;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1177,12 +1178,12 @@ void FOClient::Net_OnText()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint crid;
+    id_t cr_id;
     uchar how_say;
     string text;
     bool unsafe_text;
     _conn.InBuf >> msg_len;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> how_say;
     _conn.InBuf >> text;
     _conn.InBuf >> unsafe_text;
@@ -1197,7 +1198,7 @@ void FOClient::Net_OnText()
     if (unsafe_text) {
         Keyb.EraseInvalidChars(text, KIF_NO_SPEC_SYMBOLS);
     }
-    OnText(text, crid, how_say);
+    OnText(text, cr_id, how_say);
 }
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
@@ -1209,11 +1210,11 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         _conn.InBuf >> msg_len;
     }
 
-    uint crid;
+    id_t cr_id;
     uchar how_say;
     ushort msg_num;
     uint num_str;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> how_say;
     _conn.InBuf >> msg_num;
     _conn.InBuf >> num_str;
@@ -1237,12 +1238,12 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 
     if (const auto& msg = _curLang.Msg[msg_num]; msg.Count(num_str) != 0u) {
         auto str = msg.GetStr(num_str);
-        FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr, lexems);
-        OnText(str, crid, how_say);
+        FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr, lexems);
+        OnText(str, cr_id, how_say);
     }
 }
 
-void FOClient::OnText(string_view str, uint crid, int how_say)
+void FOClient::OnText(string_view str, id_t cr_id, int how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -1253,7 +1254,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
 
     auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100u;
     const auto sstr = fstr;
-    if (!OnInMessage.Fire(sstr, how_say, crid, text_delay)) {
+    if (!OnInMessage.Fire(sstr, how_say, cr_id, text_delay)) {
         return;
     }
 
@@ -1315,7 +1316,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
 
     const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}"); };
 
-    auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr) : nullptr);
+    auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
 
     // Critter text on head
     if (fstr_cr != 0 && cr != nullptr) {
@@ -1330,7 +1331,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
         else if (how_say == SAY_RADIO) {
             ushort channel = 0;
             if (auto* chosen = GetChosen(); chosen != nullptr) {
-                const auto* radio = chosen->GetItem(crid);
+                const auto* radio = chosen->GetItem(cr_id);
                 if (radio != nullptr) {
                     channel = radio->GetRadioChannel();
                 }
@@ -1463,9 +1464,9 @@ void FOClient::Net_OnCritterDir()
 {
     STACK_TRACE_ENTRY();
 
-    uint crid;
+    id_t cr_id;
     short dir_angle;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> dir_angle;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1475,7 +1476,7 @@ void FOClient::Net_OnCritterDir()
         return;
     }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr != nullptr) {
         cr->ChangeLookDirAngle(dir_angle);
     }
@@ -1486,7 +1487,7 @@ void FOClient::Net_OnCritterMove()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint cr_id;
+    id_t cr_id;
     uint whole_time;
     uint offset_time;
     ushort speed;
@@ -1610,7 +1611,7 @@ void FOClient::Net_OnCritterStopMove()
 {
     STACK_TRACE_ENTRY();
 
-    uint cr_id;
+    id_t cr_id;
     ushort start_hx;
     ushort start_hy;
     short hex_ox;
@@ -1645,7 +1646,7 @@ void FOClient::Net_OnSomeItem()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint item_id;
+    id_t item_id;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
     const hstring item_pid = _conn.InBuf.ReadHashedString(*this);
@@ -1669,11 +1670,11 @@ void FOClient::Net_OnCritterAction()
 {
     STACK_TRACE_ENTRY();
 
-    uint crid;
+    id_t cr_id;
     int action;
     int action_ext;
     bool is_item;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> action;
     _conn.InBuf >> action_ext;
     _conn.InBuf >> is_item;
@@ -1685,7 +1686,7 @@ void FOClient::Net_OnCritterAction()
         return;
     }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
@@ -1698,7 +1699,7 @@ void FOClient::Net_OnCritterMoveItem()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint cr_id;
+    id_t cr_id;
     uchar action;
     uchar prev_slot;
     bool is_item;
@@ -1717,12 +1718,12 @@ void FOClient::Net_OnCritterMoveItem()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     vector<uchar> slots_data_slot;
-    vector<uint> slots_data_id;
+    vector<id_t> slots_data_id;
     vector<hstring> slots_data_pid;
     vector<vector<vector<uchar>>> slots_data_data;
     for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
         uchar slot;
-        uint id;
+        id_t id;
         hstring pid;
         _conn.InBuf >> slot;
         _conn.InBuf >> id;
@@ -1790,13 +1791,13 @@ void FOClient::Net_OnCritterAnimate()
 {
     STACK_TRACE_ENTRY();
 
-    uint crid;
+    id_t cr_id;
     uint anim1;
     uint anim2;
     bool is_item;
     bool clear_sequence;
     bool delay_play;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> anim1;
     _conn.InBuf >> anim2;
     _conn.InBuf >> is_item;
@@ -1810,7 +1811,7 @@ void FOClient::Net_OnCritterAnimate()
         return;
     }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
@@ -1827,11 +1828,11 @@ void FOClient::Net_OnCritterSetAnims()
 {
     STACK_TRACE_ENTRY();
 
-    uint crid;
+    id_t cr_id;
     CritterCondition cond;
     uint anim1;
     uint anim2;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> cond;
     _conn.InBuf >> anim1;
     _conn.InBuf >> anim2;
@@ -1843,7 +1844,7 @@ void FOClient::Net_OnCritterSetAnims()
         return;
     }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
@@ -1870,10 +1871,10 @@ void FOClient::Net_OnCritterTeleport()
 {
     STACK_TRACE_ENTRY();
 
-    uint crid;
+    id_t cr_id;
     ushort to_hx;
     ushort to_hy;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> to_hx;
     _conn.InBuf >> to_hy;
 
@@ -1884,7 +1885,7 @@ void FOClient::Net_OnCritterTeleport()
         return;
     }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
@@ -1908,13 +1909,13 @@ void FOClient::Net_OnCritterPos()
 {
     STACK_TRACE_ENTRY();
 
-    uint crid;
+    id_t cr_id;
     ushort hx;
     ushort hy;
     short hex_ox;
     short hex_oy;
     short dir_angle;
-    _conn.InBuf >> crid;
+    _conn.InBuf >> cr_id;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
     _conn.InBuf >> hex_ox;
@@ -1928,7 +1929,7 @@ void FOClient::Net_OnCritterPos()
         return;
     }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
@@ -2023,7 +2024,7 @@ void FOClient::Net_OnChosenAddItem()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint item_id;
+    id_t item_id;
     hstring pid;
     uchar slot;
     _conn.InBuf >> msg_len;
@@ -2077,7 +2078,7 @@ void FOClient::Net_OnChosenEraseItem()
 {
     STACK_TRACE_ENTRY();
 
-    uint item_id;
+    id_t item_id;
     _conn.InBuf >> item_id;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2135,7 +2136,7 @@ void FOClient::Net_OnAddItemOnMap()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint item_id;
+    id_t item_id;
     ushort item_hx;
     ushort item_hy;
     bool is_added;
@@ -2170,7 +2171,7 @@ void FOClient::Net_OnEraseItemFromMap()
 {
     STACK_TRACE_ENTRY();
 
-    uint item_id;
+    id_t item_id;
     bool is_deleted;
     _conn.InBuf >> item_id;
     _conn.InBuf >> is_deleted;
@@ -2203,7 +2204,7 @@ void FOClient::Net_OnAnimateItem()
 {
     STACK_TRACE_ENTRY();
 
-    uint item_id;
+    id_t item_id;
     uchar from_frm;
     uchar to_frm;
     _conn.InBuf >> item_id;
@@ -2271,8 +2272,8 @@ void FOClient::Net_OnFlyEffect()
     STACK_TRACE_ENTRY();
 
     hstring eff_pid;
-    uint eff_cr1_id;
-    uint eff_cr2_id;
+    id_t eff_cr1_id;
+    id_t eff_cr2_id;
     ushort eff_cr1_hx;
     ushort eff_cr1_hy;
     ushort eff_cr2_hx;
@@ -2314,10 +2315,10 @@ void FOClient::Net_OnPlaySound()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uint synchronize_crid;
+    uint synchronize_cr_id;
     string sound_name;
     _conn.InBuf >> msg_len;
-    _conn.InBuf >> synchronize_crid;
+    _conn.InBuf >> synchronize_cr_id;
     _conn.InBuf >> sound_name;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2368,8 +2369,8 @@ void FOClient::Net_OnProperty(uint data_size)
     _conn.InBuf >> type_;
     const auto type = static_cast<NetProperty>(type_);
 
-    uint cr_id;
-    uint item_id;
+    id_t cr_id;
+    id_t item_id;
 
     uint additional_args = 0;
     switch (type) {
@@ -2491,13 +2492,15 @@ void FOClient::Net_OnChosenTalk()
 
     uint msg_len;
     uchar is_npc;
-    uint talk_id;
+    id_t talk_cr;
+    hstring talk_dlg;
     uchar count_answ;
     uint text_id;
     uint talk_time;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> is_npc;
-    _conn.InBuf >> talk_id;
+    _conn.InBuf >> talk_cr;
+    talk_dlg = _conn.InBuf.ReadHashedString(*this);
     _conn.InBuf >> count_answ;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2522,9 +2525,9 @@ void FOClient::Net_OnChosenTalk()
     }
 
     // Find critter
-    auto* npc = (is_npc != 0u ? CurMap->GetCritter(talk_id) : nullptr);
+    auto* npc = (is_npc != 0 ? CurMap->GetCritter(talk_cr) : nullptr);
     _dlgIsNpc = is_npc;
-    _dlgNpcId = talk_id;
+    _dlgNpcId = talk_cr;
 
     // Main text
     _conn.InBuf >> text_id;
@@ -2555,7 +2558,7 @@ void FOClient::Net_OnChosenTalk()
 
     map<string, string> params;
     params["TalkerIsNpc"] = _str("{}", is_npc);
-    params["TalkerId"] = _str("{}", talk_id);
+    params["TalkerId"] = _str("{}", is_npc ? talk_cr.underlying_value() : talk_dlg.as_uint());
     params["Text"] = _str("{}", text_to_script);
     params["Answers"] = _str("{}", answers_to_script);
     params["TalkTime"] = _str("{}", talk_time);
@@ -2601,8 +2604,8 @@ void FOClient::Net_OnLoadMap()
     WriteLog("Change map..");
 
     uint msg_len;
-    uint loc_id;
-    uint map_id;
+    id_t loc_id;
+    id_t map_id;
     uchar map_index_in_loc;
 
     _conn.InBuf >> msg_len;
@@ -2766,14 +2769,14 @@ void FOClient::Net_OnSomeItems()
 
     vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
-        uint item_id;
+        id_t item_id;
         hstring item_pid;
         _conn.InBuf >> item_id;
         item_pid = _conn.InBuf.ReadHashedString(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
         const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
-        if (item_id != 0u && proto_item != nullptr) {
+        if (item_id && proto_item != nullptr) {
             auto* item = new ItemView(this, item_id, proto_item);
             item->RestoreData(_tempPropertiesData);
             item_container.push_back(item);
@@ -2854,7 +2857,7 @@ void FOClient::Net_OnViewMap()
 
     ushort hx;
     ushort hy;
-    uint loc_id;
+    id_t loc_id;
     uint loc_ent;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
@@ -3113,7 +3116,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 
     RUNTIME_ASSERT(entity == _curPlayer);
 
-    if (_curPlayer->GetId() == 0u) {
+    if (!_curPlayer->GetId()) {
         throw ScriptException("Can't modify player public/protected property on unlogined player");
     }
 
@@ -3140,7 +3143,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->IsStatic() && item->GetId() != 0u) {
+    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->IsStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->IsChosen()) {
@@ -3899,7 +3902,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "SetCritterContour" && args.size() == 3) {
         if (CurMap != nullptr) {
             auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            uint cr_id = _str(args[2]).toInt();
+            id_t cr_id = id_t {_str(args[2]).toUInt()};
             CurMap->SetCritterContour(cr_id, countour_type);
         }
     }
@@ -3908,8 +3911,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "MoveItem" && args.size() == 5) {
         auto item_count = _str(args[1]).toUInt();
-        auto item_id = _str(args[2]).toUInt();
-        auto item_swap_id = _str(args[3]).toUInt();
+        auto item_id = id_t {_str(args[2]).toUInt()};
+        auto item_swap_id = id_t {_str(args[3]).toUInt()};
         auto to_slot = _str(args[4]).toInt();
         auto* item = GetChosen()->GetItem(item_id);
         auto* item_swap = (item_swap_id ? GetChosen()->GetItem(item_swap_id) : nullptr);

@@ -37,7 +37,7 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) :
+Location::Location(FOServer* engine, id_t id, const ProtoLocation* proto) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     EntityWithProto(this, proto),
     LocationProperties(GetInitRef())

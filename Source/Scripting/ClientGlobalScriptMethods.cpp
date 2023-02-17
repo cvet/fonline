@@ -62,43 +62,43 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
+[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, int> func, int value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, uint> func, uint value)
+[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, uint> func, uint value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, uint id)
+[[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, id_t id)
 {
     return client->ClientDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, uint id)
+[[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, id_t id)
 {
     return client->ClientDeferredCalls.CancelDeferredCall(id);
 }
@@ -184,9 +184,9 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, uint itemId)
+[[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, id_t itemId)
 {
-    if (itemId == 0u) {
+    if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
@@ -236,9 +236,9 @@
 ///# param critterId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, uint critterId)
+[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, id_t critterId)
 {
-    if (critterId == 0u) {
+    if (!critterId) {
         return nullptr;
     }
 
@@ -688,7 +688,7 @@
 ///# param effectPath ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectPath)
+[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int64 effectSubtype, string_view effectPath)
 {
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectPath.empty()) {
@@ -704,13 +704,13 @@
     const auto eff_type = static_cast<uint>(effectType);
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
-        auto* item = client->CurMap->GetItem(static_cast<uint>(effectSubtype));
+        auto* item = client->CurMap->GetItem(id_t {static_cast<uint>(effectSubtype)});
         if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
-        auto* cr = client->CurMap->GetCritter(static_cast<uint>(effectSubtype));
+        auto* cr = client->CurMap->GetCritter(id_t {static_cast<uint>(effectSubtype)});
         if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
@@ -749,7 +749,7 @@
         client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
     }
     if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype >= 0) {
-        client->SprMngr.SetFontEffect(effectSubtype, reload_effect(client->EffectMngr.Effects.Font));
+        client->SprMngr.SetFontEffect(static_cast<int>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
     }
 
     if (eff_type & static_cast<uint>(EffectType::Primitive)) {

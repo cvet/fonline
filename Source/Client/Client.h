@@ -105,7 +105,7 @@ public:
     [[nodiscard]] auto GetConnection() -> ServerConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
-    [[nodiscard]] auto GetWorldmapCritter(uint cr_id) -> CritterView*;
+    [[nodiscard]] auto GetWorldmapCritter(id_t cr_id) -> CritterView*;
     [[nodiscard]] auto GetWorldmapCritters() -> vector<CritterView*> { return _worldmapCritters; }
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
@@ -203,7 +203,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, uint& /*crId*/, uint& /*delay*/);
+    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, id_t /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
@@ -306,7 +306,7 @@ protected:
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
-    void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
+    void Net_SendTalk(bool is_npc, uint id_to_talk, uchar answer);
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
@@ -358,7 +358,7 @@ protected:
     void Net_OnViewMap();
     void Net_OnRemoteCall();
 
-    void OnText(string_view str, uint crid, int how_say);
+    void OnText(string_view str, id_t cr_id, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
@@ -431,7 +431,7 @@ protected:
     bool _lmapSwitchHi {};
     uint _lmapPrepareNextTick {};
     uchar _dlgIsNpc {};
-    uint _dlgNpcId {};
+    id_t _dlgNpcId {};
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
 };

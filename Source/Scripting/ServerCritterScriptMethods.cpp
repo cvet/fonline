@@ -121,7 +121,7 @@
         if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
             self->ChangeDir(dir);
         }
-        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, 0)) {
+        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, id_t {})) {
             throw ScriptException("Transit fail");
         }
     }
@@ -152,7 +152,7 @@
         dir_ = 0;
     }
 
-    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, 0)) {
+    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, id_t {})) {
         throw ScriptException("Transit to map hex fail");
     }
 
@@ -171,7 +171,7 @@
         throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId() != 0 && !self->GetEngine()->MapMngr.TransitToGlobal(self, 0)) {
+    if (self->GetMapId() && !self->GetEngine()->MapMngr.TransitToGlobal(self, id_t {})) {
         throw ScriptException("Transit to global failed");
     }
 }
@@ -184,11 +184,11 @@
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         throw ScriptException("Critter already on global");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, 0)) {
+    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, id_t {})) {
         throw ScriptException("Transit to global failed");
     }
 
@@ -207,7 +207,7 @@
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         throw ScriptException("Critter already on global");
     }
     if (leader == nullptr) {
@@ -291,7 +291,7 @@
     self->ViewMapHx = hx;
     self->ViewMapHy = hy;
     self->ViewMapDir = dir_;
-    self->ViewMapLocId = 0;
+    self->ViewMapLocId = id_t {};
     self->ViewMapLocEnt = 0;
     self->Send_LoadMap(map);
 }
@@ -312,7 +312,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_Text(self, howSay != SAY_FLASH_WINDOW ? text : " ", howSay);
     }
-    else if (self->GetMapId() != 0u) {
+    else if (self->GetMapId()) {
         self->SendAndBroadcast_Text(self->VisCr, text, howSay, false);
     }
 }
@@ -331,7 +331,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_TextMsg(self, numStr, howSay, textMsg);
     }
-    else if (self->GetMapId() != 0u) {
+    else if (self->GetMapId()) {
         self->SendAndBroadcast_Msg(self->VisCr, numStr, howSay, textMsg);
     }
 }
@@ -351,7 +351,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_TextMsgLex(self, numStr, howSay, textMsg, lexems);
     }
-    else if (self->GetMapId() != 0u) {
+    else if (self->GetMapId()) {
         self->SendAndBroadcast_MsgLex(self->VisCr, numStr, howSay, textMsg, lexems);
     }
 }
@@ -458,7 +458,7 @@
         return true;
     }
 
-    const auto& critters = (self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup);
+    const auto& critters = self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup;
     return std::find(critters.begin(), critters.end(), cr) != critters.end();
 }
 
@@ -476,7 +476,7 @@
         return true;
     }
 
-    const auto& critters = (self->GetMapId() ? self->VisCr : *self->GlobalMapGroup);
+    const auto& critters = self->GetMapId() ? self->VisCr : *self->GlobalMapGroup;
     return std::find(critters.begin(), critters.end(), cr) != critters.end();
 }
 
@@ -550,7 +550,7 @@
         throw ScriptException("Invalid proto", pid);
     }
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
@@ -561,9 +561,9 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, uint itemId)
+[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, id_t itemId)
 {
-    if (itemId == 0u) {
+    if (!itemId) {
         return nullptr;
     }
 
@@ -681,9 +681,9 @@
 ///# param itemId ...
 ///# param slot ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, uint itemId, uchar slot)
+[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, id_t itemId, uchar slot)
 {
-    if (itemId == 0u) {
+    if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
@@ -826,9 +826,9 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, uint locId)
+[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, id_t locId)
 {
-    if (locId == 0u) {
+    if (!locId) {
         throw ScriptException("Invalid location id");
     }
 
@@ -839,9 +839,9 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, uint locId)
+[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, id_t locId)
 {
-    if (locId == 0u) {
+    if (!locId) {
         throw ScriptException("Invalid location id");
     }
 
@@ -860,7 +860,7 @@
         self->Send_AutomapsInfo(nullptr, loc);
     }
 
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         self->Send_GlobalLocation(loc, true);
     }
 
@@ -879,7 +879,7 @@
     if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
         gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
         self->SetGlobalMapFog(gmap_fog);
-        if (self->GetMapId() == 0u) {
+        if (!self->GetMapId()) {
             self->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
         }
     }
@@ -889,9 +889,9 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, uint locId)
+[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, id_t locId)
 {
-    if (locId == 0u) {
+    if (!locId) {
         throw ScriptException("Invalid location id");
     }
 
@@ -901,7 +901,7 @@
 
     self->GetEngine()->MapMngr.EraseKnownLoc(self, locId);
 
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         if (auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
             self->Send_GlobalLocation(loc, false);
         }
@@ -1061,7 +1061,7 @@
 ///# ...
 ///# param gagId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, uint& gagId)
+[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, id_t& gagId)
 {
     gagId = self->TargetMoving.GagEntityId;
 

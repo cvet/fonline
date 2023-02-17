@@ -62,11 +62,11 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, TimeMultiplier);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LastEntityId);
+    ENTITY_PROPERTY(PrivateServer, id_t, LastEntityId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, LastDeferredCallId);
+    ENTITY_PROPERTY(PrivateCommon, id_t, LastDeferredCallId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, HistoryRecordsId);
+    ENTITY_PROPERTY(PrivateCommon, id_t, HistoryRecordsId);
 };
 
 class PlayerProperties : public EntityProperties
@@ -80,7 +80,7 @@ public:
     }
 
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, OwnedCritterIds);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, OwnedCritterIds);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, string, Password);
     ///@ ExportProperty
@@ -108,21 +108,21 @@ public:
     ///@ ExportProperty ReadOnly Alias = Accessory
     ENTITY_PROPERTY(PrivateCommon, ItemOwnership, Ownership);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, MapId);
+    ENTITY_PROPERTY(PrivateCommon, id_t, MapId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexX);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexY);
     ///@ ExportProperty ReadOnly Alias = CritId
-    ENTITY_PROPERTY(PrivateCommon, uint, CritterId);
+    ENTITY_PROPERTY(PrivateCommon, id_t, CritterId);
     ///@ ExportProperty ReadOnly Alias = CritSlot Alias = Slot
     ENTITY_PROPERTY(PrivateCommon, uchar, CritterSlot);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, ContainerId);
+    ENTITY_PROPERTY(PrivateCommon, id_t, ContainerId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, SubItemIds);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, SubItemIds);
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty Resource
@@ -272,25 +272,25 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, MapId);
+    ENTITY_PROPERTY(PrivateServer, id_t, MapId);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, ushort, WorldX);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, ushort, WorldY);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, uint, GlobalMapLeaderId);
+    ENTITY_PROPERTY(Protected, id_t, GlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LastMapId);
+    ENTITY_PROPERTY(PrivateServer, id_t, LastMapId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, hstring, LastMapPid);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LastLocationId);
+    ENTITY_PROPERTY(PrivateServer, id_t, LastLocationId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, hstring, LastLocationPid);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LastGlobalMapLeaderId);
+    ENTITY_PROPERTY(PrivateServer, id_t, LastGlobalMapLeaderId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ushort, MapLeaveHexX);
     ///@ ExportProperty ReadOnly
@@ -308,7 +308,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, short, DirAngle);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, ItemIds);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, ItemIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
     ///@ ExportProperty ReadOnly
@@ -348,7 +348,9 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, string, Lexems);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, HomeMapId);
+    ENTITY_PROPERTY(PrivateServer, id_t, HomeMapId);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, hstring, HomeMapPid);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, ushort, HomeHexX);
     ///@ ExportProperty
@@ -356,7 +358,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uchar, HomeDir);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, KnownLocations);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, KnownLocations);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist1);
     ///@ ExportProperty
@@ -432,13 +434,13 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateClient, ushort, WorkHexY);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LocId);
+    ENTITY_PROPERTY(PrivateServer, id_t, LocId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, CritterIds);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, CritterIds);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, ItemIds);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, ItemIds);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateCommon, uchar, RainCapacity);
     ///@ ExportProperty
@@ -467,7 +469,7 @@ public:
     ///@ ExportProperty ScriptFuncType = LocationInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, MapIds);
+    ENTITY_PROPERTY(PrivateServer, vector<id_t>, MapIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
     ///@ ExportProperty ReadOnly

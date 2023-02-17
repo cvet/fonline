@@ -35,7 +35,7 @@
 #include "Client.h"
 #include "StringUtils.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) :
+ItemView::ItemView(FOClient* engine, id_t id, const ProtoItem* proto) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     EntityWithProto(this, proto),
     ItemProperties(GetInitRef())
@@ -75,7 +75,7 @@ auto ItemView::LightGetHash() const -> uint
     return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
 }
 
-auto ItemView::AddInnerItem(uint id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*
+auto ItemView::AddInnerItem(id_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -102,7 +102,7 @@ void ItemView::DeleteInnerItem(ItemView* item)
     _innerItems.erase(it);
 
     item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetContainerId(0);
+    item->SetContainerId(id_t {});
     item->SetContainerStack(0);
 
     item->MarkAsDestroyed();

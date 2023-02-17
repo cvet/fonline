@@ -148,7 +148,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uchar>(props_data.data(), props_data_size);
                     cr_props.RestoreAllData(props_data);
 
-                    auto* cr = new Critter(_engine, 0, nullptr, cr_proto);
+                    auto* cr = new Critter(_engine, id_t {}, nullptr, cr_proto);
                     cr->SetProperties(cr_props);
 
                     static_map.CritterBillets.emplace_back(cr_id, cr);
@@ -182,7 +182,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uchar>(props_data.data(), props_data_size);
                     item_props.RestoreAllData(props_data);
 
-                    auto* item = new Item(_engine, 0, item_proto);
+                    auto* item = new Item(_engine, id_t {}, item_proto);
                     item->SetProperties(item_props);
 
                     static_map.ItemBillets.emplace_back(item_id, item);
@@ -312,7 +312,7 @@ void MapManager::GenerateMapContent(Map* map)
 
     NON_CONST_METHOD_HINT();
 
-    std::map<uint, uint> id_map;
+    unordered_map<id_t, id_t> id_map;
 
     // Generate npc
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
@@ -349,7 +349,7 @@ void MapManager::GenerateMapContent(Map* map)
     // Add children items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->ChildItemBillets) {
         // Map id
-        uint parent_id = 0;
+        id_t parent_id;
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
             parent_id = base_item->GetCritterId();
         }
@@ -466,12 +466,12 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
         throw MapManagerException("Invalid location coordinates", proto_id);
     }
 
-    auto* loc = new Location(_engine, 0, proto);
+    auto* loc = new Location(_engine, id_t {}, proto);
 
     loc->SetWorldX(wx);
     loc->SetWorldY(wy);
 
-    vector<uint> map_ids;
+    vector<id_t> map_ids;
 
     for (const auto map_pid : loc->GetMapProtos()) {
         const auto* map = CreateMap(map_pid, loc);
@@ -527,7 +527,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
         throw MapManagerException("Static map not found", proto_id);
     }
 
-    auto* map = new Map(_engine, 0, proto_map, loc, &it->second);
+    auto* map = new Map(_engine, id_t {}, proto_map, loc, &it->second);
     map->SetLocId(loc->GetId());
 
     auto& maps = loc->GetMapsRaw();
@@ -554,20 +554,20 @@ void MapManager::RegenerateMap(Map* map)
     _engine->OnMapInit.Fire(map, true);
 }
 
-auto MapManager::GetMap(uint map_id) -> Map*
+auto MapManager::GetMap(id_t map_id) -> Map*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (map_id == 0) {
+    if (!map_id) {
         return nullptr;
     }
 
     return _engine->EntityMngr.GetMap(map_id);
 }
 
-auto MapManager::GetMap(uint map_id) const -> const Map*
+auto MapManager::GetMap(id_t map_id) const -> const Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -587,7 +587,7 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) -> Map*
     return _engine->EntityMngr.GetMapByPid(map_pid, skip_count);
 }
 
-auto MapManager::GetMaps() -> const unordered_map<uint, Map*>&
+auto MapManager::GetMaps() -> const unordered_map<id_t, Map*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -603,7 +603,7 @@ auto MapManager::GetMapsCount() const -> uint
     return static_cast<uint>(_engine->EntityMngr.GetMaps().size());
 }
 
-auto MapManager::GetLocationByMap(uint map_id) -> Location*
+auto MapManager::GetLocationByMap(id_t map_id) -> Location*
 {
     STACK_TRACE_ENTRY();
 
@@ -614,20 +614,20 @@ auto MapManager::GetLocationByMap(uint map_id) -> Location*
     return map->GetLocation();
 }
 
-auto MapManager::GetLocation(uint loc_id) -> Location*
+auto MapManager::GetLocation(id_t loc_id) -> Location*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (loc_id == 0) {
+    if (!loc_id) {
         return nullptr;
     }
 
     return _engine->EntityMngr.GetLocation(loc_id);
 }
 
-auto MapManager::GetLocation(uint loc_id) const -> const Location*
+auto MapManager::GetLocation(id_t loc_id) const -> const Location*
 {
     STACK_TRACE_ENTRY();
 
@@ -680,11 +680,11 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
     STACK_TRACE_ENTRY();
 
     for (auto* cl : map->GetPlayers()) {
-        TransitToGlobal(cl, 0);
+        TransitToGlobal(cl, id_t {});
     }
 }
 
-auto MapManager::GetLocations() -> const unordered_map<uint, Location*>&
+auto MapManager::GetLocations() -> const unordered_map<id_t, Location*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -1377,7 +1377,7 @@ label_FindOk:
     return output;
 }
 
-auto MapManager::TransitToGlobal(Critter* cr, uint leader_id) -> bool
+auto MapManager::TransitToGlobal(Critter* cr, id_t leader_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1389,7 +1389,7 @@ auto MapManager::TransitToGlobal(Critter* cr, uint leader_id) -> bool
     return Transit(cr, nullptr, 0, 0, 0, 0, leader_id);
 }
 
-auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id) -> bool
+auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, id_t leader_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1406,17 +1406,17 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
         return false;
     }
 
-    const auto map_id = map != nullptr ? map->GetId() : 0;
+    const auto map_id = map != nullptr ? map->GetId() : id_t {};
 
     const auto cur_map_id = cr->GetMapId();
-    auto* cur_map = cur_map_id != 0 ? GetMap(cur_map_id) : nullptr;
-    RUNTIME_ASSERT(cur_map_id == 0 || !!cur_map);
+    auto* cur_map = cur_map_id ? GetMap(cur_map_id) : nullptr;
+    RUNTIME_ASSERT(!cur_map_id || !!cur_map);
 
     cr->ClearMove();
 
     if (cur_map_id == map_id) {
         // One map
-        if (map_id == 0) {
+        if (!map_id) {
             // Todo: check group
             return true;
         }
@@ -1500,7 +1500,7 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
     return true;
 }
 
-auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool
+auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, id_t leader_id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1516,9 +1516,9 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint
         }
     }
     else {
-        if (leader_id != 0 && leader_id != cr->GetId()) {
+        if (leader_id && leader_id != cr->GetId()) {
             const auto* leader = _engine->CrMngr.GetCritter(leader_id);
-            if (leader == nullptr || leader->GetMapId() != 0) {
+            if (leader == nullptr || leader->GetMapId()) {
                 return false;
             }
         }
@@ -1526,7 +1526,7 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint
     return true;
 }
 
-void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id)
+void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, id_t leader_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -1562,7 +1562,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
     else {
         RUNTIME_ASSERT(!cr->GlobalMapGroup);
 
-        if (leader_id == 0 || leader_id == cr->GetId()) {
+        if (!leader_id || leader_id == cr->GetId()) {
             cr->SetGlobalMapLeaderId(cr->GetId());
             cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
 
@@ -1616,7 +1616,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         map->EraseCritter(cr);
         map->UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead());
 
-        cr->SetMapId(0);
+        cr->SetMapId(id_t {});
 
         if (!cr->IsOwnedByPlayer()) {
             auto cr_ids = map->GetCritterIds();
@@ -1629,7 +1629,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         _runGarbager = true;
     }
     else {
-        RUNTIME_ASSERT(cr->GetMapId() == 0);
+        RUNTIME_ASSERT(!cr->GetMapId());
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
         _engine->OnGlobalMapCritterOut.Fire(cr);
@@ -1651,8 +1651,8 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         }
 
         cr->GlobalMapGroup = nullptr;
-        cr->SetGlobalMapLeaderId(0);
-        cr->SetLastGlobalMapLeaderId(0);
+        cr->SetGlobalMapLeaderId(id_t {});
+        cr->SetLastGlobalMapLeaderId(id_t {});
     }
 }
 
@@ -1667,7 +1667,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     }
 
     // Global map
-    if (view_cr->GetMapId() == 0) {
+    if (!view_cr->GetMapId()) {
         RUNTIME_ASSERT(view_cr->GlobalMapGroup);
 
         if (view_cr->IsOwnedByPlayer()) {
@@ -2020,7 +2020,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     }
 
     const auto map_id = view_cr->GetMapId();
-    if (map_id == 0) {
+    if (!map_id) {
         return;
     }
 
@@ -2171,7 +2171,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
     }
 }
 
-auto MapManager::CheckKnownLoc(Critter* cr, uint loc_id) const -> bool
+auto MapManager::CheckKnownLoc(Critter* cr, id_t loc_id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -2183,7 +2183,7 @@ auto MapManager::CheckKnownLoc(Critter* cr, uint loc_id) const -> bool
     return false;
 }
 
-void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
+void MapManager::AddKnownLoc(Critter* cr, id_t loc_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -2198,7 +2198,7 @@ void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
     cr->SetKnownLocations(known_locs);
 }
 
-void MapManager::EraseKnownLoc(Critter* cr, uint loc_id)
+void MapManager::EraseKnownLoc(Critter* cr, id_t loc_id)
 {
     STACK_TRACE_ENTRY();
 

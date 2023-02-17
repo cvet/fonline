@@ -344,7 +344,7 @@ void Field::UnvalidateSpriteChain() const
     }
 }
 
-MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) :
+MapView::MapView(FOClient* engine, id_t id, const ProtoMap* proto) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), //
     EntityWithProto(this, proto),
     MapProperties(GetInitRef()),
@@ -475,7 +475,7 @@ void MapView::LoadStaticData()
 
         const auto scen_count = reader.Read<uint>();
         for (uint i = 0; i < scen_count; i++) {
-            const auto static_id = reader.Read<uint>();
+            const auto static_id = id_t {reader.Read<uint>()};
             const auto item_pid_hash = reader.Read<hstring::hash_t>();
             const auto item_pid = _engine->ResolveHash(item_pid_hash);
             const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
@@ -736,13 +736,13 @@ void MapView::RemoveItemFromField(ItemHexView* item)
     }
 }
 
-auto MapView::AddItem(uint id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*
+auto MapView::AddItem(id_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(id != 0u);
+    RUNTIME_ASSERT(id);
 
-    if (_itemsMap.count(id) != 0u) {
+    if (_itemsMap.count(id) != 0) {
         return nullptr;
     }
 
@@ -757,11 +757,11 @@ auto MapView::AddItem(uint id, const ProtoItem* proto, const map<string, string>
     return item;
 }
 
-auto MapView::AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*
+auto MapView::AddItem(id_t id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(id != 0u);
+    RUNTIME_ASSERT(id);
     RUNTIME_ASSERT(!(hx >= _maxHexX || hy >= _maxHexY));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
@@ -786,7 +786,7 @@ void MapView::AddItemInternal(ItemHexView* item)
     const auto hy = item->GetHexY();
     RUNTIME_ASSERT(hx < _maxHexX && hy < _maxHexY);
 
-    if (item->GetId() != 0u) {
+    if (item->GetId()) {
         if (auto* prev_item = GetItem(item->GetId()); prev_item != nullptr) {
             // Todo: rework smooth item re-appearing before same item still on map
             /*if (item_old->GetProtoId() == pid && item_old->GetHexX() == hx && item_old->GetHexY() == hy) {
@@ -813,7 +813,7 @@ void MapView::AddItemInternal(ItemHexView* item)
         _dynamicItems.emplace_back(item);
     }
 
-    if (item->GetId() != 0u) {
+    if (item->GetId()) {
         _itemsMap.emplace(item->GetId(), item);
     }
 
@@ -902,7 +902,7 @@ void MapView::DestroyItem(ItemHexView* item)
         _dynamicItems.erase(it);
     }
 
-    if (item->GetId() != 0u) {
+    if (item->GetId()) {
         const auto it = _itemsMap.find(item->GetId());
         RUNTIME_ASSERT(it != _itemsMap.end());
         _itemsMap.erase(it);
@@ -946,7 +946,7 @@ auto MapView::GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*
     return nullptr;
 }
 
-auto MapView::GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*
+auto MapView::GetItem(ushort hx, ushort hy, id_t id) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
@@ -963,7 +963,7 @@ auto MapView::GetItem(ushort hx, ushort hy, uint id) -> ItemHexView*
     return nullptr;
 }
 
-auto MapView::GetItem(uint id) -> ItemHexView*
+auto MapView::GetItem(id_t id) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
@@ -1054,7 +1054,7 @@ auto MapView::RunEffectItem(hstring eff_pid, ushort from_hx, ushort from_hy, ush
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(proto->IsStatic());
 
-    auto* effect_item = new ItemHexView(this, 0, proto, nullptr, from_hx, from_hy);
+    auto* effect_item = new ItemHexView(this, id_t {}, proto, nullptr, from_hx, from_hy);
     effect_item->SetEffect(to_hx, to_hy);
 
     AddItemToField(effect_item);
@@ -2882,14 +2882,14 @@ auto MapView::Scroll() -> bool
     }
 
     // Check critter scroll lock
-    if (AutoScroll.HardLockedCritter != 0u && !is_scroll) {
+    if (AutoScroll.HardLockedCritter && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.HardLockedCritter);
         if ((cr != nullptr) && (cr->GetHexX() != _screenHexX || cr->GetHexY() != _screenHexY)) {
             ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.02f, true);
         }
     }
 
-    if (AutoScroll.SoftLockedCritter != 0u && !is_scroll) {
+    if (AutoScroll.SoftLockedCritter && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
         if (cr != nullptr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
             const auto [ox, oy] = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
@@ -3295,11 +3295,11 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
     field.ProcessCache();
 }
 
-auto MapView::GetCritter(uint id) -> CritterHexView*
+auto MapView::GetCritter(id_t id) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
-    if (id == 0u) {
+    if (!id) {
         return nullptr;
     }
 
@@ -3307,11 +3307,11 @@ auto MapView::GetCritter(uint id) -> CritterHexView*
     return it != _crittersMap.end() ? it->second : nullptr;
 }
 
-auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*
+auto MapView::AddCritter(id_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
-    if (id != 0u && _crittersMap.count(id) != 0u) {
+    if (id && _crittersMap.count(id) != 0u) {
         return nullptr;
     }
 
@@ -3325,7 +3325,7 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, s
     return cr;
 }
 
-auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*
+auto MapView::AddCritter(id_t id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
@@ -3345,7 +3345,7 @@ void MapView::AddCritterInternal(CritterHexView* cr)
 
     uint fading_tick = 0u;
 
-    if (cr->GetId() != 0u) {
+    if (cr->GetId()) {
         if (auto* prev_cr = GetCritter(cr->GetId()); prev_cr != nullptr) {
             fading_tick = prev_cr->FadingTick;
             DestroyCritter(prev_cr);
@@ -3374,7 +3374,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
     RUNTIME_ASSERT(it != _critters.end());
     _critters.erase(it);
 
-    if (cr->GetId() != 0u) {
+    if (cr->GetId()) {
         const auto it_map = _crittersMap.find(cr->GetId());
         RUNTIME_ASSERT(it_map != _crittersMap.end());
         _crittersMap.erase(it_map);
@@ -3411,11 +3411,11 @@ auto MapView::GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> ve
     return crits;
 }
 
-void MapView::SetCritterContour(uint crid, ContourType contour)
+void MapView::SetCritterContour(id_t cr_id, ContourType contour)
 {
     STACK_TRACE_ENTRY();
 
-    if (_critterContourCrId != 0u) {
+    if (_critterContourCrId) {
         auto* cr = GetCritter(_critterContourCrId);
         if (cr != nullptr && cr->SprDrawValid) {
             if (!cr->IsDead() && !cr->IsChosen()) {
@@ -3427,11 +3427,11 @@ void MapView::SetCritterContour(uint crid, ContourType contour)
         }
     }
 
-    _critterContourCrId = crid;
+    _critterContourCrId = cr_id;
     _critterContour = contour;
 
-    if (crid != 0u) {
-        auto* cr = GetCritter(crid);
+    if (cr_id) {
+        auto* cr = GetCritter(cr_id);
         if (cr != nullptr && cr->SprDrawValid) {
             cr->SprDraw->SetContour(contour);
         }
@@ -4639,25 +4639,25 @@ void MapView::MarkBlockedHexes()
     RefreshMap();
 }
 
-auto MapView::GetTempEntityId() const -> uint
+auto MapView::GetTempEntityId() const -> id_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
 
-    auto max_id = static_cast<uint>(-1);
+    auto max_id = static_cast<id_t::underlying_type>(-1);
 
     for (const auto* cr : _critters) {
-        RUNTIME_ASSERT(cr->GetId() != 0u);
-        max_id = std::min(cr->GetId(), max_id);
+        RUNTIME_ASSERT(cr->GetId());
+        max_id = std::min(cr->GetId().underlying_value(), max_id);
     }
     for (const auto* item : _allItems) {
-        RUNTIME_ASSERT(item->GetId() != 0u);
-        max_id = std::min(item->GetId(), max_id);
+        RUNTIME_ASSERT(item->GetId());
+        max_id = std::min(item->GetId().underlying_value(), max_id);
     }
 
-    RUNTIME_ASSERT(max_id > 0x7FFFFFFF);
-    return max_id - 1;
+    RUNTIME_ASSERT(max_id > std::numeric_limits<id_t::underlying_type>::max() / 2);
+    return id_t {max_id - 1};
 }
 
 auto MapView::SaveToText() const -> string

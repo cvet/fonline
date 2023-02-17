@@ -53,7 +53,7 @@ class Critter final : public ServerEntity, public EntityWithProto, public Critte
 
 public:
     Critter() = delete;
-    Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto);
+    Critter(FOServer* engine, id_t id, Player* owner, const ProtoCritter* proto);
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
@@ -69,7 +69,7 @@ public:
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto GetItem(id_t item_id, bool skip_hide) -> Item*;
     [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> Item*;
     [[nodiscard]] auto GetItemByPidSlot(hstring item_pid, int slot) -> Item*;
@@ -80,9 +80,9 @@ public:
     [[nodiscard]] auto CountItems() const -> uint;
     [[nodiscard]] auto GetInventory() -> vector<Item*>&;
     [[nodiscard]] auto IsHaveGeckItem() const -> bool;
-    [[nodiscard]] auto GetCrSelf(uint crid) -> Critter*;
+    [[nodiscard]] auto GetCrSelf(id_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
+    [[nodiscard]] auto GetGlobalMapCritter(id_t cr_id) const -> Critter*;
     [[nodiscard]] auto IsTalking() const -> bool;
     [[nodiscard]] auto GetTalkedPlayers() const -> uint;
     [[nodiscard]] auto IsTalkedPlayers() const -> bool;
@@ -92,15 +92,15 @@ public:
 
     auto AddCrIntoVisVec(Critter* add_cr) -> bool;
     auto DelCrFromVisVec(Critter* del_cr) -> bool;
-    auto AddCrIntoVisSet1(uint crid) -> bool;
-    auto AddCrIntoVisSet2(uint crid) -> bool;
-    auto AddCrIntoVisSet3(uint crid) -> bool;
-    auto DelCrFromVisSet1(uint crid) -> bool;
-    auto DelCrFromVisSet2(uint crid) -> bool;
-    auto DelCrFromVisSet3(uint crid) -> bool;
-    auto AddIdVisItem(uint item_id) -> bool;
-    auto DelIdVisItem(uint item_id) -> bool;
-    auto CountIdVisItem(uint item_id) const -> bool;
+    auto AddCrIntoVisSet1(id_t cr_id) -> bool;
+    auto AddCrIntoVisSet2(id_t cr_id) -> bool;
+    auto AddCrIntoVisSet3(id_t cr_id) -> bool;
+    auto DelCrFromVisSet1(id_t cr_id) -> bool;
+    auto DelCrFromVisSet2(id_t cr_id) -> bool;
+    auto DelCrFromVisSet3(id_t cr_id) -> bool;
+    auto AddIdVisItem(id_t item_id) -> bool;
+    auto DelIdVisItem(id_t item_id) -> bool;
+    auto CountIdVisItem(id_t item_id) const -> bool;
 
     void DetachPlayer();
     void AttachPlayer(Player* owner);
@@ -145,19 +145,19 @@ public:
     void Send_Talk();
     void Send_TimeSync();
     void Send_Text(Critter* from_cr, string_view text, uchar how_say);
-    void Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text);
+    void Send_TextEx(id_t from_id, string_view text, uchar how_say, bool unsafe_text);
     void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg);
+    void Send_TextMsg(id_t from_id, uint str_num, uchar how_say, ushort num_msg);
     void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
-    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
+    void Send_TextMsgLex(id_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    void Send_PlaySound(uint crid_synchronize, string_view sound_name);
+    void Send_FlyEffect(hstring eff_pid, id_t from_cr_id, id_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_PlaySound(id_t cr_id_synchronize, string_view sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
     void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);
@@ -216,12 +216,12 @@ public:
     uint AllowedToDownloadMap {};
     vector<Critter*> VisCr {};
     vector<Critter*> VisCrSelf {};
-    unordered_map<uint, Critter*> VisCrMap {};
-    unordered_map<uint, Critter*> VisCrSelfMap {};
-    unordered_set<uint> VisCr1 {};
-    unordered_set<uint> VisCr2 {};
-    unordered_set<uint> VisCr3 {};
-    unordered_set<uint> VisItem {};
+    unordered_map<id_t, Critter*> VisCrMap {};
+    unordered_map<id_t, Critter*> VisCrSelfMap {};
+    unordered_set<id_t> VisCr1 {};
+    unordered_set<id_t> VisCr2 {};
+    unordered_set<id_t> VisCr3 {};
+    unordered_set<id_t> VisItem {};
 
     uint CacheValuesNextTick {};
     uint LookCacheValue {};
@@ -229,25 +229,25 @@ public:
     uint RadioMessageSended {};
     TalkData Talk {}; // Todo: incapsulate Critter::Talk
 
-    uint ViewMapId {};
+    id_t ViewMapId {};
     hstring ViewMapPid {};
     ushort ViewMapLook {};
     ushort ViewMapHx {};
     ushort ViewMapHy {};
     uchar ViewMapDir {};
-    uint ViewMapLocId {};
+    id_t ViewMapLocId {};
     uint ViewMapLocEnt {};
 
     struct
     {
         MovingState State {MovingState::Success};
-        uint TargId {};
+        id_t TargId {};
         ushort HexX {};
         ushort HexY {};
         uint Cut {};
         ushort Speed {};
         uint TraceDist {};
-        uint GagEntityId {};
+        id_t GagEntityId {};
     } TargetMoving {};
 
     struct

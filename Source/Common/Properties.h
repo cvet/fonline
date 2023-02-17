@@ -335,6 +335,12 @@ public:
         return result;
     }
 
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T
+    {
+        return T {GetValue<typename T::underlying_type>(prop)};
+    }
+
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
@@ -489,6 +495,12 @@ public:
                 }
             }
         }
+    }
+
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    void SetValue(const Property* prop, T new_value)
+    {
+        SetValue<typename T::underlying_type>(prop, new_value.underlying_value());
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
@@ -847,6 +859,14 @@ private:
         using Type = T;
         static constexpr auto IS_HASH = false;
         static constexpr auto IS_ENUM = false;
+    };
+
+    template<typename T>
+    struct BaseTypeInfo<T, std::enable_if_t<is_strong_type<T>::value>>
+    {
+        using Type = typename T::underlying_type;
+        static constexpr auto IS_HASH = BaseTypeInfo<typename T::underlying_type>::IS_HASH;
+        static constexpr auto IS_ENUM = BaseTypeInfo<typename T::underlying_type>::IS_ENUM;
     };
 
     template<typename T>

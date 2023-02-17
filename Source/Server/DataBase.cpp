@@ -59,20 +59,20 @@ public:
     auto operator=(DataBaseImpl&&) noexcept = delete;
     virtual ~DataBaseImpl() = default;
 
-    [[nodiscard]] virtual auto GetAllIds(string_view collection_name) -> vector<uint> = 0;
-    [[nodiscard]] auto Get(string_view collection_name, uint id) -> AnyData::Document;
+    [[nodiscard]] virtual auto GetAllIds(string_view collection_name) -> vector<id_t> = 0;
+    [[nodiscard]] auto Get(string_view collection_name, id_t id) -> AnyData::Document;
 
     void StartChanges();
-    void Insert(string_view collection_name, uint id, const AnyData::Document& doc);
-    void Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value);
-    void Delete(string_view collection_name, uint id);
+    void Insert(string_view collection_name, id_t id, const AnyData::Document& doc);
+    void Update(string_view collection_name, id_t id, string_view key, const AnyData::Value& value);
+    void Delete(string_view collection_name, id_t id);
     void CommitChanges();
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(string_view collection_name, uint id) -> AnyData::Document = 0;
-    virtual void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) = 0;
-    virtual void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) = 0;
-    virtual void DeleteRecord(string_view collection_name, uint id) = 0;
+    [[nodiscard]] virtual auto GetRecord(string_view collection_name, id_t id) -> AnyData::Document = 0;
+    virtual void InsertRecord(string_view collection_name, id_t id, const AnyData::Document& doc) = 0;
+    virtual void UpdateRecord(string_view collection_name, id_t id, const AnyData::Document& doc) = 0;
+    virtual void DeleteRecord(string_view collection_name, id_t id) = 0;
     virtual void CommitRecords() = 0;
 
 private:
@@ -100,21 +100,21 @@ DataBase::operator bool() const
     return _impl != nullptr;
 }
 
-auto DataBase::GetAllIds(string_view collection_name) const -> vector<uint>
+auto DataBase::GetAllIds(string_view collection_name) const -> vector<id_t>
 {
     STACK_TRACE_ENTRY();
 
     return _impl->GetAllIds(collection_name);
 }
 
-auto DataBase::Get(string_view collection_name, uint id) const -> AnyData::Document
+auto DataBase::Get(string_view collection_name, id_t id) const -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
     return _impl->Get(collection_name, id);
 }
 
-auto DataBase::Valid(string_view collection_name, uint id) const -> bool
+auto DataBase::Valid(string_view collection_name, id_t id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -130,7 +130,7 @@ void DataBase::StartChanges()
     _impl->StartChanges();
 }
 
-void DataBase::Insert(string_view collection_name, uint id, const AnyData::Document& doc)
+void DataBase::Insert(string_view collection_name, id_t id, const AnyData::Document& doc)
 {
     STACK_TRACE_ENTRY();
 
@@ -139,7 +139,7 @@ void DataBase::Insert(string_view collection_name, uint id, const AnyData::Docum
     _impl->Insert(collection_name, id, doc);
 }
 
-void DataBase::Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value)
+void DataBase::Update(string_view collection_name, id_t id, string_view key, const AnyData::Value& value)
 {
     STACK_TRACE_ENTRY();
 
@@ -148,7 +148,7 @@ void DataBase::Update(string_view collection_name, uint id, string_view key, con
     _impl->Update(collection_name, id, key, value);
 }
 
-void DataBase::Delete(string_view collection_name, uint id)
+void DataBase::Delete(string_view collection_name, id_t id)
 {
     STACK_TRACE_ENTRY();
 
@@ -410,19 +410,19 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
             const auto* key = bson_iter_key(&doc_iter);
             const auto* dict_value = bson_iter_value(&doc_iter);
             if (dict_value->value_type == BSON_TYPE_INT32) {
-                dict.insert(std::make_pair(string(key), dict_value->value.v_int32));
+                dict.emplace(string(key), dict_value->value.v_int32);
             }
             else if (dict_value->value_type == BSON_TYPE_INT64) {
-                dict.insert(std::make_pair(string(key), dict_value->value.v_int64));
+                dict.emplace(string(key), dict_value->value.v_int64);
             }
             else if (dict_value->value_type == BSON_TYPE_DOUBLE) {
-                dict.insert(std::make_pair(string(key), dict_value->value.v_double));
+                dict.emplace(string(key), dict_value->value.v_double);
             }
             else if (dict_value->value_type == BSON_TYPE_BOOL) {
-                dict.insert(std::make_pair(string(key), dict_value->value.v_bool));
+                dict.emplace(string(key), dict_value->value.v_bool);
             }
             else if (dict_value->value_type == BSON_TYPE_UTF8) {
-                dict.insert(std::make_pair(string(key), string(dict_value->value.v_utf8.str, dict_value->value.v_utf8.len)));
+                dict.emplace(string(key), string(dict_value->value.v_utf8.str, dict_value->value.v_utf8.len));
             }
             else if (dict_value->value_type == BSON_TYPE_ARRAY) {
                 bson_iter_t doc_arr_iter;
@@ -453,7 +453,7 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
                     }
                 }
 
-                dict.insert(std::make_pair(string(key), dict_array));
+                dict.emplace(string(key), dict_array);
             }
             else {
                 throw DataBaseException("BsonToValue Invalid type");
@@ -484,11 +484,11 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
         }
 
         auto value = BsonToValue(&iter);
-        doc.insert(std::make_pair(string(key), std::move(value)));
+        doc.emplace(string(key), std::move(value));
     }
 }
 
-auto DataBaseImpl::Get(string_view collection_name, uint id) -> AnyData::Document
+auto DataBaseImpl::Get(string_view collection_name, id_t id) -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
@@ -525,7 +525,7 @@ void DataBaseImpl::StartChanges()
     _changesStarted = true;
 }
 
-void DataBaseImpl::Insert(string_view collection_name, uint id, const AnyData::Document& doc)
+void DataBaseImpl::Insert(string_view collection_name, id_t id, const AnyData::Document& doc)
 {
     STACK_TRACE_ENTRY();
 
@@ -541,7 +541,7 @@ void DataBaseImpl::Insert(string_view collection_name, uint id, const AnyData::D
     }
 }
 
-void DataBaseImpl::Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value)
+void DataBaseImpl::Update(string_view collection_name, id_t id, string_view key, const AnyData::Value& value)
 {
     STACK_TRACE_ENTRY();
 
@@ -553,7 +553,7 @@ void DataBaseImpl::Update(string_view collection_name, uint id, string_view key,
     _recordChanges[collection_name_str][id][string(key)] = value;
 }
 
-void DataBaseImpl::Delete(string_view collection_name, uint id)
+void DataBaseImpl::Delete(string_view collection_name, id_t id)
 {
     STACK_TRACE_ENTRY();
 
@@ -622,11 +622,12 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<id_t> override
     {
         STACK_TRACE_ENTRY();
 
-        vector<uint> ids;
+        vector<id_t> ids;
+
         DiskFileSystem::IterateDir(_str(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
@@ -637,13 +638,14 @@ public:
                 throw DataBaseException("DbJson Id is zero", path);
             }
 
-            ids.push_back(id);
+            ids.push_back(id_t {id});
         });
+
         return ids;
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, id_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -677,7 +679,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void InsertRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -715,7 +717,7 @@ protected:
         }
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void UpdateRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -768,7 +770,7 @@ protected:
         }
     }
 
-    void DeleteRecord(string_view collection_name, uint id) override
+    void DeleteRecord(string_view collection_name, id_t id) override
     {
         STACK_TRACE_ENTRY();
 
@@ -833,7 +835,7 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<id_t> override
     {
         STACK_TRACE_ENTRY();
 
@@ -853,7 +855,8 @@ public:
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_first_entry", kv_cursor_first_entry);
         }
 
-        vector<uint> ids;
+        vector<id_t> ids;
+
         while (unqlite_kv_cursor_valid_entry(cursor) != 0) {
             auto id = 0u;
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
@@ -872,7 +875,7 @@ public:
                 throw DataBaseException("DbUnQLite Id is zero");
             }
 
-            ids.push_back(id);
+            ids.push_back(id_t {id});
 
             const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor);
             if (kv_cursor_next_entry != UNQLITE_OK && kv_cursor_next_entry != UNQLITE_DONE) {
@@ -884,7 +887,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, id_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -916,7 +919,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void InsertRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -951,7 +954,7 @@ protected:
         bson_destroy(&bson);
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void UpdateRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -989,7 +992,7 @@ protected:
         bson_destroy(&bson);
     }
 
-    void DeleteRecord(string_view collection_name, uint id) override
+    void DeleteRecord(string_view collection_name, id_t id) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1031,7 +1034,7 @@ private:
                 throw DataBaseException("DbUnQLite Can't open db", collection_name, r);
             }
 
-            _collections.insert(std::make_pair(collection_name, db));
+            _collections.emplace(collection_name, db);
         }
         else {
             db = it->second;
@@ -1105,7 +1108,7 @@ public:
         mongoc_cleanup();
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<id_t> override
     {
         STACK_TRACE_ENTRY();
 
@@ -1124,7 +1127,8 @@ public:
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
 
-        vector<uint> ids;
+        vector<id_t> ids;
+
         const bson_t* document = nullptr;
         while (mongoc_cursor_next(cursor, &document)) {
             bson_iter_t iter;
@@ -1139,7 +1143,7 @@ public:
             }
 
             const auto id = static_cast<uint>(bson_iter_int32(&iter));
-            ids.push_back(id);
+            ids.push_back(id_t {id});
         }
 
         bson_error_t error;
@@ -1150,11 +1154,12 @@ public:
         mongoc_cursor_destroy(cursor);
         bson_destroy(&filter);
         bson_destroy(opts);
+
         return ids;
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, id_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -1166,7 +1171,8 @@ protected:
         bson_t filter;
         bson_init(&filter);
 
-        if (!bson_append_int32(&filter, "_id", 3, static_cast<int32_t>(id))) {
+        static_assert(sizeof(id_t) == sizeof(uint));
+        if (!bson_append_int32(&filter, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1199,7 +1205,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void InsertRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1213,7 +1219,8 @@ protected:
         bson_t insert;
         bson_init(&insert);
 
-        if (!bson_append_int32(&insert, "_id", 3, static_cast<int32_t>(id))) {
+        static_assert(sizeof(id_t) == sizeof(uint));
+        if (!bson_append_int32(&insert, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1227,7 +1234,7 @@ protected:
         bson_destroy(&insert);
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void UpdateRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1241,7 +1248,8 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id))) {
+        static_assert(sizeof(id_t) == sizeof(uint));
+        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1268,7 +1276,7 @@ protected:
         bson_destroy(&update);
     }
 
-    void DeleteRecord(string_view collection_name, uint id) override
+    void DeleteRecord(string_view collection_name, id_t id) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1280,7 +1288,8 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id))) {
+        static_assert(sizeof(id_t) == sizeof(uint));
+        if (!bson_append_int32(&selector, "_id", 3, static_cast<int32_t>(id.underlying_value()))) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, id);
         }
 
@@ -1313,7 +1322,7 @@ private:
                 throw DataBaseException("DbMongo Can't get collection", collection_name);
             }
 
-            _collections.insert(std::make_pair(collection_name, collection));
+            _collections.emplace(collection_name, collection);
         }
         else {
             collection = it->second;
@@ -1339,24 +1348,24 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<id_t> override
     {
         STACK_TRACE_ENTRY();
 
         const auto& collection = _collections[string(collection_name)];
 
-        vector<uint> ids;
+        vector<id_t> ids;
         ids.reserve(collection.size());
 
         for (auto&& [key, value] : collection) {
-            ids.push_back(key);
+            ids.emplace_back(id_t {key});
         }
 
         return ids;
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, id_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -1366,7 +1375,7 @@ protected:
         return it != collection.end() ? it->second : AnyData::Document();
     }
 
-    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void InsertRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1375,10 +1384,10 @@ protected:
         auto& collection = _collections[string(collection_name)];
         RUNTIME_ASSERT(!collection.count(id));
 
-        collection.insert(std::make_pair(id, doc));
+        collection.emplace(id, doc);
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
+    void UpdateRecord(string_view collection_name, id_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1394,7 +1403,7 @@ protected:
         }
     }
 
-    void DeleteRecord(string_view collection_name, uint id) override
+    void DeleteRecord(string_view collection_name, id_t id) override
     {
         STACK_TRACE_ENTRY();
 

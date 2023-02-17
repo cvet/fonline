@@ -77,7 +77,7 @@ public:
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
-    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
+    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> id_t;
 
     void Start();
     void Shutdown();
@@ -102,7 +102,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerLogin, uint /*ip*/, string /*name*/, id_t /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent

@@ -41,7 +41,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) :
+Map::Map(FOServer* engine, id_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     EntityWithProto(this, proto),
     MapProperties(GetInitRef()),
@@ -308,7 +308,7 @@ void Map::SetItem(Item* item, ushort hx, ushort hy)
     }
 }
 
-void Map::EraseItem(uint item_id)
+void Map::EraseItem(id_t item_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -334,7 +334,7 @@ void Map::EraseItem(uint item_id)
     }
 
     item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetMapId(0);
+    item->SetMapId(id_t {});
     item->SetHexX(0);
     item->SetHexY(0);
 
@@ -453,7 +453,7 @@ void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
     }
 }
 
-auto Map::GetItem(uint item_id) -> Item*
+auto Map::GetItem(id_t item_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -870,7 +870,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
     }
 }
 
-auto Map::GetCritter(uint cr_id) -> Critter*
+auto Map::GetCritter(id_t cr_id) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -1009,7 +1009,7 @@ void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Map::SendFlyEffect(hstring eff_pid, id_t from_cr_id, id_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1017,7 +1017,7 @@ void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort fr
 
     for (auto* cr : _playerCritters) {
         if (GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->LookCacheValue, from_hx, from_hy, to_hx, to_hy)) {
-            cr->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
+            cr->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hx, from_hy, to_hx, to_hy);
         }
     }
 }

@@ -138,6 +138,7 @@ genFileList = ['EmbeddedResources-Include.h',
 # Parse meta information
 codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
+        'ExportType': [], # (name, underlying type, representation type, [flags], [comment])
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -263,6 +264,8 @@ def parseMetaFile(absPath):
                             if lines[i].lstrip().startswith('};'):
                                 tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
                                 break
+                    elif tagName == 'ExportType':
+                        tagContext = True
                     elif tagName == 'ExportProperty':
                         tagContext = lines[lineIndex + 1].strip()
                         for i in range(lineIndex, 0, -1):
@@ -319,6 +322,7 @@ checkErrors()
 userObjects = set()
 scriptEnums = set()
 engineEnums = set()
+customTypes = set()
 gameEntities = []
 gameEntitiesInfo = {}
 entityRelatives = set()
@@ -354,7 +358,7 @@ def tokenize(text, specialBehForProp=False):
 def parseTags():
     validTypes = set()
     validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64',
-            'float', 'double', 'hstring', 'string', 'bool', 'Entity', 'void'])
+            'float', 'double', 'string', 'bool', 'Entity', 'void', 'hstring'])
     
     def unifiedTypeToMetaType(t):
         if t.startswith('init-'):
@@ -385,11 +389,12 @@ def parseTags():
             'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
             'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
             'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
-            'bool': 'bool', 'bool&': 'bool&', 'hstring': 'hstring', 'hstring&': 'hstring&', 'void': 'void',
+            'bool': 'bool', 'bool&': 'bool&', 'void': 'void',
             'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
             'char*': 'int8&', 'uchar*': 'uint8&', 'short*': 'int16&', 'ushort*': 'uint16&',
             'int*': 'int&', 'uint*': 'uint&', 'int64*': 'int64&', 'uint64*': 'uint64&',
-            'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'hstring*': 'hstring&', 'string*': 'string&'}        
+            'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'string*': 'string&',
+            'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&'}
         if t.startswith('InitFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'init-' + r
@@ -415,6 +420,8 @@ def parseTags():
             if not t.startswith('const') and t.endswith('&'):
                 r += '&'
             return r
+        elif t[-1] in ['&', '*'] and t[:-1] in customTypes:
+            return t
         elif t in validTypes:
             return t
         elif t[-1] == '*' and t not in typeMap:
@@ -485,6 +492,28 @@ def parseTags():
                 
             except Exception as ex:
                 showError('Invalid tag ExportEnum', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
+
+        for tagMeta in tagsMetas['ExportType']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+            
+            try:
+                tok = tokenize(tagInfo)
+                
+                name = tok[0]
+                utype = tok[1]
+                rtype = tok[2]
+                exportFlags = tok[3:]
+                
+                assert rtype in ['RelaxedStrong', 'HardStrong'], 'Wrong type type'
+                
+                codeGenTags['ExportType'].append((name, utype, rtype, exportFlags, comment))
+                assert name not in validTypes, 'Type already in valid types'
+                validTypes.add(name)
+                assert name not in customTypes, 'Type already in custom types'
+                customTypes.add(name)
+                
+            except Exception as ex:
+                showError('Invalid tag ExportType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
 
         for tagMeta in tagsMetas['Enum']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -1502,11 +1531,11 @@ def genDataRegistration(target, isASCompiler):
         def addPropMapEntry(e):
             propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { registrator->Register<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
         fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
-        for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + fakedEnums:
+        for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + list(customTypes) + fakedEnums:
             addPropMapEntry(t)
             addPropMapEntry('arr.' + t)
-        for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring'] + fakedEnums:
-            for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'hstring', 'string'] + fakedEnums:
+        for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring'] + list(customTypes) + fakedEnums:
+            for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + list(customTypes) + fakedEnums:
                 addPropMapEntry('dict.' + tKey + '.' + t)
                 addPropMapEntry('dict.' + tKey + '.arr.' + t)
     
@@ -1883,6 +1912,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    ctx->SetArgDouble(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in ['hstring']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
+                elif p[0] in customTypes:
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                 else:
                     globalLines.append('    static_assert(false, "Invalid configuration");')
                 setIndex += 1
@@ -2159,6 +2190,16 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('}')
                     globalLines.append('')
             globalLines.append('')
+            
+        # Register custom types
+        registerLines.append('// Exported types')
+        for et in codeGenTags['ExportType']:
+            name, utype, rtype, flags, _ = et
+            if rtype == 'RelaxedStrong':
+                registerLines.append('REGISTER_RELAXED_STRONG_TYPE(' + name + ', ' + utype + ');')
+            elif rtype == 'HardStrong':
+                registerLines.append('REGISTER_HARD_STRONG_TYPE(' + name + ', ' + utype + ');')
+        registerLines.append('')
         
         # Register exported objects
         registerLines.append('// Exported objects')

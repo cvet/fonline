@@ -43,7 +43,7 @@ DECLARE_EXCEPTION(DeferredCallException);
 
 struct DeferredCall
 {
-    uint Id {};
+    id_t Id {};
     uint FireFullSecond {};
     ScriptFunc<void> EmptyFunc {};
     ScriptFunc<void, int> SignedIntFunc {};
@@ -64,26 +64,26 @@ public:
     auto operator=(DeferredCallManager&&) noexcept = delete;
     virtual ~DeferredCallManager() = default;
 
-    [[nodiscard]] auto IsDeferredCallPending(uint id) const -> bool;
+    [[nodiscard]] auto IsDeferredCallPending(id_t id) const -> bool;
 
-    auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint;
-    auto CancelDeferredCall(uint id) -> bool;
+    auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> id_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> id_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> id_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> id_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> id_t;
+    auto CancelDeferredCall(id_t id) -> bool;
     void Process();
 
 protected:
-    virtual auto GetNextCallId() -> uint;
+    virtual auto GetNextCallId() -> id_t;
     virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
 
     FOEngineBase* _engine;
     list<DeferredCall> _deferredCalls {};
 
 private:
-    auto AddDeferredCall(uint delay, DeferredCall& call) -> uint;
+    auto AddDeferredCall(uint delay, DeferredCall& call) -> id_t;
     auto RunDeferredCall(DeferredCall& call) const -> bool;
 
-    uint _idCounter {};
+    uint64 _idCounter {};
 };
