@@ -55,17 +55,17 @@ public:
     ~ServerDeferredCallManager() override = default;
 
     void LoadDeferredCalls();
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> id_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> id_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> id_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> id_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> id_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t;
 
 private:
-    auto GetNextCallId() -> id_t override;
-    auto AddSavedDeferredCall(uint delay, DeferredCall& call) -> id_t;
+    auto GetNextCallId() -> ident_t override;
+    auto AddSavedDeferredCall(uint delay, DeferredCall& call) -> ident_t;
     void OnDeferredCallRemoved(const DeferredCall& call) override;
 
     FOServer* _serverEngine;
-    unordered_set<id_t> _savedCalls {};
+    unordered_set<ident_t> _savedCalls {};
 };

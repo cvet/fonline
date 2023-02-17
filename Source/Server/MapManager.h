@@ -84,7 +84,7 @@ struct TraceData
 
 struct FindPathInput
 {
-    id_t MapId {};
+    ident_t MapId {};
     ushort MoveParams {};
     Critter* FromCritter {};
     ushort FromHexX {};
@@ -140,21 +140,21 @@ public:
     ~MapManager();
 
     [[nodiscard]] auto GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
-    [[nodiscard]] auto GetLocation(id_t loc_id) -> Location*;
-    [[nodiscard]] auto GetLocation(id_t loc_id) const -> const Location*;
-    [[nodiscard]] auto GetLocationByMap(id_t map_id) -> Location*;
+    [[nodiscard]] auto GetLocation(ident_t loc_id) -> Location*;
+    [[nodiscard]] auto GetLocation(ident_t loc_id) const -> const Location*;
+    [[nodiscard]] auto GetLocationByMap(ident_t map_id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> const unordered_map<id_t, Location*>&;
+    [[nodiscard]] auto GetLocations() -> const unordered_map<ident_t, Location*>&;
     [[nodiscard]] auto GetLocationsCount() const -> uint;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
-    [[nodiscard]] auto GetMap(id_t map_id) -> Map*;
-    [[nodiscard]] auto GetMap(id_t map_id) const -> const Map*;
+    [[nodiscard]] auto GetMap(ident_t map_id) -> Map*;
+    [[nodiscard]] auto GetMap(ident_t map_id) const -> const Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> const unordered_map<id_t, Map*>&;
+    [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
     [[nodiscard]] auto GetMapsCount() const -> uint;
-    [[nodiscard]] auto CheckKnownLoc(Critter* cr, id_t loc_id) const -> bool;
-    [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, id_t leader_id) const -> bool;
+    [[nodiscard]] auto CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool;
+    [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, ident_t leader_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
@@ -166,16 +166,16 @@ public:
     void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);
-    void AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, id_t leader_id);
+    void AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, ident_t leader_id);
     void EraseCrFromMap(Critter* cr, Map* map);
-    auto TransitToGlobal(Critter* cr, id_t leader_id) -> bool;
-    auto Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, id_t leader_id) -> bool;
+    auto TransitToGlobal(Critter* cr, ident_t leader_id) -> bool;
+    auto Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, ident_t leader_id) -> bool;
     void KickPlayersToGlobalMap(Map* map);
     void ProcessVisibleCritters(Critter* view_cr);
     void ProcessVisibleItems(Critter* view_cr);
     void ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir);
-    void AddKnownLoc(Critter* cr, id_t loc_id);
-    void EraseKnownLoc(Critter* cr, id_t loc_id);
+    void AddKnownLoc(Critter* cr, ident_t loc_id);
+    void EraseKnownLoc(Critter* cr, ident_t loc_id);
 
 private:
     [[nodiscard]] auto GridAt(int x, int y) -> short& { return _mapGrid[((FPATH_MAX_PATH + 1) + y - _mapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + x - _mapGridOffsX)]; }

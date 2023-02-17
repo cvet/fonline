@@ -280,9 +280,9 @@ void FOServer::Start()
     DbStorage.StartChanges();
 
     // Globals
-    const auto globals_doc = DbStorage.Get("Game", id_t {1});
+    const auto globals_doc = DbStorage.Get("Game", ident_t {1});
     if (globals_doc.empty()) {
-        DbStorage.Insert("Game", id_t {1}, {});
+        DbStorage.Insert("Game", ident_t {1}, {});
     }
     else {
         if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
@@ -325,13 +325,13 @@ void FOServer::Start()
         }
 
         try {
-            const auto loc_fabric = [this](id_t id, const ProtoLocation* proto) { return new Location(this, id, proto); };
-            const auto map_fabric = [this](id_t id, const ProtoMap* proto) {
+            const auto loc_fabric = [this](ident_t id, const ProtoLocation* proto) { return new Location(this, id, proto); };
+            const auto map_fabric = [this](ident_t id, const ProtoMap* proto) {
                 const auto* static_map = MapMngr.GetStaticMap(proto);
                 return new Map(this, id, proto, nullptr, static_map);
             };
-            const auto cr_fabric = [this](id_t id, const ProtoCritter* proto) { return new Critter(this, id, nullptr, proto); };
-            const auto item_fabric = [this](id_t id, const ProtoItem* proto) {
+            const auto cr_fabric = [this](ident_t id, const ProtoCritter* proto) { return new Critter(this, id, nullptr, proto); };
+            const auto item_fabric = [this](ident_t id, const ProtoItem* proto) {
                 auto* item = new Item(this, id, proto);
                 if (item->GetIsRadio()) {
                     ItemMngr.RegisterRadio(item);
@@ -524,7 +524,7 @@ void FOServer::MainLoop()
 
             if (!_newConnections.empty()) {
                 for (auto* conn : _newConnections) {
-                    _unloginedPlayers.emplace_back(new Player(this, id_t {}, conn));
+                    _unloginedPlayers.emplace_back(new Player(this, ident_t {}, conn));
                 }
                 _newConnections.clear();
             }
@@ -752,7 +752,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
         const auto* map = MapMngr.GetMap(cr->GetMapId());
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
-        const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : id_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : id_t {});
+        const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : ident_t {}, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : ident_t {});
         result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
     }
     return result;
@@ -1261,7 +1261,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_MOVECRIT: {
-        id_t cr_id;
+        ident_t cr_id;
         ushort hex_x = 0;
         ushort hex_y = 0;
         buf >> cr_id;
@@ -1287,7 +1287,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, id_t {})) {
+        if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, ident_t {})) {
             logcb("Critter move success.");
         }
         else {
@@ -1295,7 +1295,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_DISCONCRIT: {
-        id_t cr_id;
+        ident_t cr_id;
         buf >> cr_id;
 
         CHECK_ALLOW_COMMAND();
@@ -1334,7 +1334,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (MapMngr.TransitToGlobal(cl_, id_t {})) {
+        if (MapMngr.TransitToGlobal(cl_, ident_t {})) {
             logcb("To global success.");
         }
         else {
@@ -1342,7 +1342,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_PROPERTY: {
-        id_t cr_id;
+        ident_t cr_id;
         string property_name;
         auto property_value = 0;
         buf >> cr_id;
@@ -1536,7 +1536,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         auto hy = cl_->GetHexY();
         auto dir = cl_->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.Transit(cl_, map, hx, hy, dir, 5, id_t {});
+        MapMngr.Transit(cl_, map, hx, hy, dir, 5, ident_t {});
         logcb("Regenerate map complete.");
     } break;
     case CMD_SETTIME: {
@@ -1667,7 +1667,7 @@ void FOServer::DispatchLogToClients()
     for (const auto& str : _logLines) {
         for (auto it = _logClients.begin(); it < _logClients.end();) {
             if (auto* player = *it; !player->IsDestroyed()) {
-                player->Send_TextEx(id_t {}, str, SAY_NETMSG, false);
+                player->Send_TextEx(ident_t {}, str, SAY_NETMSG, false);
                 ++it;
             }
             else {
@@ -2249,7 +2249,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         Critter* cr = nullptr;
 
         const auto owned_critter_ids = player->GetOwnedCritterIds();
-        const auto cr_id = !owned_critter_ids.empty() ? owned_critter_ids.front() : id_t {};
+        const auto cr_id = !owned_critter_ids.empty() ? owned_critter_ids.front() : ident_t {};
 
         // Try find in game
         if (cr_id) {
@@ -2288,17 +2288,17 @@ void FOServer::Process_Login(Player* unlogined_player)
                 return;
             }
 
-            cr->SetMapId(id_t {});
-            cr->SetGlobalMapLeaderId(id_t {});
+            cr->SetMapId(ident_t {});
+            cr->SetGlobalMapLeaderId(ident_t {});
 
             EntityMngr.RegisterEntity(cr);
             player->SetOwnedCritter(cr);
 
             WriteLog("Critter for player loaded from data base");
 
-            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, id_t {});
+            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
             RUNTIME_ASSERT(can_add_to_global_map);
-            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, id_t {});
+            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
 
             cr->Send_TimeSync();
             cr->Send_LoadMap(nullptr);
@@ -2316,7 +2316,7 @@ void FOServer::Process_Login(Player* unlogined_player)
             const auto* proto = ProtoMngr.GetProtoCritter(ToHashedString("Player"));
             RUNTIME_ASSERT(proto);
 
-            cr = new Critter(this, id_t {}, player, proto);
+            cr = new Critter(this, ident_t {}, player, proto);
 
             EntityMngr.RegisterEntity(cr);
             player->SetOwnedCritterIds({cr->GetId()});
@@ -2324,9 +2324,9 @@ void FOServer::Process_Login(Player* unlogined_player)
 
             WriteLog("Critter for player created from scratch");
 
-            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, id_t {});
+            const auto can_add_to_global_map = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, ident_t {});
             RUNTIME_ASSERT(can_add_to_global_map);
-            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, id_t {});
+            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, ident_t {});
 
             cr->Send_TimeSync();
             cr->Send_LoadMap(nullptr);
@@ -2350,7 +2350,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         if (cr->ViewMapId) {
             auto* map = MapMngr.GetMap(cr->ViewMapId);
-            cr->ViewMapId = id_t {};
+            cr->ViewMapId = ident_t {};
             if (map != nullptr) {
                 MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
                 cr->Send_ViewMap();
@@ -2405,8 +2405,8 @@ void FOServer::Process_Move(Player* player)
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t map_id;
-    id_t cr_id;
+    ident_t map_id;
+    ident_t cr_id;
     ushort speed;
     ushort start_hx;
     ushort start_hy;
@@ -2474,8 +2474,8 @@ void FOServer::Process_StopMove(Player* player)
 
     NON_CONST_METHOD_HINT();
 
-    id_t map_id;
-    id_t cr_id;
+    ident_t map_id;
+    ident_t cr_id;
     ushort start_hx;
     ushort start_hy;
     short hex_ox;
@@ -2521,8 +2521,8 @@ void FOServer::Process_Dir(Player* player)
 
     NON_CONST_METHOD_HINT();
 
-    id_t map_id;
-    id_t cr_id;
+    ident_t map_id;
+    ident_t cr_id;
     short dir_angle;
 
     player->Connection->Bin >> map_id;
@@ -2561,8 +2561,8 @@ void FOServer::Process_Property(Player* player, uint data_size)
     Critter* cr = player->GetOwnedCritter();
 
     uint msg_len;
-    id_t cr_id;
-    id_t item_id;
+    ident_t cr_id;
+    ident_t item_id;
     ushort property_index;
 
     if (data_size == 0) {
@@ -2756,7 +2756,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
     const auto* server_entity = dynamic_cast<ServerEntity*>(entity);
 
-    id_t entry_id;
+    ident_t entry_id;
 
     if (server_entity != nullptr) {
         entry_id = server_entity->GetId();
@@ -2766,7 +2766,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         }
     }
     else {
-        entry_id = id_t {1};
+        entry_id = ident_t {1};
     }
 
     auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
@@ -2780,7 +2780,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
     if (prop->IsHistorical()) {
         const auto history_id_num = GetHistoryRecordsId().underlying_value() + 1;
-        const auto history_id = id_t {history_id_num};
+        const auto history_id = ident_t {history_id_num};
 
         SetHistoryRecordsId(history_id);
 
@@ -3992,7 +3992,7 @@ void FOServer::Process_Dialog(Player* player)
     Critter* cr = player->GetOwnedCritter();
 
     bool is_npc = false;
-    id_t talk_cr_id;
+    ident_t talk_cr_id;
     hstring talk_dlg_id;
     uchar num_answer = 0;
 
@@ -4348,12 +4348,12 @@ auto FOServer::DialogScriptResult(const DialogAnswerReq& result, Critter* master
     return 0u;
 }
 
-auto FOServer::MakePlayerId(string_view player_name) const -> id_t
+auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!player_name.empty());
     const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(player_name.data()), static_cast<uint>(player_name.length()));
     RUNTIME_ASSERT(hash_value);
-    return id_t {(1u << 31u) | hash_value};
+    return ident_t {(1u << 31u) | hash_value};
 }

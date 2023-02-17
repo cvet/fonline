@@ -43,7 +43,7 @@ class PlayerView final : public ClientEntity, public PlayerProperties
 {
 public:
     PlayerView() = delete;
-    PlayerView(FOClient* engine, id_t id);
+    PlayerView(FOClient* engine, ident_t id);
     PlayerView(const PlayerView&) = delete;
     PlayerView(PlayerView&&) noexcept = delete;
     auto operator=(const PlayerView&) = delete;

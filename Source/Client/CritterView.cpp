@@ -36,7 +36,7 @@
 #include "ItemView.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, id_t id, const ProtoCritter* proto) :
+CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto) :
     ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     EntityWithProto(this, proto),
     CritterProperties(GetInitRef())
@@ -94,7 +94,7 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-auto CritterView::AddItem(id_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
+auto CritterView::AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -121,7 +121,7 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     _items.erase(it);
 
     item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetCritterId(id_t {});
+    item->SetCritterId(ident_t {});
     item->SetCritterSlot(0);
 
     item->MarkAsDestroyed();
@@ -137,7 +137,7 @@ void CritterView::DeleteAllItems()
     }
 }
 
-auto CritterView::GetItem(id_t item_id) -> ItemView*
+auto CritterView::GetItem(ident_t item_id) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 

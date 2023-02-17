@@ -64,7 +64,7 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 
 public:
     Map() = delete;
-    Map(FOServer* engine, id_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map);
+    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -75,7 +75,7 @@ public:
     [[nodiscard]] auto GetProtoMap() const -> const ProtoMap*;
     [[nodiscard]] auto GetLocation() -> Location*;
     [[nodiscard]] auto GetLocation() const -> const Location*;
-    [[nodiscard]] auto GetItem(id_t item_id) -> Item*;
+    [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
     [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(ushort hx, ushort hy) -> Item*;
     [[nodiscard]] auto GetItems() -> vector<Item*>;
@@ -96,7 +96,7 @@ public:
     [[nodiscard]] auto IsHexBlockItem(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
-    [[nodiscard]] auto GetCritter(id_t cr_id) -> Critter*;
+    [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
     [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
@@ -126,12 +126,12 @@ public:
     void EraseCritter(Critter* cr);
     auto AddItem(Item* item, ushort hx, ushort hy) -> bool;
     void SetItem(Item* item, ushort hx, ushort hy);
-    void EraseItem(id_t item_id);
+    void EraseItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
-    void SendFlyEffect(hstring eff_pid, id_t from_cr_id, id_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void SetHexFlag(ushort hx, ushort hy, uchar flag);
     void UnsetHexFlag(ushort hx, ushort hy, uchar flag);
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
@@ -163,11 +163,11 @@ private:
     uchar* _hexFlags {};
     int _hexFlagsSize {};
     vector<Critter*> _critters {};
-    unordered_map<id_t, Critter*> _crittersMap {};
+    unordered_map<ident_t, Critter*> _crittersMap {};
     vector<Critter*> _playerCritters {};
     vector<Critter*> _nonPlayerCritters {};
     vector<Item*> _items {};
-    unordered_map<id_t, Item*> _itemsMap {};
+    unordered_map<ident_t, Item*> _itemsMap {};
     unordered_map<tuple<ushort, ushort>, vector<Item*>, HexesHash> _itemsByHex {};
     unordered_map<tuple<ushort, ushort>, vector<Item*>, HexesHash> _blockLinesByHex {};
     Location* _mapLocation {};

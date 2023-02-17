@@ -50,7 +50,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, id_t id, ClientConnection* connection);
+    Player(FOServer* engine, ident_t id, ClientConnection* connection);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -88,19 +88,19 @@ public:
     void Send_Talk();
     void Send_TimeSync();
     void Send_Text(Critter* from_cr, string_view text, uchar how_say);
-    void Send_TextEx(id_t from_id, string_view text, uchar how_say, bool unsafe_text);
+    void Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool unsafe_text);
     void Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg);
-    void Send_TextMsg(id_t from_id, uint num_str, uchar how_say, ushort num_msg);
+    void Send_TextMsg(ident_t from_id, uint num_str, uchar how_say, ushort num_msg);
     void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
-    void Send_TextMsgLex(id_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
+    void Send_TextMsgLex(ident_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hstring eff_pid, id_t from_cr_id, id_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    void Send_PlaySound(id_t cr_id_synchronize, string_view sound_name);
+    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
     void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);

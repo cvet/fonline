@@ -62,43 +62,43 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, int> func, int value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, uint> func, uint value)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, uint> func, uint value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, id_t id)
+[[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, ident_t id)
 {
     return client->ClientDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, id_t id)
+[[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, ident_t id)
 {
     return client->ClientDeferredCalls.CancelDeferredCall(id);
 }
@@ -184,7 +184,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, id_t itemId)
+[[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -236,7 +236,7 @@
 ///# param critterId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, id_t critterId)
+[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, ident_t critterId)
 {
     if (!critterId) {
         return nullptr;
@@ -704,13 +704,13 @@
     const auto eff_type = static_cast<uint>(effectType);
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
-        auto* item = client->CurMap->GetItem(id_t {static_cast<uint>(effectSubtype)});
+        auto* item = client->CurMap->GetItem(ident_t {static_cast<uint>(effectSubtype)});
         if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
-        auto* cr = client->CurMap->GetCritter(id_t {static_cast<uint>(effectSubtype)});
+        auto* cr = client->CurMap->GetCritter(ident_t {static_cast<uint>(effectSubtype)});
         if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }

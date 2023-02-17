@@ -137,7 +137,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, id_t itemId)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -557,7 +557,7 @@
 ///# param crid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, id_t crid)
+[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, ident_t crid)
 {
     return self->GetCritter(crid);
 }
@@ -1153,8 +1153,8 @@
         throw ScriptException("Invalid to hexes args");
     }
 
-    const auto from_crid = fromCr != nullptr ? fromCr->GetId() : id_t {};
-    const auto to_crid = toCr != nullptr ? toCr->GetId() : id_t {};
+    const auto from_crid = fromCr != nullptr ? fromCr->GetId() : ident_t {};
+    const auto to_crid = toCr != nullptr ? toCr->GetId() : ident_t {};
     self->SendFlyEffect(effPid, from_crid, to_crid, fromHx, fromHy, toHx, toHy);
 }
 
@@ -1211,7 +1211,7 @@
 [[maybe_unused]] void Server_Map_PlaySound(Map* self, string_view soundName)
 {
     for (Critter* cr : self->GetPlayers()) {
-        cr->Send_PlaySound(id_t {}, soundName);
+        cr->Send_PlaySound(ident_t {}, soundName);
     }
 }
 
@@ -1229,7 +1229,7 @@
 
     for (Critter* cr : self->GetPlayers()) {
         if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
-            cr->Send_PlaySound(id_t {}, soundName);
+            cr->Send_PlaySound(ident_t {}, soundName);
         }
     }
 }

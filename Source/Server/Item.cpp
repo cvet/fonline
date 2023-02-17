@@ -37,7 +37,7 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Item::Item(FOServer* engine, id_t id, const ProtoItem* proto) :
+Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     EntityWithProto(this, proto),
     ItemProperties(GetInitRef())
@@ -65,7 +65,7 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
     SetSortValue(sort_value);
 }
 
-auto Item::ContGetItem(id_t item_id, bool skip_hidden) -> Item*
+auto Item::ContGetItem(ident_t item_id, bool skip_hidden) -> Item*
 {
     STACK_TRACE_ENTRY();
 

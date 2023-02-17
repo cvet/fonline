@@ -153,13 +153,13 @@ public:
         float OffsXStep {};
         float OffsYStep {};
         float Speed {};
-        id_t HardLockedCritter {};
-        id_t SoftLockedCritter {};
+        ident_t HardLockedCritter {};
+        ident_t SoftLockedCritter {};
         ushort CritterLastHexX {};
         ushort CritterLastHexY {};
     };
 
-    MapView(FOClient* engine, id_t id, const ProtoMap* proto);
+    MapView(FOClient* engine, ident_t id, const ProtoMap* proto);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -218,24 +218,24 @@ public:
     void SwitchShowHex();
 
     // Critters
-    auto AddCritter(id_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
-    auto AddCritter(id_t id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*;
-    auto GetCritter(id_t id) -> CritterHexView*;
+    auto AddCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
+    auto AddCritter(ident_t id, const ProtoCritter* proto, ushort hx, ushort hy, short dir_angle, const vector<vector<uchar>>& data) -> CritterHexView*;
+    auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly);
     void DestroyCritter(CritterHexView* cr);
 
-    void SetCritterContour(id_t cr_id, ContourType contour);
+    void SetCritterContour(ident_t cr_id, ContourType contour);
     void SetCrittersContour(ContourType contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
 
     // Items
-    auto AddItem(id_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
-    auto AddItem(id_t id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*;
+    auto AddItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
+    auto AddItem(ident_t id, hstring pid, ushort hx, ushort hy, bool is_added, const vector<vector<uchar>>* data) -> ItemHexView*;
     auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
-    auto GetItem(ushort hx, ushort hy, id_t id) -> ItemHexView*;
-    auto GetItem(id_t id) -> ItemHexView*;
+    auto GetItem(ushort hx, ushort hy, ident_t id) -> ItemHexView*;
+    auto GetItem(ident_t id) -> ItemHexView*;
     auto GetItems() -> const vector<ItemHexView*>&;
     auto GetItems(ushort hx, ushort hy) -> const vector<ItemHexView*>&;
     void MoveItem(ItemHexView* item, ushort hx, ushort hy);
@@ -279,7 +279,7 @@ public:
     void ClearIgnorePids();
     void MarkBlockedHexes();
 
-    auto GetTempEntityId() const -> id_t;
+    auto GetTempEntityId() const -> ident_t;
 
     auto SaveToText() const -> string;
 
@@ -340,11 +340,11 @@ private:
     ushort _maxHexY {};
 
     vector<CritterHexView*> _critters {};
-    unordered_map<id_t, CritterHexView*> _crittersMap {};
+    unordered_map<ident_t, CritterHexView*> _crittersMap {};
     vector<ItemHexView*> _allItems {};
     vector<ItemHexView*> _staticItems {};
     vector<ItemHexView*> _dynamicItems {};
-    unordered_map<id_t, ItemHexView*> _itemsMap {};
+    unordered_map<ident_t, ItemHexView*> _itemsMap {};
 
     vector<MapText> _mapTexts {};
 
@@ -391,7 +391,7 @@ private:
     vector<PrimitivePoint> _fogLookPoints {};
     vector<PrimitivePoint> _fogShootPoints {};
 
-    id_t _critterContourCrId {};
+    ident_t _critterContourCrId {};
     ContourType _critterContour {};
     ContourType _crittersContour {};
 

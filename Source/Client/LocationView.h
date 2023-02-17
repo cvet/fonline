@@ -42,7 +42,7 @@
 class LocationView final : public ClientEntity, public EntityWithProto, public LocationProperties
 {
 public:
-    LocationView(FOClient* engine, id_t id, const ProtoLocation* proto);
+    LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto);
     LocationView(const LocationView&) = delete;
     LocationView(LocationView&&) noexcept = delete;
     auto operator=(const LocationView&) = delete;

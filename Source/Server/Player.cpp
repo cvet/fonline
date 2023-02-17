@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, id_t id, ClientConnection* connection) :
+Player::Player(FOServer* engine, ident_t id, ClientConnection* connection) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     PlayerProperties(GetInitRef()),
     Connection {connection},
@@ -99,7 +99,7 @@ void Player::Send_AddCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(id_t) + sizeof(ushort) * 2 + sizeof(short) * 3 + sizeof(CritterCondition) + sizeof(uint) * 6 + sizeof(bool) * 3 + sizeof(hstring::hash_t);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) + sizeof(ushort) * 2 + sizeof(short) * 3 + sizeof(CritterCondition) + sizeof(uint) * 6 + sizeof(bool) * 3 + sizeof(hstring::hash_t);
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
@@ -192,8 +192,8 @@ void Player::Send_LoadMap(Map* map)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_LOADMAP;
     Connection->Bout << msg_len;
-    Connection->Bout << (loc != nullptr ? loc->GetId() : id_t {});
-    Connection->Bout << (map != nullptr ? map->GetId() : id_t {});
+    Connection->Bout << (loc != nullptr ? loc->GetId() : ident_t {});
+    Connection->Bout << (map != nullptr ? map->GetId() : ident_t {});
     Connection->Bout << pid_loc;
     Connection->Bout << pid_map;
     Connection->Bout << map_index_in_loc;
@@ -244,7 +244,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
         Connection->Bout << NETMSG_POD_PROPERTY(data_size, additional_args);
     }
     else {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(id_t) + sizeof(ushort) + data_size;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(ushort) + data_size;
 
         Connection->Bout << NETMSG_COMPLEX_PROPERTY;
         Connection->Bout << msg_len;
@@ -291,7 +291,7 @@ void Player::Send_Move(Critter* from_cr)
     NON_CONST_METHOD_HINT();
 
     if (!from_cr->Moving.Steps.empty()) {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(id_t) + sizeof(uint) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) + sizeof(uint) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
             static_cast<uint>(sizeof(uchar) * from_cr->Moving.Steps.size()) + static_cast<uint>(sizeof(ushort) * from_cr->Moving.ControlSteps.size()) + sizeof(char) * 2;
 
         CONNECTION_OUTPUT_BEGIN(Connection);
@@ -726,7 +726,7 @@ void Player::Send_Talk()
 
     const auto close = _ownedCr->Talk.Type == TalkType::None;
     const auto is_npc = _ownedCr->Talk.Type == TalkType::Critter;
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(id_t) + sizeof(hstring::hash_t) + sizeof(uchar);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(uchar);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
@@ -794,11 +794,11 @@ void Player::Send_Text(Critter* from_cr, string_view text, uchar how_say)
         return;
     }
 
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : id_t {};
+    const auto from_id = from_cr != nullptr ? from_cr->GetId() : ident_t {};
     Send_TextEx(from_id, text, how_say, false);
 }
 
-void Player::Send_TextEx(id_t from_id, string_view text, uchar how_say, bool unsafe_text)
+void Player::Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -826,7 +826,7 @@ void Player::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort 
         return;
     }
 
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : id_t {};
+    const auto from_id = from_cr != nullptr ? from_cr->GetId() : ident_t {};
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_MSG;
@@ -837,7 +837,7 @@ void Player::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(id_t from_id, uint num_str, uchar how_say, ushort num_msg)
+void Player::Send_TextMsg(ident_t from_id, uint num_str, uchar how_say, ushort num_msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -866,7 +866,7 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
         return;
     }
 
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : id_t {};
+    const auto from_id = from_cr != nullptr ? from_cr->GetId() : ident_t {};
     const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -880,7 +880,7 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(id_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -1058,7 +1058,7 @@ void Player::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_FlyEffect(hstring eff_pid, id_t from_cr_id, id_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1076,7 +1076,7 @@ void Player::Send_FlyEffect(hstring eff_pid, id_t from_cr_id, id_t to_cr_id, ush
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_PlaySound(id_t cr_id_synchronize, string_view sound_name)
+void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
     STACK_TRACE_ENTRY();
 

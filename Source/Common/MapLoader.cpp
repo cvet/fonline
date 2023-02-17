@@ -81,7 +81,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto critter '{}' not found", proto_name));
         }
-        else if (!cr_load(id_t {id}, proto, kv)) {
+        else if (!cr_load(ident_t {id}, proto, kv)) {
             errors.emplace_back(_str("Unable to load critter '{}' properties", proto_name));
         }
     }
@@ -100,7 +100,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto item '{}' not found", proto_name));
         }
-        else if (!item_load(id_t {id}, proto, kv)) {
+        else if (!item_load(ident_t {id}, proto, kv)) {
             errors.emplace_back(_str("Unable to load item '{}' properties", proto_name));
         }
     }

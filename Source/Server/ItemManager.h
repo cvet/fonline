@@ -57,9 +57,9 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    [[nodiscard]] auto GetItem(id_t item_id) -> Item*;
-    [[nodiscard]] auto GetItem(id_t item_id) const -> const Item*;
-    [[nodiscard]] auto GetItems() -> const unordered_map<id_t, Item*>&;
+    [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
+    [[nodiscard]] auto GetItem(ident_t item_id) const -> const Item*;
+    [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
     [[nodiscard]] auto GetItemsCount() const -> uint;
     [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;
@@ -82,7 +82,7 @@ public:
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels);
-    void RadioSendTextEx(ushort channel, uchar broadcast_type, id_t from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems);
+    void RadioSendTextEx(ushort channel, uchar broadcast_type, ident_t from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems);
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:

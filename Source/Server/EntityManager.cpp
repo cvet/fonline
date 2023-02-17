@@ -44,7 +44,7 @@ EntityManager::EntityManager(FOServer* engine) :
     STACK_TRACE_ENTRY();
 }
 
-void EntityManager::RegisterEntity(Player* entity, id_t id)
+void EntityManager::RegisterEntity(Player* entity, ident_t id)
 {
     STACK_TRACE_ENTRY();
 
@@ -148,8 +148,8 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
     NON_CONST_METHOD_HINT();
 
     if (!entity->GetId()) {
-        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<id_t::underlying_type>(2));
-        const auto id = id_t {id_num};
+        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<ident_t::underlying_type>(2));
+        const auto id = ident_t {id_num};
 
         _engine->SetLastEntityId(id);
 
@@ -180,10 +180,10 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
         _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
     }
 
-    entity->SetId(id_t {});
+    entity->SetId(ident_t {});
 }
 
-auto EntityManager::GetPlayer(id_t id) -> Player*
+auto EntityManager::GetPlayer(ident_t id) -> Player*
 {
     STACK_TRACE_ENTRY();
 
@@ -194,14 +194,14 @@ auto EntityManager::GetPlayer(id_t id) -> Player*
     return nullptr;
 }
 
-auto EntityManager::GetPlayers() -> const unordered_map<id_t, Player*>&
+auto EntityManager::GetPlayers() -> const unordered_map<ident_t, Player*>&
 {
     STACK_TRACE_ENTRY();
 
     return _allPlayers;
 }
 
-auto EntityManager::GetLocation(id_t id) -> Location*
+auto EntityManager::GetLocation(ident_t id) -> Location*
 {
     STACK_TRACE_ENTRY();
 
@@ -228,14 +228,14 @@ auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
     return nullptr;
 }
 
-auto EntityManager::GetLocations() -> const unordered_map<id_t, Location*>&
+auto EntityManager::GetLocations() -> const unordered_map<ident_t, Location*>&
 {
     STACK_TRACE_ENTRY();
 
     return _allLocations;
 }
 
-auto EntityManager::GetMap(id_t id) -> Map*
+auto EntityManager::GetMap(ident_t id) -> Map*
 {
     STACK_TRACE_ENTRY();
 
@@ -262,14 +262,14 @@ auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
     return nullptr;
 }
 
-auto EntityManager::GetMaps() -> const unordered_map<id_t, Map*>&
+auto EntityManager::GetMaps() -> const unordered_map<ident_t, Map*>&
 {
     STACK_TRACE_ENTRY();
 
     return _allMaps;
 }
 
-auto EntityManager::GetCritter(id_t id) -> Critter*
+auto EntityManager::GetCritter(ident_t id) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -280,14 +280,14 @@ auto EntityManager::GetCritter(id_t id) -> Critter*
     return nullptr;
 }
 
-auto EntityManager::GetCritters() -> const unordered_map<id_t, Critter*>&
+auto EntityManager::GetCritters() -> const unordered_map<ident_t, Critter*>&
 {
     STACK_TRACE_ENTRY();
 
     return _allCritters;
 }
 
-auto EntityManager::GetItem(id_t id) -> Item*
+auto EntityManager::GetItem(ident_t id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -298,14 +298,14 @@ auto EntityManager::GetItem(id_t id) -> Item*
     return nullptr;
 }
 
-auto EntityManager::GetItems() -> const unordered_map<id_t, Item*>&
+auto EntityManager::GetItems() -> const unordered_map<ident_t, Item*>&
 {
     STACK_TRACE_ENTRY();
 
     return _allItems;
 }
 
-auto EntityManager::GetCritterItems(id_t cr_id) -> vector<Item*>
+auto EntityManager::GetCritterItems(ident_t cr_id) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -333,7 +333,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
     size_t loaded_crs = 0;
     size_t loaded_items = 0;
 
-    const auto get_entity_doc = [&, this](string_view collection_name, id_t id) -> tuple<AnyData::Document, hstring> {
+    const auto get_entity_doc = [&, this](string_view collection_name, ident_t id) -> tuple<AnyData::Document, hstring> {
         auto doc = _engine->DbStorage.Get(collection_name, id);
 
         const auto proto_it = doc.find("_Proto");
@@ -360,8 +360,8 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
         return {doc, proto_id};
     };
 
-    std::function<void(id_t)> load_item;
-    load_item = [&, this](id_t item_id) {
+    std::function<void(ident_t)> load_item;
+    load_item = [&, this](ident_t item_id) {
         auto&& [item_doc, item_pid] = get_entity_doc("Items", item_id);
         if (!item_pid) {
             return;
@@ -390,7 +390,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
         }
     };
 
-    const auto load_cr = [&, this](id_t cr_id) {
+    const auto load_cr = [&, this](ident_t cr_id) {
         auto&& [cr_doc, cr_pid] = get_entity_doc("Critters", cr_id);
         if (!cr_pid) {
             return;
@@ -419,7 +419,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
         }
     };
 
-    const auto load_map = [&, this](id_t map_id) {
+    const auto load_map = [&, this](ident_t map_id) {
         auto&& [map_doc, map_pid] = get_entity_doc("Maps", map_id);
         if (!map_pid) {
             return;
@@ -453,7 +453,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
         }
     };
 
-    const auto load_loc = [&, this](id_t loc_id) {
+    const auto load_loc = [&, this](ident_t loc_id) {
         auto&& [loc_doc, loc_pid] = get_entity_doc("Locations", loc_id);
         if (!loc_pid) {
             return;
@@ -486,7 +486,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
     const auto loc_ids = _engine->DbStorage.GetAllIds("Locations");
     for (const auto loc_id : loc_ids) {
-        load_loc(id_t {loc_id});
+        load_loc(ident_t {loc_id});
     }
 
     if (errors != 0) {
@@ -606,7 +606,7 @@ void EntityManager::FinalizeEntities()
     }
 }
 
-auto EntityManager::GetCustomEntity(string_view entity_class_name, id_t id) -> ServerEntity*
+auto EntityManager::GetCustomEntity(string_view entity_class_name, ident_t id) -> ServerEntity*
 {
     STACK_TRACE_ENTRY();
 
@@ -642,7 +642,7 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
     STACK_TRACE_ENTRY();
 
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
-    auto* entity = new ServerEntity(_engine, id_t {}, registrator);
+    auto* entity = new ServerEntity(_engine, ident_t {}, registrator);
 
     RegisterEntityEx(entity);
     auto& all_entities = _allCustomEntities[string(entity_class_name)];
@@ -652,7 +652,7 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
     return entity;
 }
 
-void EntityManager::DeleteCustomEntity(string_view entity_class_name, id_t id)
+void EntityManager::DeleteCustomEntity(string_view entity_class_name, ident_t id)
 {
     STACK_TRACE_ENTRY();
 

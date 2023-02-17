@@ -43,7 +43,7 @@ class ItemView : public ClientEntity, public EntityWithProto, public ItemPropert
 {
 public:
     ItemView() = delete;
-    ItemView(FOClient* engine, id_t id, const ProtoItem* proto);
+    ItemView(FOClient* engine, ident_t id, const ProtoItem* proto);
     ItemView(const ItemView&) = delete;
     ItemView(ItemView&&) noexcept = delete;
     auto operator=(const ItemView&) = delete;
@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 
     void MarkAsDestroyed() override;
-    auto AddInnerItem(id_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*;
+    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*;
     void DeleteInnerItem(ItemView* item);
 
 protected:

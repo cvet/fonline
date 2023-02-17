@@ -45,7 +45,7 @@
 // ReSharper disable CppInconsistentNaming
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
+[[maybe_unused]] ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
 {
     const auto player_id = server->MakePlayerId(name);
     if (!server->DbStorage.Get("Players", player_id).empty()) {
@@ -58,37 +58,37 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -98,7 +98,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -108,7 +108,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -118,7 +118,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -128,7 +128,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] id_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -138,13 +138,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_IsDeferredCallPending(FOServer* server, id_t id)
+[[maybe_unused]] bool Server_Game_IsDeferredCallPending(FOServer* server, ident_t id)
 {
     return server->ServerDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_CancelDeferredCall(FOServer* server, id_t id)
+[[maybe_unused]] bool Server_Game_CancelDeferredCall(FOServer* server, ident_t id)
 {
     return server->ServerDeferredCalls.CancelDeferredCall(id);
 }
@@ -192,7 +192,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Game_GetItem(FOServer* server, id_t itemId)
+[[maybe_unused]] Item* Server_Game_GetItem(FOServer* server, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -530,7 +530,7 @@
 ///# ...
 ///# param itemId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, id_t itemId)
+[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId)
 {
     if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr) {
         server->ItemMngr.DeleteItem(item);
@@ -541,7 +541,7 @@
 ///# param itemId ...
 ///# param count ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, id_t itemId, uint count)
+[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId, uint count)
 {
     if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0u) {
         const auto cur_count = item->GetCount();
@@ -569,7 +569,7 @@
 ///# ...
 ///# param itemIds ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItems(FOServer* server, const vector<id_t>& itemIds)
+[[maybe_unused]] void Server_Game_DeleteItems(FOServer* server, const vector<ident_t>& itemIds)
 {
     for (const auto item_id : itemIds) {
         if (item_id) {
@@ -594,7 +594,7 @@
 ///# ...
 ///# param crId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, id_t crId)
+[[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, ident_t crId)
 {
     if (crId) {
         if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && cr->IsNpc()) {
@@ -618,7 +618,7 @@
 ///# ...
 ///# param critterIds ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<id_t>& critterIds)
+[[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<ident_t>& critterIds)
 {
     for (const auto id : critterIds) {
         if (id) {
@@ -636,7 +636,7 @@
 [[maybe_unused]] void Server_Game_RadioMessage(FOServer* server, ushort channel, string_view text)
 {
     if (!text.empty()) {
-        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, id_t {}, 0, 0, text, false, 0, 0, "");
+        server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, text, false, 0, 0, "");
     }
 }
 
@@ -647,7 +647,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, ushort channel, ushort textMsg, uint numStr)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, id_t {}, 0, 0, "", false, textMsg, numStr, "");
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, "");
 }
 
 ///# ...
@@ -658,7 +658,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, ushort channel, ushort textMsg, uint numStr, string_view lexems)
 {
-    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, id_t {}, 0, 0, "", false, textMsg, numStr, lexems);
+    server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, lexems);
 }
 
 ///# ...
@@ -830,7 +830,7 @@
 ///# ...
 ///# param locId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, id_t locId)
+[[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, ident_t locId)
 {
     auto* loc = server->MapMngr.GetLocation(locId);
     if (loc != nullptr) {
@@ -842,7 +842,7 @@
 ///# param crId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Game_GetCritter(FOServer* server, id_t crId)
+[[maybe_unused]] Critter* Server_Game_GetCritter(FOServer* server, ident_t crId)
 {
     if (!crId) {
         return nullptr;
@@ -904,7 +904,7 @@
 ///# param mapId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Game_GetMap(FOServer* server, id_t mapId)
+[[maybe_unused]] Map* Server_Game_GetMap(FOServer* server, ident_t mapId)
 {
     if (!mapId) {
         throw ScriptException("Map id arg is zero");
@@ -931,7 +931,7 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, id_t locId)
+[[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, ident_t locId)
 {
     if (!locId) {
         throw ScriptException("Location id arg is zero");
@@ -1198,7 +1198,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<id_t> Server_Game_GetRegisteredPlayerIds(FOServer* server)
+[[maybe_unused]] vector<ident_t> Server_Game_GetRegisteredPlayerIds(FOServer* server)
 {
     return server->DbStorage.GetAllIds("Players");
 }

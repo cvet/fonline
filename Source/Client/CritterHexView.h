@@ -48,7 +48,7 @@ class CritterHexView final : public CritterView
 {
 public:
     CritterHexView() = delete;
-    CritterHexView(MapView* map, id_t id, const ProtoCritter* proto);
+    CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto);
     CritterHexView(const CritterHexView&) = delete;
     CritterHexView(CritterHexView&&) noexcept = delete;
     auto operator=(const CritterHexView&) = delete;
@@ -74,7 +74,7 @@ public:
 
     void Init() override;
     void Finish() override;
-    auto AddItem(id_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView* override;
+    auto AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView* override;
     void DeleteItem(ItemView* item, bool animate) override;
     void ChangeDir(uchar dir);
     void ChangeDirAngle(int dir_angle);

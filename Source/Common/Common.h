@@ -258,8 +258,8 @@ struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_
 {
 };
 
-using id_t = strong_type<uint>;
-static_assert(sizeof(id_t) == sizeof(uint));
+using ident_t = strong_type<uint>;
+static_assert(sizeof(ident_t) == sizeof(uint));
 
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)

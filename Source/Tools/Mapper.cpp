@@ -2732,7 +2732,7 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 
     SelectClear();
 
-    CritterHexView* cr = CurMap->AddCritter(id_t {}, proto, hx, hy, Geometry.DirToAngle(NpcDir), {});
+    CritterHexView* cr = CurMap->AddCritter(ident_t {}, proto, hx, hy, Geometry.DirToAngle(NpcDir), {});
 
     SelectAdd(cr);
 
@@ -3007,7 +3007,7 @@ void FOMapper::BufferPaste(int, int)
         }
         else if (entity_buf.IsItem) {
             throw NotImplementedException(LINE_STR);
-            const auto id = id_t {}; // Todo: need attention!
+            const auto id = ident_t {}; // Todo: need attention!
             // CurMap->AddItem(
             //  --((ProtoMap*)CurMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
             ItemHexView* item = CurMap->GetItem(id);
@@ -3490,7 +3490,7 @@ void FOMapper::ParseCommand(string_view command)
             pmap->SetDayTime(arr);
             pmap->SetDayColor(arr2);
 
-            auto* map = new MapView(this, id_t {}, pmap);
+            auto* map = new MapView(this, ident_t {}, pmap);
             map->FindSetCenter(150, 150);
 
             LoadedMaps.push_back(map);
@@ -3546,7 +3546,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         return nullptr;
     }
 
-    auto new_map_holder = std::make_unique<MapView>(this, id_t {}, pmap);
+    auto new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();
     new_map->EnableMapperMode();
 
@@ -3560,11 +3560,11 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     try {
         MapLoader::Load(
             map_name, map_file.GetStr(), ProtoMngr, *this,
-            [new_map](id_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+            [new_map](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
                 const auto* new_critter = new_map->AddCritter(id, proto, kv);
                 return new_critter != nullptr;
             },
-            [new_map](id_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+            [new_map](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
                 const auto* new_item = new_map->AddItem(id, proto, kv);
                 return new_item != nullptr;
             },

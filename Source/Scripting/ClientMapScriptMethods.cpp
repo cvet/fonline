@@ -155,7 +155,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Map_GetItem(MapView* self, id_t itemId)
+[[maybe_unused]] ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -228,7 +228,7 @@
 ///# param critterId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Map_GetCritter(MapView* self, id_t critterId)
+[[maybe_unused]] CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
 {
     if (!critterId) {
         return nullptr;
@@ -594,10 +594,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, bool softLock, bool unlockIfSame)
 {
-    const auto id = cr != nullptr ? cr->GetId() : id_t {};
+    const auto id = cr != nullptr ? cr->GetId() : ident_t {};
     if (softLock) {
         if (unlockIfSame && id == self->AutoScroll.SoftLockedCritter) {
-            self->AutoScroll.SoftLockedCritter = id_t {};
+            self->AutoScroll.SoftLockedCritter = ident_t {};
         }
         else {
             self->AutoScroll.SoftLockedCritter = id;
@@ -608,7 +608,7 @@
     }
     else {
         if (unlockIfSame && id == self->AutoScroll.HardLockedCritter) {
-            self->AutoScroll.HardLockedCritter = id_t {};
+            self->AutoScroll.HardLockedCritter = ident_t {};
         }
         else {
             self->AutoScroll.HardLockedCritter = id;

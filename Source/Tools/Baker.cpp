@@ -696,14 +696,14 @@ void Baker::BakeAll()
                     try {
                         MapLoader::Load(
                             proto_map->GetName(), map_file.GetStr(), server_proto_mngr, server_engine,
-                            [&](id_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                            [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
                                 auto props = copy(proto->GetProperties());
 
                                 if (props.LoadFromText(kv)) {
                                     map_errors += ValidateProperties(props, _str("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                     map_cr_count++;
-                                    map_cr_data_writer.Write<id_t::underlying_type>(id.underlying_value());
+                                    map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                     map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                                     props.StoreAllData(props_data);
                                     map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
@@ -716,14 +716,14 @@ void Baker::BakeAll()
 
                                 return true;
                             },
-                            [&](id_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                            [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
                                 auto props = copy(proto->GetProperties());
 
                                 if (props.LoadFromText(kv)) {
                                     map_errors += ValidateProperties(props, _str("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                     map_item_count++;
-                                    map_item_data_writer.Write<id_t::underlying_type>(id.underlying_value());
+                                    map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                     map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                                     props.StoreAllData(props_data);
                                     map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
@@ -735,7 +735,7 @@ void Baker::BakeAll()
 
                                         if (client_props.LoadFromText(kv)) {
                                             map_scen_count++;
-                                            map_scen_data_writer.Write<id_t::underlying_type>(id.underlying_value());
+                                            map_scen_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                             map_scen_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
                                             client_props.StoreAllData(props_data);
                                             map_scen_data_writer.Write<uint>(static_cast<uint>(props_data.size()));

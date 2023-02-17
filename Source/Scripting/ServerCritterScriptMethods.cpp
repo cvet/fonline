@@ -121,7 +121,7 @@
         if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
             self->ChangeDir(dir);
         }
-        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, id_t {})) {
+        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, ident_t {})) {
             throw ScriptException("Transit fail");
         }
     }
@@ -152,7 +152,7 @@
         dir_ = 0;
     }
 
-    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, id_t {})) {
+    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, ident_t {})) {
         throw ScriptException("Transit to map hex fail");
     }
 
@@ -171,7 +171,7 @@
         throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId() && !self->GetEngine()->MapMngr.TransitToGlobal(self, id_t {})) {
+    if (self->GetMapId() && !self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
         throw ScriptException("Transit to global failed");
     }
 }
@@ -188,7 +188,7 @@
         throw ScriptException("Critter already on global");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, id_t {})) {
+    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
         throw ScriptException("Transit to global failed");
     }
 
@@ -291,7 +291,7 @@
     self->ViewMapHx = hx;
     self->ViewMapHy = hy;
     self->ViewMapDir = dir_;
-    self->ViewMapLocId = id_t {};
+    self->ViewMapLocId = ident_t {};
     self->ViewMapLocEnt = 0;
     self->Send_LoadMap(map);
 }
@@ -561,7 +561,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, id_t itemId)
+[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 {
     if (!itemId) {
         return nullptr;
@@ -681,7 +681,7 @@
 ///# param itemId ...
 ///# param slot ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, id_t itemId, uchar slot)
+[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, uchar slot)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -826,7 +826,7 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, id_t locId)
+[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, ident_t locId)
 {
     if (!locId) {
         throw ScriptException("Invalid location id");
@@ -839,7 +839,7 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, id_t locId)
+[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, ident_t locId)
 {
     if (!locId) {
         throw ScriptException("Invalid location id");
@@ -889,7 +889,7 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, id_t locId)
+[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, ident_t locId)
 {
     if (!locId) {
         throw ScriptException("Invalid location id");
@@ -1061,7 +1061,7 @@
 ///# ...
 ///# param gagId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, id_t& gagId)
+[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, ident_t& gagId)
 {
     gagId = self->TargetMoving.GagEntityId;
 

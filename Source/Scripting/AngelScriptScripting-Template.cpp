@@ -1794,7 +1794,7 @@ static auto Entity_Name(const T* self) -> string
 }
 
 template<typename T>
-static auto Entity_Id(const T* self) -> id_t
+static auto Entity_Id(const T* self) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -2927,8 +2927,8 @@ static void CustomEntity_Get(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto& entity_id = *static_cast<id_t::underlying_type*>(gen->GetAddressOfArg(0));
-    T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, id_t {entity_id});
+    const auto& entity_id = *static_cast<ident_t::underlying_type*>(gen->GetAddressOfArg(0));
+    T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
     ENTITY_VERIFY(entity);
     new (gen->GetAddressOfReturnLocation()) T*(entity);
 #endif
@@ -2941,8 +2941,8 @@ static void CustomEntity_DeleteById(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE && SERVER_SCRIPTING
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto& entity_id = *static_cast<id_t::underlying_type*>(gen->GetAddressOfArg(0));
-    engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, id_t {entity_id});
+    const auto& entity_id = *static_cast<ident_t::underlying_type*>(gen->GetAddressOfArg(0));
+    engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
 #endif
 }
 
@@ -3231,7 +3231,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "id_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "ident_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
@@ -3242,10 +3242,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     REGISTER_ENTITY_PROPS(class_name, entity_info); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", SCRIPT_GENERIC((CustomEntity_Create<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(id_t id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(id_t id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(ident_t id)", SCRIPT_GENERIC((CustomEntity_Get<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(ident_t id)", SCRIPT_GENERIC((CustomEntity_DeleteById<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", SCRIPT_GENERIC((CustomEntity_DeleteByRef<real_class, entity_info>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "id_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "ident_t get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))

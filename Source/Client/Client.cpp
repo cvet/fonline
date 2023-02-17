@@ -339,7 +339,7 @@ auto FOClient::GetMapChosen() -> CritterHexView*
     return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
-auto FOClient::GetWorldmapCritter(id_t cr_id) -> CritterView*
+auto FOClient::GetWorldmapCritter(ident_t cr_id) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
@@ -701,7 +701,7 @@ void FOClient::Net_OnConnect(bool success)
         }
 
         RUNTIME_ASSERT(!_curPlayer);
-        _curPlayer = new PlayerView(this, id_t {});
+        _curPlayer = new PlayerView(this, ident_t {});
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
@@ -799,7 +799,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
         return;
     }
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(id_t) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
         sizeof(ushort) + static_cast<uint>(sizeof(uchar) * cr->Moving.Steps.size()) + //
         sizeof(ushort) + static_cast<uint>(sizeof(ushort) * cr->Moving.ControlSteps.size()) + sizeof(short) * 2;
 
@@ -880,7 +880,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
         _conn.OutBuf << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
     }
     else {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(id_t) + sizeof(ushort) + data_size;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(ushort) + data_size;
         _conn.OutBuf << NETMSG_SEND_COMPLEX_PROPERTY;
         _conn.OutBuf << msg_len;
     }
@@ -925,7 +925,7 @@ void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uchar answer)
 
     _conn.OutBuf << NETMSG_SEND_TALK_NPC;
     _conn.OutBuf << is_npc;
-    _conn.OutBuf << (is_npc ? id_t {id_to_talk} : id_t {});
+    _conn.OutBuf << (is_npc ? ident_t {id_to_talk} : ident_t {});
     _conn.OutBuf << (!is_npc ? ResolveHash(id_to_talk) : hstring {});
     _conn.OutBuf << answer;
 }
@@ -1029,7 +1029,7 @@ void FOClient::Net_OnLoginSuccess()
 
     uint msg_len;
     uint encrypt_key;
-    id_t player_id;
+    ident_t player_id;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> encrypt_key;
     _conn.InBuf >> player_id;
@@ -1058,7 +1058,7 @@ void FOClient::Net_OnAddCritter()
     uint msg_len;
     _conn.InBuf >> msg_len;
 
-    id_t cr_id;
+    ident_t cr_id;
     ushort hx;
     ushort hy;
     short hex_ox;
@@ -1142,7 +1142,7 @@ void FOClient::Net_OnRemoveCritter()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     _conn.InBuf >> cr_id;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1178,7 +1178,7 @@ void FOClient::Net_OnText()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t cr_id;
+    ident_t cr_id;
     uchar how_say;
     string text;
     bool unsafe_text;
@@ -1210,7 +1210,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         _conn.InBuf >> msg_len;
     }
 
-    id_t cr_id;
+    ident_t cr_id;
     uchar how_say;
     ushort msg_num;
     uint num_str;
@@ -1243,7 +1243,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     }
 }
 
-void FOClient::OnText(string_view str, id_t cr_id, int how_say)
+void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -1464,7 +1464,7 @@ void FOClient::Net_OnCritterDir()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     short dir_angle;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> dir_angle;
@@ -1487,7 +1487,7 @@ void FOClient::Net_OnCritterMove()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t cr_id;
+    ident_t cr_id;
     uint whole_time;
     uint offset_time;
     ushort speed;
@@ -1611,7 +1611,7 @@ void FOClient::Net_OnCritterStopMove()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     ushort start_hx;
     ushort start_hy;
     short hex_ox;
@@ -1646,7 +1646,7 @@ void FOClient::Net_OnSomeItem()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t item_id;
+    ident_t item_id;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
     const hstring item_pid = _conn.InBuf.ReadHashedString(*this);
@@ -1670,7 +1670,7 @@ void FOClient::Net_OnCritterAction()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     int action;
     int action_ext;
     bool is_item;
@@ -1699,7 +1699,7 @@ void FOClient::Net_OnCritterMoveItem()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t cr_id;
+    ident_t cr_id;
     uchar action;
     uchar prev_slot;
     bool is_item;
@@ -1718,12 +1718,12 @@ void FOClient::Net_OnCritterMoveItem()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     vector<uchar> slots_data_slot;
-    vector<id_t> slots_data_id;
+    vector<ident_t> slots_data_id;
     vector<hstring> slots_data_pid;
     vector<vector<vector<uchar>>> slots_data_data;
     for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
         uchar slot;
-        id_t id;
+        ident_t id;
         hstring pid;
         _conn.InBuf >> slot;
         _conn.InBuf >> id;
@@ -1791,7 +1791,7 @@ void FOClient::Net_OnCritterAnimate()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     uint anim1;
     uint anim2;
     bool is_item;
@@ -1828,7 +1828,7 @@ void FOClient::Net_OnCritterSetAnims()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     CritterCondition cond;
     uint anim1;
     uint anim2;
@@ -1871,7 +1871,7 @@ void FOClient::Net_OnCritterTeleport()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     ushort to_hx;
     ushort to_hy;
     _conn.InBuf >> cr_id;
@@ -1909,7 +1909,7 @@ void FOClient::Net_OnCritterPos()
 {
     STACK_TRACE_ENTRY();
 
-    id_t cr_id;
+    ident_t cr_id;
     ushort hx;
     ushort hy;
     short hex_ox;
@@ -2024,7 +2024,7 @@ void FOClient::Net_OnChosenAddItem()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t item_id;
+    ident_t item_id;
     hstring pid;
     uchar slot;
     _conn.InBuf >> msg_len;
@@ -2078,7 +2078,7 @@ void FOClient::Net_OnChosenEraseItem()
 {
     STACK_TRACE_ENTRY();
 
-    id_t item_id;
+    ident_t item_id;
     _conn.InBuf >> item_id;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2136,7 +2136,7 @@ void FOClient::Net_OnAddItemOnMap()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    id_t item_id;
+    ident_t item_id;
     ushort item_hx;
     ushort item_hy;
     bool is_added;
@@ -2171,7 +2171,7 @@ void FOClient::Net_OnEraseItemFromMap()
 {
     STACK_TRACE_ENTRY();
 
-    id_t item_id;
+    ident_t item_id;
     bool is_deleted;
     _conn.InBuf >> item_id;
     _conn.InBuf >> is_deleted;
@@ -2204,7 +2204,7 @@ void FOClient::Net_OnAnimateItem()
 {
     STACK_TRACE_ENTRY();
 
-    id_t item_id;
+    ident_t item_id;
     uchar from_frm;
     uchar to_frm;
     _conn.InBuf >> item_id;
@@ -2272,8 +2272,8 @@ void FOClient::Net_OnFlyEffect()
     STACK_TRACE_ENTRY();
 
     hstring eff_pid;
-    id_t eff_cr1_id;
-    id_t eff_cr2_id;
+    ident_t eff_cr1_id;
+    ident_t eff_cr2_id;
     ushort eff_cr1_hx;
     ushort eff_cr1_hy;
     ushort eff_cr2_hx;
@@ -2369,8 +2369,8 @@ void FOClient::Net_OnProperty(uint data_size)
     _conn.InBuf >> type_;
     const auto type = static_cast<NetProperty>(type_);
 
-    id_t cr_id;
-    id_t item_id;
+    ident_t cr_id;
+    ident_t item_id;
 
     uint additional_args = 0;
     switch (type) {
@@ -2492,7 +2492,7 @@ void FOClient::Net_OnChosenTalk()
 
     uint msg_len;
     uchar is_npc;
-    id_t talk_cr;
+    ident_t talk_cr;
     hstring talk_dlg;
     uchar count_answ;
     uint text_id;
@@ -2604,8 +2604,8 @@ void FOClient::Net_OnLoadMap()
     WriteLog("Change map..");
 
     uint msg_len;
-    id_t loc_id;
-    id_t map_id;
+    ident_t loc_id;
+    ident_t map_id;
     uchar map_index_in_loc;
 
     _conn.InBuf >> msg_len;
@@ -2769,7 +2769,7 @@ void FOClient::Net_OnSomeItems()
 
     vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
-        id_t item_id;
+        ident_t item_id;
         hstring item_pid;
         _conn.InBuf >> item_id;
         item_pid = _conn.InBuf.ReadHashedString(*this);
@@ -2857,7 +2857,7 @@ void FOClient::Net_OnViewMap()
 
     ushort hx;
     ushort hy;
-    id_t loc_id;
+    ident_t loc_id;
     uint loc_ent;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
@@ -3902,7 +3902,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "SetCritterContour" && args.size() == 3) {
         if (CurMap != nullptr) {
             auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            id_t cr_id = id_t {_str(args[2]).toUInt()};
+            ident_t cr_id = ident_t {_str(args[2]).toUInt()};
             CurMap->SetCritterContour(cr_id, countour_type);
         }
     }
@@ -3911,8 +3911,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "MoveItem" && args.size() == 5) {
         auto item_count = _str(args[1]).toUInt();
-        auto item_id = id_t {_str(args[2]).toUInt()};
-        auto item_swap_id = id_t {_str(args[3]).toUInt()};
+        auto item_id = ident_t {_str(args[2]).toUInt()};
+        auto item_swap_id = ident_t {_str(args[3]).toUInt()};
         auto to_slot = _str(args[4]).toInt();
         auto* item = GetChosen()->GetItem(item_id);
         auto* item_swap = (item_swap_id ? GetChosen()->GetItem(item_swap_id) : nullptr);

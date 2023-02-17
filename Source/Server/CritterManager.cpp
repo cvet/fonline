@@ -75,7 +75,7 @@ void CritterManager::LinkCritters()
             continue;
         }
 
-        if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), id_t {})) {
+        if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), ident_t {})) {
             WriteLog("Error parsing npc {} to map {} at hex {} {}", cr->GetName(), cr->GetMapId(), cr->GetHexX(), cr->GetHexY());
             errors++;
             continue;
@@ -195,7 +195,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
 
     const auto prev_slot = item->GetCritterSlot();
 
-    item->SetCritterId(id_t {});
+    item->SetCritterId(ident_t {});
     item->SetCritterSlot(0);
 
     auto item_ids = cr->GetItemIds();
@@ -266,7 +266,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         hy = hy_;
     }
 
-    auto* cr = new Critter(_engine, id_t {}, nullptr, proto);
+    auto* cr = new Critter(_engine, ident_t {}, nullptr, proto);
     if (props != nullptr) {
         cr->SetProperties(*props);
     }
@@ -287,9 +287,9 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     cr->SetHomeHexY(hy);
     cr->SetHomeDir(dir);
 
-    const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hx, hy, id_t {});
+    const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hx, hy, ident_t {});
     RUNTIME_ASSERT(can);
-    _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, id_t {});
+    _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, ident_t {});
 
     _engine->OnCritterInit.Fire(cr, true);
     ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), true);
@@ -435,7 +435,7 @@ auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, Cri
     return critters;
 }
 
-auto CritterManager::GetCritter(id_t cr_id) -> Critter*
+auto CritterManager::GetCritter(ident_t cr_id) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -444,14 +444,14 @@ auto CritterManager::GetCritter(id_t cr_id) -> Critter*
     return _engine->EntityMngr.GetCritter(cr_id);
 }
 
-auto CritterManager::GetCritter(id_t cr_id) const -> const Critter*
+auto CritterManager::GetCritter(ident_t cr_id) const -> const Critter*
 {
     STACK_TRACE_ENTRY();
 
     return const_cast<CritterManager*>(this)->GetCritter(cr_id);
 }
 
-auto CritterManager::GetPlayerById(id_t id) -> Player*
+auto CritterManager::GetPlayerById(ident_t id) -> Player*
 {
     STACK_TRACE_ENTRY();
 
@@ -545,7 +545,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
     // Check distance
     if (!cr->Talk.IgnoreDistance) {
-        auto map_id = id_t {};
+        auto map_id = ident_t {};
         ushort hx = 0;
         ushort hy = 0;
         uint talk_distance = 0;

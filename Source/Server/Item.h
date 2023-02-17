@@ -51,7 +51,7 @@ class Item final : public ServerEntity, public EntityWithProto, public ItemPrope
 
 public:
     Item() = delete;
-    Item(FOServer* engine, id_t id, const ProtoItem* proto);
+    Item(FOServer* engine, ident_t id, const ProtoItem* proto);
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
@@ -65,7 +65,7 @@ public:
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
-    [[nodiscard]] auto ContGetItem(id_t item_id, bool skip_hidden) -> Item*;
+    [[nodiscard]] auto ContGetItem(ident_t item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
     [[nodiscard]] auto ContGetItemByPid(hstring pid, uint stack_id) -> Item*;
     [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;

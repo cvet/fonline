@@ -45,7 +45,7 @@ class CritterView : public ClientEntity, public EntityWithProto, public CritterP
 {
 public:
     CritterView() = delete;
-    CritterView(FOClient* engine, id_t id, const ProtoCritter* proto);
+    CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto);
     CritterView(const CritterView&) = delete;
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
@@ -61,7 +61,7 @@ public:
     [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto GetItem(id_t item_id) -> ItemView*;
+    [[nodiscard]] auto GetItem(ident_t item_id) -> ItemView*;
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
     [[nodiscard]] auto GetItems() -> const vector<ItemView*>&;
     [[nodiscard]] auto GetAnim1() const -> uint;
@@ -69,7 +69,7 @@ public:
     virtual void Init();
     virtual void Finish();
     void MarkAsDestroyed() override;
-    virtual auto AddItem(id_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*;
+    virtual auto AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*;
     virtual void DeleteItem(ItemView* item, bool animate);
     void DeleteAllItems();
     void SetName(string_view name);

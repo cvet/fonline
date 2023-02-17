@@ -111,8 +111,8 @@ struct DialogPack
 struct TalkData
 {
     TalkType Type {};
-    id_t CritterId {};
-    id_t TalkHexMap {};
+    ident_t CritterId {};
+    ident_t TalkHexMap {};
     ushort TalkHexX {};
     ushort TalkHexY {};
     hstring DialogPackId {};

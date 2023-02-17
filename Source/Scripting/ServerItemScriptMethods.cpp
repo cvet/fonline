@@ -96,7 +96,7 @@
             throw ScriptException("Critter accessory, critter not found");
         }
 
-        if (cr->GetMapId() == id_t {}) {
+        if (cr->GetMapId() == ident_t {}) {
             hx = cr->GetWorldX();
             hy = cr->GetWorldY();
             return nullptr;

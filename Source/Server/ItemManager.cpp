@@ -237,7 +237,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     cont->_childItems->erase(it);
 
     item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetContainerId(id_t {});
+    item->SetContainerId(ident_t {});
     item->SetContainerStack(0);
 
     if (cont->_childItems->empty()) {
@@ -252,7 +252,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     cont->SetSubItemIds(std::move(sub_item_ids));
 }
 
-auto ItemManager::GetItems() -> const unordered_map<id_t, Item*>&
+auto ItemManager::GetItems() -> const unordered_map<ident_t, Item*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -278,17 +278,17 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         return nullptr;
     }
 
-    auto* item = new Item(_engine, id_t {}, proto);
+    auto* item = new Item(_engine, ident_t {}, proto);
     if (props != nullptr) {
         item->SetProperties(*props);
 
         item->SetOwnership(ItemOwnership::Nowhere);
-        item->SetMapId(id_t {});
+        item->SetMapId(ident_t {});
         item->SetHexX(0);
         item->SetHexY(0);
-        item->SetCritterId(id_t {});
+        item->SetCritterId(ident_t {});
         item->SetCritterSlot(0);
-        item->SetContainerId(id_t {});
+        item->SetContainerId(ident_t {});
         item->SetContainerStack(0);
         item->SetSubItemIds({});
     }
@@ -386,14 +386,14 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     return new_item;
 }
 
-auto ItemManager::GetItem(id_t item_id) -> Item*
+auto ItemManager::GetItem(ident_t item_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     return _engine->EntityMngr.GetItem(item_id);
 }
 
-auto ItemManager::GetItem(id_t item_id) const -> const Item*
+auto ItemManager::GetItem(ident_t item_id) const -> const Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -687,7 +687,7 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 }
 
-void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, id_t from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems)
+void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, ident_t from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -700,8 +700,8 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, id_t fro
     }
 
     uchar broadcast;
-    auto broadcast_map_id = id_t {};
-    auto broadcast_loc_id = id_t {};
+    auto broadcast_map_id = ident_t {};
+    auto broadcast_loc_id = ident_t {};
 
     // Multiple sending controlling
     // Not thread safe, but this not so important in this case
