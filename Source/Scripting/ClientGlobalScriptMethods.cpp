@@ -566,16 +566,16 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
-    if (year && year < client->Settings.StartYear) {
+    if (year != 0 && year < client->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
     }
-    if (year && year > client->Settings.StartYear + 100) {
+    if (year != 0 && year > client->Settings.StartYear + 100) {
         throw ScriptException("Invalid year", year);
     }
-    if (month != 0u && month < 1) {
+    if (month != 0 && month < 1) {
         throw ScriptException("Invalid month", month);
     }
-    if (month != 0u && month > 12) {
+    if (month != 0 && month > 12) {
         throw ScriptException("Invalid month", month);
     }
 
@@ -583,21 +583,21 @@
     auto month_ = month;
     auto day_ = day;
 
-    if (year_ == 0u) {
+    if (year_ == 0) {
         year_ = client->GetYear();
     }
-    if (month_ == 0u) {
+    if (month_ == 0) {
         month_ = client->GetMonth();
     }
 
-    if (day_ != 0u) {
+    if (day_ != 0) {
         const auto month_day = client->GameTime.GameTimeMonthDay(year, month_);
         if (day_ < month_day || day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
     }
 
-    if (day_ == 0u) {
+    if (day_ == 0) {
         day_ = client->GetDay();
     }
 
@@ -703,88 +703,88 @@
 
     const auto eff_type = static_cast<uint>(effectType);
 
-    if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
+    if (((eff_type & static_cast<uint>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
         auto* item = client->CurMap->GetItem(ident_t {static_cast<uint>(effectSubtype)});
         if (item != nullptr) {
             item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
-    if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
+    if (((eff_type & static_cast<uint>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
         auto* cr = client->CurMap->GetCritter(ident_t {static_cast<uint>(effectSubtype)});
         if (cr != nullptr) {
             cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
     }
 
-    if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype == 0) {
+    if (((eff_type & static_cast<uint>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
         client->EffectMngr.Effects.Generic = reload_effect(client->EffectMngr.Effects.GenericDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype == 0) {
+    if (((eff_type & static_cast<uint>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
         client->EffectMngr.Effects.Critter = reload_effect(client->EffectMngr.Effects.CritterDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::TileSprite)) {
+    if ((eff_type & static_cast<uint>(EffectType::TileSprite)) != 0) {
         client->EffectMngr.Effects.Tile = reload_effect(client->EffectMngr.Effects.TileDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::RoofSprite)) {
+    if ((eff_type & static_cast<uint>(EffectType::RoofSprite)) != 0) {
         client->EffectMngr.Effects.Roof = reload_effect(client->EffectMngr.Effects.RoofDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::RainSprite)) {
+    if ((eff_type & static_cast<uint>(EffectType::RainSprite)) != 0) {
         client->EffectMngr.Effects.Rain = reload_effect(client->EffectMngr.Effects.RainDefault);
     }
 
 #if FO_ENABLE_3D
-    if (eff_type & static_cast<uint>(EffectType::SkinnedMesh)) {
+    if ((eff_type & static_cast<uint>(EffectType::SkinnedMesh)) != 0) {
         client->EffectMngr.Effects.SkinnedModel = reload_effect(client->EffectMngr.Effects.SkinnedModelDefault);
     }
 #endif
 
-    if (eff_type & static_cast<uint>(EffectType::Interface)) {
+    if ((eff_type & static_cast<uint>(EffectType::Interface)) != 0) {
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::Contour)) {
+    if ((eff_type & static_cast<uint>(EffectType::Contour)) != 0) {
         client->EffectMngr.Effects.ContourSprite = reload_effect(client->EffectMngr.Effects.ContourSpriteDefault);
     }
 
-    if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype == -1) {
+    if (((eff_type & static_cast<uint>(EffectType::Font)) != 0) && effectSubtype == -1) {
         client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype >= 0) {
+    if (((eff_type & static_cast<uint>(EffectType::Font)) != 0) && effectSubtype >= 0) {
         client->SprMngr.SetFontEffect(static_cast<int>(effectSubtype), reload_effect(client->EffectMngr.Effects.Font));
     }
 
-    if (eff_type & static_cast<uint>(EffectType::Primitive)) {
+    if ((eff_type & static_cast<uint>(EffectType::Primitive)) != 0) {
         client->EffectMngr.Effects.Primitive = reload_effect(client->EffectMngr.Effects.PrimitiveDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::Light)) {
+    if ((eff_type & static_cast<uint>(EffectType::Light)) != 0) {
         client->EffectMngr.Effects.Light = reload_effect(client->EffectMngr.Effects.LightDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::Fog)) {
+    if ((eff_type & static_cast<uint>(EffectType::Fog)) != 0) {
         client->EffectMngr.Effects.Fog = reload_effect(client->EffectMngr.Effects.FogDefault);
     }
 
-    if (eff_type & static_cast<uint>(EffectType::FlushRenderTarget)) {
+    if ((eff_type & static_cast<uint>(EffectType::FlushRenderTarget)) != 0) {
         client->EffectMngr.Effects.FlushRenderTarget = reload_effect(client->EffectMngr.Effects.FlushRenderTargetDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::FlushPrimitive)) {
+    if ((eff_type & static_cast<uint>(EffectType::FlushPrimitive)) != 0) {
         client->EffectMngr.Effects.FlushPrimitive = reload_effect(client->EffectMngr.Effects.FlushPrimitiveDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::FlushMap)) {
+    if ((eff_type & static_cast<uint>(EffectType::FlushMap)) != 0) {
         client->EffectMngr.Effects.FlushMap = reload_effect(client->EffectMngr.Effects.FlushMapDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::FlushLight)) {
+    if ((eff_type & static_cast<uint>(EffectType::FlushLight)) != 0) {
         client->EffectMngr.Effects.FlushLight = reload_effect(client->EffectMngr.Effects.FlushLightDefault);
     }
-    if (eff_type & static_cast<uint>(EffectType::FlushFog)) {
+    if ((eff_type & static_cast<uint>(EffectType::FlushFog)) != 0) {
         client->EffectMngr.Effects.FlushFog = reload_effect(client->EffectMngr.Effects.FlushFogDefault);
     }
 
-    if (eff_type & static_cast<uint>(EffectType::Offscreen)) {
+    if ((eff_type & static_cast<uint>(EffectType::Offscreen)) != 0) {
         if (effectSubtype < 0) {
             throw ScriptException("Negative effect subtype");
         }
 
-        client->OffscreenEffects.resize(effectSubtype + 1);
-        client->OffscreenEffects[effectSubtype] = reload_effect(client->EffectMngr.Effects.GenericDefault);
+        client->OffscreenEffects.resize(static_cast<size_t>(effectSubtype + 1));
+        client->OffscreenEffects[static_cast<size_t>(effectSubtype)] = reload_effect(client->EffectMngr.Effects.GenericDefault);
     }
 }
 
@@ -1202,7 +1202,7 @@
     }
 
     auto* anim = client->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return;
     }
 
@@ -1312,7 +1312,7 @@
 [[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
     auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
-    if (anim) {
+    if (anim != nullptr) {
         client->SprMngr.DrawSpriteSize(anim->Ind[0], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
     }
 }
@@ -1434,7 +1434,7 @@
 
     if (client->OffscreenSurfaces.empty()) {
         auto* rt = client->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
-        if (!rt) {
+        if (rt == nullptr) {
             throw ScriptException("Can't create offscreen surface");
         }
 
@@ -1479,7 +1479,7 @@
 
     client->SprMngr.PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || !client->OffscreenEffects[effectSubtype]) {
+    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
@@ -1510,7 +1510,7 @@
 
     client->SprMngr.PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || !client->OffscreenEffects[effectSubtype]) {
+    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
@@ -1547,7 +1547,7 @@
 
     client->SprMngr.PopRenderTarget();
 
-    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || !client->OffscreenEffects[effectSubtype]) {
+    if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
     }
 
