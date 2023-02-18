@@ -38,7 +38,7 @@
 struct CmdDef
 {
     char Name[20];
-    uchar Id;
+    uint8 Id;
 };
 
 static const CmdDef CMD_LIST[] = {
@@ -77,7 +77,7 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     }
     istringstream args_str(args);
 
-    uchar cmd = 0;
+    uint8 cmd = 0;
     for (const auto& cur_cmd : CMD_LIST) {
         if (_str(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
             cmd = cur_cmd.Id;
@@ -132,8 +132,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
     } break;
     case CMD_MOVECRIT: {
         uint crid = 0;
-        ushort hex_x = 0;
-        ushort hex_y = 0;
+        uint16 hex_x = 0;
+        uint16 hex_y = 0;
         if (!(args_str >> crid >> hex_x >> hex_y)) {
             logcb("Invalid arguments. Example: move crid hx hy.");
             break;
@@ -199,8 +199,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf << pasw_access;
     } break;
     case CMD_ADDITEM: {
-        ushort hex_x = 0;
-        ushort hex_y = 0;
+        uint16 hex_x = 0;
+        uint16 hex_y = 0;
         string proto_name;
         uint count = 0;
         if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
@@ -235,9 +235,9 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf << count;
     } break;
     case CMD_ADDNPC: {
-        ushort hex_x = 0;
-        ushort hex_y = 0;
-        uchar dir = 0;
+        uint16 hex_x = 0;
+        uint16 hex_y = 0;
+        uint8 dir = 0;
         string proto_name;
         if (!(args_str >> hex_x >> hex_y >> dir >> proto_name)) {
             logcb("Invalid arguments. Example: addnpc hx hy dir name.");
@@ -255,8 +255,8 @@ auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logc
         buf << pid;
     } break;
     case CMD_ADDLOCATION: {
-        ushort wx = 0;
-        ushort wy = 0;
+        uint16 wx = 0;
+        uint16 wy = 0;
         string proto_name;
         if (!(args_str >> wx >> wy >> proto_name)) {
             logcb("Invalid arguments. Example: addloc wx wy name.");

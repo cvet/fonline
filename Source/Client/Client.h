@@ -139,8 +139,8 @@ public:
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, string> params);
 
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed);
-    void CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
+    void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
@@ -201,7 +201,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, ident_t /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
@@ -221,9 +221,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uint8 /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
 
@@ -259,7 +259,7 @@ protected:
         AnyFrames* Frames {};
         AtlasType ResType {};
         uint LastTick {};
-        ushort Flags {};
+        uint16 Flags {};
         uint CurSpr {};
     };
 
@@ -275,11 +275,11 @@ protected:
     {
         uint LocId {};
         hstring LocPid {};
-        ushort LocWx {};
-        ushort LocWy {};
-        ushort Radius {};
+        uint16 LocWx {};
+        uint16 LocWy {};
+        uint16 Radius {};
         uint Color {};
-        uchar Entrances {};
+        uint8 Entrances {};
     };
 
     struct Automap
@@ -306,12 +306,12 @@ protected:
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
-    void Net_SendTalk(bool is_npc, uint id_to_talk, uchar answer);
-    void Net_SendText(string_view send_str, uchar how_say);
+    void Net_SendTalk(bool is_npc, uint id_to_talk, uint8 answer);
+    void Net_SendText(string_view send_str, uint8 how_say);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
-    void Net_SendPing(uchar ping);
+    void Net_SendPing(uint8 ping);
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();
@@ -359,7 +359,7 @@ protected:
     void Net_OnRemoteCall();
 
     void OnText(string_view str, ident_t cr_id, int how_say);
-    void OnMapText(string_view str, ushort hx, ushort hy, uint color);
+    void OnMapText(string_view str, uint16 hx, uint16 hy, uint color);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);
@@ -398,10 +398,10 @@ protected:
     ItemView* _someItem {};
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};
-    vector<vector<uchar>> _globalsPropertiesData {};
-    vector<vector<uchar>> _playerPropertiesData {};
-    vector<vector<uchar>> _tempPropertiesData {};
-    vector<vector<uchar>> _tempPropertiesDataExt {};
+    vector<vector<uint8>> _globalsPropertiesData {};
+    vector<vector<uint8>> _playerPropertiesData {};
+    vector<vector<uint8>> _tempPropertiesData {};
+    vector<vector<uint8>> _tempPropertiesDataExt {};
     LanguagePack _curLang {};
     vector<IfaceAnim*> _ifaceAnimations {};
     vector<ScreenEffect> _screenEffects {};
@@ -415,7 +415,7 @@ protected:
     uint _daySumRGB {};
     CritterView* _chosen {};
     AnyFrames* _waitPic {};
-    uchar _pupTransferType {};
+    uint8 _pupTransferType {};
     uint _pupContId {};
     hstring _pupContPid {};
     uint _holoInfo[MAX_HOLO_INFO] {};
@@ -430,8 +430,6 @@ protected:
     int _lmapZoom {2};
     bool _lmapSwitchHi {};
     uint _lmapPrepareNextTick {};
-    uchar _dlgIsNpc {};
-    ident_t _dlgNpcId {};
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
 };

@@ -73,17 +73,17 @@ struct Session
     bool Authorized {};
 };
 
-static void AdminManager(FOServer* server, ushort port);
+static void AdminManager(FOServer* server, uint16 port);
 static void AdminWork(FOServer* server, Session* session);
 
-void InitAdminManager(FOServer* server, ushort port)
+void InitAdminManager(FOServer* server, uint16 port)
 {
     STACK_TRACE_ENTRY();
 
     std::thread(AdminManager, server, port).detach();
 }
 
-static void AdminManager(FOServer* server, ushort port)
+static void AdminManager(FOServer* server, uint16 port)
 {
     STACK_TRACE_ENTRY();
 
@@ -353,7 +353,7 @@ label_Finish:
 
 #else
 
-void InitAdminManager(FOServer* server, ushort port)
+void InitAdminManager(FOServer* server, uint16 port)
 {
     STACK_TRACE_ENTRY();
 }

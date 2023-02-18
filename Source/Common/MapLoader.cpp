@@ -125,14 +125,14 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
         //     errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
         //     continue;
         // }
-        if (layer < 0 || layer > std::numeric_limits<uchar>::max()) {
+        if (layer < 0 || layer > std::numeric_limits<uint8>::max()) {
             errors.emplace_back(_str("Tile '{}' have wrong layer value {}", tname, layer));
             continue;
         }
 
         const auto htname = name_resolver.ToHashedString(tname);
 
-        if (!tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof})) {
+        if (!tile_load({htname.as_hash(), static_cast<uint16>(hx), static_cast<uint16>(hy), static_cast<int16>(ox), static_cast<int16>(oy), static_cast<uint8>(layer), is_roof})) {
             errors.emplace_back("Unable to load tile");
         }
     }

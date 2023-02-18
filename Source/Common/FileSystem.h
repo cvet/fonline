@@ -72,8 +72,8 @@ class File final : public FileHeader
 {
 public:
     File() = default;
-    File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uchar>&& buf);
-    File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uchar> buf, bool make_copy);
+    File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uint8>&& buf);
+    File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uint8> buf, bool make_copy);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -81,20 +81,20 @@ public:
     ~File() = default;
 
     [[nodiscard]] auto GetStr() const -> string;
-    [[nodiscard]] auto GetData() const -> vector<uchar>;
-    [[nodiscard]] auto GetBuf() const -> const uchar*;
-    [[nodiscard]] auto GetCurBuf() const -> const uchar*;
+    [[nodiscard]] auto GetData() const -> vector<uint8>;
+    [[nodiscard]] auto GetBuf() const -> const uint8*;
+    [[nodiscard]] auto GetCurBuf() const -> const uint8*;
     [[nodiscard]] auto GetCurPos() const -> size_t;
 
     [[nodiscard]] auto FindFragment(string_view fragment) -> bool;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
-    [[nodiscard]] auto GetUChar() -> uchar;
+    [[nodiscard]] auto GetUChar() -> uint8;
     [[nodiscard]] auto GetChar() -> char { return static_cast<char>(GetUChar()); }
-    [[nodiscard]] auto GetBEUShort() -> ushort;
-    [[nodiscard]] auto GetBEShort() -> short { return static_cast<short>(GetBEUShort()); }
-    [[nodiscard]] auto GetLEUShort() -> ushort;
-    [[nodiscard]] auto GetLEShort() -> short { return static_cast<short>(GetLEUShort()); }
+    [[nodiscard]] auto GetBEUShort() -> uint16;
+    [[nodiscard]] auto GetBEShort() -> int16 { return static_cast<int16>(GetBEUShort()); }
+    [[nodiscard]] auto GetLEUShort() -> uint16;
+    [[nodiscard]] auto GetLEShort() -> int16 { return static_cast<int16>(GetLEUShort()); }
     [[nodiscard]] auto GetBEUInt() -> uint;
     [[nodiscard]] auto GetBEInt() -> int { return static_cast<int>(GetBEUInt()); }
     [[nodiscard]] auto GetLEUInt() -> uint;
@@ -107,7 +107,7 @@ public:
     void GoBack(size_t offs);
 
 private:
-    unique_del_ptr<const uchar> _fileBuf {};
+    unique_del_ptr<const uint8> _fileBuf {};
     size_t _curPos {};
 };
 

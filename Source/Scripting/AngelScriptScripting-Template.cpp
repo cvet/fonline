@@ -783,17 +783,17 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_BOOL:
         return _str("{}", *static_cast<bool*>(ptr) ? "true" : "false");
     case asTYPEID_INT8:
-        return _str("{}", *static_cast<char*>(ptr));
+        return _str("{}", *static_cast<int8*>(ptr));
     case asTYPEID_INT16:
-        return _str("{}", *static_cast<short*>(ptr));
+        return _str("{}", *static_cast<int16*>(ptr));
     case asTYPEID_INT32:
         return _str("{}", *static_cast<int*>(ptr));
     case asTYPEID_INT64:
         return _str("{}", *static_cast<int64*>(ptr));
     case asTYPEID_UINT8:
-        return _str("{}", *static_cast<uchar*>(ptr));
+        return _str("{}", *static_cast<uint8*>(ptr));
     case asTYPEID_UINT16:
-        return _str("{}", *static_cast<ushort*>(ptr));
+        return _str("{}", *static_cast<uint16*>(ptr));
     case asTYPEID_UINT32:
         return _str("{}", *static_cast<uint*>(ptr));
     case asTYPEID_UINT64:
@@ -854,23 +854,23 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
 
     static unordered_map<type_index, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
         {type_index(typeid(bool)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
-        {type_index(typeid(char)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<char*>(ptr)); }},
-        {type_index(typeid(short)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<short*>(ptr)); }},
+        {type_index(typeid(int8)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<int8*>(ptr)); }},
+        {type_index(typeid(int16)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<int16*>(ptr)); }},
         {type_index(typeid(int)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<int*>(ptr)); }},
         {type_index(typeid(int64)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<int64*>(ptr)); }},
-        {type_index(typeid(uchar)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<uchar*>(ptr)); }},
-        {type_index(typeid(ushort)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<ushort*>(ptr)); }},
+        {type_index(typeid(uint8)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<uint8*>(ptr)); }},
+        {type_index(typeid(uint16)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<uint16*>(ptr)); }},
         {type_index(typeid(uint)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<uint*>(ptr)); }},
         {type_index(typeid(uint64)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
         {type_index(typeid(float)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
         {type_index(typeid(double)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
         {type_index(typeid(bool*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<bool*>(ptr)); }},
-        {type_index(typeid(char*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<char*>(ptr)); }},
-        {type_index(typeid(short*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<short*>(ptr)); }},
+        {type_index(typeid(int8*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int8*>(ptr)); }},
+        {type_index(typeid(int16*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int16*>(ptr)); }},
         {type_index(typeid(int*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int*>(ptr)); }},
         {type_index(typeid(int64*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<int64*>(ptr)); }},
-        {type_index(typeid(uchar*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uchar*>(ptr)); }},
-        {type_index(typeid(ushort*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ushort*>(ptr)); }},
+        {type_index(typeid(uint8*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint8*>(ptr)); }},
+        {type_index(typeid(uint16*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint16*>(ptr)); }},
         {type_index(typeid(uint*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint*>(ptr)); }},
         {type_index(typeid(uint64*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<uint64*>(ptr)); }},
         {type_index(typeid(float*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<float*>(ptr)); }},
@@ -905,12 +905,12 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(vector<LocationView*>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<LocationView*>*>(ptr))); }},
 #endif
         {type_index(typeid(vector<bool>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "bool[]", *static_cast<vector<bool>*>(ptr))); }},
-        {type_index(typeid(vector<char>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int8[]", *static_cast<vector<char>*>(ptr))); }},
-        {type_index(typeid(vector<short>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int16[]", *static_cast<vector<short>*>(ptr))); }},
+        {type_index(typeid(vector<int8>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int8[]", *static_cast<vector<int8>*>(ptr))); }},
+        {type_index(typeid(vector<int16>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int16[]", *static_cast<vector<int16>*>(ptr))); }},
         {type_index(typeid(vector<int>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int[]", *static_cast<vector<int>*>(ptr))); }},
         {type_index(typeid(vector<int64>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int64[]", *static_cast<vector<int64>*>(ptr))); }},
-        {type_index(typeid(vector<uchar>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint8[]", *static_cast<vector<uchar>*>(ptr))); }},
-        {type_index(typeid(vector<ushort>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint16[]", *static_cast<vector<ushort>*>(ptr))); }},
+        {type_index(typeid(vector<uint8>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint8[]", *static_cast<vector<uint8>*>(ptr))); }},
+        {type_index(typeid(vector<uint16>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint16[]", *static_cast<vector<uint16>*>(ptr))); }},
         {type_index(typeid(vector<uint>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint[]", *static_cast<vector<uint>*>(ptr))); }},
         {type_index(typeid(vector<uint64>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
         {type_index(typeid(vector<float>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
@@ -919,12 +919,12 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
 
     static unordered_map<type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
         {type_index(typeid(bool)), [](asIScriptContext* ctx, void* ptr) { *static_cast<bool*>(ptr) = ctx->GetReturnByte() != 0; }},
-        {type_index(typeid(char)), [](asIScriptContext* ctx, void* ptr) { *static_cast<char*>(ptr) = static_cast<char>(ctx->GetReturnByte()); }},
-        {type_index(typeid(short)), [](asIScriptContext* ctx, void* ptr) { *static_cast<short*>(ptr) = static_cast<short>(ctx->GetReturnWord()); }},
+        {type_index(typeid(int8)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int8*>(ptr) = static_cast<int8>(ctx->GetReturnByte()); }},
+        {type_index(typeid(int16)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int16*>(ptr) = static_cast<int16>(ctx->GetReturnWord()); }},
         {type_index(typeid(int)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int*>(ptr) = static_cast<int>(ctx->GetReturnDWord()); }},
         {type_index(typeid(int64)), [](asIScriptContext* ctx, void* ptr) { *static_cast<int64*>(ptr) = static_cast<int64>(ctx->GetReturnQWord()); }},
-        {type_index(typeid(uchar)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uchar*>(ptr) = static_cast<uchar>(ctx->GetReturnByte()); }},
-        {type_index(typeid(ushort)), [](asIScriptContext* ctx, void* ptr) { *static_cast<ushort*>(ptr) = static_cast<ushort>(ctx->GetReturnWord()); }},
+        {type_index(typeid(uint8)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint8*>(ptr) = static_cast<uint8>(ctx->GetReturnByte()); }},
+        {type_index(typeid(uint16)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint16*>(ptr) = static_cast<uint16>(ctx->GetReturnWord()); }},
         {type_index(typeid(uint)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint*>(ptr) = static_cast<uint>(ctx->GetReturnDWord()); }},
         {type_index(typeid(uint64)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
         {type_index(typeid(float)), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
@@ -1057,7 +1057,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         return result;
     };
 
-    const auto* data = prop_data.GetPtrAs<uchar>();
+    const auto* data = prop_data.GetPtrAs<uint8>();
     const auto data_size = prop_data.GetSize();
 
     if (prop->IsPlainData()) {
@@ -1359,7 +1359,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     for (const auto i : xrange(arr->GetSize())) {
                         const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hash), sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
                     }
                 }
@@ -1401,11 +1401,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     const auto* arr = *static_cast<const CScriptArray**>(value);
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hkey), prop->GetDictKeySize());
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hkey), prop->GetDictKeySize());
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = static_cast<const int*>(key);
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&ekey), prop->GetDictKeySize());
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&ekey), prop->GetDictKeySize());
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
@@ -1434,7 +1434,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         else if (prop->IsBaseTypeHash()) {
                             for (uint i = 0; i < arr_size; i++) {
                                 const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
-                                std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
+                                std::memcpy(buf, reinterpret_cast<const uint8*>(&hash), sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
                             }
                         }
@@ -1461,17 +1461,17 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 }
 
                 // Make buffer
-                uchar* buf = prop_data.Alloc(data_size);
+                uint8* buf = prop_data.Alloc(data_size);
 
                 for (auto&& [key, value] : dict_map) {
                     const auto& str = *static_cast<const string*>(value);
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hkey), prop->GetDictKeySize());
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hkey), prop->GetDictKeySize());
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = static_cast<const int*>(key);
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&ekey), prop->GetDictKeySize());
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&ekey), prop->GetDictKeySize());
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
@@ -1504,11 +1504,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hkey), key_element_size);
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hkey), key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = static_cast<const int*>(key);
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&ekey), key_element_size);
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&ekey), key_element_size);
                     }
                     else {
                         std::memcpy(buf, key, key_element_size);
@@ -1517,7 +1517,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsBaseTypeHash()) {
                         const auto hash = static_cast<const hstring*>(value)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), value_element_size);
+                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hash), value_element_size);
                     }
                     else {
                         std::memcpy(buf, value, value_element_size);
@@ -1620,7 +1620,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
     STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
-        out_buf << static_cast<ushort>(value.length());
+        out_buf << static_cast<uint16>(value.length());
         out_buf.Push(value.data(), value.length());
     }
     else if constexpr (std::is_same_v<T, hstring>) {
@@ -1636,7 +1636,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     STACK_TRACE_ENTRY();
 
-    out_buf << static_cast<ushort>(value.size());
+    out_buf << static_cast<uint16>(value.size());
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value);
@@ -1651,7 +1651,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     STACK_TRACE_ENTRY();
 
-    out_buf << static_cast<ushort>(value.size());
+    out_buf << static_cast<uint16>(value.size());
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value.first);
@@ -1665,7 +1665,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
     STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
-        ushort len = 0;
+        uint16 len = 0;
         in_buf >> len;
         value.resize(len);
         in_buf.Pop(value.data(), len);
@@ -1683,11 +1683,11 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name
 {
     STACK_TRACE_ENTRY();
 
-    ushort inner_values_count = 0;
+    uint16 inner_values_count = 0;
     in_buf >> inner_values_count;
     value.reserve(inner_values_count);
 
-    for (ushort i = 0; i < inner_values_count; i++) {
+    for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value;
         ReadNetBuf(in_buf, inner_value, name_resolver);
         value.emplace_back(inner_value);
@@ -1702,10 +1702,10 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 {
     STACK_TRACE_ENTRY();
 
-    ushort inner_values_count = 0;
+    uint16 inner_values_count = 0;
     in_buf >> inner_values_count;
 
-    for (ushort i = 0; i < inner_values_count; i++) {
+    for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value_first;
         ReadNetBuf(in_buf, inner_value_first, name_resolver);
         U inner_value_second;
@@ -2697,7 +2697,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
     }
 
     if (!prop->IsVirtual()) {
-        props.SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+        props.SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
 
         if (!post_setters.empty()) {
             for (auto& setter : post_setters) {
@@ -3045,7 +3045,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources);
 #else
-static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin);
+static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_bin);
 #endif
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
@@ -3510,17 +3510,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 case asTYPEID_BOOL:
                     return &typeid(bool*);
                 case asTYPEID_INT8:
-                    return &typeid(char*);
+                    return &typeid(int8*);
                 case asTYPEID_INT16:
-                    return &typeid(short*);
+                    return &typeid(int16*);
                 case asTYPEID_INT32:
                     return &typeid(int*);
                 case asTYPEID_INT64:
                     return &typeid(int64*);
                 case asTYPEID_UINT8:
-                    return &typeid(uchar*);
+                    return &typeid(uint8*);
                 case asTYPEID_UINT16:
-                    return &typeid(ushort*);
+                    return &typeid(uint16*);
                 case asTYPEID_UINT32:
                     return &typeid(uint*);
                 case asTYPEID_UINT64:
@@ -3546,17 +3546,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             case asTYPEID_BOOL:
                 return &typeid(bool);
             case asTYPEID_INT8:
-                return &typeid(char);
+                return &typeid(int8);
             case asTYPEID_INT16:
-                return &typeid(short);
+                return &typeid(int16);
             case asTYPEID_INT32:
                 return &typeid(int);
             case asTYPEID_INT64:
                 return &typeid(int64);
             case asTYPEID_UINT8:
-                return &typeid(uchar);
+                return &typeid(uint8);
             case asTYPEID_UINT16:
-                return &typeid(ushort);
+                return &typeid(uint16);
             case asTYPEID_UINT32:
                 return &typeid(uint);
             case asTYPEID_UINT64:
@@ -3588,12 +3588,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 CHECK_CLASS("Location", LocationView*);
 #endif
                 CHECK_POD_ARRAY(asTYPEID_BOOL, bool);
-                CHECK_POD_ARRAY(asTYPEID_INT8, char);
-                CHECK_POD_ARRAY(asTYPEID_INT16, short);
+                CHECK_POD_ARRAY(asTYPEID_INT8, int8);
+                CHECK_POD_ARRAY(asTYPEID_INT16, int16);
                 CHECK_POD_ARRAY(asTYPEID_INT32, int);
                 CHECK_POD_ARRAY(asTYPEID_INT64, int64);
-                CHECK_POD_ARRAY(asTYPEID_UINT8, uchar);
-                CHECK_POD_ARRAY(asTYPEID_UINT16, ushort);
+                CHECK_POD_ARRAY(asTYPEID_UINT8, uint8);
+                CHECK_POD_ARRAY(asTYPEID_UINT16, uint16);
                 CHECK_POD_ARRAY(asTYPEID_UINT32, uint);
                 CHECK_POD_ARRAY(asTYPEID_UINT64, uint64);
                 CHECK_POD_ARRAY(asTYPEID_FLOAT, float);
@@ -3879,10 +3879,10 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
     }
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
-    vector<uchar> lnt_data;
+    vector<uint8> lnt_data;
     Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
-    vector<uchar> data;
+    vector<uint8> data;
     auto writer = DataWriter(data);
     writer.Write<uint>(static_cast<uint>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
@@ -3909,7 +3909,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& resources)
 }
 
 #else
-static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin)
+static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_bin)
 {
     STACK_TRACE_ENTRY();
 
@@ -3919,8 +3919,8 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_
     auto reader = DataReader({script_bin.data(), script_bin.size()});
     vector<asBYTE> buf(reader.Read<uint>());
     std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
-    vector<uchar> lnt_data(reader.Read<uint>());
-    std::memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
+    vector<uint8> lnt_data(reader.Read<uint>());
+    std::memcpy(lnt_data.data(), reader.ReadPtr<uint8>(lnt_data.size()), lnt_data.size());
     reader.VerifyEnd();
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());

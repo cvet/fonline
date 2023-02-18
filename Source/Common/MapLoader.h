@@ -42,11 +42,11 @@ DECLARE_EXCEPTION(MapLoaderException);
 struct MapTile
 {
     hstring::hash_t NameHash {};
-    ushort HexX {};
-    ushort HexY {};
-    short OffsX {};
-    short OffsY {};
-    uchar Layer {};
+    uint16 HexX {};
+    uint16 HexY {};
+    int16 OffsX {};
+    int16 OffsY {};
+    uint8 Layer {};
     bool IsRoof {};
     bool IsSelected {}; // Todo: remove mapper specific IsSelected from MapTile
 };

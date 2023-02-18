@@ -144,7 +144,7 @@ public:
         return _host;
     }
 
-    [[nodiscard]] auto GetPort() const -> ushort override
+    [[nodiscard]] auto GetPort() const -> uint16 override
     {
         STACK_TRACE_ENTRY();
 
@@ -201,7 +201,7 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback(size_t& out_len) -> const uchar*
+    auto SendCallback(size_t& out_len) -> const uint8*
     {
         STACK_TRACE_ENTRY();
 
@@ -260,7 +260,7 @@ protected:
         return _outBuf.data();
     }
 
-    void ReceiveCallback(const uchar* buf, size_t len)
+    void ReceiveCallback(const uint8* buf, size_t len)
     {
         STACK_TRACE_ENTRY();
 
@@ -278,13 +278,13 @@ protected:
     ServerNetworkSettings& _settings;
     uint _ip {};
     string _host {};
-    ushort _port {};
+    uint16 _port {};
     std::atomic_bool _isDisconnected {};
 
 private:
     bool _zStreamActive {};
     z_stream _zStream {};
-    vector<uchar> _outBuf {};
+    vector<uint8> _outBuf {};
 };
 
 #if FO_HAVE_ASIO
@@ -487,7 +487,7 @@ private:
 
     asio::ip::tcp::socket* _socket {};
     std::atomic_bool _writePending {};
-    vector<uchar> _inBuf {};
+    vector<uint8> _inBuf {};
     asio::error_code _dummyError {};
 };
 
@@ -558,7 +558,7 @@ private:
 
         const auto& payload = msg->get_payload();
         RUNTIME_ASSERT(!payload.empty());
-        ReceiveCallback(reinterpret_cast<const uchar*>(payload.data()), payload.length());
+        ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
     }
 
     void OnFail()
@@ -615,7 +615,7 @@ private:
 
 NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
+    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort)))
 {
     STACK_TRACE_ENTRY();
 
@@ -677,7 +677,7 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
     _server.init_asio();
     _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
     _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetNoTlsWebSocketsServer::Run, this);
@@ -739,7 +739,7 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
     _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
     _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
     _server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) { return OnTlsInit(hdl); });
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetTlsWebSocketsServer::Run, this);
@@ -862,7 +862,7 @@ public:
         return true;
     }
 
-    void Receive(const_span<uchar> buf)
+    void Receive(const_span<uint8> buf)
     {
         STACK_TRACE_ENTRY();
 
@@ -911,7 +911,7 @@ public:
     ~InterthreadServer() override = default;
 
     InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
-        _virtualPort {static_cast<ushort>(settings.ServerPort)}
+        _virtualPort {static_cast<uint16>(settings.ServerPort)}
     {
         STACK_TRACE_ENTRY();
 
@@ -922,7 +922,7 @@ public:
         InterthreadListeners.emplace(_virtualPort, [&settings, callback = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
             auto* conn = new InterthreadConnection(settings, std::move(client_send));
             callback(conn);
-            return [conn](const_span<uchar> buf) { conn->Receive(buf); };
+            return [conn](const_span<uint8> buf) { conn->Receive(buf); };
         });
     }
 
@@ -935,7 +935,7 @@ public:
     }
 
 private:
-    ushort _virtualPort;
+    uint16 _virtualPort;
 };
 
 auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*

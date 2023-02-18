@@ -539,7 +539,7 @@
 ///# param zoneY ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] int Client_Game_GetFog(FOClient* client, ushort zoneX, ushort zoneY)
+[[maybe_unused]] int Client_Game_GetFog(FOClient* client, uint16 zoneX, uint16 zoneY)
 {
     if (zoneX >= client->Settings.GlobalMapWidth || zoneY >= client->Settings.GlobalMapHeight) {
         throw ScriptException("Invalid world map pos arg");
@@ -564,7 +564,7 @@
 ///# param second ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Game_EvaluateFullSecond(FOClient* client, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
+[[maybe_unused]] uint Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
     if (year && year < client->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
@@ -624,7 +624,7 @@
 ///# param minute ...
 ///# param second ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_GetGameTime(FOClient* client, uint fullSecond, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second)
+[[maybe_unused]] void Client_Game_GetGameTime(FOClient* client, uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
     const auto dt = client->GameTime.GetGameTime(fullSecond);
     year = dt.Year;
@@ -853,7 +853,7 @@
 ///# param second ...
 ///# param milliseconds ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_GetTime(FOClient* client, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds)
+[[maybe_unused]] void Client_Game_GetTime(FOClient* client, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
     const auto cur_time = Timer::GetCurrentDateTime();
     year = cur_time.Year;
@@ -1309,7 +1309,7 @@
 ///# param center ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
     auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim) {
@@ -1636,7 +1636,7 @@
 ///# param name ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uchar>& data)
+[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data)
 {
     client->Cache.SetData(name, data);
 }
@@ -1646,7 +1646,7 @@
 ///# param data ...
 ///# param dataSize ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uchar>& data, uint dataSize)
+[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uint8>& data, uint dataSize)
 {
     auto data_copy = data;
     data_copy.resize(dataSize);
@@ -1657,7 +1657,7 @@
 ///# param name ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<uchar> Client_Game_GetCacheData(FOClient* client, string_view name)
+[[maybe_unused]] vector<uint8> Client_Game_GetCacheData(FOClient* client, string_view name)
 {
     return client->Cache.GetData(name);
 }

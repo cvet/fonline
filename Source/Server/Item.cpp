@@ -51,14 +51,14 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
 {
     STACK_TRACE_ENTRY();
 
-    short sort_value = 0;
+    int16 sort_value = 0;
     for (const auto* item : items) {
         if (item == this) {
             continue;
         }
 
         if (sort_value >= item->GetSortValue()) {
-            sort_value = static_cast<short>(item->GetSortValue() - 1);
+            sort_value = static_cast<int16>(item->GetSortValue() - 1);
         }
     }
 

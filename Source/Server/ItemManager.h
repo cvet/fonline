@@ -74,15 +74,15 @@ public:
     void LinkItems();
     void DeleteItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
-    void MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks);
+    void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks);
     void MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks);
     auto AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*;
     void EraseItemFromContainer(Item* cont, Item* item);
     void SetItemToContainer(Item* cont, Item* item);
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
-    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels);
-    void RadioSendTextEx(ushort channel, uchar broadcast_type, ident_t from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems);
+    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 text_msg, uint num_str, vector<uint16>& channels);
+    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 text_msg, uint num_str, string_view lexems);
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:

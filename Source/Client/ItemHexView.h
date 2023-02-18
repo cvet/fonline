@@ -45,8 +45,8 @@ class ItemHexView final : public ItemView
 public:
     ItemHexView() = delete;
     ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties& props);
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uchar>>* props_data);
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy);
+    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data);
+    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data, uint16 hx, uint16 hy);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -70,7 +70,7 @@ public:
     void Finish();
     void StopFinishing();
     void Process();
-    void SetEffect(ushort to_hx, ushort to_hy);
+    void SetEffect(uint16 to_hx, uint16 to_hy);
     void SkipFade();
     void SetAnimFromEnd();
     void SetAnimFromStart();
@@ -83,7 +83,7 @@ public:
     uint SprId {};
     int ScrX {};
     int ScrY {};
-    uchar Alpha {};
+    uint8 Alpha {};
 
     RenderEffect* DrawEffect {};
     Sprite* SprDraw {};
@@ -105,7 +105,7 @@ private:
     uint _animBegFrm {};
     uint _animEndFrm {};
     uint _animTick {};
-    uchar _maxAlpha {0xFF};
+    uint8 _maxAlpha {0xFF};
     bool _isShowAnim {};
     uint _animNextTick {};
 
@@ -120,7 +120,7 @@ private:
     uint _effDist {};
     uint _effLastTick {};
     int _effDir {};
-    vector<pair<ushort, ushort>> _effSteps {};
+    vector<pair<uint16, uint16>> _effSteps {};
 
     bool _fading {};
     uint _fadingEndTick {};

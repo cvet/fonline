@@ -45,7 +45,7 @@ BEGIN_AS_NAMESPACE
 
 static asITypeInfo* GetTypeInfoById(asIScriptEngine* engine, int typeId)
 {
-    asCDataType dt = ((asCScriptEngine*)engine)->GetDataTypeFromTypeId(typeId);
+    const asCDataType dt = static_cast<asCScriptEngine*>(engine)->GetDataTypeFromTypeId(typeId);
     if (dt.IsValid()) {
         return dt.GetTypeInfo();
     }
@@ -112,12 +112,12 @@ bool ScriptType::IsClass() const
 
 bool ScriptType::IsInterface() const
 {
-    return ((asCObjectType*)objType)->IsInterface();
+    return static_cast<asCObjectType*>(objType)->IsInterface();
 }
 
 bool ScriptType::IsEnum() const
 {
-    asCEnumType* enum_type = CastToEnumType((asCTypeInfo*)objType);
+    const asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     return enum_type ? enum_type->enumValues.GetLength() > 0 : false;
 }
 
@@ -128,7 +128,7 @@ bool ScriptType::IsFunction() const
 
 bool ScriptType::IsShared() const
 {
-    return ((asCObjectType*)objType)->IsShared();
+    return static_cast<asCObjectType*>(objType)->IsShared();
 }
 
 ScriptType* ScriptType::GetBaseType() const
@@ -170,7 +170,7 @@ void ScriptType::Instantiate(void* out, int out_type_id) const
         asGetActiveContext()->SetException("Invalid 'instance' argument, not an handle");
         return;
     }
-    if (*(void**)out) {
+    if (*static_cast<void**>(out)) {
         asGetActiveContext()->SetException("Invalid 'instance' argument, handle must be null");
         return;
     }
@@ -179,7 +179,7 @@ void ScriptType::Instantiate(void* out, int out_type_id) const
         return;
     }
 
-    *(void**)out = engine->CreateScriptObject(objType);
+    *static_cast<void**>(out) = engine->CreateScriptObject(objType);
 }
 
 void ScriptType::InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const
@@ -190,7 +190,7 @@ void ScriptType::InstantiateCopy(void* in, int in_type_id, void* out, int out_ty
         asGetActiveContext()->SetException("Invalid 'instance' argument, not an handle");
         return;
     }
-    if (*(void**)out) {
+    if (*static_cast<void**>(out)) {
         asGetActiveContext()->SetException("Invalid 'instance' argument, handle must be null");
         return;
     }
@@ -203,18 +203,18 @@ void ScriptType::InstantiateCopy(void* in, int in_type_id, void* out, int out_ty
         asGetActiveContext()->SetException("Invalid 'copyFrom' argument, not an handle");
         return;
     }
-    if (!*(void**)in) {
+    if (!*static_cast<void**>(in)) {
         asGetActiveContext()->SetException("Invalid 'copyFrom' argument, handle must be not null");
         return;
     }
-    in = *(void**)in;
-    asIScriptObject* in_obj = (asIScriptObject*)in;
+    in = *static_cast<void**>(in);
+    const asIScriptObject* in_obj = static_cast<asIScriptObject*>(in);
     if (in_obj->GetObjectType() != objType) {
         asGetActiveContext()->SetException("Invalid 'copyFrom' argument, incompatible types");
         return;
     }
 
-    *(void**)out = engine->CreateScriptObjectCopy(in, objType);
+    *static_cast<void**>(out) = engine->CreateScriptObjectCopy(in, objType);
 }
 
 asUINT ScriptType::GetMethodsCount() const
@@ -245,13 +245,13 @@ string ScriptType::GetPropertyDeclaration(asUINT index, bool include_namespace) 
 
 asUINT ScriptType::GetEnumLength() const
 {
-    asCEnumType* enum_type = CastToEnumType((asCTypeInfo*)objType);
+    const asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     return enum_type ? enum_type->enumValues.GetLength() : 0;
 }
 
 CScriptArray* ScriptType::GetEnumNames() const
 {
-    asCEnumType* enum_type = CastToEnumType((asCTypeInfo*)objType);
+    asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("string[]"));
     for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(enum_type->enumValues[i]->name.AddressOf());
@@ -261,7 +261,7 @@ CScriptArray* ScriptType::GetEnumNames() const
 
 CScriptArray* ScriptType::GetEnumValues() const
 {
-    asCEnumType* enum_type = CastToEnumType((asCTypeInfo*)objType);
+    asCEnumType* enum_type = CastToEnumType(static_cast<asCTypeInfo*>(objType));
     CScriptArray* result = CScriptArray::Create(asGetActiveContext()->GetEngine()->GetTypeInfoByDecl("int[]"));
     for (asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++) {
         result->InsertLast(&enum_type->enumValues[i]->value);
@@ -287,8 +287,8 @@ static ScriptTypeOf* ScriptTypeOfFactory2(asITypeInfo* ot, void* ref)
     if (ot->GetSubType()->GetTypeId() <= asTYPEID_DOUBLE) {
         return new ScriptTypeOf(nullptr);
     }
-    ref = *(void**)ref;
-    return new ScriptTypeOf(((asIScriptObject*)ref)->GetObjectType());
+    ref = *static_cast<void**>(ref);
+    return new ScriptTypeOf(static_cast<asIScriptObject*>(ref)->GetObjectType());
 }
 
 ScriptTypeOf::ScriptTypeOf(asITypeInfo* ot) :
@@ -304,8 +304,8 @@ ScriptType* ScriptTypeOf::ConvertToType() const
 
 CScriptArray* GetLoadedModules()
 {
-    asIScriptContext* ctx = asGetActiveContext();
-    asIScriptEngine* engine = ctx->GetEngine();
+    const asIScriptContext* ctx = asGetActiveContext();
+    const asIScriptEngine* engine = ctx->GetEngine();
     CScriptArray* modules = CScriptArray::Create(engine->GetTypeInfoByDecl("string[]"));
 
     for (asUINT i = 0; i < engine->GetModuleCount(); i++) {
@@ -332,10 +332,10 @@ static string GetCurrentModule()
 
 static CScriptArray* GetEnumsInternal(bool global, const char* module_name)
 {
-    asIScriptEngine* engine = asGetActiveContext()->GetEngine();
+    const asIScriptEngine* engine = asGetActiveContext()->GetEngine();
     CScriptArray* enums = CScriptArray::Create(engine->GetTypeInfoByDecl("reflection::type[]"));
 
-    asIScriptModule* module = nullptr;
+    const asIScriptModule* module = nullptr;
     if (!global) {
         module = GetModule(module_name);
         if (!module) {
@@ -343,7 +343,7 @@ static CScriptArray* GetEnumsInternal(bool global, const char* module_name)
         }
     }
 
-    asUINT count = (global ? engine->GetEnumCount() : module->GetEnumCount());
+    const asUINT count = (global ? engine->GetEnumCount() : module->GetEnumCount());
     for (asUINT i = 0; i < count; i++) {
         asITypeInfo* enum_type;
         if (global) {
@@ -392,7 +392,7 @@ static asUINT GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScript
             string name = func->GetModuleName();
             modules->InsertLast(&name);
 
-            bool include_ns = (include_namespace && func->GetNamespace()[0]);
+            const bool include_ns = (include_namespace && func->GetNamespace()[0]);
             string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
             names->InsertLast(&decl);
 
@@ -477,12 +477,12 @@ void RegisterScriptReflection_Native(asIScriptEngine* engine)
 
 static void ScriptType_Instantiate_Generic(asIScriptGeneric* gen)
 {
-    ((ScriptType*)gen->GetObject())->Instantiate(gen->GetArgAddress(0), gen->GetArgTypeId(0));
+    static_cast<ScriptType*>(gen->GetObject())->Instantiate(gen->GetArgAddress(0), gen->GetArgTypeId(0));
 }
 
 static void ScriptType_InstantiateCopy_Generic(asIScriptGeneric* gen)
 {
-    ((ScriptType*)gen->GetObject())->InstantiateCopy(gen->GetArgAddress(0), gen->GetArgTypeId(0), gen->GetArgAddress(1), gen->GetArgTypeId(1));
+    static_cast<ScriptType*>(gen->GetObject())->InstantiateCopy(gen->GetArgAddress(0), gen->GetArgTypeId(0), gen->GetArgAddress(1), gen->GetArgTypeId(1));
 }
 
 static void RegisterMethod_Generic(asIScriptEngine* engine, const char* declaration, const asSFuncPtr& func_pointer)

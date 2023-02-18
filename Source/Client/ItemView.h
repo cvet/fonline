@@ -56,14 +56,14 @@ public:
     [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
     [[nodiscard]] auto IsColorize() const -> bool { return GetIsColorize(); }
     [[nodiscard]] auto GetColor() const -> uint { return GetLightColor() & 0xFFFFFF; }
-    [[nodiscard]] auto GetAlpha() const -> uchar { return GetLightColor() >> 24; }
+    [[nodiscard]] auto GetAlpha() const -> uint8 { return GetLightColor() >> 24; }
     [[nodiscard]] auto LightGetHash() const -> uint;
     [[nodiscard]] auto GetInnerItems() -> vector<ItemView*>;
 
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 
     void MarkAsDestroyed() override;
-    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*;
+    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& properties_data) -> ItemView*;
     void DeleteInnerItem(ItemView* item);
 
 protected:

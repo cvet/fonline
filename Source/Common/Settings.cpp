@@ -55,14 +55,14 @@ static void SetEntry(string& entry, string_view value, bool append)
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
     entry += std::get<AnyData::STRING_VALUE>(any_value);
 }
-static void SetEntry(uchar& entry, string_view value, bool append)
+static void SetEntry(uint8& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
 
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry += static_cast<uchar>(std::get<AnyData::INT_VALUE>(any_value));
+    entry += static_cast<uint8>(std::get<AnyData::INT_VALUE>(any_value));
 }
-static void SetEntry(short& entry, string_view value, bool append)
+static void SetEntry(int16& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
 
@@ -70,7 +70,7 @@ static void SetEntry(short& entry, string_view value, bool append)
         entry = 0;
     }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = static_cast<short>(entry + std::get<AnyData::INT_VALUE>(any_value));
+    entry = static_cast<int16>(entry + std::get<AnyData::INT_VALUE>(any_value));
 }
 static void SetEntry(int& entry, string_view value, bool append)
 {
@@ -184,13 +184,13 @@ static void DrawEntry(string_view name, string_view entry)
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEntry(string_view name, const uchar& entry)
+static void DrawEntry(string_view name, const uint8& entry)
 {
     STACK_TRACE_ENTRY();
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEntry(string_view name, const short& entry)
+static void DrawEntry(string_view name, const int16& entry)
 {
     STACK_TRACE_ENTRY();
 
@@ -277,13 +277,13 @@ static void DrawEditableEntry(string_view name, string& entry)
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEditableEntry(string_view name, uchar& entry)
+static void DrawEditableEntry(string_view name, uint8& entry)
 {
     STACK_TRACE_ENTRY();
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEditableEntry(string_view name, short& entry)
+static void DrawEditableEntry(string_view name, int16& entry)
 {
     STACK_TRACE_ENTRY();
 

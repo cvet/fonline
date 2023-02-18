@@ -116,7 +116,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
 #if !FO_SINGLEPLAYER
     if (const auto restore_info = Resources.ReadFile("RestoreInfo.fobin")) {
-        extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
+        extern void Client_RegisterData(FOEngineBase*, const vector<uint8>&);
         Client_RegisterData(this, restore_info.GetData());
     }
     else {
@@ -545,8 +545,8 @@ void FOClient::ProcessScreenEffectFading()
             int res[4];
 
             for (auto i = 0; i < 4; i++) {
-                const int sc = (reinterpret_cast<uchar*>(&screen_effect.StartColor))[i];
-                const int ec = (reinterpret_cast<uchar*>(&screen_effect.EndColor))[i];
+                const int sc = (reinterpret_cast<uint8*>(&screen_effect.StartColor))[i];
+                const int ec = (reinterpret_cast<uint8*>(&screen_effect.EndColor))[i];
                 const auto dc = ec - sc;
                 res[i] = sc + dc * static_cast<int>(proc) / 100;
             }
@@ -760,7 +760,7 @@ void FOClient::Net_SendCreatePlayer()
     _conn.OutBuf << _loginPassword;
 }
 
-void FOClient::Net_SendText(string_view send_str, uchar how_say)
+void FOClient::Net_SendText(string_view send_str, uint8 how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -799,9 +799,9 @@ void FOClient::Net_SendMove(CritterHexView* cr)
         return;
     }
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
-        sizeof(ushort) + static_cast<uint>(sizeof(uchar) * cr->Moving.Steps.size()) + //
-        sizeof(ushort) + static_cast<uint>(sizeof(ushort) * cr->Moving.ControlSteps.size()) + sizeof(short) * 2;
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) * 2 + sizeof(uint16) + sizeof(uint16) * 2 + //
+        sizeof(uint16) + static_cast<uint>(sizeof(uint8) * cr->Moving.Steps.size()) + //
+        sizeof(uint16) + static_cast<uint>(sizeof(uint16) * cr->Moving.ControlSteps.size()) + sizeof(int16) * 2;
 
     _conn.OutBuf << NETMSG_SEND_MOVE;
     _conn.OutBuf << msg_len;
@@ -810,11 +810,11 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     _conn.OutBuf << cr->Moving.Speed;
     _conn.OutBuf << cr->Moving.StartHexX;
     _conn.OutBuf << cr->Moving.StartHexY;
-    _conn.OutBuf << static_cast<ushort>(cr->Moving.Steps.size());
+    _conn.OutBuf << static_cast<uint16>(cr->Moving.Steps.size());
     for (auto step : cr->Moving.Steps) {
         _conn.OutBuf << step;
     }
-    _conn.OutBuf << static_cast<ushort>(cr->Moving.ControlSteps.size());
+    _conn.OutBuf << static_cast<uint16>(cr->Moving.ControlSteps.size());
     for (auto control_step : cr->Moving.ControlSteps) {
         _conn.OutBuf << control_step;
     }
@@ -880,7 +880,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
         _conn.OutBuf << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
     }
     else {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(ushort) + data_size;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(uint16) + data_size;
         _conn.OutBuf << NETMSG_SEND_COMPLEX_PROPERTY;
         _conn.OutBuf << msg_len;
     }
@@ -917,7 +917,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     }
 }
 
-void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uchar answer)
+void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uint8 answer)
 {
     STACK_TRACE_ENTRY();
 
@@ -930,7 +930,7 @@ void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uchar answer)
     _conn.OutBuf << answer;
 }
 
-void FOClient::Net_SendPing(uchar ping)
+void FOClient::Net_SendPing(uint8 ping)
 {
     STACK_TRACE_ENTRY();
 
@@ -953,7 +953,7 @@ void FOClient::Net_OnUpdateFilesResponse()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    vector<uchar> data;
+    vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
@@ -975,7 +975,7 @@ void FOClient::Net_OnUpdateFilesResponse()
         auto reader = DataReader(data);
 
         for (uint file_index = 0;; file_index++) {
-            const auto name_len = reader.Read<short>();
+            const auto name_len = reader.Read<int16>();
             if (name_len == -1) {
                 break;
             }
@@ -1059,11 +1059,11 @@ void FOClient::Net_OnAddCritter()
     _conn.InBuf >> msg_len;
 
     ident_t cr_id;
-    ushort hx;
-    ushort hy;
-    short hex_ox;
-    short hex_oy;
-    short dir_angle;
+    uint16 hx;
+    uint16 hy;
+    int16 hex_ox;
+    int16 hex_oy;
+    int16 dir_angle;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
@@ -1179,7 +1179,7 @@ void FOClient::Net_OnText()
 
     uint msg_len;
     ident_t cr_id;
-    uchar how_say;
+    uint8 how_say;
     string text;
     bool unsafe_text;
     _conn.InBuf >> msg_len;
@@ -1211,8 +1211,8 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     }
 
     ident_t cr_id;
-    uchar how_say;
-    ushort msg_num;
+    uint8 how_say;
+    uint16 msg_num;
     uint num_str;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> how_say;
@@ -1329,7 +1329,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
             AddMessage(FOMB_GAME, _str(get_format(fstr_mb), fstr));
         }
         else if (how_say == SAY_RADIO) {
-            ushort channel = 0;
+            uint16 channel = 0;
             if (auto* chosen = GetChosen(); chosen != nullptr) {
                 const auto* radio = chosen->GetItem(cr_id);
                 if (radio != nullptr) {
@@ -1347,7 +1347,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
     FlashGameWindow();
 }
 
-void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
+void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, uint color)
 {
     STACK_TRACE_ENTRY();
 
@@ -1371,8 +1371,8 @@ void FOClient::Net_OnMapText()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    ushort hx;
-    ushort hy;
+    uint16 hx;
+    uint16 hy;
     uint color;
     string text;
     bool unsafe_text;
@@ -1406,10 +1406,10 @@ void FOClient::Net_OnMapTextMsg()
 {
     STACK_TRACE_ENTRY();
 
-    ushort hx;
-    ushort hy;
+    uint16 hx;
+    uint16 hy;
     uint color;
-    ushort msg_num;
+    uint16 msg_num;
     uint num_str;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
@@ -1434,10 +1434,10 @@ void FOClient::Net_OnMapTextMsgLex()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    ushort hx;
-    ushort hy;
+    uint16 hx;
+    uint16 hy;
     uint color;
-    ushort msg_num;
+    uint16 msg_num;
     uint num_str;
     string lexems;
     _conn.InBuf >> msg_len;
@@ -1465,7 +1465,7 @@ void FOClient::Net_OnCritterDir()
     STACK_TRACE_ENTRY();
 
     ident_t cr_id;
-    short dir_angle;
+    int16 dir_angle;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> dir_angle;
 
@@ -1490,15 +1490,15 @@ void FOClient::Net_OnCritterMove()
     ident_t cr_id;
     uint whole_time;
     uint offset_time;
-    ushort speed;
-    ushort start_hx;
-    ushort start_hy;
-    ushort steps_count;
-    vector<uchar> steps;
-    ushort control_steps_count;
-    vector<ushort> control_steps;
-    short end_hex_ox;
-    short end_hex_oy;
+    uint16 speed;
+    uint16 start_hx;
+    uint16 start_hy;
+    uint16 steps_count;
+    vector<uint8> steps;
+    uint16 control_steps_count;
+    vector<uint16> control_steps;
+    int16 end_hex_ox;
+    int16 end_hex_oy;
 
     _conn.InBuf >> msg_len;
     _conn.InBuf >> cr_id;
@@ -1550,8 +1550,8 @@ void FOClient::Net_OnCritterMove()
 
     if (offset_time == 0 && (start_hx != cr->GetHexX() || start_hy != cr->GetHexY())) {
         auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(start_hx, start_hy, cr->GetHexX(), cr->GetHexY());
-        cr->Moving.StartOx = static_cast<short>(cr->Moving.StartOx + cr_ox);
-        cr->Moving.StartOy = static_cast<short>(cr->Moving.StartOy + cr_oy);
+        cr->Moving.StartOx = static_cast<int16>(cr->Moving.StartOx + cr_ox);
+        cr->Moving.StartOy = static_cast<int16>(cr->Moving.StartOy + cr_oy);
     }
 
     cr->Moving.WholeDist = 0.0f;
@@ -1612,11 +1612,11 @@ void FOClient::Net_OnCritterStopMove()
     STACK_TRACE_ENTRY();
 
     ident_t cr_id;
-    ushort start_hx;
-    ushort start_hy;
-    short hex_ox;
-    short hex_oy;
-    short dir_angle;
+    uint16 start_hx;
+    uint16 start_hy;
+    int16 hex_ox;
+    int16 hex_oy;
+    int16 dir_angle;
 
     _conn.InBuf >> cr_id;
     _conn.InBuf >> start_hx;
@@ -1700,10 +1700,10 @@ void FOClient::Net_OnCritterMoveItem()
 
     uint msg_len;
     ident_t cr_id;
-    uchar action;
-    uchar prev_slot;
+    uint8 action;
+    uint8 prev_slot;
     bool is_item;
-    uchar cur_slot;
+    uint8 cur_slot;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> action;
@@ -1712,17 +1712,17 @@ void FOClient::Net_OnCritterMoveItem()
     _conn.InBuf >> cur_slot;
 
     // Slot items
-    ushort slots_data_count;
+    uint16 slots_data_count;
     _conn.InBuf >> slots_data_count;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    vector<uchar> slots_data_slot;
+    vector<uint8> slots_data_slot;
     vector<ident_t> slots_data_id;
     vector<hstring> slots_data_pid;
-    vector<vector<vector<uchar>>> slots_data_data;
+    vector<vector<vector<uint8>>> slots_data_data;
     for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
-        uchar slot;
+        uint8 slot;
         ident_t id;
         hstring pid;
         _conn.InBuf >> slot;
@@ -1759,7 +1759,7 @@ void FOClient::Net_OnCritterMoveItem()
 
         cr->DeleteAllItems();
 
-        for (ushort i = 0; i < slots_data_count; i++) {
+        for (uint16 i = 0; i < slots_data_count; i++) {
             const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
             RUNTIME_ASSERT(proto_item != nullptr);
             cr->AddItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
@@ -1872,8 +1872,8 @@ void FOClient::Net_OnCritterTeleport()
     STACK_TRACE_ENTRY();
 
     ident_t cr_id;
-    ushort to_hx;
-    ushort to_hy;
+    uint16 to_hx;
+    uint16 to_hy;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> to_hx;
     _conn.InBuf >> to_hy;
@@ -1910,11 +1910,11 @@ void FOClient::Net_OnCritterPos()
     STACK_TRACE_ENTRY();
 
     ident_t cr_id;
-    ushort hx;
-    ushort hy;
-    short hex_ox;
-    short hex_oy;
-    short dir_angle;
+    uint16 hx;
+    uint16 hy;
+    int16 hex_ox;
+    int16 hex_oy;
+    int16 dir_angle;
     _conn.InBuf >> cr_id;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
@@ -2026,7 +2026,7 @@ void FOClient::Net_OnChosenAddItem()
     uint msg_len;
     ident_t item_id;
     hstring pid;
-    uchar slot;
+    uint8 slot;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
     pid = _conn.InBuf.ReadHashedString(*this);
@@ -2044,7 +2044,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     auto* prev_item = chosen->GetItem(item_id);
-    uchar prev_slot = 0;
+    uint8 prev_slot = 0;
     uint prev_light_hash = 0;
     if (prev_item != nullptr) {
         prev_slot = prev_item->GetCritterSlot();
@@ -2137,8 +2137,8 @@ void FOClient::Net_OnAddItemOnMap()
 
     uint msg_len;
     ident_t item_id;
-    ushort item_hx;
-    ushort item_hy;
+    uint16 item_hx;
+    uint16 item_hy;
     bool is_added;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
@@ -2205,8 +2205,8 @@ void FOClient::Net_OnAnimateItem()
     STACK_TRACE_ENTRY();
 
     ident_t item_id;
-    uchar from_frm;
-    uchar to_frm;
+    uint8 from_frm;
+    uint8 to_frm;
     _conn.InBuf >> item_id;
     _conn.InBuf >> from_frm;
     _conn.InBuf >> to_frm;
@@ -2229,9 +2229,9 @@ void FOClient::Net_OnEffect()
     STACK_TRACE_ENTRY();
 
     hstring eff_pid;
-    ushort hx;
-    ushort hy;
-    ushort radius;
+    uint16 hx;
+    uint16 hy;
+    uint16 radius;
     eff_pid = _conn.InBuf.ReadHashedString(*this);
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
@@ -2258,10 +2258,10 @@ void FOClient::Net_OnEffect()
     const auto count = GenericUtils::NumericalNumber(radius) * GameSettings::MAP_DIR_COUNT;
 
     for (uint i = 0; i < count; i++) {
-        const auto ex = static_cast<short>(hx) + sx[i];
-        const auto ey = static_cast<short>(hy) + sy[i];
+        const auto ex = static_cast<int16>(hx) + sx[i];
+        const auto ey = static_cast<int16>(hy) + sy[i];
         if (ex >= 0 && ey >= 0 && ex < maxhx && ey < maxhy) {
-            CurMap->RunEffectItem(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
+            CurMap->RunEffectItem(eff_pid, static_cast<uint16>(ex), static_cast<uint16>(ey), static_cast<uint16>(ex), static_cast<uint16>(ey));
         }
     }
 }
@@ -2274,10 +2274,10 @@ void FOClient::Net_OnFlyEffect()
     hstring eff_pid;
     ident_t eff_cr1_id;
     ident_t eff_cr2_id;
-    ushort eff_cr1_hx;
-    ushort eff_cr1_hy;
-    ushort eff_cr2_hx;
-    ushort eff_cr2_hy;
+    uint16 eff_cr1_hx;
+    uint16 eff_cr1_hy;
+    uint16 eff_cr2_hx;
+    uint16 eff_cr2_hy;
     eff_pid = _conn.InBuf.ReadHashedString(*this);
     _conn.InBuf >> eff_cr1_id;
     _conn.InBuf >> eff_cr2_id;
@@ -2395,7 +2395,7 @@ void FOClient::Net_OnProperty(uint data_size)
         break;
     }
 
-    ushort property_index;
+    uint16 property_index;
     _conn.InBuf >> property_index;
 
     PropertyRawData prop_data;
@@ -2404,7 +2404,7 @@ void FOClient::Net_OnProperty(uint data_size)
         _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
-        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
+        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
         if (len != 0u) {
             _conn.InBuf.Pop(prop_data.Alloc(len), len);
         }
@@ -2491,16 +2491,16 @@ void FOClient::Net_OnChosenTalk()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uchar is_npc;
-    ident_t talk_cr;
-    hstring talk_dlg;
-    uchar count_answ;
+    bool is_npc;
+    ident_t talk_cr_id;
+    hstring talk_dlg_id;
+    uint8 count_answ;
     uint text_id;
     uint talk_time;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> is_npc;
-    _conn.InBuf >> talk_cr;
-    talk_dlg = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> talk_cr_id;
+    talk_dlg_id = _conn.InBuf.ReadHashedString(*this);
     _conn.InBuf >> count_answ;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2525,9 +2525,7 @@ void FOClient::Net_OnChosenTalk()
     }
 
     // Find critter
-    auto* npc = (is_npc != 0 ? CurMap->GetCritter(talk_cr) : nullptr);
-    _dlgIsNpc = is_npc;
-    _dlgNpcId = talk_cr;
+    auto* npc = is_npc ? CurMap->GetCritter(talk_cr_id) : nullptr;
 
     // Main text
     _conn.InBuf >> text_id;
@@ -2558,7 +2556,7 @@ void FOClient::Net_OnChosenTalk()
 
     map<string, string> params;
     params["TalkerIsNpc"] = _str("{}", is_npc);
-    params["TalkerId"] = _str("{}", is_npc ? talk_cr.underlying_value() : talk_dlg.as_uint());
+    params["TalkerId"] = _str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint());
     params["Text"] = _str("{}", text_to_script);
     params["Answers"] = _str("{}", answers_to_script);
     params["TalkTime"] = _str("{}", talk_time);
@@ -2569,13 +2567,13 @@ void FOClient::Net_OnTimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    ushort year;
-    ushort month;
-    ushort day;
-    ushort hour;
-    ushort minute;
-    ushort second;
-    ushort multiplier;
+    uint16 year;
+    uint16 month;
+    uint16 day;
+    uint16 hour;
+    uint16 minute;
+    uint16 second;
+    uint16 multiplier;
     _conn.InBuf >> year;
     _conn.InBuf >> month;
     _conn.InBuf >> day;
@@ -2606,7 +2604,7 @@ void FOClient::Net_OnLoadMap()
     uint msg_len;
     ident_t loc_id;
     ident_t map_id;
-    uchar map_index_in_loc;
+    uint8 map_index_in_loc;
 
     _conn.InBuf >> msg_len;
     _conn.InBuf >> loc_id;
@@ -2669,7 +2667,7 @@ void FOClient::Net_OnGlobalInfo()
     STACK_TRACE_ENTRY();
 
     uint msg_len;
-    uchar info_flags;
+    uint8 info_flags;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> info_flags;
 
@@ -2678,7 +2676,7 @@ void FOClient::Net_OnGlobalInfo()
     if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
         _worldmapLoc.clear();
 
-        ushort count_loc;
+        uint16 count_loc;
         _conn.InBuf >> count_loc;
 
         for (auto i = 0; i < count_loc; i++) {
@@ -2731,9 +2729,9 @@ void FOClient::Net_OnGlobalInfo()
     }
 
     if (IsBitSet(info_flags, GM_INFO_FOG)) {
-        ushort zx;
-        ushort zy;
-        uchar fog;
+        uint16 zx;
+        uint16 zy;
+        uint8 fog;
         _conn.InBuf >> zx;
         _conn.InBuf >> zy;
         _conn.InBuf >> fog;
@@ -2801,15 +2799,15 @@ void FOClient::Net_OnAutomapsInfo()
         _automaps.clear();
     }
 
-    ushort locs_count;
+    uint16 locs_count;
     _conn.InBuf >> locs_count;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    for (ushort i = 0; i < locs_count; i++) {
+    for (uint16 i = 0; i < locs_count; i++) {
         uint loc_id;
         hstring loc_pid;
-        ushort maps_count;
+        uint16 maps_count;
         _conn.InBuf >> loc_id;
         loc_pid = _conn.InBuf.ReadHashedString(*this);
         _conn.InBuf >> maps_count;
@@ -2829,9 +2827,9 @@ void FOClient::Net_OnAutomapsInfo()
             amap.LocPid = loc_pid;
             amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid.as_uint()));
 
-            for (ushort j = 0; j < maps_count; j++) {
+            for (uint16 j = 0; j < maps_count; j++) {
                 hstring map_pid;
-                uchar map_index_in_loc;
+                uint8 map_index_in_loc;
                 map_pid = _conn.InBuf.ReadHashedString(*this);
                 _conn.InBuf >> map_index_in_loc;
 
@@ -2855,8 +2853,8 @@ void FOClient::Net_OnViewMap()
 {
     STACK_TRACE_ENTRY();
 
-    ushort hx;
-    ushort hy;
+    uint16 hx;
+    uint16 hy;
     ident_t loc_id;
     uint loc_ent;
     _conn.InBuf >> hx;
@@ -3030,12 +3028,12 @@ void FOClient::AnimRun(uint anim_id, uint flags)
     flags >>= 16;
 
     // Set frm
-    uchar cur_frm = (flags & 0xFF);
+    uint8 cur_frm = (flags & 0xFF);
     if (cur_frm > 0u) {
         cur_frm--;
         if (cur_frm >= anim->Frames->CntFrm) {
             if (anim->Frames->CntFrm > 0u) {
-                cur_frm = static_cast<uchar>(anim->Frames->CntFrm - 1u);
+                cur_frm = static_cast<uint8>(anim->Frames->CntFrm - 1u);
             }
             else {
                 cur_frm = 0u;
@@ -3320,7 +3318,7 @@ void FOClient::ConsoleMessage(string_view msg)
     const auto result = OnOutMessage.Fire(str, how_say);
 
     if (result && !str.empty()) {
-        Net_SendText(str, static_cast<uchar>(how_say));
+        Net_SendText(str, static_cast<uint8>(how_say));
     }
 }
 
@@ -3603,7 +3601,7 @@ void FOClient::LmapPrepareMap()
                 is_far = true;
             }
 
-            auto& f = CurMap->GetField(static_cast<ushort>(i1), static_cast<ushort>(i2));
+            auto& f = CurMap->GetField(static_cast<uint16>(i1), static_cast<uint16>(i2));
             uint cur_color;
 
             if (const auto* cr = f.GetActiveCritter(); cr != nullptr) {
@@ -3865,7 +3863,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto is_npc = (args[1] == "true");
         auto talker_id = _str(args[2]).toUInt();
         auto answer_index = _str(args[3]).toUInt();
-        Net_SendTalk(is_npc, talker_id, static_cast<uchar>(answer_index));
+        Net_SendTalk(is_npc, talker_id, static_cast<uint8>(answer_index));
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
         static int zoom;
@@ -3932,9 +3930,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             }
         }
         else {
-            item->SetCritterSlot(static_cast<uchar>(to_slot));
+            item->SetCritterSlot(static_cast<uint8>(to_slot));
             if (item_swap) {
-                item_swap->SetCritterSlot(static_cast<uchar>(from_slot));
+                item_swap->SetCritterSlot(static_cast<uint8>(from_slot));
             }
 
             GetMapChosen()->Action(ACTION_MOVE_ITEM, from_slot, item, true);
@@ -3960,13 +3958,13 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         if (CurMap != nullptr) {
             auto hx = _str(args[1]).toUInt();
             auto hy = _str(args[2]).toUInt();
-            CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
+            CurMap->SetSkipRoof(static_cast<uint16>(hx), static_cast<uint16>(hy));
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
         auto alpha = _str(args[1]).toInt();
 
-        GetMapChosen()->Alpha = static_cast<uchar>(alpha);
+        GetMapChosen()->Alpha = static_cast<uint8>(alpha);
     }
     else if (cmd == "SetScreenKeyboard" && args.size() == 2) {
         /*if (SDL_HasScreenKeyboardSupport())
@@ -3995,7 +3993,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     return "";
 }
 
-void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed)
+void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed)
 {
     STACK_TRACE_ENTRY();
 
@@ -4004,12 +4002,12 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
     cr->ClearMove();
 
     bool try_move = false;
-    ushort hx = 0;
-    ushort hy = 0;
+    uint16 hx = 0;
+    uint16 hy = 0;
     int ox = 0;
     int oy = 0;
-    vector<uchar> steps;
-    vector<ushort> control_steps;
+    vector<uint8> steps;
+    vector<uint16> control_steps;
 
     if (speed > 0) {
         if (pos_or_dir.index() == 0) {
@@ -4032,7 +4030,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
                 hx = cr->GetHexX();
                 hy = cr->GetHexY();
                 if (cr->GetMap()->TraceMoveWay(hx, hy, ox, oy, steps, quad_dir)) {
-                    control_steps.push_back(static_cast<ushort>(steps.size()));
+                    control_steps.push_back(static_cast<uint16>(steps.size()));
                     try_move = true;
                 }
             }
@@ -4043,7 +4041,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
         cr->Moving.Steps = steps;
         cr->Moving.ControlSteps = control_steps;
         cr->Moving.StartTick = GameTime.FrameTick();
-        cr->Moving.Speed = static_cast<ushort>(speed);
+        cr->Moving.Speed = static_cast<uint16>(speed);
         cr->Moving.StartHexX = cr->GetHexX();
         cr->Moving.StartHexY = cr->GetHexY();
         cr->Moving.EndHexX = hx;
@@ -4124,7 +4122,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, i
     }
 }
 
-void FOClient::CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle)
+void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle)
 {
     STACK_TRACE_ENTRY();
 

@@ -915,12 +915,12 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
                 const auto prev_size = indices.size();
                 indices.resize(need_size);
                 for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
-                    indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
-                    indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
-                    indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);
-                    indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 1);
-                    indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 2);
-                    indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 3);
+                    indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
+                    indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
+                    indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 3);
+                    indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 1);
+                    indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 2);
+                    indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 3);
                 }
 
                 need_upload_indices = true;
@@ -933,7 +933,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
                 const auto prev_size = indices.size();
                 indices.resize(upload_vertices);
                 for (size_t i = prev_size; i < indices.size(); i++) {
-                    indices[i] = static_cast<ushort>(i);
+                    indices[i] = static_cast<uint16>(i);
                 }
 
                 need_upload_indices = true;
@@ -950,7 +950,7 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
         const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? Indices.size() : custom_indices_size;
 
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(ushort), Indices.data(), buf_type));
+        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(uint16), Indices.data(), buf_type));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
 
@@ -1147,7 +1147,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 
     const auto* egg_tex = static_cast<OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
-    const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
+    const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(uint16));
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D

@@ -1253,8 +1253,8 @@ void FOMapper::IntDraw()
     // Map info
     if (CurMap != nullptr) {
         auto hex_thru = false;
-        ushort hx = 0;
-        ushort hy = 0;
+        uint16 hx = 0;
+        uint16 hy = 0;
         if (CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
             hex_thru = true;
         }
@@ -1728,7 +1728,7 @@ void FOMapper::IntLMouseDown()
                             }
                         }
 
-                        InContItem->SetCritterSlot(static_cast<uchar>(to_slot));
+                        InContItem->SetCritterSlot(static_cast<uint8>(to_slot));
 
                         cr->AnimateStay();
                     }
@@ -1957,7 +1957,7 @@ void FOMapper::IntLMouseUp()
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHexX1 != SelectHexX2 || SelectHexY1 != SelectHexY2) {
                 CurMap->ClearHexTrack();
-                vector<pair<ushort, ushort>> hexes;
+                vector<pair<uint16, uint16>> hexes;
 
                 if (SelectType == SELECT_TYPE_OLD) {
                     const int fx = std::min(SelectHexX1, SelectHexX2);
@@ -2071,7 +2071,7 @@ void FOMapper::IntMouseMove()
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            CurMap->GetHexTrack(static_cast<ushort>(i), static_cast<ushort>(j)) = 1;
+                            CurMap->GetHexTrack(static_cast<uint16>(i), static_cast<uint16>(j)) = 1;
                         }
                     }
                 }
@@ -2250,7 +2250,7 @@ void FOMapper::IntSetMode(int mode)
     }
 }
 
-void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
+void FOMapper::MoveEntity(ClientEntity* entity, uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -2323,7 +2323,7 @@ void FOMapper::SelectAddCrit(CritterView* npc)
     SelectAdd(npc);
 }
 
-void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
+void FOMapper::SelectAddTile(uint16 hx, uint16 hy, bool is_roof)
 {
     STACK_TRACE_ENTRY();
 
@@ -2561,8 +2561,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 ox = oy = 0;
             }
 
-            item->SetOffsetX(static_cast<short>(ox));
-            item->SetOffsetY(static_cast<short>(oy));
+            item->SetOffsetX(static_cast<int16>(ox));
+            item->SetOffsetY(static_cast<int16>(oy));
             item->RefreshAnim();
         }
         else {
@@ -2595,10 +2595,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             hy = std::clamp(hy, 0, CurMap->GetHeight() - 1);
 
             if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                CurMap->MoveItem(item, static_cast<ushort>(hx), static_cast<ushort>(hy));
+                CurMap->MoveItem(item, static_cast<uint16>(hx), static_cast<uint16>(hy));
             }
             else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy), false);
+                CurMap->MoveCritter(cr, static_cast<uint16>(hx), static_cast<uint16>(hy), false);
             }
         }
     }
@@ -2712,7 +2712,7 @@ void FOMapper::SelectDelete()
     CurMode = CUR_MODE_DEFAULT;
 }
 
-auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
+auto FOMapper::AddCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
@@ -2742,7 +2742,7 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
     return cr;
 }
 
-auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*
+auto FOMapper::AddItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -2793,7 +2793,7 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
     return item;
 }
 
-void FOMapper::AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof)
+void FOMapper::AddTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof)
 {
     STACK_TRACE_ENTRY();
 
@@ -2821,14 +2821,14 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     ClientEntity* owner;
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        ushort hx = cr->GetHexX();
-        ushort hy = cr->GetHexY();
+        uint16 hx = cr->GetHexX();
+        uint16 hy = cr->GetHexY();
 
         if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
             auto place_found = false;
-            for (uchar d = 0; d < 6; d++) {
-                ushort hx_ = hx;
-                ushort hy_ = hy;
+            for (uint8 d = 0; d < 6; d++) {
+                uint16 hx_ = hx;
+                uint16 hy_ = hy;
                 Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
                 if (CurMap->GetField(hx_, hy_).GetActiveCritter() == nullptr) {
                     hx = hx_;
@@ -2896,8 +2896,8 @@ void FOMapper::BufferCopy()
     // Add entities to buffer
     std::function<void(EntityBuf*, ClientEntity*)> add_entity;
     add_entity = [&add_entity, this](EntityBuf* entity_buf, ClientEntity* entity) {
-        ushort hx = 0u;
-        ushort hy = 0u;
+        uint16 hx = 0u;
+        uint16 hy = 0u;
         if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
             hx = cr->GetHexX();
             hy = cr->GetHexY();
@@ -2976,8 +2976,8 @@ void FOMapper::BufferPaste(int, int)
             if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
                 auto place_founded = false;
                 for (int d = 0; d < 6; d++) {
-                    ushort hx_ = entity_buf.HexX;
-                    ushort hy_ = entity_buf.HexY;
+                    uint16 hx_ = entity_buf.HexX;
+                    uint16 hy_ = entity_buf.HexY;
                     Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
                     if (CurMap->GetField(hx_, hy_).GetActiveCritter() == nullptr) {
                         hx = hx_;
@@ -2991,26 +2991,14 @@ void FOMapper::BufferPaste(int, int)
                 }
             }
 
-            UNUSED_VARIABLE(hx);
-            UNUSED_VARIABLE(hy);
-            throw NotImplementedException(LINE_STR);
-            // CritterView* cr = 0; // Todo: need attention!
-            //  new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
-            //   (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
-            // cr->SetProperties(*entity_buf.Props);
-            // cr->SetHexX(hx);
-            // cr->SetHexY(hy);
-            // cr->Init();
-            // HexMngr.AddCritter(cr);
-            // SelectAdd(cr);
-            // owner = cr;
+            auto* cr = CurMap->AddCritter(CurMap->GetTempEntityId(), static_cast<const ProtoCritter*>(entity_buf.Proto), hx, hy, 0, {});
+            cr->SetProperties(*entity_buf.Props);
+            cr->Init();
+            SelectAdd(cr);
+            owner = cr;
         }
         else if (entity_buf.IsItem) {
-            throw NotImplementedException(LINE_STR);
-            const auto id = ident_t {}; // Todo: need attention!
-            // CurMap->AddItem(
-            //  --((ProtoMap*)CurMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
-            ItemHexView* item = CurMap->GetItem(id);
+            auto* item = CurMap->AddItem(CurMap->GetTempEntityId(), entity_buf.Proto->GetProtoId(), hx, hy, false, nullptr);
             item->SetProperties(*entity_buf.Props);
             SelectAdd(item);
             owner = item;
@@ -3075,8 +3063,8 @@ void FOMapper::CurDraw()
         if (IsObjectMode() && !(*CurItemProtos).empty()) {
             const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
 
-            ushort hx = 0;
-            ushort hy = 0;
+            uint16 hx = 0;
+            uint16 hy = 0;
             if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
                 break;
             }
@@ -3096,8 +3084,8 @@ void FOMapper::CurDraw()
                 anim = ResMngr.ItemHexDefaultAnim;
             }
 
-            ushort hx = 0;
-            ushort hy = 0;
+            uint16 hx = 0;
+            uint16 hy = 0;
             if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
                 break;
             }
@@ -3129,8 +3117,8 @@ void FOMapper::CurDraw()
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId(0);
             }
 
-            ushort hx = 0;
-            ushort hy = 0;
+            uint16 hx = 0;
+            uint16 hy = 0;
             if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
                 break;
             }
@@ -3198,7 +3186,7 @@ void FOMapper::CurMMouseDown()
                 if (dir >= GameSettings::MAP_DIR_COUNT) {
                     dir = 0u;
                 }
-                cr->ChangeDir(static_cast<uchar>(dir));
+                cr->ChangeDir(static_cast<uint8>(dir));
             }
         }
     }
@@ -3241,7 +3229,7 @@ auto FOMapper::IsCurInInterface() const -> bool
     return false;
 }
 
-auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
+auto FOMapper::GetCurHex(uint16& hx, uint16& hy, bool ignore_interface) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -3486,7 +3474,7 @@ void FOMapper::ParseCommand(string_view command)
             // Evening	19.00 - 22.59	1140 - 1379
             // Nigh		23.00 -  4.59	1380
             vector<int> arr = {300, 600, 1140, 1380};
-            vector<uchar> arr2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
+            vector<uint8> arr2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
             pmap->SetDayTime(arr);
             pmap->SetDayColor(arr2);
 
@@ -3528,7 +3516,7 @@ void FOMapper::ParseCommand(string_view command)
                 return;
             }
 
-            ResizeMap(CurMap, static_cast<ushort>(maxhx), static_cast<ushort>(maxhy));
+            ResizeMap(CurMap, static_cast<uint16>(maxhx), static_cast<uint16>(maxhy));
         }
     }
     else {
@@ -3664,7 +3652,7 @@ void FOMapper::UnloadMap(MapView* map)
     map->Release();
 }
 
-void FOMapper::ResizeMap(MapView* map, ushort width, ushort height)
+void FOMapper::ResizeMap(MapView* map, uint16 width, uint16 height)
 {
     STACK_TRACE_ENTRY();
 

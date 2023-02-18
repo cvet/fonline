@@ -68,7 +68,7 @@ public:
 
     [[nodiscard]] auto GetIp() const -> uint;
     [[nodiscard]] auto GetHost() const -> string_view;
-    [[nodiscard]] auto GetPort() const -> ushort;
+    [[nodiscard]] auto GetPort() const -> uint16;
     [[nodiscard]] auto IsHardDisconnected() const -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
     [[nodiscard]] auto IsWebConnection() const -> bool;

@@ -43,7 +43,7 @@ class Sprites;
 class Sprite;
 
 ///@ ExportEnum
-enum class DrawOrderType : uchar
+enum class DrawOrderType : uint8
 {
     Tile = 0,
     Tile1 = 1,
@@ -65,7 +65,7 @@ enum class DrawOrderType : uchar
 };
 
 ///@ ExportEnum
-enum class ContourType : uchar
+enum class ContourType : uint8
 {
     None,
     Red,
@@ -74,7 +74,7 @@ enum class ContourType : uchar
 };
 
 ///@ ExportEnum
-enum class EggAppearenceType : uchar
+enum class EggAppearenceType : uint8
 {
     None,
     Always,
@@ -90,8 +90,8 @@ struct MapSprite
     SCRIPTABLE_OBJECT();
     bool Valid {};
     uint SprId {};
-    ushort HexX {};
-    ushort HexY {};
+    uint16 HexX {};
+    uint16 HexY {};
     hstring ProtoId {};
     int FrameIndex {};
     int OffsX {};
@@ -108,7 +108,7 @@ struct MapSprite
     int TweakOffsX {};
     int TweakOffsY {};
     bool IsTweakAlpha {};
-    uchar TweakAlpha {};
+    uint8 TweakAlpha {};
 };
 
 class Sprite
@@ -128,9 +128,9 @@ public:
     void SetContour(ContourType contour);
     void SetContour(ContourType contour, uint color);
     void SetColor(uint color);
-    void SetAlpha(uchar* alpha);
-    void SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy);
-    void SetFixedAlpha(uchar alpha);
+    void SetAlpha(uint8* alpha);
+    void SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxhy);
+    void SetFixedAlpha(uint8 alpha);
 
     // Todo:: incapsulate all sprite data
     Sprites* Root {};
@@ -139,8 +139,8 @@ public:
     uint TreeIndex {};
     uint SprId {};
     uint* PSprId {};
-    ushort HexX {};
-    ushort HexY {};
+    uint16 HexX {};
+    uint16 HexY {};
     int ScrX {};
     int ScrY {};
     int* PScrX {};
@@ -149,10 +149,10 @@ public:
     int* OffsY {};
     Sprite* Parent {};
     Sprite* Child {};
-    uchar* Alpha {};
-    uchar* Light {};
-    uchar* LightRight {};
-    uchar* LightLeft {};
+    uint8* Alpha {};
+    uint8* Light {};
+    uint8* LightRight {};
+    uint8* LightLeft {};
     EggAppearenceType EggAppearence {};
     ContourType Contour {};
     uint ContourColor {};
@@ -190,15 +190,15 @@ public:
     [[nodiscard]] auto RootSprite() -> Sprite*;
     [[nodiscard]] auto Size() const -> uint;
 
-    [[nodiscard]] auto AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
-    [[nodiscard]] auto InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
 
     void Unvalidate();
     void SortByMapPos();
     void Clear();
 
 private:
-    [[nodiscard]] auto PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
 
     void GrowPool();
 

@@ -48,7 +48,7 @@ MapManager::MapManager(FOServer* engine) :
 {
     STACK_TRACE_ENTRY();
 
-    _mapGrid = new short[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
+    _mapGrid = new int16[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
 }
 
 MapManager::~MapManager()
@@ -126,7 +126,7 @@ void MapManager::LoadFromResources()
 
         // Read entities
         {
-            vector<uchar> props_data;
+            vector<uint8> props_data;
 
             // Read critters
             {
@@ -145,7 +145,7 @@ void MapManager::LoadFromResources()
                     auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
                     const auto props_data_size = reader.Read<uint>();
                     props_data.resize(props_data_size);
-                    reader.ReadPtr<uchar>(props_data.data(), props_data_size);
+                    reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     cr_props.RestoreAllData(props_data);
 
                     auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto);
@@ -179,7 +179,7 @@ void MapManager::LoadFromResources()
                     auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
                     const auto props_data_size = reader.Read<uint>();
                     props_data.resize(props_data_size);
-                    reader.ReadPtr<uchar>(props_data.data(), props_data_size);
+                    reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     item_props.RestoreAllData(props_data);
 
                     auto* item = new Item(_engine, ident_t {}, item_proto);
@@ -206,7 +206,7 @@ void MapManager::LoadFromResources()
                         }
 
                         if (item->GetTriggerScript()) {
-                            item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(item->GetTriggerScript());
+                            item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(item->GetTriggerScript());
                             if (!item->TriggerScriptFunc) {
                                 throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
                             }
@@ -260,7 +260,7 @@ void MapManager::LoadFromResources()
 
             // Block around scroll blocks
             if (item->GetIsScrollBlock()) {
-                for (uchar k = 0; k < 6; k++) {
+                for (uint8 k = 0; k < 6; k++) {
                     auto hx_ = hx;
                     auto hy_ = hy;
                     if (_engine->Geometry.MoveHexByDir(hx_, hy_, k, maxhx, maxhy)) {
@@ -453,7 +453,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     return result;
 }
 
-auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*
+auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Location*
 {
     STACK_TRACE_ENTRY();
 
@@ -806,7 +806,7 @@ void MapManager::TraceBullet(TraceData& trace)
             break;
         }
 
-        uchar dir;
+        uint8 dir;
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             dir = line_tracer.GetNextHex(cx, cy);
         }
@@ -906,8 +906,8 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             const auto xx = static_cast<int>(input.ToHexX + *rsx);
             const auto yy = static_cast<int>(input.ToHexY + *rsy);
             if (xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy) {
-                const auto flags = map->GetHexFlags(static_cast<ushort>(xx), static_cast<ushort>(yy));
-                if (IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
+                const auto flags = map->GetHexFlags(static_cast<uint16>(xx), static_cast<uint16>(yy));
+                if (IsBitSet(flags, static_cast<uint16>(FH_GAG_ITEM << 8))) {
                     break;
                 }
                 if (!IsBitSet(flags, FH_NOWAY)) {
@@ -926,16 +926,16 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     _mapGridOffsX = input.FromHexX;
     _mapGridOffsY = input.FromHexY;
 
-    short numindex = 1;
-    std::memset(_mapGrid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(short));
+    int16 numindex = 1;
+    std::memset(_mapGrid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(int16));
     GridAt(input.FromHexX, input.FromHexY) = numindex;
 
     auto to_hx = input.ToHexX;
     auto to_hy = input.ToHexY;
 
-    vector<pair<ushort, ushort>> coords;
-    vector<pair<ushort, ushort>> cr_coords;
-    vector<pair<ushort, ushort>> gag_coords;
+    vector<pair<uint16, uint16>> coords;
+    vector<pair<uint16, uint16>> cr_coords;
+    vector<pair<uint16, uint16>> gag_coords;
     coords.reserve(10000);
     cr_coords.reserve(100);
     gag_coords.reserve(100);
@@ -946,8 +946,8 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     // Begin search
     auto p = 0;
     auto p_togo = 1;
-    ushort cx = 0;
-    ushort cy = 0;
+    uint16 cx = 0;
+    uint16 cy = 0;
     while (true) {
         for (auto i = 0; i < p_togo; i++, p++) {
             cx = coords[p].first;
@@ -973,8 +973,8 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                     continue;
                 }
 
-                const auto nx = static_cast<ushort>(nxi);
-                const auto ny = static_cast<ushort>(nyi);
+                const auto nx = static_cast<uint16>(nxi);
+                const auto ny = static_cast<uint16>(nyi);
                 auto& grid_cell = GridAt(nx, ny);
                 if (grid_cell != 0) {
                     continue;
@@ -986,13 +986,13 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                         coords.emplace_back(nx, ny);
                         grid_cell = numindex;
                     }
-                    else if (input.CheckGagItems && IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
+                    else if (input.CheckGagItems && IsBitSet(flags, static_cast<uint16>(FH_GAG_ITEM << 8))) {
                         gag_coords.emplace_back(nx, ny);
-                        grid_cell = static_cast<short>(numindex | 0x4000);
+                        grid_cell = static_cast<int16>(numindex | 0x4000);
                     }
-                    else if (input.CheckCritter && IsBitSet(flags, static_cast<ushort>(FH_CRITTER << 8))) {
+                    else if (input.CheckCritter && IsBitSet(flags, static_cast<uint16>(FH_CRITTER << 8))) {
                         cr_coords.emplace_back(nx, ny);
-                        grid_cell = static_cast<short>(numindex | 0x8000);
+                        grid_cell = static_cast<int16>(numindex | 0x8000);
                     }
                     else {
                         grid_cell = -1;
@@ -1014,7 +1014,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         if (!gag_coords.empty()) {
             auto last_index = GridAt(coords.back().first, coords.back().second);
             auto& xy = gag_coords.front();
-            auto gag_index = static_cast<short>(GridAt(xy.first, xy.second) ^ static_cast<short>(0x4000));
+            auto gag_index = static_cast<int16>(GridAt(xy.first, xy.second) ^ static_cast<int16>(0x4000));
             if (gag_index + 10 < last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
             {
                 GridAt(xy.first, xy.second) = gag_index;
@@ -1035,7 +1035,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             }
             else if (!cr_coords.empty()) {
                 auto& xy = cr_coords.front();
-                GridAt(xy.first, xy.second) ^= static_cast<short>(0x8000);
+                GridAt(xy.first, xy.second) ^= static_cast<int16>(0x8000);
                 coords.push_back(xy);
                 cr_coords.erase(cr_coords.begin());
                 p_togo++;
@@ -1049,7 +1049,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     }
 
 label_FindOk:
-    vector<uchar> raw_steps;
+    vector<uint8> raw_steps;
     raw_steps.resize(numindex - 1);
 
     // Smooth data
@@ -1058,7 +1058,7 @@ label_FindOk:
     while (numindex > 1) {
         numindex--;
 
-        const auto find_path_grid = [this, &input, base_angle, &raw_steps, &numindex](ushort& x1, ushort& y1) -> bool {
+        const auto find_path_grid = [this, &input, base_angle, &raw_steps, &numindex](uint16& x1, uint16& y1) -> bool {
             int best_step_dir = -1;
             float best_step_angle_diff = 0.0f;
 
@@ -1173,8 +1173,8 @@ label_FindOk:
 
     // Check for closed door and critter
     if (input.CheckCritter || input.CheckGagItems) {
-        ushort check_hx = input.FromHexX;
-        ushort check_hy = input.FromHexY;
+        uint16 check_hx = input.FromHexX;
+        uint16 check_hy = input.FromHexY;
 
         for (size_t i = 0; i < raw_steps.size(); i++) {
             const auto prev_check_hx = check_hx;
@@ -1218,14 +1218,14 @@ label_FindOk:
     // Trace
     if (input.TraceDist > 0) {
         vector<int> trace_seq;
-        ushort targ_hx = input.TraceCr->GetHexX();
-        ushort targ_hy = input.TraceCr->GetHexY();
+        uint16 targ_hx = input.TraceCr->GetHexX();
+        uint16 targ_hy = input.TraceCr->GetHexY();
         bool trace_ok = false;
 
         trace_seq.resize(raw_steps.size() + 4);
 
-        ushort check_hx = input.FromHexX;
-        ushort check_hy = input.FromHexY;
+        uint16 check_hx = input.FromHexX;
+        uint16 check_hy = input.FromHexY;
 
         for (size_t i = 0; i < raw_steps.size(); i++) {
             const auto move_ok = _engine->Geometry.MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
@@ -1246,8 +1246,8 @@ label_FindOk:
         trace.EndHy = targ_hy;
         trace.FindCr = input.TraceCr;
         for (int k = 0; k < 5; k++) {
-            ushort check_hx2 = input.FromHexX;
-            ushort check_hy2 = input.FromHexY;
+            uint16 check_hx2 = input.FromHexX;
+            uint16 check_hy2 = input.FromHexY;
 
             for (size_t i = 0; i < raw_steps.size() - 1; i++) {
                 const auto move_ok2 = _engine->Geometry.MoveHexByDir(check_hx2, check_hy2, raw_steps[i], maxhx, maxhy);
@@ -1299,22 +1299,22 @@ label_FindOk:
     }
 
     if (_engine->Settings.MapFreeMovement) {
-        ushort trace_hx = input.FromHexX;
-        ushort trace_hy = input.FromHexY;
+        uint16 trace_hx = input.FromHexX;
+        uint16 trace_hy = input.FromHexY;
 
         while (true) {
-            ushort trace_tx = to_hx;
-            ushort trace_ty = to_hy;
+            uint16 trace_tx = to_hx;
+            uint16 trace_ty = to_hy;
 
             for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
                 LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, maxhx, maxhy, 0.0f);
-                ushort next_hx = trace_hx;
-                ushort next_hy = trace_hy;
-                vector<uchar> direct_steps;
+                uint16 next_hx = trace_hx;
+                uint16 next_hy = trace_hy;
+                vector<uint8> direct_steps;
                 bool failed = false;
 
                 while (true) {
-                    uchar dir = tracer.GetNextHex(next_hx, next_hy);
+                    uint8 dir = tracer.GetNextHex(next_hx, next_hy);
                     direct_steps.push_back(dir);
 
                     if (next_hx == trace_tx && next_hy == trace_ty) {
@@ -1337,7 +1337,7 @@ label_FindOk:
                     output.Steps.push_back(ds);
                 }
 
-                output.ControlSteps.emplace_back(static_cast<ushort>(output.Steps.size()));
+                output.ControlSteps.emplace_back(static_cast<uint16>(output.Steps.size()));
 
                 trace_hx = trace_tx;
                 trace_hy = trace_ty;
@@ -1364,7 +1364,7 @@ label_FindOk:
                 }
             }
 
-            output.ControlSteps.emplace_back(static_cast<ushort>(output.Steps.size()));
+            output.ControlSteps.emplace_back(static_cast<uint16>(output.Steps.size()));
         }
     }
 
@@ -1389,7 +1389,7 @@ auto MapManager::TransitToGlobal(Critter* cr, ident_t leader_id) -> bool
     return Transit(cr, nullptr, 0, 0, 0, 0, leader_id);
 }
 
-auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, ident_t leader_id) -> bool
+auto MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, uint radius, ident_t leader_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1455,8 +1455,8 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
     }
     else {
         // Different maps
-        ushort fixed_hx = 0;
-        ushort fixed_hy = 0;
+        uint16 fixed_hx = 0;
+        uint16 fixed_hy = 0;
 
         if (map != nullptr) {
             const auto multihex = cr->GetMultihex();
@@ -1500,7 +1500,7 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
     return true;
 }
 
-auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, ident_t leader_id) const -> bool
+auto MapManager::CanAddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ident_t leader_id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1526,7 +1526,7 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, iden
     return true;
 }
 
-void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, ident_t leader_id)
+void MapManager::AddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir, ident_t leader_id)
 {
     STACK_TRACE_ENTRY();
 
@@ -1834,7 +1834,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             look_self -= look_self * _engine->Settings.LookDir[i] / 100;
             // Opponent
             const int dir_opp = cr->GetDir();
-            real_dir = static_cast<uchar>((real_dir + dirs_count / 2u) % dirs_count);
+            real_dir = static_cast<uint8>((real_dir + dirs_count / 2u) % dirs_count);
             i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
             if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
@@ -2067,7 +2067,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint16 hy, int dir)
 {
     STACK_TRACE_ENTRY();
 

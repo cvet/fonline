@@ -384,14 +384,14 @@ def parseTags():
         return t
 
     def engineTypeToUnifiedType(t):
-        typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
+        typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
             'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-            'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
+            'int8&': 'int8&', 'uint8&': 'uint8&', 'int16&': 'int16&', 'uint16&': 'uint16&',
             'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
             'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
             'bool': 'bool', 'bool&': 'bool&', 'void': 'void',
             'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
-            'char*': 'int8&', 'uchar*': 'uint8&', 'short*': 'int16&', 'ushort*': 'uint16&',
+            'int8*': 'int8&', 'uint8*': 'uint8&', 'int16*': 'int16&', 'uint16*': 'uint16&',
             'int*': 'int&', 'uint*': 'uint&', 'int64*': 'int64&', 'uint64*': 'uint64&',
             'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'string*': 'string&',
             'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&'}
@@ -1290,7 +1290,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
         r = tt[0] + '*'
     else:
         def mapType(mt):
-            typeMap = {'int8': 'char', 'uint8': 'uchar', 'int16': 'short', 'uint16': 'ushort'}
+            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64'}
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
@@ -1327,7 +1327,7 @@ def genGenericCode():
         for propTag in codeGenTags['ExportProperty']:
             ent, _, _, name, _, _ = propTag
             if ent == entity:
-                globalLines.append('ushort ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
+                globalLines.append('uint16 ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
                 index += 1
     globalLines.append('')
     
@@ -1649,7 +1649,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'asIScriptFunction*'
             else:
                 def mapType(t):
-                    typeMap = {'int8': 'char', 'uint8': 'uchar', 'int16': 'short', 'uint16': 'ushort'}
+                    typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64'}
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':
@@ -2471,7 +2471,7 @@ def genApiMarkdown(target):
     # Generate source
     def parseType(t):
         def mapType(t):
-            typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
+            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
                     'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
             return typeMap[t] if t in typeMap else t
         tt = t.split('.')
@@ -2683,7 +2683,7 @@ def genApi(target):
         # Generate source
         def parseType(t):
             def mapType(t):
-                typeMap = {'char': 'int8_t', 'uchar': 'uint8_t', 'short': 'int16_t', 'ushort': 'uint16_t', 'int64': 'int64_t', 'uint64': 'uint64_t',
+                typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int64': 'int64', 'uint64': 'uint64',
                         'ItemView': 'ScriptItem*', 'ItemHexView': 'ScriptItem*', 'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
                         'CritterView': 'ScriptCritter*', 'CritterHexView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
                         'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*',
@@ -2747,8 +2747,6 @@ def genApi(target):
         writeFile('')
         
         # Usings
-        writeFile('using hash = uint32_t;')
-        writeFile('using uint = uint32_t;')
         writeFile('')
         
         # Forward declarations
@@ -2895,7 +2893,7 @@ def genApi(target):
             writeFile('}')
         def parseType(t):
             def mapType(t):
-                typeMap = {'char': 'sbyte', 'uchar': 'byte', 'int64': 'long', 'uint64': 'ulong',
+                typeMap = {'int8': 'sbyte', 'uint8': 'byte', 'int16': 'short', 'uint16': 'ushort', 'int': 'int', 'uint': 'uint', 'int64': 'long', 'uint64': 'ulong',
                         'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
                 return typeMap[t] if t in typeMap else t
             tt = t.split('.')
@@ -3362,11 +3360,11 @@ try:
     #    for res in resources['Embedded']:
     #        zip.write('Backed_' + res[1], res[0])
     #createFile('EmbeddedResources-Include.h', args.genoutput)
-    #writeFile('const unsigned char EMBEDDED_RESOURCES[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
+    #writeFile('const uint8 EMBEDDED_RESOURCES[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
     preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
     assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('volatile const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(preserveBufSize)]) + '};')
+    writeFile('volatile const uint8 EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {' + ','.join([str((i + 42) % 200) for i in range(preserveBufSize)]) + '};')
     
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)

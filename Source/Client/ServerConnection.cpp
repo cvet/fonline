@@ -62,7 +62,7 @@
 struct ServerConnection::Impl
 {
     auto GetLastSocketError() -> string;
-    auto FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool;
+    auto FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) -> bool;
 
     z_stream ZStream {};
     bool ZStreamActive {};
@@ -129,7 +129,7 @@ void ServerConnection::Connect()
     RUNTIME_ASSERT(!_isConnected);
     RUNTIME_ASSERT(!_isConnecting);
 
-    if (!ConnectToHost(_settings.ServerHost, static_cast<ushort>(_settings.ServerPort))) {
+    if (!ConnectToHost(_settings.ServerHost, static_cast<uint16>(_settings.ServerPort))) {
         if (_connectCallback) {
             _connectCallback(false);
         }
@@ -250,7 +250,7 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
     return false;
 }
 
-auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
+auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -271,7 +271,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     if (InterthreadListeners.count(port) != 0u) {
         _interthreadReceived.clear();
 
-        _interthreadSend = InterthreadListeners[port]([this](const_span<uchar> buf) {
+        _interthreadSend = InterthreadListeners[port]([this](const_span<uint8> buf) {
             if (!buf.empty()) {
                 _interthreadReceived.insert(_interthreadReceived.end(), buf.begin(), buf.end());
             }
@@ -325,7 +325,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     if (!_impl->FillSockAddr(_impl->SockAddr, host, port)) {
         return false;
     }
-    if (_settings.ProxyType != 0u && !_impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, static_cast<ushort>(_settings.ProxyPort))) {
+    if (_settings.ProxyType != 0u && !_impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, static_cast<uint16>(_settings.ProxyPort))) {
         return false;
     }
 
@@ -353,7 +353,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     if (_settings.ProxyType == 0u) {
         // Set non blocking mode
 #if FO_WINDOWS
-        unsigned long mode = 1;
+        u_long mode = 1;
         if (::ioctlsocket(_impl->NetSock, FIONBIO, &mode) != 0)
 #else
         int flags = ::fcntl(_impl->NetSock, F_GETFL, 0);
@@ -413,19 +413,19 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             return true;
         };
 
-        uchar b1 = 0;
-        uchar b2 = 0;
+        uint8 b1 = 0;
+        uint8 b2 = 0;
         _netIn.ResetBuf();
         _netOut.ResetBuf();
 
         // Authentication
         if (_settings.ProxyType == PROXY_SOCKS4) {
             // Connect
-            _netOut << static_cast<uchar>(4); // Socks version
-            _netOut << static_cast<uchar>(1); // Connect command
-            _netOut << static_cast<ushort>(_impl->SockAddr.sin_port);
+            _netOut << static_cast<uint8>(4); // Socks version
+            _netOut << static_cast<uint8>(1); // Connect command
+            _netOut << static_cast<uint16>(_impl->SockAddr.sin_port);
             _netOut << static_cast<uint>(_impl->SockAddr.sin_addr.s_addr);
-            _netOut << static_cast<uchar>(0);
+            _netOut << static_cast<uint8>(0);
 
             if (!send_recv()) {
                 return false;
@@ -452,9 +452,9 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             }
         }
         else if (_settings.ProxyType == PROXY_SOCKS5) {
-            _netOut << static_cast<uchar>(5); // Socks version
-            _netOut << static_cast<uchar>(1); // Count methods
-            _netOut << static_cast<uchar>(2); // Method
+            _netOut << static_cast<uint8>(5); // Socks version
+            _netOut << static_cast<uint8>(1); // Count methods
+            _netOut << static_cast<uint8>(2); // Method
 
             if (!send_recv()) {
                 return false;
@@ -464,10 +464,10 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             _netIn >> b2; // Method
             if (b2 == 2) // User/Password
             {
-                _netOut << static_cast<uchar>(1); // Subnegotiation version
-                _netOut << static_cast<uchar>(_settings.ProxyUser.length()); // Name length
+                _netOut << static_cast<uint8>(1); // Subnegotiation version
+                _netOut << static_cast<uint8>(_settings.ProxyUser.length()); // Name length
                 _netOut.Push(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
-                _netOut << static_cast<uchar>(_settings.ProxyPass.length()); // Pass length
+                _netOut << static_cast<uint8>(_settings.ProxyPass.length()); // Pass length
                 _netOut.Push(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
 
                 if (!send_recv()) {
@@ -488,12 +488,12 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             }
 
             // Connect
-            _netOut << static_cast<uchar>(5); // Socks version
-            _netOut << static_cast<uchar>(1); // Connect command
-            _netOut << static_cast<uchar>(0); // Reserved
-            _netOut << static_cast<uchar>(1); // IP v4 address
+            _netOut << static_cast<uint8>(5); // Socks version
+            _netOut << static_cast<uint8>(1); // Connect command
+            _netOut << static_cast<uint8>(0); // Reserved
+            _netOut << static_cast<uint8>(1); // IP v4 address
             _netOut << static_cast<uint>(_impl->SockAddr.sin_addr.s_addr);
-            _netOut << static_cast<ushort>(_impl->SockAddr.sin_port);
+            _netOut << static_cast<uint16>(_impl->SockAddr.sin_port);
 
             if (!send_recv()) {
                 return false;
@@ -775,7 +775,7 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     return static_cast<int>(_netIn.GetEndPos() - old_pos);
 }
 
-auto ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool
+auto ServerConnection::Impl::FillSockAddr(sockaddr_in& saddr, string_view host, uint16 port) -> bool
 {
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
@@ -816,13 +816,13 @@ void ServerConnection::Net_SendHandshake()
     _netOut.SetEncryptKey(encrypt_key);
     _netIn.SetEncryptKey(encrypt_key);
 
-    constexpr uchar padding[28] = {};
+    constexpr uint8 padding[28] = {};
     _netOut.Push(padding, sizeof(padding));
 }
 
 void ServerConnection::Net_OnPing()
 {
-    uchar ping;
+    uint8 ping;
     _netIn >> ping;
 
     CHECK_SERVER_IN_BUF_ERROR(*this);

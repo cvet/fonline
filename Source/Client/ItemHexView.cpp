@@ -59,7 +59,7 @@ ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) :
+ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data) :
     ItemHexView(map, id, proto)
 {
     STACK_TRACE_ENTRY();
@@ -70,7 +70,7 @@ ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy) :
+ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data, uint16 hx, uint16 hy) :
     ItemHexView(map, id, proto)
 {
     STACK_TRACE_ENTRY();
@@ -229,14 +229,14 @@ void ItemHexView::Process()
             _fading = false;
         }
 
-        Alpha = static_cast<uchar>(_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
+        Alpha = static_cast<uint8>(_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
         if (Alpha > _maxAlpha) {
             Alpha = _maxAlpha;
         }
     }
 }
 
-void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
+void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 

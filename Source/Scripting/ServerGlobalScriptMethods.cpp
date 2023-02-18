@@ -264,7 +264,7 @@
 ///# param toHx ...
 ///# param toHy ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, ushort toHx, ushort toHy)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -295,7 +295,7 @@
 ///# param toHy ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, ushort toHx, ushort toHy, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Map* toMap, uint16 toHx, uint16 toHy, bool skipChecks)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -416,7 +416,7 @@
 ///# param toHx ...
 ///# param toHy ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, ushort toHx, ushort toHy)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, uint16 toHx, uint16 toHy)
 {
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
@@ -441,7 +441,7 @@
 ///# param toHy ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, ushort toHx, ushort toHy, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Map* toMap, uint16 toHx, uint16 toHy, bool skipChecks)
 {
     if (toMap == nullptr) {
         throw ScriptException("Map arg is null");
@@ -633,7 +633,7 @@
 ///# param channel ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessage(FOServer* server, ushort channel, string_view text)
+[[maybe_unused]] void Server_Game_RadioMessage(FOServer* server, uint16 channel, string_view text)
 {
     if (!text.empty()) {
         server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, text, false, 0, 0, "");
@@ -645,7 +645,7 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, ushort channel, ushort textMsg, uint numStr)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr)
 {
     server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, "");
 }
@@ -656,7 +656,7 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, ushort channel, ushort textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, uint16 channel, uint16 textMsg, uint numStr, string_view lexems)
 {
     server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, ident_t {}, 0, 0, "", false, textMsg, numStr, lexems);
 }
@@ -678,7 +678,7 @@
 ///# param second ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_EvaluateFullSecond(FOServer* server, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
+[[maybe_unused]] uint Server_Game_EvaluateFullSecond(FOServer* server, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
     if (year != 0u && year < server->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
@@ -740,7 +740,7 @@
 ///# param minute ...
 ///# param second ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_GetGameTime(FOServer* server, uint fullSecond, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second)
+[[maybe_unused]] void Server_Game_GetGameTime(FOServer* server, uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
     const auto dt = server->GameTime.GetGameTime(fullSecond);
 
@@ -759,7 +759,7 @@
 ///# param wy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ushort wx, ushort wy)
+[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, uint16 wx, uint16 wy)
 {
     // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
@@ -777,7 +777,7 @@
 ///# param critters ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ushort wx, ushort wy, const vector<Critter*>& critters)
+[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, uint16 wx, uint16 wy, const vector<Critter*>& critters)
 {
     // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
@@ -796,8 +796,8 @@
             cr->Send_AutomapsInfo(nullptr, loc);
         }
 
-        const ushort zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
-        const ushort zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
+        const uint16 zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
+        const uint16 zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
 
         auto gmap_fog = cr->GetGlobalMapFog();
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
@@ -895,7 +895,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Game_GetGlobalMapCritters(FOServer* server, ushort wx, ushort wy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<Critter*> Server_Game_GetGlobalMapCritters(FOServer* server, uint16 wx, uint16 wy, uint radius, CritterFindType findType)
 {
     return server->CrMngr.GetGlobalMapCritters(wx, wy, radius, findType);
 }
@@ -973,7 +973,7 @@
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, ushort wx, ushort wy, uint radius)
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, uint16 wx, uint16 wy, uint radius)
 {
     vector<Location*> locations;
     locations.reserve(server->MapMngr.GetLocationsCount());
@@ -994,7 +994,7 @@
 ///# param cr ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, ushort wx, ushort wy, uint radius, Critter* cr)
+[[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, uint16 wx, uint16 wy, uint radius, Critter* cr)
 {
     vector<Location*> locations;
     locations.reserve(server->MapMngr.GetLocationsCount());
@@ -1014,7 +1014,7 @@
 ///# param zoneRadius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetZoneLocations(FOServer* server, ushort zx, ushort zy, uint zoneRadius)
+[[maybe_unused]] vector<Location*> Server_Game_GetZoneLocations(FOServer* server, uint16 zx, uint16 zy, uint zoneRadius)
 {
     return server->MapMngr.GetZoneLocations(zx, zy, zoneRadius);
 }
@@ -1088,7 +1088,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring dlgPack, ushort hx, ushort hy, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring dlgPack, uint16 hx, uint16 hy, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -1280,7 +1280,7 @@
 ///# param second ...
 ///# param milliseconds ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_GetTime(FOServer* server, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds)
+[[maybe_unused]] void Server_Game_GetTime(FOServer* server, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
     const auto cur_time = Timer::GetCurrentDateTime();
     year = cur_time.Year;
@@ -1302,7 +1302,7 @@
 ///# param minute ...
 ///# param second ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_SetTime(FOServer* server, ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
+[[maybe_unused]] void Server_Game_SetTime(FOServer* server, uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
     server->SetGameTime(multiplier, year, month, day, hour, minute, second);
 }

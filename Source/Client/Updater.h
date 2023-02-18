@@ -89,9 +89,9 @@ private:
     vector<UpdateFile> _filesToUpdate {};
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
-    vector<uchar> _updateFileBuf {};
+    vector<uint8> _updateFileBuf {};
     AnyFrames* _splashPic {};
-    vector<vector<uchar>> _globalsPropertiesData {};
+    vector<vector<uint8>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };
 

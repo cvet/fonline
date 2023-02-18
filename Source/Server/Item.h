@@ -76,15 +76,15 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnWalk, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMove, Critter* /*critter*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMove, Critter* /*critter*/, uint8 /*fromSlot*/);
 
     bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};
-    ScriptFunc<void, Critter*, StaticItem*, bool, uchar> TriggerScriptFunc {};
+    ScriptFunc<void, Critter*, StaticItem*, bool, uint8> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
 private:

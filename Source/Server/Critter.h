@@ -107,7 +107,7 @@ public:
     void ClearMove();
     void ClearVisible();
     void SetItem(Item* item);
-    void ChangeDir(uchar dir);
+    void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
 
     void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
@@ -115,15 +115,15 @@ public:
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
     void Broadcast_Dir();
-    void Broadcast_Teleport(ushort to_hx, ushort to_hy);
+    void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
 
     void SendAndBroadcast_Action(int action, int action_ext, Item* item);
-    void SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot);
+    void SendAndBroadcast_MoveItem(Item* item, uint8 action, uint8 prev_slot);
     void SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2);
-    void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text);
-    void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
-    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
+    void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text);
+    void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg);
+    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
 
     void Send_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Send_Move(Critter* from_cr);
@@ -134,33 +134,33 @@ public:
     void Send_Position(Critter* cr);
     void Send_AddItemOnMap(Item* item);
     void Send_EraseItemFromMap(Item* item);
-    void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm);
+    void Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm);
     void Send_AddItem(Item* item);
     void Send_EraseItem(Item* item);
-    void Send_GlobalInfo(uchar flags);
+    void Send_GlobalInfo(uint8 flags);
     void Send_GlobalLocation(Location* loc, bool add);
-    void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
-    void Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy);
+    void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
+    void Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy);
     void Send_AllProperties();
     void Send_Talk();
     void Send_TimeSync();
-    void Send_Text(Critter* from_cr, string_view text, uchar how_say);
-    void Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool unsafe_text);
-    void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsg(ident_t from_id, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
-    void Send_TextMsgLex(ident_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
+    void Send_Text(Critter* from_cr, string_view text, uint8 how_say);
+    void Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text);
+    void Send_TextMsg(Critter* from_cr, uint str_num, uint8 how_say, uint16 num_msg);
+    void Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 num_msg);
+    void Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
+    void Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-    void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
+    void Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
+    void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
-    void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
-    void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
-    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);
+    void Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
+    void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str);
+    void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_AddAllItems();
@@ -176,9 +176,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnIdle);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCheckMoveItem, Item* /*item*/, uint8 /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMove, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnItemMove, Item* /*item*/, uint8 /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent
@@ -231,10 +231,10 @@ public:
 
     ident_t ViewMapId {};
     hstring ViewMapPid {};
-    ushort ViewMapLook {};
-    ushort ViewMapHx {};
-    ushort ViewMapHy {};
-    uchar ViewMapDir {};
+    uint16 ViewMapLook {};
+    uint16 ViewMapHx {};
+    uint16 ViewMapHy {};
+    uint8 ViewMapDir {};
     ident_t ViewMapLocId {};
     uint ViewMapLocEnt {};
 
@@ -242,31 +242,31 @@ public:
     {
         MovingState State {MovingState::Success};
         ident_t TargId {};
-        ushort HexX {};
-        ushort HexY {};
+        uint16 HexX {};
+        uint16 HexY {};
         uint Cut {};
-        ushort Speed {};
+        uint16 Speed {};
         uint TraceDist {};
         ident_t GagEntityId {};
     } TargetMoving {};
 
     struct
     {
-        ushort Speed {};
+        uint16 Speed {};
         uint Uid {};
-        vector<uchar> Steps {};
-        vector<ushort> ControlSteps {};
+        vector<uint8> Steps {};
+        vector<uint16> ControlSteps {};
         uint StartTick {};
-        ushort StartHexX {};
-        ushort StartHexY {};
-        ushort EndHexX {};
-        ushort EndHexY {};
+        uint16 StartHexX {};
+        uint16 StartHexY {};
+        uint16 EndHexX {};
+        uint16 EndHexY {};
         float WholeTime {};
         float WholeDist {};
-        short StartOx {};
-        short StartOy {};
-        short EndOx {};
-        short EndOy {};
+        int16 StartOx {};
+        int16 StartOy {};
+        int16 EndOx {};
+        int16 EndOy {};
     } Moving {};
 
 private:

@@ -797,7 +797,7 @@ auto DiskFile::Write(string_view str) -> bool
     return true;
 }
 
-auto DiskFile::Write(const_span<uchar> data) -> bool
+auto DiskFile::Write(const_span<uint8> data) -> bool
 {
     STACK_TRACE_ENTRY();
 

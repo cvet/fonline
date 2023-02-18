@@ -40,7 +40,7 @@ NetBuffer::NetBuffer(size_t buf_len)
 
     _defaultBufLen = buf_len;
     _bufLen = buf_len;
-    _bufData = std::make_unique<uchar[]>(_bufLen);
+    _bufData = std::make_unique<uint8[]>(_bufLen);
 }
 
 auto NetBuffer::IsError() const -> bool
@@ -83,18 +83,18 @@ void NetBuffer::SetEncryptKey(uint seed)
     std::mt19937 rnd_generator {seed};
 
     for (auto& key : _encryptKeys) {
-        key = static_cast<uchar>(rnd_generator() % 256);
+        key = static_cast<uint8>(rnd_generator() % 256);
     }
 
     _encryptKeyPos = 0;
     _encryptActive = true;
 }
 
-auto NetBuffer::EncryptKey(int move) -> uchar
+auto NetBuffer::EncryptKey(int move) -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    uchar key = 0;
+    uint8 key = 0;
     if (_encryptActive) {
         key = _encryptKeys[_encryptKeyPos];
         _encryptKeyPos += move;
@@ -120,7 +120,7 @@ void NetBuffer::ResetBuf()
 
     if (_bufLen > _defaultBufLen) {
         _bufLen = _defaultBufLen;
-        _bufData = std::make_unique<uchar[]>(_bufLen);
+        _bufData = std::make_unique<uint8[]>(_bufLen);
     }
 }
 
@@ -136,12 +136,12 @@ void NetBuffer::GrowBuf(size_t len)
         _bufLen <<= 1;
     }
 
-    auto* new_buf = new uchar[_bufLen];
+    auto* new_buf = new uint8[_bufLen];
     std::memcpy(new_buf, _bufData.get(), _bufEndPos);
     _bufData.reset(new_buf);
 }
 
-auto NetBuffer::GetData() -> uchar*
+auto NetBuffer::GetData() -> uint8*
 {
     STACK_TRACE_ENTRY();
 
@@ -150,7 +150,7 @@ auto NetBuffer::GetData() -> uchar*
     return _bufData.get();
 }
 
-void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, size_t len)
+void NetBuffer::CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len)
 {
     STACK_TRACE_ENTRY();
 
@@ -160,8 +160,8 @@ void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, size_t len)
         return;
     }
 
-    const auto* from_ = static_cast<const uchar*>(from);
-    auto* to_ = static_cast<uchar*>(to);
+    const auto* from_ = static_cast<const uint8*>(from);
+    auto* to_ = static_cast<uint8*>(to);
 
     for (size_t i = 0; i < len; i++, to_++, from_++) {
         *to_ = *from_ ^ crypt_key;

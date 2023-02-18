@@ -42,10 +42,10 @@ DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
 DECLARE_EXCEPTION(EntityInitScriptException);
 
-enum class ScriptEnum_uint8 : uchar
+enum class ScriptEnum_uint8 : uint8
 {
 };
-enum class ScriptEnum_uint16 : ushort
+enum class ScriptEnum_uint16 : uint16
 {
 };
 enum class ScriptEnum_int : int

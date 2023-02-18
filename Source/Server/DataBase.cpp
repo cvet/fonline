@@ -901,7 +901,7 @@ protected:
             db, &id, sizeof(id),
             [](const void* output, unsigned int output_len, void* user_data) {
                 bson_t bson;
-                if (!bson_init_static(&bson, static_cast<const uint8_t*>(output), output_len)) {
+                if (!bson_init_static(&bson, static_cast<const uint8*>(output), output_len)) {
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 

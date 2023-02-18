@@ -71,7 +71,7 @@ auto ClientConnection::GetHost() const -> string_view
     return _netConnection->GetHost();
 }
 
-auto ClientConnection::GetPort() const -> ushort
+auto ClientConnection::GetPort() const -> uint16
 {
     STACK_TRACE_ENTRY();
 

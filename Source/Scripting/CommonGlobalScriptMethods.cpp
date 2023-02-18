@@ -262,8 +262,8 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 {
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
-    _SHA1_Update(&ctx, reinterpret_cast<const uchar*>(text.data()), text.length());
-    uchar digest[SHA1_DIGEST_SIZE];
+    _SHA1_Update(&ctx, reinterpret_cast<const uint8*>(text.data()), text.length());
+    uint8 digest[SHA1_DIGEST_SIZE];
     _SHA1_Final(&ctx, digest);
 
     const auto* nums = "0123456789abcdef";
@@ -282,8 +282,8 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 [[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     constexpr uint digest_size = 32;
-    uchar digest[digest_size];
-    sha256(reinterpret_cast<const uchar*>(text.data()), static_cast<uint>(text.length()), digest);
+    uint8 digest[digest_size];
+    sha256(reinterpret_cast<const uint8*>(text.data()), static_cast<uint>(text.length()), digest);
 
     const auto* nums = "0123456789abcdef";
     char hex_digest[digest_size * 2];
@@ -316,7 +316,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param hy2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
+[[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
 {
     return engine->Geometry.DistGame(hx1, hy1, hx2, hy2);
 }
@@ -328,7 +328,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
     return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy);
 }
@@ -341,7 +341,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param offset ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
+[[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 {
     return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
@@ -353,9 +353,9 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] short Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] int16 Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return static_cast<short>(engine->Geometry.GetDirAngle(fromHx, fromHy, toHx, toHy));
+    return static_cast<int16>(engine->Geometry.GetDirAngle(fromHx, fromHy, toHx, toHy));
 }
 
 ///# ...
@@ -365,16 +365,16 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param toY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] short Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
+[[maybe_unused]] int16 Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
 {
-    return static_cast<short>(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY));
+    return static_cast<int16>(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY));
 }
 
 ///# ...
 ///# param dirAngle ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, short dirAngle)
+[[maybe_unused]] uint8 Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, int16 dirAngle)
 {
     return engine->Geometry.AngleToDir(dirAngle);
 }
@@ -383,7 +383,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param dir ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] short Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uchar dir)
+[[maybe_unused]] int16 Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uint8 dir)
 {
     return engine->Geometry.DirToAngle(dir);
 }
@@ -394,7 +394,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param step ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] short Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, short dirAngle, bool clockwise, short step)
+[[maybe_unused]] int16 Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, int16 dirAngle, bool clockwise, int16 step)
 {
     auto rotated = static_cast<int>(dirAngle);
 
@@ -412,7 +412,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
         rotated -= 360;
     }
 
-    return static_cast<short>(rotated);
+    return static_cast<int16>(rotated);
 }
 
 ///# ...
@@ -423,7 +423,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param ox ...
 ///# param oy ...
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, int& ox, int& oy)
+[[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, int& ox, int& oy)
 {
     std::tie(ox, oy) = engine->Geometry.GetHexInterval(fromHx, fromHy, toHx, toHy);
 }

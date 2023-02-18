@@ -51,33 +51,33 @@ public:
     ~GeometryHelper();
 
     [[nodiscard]] auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
-    [[nodiscard]] auto GetNearDir(int x1, int y1, int x2, int y2) const -> uchar;
-    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2) const -> uchar;
-    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar;
+    [[nodiscard]] auto GetNearDir(int x1, int y1, int x2, int y2) const -> uint8;
+    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2) const -> uint8;
+    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uint8;
     [[nodiscard]] auto GetDirAngle(int x1, int y1, int x2, int y2) const -> float;
     [[nodiscard]] auto GetDirAngleDiff(float a1, float a2) const -> float;
     [[nodiscard]] auto GetDirAngleDiffSided(float a1, float a2) const -> float;
     [[nodiscard]] auto GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float;
     [[nodiscard]] auto GetYProj() const -> float;
-    [[nodiscard]] auto DirToAngle(uchar dir) const -> short;
-    [[nodiscard]] auto AngleToDir(short dir_angle) const -> uchar;
-    [[nodiscard]] auto NormalizeAngle(short dir_angle) const -> short;
-    [[nodiscard]] auto CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool;
-    [[nodiscard]] auto ReverseDir(uchar dir) const -> uchar;
-    [[nodiscard]] auto GetHexOffsets(bool odd) const -> tuple<const short*, const short*>;
+    [[nodiscard]] auto DirToAngle(uint8 dir) const -> int16;
+    [[nodiscard]] auto AngleToDir(int16 dir_angle) const -> uint8;
+    [[nodiscard]] auto NormalizeAngle(int16 dir_angle) const -> int16;
+    [[nodiscard]] auto CheckDist(uint16 x1, uint16 y1, uint16 x2, uint16 y2, uint dist) const -> bool;
+    [[nodiscard]] auto ReverseDir(uint8 dir) const -> uint8;
+    [[nodiscard]] auto GetHexOffsets(bool odd) const -> tuple<const int16*, const int16*>;
     [[nodiscard]] auto GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>;
 
-    auto MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool;
-    auto MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool;
-    void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const;
-    void ForEachBlockLines(const vector<uchar>& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const;
+    auto MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) const -> bool;
+    auto MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) const -> bool;
+    void MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir) const;
+    void ForEachBlockLines(const vector<uint8>& lines, uint16 hx, uint16 hy, uint16 maxhx, uint16 maxhy, const std::function<void(uint16, uint16)>& work) const;
 
 private:
     void InitializeHexOffsets() const;
 
     GeometrySettings& _settings;
-    mutable short* _sxEven {};
-    mutable short* _syEven {};
-    mutable short* _sxOdd {};
-    mutable short* _syOdd {};
+    mutable int16* _sxEven {};
+    mutable int16* _syEven {};
+    mutable int16* _sxOdd {};
+    mutable int16* _syOdd {};
 };

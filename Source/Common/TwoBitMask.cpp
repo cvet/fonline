@@ -33,7 +33,7 @@
 
 #include "TwoBitMask.h"
 
-TwoBitMask::TwoBitMask(uint width, uint height, uchar* ptr)
+TwoBitMask::TwoBitMask(uint width, uint height, uint8* ptr)
 {
     STACK_TRACE_ENTRY();
 
@@ -58,7 +58,7 @@ TwoBitMask::TwoBitMask(uint width, uint height, uchar* ptr)
     }
     else {
         _isAlloc = true;
-        _data = new uchar[static_cast<size_t>(_widthBytes) * _height];
+        _data = new uint8[static_cast<size_t>(_widthBytes) * _height];
         Fill(0);
     }
 }
@@ -85,8 +85,8 @@ void TwoBitMask::Set2Bit(uint x, uint y, int val)
     auto& b = _data[y * _widthBytes + x / 4];
     const auto bit = static_cast<int>(x) % 4 * 2;
 
-    UnsetBit(b, static_cast<uchar>(3 << bit));
-    SetBit(b, static_cast<uchar>((val & 3) << bit));
+    UnsetBit(b, static_cast<uint8>(3 << bit));
+    SetBit(b, static_cast<uint8>((val & 3) << bit));
 }
 
 auto TwoBitMask::Get2Bit(uint x, uint y) const -> int
@@ -109,7 +109,7 @@ void TwoBitMask::Fill(int fill)
     std::memset(_data, fill, static_cast<size_t>(_widthBytes) * _height);
 }
 
-auto TwoBitMask::GetData() -> uchar*
+auto TwoBitMask::GetData() -> uint8*
 {
     STACK_TRACE_ENTRY();
 

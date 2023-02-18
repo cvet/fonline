@@ -64,7 +64,7 @@ static bool ExceptionMessageBox = false;
 
 hstring::entry hstring::_zeroEntry;
 
-map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];

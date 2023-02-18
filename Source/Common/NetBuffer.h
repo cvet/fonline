@@ -41,8 +41,8 @@ class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
-    static constexpr size_t STRING_LEN_SIZE = sizeof(ushort);
-    static constexpr size_t ARRAY_LEN_SIZE = sizeof(ushort);
+    static constexpr size_t STRING_LEN_SIZE = sizeof(uint16);
+    static constexpr size_t ARRAY_LEN_SIZE = sizeof(uint16);
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -52,7 +52,7 @@ public:
     virtual ~NetBuffer() = default;
 
     [[nodiscard]] auto IsError() const -> bool;
-    [[nodiscard]] auto GetData() -> uchar*;
+    [[nodiscard]] auto GetData() -> uint8*;
     [[nodiscard]] auto GetEndPos() const -> size_t;
 
     void SetError(bool value);
@@ -62,17 +62,17 @@ public:
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int move) -> uchar;
-    void CopyBuf(const void* from, void* to, uchar crypt_key, size_t len);
+    auto EncryptKey(int move) -> uint8;
+    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len);
 
     bool _isError {};
-    unique_ptr<uchar[]> _bufData {};
+    unique_ptr<uint8[]> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufLen {};
     size_t _bufEndPos {};
     bool _encryptActive {};
     int _encryptKeyPos {};
-    uchar _encryptKeys[CRYPT_KEYS_COUNT] {};
+    uint8 _encryptKeys[CRYPT_KEYS_COUNT] {};
     bool _nonConstHelper {};
 };
 
@@ -110,8 +110,8 @@ public:
 
     auto operator<<(string_view i) -> NetBuffer&
     {
-        RUNTIME_ASSERT(i.length() <= std::numeric_limits<ushort>::max());
-        const auto len = static_cast<ushort>(i.length());
+        RUNTIME_ASSERT(i.length() <= std::numeric_limits<uint16>::max());
+        const auto len = static_cast<uint16>(i.length());
         Push(&len, sizeof(len));
         Push(i.data(), len);
         return *this;
@@ -164,7 +164,7 @@ public:
 
     auto operator>>(string& i) -> NetBuffer&
     {
-        ushort len = 0;
+        uint16 len = 0;
         Pop(&len, sizeof(len));
         i.resize(len);
         Pop(i.data(), len);

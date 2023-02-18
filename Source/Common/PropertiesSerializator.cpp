@@ -149,12 +149,12 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         } \
     } while (false)
 
-            PARSE_VALUE(_isInt8, char, int);
-            PARSE_VALUE(_isInt16, short, int);
+            PARSE_VALUE(_isInt8, int8, int);
+            PARSE_VALUE(_isInt16, int16, int);
             PARSE_VALUE(_isInt32, int, int);
             PARSE_VALUE(_isInt64, int64, int64);
-            PARSE_VALUE(_isUInt8, uchar, int);
-            PARSE_VALUE(_isUInt16, ushort, int);
+            PARSE_VALUE(_isUInt8, uint8, int);
+            PARSE_VALUE(_isUInt16, uint16, int);
             PARSE_VALUE(_isUInt32, uint, int);
             PARSE_VALUE(_isUInt64, uint64, int64);
             PARSE_VALUE(_isSingleFloat, float, double);
@@ -217,10 +217,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->_baseSize))))
 
                     if (prop->_isInt8) {
-                        PARSE_VALUE(char, int);
+                        PARSE_VALUE(int8, int);
                     }
                     else if (prop->_isInt16) {
-                        PARSE_VALUE(short, int);
+                        PARSE_VALUE(int16, int);
                     }
                     else if (prop->_isInt32) {
                         PARSE_VALUE(int, int);
@@ -229,10 +229,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                         PARSE_VALUE(int64, int64);
                     }
                     else if (prop->_isUInt8) {
-                        PARSE_VALUE(uchar, int);
+                        PARSE_VALUE(uint8, int);
                     }
                     else if (prop->_isUInt16) {
-                        PARSE_VALUE(ushort, int);
+                        PARSE_VALUE(uint16, int);
                     }
                     else if (prop->_isUInt32) {
                         PARSE_VALUE(uint, int);
@@ -264,7 +264,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         AnyData::Dict dict;
 
         if (data_size > 0u) {
-            const auto get_key_string = [prop, &name_resolver](const uchar* p) -> string {
+            const auto get_key_string = [prop, &name_resolver](const uint8* p) -> string {
                 if (prop->_isDictKeyHash) {
                     return string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(p)));
                 }
@@ -274,10 +274,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     return name_resolver.ResolveEnumValueName(prop->_dictKeyTypeName, enum_value);
                 }
                 else if (prop->_dictKeySize == 1u) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const char*>(p))).str();
+                    return _str("{}", static_cast<int>(*reinterpret_cast<const int8*>(p))).str();
                 }
                 else if (prop->_dictKeySize == 2u) {
-                    return _str("{}", static_cast<int>(*reinterpret_cast<const short*>(p))).str();
+                    return _str("{}", static_cast<int>(*reinterpret_cast<const int16*>(p))).str();
                 }
                 else if (prop->_dictKeySize == 4u) {
                     return _str("{}", static_cast<int>(*reinterpret_cast<const int*>(p))).str();
@@ -329,10 +329,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->_baseSize))))
 
                                     if (prop->_isInt8) {
-                                        PARSE_VALUE(char, int);
+                                        PARSE_VALUE(int8, int);
                                     }
                                     else if (prop->_isInt16) {
-                                        PARSE_VALUE(short, int);
+                                        PARSE_VALUE(int16, int);
                                     }
                                     else if (prop->_isInt32) {
                                         PARSE_VALUE(int, int);
@@ -341,10 +341,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                                         PARSE_VALUE(int64, int64);
                                     }
                                     else if (prop->_isUInt8) {
-                                        PARSE_VALUE(uchar, int);
+                                        PARSE_VALUE(uint8, int);
                                     }
                                     else if (prop->_isUInt16) {
-                                        PARSE_VALUE(ushort, int);
+                                        PARSE_VALUE(uint16, int);
                                     }
                                     else if (prop->_isUInt32) {
                                         PARSE_VALUE(uint, int);
@@ -419,10 +419,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     dict.insert(std::make_pair(std::move(key_str), static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(pvalue)))))
 
                         if (prop->_isInt8) {
-                            PARSE_VALUE(char, int);
+                            PARSE_VALUE(int8, int);
                         }
                         else if (prop->_isInt16) {
-                            PARSE_VALUE(short, int);
+                            PARSE_VALUE(int16, int);
                         }
                         else if (prop->_isInt32) {
                             PARSE_VALUE(int, int);
@@ -431,10 +431,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                             PARSE_VALUE(int64, int64);
                         }
                         else if (prop->_isUInt8) {
-                            PARSE_VALUE(uchar, int);
+                            PARSE_VALUE(uint8, int);
                         }
                         else if (prop->_isUInt16) {
-                            PARSE_VALUE(ushort, int);
+                            PARSE_VALUE(uint16, int);
                         }
                         else if (prop->_isUInt32) {
                             PARSE_VALUE(uint, int);
@@ -485,7 +485,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             const auto h = name_resolver.ToHashedString(std::get<string>(value)).as_hash();
-            props->SetRawData(prop, reinterpret_cast<const uchar*>(&h), prop->_baseSize);
+            props->SetRawData(prop, reinterpret_cast<const uint8*>(&h), prop->_baseSize);
         }
         else if (prop->_isEnumBase) {
             if (value.index() != AnyData::STRING_VALUE) {
@@ -495,7 +495,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
             auto is_error = false;
             const auto e = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value), &is_error);
-            props->SetRawData(prop, reinterpret_cast<const uchar*>(&e), prop->_baseSize);
+            props->SetRawData(prop, reinterpret_cast<const uint8*>(&e), prop->_baseSize);
             if (is_error) {
                 return false;
             }
@@ -509,10 +509,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 #define PARSE_VALUE(t) \
     do { \
         if (prop->_isInt8) { \
-            *static_cast<char*>(reinterpret_cast<void*>(pod_data)) = static_cast<char>(std::get<t>(value)); \
+            *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(std::get<t>(value)); \
         } \
         else if (prop->_isInt16) { \
-            *static_cast<short*>(reinterpret_cast<void*>(pod_data)) = static_cast<short>(std::get<t>(value)); \
+            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(std::get<t>(value)); \
         } \
         else if (prop->_isInt32) { \
             *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(std::get<t>(value)); \
@@ -521,10 +521,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt8) { \
-            *static_cast<uchar*>(reinterpret_cast<void*>(pod_data)) = static_cast<uchar>(std::get<t>(value)); \
+            *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt16) { \
-            *static_cast<short*>(reinterpret_cast<void*>(pod_data)) = static_cast<short>(std::get<t>(value)); \
+            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt32) { \
             *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(std::get<t>(value)); \
@@ -546,7 +546,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         } \
     } while (false)
 
-            uchar pod_data[8];
+            uint8 pod_data[8];
             if (value.index() == AnyData::INT_VALUE) {
                 PARSE_VALUE(int);
             }
@@ -579,7 +579,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
         const auto& str = std::get<string>(value);
 
-        props->SetRawData(prop, reinterpret_cast<const uchar*>(str.c_str()), static_cast<uint>(str.length()));
+        props->SetRawData(prop, reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
     }
     else if (prop->_dataType == Property::DataType::Array) {
         if (value.index() != AnyData::ARRAY_VALUE) {
@@ -601,7 +601,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
-            auto data = unique_ptr<uchar>(new uchar[data_size]);
+            auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
                 RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
@@ -619,7 +619,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             uint data_size = static_cast<uint>(arr.size()) * prop->_baseSize;
-            auto data = unique_ptr<uchar>(new uchar[data_size]);
+            auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
                 RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
@@ -642,7 +642,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             uint data_size = prop->_baseSize * static_cast<uint>(arr.size());
-            auto data = unique_ptr<uchar>(new uchar[data_size]);
+            auto data = unique_ptr<uint8>(new uint8[data_size]);
             const auto arr_element_index = arr[0].index();
 
 #define PARSE_VALUE(t) \
@@ -668,10 +668,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     } while (false)
 
             if (prop->_isInt8) {
-                PARSE_VALUE(char);
+                PARSE_VALUE(int8);
             }
             else if (prop->_isInt16) {
-                PARSE_VALUE(short);
+                PARSE_VALUE(int16);
             }
             else if (prop->_isInt32) {
                 PARSE_VALUE(int);
@@ -680,10 +680,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 PARSE_VALUE(int64);
             }
             else if (prop->_isUInt8) {
-                PARSE_VALUE(uchar);
+                PARSE_VALUE(uint8);
             }
             else if (prop->_isUInt16) {
-                PARSE_VALUE(ushort);
+                PARSE_VALUE(uint16);
             }
             else if (prop->_isUInt32) {
                 PARSE_VALUE(uint);
@@ -724,7 +724,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 data_size += sizeof(uint) + static_cast<uint>(str.length());
             }
 
-            auto data = unique_ptr<uchar>(new uchar[data_size]);
+            auto data = unique_ptr<uint8>(new uint8[data_size]);
             *reinterpret_cast<uint*>(data.get()) = static_cast<uint>(arr.size());
 
             size_t data_pos = sizeof(uint);
@@ -863,7 +863,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
 
         // Write data
-        auto data = unique_ptr<uchar>(new uchar[data_size]);
+        auto data = unique_ptr<uint8>(new uint8[data_size]);
         size_t data_pos = 0;
 
         for (const auto& [key2, value2] : dict) {
@@ -881,10 +881,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
             }
             else if (prop->_dictKeySize == 1u) {
-                *reinterpret_cast<char*>(data.get() + data_pos) = static_cast<char>(_str(key2).toInt64());
+                *reinterpret_cast<int8*>(data.get() + data_pos) = static_cast<int8>(_str(key2).toInt64());
             }
             else if (prop->_dictKeySize == 2u) {
-                *reinterpret_cast<short*>(data.get() + data_pos) = static_cast<short>(_str(key2).toInt64());
+                *reinterpret_cast<int16*>(data.get() + data_pos) = static_cast<int16>(_str(key2).toInt64());
             }
             else if (prop->_dictKeySize == 4u) {
                 *reinterpret_cast<int*>(data.get() + data_pos) = static_cast<int>(_str(key2).toInt64());
@@ -957,10 +957,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     } while (false)
 
                         if (prop->_isInt8) {
-                            PARSE_VALUE(char);
+                            PARSE_VALUE(int8);
                         }
                         else if (prop->_isInt16) {
-                            PARSE_VALUE(short);
+                            PARSE_VALUE(int16);
                         }
                         else if (prop->_isInt32) {
                             PARSE_VALUE(int);
@@ -969,10 +969,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                             PARSE_VALUE(int64);
                         }
                         else if (prop->_isUInt8) {
-                            PARSE_VALUE(uchar);
+                            PARSE_VALUE(uint8);
                         }
                         else if (prop->_isUInt16) {
-                            PARSE_VALUE(ushort);
+                            PARSE_VALUE(uint16);
                         }
                         else if (prop->_isUInt32) {
                             PARSE_VALUE(uint);
@@ -1045,10 +1045,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     } while (false)
 
                     if (prop->_isInt8) {
-                        PARSE_VALUE(char);
+                        PARSE_VALUE(int8);
                     }
                     else if (prop->_isInt16) {
-                        PARSE_VALUE(short);
+                        PARSE_VALUE(int16);
                     }
                     else if (prop->_isInt32) {
                         PARSE_VALUE(int);
@@ -1057,10 +1057,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                         PARSE_VALUE(int64);
                     }
                     else if (prop->_isUInt8) {
-                        PARSE_VALUE(uchar);
+                        PARSE_VALUE(uint8);
                     }
                     else if (prop->_isUInt16) {
-                        PARSE_VALUE(ushort);
+                        PARSE_VALUE(uint16);
                     }
                     else if (prop->_isUInt32) {
                         PARSE_VALUE(uint);

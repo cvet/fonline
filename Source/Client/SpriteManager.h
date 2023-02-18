@@ -213,7 +213,7 @@ public:
     [[nodiscard]] auto GetViewRect(const Sprite* spr) const -> IRect;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
-    [[nodiscard]] auto CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool;
+    [[nodiscard]] auto CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool;
     [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
     [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*;
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
@@ -261,7 +261,7 @@ public:
 
     void DrawContours();
     void InitializeEgg(string_view egg_name);
-    void SetEgg(ushort hx, ushort hy, Sprite* spr);
+    void SetEgg(uint16 hx, uint16 hy, Sprite* spr);
     void EggNotValid() { _eggValid = false; }
 
 #if FO_ENABLE_3D
@@ -324,8 +324,8 @@ private:
     bool _contoursAdded {};
     bool _contourClearMid {};
     bool _eggValid {};
-    ushort _eggHx {};
-    ushort _eggHy {};
+    uint16 _eggHx {};
+    uint16 _eggHy {};
     int _eggX {};
     int _eggY {};
     const SpriteInfo* _sprEgg {};
@@ -367,13 +367,13 @@ private:
     {
         struct Letter
         {
-            short PosX {};
-            short PosY {};
-            short Width {};
-            short Height {};
-            short OffsX {};
-            short OffsY {};
-            short XAdvance {};
+            int16 PosX {};
+            int16 PosY {};
+            int16 Width {};
+            int16 Height {};
+            int16 OffsX {};
+            int16 OffsY {};
+            int16 XAdvance {};
             FRect TexUV {};
             FRect TexBorderedUV {};
         };

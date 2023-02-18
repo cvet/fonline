@@ -911,7 +911,7 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) -> 
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
     for (int i = 0; i < height; i++) {
-        std::memcpy(&result[i * width], static_cast<uchar*>(tex_resource.pData) + tex_resource.RowPitch * i, width * 4);
+        std::memcpy(&result[i * width], static_cast<uint8*>(tex_resource.pData) + tex_resource.RowPitch * i, width * 4);
     }
 
     D3DDeviceContext->Unmap(staging_tex, 0);
@@ -1040,12 +1040,12 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
                 const auto prev_size = indices.size();
                 indices.resize(need_size);
                 for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
-                    indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
-                    indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
-                    indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);
-                    indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 1);
-                    indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 2);
-                    indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 3);
+                    indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
+                    indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
+                    indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 3);
+                    indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 1);
+                    indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 2);
+                    indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 3);
                 }
 
                 need_upload_indices = true;
@@ -1058,7 +1058,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
                 const auto prev_size = indices.size();
                 indices.resize(upload_vertices);
                 for (size_t i = prev_size; i < indices.size(); i++) {
-                    indices[i] = static_cast<ushort>(i);
+                    indices[i] = static_cast<uint16>(i);
                 }
 
                 need_upload_indices = true;
@@ -1084,7 +1084,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
             D3D11_BUFFER_DESC ibuf_desc = {};
             ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
-            ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(ushort));
+            ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(uint16));
             ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
             ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
             ibuf_desc.MiscFlags = 0;
@@ -1097,7 +1097,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
         const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
         RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
 
-        std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(ushort));
+        std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(uint16));
 
         D3DDeviceContext->Unmap(IndexBuf, 0);
     }

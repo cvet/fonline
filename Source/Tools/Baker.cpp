@@ -59,9 +59,9 @@ public:
         Baker_RegisterData(this);
     }
 
-    static auto GetRestoreInfo() -> vector<uchar>
+    static auto GetRestoreInfo() -> vector<uint8>
     {
-        extern auto Baker_GetRestoreInfo()->vector<uchar>;
+        extern auto Baker_GetRestoreInfo()->vector<uint8>;
         return Baker_GetRestoreInfo();
     }
 
@@ -223,7 +223,7 @@ void Baker::BakeAll()
                         }
                     };
 
-                    const auto write_data = [&](string_view path, const_span<uchar> baked_data) {
+                    const auto write_data = [&](string_view path, const_span<uint8> baked_data) {
                         const auto output_path = make_output_path(path);
 
                         auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(_str(pack_name).combinePath(output_path)), true);
@@ -677,15 +677,15 @@ void Baker::BakeAll()
                         }
                     }
 
-                    vector<uchar> props_data;
+                    vector<uint8> props_data;
                     uint map_cr_count = 0u;
                     uint map_item_count = 0u;
                     uint map_scen_count = 0u;
                     uint map_tile_count = 0u;
-                    vector<uchar> map_cr_data;
-                    vector<uchar> map_item_data;
-                    vector<uchar> map_scen_data;
-                    vector<uchar> map_tile_data;
+                    vector<uint8> map_cr_data;
+                    vector<uint8> map_item_data;
+                    vector<uint8> map_scen_data;
+                    vector<uint8> map_tile_data;
                     set<hstring> tile_hstrings;
                     auto map_cr_data_writer = DataWriter(map_cr_data);
                     auto map_item_data_writer = DataWriter(map_item_data);
@@ -778,7 +778,7 @@ void Baker::BakeAll()
 #if !FO_SINGLEPLAYER
                         // Server side
                         {
-                            vector<uchar> map_data;
+                            vector<uint8> map_data;
                             auto final_writer = DataWriter(map_data);
                             final_writer.Write<uint>(map_cr_count);
                             final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
@@ -792,7 +792,7 @@ void Baker::BakeAll()
                         }
                         // Client side
                         {
-                            vector<uchar> map_data;
+                            vector<uint8> map_data;
                             auto final_writer = DataWriter(map_data);
                             final_writer.Write<uint>(map_scen_count);
                             final_writer.WritePtr(map_scen_data.data(), map_scen_data.size());
@@ -811,7 +811,7 @@ void Baker::BakeAll()
                             RUNTIME_ASSERT(map_bin_file_write_ok);
                         }
 #else
-                        vector<uchar> map_data;
+                        vector<uint8> map_data;
                         auto final_writer = DataWriter(map_data);
                         final_writer.Write<uint>(map_cr_count);
                         final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
@@ -1081,11 +1081,11 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
     unordered_map<string, std::function<bool(hstring)>> script_func_verify = {
         {"ItemInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
         {"ItemScenery", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
-        {"ItemTrigger", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name); }},
+        {"ItemTrigger", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
         {"CritterInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
         {"MapInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
         {"LocationInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
-        {"LocationEntrance", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uchar>(func_name); }},
+        {"LocationEntrance", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
     };
 
     int errors = 0;
@@ -1166,7 +1166,7 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
     }
     else if (ext == "fofx") {
         if (auto file = _inputResources.ReadFile(path)) {
-            auto baker = EffectBaker(_settings, FileCollection({file.Duplicate()}), nullptr, [&file, this](string_view baked_path, const_span<uchar> baked_data) {
+            auto baker = EffectBaker(_settings, FileCollection({file.Duplicate()}), nullptr, [&file, this](string_view baked_path, const_span<uint8> baked_data) {
                 auto baked_file = File(_str(baked_path).extractFileName().eraseFileExtension(), baked_path, file.GetWriteTime(), const_cast<BakerDataSource*>(this), baked_data, true);
                 _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
             });
@@ -1178,7 +1178,7 @@ auto BakerDataSource::FindFile(const string& path) const -> File*
     }
     else if (ImageBaker::IsImageExt(ext)) {
         if (auto file = _inputResources.ReadFile(path)) {
-            auto baker = ImageBaker(_settings, FileCollection({file.Duplicate()}), nullptr, [&file, this](string_view baked_path, const_span<uchar> baked_data) {
+            auto baker = ImageBaker(_settings, FileCollection({file.Duplicate()}), nullptr, [&file, this](string_view baked_path, const_span<uint8> baked_data) {
                 auto baked_file = File(_str(baked_path).extractFileName().eraseFileExtension(), baked_path, file.GetWriteTime(), const_cast<BakerDataSource*>(this), baked_data, true);
                 _bakedFiles[string(baked_path)] = std::make_unique<File>(std::move(baked_file));
             });
@@ -1210,7 +1210,7 @@ auto BakerDataSource::IsFilePresent(string_view path, size_t& size, uint64& writ
     return false;
 }
 
-auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar>
+auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
 {
     STACK_TRACE_ENTRY();
 

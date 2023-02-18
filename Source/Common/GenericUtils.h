@@ -57,8 +57,8 @@ class Compressor final
 public:
     Compressor() = delete;
 
-    [[nodiscard]] static auto Compress(const_span<uchar> data) -> vector<uchar>;
-    [[nodiscard]] static auto Uncompress(const_span<uchar> data, size_t mul_approx) -> vector<uchar>;
+    [[nodiscard]] static auto Compress(const_span<uint8> data) -> vector<uint8>;
+    [[nodiscard]] static auto Uncompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>;
 };
 
 class GenericUtils final
@@ -72,7 +72,7 @@ public:
     [[nodiscard]] static auto Percent(uint full, uint peace) -> uint;
     [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
-    [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uchar>& colors, int game_time, int* light) -> uint;
+    [[nodiscard]] static auto GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> uint;
     [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
     [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>;
     [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;

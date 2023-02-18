@@ -84,7 +84,7 @@ struct MeshData
     }
 
     vector<Vertex3D> Vertices {};
-    vector<ushort> Indices {};
+    vector<uint16> Indices {};
     string DiffuseTexture {};
     vector<string> SkinBones {};
     vector<mat44> SkinBoneOffsets {};
@@ -118,7 +118,7 @@ struct Bone
         writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
-        writer.Write<uchar>(AttachedMesh != nullptr ? 1 : 0);
+        writer.Write<uint8>(AttachedMesh != nullptr ? 1 : 0);
         if (AttachedMesh) {
             AttachedMesh->Save(writer);
         }
@@ -422,7 +422,7 @@ static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) 
 static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node);
 static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44;
 
-auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
+auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -575,7 +575,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
     fbx_importer->Destroy(true);
     fbx_scene->Destroy(true);
 
-    vector<uchar> data;
+    vector<uint8> data;
     auto writer = DataWriter(data);
 
     root_bone->Save(writer);
@@ -714,7 +714,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         // Faces
         mesh->Indices.resize(vertices_count);
         for (auto i = 0; i < vertices_count; i++) {
-            mesh->Indices[i] = static_cast<ushort>(i);
+            mesh->Indices[i] = static_cast<uint16>(i);
         }
 
         // Material
@@ -854,7 +854,7 @@ static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 }
 
 #else
-auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
+auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 

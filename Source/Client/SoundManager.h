@@ -61,8 +61,8 @@ private:
     auto LoadWav(Sound* sound, string_view fname) -> bool;
     auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
     auto LoadOgg(Sound* sound, string_view fname) -> bool;
-    void ProcessSounds(uchar* output);
-    auto ProcessSound(Sound* sound, uchar* output) -> bool;
+    void ProcessSounds(uint8* output);
+    auto ProcessSound(Sound* sound, uint8* output) -> bool;
     auto StreamOgg(Sound* sound) -> bool;
     auto ConvertData(Sound* sound) -> bool;
 
@@ -71,6 +71,6 @@ private:
     bool _isActive {};
     uint _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;
-    vector<uchar> _outputBuf {};
+    vector<uint8> _outputBuf {};
     bool _nonConstHelper {};
 };

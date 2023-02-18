@@ -69,7 +69,7 @@ public:
     virtual void Init();
     virtual void Finish();
     void MarkAsDestroyed() override;
-    virtual auto AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*;
+    virtual auto AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*;
     virtual void DeleteItem(ItemView* item, bool animate);
     void DeleteAllItems();
     void SetName(string_view name);

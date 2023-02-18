@@ -160,9 +160,9 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     }
 
     // Change item
-    _engine->OnCritterMoveItem.Fire(cr, item, static_cast<uchar>(-1));
-    cr->OnItemMove.Fire(item, static_cast<uchar>(-1));
-    item->OnCritterMove.Fire(cr, static_cast<uchar>(-1));
+    _engine->OnCritterMoveItem.Fire(cr, item, static_cast<uint8>(-1));
+    cr->OnItemMove.Fire(item, static_cast<uint8>(-1));
+    item->OnCritterMove.Fire(cr, static_cast<uint8>(-1));
 
     return item;
 }
@@ -209,7 +209,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     item->OnCritterMove.Fire(cr, prev_slot);
 }
 
-auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
+auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -236,8 +236,8 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
             return nullptr;
         }
 
-        short hx_ = hx;
-        short hy_ = hy;
+        int16 hx_ = hx;
+        int16 hy_ = hy;
         const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         // Find in 2 hex radius
@@ -277,7 +277,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     RUNTIME_ASSERT(loc);
 
     if (dir >= GameSettings::MAP_DIR_COUNT) {
-        dir = static_cast<uchar>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
+        dir = static_cast<uint8>(GenericUtils::Random(0u, GameSettings::MAP_DIR_COUNT - 1u));
     }
     cr->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
     cr->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
@@ -415,7 +415,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     return player_critters;
 }
 
-auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, CritterFindType find_type) -> vector<Critter*>
+auto CritterManager::GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 
@@ -546,8 +546,8 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     // Check distance
     if (!cr->Talk.IgnoreDistance) {
         auto map_id = ident_t {};
-        ushort hx = 0;
-        ushort hy = 0;
+        uint16 hx = 0;
+        uint16 hy = 0;
         uint talk_distance = 0;
         if (cr->Talk.Type == TalkType::Critter) {
             map_id = talker->GetMapId();

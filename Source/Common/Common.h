@@ -52,6 +52,8 @@
 // Todo: temporary entities, disable writing to data base
 // Todo: RUNTIME_ASSERT to assert?
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
+// Todo: move from 32 bit hashes to 64 bit
+// Todo: split meanings of int8/char and uint8/byte in code
 
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
 
@@ -136,32 +138,24 @@ inline auto format_as(T v)
 #endif
 
 // Base types
-// Todo: split meanings if int8 and char in code
-// Todo: move from 32 bit hashes to 64 bit
-// Todo: rename uchar to uint8 and use uint8_t as alias
-// Todo: rename ushort to uint16 and use uint16_t as alias
-// Todo: rename uint to uint32 and use uint32_t as alias
-// Todo: rename char to int8 and use int8_t as alias
-// Todo: rename short to int16 and use int16_t as alias
-// Todo: rename int to int32 and use int32_t as alias
-using uchar = unsigned char;
-using ushort = unsigned short;
+using int8 = char;
+using uint8 = unsigned char;
+using int16 = short;
+using uint16 = unsigned short;
 using uint = unsigned int;
-using uint64 = uint64_t;
 using int64 = int64_t;
+using uint64 = uint64_t;
 
 // Check the sizes of base types
-static_assert(sizeof(char) == 1);
-static_assert(sizeof(short) == 2);
+static_assert(sizeof(int8) == 1);
+static_assert(sizeof(uint8) == 1);
+static_assert(sizeof(int16) == 2);
+static_assert(sizeof(uint16) == 2);
 static_assert(sizeof(int) == 4);
-static_assert(sizeof(int64) == 8);
-static_assert(sizeof(uchar) == 1);
-static_assert(sizeof(ushort) == 2);
 static_assert(sizeof(uint) == 4);
+static_assert(sizeof(int64) == 8);
 static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
-static_assert(sizeof(void*) == 4 || sizeof(void*) == 8);
-static_assert(sizeof(void*) == sizeof(size_t));
 static_assert(CHAR_BIT == 8);
 
 // Bind to global scope frequently used types
@@ -927,7 +921,7 @@ DECLARE_EXCEPTION(DataReadingException);
 class DataReader
 {
 public:
-    explicit DataReader(const_span<uchar> buf) :
+    explicit DataReader(const_span<uint8> buf) :
         _dataBuf {buf}
     {
     }
@@ -976,7 +970,7 @@ public:
     }
 
 private:
-    const_span<uchar> _dataBuf;
+    const_span<uint8> _dataBuf;
     size_t _readPos {};
 };
 
@@ -985,7 +979,7 @@ class DataWriter
 public:
     static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
-    explicit DataWriter(vector<uchar>& buf) :
+    explicit DataWriter(vector<uint8>& buf) :
         _dataBuf {buf}
     {
         if (_dataBuf.capacity() < BUF_RESERVE_SIZE) {
@@ -1022,7 +1016,7 @@ public:
     }
 
 private:
-    vector<uchar>& _dataBuf;
+    vector<uint8>& _dataBuf;
 };
 
 // Flex rect
@@ -1286,7 +1280,7 @@ static constexpr float MAX_ZOOM = 20.0f;
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
 ///@ ExportEnum
-enum class CritterFindType : uchar
+enum class CritterFindType : uint8
 {
     Any = 0,
     Alive = 0x01,
@@ -1300,67 +1294,67 @@ enum class CritterFindType : uchar
 };
 
 // Ping
-static constexpr uchar PING_SERVER = 0;
-static constexpr uchar PING_CLIENT = 2;
+static constexpr uint8 PING_SERVER = 0;
+static constexpr uint8 PING_CLIENT = 2;
 
 // Message box types
 static constexpr int FOMB_GAME = 0;
 static constexpr int FOMB_TALK = 1;
 
 // Say types
-static constexpr uchar SAY_NORM = 1;
-static constexpr uchar SAY_NORM_ON_HEAD = 2;
-static constexpr uchar SAY_SHOUT = 3;
-static constexpr uchar SAY_SHOUT_ON_HEAD = 4;
-static constexpr uchar SAY_EMOTE = 5;
-static constexpr uchar SAY_EMOTE_ON_HEAD = 6;
-static constexpr uchar SAY_WHISP = 7;
-static constexpr uchar SAY_WHISP_ON_HEAD = 8;
-static constexpr uchar SAY_SOCIAL = 9;
-static constexpr uchar SAY_RADIO = 10;
-static constexpr uchar SAY_NETMSG = 11;
-static constexpr uchar SAY_DIALOG = 12;
-static constexpr uchar SAY_APPEND = 13;
-static constexpr uchar SAY_FLASH_WINDOW = 41;
+static constexpr uint8 SAY_NORM = 1;
+static constexpr uint8 SAY_NORM_ON_HEAD = 2;
+static constexpr uint8 SAY_SHOUT = 3;
+static constexpr uint8 SAY_SHOUT_ON_HEAD = 4;
+static constexpr uint8 SAY_EMOTE = 5;
+static constexpr uint8 SAY_EMOTE_ON_HEAD = 6;
+static constexpr uint8 SAY_WHISP = 7;
+static constexpr uint8 SAY_WHISP_ON_HEAD = 8;
+static constexpr uint8 SAY_SOCIAL = 9;
+static constexpr uint8 SAY_RADIO = 10;
+static constexpr uint8 SAY_NETMSG = 11;
+static constexpr uint8 SAY_DIALOG = 12;
+static constexpr uint8 SAY_APPEND = 13;
+static constexpr uint8 SAY_FLASH_WINDOW = 41;
 
 // Global map
 static constexpr int GM_MAXZONEX = 100;
 static constexpr int GM_MAXZONEY = 100;
 static constexpr size_t GM_ZONES_FOG_SIZE = ((GM_MAXZONEX / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
-static constexpr uchar GM_FOG_FULL = 0;
-static constexpr uchar GM_FOG_HALF = 1;
-static constexpr uchar GM_FOG_NONE = 3;
+static constexpr uint8 GM_FOG_FULL = 0;
+static constexpr uint8 GM_FOG_HALF = 1;
+static constexpr uint8 GM_FOG_NONE = 3;
 
 // GM Info
-static constexpr uchar GM_INFO_LOCATIONS = 0x01;
-static constexpr uchar GM_INFO_CRITTERS = 0x02;
-static constexpr uchar GM_INFO_ZONES_FOG = 0x08;
-static constexpr uchar GM_INFO_ALL = 0x0F;
-static constexpr uchar GM_INFO_FOG = 0x10;
-static constexpr uchar GM_INFO_LOCATION = 0x20;
+static constexpr uint8 GM_INFO_LOCATIONS = 0x01;
+static constexpr uint8 GM_INFO_CRITTERS = 0x02;
+static constexpr uint8 GM_INFO_ZONES_FOG = 0x08;
+static constexpr uint8 GM_INFO_ALL = 0x0F;
+static constexpr uint8 GM_INFO_FOG = 0x10;
+static constexpr uint8 GM_INFO_LOCATION = 0x20;
 
 // Proto map hex flags
-static constexpr uchar FH_BLOCK = BIN8(00000001);
-static constexpr uchar FH_NOTRAKE = BIN8(00000010);
-static constexpr uchar FH_STATIC_TRIGGER = BIN8(00100000);
+static constexpr uint8 FH_BLOCK = BIN8(00000001);
+static constexpr uint8 FH_NOTRAKE = BIN8(00000010);
+static constexpr uint8 FH_STATIC_TRIGGER = BIN8(00100000);
 
 // Map instance hex flags
-static constexpr uchar FH_CRITTER = BIN8(00000001);
-static constexpr uchar FH_DEAD_CRITTER = BIN8(00000010);
-static constexpr uchar FH_DOOR = BIN8(00001000);
-static constexpr uchar FH_BLOCK_ITEM = BIN8(00010000);
-static constexpr uchar FH_NRAKE_ITEM = BIN8(00100000);
-static constexpr uchar FH_TRIGGER = BIN8(01000000);
-static constexpr uchar FH_GAG_ITEM = BIN8(10000000);
+static constexpr uint8 FH_CRITTER = BIN8(00000001);
+static constexpr uint8 FH_DEAD_CRITTER = BIN8(00000010);
+static constexpr uint8 FH_DOOR = BIN8(00001000);
+static constexpr uint8 FH_BLOCK_ITEM = BIN8(00010000);
+static constexpr uint8 FH_NRAKE_ITEM = BIN8(00100000);
+static constexpr uint8 FH_TRIGGER = BIN8(01000000);
+static constexpr uint8 FH_GAG_ITEM = BIN8(10000000);
 
 // Both proto map and map instance flags
-static constexpr ushort FH_NOWAY = BIN16(00010001, 00000001);
-static constexpr ushort FH_NOSHOOT = BIN16(00100000, 00000010);
+static constexpr uint16 FH_NOWAY = BIN16(00010001, 00000001);
+static constexpr uint16 FH_NOSHOOT = BIN16(00100000, 00000010);
 
 // Coordinates
-static constexpr ushort MAXHEX_DEFAULT = 200;
-static constexpr ushort MAXHEX_MIN = 10;
-static constexpr ushort MAXHEX_MAX = 4000;
+static constexpr uint16 MAXHEX_DEFAULT = 200;
+static constexpr uint16 MAXHEX_MIN = 10;
+static constexpr uint16 MAXHEX_MAX = 4000;
 
 // Answer
 #define ANSWER_BEGIN (0xF0)
@@ -1426,7 +1420,7 @@ static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
 #define ANIM2_DEAD_FRONT (102)
 
 // Property type in network interaction
-enum class NetProperty : uchar
+enum class NetProperty : uint8
 {
     None = 0,
     Game, // No extra args
@@ -1465,7 +1459,7 @@ enum class EffectType : uint
 };
 
 ///@ ExportEnum
-enum class ItemOwnership : uchar
+enum class ItemOwnership : uint8
 {
     Nowhere = 0,
     CritterInventory = 1,
@@ -1474,7 +1468,7 @@ enum class ItemOwnership : uchar
 };
 
 ///@ ExportEnum
-enum class CornerType : uchar
+enum class CornerType : uint8
 {
     NorthSouth = 0,
     West = 1,
@@ -1485,7 +1479,7 @@ enum class CornerType : uchar
 };
 
 ///@ ExportEnum
-enum class CritterCondition : uchar
+enum class CritterCondition : uint8
 {
     Alive = 0,
     Knockout = 1,
@@ -1493,7 +1487,7 @@ enum class CritterCondition : uchar
 };
 
 ///@ ExportEnum
-enum class MovingState : uchar
+enum class MovingState : uint8
 {
     InProgress = 0,
     Success = 1,
@@ -1536,30 +1530,30 @@ struct GameSettings
 #define MAKE_ITEM_MODE(use, aim) ((((aim) << 4) | ((use)&0xF)) & 0xFF)
 
 // Radio
-static constexpr ushort RADIO_DISABLE_SEND = 0x01;
-static constexpr ushort RADIO_DISABLE_RECV = 0x02;
-static constexpr uchar RADIO_BROADCAST_WORLD = 0;
-static constexpr uchar RADIO_BROADCAST_MAP = 20;
-static constexpr uchar RADIO_BROADCAST_LOCATION = 40;
-static constexpr auto RADIO_BROADCAST_ZONE(int x) -> uchar
+static constexpr uint16 RADIO_DISABLE_SEND = 0x01;
+static constexpr uint16 RADIO_DISABLE_RECV = 0x02;
+static constexpr uint8 RADIO_BROADCAST_WORLD = 0;
+static constexpr uint8 RADIO_BROADCAST_MAP = 20;
+static constexpr uint8 RADIO_BROADCAST_LOCATION = 40;
+static constexpr auto RADIO_BROADCAST_ZONE(int x) -> uint8
 {
-    return static_cast<uchar>(100 + std::clamp(x, 1, 100));
+    return static_cast<uint8>(100 + std::clamp(x, 1, 100));
 }
-static constexpr uchar RADIO_BROADCAST_FORCE_ALL = 250;
+static constexpr uint8 RADIO_BROADCAST_FORCE_ALL = 250;
 
 // Light
-static constexpr auto LIGHT_DISABLE_DIR(int dir) -> uchar
+static constexpr auto LIGHT_DISABLE_DIR(int dir) -> uint8
 {
-    return static_cast<uchar>(1u << std::clamp(dir, 0, 5));
+    return static_cast<uint8>(1u << std::clamp(dir, 0, 5));
 }
-static constexpr uchar LIGHT_GLOBAL = 0x40;
-static constexpr uchar LIGHT_INVERSE = 0x80;
+static constexpr uint8 LIGHT_GLOBAL = 0x40;
+static constexpr uint8 LIGHT_INVERSE = 0x80;
 
 // Access
-static constexpr uchar ACCESS_CLIENT = 0;
-static constexpr uchar ACCESS_TESTER = 1;
-static constexpr uchar ACCESS_MODER = 2;
-static constexpr uchar ACCESS_ADMIN = 3;
+static constexpr uint8 ACCESS_CLIENT = 0;
+static constexpr uint8 ACCESS_TESTER = 1;
+static constexpr uint8 ACCESS_MODER = 2;
+static constexpr uint8 ACCESS_ADMIN = 3;
 
 // Commands
 #define CMD_EXIT (1)
@@ -1581,10 +1575,10 @@ static constexpr uchar ACCESS_ADMIN = 3;
 #define CMD_BAN (33)
 #define CMD_LOG (37)
 
-static constexpr ushort ANIMRUN_TO_END = 0x0001;
-static constexpr ushort ANIMRUN_FROM_END = 0x0002;
-static constexpr ushort ANIMRUN_CYCLE = 0x0004;
-static constexpr ushort ANIMRUN_STOP = 0x0008;
+static constexpr uint16 ANIMRUN_TO_END = 0x0001;
+static constexpr uint16 ANIMRUN_FROM_END = 0x0002;
+static constexpr uint16 ANIMRUN_CYCLE = 0x0004;
+static constexpr uint16 ANIMRUN_STOP = 0x0008;
 static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
 {
     return static_cast<uint>(frm + 1) << 16;
@@ -1710,8 +1704,8 @@ public:
 };
 
 // Interthread communication between server and client
-using InterthreadDataCallback = std::function<void(const_span<uchar>)>;
-extern map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadDataCallback = std::function<void(const_span<uint8>)>;
+extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

@@ -41,7 +41,7 @@
 DECLARE_EXCEPTION(AppInitException);
 
 ///@ ExportEnum
-enum class KeyCode : uchar
+enum class KeyCode : uint8
 {
     None = 0x00,
     Escape = 0x01,
@@ -333,16 +333,16 @@ public:
     static const int AUDIO_FORMAT_U8;
     static const int AUDIO_FORMAT_S16;
 
-    using AudioStreamCallback = std::function<void(uchar*)>;
+    using AudioStreamCallback = std::function<void(uint8*)>;
 
     [[nodiscard]] auto IsEnabled() -> bool;
     [[nodiscard]] auto GetStreamSize() -> uint;
-    [[nodiscard]] auto GetSilence() -> uchar;
+    [[nodiscard]] auto GetSilence() -> uint8;
 
-    [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
+    [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool;
 
     void SetSource(AudioStreamCallback stream_callback);
-    void MixAudio(uchar* output, uchar* buf, int volume);
+    void MixAudio(uint8* output, uint8* buf, int volume);
     void LockDevice();
     void UnlockDevice();
 

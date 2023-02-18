@@ -85,7 +85,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, ushort& hx, ushort& hy)
+[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, uint16& hx, uint16& hy)
 {
     Map* map;
 
@@ -142,7 +142,7 @@
 ///# param fromFrm ...
 ///# param toFrm ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Server_Item_Animate(Item* self, uchar fromFrm, uchar toFrm)
+[[maybe_unused]] void Server_Item_Animate(Item* self, uint8 fromFrm, uint8 toFrm)
 {
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {

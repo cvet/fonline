@@ -52,7 +52,7 @@ public:
 
     [[nodiscard]] virtual auto GetIp() const -> uint = 0;
     [[nodiscard]] virtual auto GetHost() const -> string_view = 0;
-    [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
+    [[nodiscard]] virtual auto GetPort() const -> uint16 = 0;
     [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
     [[nodiscard]] virtual auto IsWebConnection() const -> bool = 0;
     [[nodiscard]] virtual auto IsInterthreadConnection() const -> bool = 0;
@@ -88,7 +88,7 @@ public:
 
     auto GetIp() const -> uint override { return 0; }
     auto GetHost() const -> string_view override { return "Dummy"; }
-    auto GetPort() const -> ushort override { return 0; }
+    auto GetPort() const -> uint16 override { return 0; }
     auto IsDisconnected() const -> bool override { return false; }
     auto IsWebConnection() const -> bool override { return false; }
     auto IsInterthreadConnection() const -> bool override { return false; }

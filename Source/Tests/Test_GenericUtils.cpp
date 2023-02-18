@@ -37,7 +37,7 @@
 
 TEST_CASE("MurmurHash2")
 {
-    const auto* data = reinterpret_cast<const uchar*>("abcdefg");
+    const auto* data = reinterpret_cast<const uint8*>("abcdefg");
     REQUIRE(Hashing::MurmurHash2(data, 4) == 646393889U);
     REQUIRE(Hashing::MurmurHash2(data, 5) == 1594468574U);
     REQUIRE(Hashing::MurmurHash2(data, 6) == 1271458169U);

@@ -74,11 +74,11 @@ GameTimer::GameTimer(TimerSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
-    Reset(static_cast<ushort>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
+    Reset(static_cast<uint16>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
     FrameAdvance();
 }
 
-void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier)
+void GameTimer::Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier)
 {
     STACK_TRACE_ENTRY();
 
@@ -146,7 +146,7 @@ auto GameTimer::GetFullSecond() const -> uint
     return _fullSecond;
 }
 
-auto GameTimer::EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second) const -> uint
+auto GameTimer::EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -164,7 +164,7 @@ auto GameTimer::GetGameTime(uint full_second) const -> DateTimeStamp
     return Timer::FullTimeToDateTime(ft);
 }
 
-auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
+auto GameTimer::GameTimeMonthDay(uint16 year, uint16 month) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -304,13 +304,13 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
 
     // Base
     ft /= 10000ULL;
-    dt.Milliseconds = static_cast<ushort>(ft % 1000ULL);
+    dt.Milliseconds = static_cast<uint16>(ft % 1000ULL);
     ft /= 1000ULL;
-    dt.Second = static_cast<ushort>(ft % 60ULL);
+    dt.Second = static_cast<uint16>(ft % 60ULL);
     ft /= 60ULL;
-    dt.Minute = static_cast<ushort>(ft % 60ULL);
+    dt.Minute = static_cast<uint16>(ft % 60ULL);
     ft /= 60ULL;
-    dt.Hour = static_cast<ushort>(ft % 24ULL);
+    dt.Hour = static_cast<uint16>(ft % 24ULL);
     ft /= 24ULL;
 
     // Year
@@ -329,7 +329,7 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
         year--;
     }
 
-    dt.Year = static_cast<ushort>(year + 1601);
+    dt.Year = static_cast<uint16>(year + 1601);
     ft = days;
 
     // Month
@@ -340,13 +340,13 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
     for (auto i = 0; i < 12; i++) {
         if (static_cast<uint>(ft) >= count[i] && static_cast<uint>(ft) < count[i + 1]) {
             ft -= count[i];
-            dt.Month = static_cast<ushort>(i) + 1;
+            dt.Month = static_cast<uint16>(i) + 1;
             break;
         }
     }
 
     // Day
-    dt.Day = static_cast<ushort>(ft) + 1;
+    dt.Day = static_cast<uint16>(ft) + 1;
 
     // Day of week
     const auto a = (14 - dt.Month) / 12;

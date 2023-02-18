@@ -97,7 +97,7 @@ void CritterHexView::SetFade(bool fade_up)
     _fadingEnabled = true;
 }
 
-auto CritterHexView::GetFadeAlpha() -> uchar
+auto CritterHexView::GetFadeAlpha() -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -108,7 +108,7 @@ auto CritterHexView::GetFadeAlpha() -> uchar
     }
 
     const auto alpha = (_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
-    return static_cast<uchar>(alpha);
+    return static_cast<uint8>(alpha);
 }
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
@@ -118,7 +118,7 @@ auto CritterHexView::GetCurAnim() -> CritterAnim*
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
-auto CritterHexView::AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
+auto CritterHexView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -523,7 +523,7 @@ void CritterHexView::RefreshModel()
 }
 #endif
 
-void CritterHexView::ChangeDir(uchar dir)
+void CritterHexView::ChangeDir(uint8 dir)
 {
     STACK_TRACE_ENTRY();
 
@@ -542,7 +542,7 @@ void CritterHexView::ChangeLookDirAngle(int dir_angle)
 {
     STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
+    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<int16>(dir_angle));
 
     if (normalized_dir_angle == GetDirAngle()) {
         return;
@@ -789,8 +789,8 @@ void CritterHexView::ProcessMoving()
             mx -= static_cast<float>(cr_ox);
             my -= static_cast<float>(cr_oy);
 
-            const auto mxi = static_cast<short>(iround(mx));
-            const auto myi = static_cast<short>(iround(my));
+            const auto mxi = static_cast<int16>(iround(mx));
+            const auto myi = static_cast<int16>(iround(my));
             if (moved || GetHexOffsX() != mxi || GetHexOffsY() != myi) {
 #if FO_ENABLE_3D
                 if (_model != nullptr) {
@@ -820,7 +820,7 @@ void CritterHexView::ProcessMoving()
             else
 #endif
             {
-                ChangeDir(_engine->Geometry.AngleToDir(static_cast<short>(dir_angle)));
+                ChangeDir(_engine->Geometry.AngleToDir(static_cast<int16>(dir_angle)));
             }
 
             done = true;

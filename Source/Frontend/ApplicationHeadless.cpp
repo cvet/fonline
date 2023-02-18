@@ -486,7 +486,7 @@ auto AppAudio::GetStreamSize() -> uint
     return 0u;
 }
 
-auto AppAudio::GetSilence() -> uchar
+auto AppAudio::GetSilence() -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -504,7 +504,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     RUNTIME_ASSERT(IsEnabled());
 }
 
-auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
+auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -518,7 +518,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
     return true;
 }
 
-void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
+void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 

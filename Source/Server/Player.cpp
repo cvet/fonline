@@ -88,7 +88,7 @@ auto Player::GetHost() const -> string_view
     return Connection->GetHost();
 }
 
-auto Player::GetPort() const -> ushort
+auto Player::GetPort() const -> uint16
 {
     STACK_TRACE_ENTRY();
 
@@ -99,13 +99,13 @@ void Player::Send_AddCritter(Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) + sizeof(ushort) * 2 + sizeof(short) * 3 + sizeof(CritterCondition) + sizeof(uint) * 6 + sizeof(bool) * 3 + sizeof(hstring::hash_t);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) + sizeof(uint16) * 2 + sizeof(int16) * 3 + sizeof(CritterCondition) + sizeof(uint) * 6 + sizeof(bool) * 3 + sizeof(hstring::hash_t);
 
-    vector<uchar*>* data = nullptr;
+    vector<uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto is_chosen = cr == GetOwnedCritter();
     const auto whole_data_size = cr->StoreData(is_chosen, &data, &data_sizes);
-    msg_len += sizeof(ushort) + whole_data_size;
+    msg_len += sizeof(uint16) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
@@ -165,7 +165,7 @@ void Player::Send_LoadMap(Map* map)
     const Location* loc = nullptr;
     hstring pid_map;
     hstring pid_loc;
-    uchar map_index_in_loc = 0;
+    uint8 map_index_in_loc = 0;
 
     if (map == nullptr) {
         map = _engine->MapMngr.GetMap(_ownedCr->GetMapId());
@@ -175,18 +175,18 @@ void Player::Send_LoadMap(Map* map)
         loc = map->GetLocation();
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
-        map_index_in_loc = static_cast<uchar>(loc->GetMapIndex(pid_map));
+        map_index_in_loc = static_cast<uint8>(loc->GetMapIndex(pid_map));
     }
 
-    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(uint) * 2 + sizeof(hstring::hash_t) * 2 + sizeof(uchar);
-    vector<uchar*>* map_data = nullptr;
+    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(uint) * 2 + sizeof(hstring::hash_t) * 2 + sizeof(uint8);
+    vector<uint8*>* map_data = nullptr;
     vector<uint>* map_data_sizes = nullptr;
-    vector<uchar*>* loc_data = nullptr;
+    vector<uint8*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
     if (map != nullptr) {
         const auto map_whole_data_size = map->StoreData(false, &map_data, &map_data_sizes);
         const auto loc_whole_data_size = loc->StoreData(false, &loc_data, &loc_data_sizes);
-        msg_len += sizeof(ushort) + map_whole_data_size + sizeof(ushort) + loc_whole_data_size;
+        msg_len += sizeof(uint16) + map_whole_data_size + sizeof(uint16) + loc_whole_data_size;
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -244,7 +244,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
         Connection->Bout << NETMSG_POD_PROPERTY(data_size, additional_args);
     }
     else {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(ushort) + data_size;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(uint16) + data_size;
 
         Connection->Bout << NETMSG_COMPLEX_PROPERTY;
         Connection->Bout << msg_len;
@@ -291,8 +291,8 @@ void Player::Send_Move(Critter* from_cr)
     NON_CONST_METHOD_HINT();
 
     if (!from_cr->Moving.Steps.empty()) {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) + sizeof(uint) * 2 + sizeof(ushort) + sizeof(ushort) * 2 + //
-            static_cast<uint>(sizeof(uchar) * from_cr->Moving.Steps.size()) + static_cast<uint>(sizeof(ushort) * from_cr->Moving.ControlSteps.size()) + sizeof(char) * 2;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) + sizeof(uint) * 2 + sizeof(uint16) + sizeof(uint16) * 2 + //
+            static_cast<uint>(sizeof(uint8) * from_cr->Moving.Steps.size()) + static_cast<uint>(sizeof(uint16) * from_cr->Moving.ControlSteps.size()) + sizeof(char) * 2;
 
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->Bout << NETMSG_CRITTER_MOVE;
@@ -303,11 +303,11 @@ void Player::Send_Move(Critter* from_cr)
         Connection->Bout << from_cr->Moving.Speed;
         Connection->Bout << from_cr->Moving.StartHexX;
         Connection->Bout << from_cr->Moving.StartHexY;
-        Connection->Bout << static_cast<ushort>(from_cr->Moving.Steps.size());
+        Connection->Bout << static_cast<uint16>(from_cr->Moving.Steps.size());
         for (auto step : from_cr->Moving.Steps) {
             Connection->Bout << step;
         }
-        Connection->Bout << static_cast<ushort>(from_cr->Moving.ControlSteps.size());
+        Connection->Bout << static_cast<uint16>(from_cr->Moving.ControlSteps.size());
         for (auto control_step : from_cr->Moving.ControlSteps) {
             Connection->Bout << control_step;
         }
@@ -358,7 +358,7 @@ void Player::Send_Action(Critter* from_cr, int action, int action_ext, Item* ite
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
+void Player::Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -368,10 +368,10 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
         Send_SomeItem(item);
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(bool) + sizeof(uchar);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(bool) + sizeof(uint8);
 
     vector<const Item*> items;
-    vector<vector<uchar*>*> items_data;
+    vector<vector<uint8*>*> items_data;
     vector<vector<uint>*> items_data_sizes;
 
     if (!is_chosen) {
@@ -385,14 +385,14 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
             }
         }
 
-        msg_len += sizeof(ushort);
+        msg_len += sizeof(uint16);
 
         if (!items.empty()) {
             items_data.resize(items.size());
             items_data_sizes.resize(items.size());
             for (const auto i : xrange(items)) {
                 const auto whole_data_size = items[i]->StoreData(false, &items_data[i], &items_data_sizes[i]);
-                msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) + whole_data_size;
+                msg_len += sizeof(uint8) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) + whole_data_size;
             }
         }
     }
@@ -404,8 +404,8 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     Connection->Bout << action;
     Connection->Bout << prev_slot;
     Connection->Bout << (item != nullptr);
-    Connection->Bout << (item != nullptr ? item->GetCritterSlot() : uchar());
-    Connection->Bout << static_cast<ushort>(items.size());
+    Connection->Bout << (item != nullptr ? item->GetCritterSlot() : uint8());
+    Connection->Bout << static_cast<uint16>(items.size());
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];
         Connection->Bout << item_->GetCritterSlot();
@@ -457,12 +457,12 @@ void Player::Send_AddItemOnMap(Item* item)
     NON_CONST_METHOD_HINT();
 
     const auto is_added = item->ViewPlaceOnMap;
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 2 + sizeof(bool);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(bool);
 
-    vector<uchar*>* data = nullptr;
+    vector<uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = item->StoreData(false, &data, &data_sizes);
-    msg_len += sizeof(ushort) + whole_data_size;
+    msg_len += sizeof(uint16) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_ADD_ITEM_ON_MAP;
@@ -489,7 +489,7 @@ void Player::Send_EraseItemFromMap(Item* item)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
+void Player::Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
 {
     STACK_TRACE_ENTRY();
 
@@ -513,11 +513,11 @@ void Player::Send_AddItem(Item* item)
         return;
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uchar);
-    vector<uchar*>* data = nullptr;
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint8);
+    vector<uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = item->StoreData(true, &data, &data_sizes);
-    msg_len += sizeof(ushort) + whole_data_size;
+    msg_len += sizeof(uint16) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_ADD_ITEM;
@@ -541,11 +541,11 @@ void Player::Send_EraseItem(Item* item)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_GlobalInfo(uchar info_flags)
+void Player::Send_GlobalInfo(uint8 info_flags)
 {
     STACK_TRACE_ENTRY();
 
-#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 2 + sizeof(ushort) + sizeof(uint) + sizeof(uchar))
+#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(uint16) + sizeof(uint) + sizeof(uint8))
 
     NON_CONST_METHOD_HINT();
 
@@ -556,7 +556,7 @@ void Player::Send_GlobalInfo(uchar info_flags)
     // Calculate length of message
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(info_flags);
 
-    auto loc_count = static_cast<ushort>(known_locs.size());
+    auto loc_count = static_cast<uint16>(known_locs.size());
     if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
         msg_len += sizeof(loc_count) + SEND_LOCATION_SIZE * loc_count;
     }
@@ -576,7 +576,7 @@ void Player::Send_GlobalInfo(uchar info_flags)
         Connection->Bout << loc_count;
 
         constexpr char empty_loc[SEND_LOCATION_SIZE] = {0, 0, 0, 0};
-        for (ushort i = 0; i < loc_count;) {
+        for (uint16 i = 0; i < loc_count;) {
             auto loc_id = known_locs[i];
             const auto* loc = _engine->MapMngr.GetLocation(loc_id);
             if (loc != nullptr && !loc->GetToGarbage()) {
@@ -587,9 +587,9 @@ void Player::Send_GlobalInfo(uchar info_flags)
                 Connection->Bout << loc->GetWorldY();
                 Connection->Bout << loc->GetRadius();
                 Connection->Bout << loc->GetColor();
-                uchar count = 0;
+                uint8 count = 0;
                 if (loc->IsNonEmptyMapEntrances()) {
-                    count = static_cast<uchar>(loc->GetMapEntrances().size() / 2);
+                    count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
                 }
                 Connection->Bout << count;
             }
@@ -636,9 +636,9 @@ void Player::Send_GlobalLocation(Location* loc, bool add)
     Connection->Bout << loc->GetWorldY();
     Connection->Bout << loc->GetRadius();
     Connection->Bout << loc->GetColor();
-    uchar count = 0;
+    uint8 count = 0;
     if (loc->IsNonEmptyMapEntrances()) {
-        count = static_cast<uchar>(loc->GetMapEntrances().size() / 2);
+        count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
     }
     Connection->Bout << count;
     CONNECTION_OUTPUT_END(Connection);
@@ -646,7 +646,7 @@ void Player::Send_GlobalLocation(Location* loc, bool add)
 #undef SEND_LOCATION_SIZE
 }
 
-void Player::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
+void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
 {
     STACK_TRACE_ENTRY();
 
@@ -690,10 +690,10 @@ void Player::Send_AllProperties()
 
     uint msg_len = sizeof(uint) + sizeof(uint);
 
-    vector<uchar*>* data = nullptr;
+    vector<uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = StoreData(true, &data, &data_sizes);
-    msg_len += sizeof(ushort) + whole_data_size;
+    msg_len += sizeof(uint16) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_ALL_PROPERTIES;
@@ -702,7 +702,7 @@ void Player::Send_AllProperties()
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
+void Player::Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -726,7 +726,7 @@ void Player::Send_Talk()
 
     const auto close = _ownedCr->Talk.Type == TalkType::None;
     const auto is_npc = _ownedCr->Talk.Type == TalkType::Critter;
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(uchar);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(uint8);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
@@ -737,11 +737,11 @@ void Player::Send_Talk()
         Connection->Bout << is_npc;
         Connection->Bout << _ownedCr->Talk.CritterId;
         Connection->Bout << _ownedCr->Talk.DialogPackId;
-        Connection->Bout << static_cast<uchar>(0);
+        Connection->Bout << static_cast<uint8>(0);
     }
     else {
-        const auto all_answers = static_cast<uchar>(_ownedCr->Talk.CurDialog.Answers.size());
-        msg_len += sizeof(uint) + sizeof(uint) * all_answers + sizeof(uint) + sizeof(ushort) + static_cast<uint>(_ownedCr->Talk.Lexems.length());
+        const auto all_answers = static_cast<uint8>(_ownedCr->Talk.CurDialog.Answers.size());
+        msg_len += sizeof(uint) + sizeof(uint) * all_answers + sizeof(uint) + sizeof(uint16) + static_cast<uint>(_ownedCr->Talk.Lexems.length());
 
         auto talk_time = _ownedCr->Talk.TalkTime;
         if (talk_time != 0u) {
@@ -754,7 +754,7 @@ void Player::Send_Talk()
         Connection->Bout << _ownedCr->Talk.CritterId;
         Connection->Bout << _ownedCr->Talk.DialogPackId;
         Connection->Bout << all_answers;
-        Connection->Bout << static_cast<ushort>(_ownedCr->Talk.Lexems.length()); // Lexems length
+        Connection->Bout << static_cast<uint16>(_ownedCr->Talk.Lexems.length()); // Lexems length
         if (_ownedCr->Talk.Lexems.length() != 0u) {
             Connection->Bout.Push(_ownedCr->Talk.Lexems.c_str(), _ownedCr->Talk.Lexems.length()); // Lexems string
         }
@@ -786,7 +786,7 @@ void Player::Send_TimeSync()
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Text(Critter* from_cr, string_view text, uchar how_say)
+void Player::Send_Text(Critter* from_cr, string_view text, uint8 how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -798,7 +798,7 @@ void Player::Send_Text(Critter* from_cr, string_view text, uchar how_say)
     Send_TextEx(from_id, text, how_say, false);
 }
 
-void Player::Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool unsafe_text)
+void Player::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -816,7 +816,7 @@ void Player::Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg)
+void Player::Send_TextMsg(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -837,7 +837,7 @@ void Player::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(ident_t from_id, uint num_str, uchar how_say, ushort num_msg)
+void Player::Send_TextMsg(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -856,7 +856,7 @@ void Player::Send_TextMsg(ident_t from_id, uint num_str, uchar how_say, ushort n
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -880,7 +880,7 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -903,7 +903,7 @@ void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uchar how_say, ushor
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
+void Player::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -922,7 +922,7 @@ void Player::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bo
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str)
+void Player::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str)
 {
     STACK_TRACE_ENTRY();
 
@@ -938,13 +938,13 @@ void Player::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, u
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
+void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) * 2 + sizeof(uint) + sizeof(ushort) + sizeof(uint) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint16) * 2 + sizeof(uint) + sizeof(uint16) + sizeof(uint) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_MAP_TEXT_MSG_LEX;
@@ -968,15 +968,15 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
     /*if (locs_vec)
     {
         LocationVec* locs = (LocationVec*)locs_vec;
-        uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(ushort);
+        uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(uint16);
         for (uint i = 0, j = (uint)locs->size(); i < j; i++)
         {
             Location* loc_ = (*locs)[i];
-            msg_len += sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort);
+            msg_len += sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16);
             if (loc_->IsNonEmptyAutomaps())
             {
                 CScriptArray* automaps = loc_->GetAutomaps();
-                msg_len += (sizeof(hstring::hash_t) + sizeof(uchar)) * (uint)automaps->GetSize();
+                msg_len += (sizeof(hstring::hash_t) + sizeof(uint8)) * (uint)automaps->GetSize();
                 automaps->Release();
             }
         }
@@ -985,7 +985,7 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
         Connection->Bout << NETMSG_AUTOMAPS_INFO;
         Connection->Bout << msg_len;
         Connection->Bout << (bool)true; // Clear list
-        Connection->Bout << (ushort)locs->size();
+        Connection->Bout << (uint16)locs->size();
         for (uint i = 0, j = (uint)locs->size(); i < j; i++)
         {
             Location* loc_ = (*locs)[i];
@@ -994,18 +994,18 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
             if (loc_->IsNonEmptyAutomaps())
             {
                 CScriptArray* automaps = loc_->GetAutomaps();
-                Connection->Bout << (ushort)automaps->GetSize();
+                Connection->Bout << (uint16)automaps->GetSize();
                 for (uint k = 0, l = (uint)automaps->GetSize(); k < l; k++)
                 {
                     hstring pid = *(hash*)automaps->At(k);
                     Connection->Bout << pid;
-                    Connection->Bout << (uchar)loc_->GetMapIndex(pid);
+                    Connection->Bout << (uint8)loc_->GetMapIndex(pid);
                 }
                 automaps->Release();
             }
             else
             {
-                Connection->Bout << (ushort)0;
+                Connection->Bout << (uint16)0;
             }
         }
         CONNECTION_OUTPUT_END(Connection);
@@ -1013,27 +1013,27 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
 
     if (loc)
     {
-        uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(ushort) + sizeof(uint) + sizeof(hash) +
-            sizeof(ushort);
+        uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(uint16) + sizeof(uint) + sizeof(hash) +
+            sizeof(uint16);
         CScriptArray* automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr);
         if (automaps)
-            msg_len += (sizeof(hash) + sizeof(uchar)) * (uint)automaps->GetSize();
+            msg_len += (sizeof(hash) + sizeof(uint8)) * (uint)automaps->GetSize();
 
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->Bout << NETMSG_AUTOMAPS_INFO;
         Connection->Bout << msg_len;
         Connection->Bout << (bool)false; // Append this information
-        Connection->Bout << (ushort)1;
+        Connection->Bout << (uint16)1;
         Connection->Bout << loc->GetId();
         Connection->Bout << loc->GetProtoId();
-        Connection->Bout << (ushort)(automaps ? automaps->GetSize() : 0);
+        Connection->Bout << (uint16)(automaps ? automaps->GetSize() : 0);
         if (automaps)
         {
             for (uint i = 0, j = (uint)automaps->GetSize(); i < j; i++)
             {
                 hash pid = *(hash*)automaps->At(i);
                 Connection->Bout << pid;
-                Connection->Bout << (uchar)loc->GetMapIndex(pid);
+                Connection->Bout << (uint8)loc->GetMapIndex(pid);
             }
         }
         CONNECTION_OUTPUT_END(Connection);
@@ -1043,7 +1043,7 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
     }*/
 }
 
-void Player::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
+void Player::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
@@ -1058,7 +1058,7 @@ void Player::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1115,11 +1115,11 @@ void Player::Send_SomeItem(Item* item)
 
     NON_CONST_METHOD_HINT();
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uchar);
-    vector<uchar*>* data = nullptr;
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint8);
+    vector<uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = item->StoreData(false, &data, &data_sizes);
-    msg_len += sizeof(ushort) + whole_data_size;
+    msg_len += sizeof(uint16) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_SOME_ITEM;
@@ -1187,11 +1187,11 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(param) + sizeof(bool) + sizeof(uint);
 
-    vector<vector<uchar*>*> items_data(items != nullptr ? items->size() : 0);
+    vector<vector<uint8*>*> items_data(items != nullptr ? items->size() : 0);
     vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
     for (size_t i = 0, j = items_data.size(); i < j; i++) {
         const auto whole_data_size = items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);
-        msg_len += sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) + whole_data_size;
+        msg_len += sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) + whole_data_size;
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);

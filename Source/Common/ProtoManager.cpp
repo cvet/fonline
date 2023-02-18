@@ -37,26 +37,26 @@
 #include "StringUtils.h"
 
 template<class T>
-static void WriteProtosToBinary(vector<uchar>& data, const unordered_map<hstring, const T*>& protos)
+static void WriteProtosToBinary(vector<uint8>& data, const unordered_map<hstring, const T*>& protos)
 {
     STACK_TRACE_ENTRY();
 
     auto writer = DataWriter(data);
     writer.Write<uint>(static_cast<uint>(protos.size()));
 
-    vector<uchar> props_data;
+    vector<uint8> props_data;
 
     for (auto& kv : protos) {
         auto* proto_item = kv.second;
 
         const auto proto_name = proto_item->GetName();
-        writer.Write<ushort>(static_cast<ushort>(proto_name.length()));
+        writer.Write<uint16>(static_cast<uint16>(proto_name.length()));
         writer.WritePtr(proto_name.data(), proto_name.length());
 
-        writer.Write<ushort>(static_cast<ushort>(proto_item->GetComponents().size()));
+        writer.Write<uint16>(static_cast<uint16>(proto_item->GetComponents().size()));
         for (const auto& component : proto_item->GetComponents()) {
             const auto component_str = component.as_str();
-            writer.Write<ushort>(static_cast<ushort>(component_str.length()));
+            writer.Write<uint16>(static_cast<uint16>(component_str.length()));
             writer.WritePtr(component_str.data(), component_str.length());
         }
 
@@ -71,19 +71,19 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
 {
     STACK_TRACE_ENTRY();
 
-    vector<uchar> props_data;
+    vector<uint8> props_data;
 
     const auto protos_count = reader.Read<uint>();
     for (uint i = 0; i < protos_count; i++) {
-        const auto proto_name_len = reader.Read<ushort>();
+        const auto proto_name_len = reader.Read<uint16>();
         const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
         const auto proto_id = name_resolver.ToHashedString(proto_name);
 
         auto* proto = new T(proto_id, property_registrator);
 
-        const auto components_count = reader.Read<ushort>();
-        for (ushort j = 0; j < components_count; j++) {
-            const auto component_name_len = reader.Read<ushort>();
+        const auto components_count = reader.Read<uint16>();
+        for (uint16 j = 0; j < components_count; j++) {
+            const auto component_name_len = reader.Read<uint16>();
             const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
             const auto component_name_hashed = name_resolver.ToHashedString(component_name);
             RUNTIME_ASSERT(property_registrator->IsComponentRegistered(component_name_hashed));
@@ -92,7 +92,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
 
         const uint data_size = reader.Read<uint>();
         props_data.resize(data_size);
-        reader.ReadPtr<uchar>(props_data.data(), data_size);
+        reader.ReadPtr<uint8>(props_data.data(), data_size);
         proto->GetPropertiesForEdit().RestoreAllData(props_data);
 
         RUNTIME_ASSERT(!protos.count(proto_id));
@@ -356,11 +356,11 @@ void ProtoManager::LoadFromResources()
     reader.VerifyEnd();
 }
 
-auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
+auto ProtoManager::GetProtosBinaryData() const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    vector<uchar> data;
+    vector<uint8> data;
     WriteProtosToBinary<ProtoItem>(data, _itemProtos);
     WriteProtosToBinary<ProtoCritter>(data, _crProtos);
     WriteProtosToBinary<ProtoMap>(data, _mapProtos);

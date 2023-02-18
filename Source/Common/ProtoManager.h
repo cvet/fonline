@@ -51,7 +51,7 @@ public:
     auto operator=(ProtoManager&&) noexcept = delete;
     ~ProtoManager() = default;
 
-    [[nodiscard]] auto GetProtosBinaryData() const -> vector<uchar>;
+    [[nodiscard]] auto GetProtosBinaryData() const -> vector<uint8>;
     [[nodiscard]] auto GetProtoItem(hstring proto_id) -> const ProtoItem*;
     [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
     [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;

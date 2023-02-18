@@ -329,11 +329,11 @@ auto Critter::CountIdVisItem(ident_t item_id) const -> bool
     return VisItem.count(item_id) != 0;
 }
 
-void Critter::ChangeDir(uchar dir)
+void Critter::ChangeDir(uint8 dir)
 {
     STACK_TRACE_ENTRY();
 
-    const auto normalized_dir = static_cast<uchar>(dir % GameSettings::MAP_DIR_COUNT);
+    const auto normalized_dir = static_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
 
     if (normalized_dir == GetDir()) {
         return;
@@ -347,7 +347,7 @@ void Critter::ChangeDirAngle(int dir_angle)
 {
     STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
+    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<int16>(dir_angle));
 
     if (normalized_dir_angle == GetDirAngle()) {
         return;
@@ -563,7 +563,7 @@ void Critter::Broadcast_Dir()
     }
 }
 
-void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
+void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -591,7 +591,7 @@ void Critter::SendAndBroadcast_Action(int action, int action_ext, Item* item)
     }
 }
 
-void Critter::SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot)
+void Critter::SendAndBroadcast_MoveItem(Item* item, uint8 action, uint8 prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -636,7 +636,7 @@ void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint 
     }
 }
 
-void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text)
+void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -675,7 +675,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
     }
 }
 
-void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg)
+void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -708,7 +708,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
     }
 }
 
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -897,7 +897,7 @@ void Critter::Send_EraseItemFromMap(Item* item)
     }
 }
 
-void Critter::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
+void Critter::Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
 {
     STACK_TRACE_ENTRY();
 
@@ -930,7 +930,7 @@ void Critter::Send_EraseItem(Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo(uchar flags)
+void Critter::Send_GlobalInfo(uint8 flags)
 {
     STACK_TRACE_ENTRY();
 
@@ -952,7 +952,7 @@ void Critter::Send_GlobalLocation(Location* loc, bool add)
     }
 }
 
-void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
+void Critter::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
 {
     STACK_TRACE_ENTRY();
 
@@ -963,7 +963,7 @@ void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
     }
 }
 
-void Critter::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
+void Critter::Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1007,7 +1007,7 @@ void Critter::Send_TimeSync()
     }
 }
 
-void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
+void Critter::Send_Text(Critter* from_cr, string_view text, uint8 how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -1018,7 +1018,7 @@ void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
     }
 }
 
-void Critter::Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool unsafe_text)
+void Critter::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1029,7 +1029,7 @@ void Critter::Send_TextEx(ident_t from_id, string_view text, uchar how_say, bool
     }
 }
 
-void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg)
+void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uint8 how_say, uint16 num_msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -1040,7 +1040,7 @@ void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort
     }
 }
 
-void Critter::Send_TextMsg(ident_t from_id, uint str_num, uchar how_say, ushort num_msg)
+void Critter::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 num_msg)
 {
     STACK_TRACE_ENTRY();
 
@@ -1051,7 +1051,7 @@ void Critter::Send_TextMsg(ident_t from_id, uint str_num, uchar how_say, ushort 
     }
 }
 
-void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -1062,7 +1062,7 @@ void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ush
     }
 }
 
-void Critter::Send_TextMsgLex(ident_t from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Critter::Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -1084,7 +1084,7 @@ void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* it
     }
 }
 
-void Critter::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
+void Critter::Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -1128,7 +1128,7 @@ void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
     }
 }
 
-void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
+void Critter::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
@@ -1139,7 +1139,7 @@ void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1161,7 +1161,7 @@ void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
     }
 }
 
-void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
+void Critter::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1172,7 +1172,7 @@ void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, b
     }
 }
 
-void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str)
+void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str)
 {
     STACK_TRACE_ENTRY();
 
@@ -1183,7 +1183,7 @@ void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, 
     }
 }
 
-void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
+void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 

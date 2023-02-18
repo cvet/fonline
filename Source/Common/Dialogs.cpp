@@ -37,7 +37,7 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 
-static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> uint
+static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_demand, uint8& type, bool& is_hash) -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -492,7 +492,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     result.ParamHash = id_hash;
     result.AnswerScriptFuncName = _engine->ToHashedString(script_name);
     result.Op = oper;
-    result.ValuesCount = static_cast<uchar>(values_count);
+    result.ValuesCount = static_cast<uint8>(values_count);
     result.NoRecheck = no_recheck;
     result.Value = ivalue;
     result.ValueExt[0] = script_val[0];
@@ -503,7 +503,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> Di
     return result;
 }
 
-auto DialogManager::GetDrType(string_view str) -> uchar
+auto DialogManager::GetDrType(string_view str) -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -525,7 +525,7 @@ auto DialogManager::GetDrType(string_view str) -> uchar
     return DR_NONE;
 }
 
-auto DialogManager::GetWho(char who) -> uchar
+auto DialogManager::GetWho(char who) -> uint8
 {
     STACK_TRACE_ENTRY();
 

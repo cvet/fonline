@@ -94,7 +94,7 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-auto CritterView::AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
+auto CritterView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 

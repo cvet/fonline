@@ -103,7 +103,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, uint16 hx, uint16 hy, uint8 dir)
 {
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
@@ -138,7 +138,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, uint16 hx, uint16 hy, uint8 dir)
 {
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
@@ -262,7 +262,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ViewMap(Critter* self, Map* map, uint look, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_ViewMap(Critter* self, Map* map, uint look, uint16 hx, uint16 hy, uint8 dir)
 {
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
@@ -287,7 +287,7 @@
 
     self->ViewMapId = map->GetId();
     self->ViewMapPid = map->GetProtoId();
-    self->ViewMapLook = static_cast<ushort>(look_);
+    self->ViewMapLook = static_cast<uint16>(look_);
     self->ViewMapHx = hx;
     self->ViewMapHy = hy;
     self->ViewMapDir = dir_;
@@ -300,7 +300,7 @@
 ///# param howSay ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_Say(Critter* self, uchar howSay, string_view text)
+[[maybe_unused]] void Server_Critter_Say(Critter* self, uint8 howSay, string_view text)
 {
     if (howSay != SAY_FLASH_WINDOW && text.empty()) {
         return;
@@ -322,7 +322,7 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uchar howSay, ushort textMsg, uint numStr)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, uint16 textMsg, uint numStr)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;
@@ -342,7 +342,7 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uchar howSay, ushort textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, uint16 textMsg, uint numStr, string_view lexems)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;
@@ -359,7 +359,7 @@
 ///# ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetDir(Critter* self, uchar dir)
+[[maybe_unused]] void Server_Critter_SetDir(Critter* self, uint8 dir)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid direction arg");
@@ -377,7 +377,7 @@
 ///# ...
 ///# param dir_angle ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetDirAngle(Critter* self, short dir_angle)
+[[maybe_unused]] void Server_Critter_SetDirAngle(Critter* self, int16 dir_angle)
 {
     const auto normalized_dir_angle = self->GetEngine()->Geometry.NormalizeAngle(dir_angle);
 
@@ -681,7 +681,7 @@
 ///# param itemId ...
 ///# param slot ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, uchar slot)
+[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, uint8 slot)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -913,7 +913,7 @@
 ///# param zoneY ...
 ///# param fog ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetFog(Critter* self, ushort zoneX, ushort zoneY, int fog)
+[[maybe_unused]] void Server_Critter_SetFog(Critter* self, uint16 zoneX, uint16 zoneY, int fog)
 {
     if (fog < GM_FOG_FULL || fog > GM_FOG_NONE) {
         throw ScriptException("Invalid fog arg");
@@ -945,7 +945,7 @@
 ///# param zoneY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Server_Critter_GetFog(Critter* self, ushort zoneX, ushort zoneY)
+[[maybe_unused]] int Server_Critter_GetFog(Critter* self, uint16 zoneX, uint16 zoneY)
 {
     if (zoneX >= self->GetEngine()->Settings.GlobalMapWidth || zoneY >= self->GetEngine()->Settings.GlobalMapHeight) {
         return GM_FOG_FULL;
@@ -1030,7 +1030,7 @@
 ///# param cut ...
 ///# param speed ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, ushort hx, ushort hy, uint cut, uint speed)
+[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, uint16 hx, uint16 hy, uint cut, uint speed)
 {
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;

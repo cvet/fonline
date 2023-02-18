@@ -55,7 +55,7 @@ Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location
     _name = _str("{}_{}", proto->GetName(), id);
 
     _hexFlagsSize = GetWidth() * GetHeight();
-    _hexFlags = new uchar[_hexFlagsSize];
+    _hexFlags = new uint8[_hexFlagsSize];
     std::memset(_hexFlags, 0, _hexFlagsSize);
 }
 
@@ -126,7 +126,7 @@ void Map::SetLocation(Location* loc)
     _mapLocation = loc;
 }
 
-auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<ushort, ushort>>
+auto Map::FindStartHex(uint16 hx, uint16 hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<uint16, uint16>>
 {
     STACK_TRACE_ENTRY();
 
@@ -141,8 +141,8 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
     }
 
     const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
-    auto hx_ = static_cast<short>(hx);
-    auto hy_ = static_cast<short>(hy);
+    auto hx_ = static_cast<int16>(hx);
+    auto hy_ = static_cast<int16>(hy);
     const auto max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * GameSettings::MAP_DIR_COUNT);
 
     auto pos = -1;
@@ -157,15 +157,15 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
             pos = 0;
         }
 
-        const auto nx = static_cast<short>(hx_) + sx[pos];
-        const auto ny = static_cast<short>(hy_) + sy[pos];
+        const auto nx = static_cast<int16>(hx_) + sx[pos];
+        const auto ny = static_cast<int16>(hy_) + sy[pos];
 
         if (nx < 0 || nx >= GetWidth() || ny < 0 || ny >= GetHeight()) {
             continue;
         }
 
-        const auto nx_ = static_cast<ushort>(nx);
-        const auto ny_ = static_cast<ushort>(ny);
+        const auto nx_ = static_cast<uint16>(nx);
+        const auto ny_ = static_cast<uint16>(ny);
 
         if (!IsHexesPassed(nx_, ny_, multihex)) {
             continue;
@@ -179,7 +179,7 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
 
     hx_ += sx[pos];
     hy_ += sy[pos];
-    return tuple {static_cast<ushort>(hx_), static_cast<ushort>(hy_)};
+    return tuple {static_cast<uint16>(hx_), static_cast<uint16>(hy_)};
 }
 
 void Map::AddCritter(Critter* cr)
@@ -229,7 +229,7 @@ void Map::EraseCritter(Critter* cr)
     }
 }
 
-auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
+auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -282,7 +282,7 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
     return true;
 }
 
-void Map::SetItem(Item* item, ushort hx, ushort hy)
+void Map::SetItem(Item* item, uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -440,7 +440,7 @@ void Map::ChangeViewItem(Item* item)
     }
 }
 
-void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
+void Map::AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
 {
     STACK_TRACE_ENTRY();
 
@@ -461,7 +461,7 @@ auto Map::GetItem(ident_t item_id) -> Item*
     return it != _itemsMap.end() ? it->second : nullptr;
 }
 
-auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*
+auto Map::GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -477,7 +477,7 @@ auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) ->
     return nullptr;
 }
 
-auto Map::GetItemGag(ushort hx, ushort hy) -> Item*
+auto Map::GetItemGag(uint16 hx, uint16 hy) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -501,7 +501,7 @@ auto Map::GetItems() -> vector<Item*>
     return _items;
 }
 
-auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
+auto Map::GetItemsHex(uint16 hx, uint16 hy) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -517,7 +517,7 @@ auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
     return items;
 }
 
-auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>
+auto Map::GetItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -547,7 +547,7 @@ auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
     return items;
 }
 
-auto Map::GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>
+auto Map::GetItemsTrigger(uint16 hx, uint16 hy) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -563,7 +563,7 @@ auto Map::GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>
     return traps;
 }
 
-auto Map::IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool
+auto Map::IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -576,7 +576,7 @@ auto Map::IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item)
     return !is_critter;
 }
 
-void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
+void Map::PlaceItemBlocks(uint16 hx, uint16 hy, Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -586,7 +586,7 @@ void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
     });
 }
 
-void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
+void Map::RemoveItemBlocks(uint16 hx, uint16 hy, Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -606,7 +606,7 @@ void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
     });
 }
 
-void Map::RecacheHexFlags(ushort hx, ushort hy)
+void Map::RecacheHexFlags(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -676,16 +676,16 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
     }
 }
 
-auto Map::GetHexFlags(ushort hx, ushort hy) const -> ushort
+auto Map::GetHexFlags(uint16 hx, uint16 hy) const -> uint16
 {
     STACK_TRACE_ENTRY();
 
-    const auto hi = static_cast<ushort>(static_cast<ushort>(_hexFlags[hy * GetWidth() + hx]) << 8);
-    const auto lo = static_cast<ushort>(GetStaticMap()->HexFlags[hy * GetWidth() + hx]);
+    const auto hi = static_cast<uint16>(static_cast<uint16>(_hexFlags[hy * GetWidth() + hx]) << 8);
+    const auto lo = static_cast<uint16>(GetStaticMap()->HexFlags[hy * GetWidth() + hx]);
     return hi | lo;
 }
 
-void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
+void Map::SetHexFlag(uint16 hx, uint16 hy, uint8 flag)
 {
     STACK_TRACE_ENTRY();
 
@@ -694,7 +694,7 @@ void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
     SetBit(_hexFlags[hy * GetWidth() + hx], flag);
 }
 
-void Map::UnsetHexFlag(ushort hx, ushort hy, uchar flag)
+void Map::UnsetHexFlag(uint16 hx, uint16 hy, uint8 flag)
 {
     STACK_TRACE_ENTRY();
 
@@ -703,21 +703,21 @@ void Map::UnsetHexFlag(ushort hx, ushort hy, uchar flag)
     UnsetBit(_hexFlags[hy * GetWidth() + hx], flag);
 }
 
-auto Map::IsHexPassed(ushort hx, ushort hy) const -> bool
+auto Map::IsHexPassed(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return !IsBitSet(GetHexFlags(hx, hy), FH_NOWAY);
 }
 
-auto Map::IsHexRaked(ushort hx, ushort hy) const -> bool
+auto Map::IsHexRaked(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return !IsBitSet(GetHexFlags(hx, hy), FH_NOSHOOT);
 }
 
-auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
+auto Map::IsHexesPassed(uint16 hx, uint16 hy, uint radius) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -736,10 +736,10 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
     const auto maxhy = GetHeight();
 
     for (uint i = 0; i < count; i++) {
-        const auto hx_ = static_cast<short>(hx) + sx[i];
-        const auto hy_ = static_cast<short>(hy) + sy[i];
+        const auto hx_ = static_cast<int16>(hx) + sx[i];
+        const auto hy_ = static_cast<int16>(hy) + sy[i];
         if (hx_ >= 0 && hy_ >= 0 && hx_ < maxhx && hy_ < maxhy) {
-            if (IsBitSet(GetHexFlags(static_cast<ushort>(hx_), static_cast<ushort>(hy_)), FH_NOWAY)) {
+            if (IsBitSet(GetHexFlags(static_cast<uint16>(hx_), static_cast<uint16>(hy_)), FH_NOWAY)) {
                 return false;
             }
         }
@@ -747,7 +747,7 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
     return true;
 }
 
-auto Map::IsMovePassed(const Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool
+auto Map::IsMovePassed(const Critter* cr, uint16 to_hx, uint16 to_hy, uint multihex) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -761,42 +761,42 @@ auto Map::IsMovePassed(const Critter* cr, ushort to_hx, ushort to_hy, uint multi
     return IsHexesPassed(to_hx, to_hy, multihex);
 }
 
-auto Map::IsHexTrigger(ushort hx, ushort hy) const -> bool
+auto Map::IsHexTrigger(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_TRIGGER);
 }
 
-auto Map::IsHexCritter(ushort hx, ushort hy) const -> bool
+auto Map::IsHexCritter(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_CRITTER) || IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_DEAD_CRITTER);
 }
 
-auto Map::IsHexGag(ushort hx, ushort hy) const -> bool
+auto Map::IsHexGag(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_GAG_ITEM);
 }
 
-auto Map::IsHexBlockItem(ushort hx, ushort hy) const -> bool
+auto Map::IsHexBlockItem(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_BLOCK_ITEM);
 }
 
-auto Map::IsHexStaticTrigger(ushort hx, ushort hy) const -> bool
+auto Map::IsHexStaticTrigger(uint16 hx, uint16 hy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return IsBitSet(GetStaticMap()->HexFlags[hy * GetWidth() + hx], FH_STATIC_TRIGGER);
 }
 
-auto Map::IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool
+auto Map::IsFlagCritter(uint16 hx, uint16 hy, bool dead) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -807,7 +807,7 @@ auto Map::IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_CRITTER);
 }
 
-void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
+void Map::SetFlagCritter(uint16 hx, uint16 hy, uint multihex, bool dead)
 {
     STACK_TRACE_ENTRY();
 
@@ -824,17 +824,17 @@ void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
             const auto maxhy = GetHeight();
 
             for (uint i = 0; i < count; i++) {
-                const auto hx_ = static_cast<short>(hx) + sx[i];
-                const auto hy_ = static_cast<short>(hy) + sy[i];
+                const auto hx_ = static_cast<int16>(hx) + sx[i];
+                const auto hy_ = static_cast<int16>(hy) + sy[i];
                 if (hx_ >= 0 && hy_ >= 0 && hx_ < maxhx && hy_ < maxhy) {
-                    SetHexFlag(static_cast<ushort>(hx_), static_cast<ushort>(hy_), FH_CRITTER);
+                    SetHexFlag(static_cast<uint16>(hx_), static_cast<uint16>(hy_), FH_CRITTER);
                 }
             }
         }
     }
 }
 
-void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
+void Map::UnsetFlagCritter(uint16 hx, uint16 hy, uint multihex, bool dead)
 {
     STACK_TRACE_ENTRY();
 
@@ -860,10 +860,10 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
             const auto maxhy = GetHeight();
 
             for (uint i = 0; i < count; i++) {
-                const auto hx_ = static_cast<short>(hx) + sx[i];
-                const auto hy_ = static_cast<short>(hy) + sy[i];
+                const auto hx_ = static_cast<int16>(hx) + sx[i];
+                const auto hy_ = static_cast<int16>(hy) + sy[i];
                 if (hx_ >= 0 && hy_ >= 0 && hx_ < maxhx && hy_ < maxhy) {
-                    UnsetHexFlag(static_cast<ushort>(hx_), static_cast<ushort>(hy_), FH_CRITTER);
+                    UnsetHexFlag(static_cast<uint16>(hx_), static_cast<uint16>(hy_), FH_CRITTER);
                 }
             }
         }
@@ -882,7 +882,7 @@ auto Map::GetCritter(ident_t cr_id) -> Critter*
     return nullptr;
 }
 
-auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
+auto Map::GetHexCritter(uint16 hx, uint16 hy, bool dead) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
@@ -910,7 +910,7 @@ auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
     return nullptr;
 }
 
-auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>
+auto Map::GetCrittersHex(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 
@@ -996,7 +996,7 @@ auto Map::GetNpcsCount() const -> uint
     return static_cast<uint>(_nonPlayerCritters.size());
 }
 
-void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
+void Map::SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
@@ -1009,7 +1009,7 @@ void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1022,7 +1022,7 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, u
     }
 }
 
-void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
+void Map::SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1039,7 +1039,7 @@ void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsaf
     }
 }
 
-void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str)
+void Map::SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 text_msg, uint num_str)
 {
     STACK_TRACE_ENTRY();
 
@@ -1056,7 +1056,7 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
     }
 }
 
-void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, string_view lexems)
+void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 text_msg, uint num_str, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -1073,7 +1073,7 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
     }
 }
 
-auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
+auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
 {
     STACK_TRACE_ENTRY();
 
@@ -1087,7 +1087,7 @@ auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
     return nullptr;
 }
 
-auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
+auto Map::GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>
 {
     STACK_TRACE_ENTRY();
 
@@ -1102,7 +1102,7 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
     return items;
 }
 
-auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>
+auto Map::GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>
 {
     STACK_TRACE_ENTRY();
 
@@ -1132,7 +1132,7 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
     return items;
 }
 
-auto Map::GetStaticItemsTrigger(ushort hx, ushort hy) -> vector<StaticItem*>
+auto Map::GetStaticItemsTrigger(uint16 hx, uint16 hy) -> vector<StaticItem*>
 {
     STACK_TRACE_ENTRY();
 

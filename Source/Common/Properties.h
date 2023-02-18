@@ -66,7 +66,7 @@ public:
 
     [[nodiscard]] auto GetPtr() -> void*;
     [[nodiscard]] auto GetSize() const -> uint;
-    [[nodiscard]] auto Alloc(size_t size) -> uchar*;
+    [[nodiscard]] auto Alloc(size_t size) -> uint8*;
 
     template<typename T>
     [[nodiscard]] auto GetPtrAs() -> T*
@@ -95,8 +95,8 @@ public:
 private:
     size_t _dataSize {};
     bool _useDynamic {};
-    uchar _localBuf[LOCAL_BUF_SIZE] {};
-    unique_ptr<uchar[]> _dynamicBuf {};
+    uint8 _localBuf[LOCAL_BUF_SIZE] {};
+    unique_ptr<uint8[]> _dynamicBuf {};
     void* _passedPtr {};
 };
 
@@ -150,7 +150,7 @@ public:
     [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
     [[nodiscard]] auto GetComponent() const -> const hstring& { return _component; }
 
-    [[nodiscard]] auto GetRegIndex() const -> ushort { return _regIndex; }
+    [[nodiscard]] auto GetRegIndex() const -> uint16 { return _regIndex; }
     [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
     [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
     [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
@@ -261,7 +261,7 @@ private:
     bool _isTemporary {};
     bool _isHistorical {};
     bool _isNullGetterForProto {};
-    ushort _regIndex {};
+    uint16 _regIndex {};
     uint _podDataOffset {};
     uint _complexDataIndex {};
 };
@@ -284,8 +284,8 @@ public:
     [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
     [[nodiscard]] auto GetEntity() -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const -> uint;
-    [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uchar*;
-    [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uchar*;
+    [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uint8*;
+    [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uint8*;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetPlainDataValueAsFloat(const Property* prop) const -> float;
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
@@ -297,12 +297,12 @@ public:
     void SetEntity(Entity* entity) { _entity = entity; }
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
-    void StoreAllData(vector<uchar>& all_data) const;
-    void RestoreAllData(const vector<uchar>& all_data);
-    auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
-    void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
-    void RestoreData(const vector<vector<uchar>>& all_data);
-    void SetRawData(const Property* prop, const uchar* data, uint data_size);
+    void StoreAllData(vector<uint8>& all_data) const;
+    void RestoreAllData(const vector<uint8>& all_data);
+    auto StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
+    void RestoreData(const vector<vector<uint8>>& all_data);
+    void SetRawData(const Property* prop, const uint8* data, uint data_size);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int value);
     void SetPlainDataValueAsFloat(const Property* prop, float value);
@@ -411,7 +411,7 @@ public:
             prop_data.Pass(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
         }
 
-        const auto* data = prop_data.GetPtrAs<uchar>();
+        const auto* data = prop_data.GetPtrAs<uint8>();
         const auto data_size = prop_data.GetSize();
 
         T result;
@@ -570,10 +570,10 @@ public:
                     setter(_entity, prop, prop_data);
                 }
 
-                SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+                SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
             }
             else {
-                SetRawData(prop, reinterpret_cast<const uchar*>(new_value.c_str()), static_cast<uint>(new_value.length()));
+                SetRawData(prop, reinterpret_cast<const uint8*>(new_value.c_str()), static_cast<uint>(new_value.length()));
             }
 
             if (_entity != nullptr) {
@@ -650,7 +650,7 @@ public:
                 }
             }
 
-            SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+            SetRawData(prop, prop_data.GetPtrAs<uint8>(), prop_data.GetSize());
 
             if (_entity != nullptr) {
                 for (const auto& setter : prop->_postSetters) {
@@ -667,12 +667,12 @@ public:
 
 private:
     const PropertyRegistrator* _registrator;
-    uchar* _podData {};
-    vector<uchar*> _complexData {};
+    uint8* _podData {};
+    vector<uint8*> _complexData {};
     vector<uint> _complexDataSizes {};
-    mutable vector<uchar*> _storeData {};
+    mutable vector<uint8*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
-    mutable vector<ushort> _storeDataComplexIndices {};
+    mutable vector<uint16> _storeDataComplexIndices {};
     Entity* _entity {};
     bool _nonConstHelper {};
 };
@@ -719,13 +719,13 @@ private:
     vector<bool> _publicPodDataSpace {};
     vector<bool> _protectedPodDataSpace {};
     vector<bool> _privatePodDataSpace {};
-    mutable vector<uchar*> _podDataPool {};
+    mutable vector<uint8*> _podDataPool {};
 
     // Complex types info
     vector<Property*> _complexProperties {};
-    vector<ushort> _publicComplexDataProps {};
-    vector<ushort> _protectedComplexDataProps {};
-    vector<ushort> _publicProtectedComplexDataProps {};
+    vector<uint16> _publicComplexDataProps {};
+    vector<uint16> _protectedComplexDataProps {};
+    vector<uint16> _publicProtectedComplexDataProps {};
 
 public:
     template<typename T>
@@ -883,7 +883,7 @@ private:
         using Type = std::underlying_type_t<T>;
         static constexpr auto IS_HASH = false;
         static constexpr auto IS_ENUM = true;
-        static_assert(std::is_same_v<Type, uchar> || std::is_same_v<Type, ushort> || std::is_same_v<Type, int> || std::is_same_v<Type, uint>);
+        static_assert(std::is_same_v<Type, uint8> || std::is_same_v<Type, uint16> || std::is_same_v<Type, int> || std::is_same_v<Type, uint>);
     };
 
     template<typename T, typename Enable = void>

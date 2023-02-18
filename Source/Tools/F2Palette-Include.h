@@ -35,7 +35,7 @@
 
 // Default palette
 // FALLOUT239.PAL / FALLOUT256.PAL / color.pal (first entry * 4)
-static unsigned char FoPalette[] = {
+static uint8 FoPalette[] = {
     // Transparent color
     0, 0, 0, 0,
     // Default colors

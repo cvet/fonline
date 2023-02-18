@@ -195,7 +195,7 @@ void Sprite::SetColor(uint color)
     Valid = true;
 }
 
-void Sprite::SetAlpha(uchar* alpha)
+void Sprite::SetAlpha(uint8* alpha)
 {
     STACK_TRACE_ENTRY();
 
@@ -214,7 +214,7 @@ void Sprite::SetAlpha(uchar* alpha)
     Valid = true;
 }
 
-void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy)
+void Sprite::SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxhy)
 {
     STACK_TRACE_ENTRY();
 
@@ -265,7 +265,7 @@ void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxh
     Valid = true;
 }
 
-void Sprite::SetFixedAlpha(uchar alpha)
+void Sprite::SetFixedAlpha(uint8 alpha)
 {
     STACK_TRACE_ENTRY();
 
@@ -275,7 +275,7 @@ void Sprite::SetFixedAlpha(uchar alpha)
 
     Valid = false;
 
-    Alpha = reinterpret_cast<uchar*>(&Color) + 3;
+    Alpha = reinterpret_cast<uint8*>(&Color) + 3;
     *Alpha = alpha;
 
     if (Parent != nullptr) {
@@ -310,7 +310,7 @@ auto Sprites::RootSprite() -> Sprite*
     return _rootSprite;
 }
 
-auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     STACK_TRACE_ENTRY();
 
@@ -417,14 +417,14 @@ auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, usho
     return *spr;
 }
 
-auto Sprites::AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     STACK_TRACE_ENTRY();
 
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-auto Sprites::InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     STACK_TRACE_ENTRY();
 

@@ -74,9 +74,9 @@ public:
 
     void Init() override;
     void Finish() override;
-    auto AddItem(ident_t id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView* override;
+    auto AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView* override;
     void DeleteItem(ItemView* item, bool animate) override;
-    void ChangeDir(uchar dir);
+    void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
     void ChangeLookDirAngle(int dir_angle);
     void ChangeMoveDirAngle(int dir_angle);
@@ -100,7 +100,7 @@ public:
     uint SprId {};
     int SprOx {};
     int SprOy {};
-    uchar Alpha {};
+    uint8 Alpha {};
 
     RenderEffect* DrawEffect {};
     bool Visible {true};
@@ -110,23 +110,23 @@ public:
 
     struct
     {
-        ushort Speed {};
-        vector<uchar> Steps {};
-        vector<ushort> ControlSteps {};
+        uint16 Speed {};
+        vector<uint8> Steps {};
+        vector<uint16> ControlSteps {};
         uint StartTick {};
         uint OffsetTick {};
-        ushort StartHexX {};
-        ushort StartHexY {};
-        ushort EndHexX {};
-        ushort EndHexY {};
+        uint16 StartHexX {};
+        uint16 StartHexY {};
+        uint16 EndHexX {};
+        uint16 EndHexY {};
         float WholeTime {};
         float WholeDist {};
-        short StartOx {};
-        short StartOy {};
-        short EndOx {};
-        short EndOy {};
-        ushort RealHexX {};
-        ushort RealHexY {};
+        int16 StartOx {};
+        int16 StartOy {};
+        int16 EndOx {};
+        int16 EndOy {};
+        uint16 RealHexX {};
+        uint16 RealHexY {};
     } Moving {};
 
 private:
@@ -144,7 +144,7 @@ private:
 #if FO_ENABLE_3D
     [[nodiscard]] auto GetModelLayersData() const -> const int*;
 #endif
-    [[nodiscard]] auto GetFadeAlpha() -> uchar;
+    [[nodiscard]] auto GetFadeAlpha() -> uint8;
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
     void SetFade(bool fade_up);

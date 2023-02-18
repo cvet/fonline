@@ -229,7 +229,7 @@ void Updater::Net_OnUpdateFilesResponse()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    vector<uchar> data;
+    vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
@@ -255,7 +255,7 @@ void Updater::Net_OnUpdateFilesResponse()
         auto reader = DataReader(data);
 
         for (uint file_index = 0;; file_index++) {
-            const auto name_len = reader.Read<short>();
+            const auto name_len = reader.Read<int16>();
             if (name_len == -1) {
                 break;
             }

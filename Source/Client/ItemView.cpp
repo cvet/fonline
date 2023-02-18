@@ -75,7 +75,7 @@ auto ItemView::LightGetHash() const -> uint
     return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
 }
 
-auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*
+auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 

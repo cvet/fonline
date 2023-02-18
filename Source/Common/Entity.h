@@ -65,7 +65,7 @@ static_assert(sizeof(ident_t) == sizeof(uint));
     { \
         return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; \
     } \
-    static ushort prop##_RegIndex
+    static uint16 prop##_RegIndex
 
 #define ENTITY_EVENT(event_name, ...) \
     EntityEvent<__VA_ARGS__> event_name \
@@ -136,9 +136,9 @@ public:
     [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
 
     void SetProperties(const Properties& props);
-    auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
-    void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
-    void RestoreData(const vector<vector<uchar>>& properties_data);
+    auto StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
+    void RestoreData(const vector<vector<uint8>>& properties_data);
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);

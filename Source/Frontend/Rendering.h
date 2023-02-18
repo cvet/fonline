@@ -187,7 +187,7 @@ public:
     const bool IsStatic;
 
     vector<Vertex2D> Vertices2D {};
-    vector<ushort> Indices {};
+    vector<uint16> Indices {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
     bool PrimZoomed {};

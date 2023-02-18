@@ -85,9 +85,9 @@ public:
     void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
-    void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
-    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
+    auto CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
+    void VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir);
+    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
@@ -106,7 +106,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
+    ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uint8 /*arg2*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
@@ -114,7 +114,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerCheckMove, Player* /*player*/, Critter* /*cr*/, uint& /*speed*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnPlayerCheckDir, Player* /*player*/, Critter* /*cr*/, short& /*dirAngle*/);
+    ENTITY_EVENT(OnPlayerCheckDir, Player* /*player*/, Critter* /*cr*/, int16& /*dirAngle*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
@@ -146,25 +146,25 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uint8 /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uint8 /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
 
     ProtoManager ProtoMngr;
     ServerDeferredCallManager ServerDeferredCalls;
@@ -251,7 +251,7 @@ private:
     void ProcessCritter(Critter* cr);
     void ProcessMove(Critter* cr);
     void ProcessMoveBySteps(Critter* cr, Map* map);
-    void MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self);
+    void MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 start_hy, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self);
     void LogoutCritter(Critter* cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
@@ -268,8 +268,8 @@ private:
     map<uint, uint> _regIp {};
     uint _fpsTick {};
     uint _fpsCounter {};
-    vector<vector<uchar>> _updateFilesData {};
-    vector<uchar> _updateFilesDesc {};
+    vector<vector<uint8>> _updateFilesData {};
+    vector<uint8> _updateFilesDesc {};
     vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};

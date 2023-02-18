@@ -76,7 +76,7 @@ struct MeshData
 
     ModelBone* Owner {};
     vector<Vertex3D> Vertices {};
-    vector<ushort> Indices {};
+    vector<uint16> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
     vector<mat44> SkinBoneOffsets {};
@@ -260,7 +260,7 @@ public:
     void SetupFrame();
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
-    void SetDir(uchar dir, bool smooth_rotation);
+    void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
     void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
     void SetRotation(float rx, float ry, float rz);

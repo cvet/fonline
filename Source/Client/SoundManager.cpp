@@ -45,9 +45,9 @@
 
 struct SoundManager::Sound
 {
-    vector<uchar> BaseBuf {};
+    vector<uint8> BaseBuf {};
     size_t BaseBufLen {};
-    vector<uchar> ConvertedBuf {};
+    vector<uint8> ConvertedBuf {};
     size_t ConvertedBufCur {};
     int OriginalFormat {};
     int OriginalChannels {};
@@ -58,7 +58,7 @@ struct SoundManager::Sound
     unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
-static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
@@ -89,7 +89,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
 #endif
 
     _outputBuf.resize(App->Audio.GetStreamSize());
-    App->Audio.SetSource([this](uchar* output) { ProcessSounds(output); });
+    App->Audio.SetSource([this](uint8* output) { ProcessSounds(output); });
     _isActive = true;
 }
 
@@ -106,7 +106,7 @@ SoundManager::~SoundManager()
     }
 }
 
-void SoundManager::ProcessSounds(uchar* output)
+void SoundManager::ProcessSounds(uint8* output)
 {
     STACK_TRACE_ENTRY();
 
@@ -123,7 +123,7 @@ void SoundManager::ProcessSounds(uchar* output)
     }
 }
 
-auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
+auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -272,13 +272,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     struct WaveFormatEx
     {
-        ushort WFormatTag; // Integer identifier of the format
-        ushort NChannels; // Number of audio channels
+        uint16 WFormatTag; // Integer identifier of the format
+        uint16 NChannels; // Number of audio channels
         uint NSamplesPerSec; // Audio sample rate
         uint NAvgBytesPerSec; // Bytes per second (possibly approximate)
-        ushort NBlockAlign; // Size in bytes of a sample block (all channels)
-        ushort WBitsPerSample; // Size in bits of a single per-channel sample
-        ushort CbSize; // Bytes of extra data appended to this struct
+        uint16 NBlockAlign; // Size in bytes of a sample block (all channels)
+        uint16 WBitsPerSample; // Size in bits of a single per-channel sample
+        uint16 CbSize; // Bytes of extra data appended to this struct
     } waveformatex {};
 
     file.CopyData(&waveformatex, 16);
@@ -341,7 +341,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -350,7 +350,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    auto* buf = reinterpret_cast<unsigned short*>(sound->BaseBuf.data());
+    auto* buf = reinterpret_cast<uint16*>(sound->BaseBuf.data());
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");

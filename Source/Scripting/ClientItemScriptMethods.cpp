@@ -56,7 +56,7 @@
     return cloned_item;
 }
 
-static void ItemGetMapPos(ItemView* self, ushort& hx, ushort& hy)
+static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -98,7 +98,7 @@ static void ItemGetMapPos(ItemView* self, ushort& hx, ushort& hy)
 ///# param hx ...
 ///# param hy ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, ushort& hx, ushort& hy)
+[[maybe_unused]] void Client_Item_GetMapPos(ItemView* self, uint16& hx, uint16& hy)
 {
     if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -129,7 +129,7 @@ static void ItemGetMapPos(ItemView* self, ushort& hx, ushort& hy)
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Client_Item_GetAlpha(ItemView* self)
+[[maybe_unused]] uint8 Client_Item_GetAlpha(ItemView* self)
 {
     const auto* hex_item = dynamic_cast<ItemHexView*>(self);
     return hex_item != nullptr ? hex_item->Alpha : 0xFF;

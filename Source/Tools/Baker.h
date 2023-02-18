@@ -48,7 +48,7 @@ class BaseBaker
 {
 public:
     using BakeCheckerCallback = std::function<bool(const FileHeader&)>;
-    using WriteDataCallback = std::function<void(string_view, const_span<uchar>)>;
+    using WriteDataCallback = std::function<void(string_view, const_span<uint8>)>;
 
     BaseBaker() = delete;
     BaseBaker(BakerSettings& settings, FileCollection&& files, BakeCheckerCallback&& bake_checker, WriteDataCallback&& write_data);
@@ -98,7 +98,7 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return "Baker"; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uchar> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:

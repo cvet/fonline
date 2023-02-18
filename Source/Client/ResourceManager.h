@@ -54,12 +54,12 @@ public:
     [[nodiscard]] auto GetInvAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
     [[nodiscard]] auto GetSkDxAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
     [[nodiscard]] auto GetItemAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Dynamic); }
-    [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*;
-    [[nodiscard]] auto GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint;
+    [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uint8 dir) -> AnyFrames*;
+    [[nodiscard]] auto GetCritterSprId(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> uint;
     [[nodiscard]] auto GetRandomSplash() -> AnyFrames*;
     [[nodiscard]] auto GetSoundNames() -> map<string, string>& { return _soundNames; }
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
+    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelInstance*;
 #endif
 
     void IndexFiles();

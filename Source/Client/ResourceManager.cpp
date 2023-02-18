@@ -151,7 +151,7 @@ static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallou
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
-auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*
+auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2, uint8 dir) -> AnyFrames*
 {
     STACK_TRACE_ENTRY();
 
@@ -551,7 +551,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 
     // Ko rise offsets
     if (anim1 == ANIM1_FALLOUT_KNOCKOUT) {
-        uchar anim2_ = ANIM2_FALLOUT_KNOCK_FRONT;
+        uint8 anim2_ = ANIM2_FALLOUT_KNOCK_FRONT;
         if (anim2 == ANIM2_FALLOUT_STANDUP_BACK) {
             anim2_ = ANIM2_FALLOUT_KNOCK_BACK;
         }
@@ -566,7 +566,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*
+auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelInstance*
 {
     STACK_TRACE_ENTRY();
 
@@ -593,7 +593,7 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
 }
 #endif
 
-auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint
+auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> uint
 {
     STACK_TRACE_ENTRY();
 

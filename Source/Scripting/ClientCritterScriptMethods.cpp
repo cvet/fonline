@@ -496,7 +496,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, ushort hx, ushort hy, int ox, int oy, uint speed)
+[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, uint16 hx, uint16 hy, int ox, int oy, uint speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -529,7 +529,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_ChangeDir(CritterView* self, uchar dir)
+[[maybe_unused]] void Client_Critter_ChangeDir(CritterView* self, uint8 dir)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -540,7 +540,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_ChangeDirAngle(CritterView* self, short dirAngle)
+[[maybe_unused]] void Client_Critter_ChangeDirAngle(CritterView* self, int16 dirAngle)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -553,7 +553,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Client_Critter_GetAlpha(CritterView* self)
+[[maybe_unused]] uint8 Client_Critter_GetAlpha(CritterView* self)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     return hex_cr != nullptr ? hex_cr->Alpha : 0xFF;

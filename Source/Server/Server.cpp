@@ -240,7 +240,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             const auto data = file.GetData();
             _updateFilesData.push_back(data);
 
-            writer.Write<short>(static_cast<short>(file.GetPath().length()));
+            writer.Write<int16>(static_cast<int16>(file.GetPath().length()));
             writer.WritePtr(file.GetPath().data(), file.GetPath().length());
             writer.Write<uint>(static_cast<uint>(data.size()));
             writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
@@ -260,14 +260,14 @@ FOServer::FOServer(GlobalSettings& settings) :
         }
 
         // Complete files list
-        writer.Write<short>(-1);
+        writer.Write<int16>(-1);
     }
 
     // Admin manager
     if (Settings.AdminPanelPort != 0u) {
         WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
 
-        InitAdminManager(this, static_cast<ushort>(Settings.AdminPanelPort));
+        InitAdminManager(this, static_cast<uint16>(Settings.AdminPanelPort));
     }
 }
 
@@ -812,9 +812,9 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 connection->Bout << _stats.CurOnline;
                 connection->Bout << _stats.Uptime;
                 connection->Bout << static_cast<uint>(0);
-                connection->Bout << static_cast<uchar>(0);
-                connection->Bout << static_cast<uchar>(0xF0);
-                connection->Bout << static_cast<ushort>(0xFFFF);
+                connection->Bout << static_cast<uint8>(0);
+                connection->Bout << static_cast<uint8>(0xF0);
+                connection->Bout << static_cast<uint16>(0xFFFF);
                 CONNECTION_OUTPUT_END(connection);
 
                 connection->HardDisconnect();
@@ -1015,7 +1015,7 @@ void FOServer::Process_Text(Player* player)
     Critter* cr = player->GetOwnedCritter();
 
     uint msg_len = 0;
-    uchar how_say = 0;
+    uint8 how_say = 0;
     string str;
 
     player->Connection->Bin >> msg_len;
@@ -1046,7 +1046,7 @@ void FOServer::Process_Text(Player* player)
         player->LastSayEqualCount = 0;
     }
 
-    vector<ushort> channels;
+    vector<uint16> channels;
 
     switch (how_say) {
     case SAY_NORM: {
@@ -1151,7 +1151,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     auto* cl_ = player->GetOwnedCritter();
 
     uint msg_len = 0;
-    uchar cmd = 0;
+    uint8 cmd = 0;
 
     buf >> msg_len;
     buf >> cmd;
@@ -1262,8 +1262,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     } break;
     case CMD_MOVECRIT: {
         ident_t cr_id;
-        ushort hex_x = 0;
-        ushort hex_y = 0;
+        uint16 hex_x = 0;
+        uint16 hex_y = 0;
         buf >> cr_id;
         buf >> hex_x;
         buf >> hex_y;
@@ -1404,12 +1404,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        player->Access = static_cast<uchar>(wanted_access);
+        player->Access = static_cast<uint8>(wanted_access);
         logcb("Access changed.");
     } break;
     case CMD_ADDITEM: {
-        ushort hex_x = 0;
-        ushort hex_y = 0;
+        uint16 hex_x = 0;
+        uint16 hex_y = 0;
         hstring pid;
         uint count = 0;
         buf >> hex_x;
@@ -1450,9 +1450,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_ADDNPC: {
-        ushort hex_x = 0;
-        ushort hex_y = 0;
-        uchar dir = 0;
+        uint16 hex_x = 0;
+        uint16 hex_y = 0;
+        uint8 dir = 0;
         hstring pid;
         buf >> hex_x;
         buf >> hex_y;
@@ -1472,8 +1472,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_ADDLOCATION: {
-        ushort wx = 0;
-        ushort wy = 0;
+        uint16 wx = 0;
+        uint16 wy = 0;
         hstring pid;
         buf >> wx;
         buf >> wy;
@@ -1774,7 +1774,7 @@ void FOServer::LogoutCritter(Critter* cr)
     cr->Release();
 }
 
-void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
+void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy, uint8 dir)
 {
     STACK_TRACE_ENTRY();
 
@@ -1864,7 +1864,7 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->Bin.SetEncryptKey(encrypt_key);
     connection->Bout.SetEncryptKey(encrypt_key);
 
-    uchar padding[28] = {};
+    uint8 padding[28] = {};
     connection->Bin.Pop(padding, sizeof(padding));
     UNUSED_VARIABLE(padding);
 
@@ -1874,10 +1874,10 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(_updateFilesDesc.size());
 
     // With global properties
-    vector<uchar*>* global_vars_data = nullptr;
+    vector<uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
-        msg_len += sizeof(ushort) + StoreData(false, &global_vars_data, &global_vars_data_sizes);
+        msg_len += sizeof(uint16) + StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
@@ -1900,7 +1900,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     NON_CONST_METHOD_HINT();
 
-    uchar ping = 0;
+    uint8 ping = 0;
 
     connection->Bin >> ping;
 
@@ -2221,15 +2221,15 @@ void FOServer::Process_Login(Player* unlogined_player)
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
     msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(encrypt_key) + sizeof(player_id);
 
-    vector<uchar*>* global_vars_data = nullptr;
+    vector<uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     const auto whole_global_vars_data_size = StoreData(false, &global_vars_data, &global_vars_data_sizes);
-    msg_len += sizeof(ushort) + whole_global_vars_data_size;
+    msg_len += sizeof(uint16) + whole_global_vars_data_size;
 
-    vector<uchar*>* player_data = nullptr;
+    vector<uint8*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
     const auto whole_player_data_size = player->StoreData(true, &player_data, &player_data_sizes);
-    msg_len += sizeof(ushort) + whole_player_data_size;
+    msg_len += sizeof(uint16) + whole_player_data_size;
 
     CONNECTION_OUTPUT_BEGIN(player->Connection);
     player->Connection->Bout << NETMSG_LOGIN_SUCCESS;
@@ -2407,15 +2407,15 @@ void FOServer::Process_Move(Player* player)
     uint msg_len;
     ident_t map_id;
     ident_t cr_id;
-    ushort speed;
-    ushort start_hx;
-    ushort start_hy;
-    ushort steps_count;
-    vector<uchar> steps;
-    ushort control_steps_count;
-    vector<ushort> control_steps;
-    short end_hex_ox;
-    short end_hex_oy;
+    uint16 speed;
+    uint16 start_hx;
+    uint16 start_hy;
+    uint16 steps_count;
+    vector<uint8> steps;
+    uint16 control_steps_count;
+    vector<uint16> control_steps;
+    int16 end_hex_ox;
+    int16 end_hex_oy;
 
     player->Connection->Bin >> msg_len;
     player->Connection->Bin >> map_id;
@@ -2465,7 +2465,7 @@ void FOServer::Process_Move(Player* player)
         return;
     }
 
-    MoveCritter(cr, static_cast<ushort>(checked_speed), start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
+    MoveCritter(cr, static_cast<uint16>(checked_speed), start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
 }
 
 void FOServer::Process_StopMove(Player* player)
@@ -2476,11 +2476,11 @@ void FOServer::Process_StopMove(Player* player)
 
     ident_t map_id;
     ident_t cr_id;
-    ushort start_hx;
-    ushort start_hy;
-    short hex_ox;
-    short hex_oy;
-    short dir_angle;
+    uint16 start_hx;
+    uint16 start_hy;
+    int16 hex_ox;
+    int16 hex_oy;
+    int16 dir_angle;
 
     player->Connection->Bin >> map_id;
     player->Connection->Bin >> cr_id;
@@ -2523,7 +2523,7 @@ void FOServer::Process_Dir(Player* player)
 
     ident_t map_id;
     ident_t cr_id;
-    short dir_angle;
+    int16 dir_angle;
 
     player->Connection->Bin >> map_id;
     player->Connection->Bin >> cr_id;
@@ -2543,7 +2543,7 @@ void FOServer::Process_Dir(Player* player)
         return;
     }
 
-    short checked_dir_angle = dir_angle;
+    int16 checked_dir_angle = dir_angle;
     if (!OnPlayerCheckDir.Fire(player, cr, checked_dir_angle)) {
         BreakIntoDebugger();
         player->Send_Dir(cr);
@@ -2563,7 +2563,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
     uint msg_len;
     ident_t cr_id;
     ident_t item_id;
-    ushort property_index;
+    uint16 property_index;
 
     if (data_size == 0) {
         player->Connection->Bin >> msg_len;
@@ -2606,7 +2606,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         player->Connection->Bin.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
-        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
+        const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
         // Todo: control max size explicitly, add option to property registration
         if (len > 0xFFFF) {
             // For now 64Kb for all
@@ -3076,8 +3076,8 @@ void FOServer::ProcessMove(Critter* cr)
     if (cr->TargetMoving.State == MovingState::InProgress || recalculate) {
         // Find path if not exist
         if (!cr->IsMoving() || recalculate) {
-            ushort hx;
-            ushort hy;
+            uint16 hx;
+            uint16 hy;
             uint cut;
             uint trace_dist;
             Critter* trace_cr;
@@ -3271,7 +3271,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             const auto old_hy = cr->GetHexY();
 
             if (old_hx != hx2 || old_hy != hy2) {
-                const uchar dir = Geometry.GetFarDir(old_hx, old_hy, hx2, hy2);
+                const uint8 dir = Geometry.GetFarDir(old_hx, old_hy, hx2, hy2);
                 const uint multihex = cr->GetMultihex();
 
                 if (map->IsMovePassed(cr, hx2, hy2, multihex)) {
@@ -3323,8 +3323,8 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             mx -= static_cast<float>(cr_ox);
             my -= static_cast<float>(cr_oy);
 
-            const auto mxi = static_cast<short>(std::round(mx));
-            const auto myi = static_cast<short>(std::round(my));
+            const auto mxi = static_cast<int16>(std::round(mx));
+            const auto myi = static_cast<int16>(std::round(my));
             if (moved || cr->GetHexOffsX() != mxi || cr->GetHexOffsY() != myi) {
                 cr->SetHexOffsX(mxi);
                 cr->SetHexOffsY(myi);
@@ -3332,7 +3332,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
 
             // Evaluate dir angle
             const auto dir_angle = Geometry.GetLineDirAngle(0, 0, ox, oy);
-            cr->SetDirAngle(static_cast<short>(dir_angle));
+            cr->SetDirAngle(static_cast<int16>(dir_angle));
 
             goto label_Done;
         }
@@ -3356,7 +3356,7 @@ label_Done:
     }
 }
 
-void FOServer::MoveCritter(Critter* cr, ushort speed, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
+void FOServer::MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 start_hy, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self)
 {
     STACK_TRACE_ENTRY();
 
@@ -3767,7 +3767,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
     return force_dialog;
 }
 
-void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
+void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint16 hx, uint16 hy, bool ignore_distance)
 {
     STACK_TRACE_ENTRY();
 
@@ -3994,7 +3994,7 @@ void FOServer::Process_Dialog(Player* player)
     bool is_npc = false;
     ident_t talk_cr_id;
     hstring talk_dlg_id;
-    uchar num_answer = 0;
+    uint8 num_answer = 0;
 
     player->Connection->Bin >> is_npc;
     player->Connection->Bin >> talk_cr_id;
@@ -4208,7 +4208,7 @@ void FOServer::Process_RemoteCall(Player* player)
     ScriptSys->HandleRemoteCall(rpc_num, player);
 }
 
-auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -4353,7 +4353,7 @@ auto FOServer::MakePlayerId(string_view player_name) const -> ident_t
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!player_name.empty());
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(player_name.data()), static_cast<uint>(player_name.length()));
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uint8*>(player_name.data()), static_cast<uint>(player_name.length()));
     RUNTIME_ASSERT(hash_value);
     return ident_t {(1u << 31u) | hash_value};
 }
