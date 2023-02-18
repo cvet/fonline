@@ -947,31 +947,31 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
 
     struct ArtHeader
     {
-        unsigned int Flags {};
+        int Flags {};
         // 0x00000001 = Static - no rotation, contains frames only for south direction.
         // 0x00000002 = Critter - uses delta attribute, while playing walking animation.
         // 0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next
         // character. 0x00000008 = Facade - requires fackwalk file. 0x00000010 = Unknown - used in eye candy,
         // for example, DIVINATION.art.
-        unsigned int FrameRate {};
-        unsigned int RotationCount {};
-        unsigned int PaletteList[4] {};
-        unsigned int ActionFrame {};
-        unsigned int FrameCount {};
-        unsigned int InfoList[8] {};
-        unsigned int SizeList[8] {};
-        unsigned int DataList[8] {};
+        int FrameRate {};
+        int RotationCount {};
+        int PaletteList[4] {};
+        int ActionFrame {};
+        int FrameCount {};
+        int InfoList[8] {};
+        int SizeList[8] {};
+        int DataList[8] {};
     } header;
 
     struct ArtFrameInfo
     {
-        unsigned int FrameWidth {};
-        unsigned int FrameHeight {};
-        unsigned int FrameSize {};
-        signed int OffsetX {};
-        signed int OffsetY {};
-        signed int DeltaX {};
-        signed int DeltaY {};
+        int FrameWidth {};
+        int FrameHeight {};
+        int FrameSize {};
+        int OffsetX {};
+        int OffsetY {};
+        int DeltaX {};
+        int DeltaY {};
     } frame_info;
 
     using ArtPalette = unsigned int[256];
