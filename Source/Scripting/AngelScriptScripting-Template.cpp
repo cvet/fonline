@@ -2885,14 +2885,6 @@ static auto StrongType_EqualsUnderlying(const T& self, const typename T::underly
 }
 
 template<typename T>
-static auto StrongType_UnderlyingCast(const T& self) -> const typename T::underlying_type&
-{
-    STACK_TRACE_ENTRY();
-
-    return self.underlying_value();
-}
-
-template<typename T>
 static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_type
 {
     STACK_TRACE_ENTRY();
@@ -3185,7 +3177,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define REGISTER_RELAXED_STRONG_TYPE(type, underlying_type) \
     REGISTER_HARD_STRONG_TYPE(type, underlying_type); \
     AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_GENERIC((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, "const " #underlying_type "& opImplCast() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingCast<type>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " opImplConv() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV))
 
     // Entity registrators

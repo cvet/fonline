@@ -3931,12 +3931,12 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
         else {
             item->SetCritterSlot(static_cast<uint8>(to_slot));
-            if (item_swap) {
+            if (item_swap != nullptr) {
                 item_swap->SetCritterSlot(static_cast<uint8>(from_slot));
             }
 
             GetMapChosen()->Action(ACTION_MOVE_ITEM, from_slot, item, true);
-            if (item_swap) {
+            if (item_swap != nullptr) {
                 GetMapChosen()->Action(ACTION_MOVE_ITEM_SWAP, to_slot, item_swap, true);
             }
         }
