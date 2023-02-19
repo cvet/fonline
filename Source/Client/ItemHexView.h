@@ -61,24 +61,24 @@ public:
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
     [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isShowAnim || (_isDynamicEffect && !_finishing) || _fading; }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isAnimLooped || (_isDynamicEffect && !_finishing) || _fading; }
 
     void RefreshAnim();
-    void RestoreAlpha() { Alpha = _maxAlpha; }
-    void RefreshAlpha() { _maxAlpha = IsColorize() ? GetAlpha() : 0xFF; }
+    void RestoreAlpha();
+    void RefreshAlpha();
     void SetSprite(Sprite* spr);
     void Finish();
     void StopFinishing();
     void Process();
     void SetEffect(uint16 to_hx, uint16 to_hy);
     void SkipFade();
-    void SetAnimFromEnd();
-    void SetAnimFromStart();
-    void SetAnim(uint beg, uint end);
+    void PlayAnimFromEnd();
+    void PlayAnimFromStart();
+    void PlayAnim(uint beg, uint end);
+    void PlayStayAnim();
+    void PlayShowAnim();
+    void PlayHideAnim();
     void RefreshOffs();
-    void SetStayAnim();
-    void SetShowAnim();
-    void SetHideAnim();
 
     uint SprId {};
     int ScrX {};
@@ -94,7 +94,7 @@ private:
 
     void AfterConstruction();
     void SetFade(bool fade_up);
-    void SetSpr(uint num_spr);
+    void SetCurSpr(uint num_spr);
 
     MapView* _map;
 
@@ -106,8 +106,8 @@ private:
     uint _animEndFrm {};
     uint _animTick {};
     uint8 _maxAlpha {0xFF};
-    bool _isShowAnim {};
-    uint _animNextTick {};
+    bool _isAnimLooped {};
+    uint _animStartTick {};
 
     bool _isEffect {};
     bool _isDynamicEffect {};

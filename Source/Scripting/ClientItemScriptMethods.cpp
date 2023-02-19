@@ -114,7 +114,7 @@ static void ItemGetMapPos(ItemView* self, uint16& hx, uint16& hy)
 [[maybe_unused]] void Client_Item_Animate(ItemView* self, uint fromFrame, uint toFrame)
 {
     if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
-        hex_item->SetAnim(fromFrame, toFrame);
+        hex_item->PlayAnim(fromFrame, toFrame);
     }
 }
 

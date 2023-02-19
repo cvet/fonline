@@ -2193,7 +2193,7 @@ void FOClient::Net_OnEraseItemFromMap()
         }
 
         if (is_deleted) {
-            item->SetHideAnim();
+            item->PlayHideAnim();
         }
 
         item->Finish();
@@ -2220,7 +2220,7 @@ void FOClient::Net_OnAnimateItem()
 
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
-        item->SetAnim(from_frm, to_frm);
+        item->PlayAnim(from_frm, to_frm);
     }
 }
 
@@ -3302,10 +3302,10 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         if (item->GetIsCanOpen()) {
             if (item->GetOpened()) {
-                item->SetAnimFromStart();
+                item->PlayAnimFromStart();
             }
             else {
-                item->SetAnimFromEnd();
+                item->PlayAnimFromEnd();
             }
         }
     }

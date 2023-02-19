@@ -770,7 +770,7 @@ auto MapView::AddItem(ident_t id, hstring pid, uint16 hx, uint16 hy, bool is_add
     auto* item = new ItemHexView(this, id, proto, data, hx, hy);
 
     if (is_added) {
-        item->SetShowAnim();
+        item->PlayShowAnim();
     }
 
     AddItemInternal(item);

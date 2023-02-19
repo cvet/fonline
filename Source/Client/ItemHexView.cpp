@@ -95,8 +95,12 @@ void ItemHexView::AfterConstruction()
     RefreshAlpha();
 
     if (GetIsShowAnim()) {
-        _isShowAnim = true;
-        _animNextTick = _engine->GameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+        _isAnimLooped = true;
+
+        const auto next_anim_wait = GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+        if (next_anim_wait != 0) {
+            _animStartTick = _engine->GameTime.GameTick() + next_anim_wait;
+        }
     }
 
     SetFade(true);
@@ -138,32 +142,49 @@ void ItemHexView::Process()
 
     // Animation
     if (_begFrm != _endFrm) {
-        const auto anim_proc = GenericUtils::Percent(_anim->Ticks, _engine->GameTime.GameTick() - _animTick);
-        if (anim_proc >= 100) {
-            _begFrm = _animEndFrm;
-            SetSpr(_endFrm);
-            _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+        const auto tick = _engine->GameTime.GameTick();
+
+        if (_animStartTick != 0) {
+            if (tick >= _animStartTick) {
+                PlayStayAnim();
+                _animStartTick = 0;
+            }
         }
-        else {
-            const auto cur_spr = lerp(_begFrm, _endFrm, static_cast<float>(anim_proc) / 100.0f);
-            RUNTIME_ASSERT((cur_spr >= _begFrm && cur_spr <= _endFrm) || (cur_spr >= _endFrm && cur_spr <= _begFrm));
-            if (_curFrm != cur_spr) {
-                SetSpr(cur_spr);
+
+        if (_animStartTick == 0) {
+            const auto anim_proc = GenericUtils::Percent(_anim->Ticks, tick - _animTick);
+            if (anim_proc >= 100) {
+                SetCurSpr(_endFrm);
+
+                if (_isAnimLooped) {
+                    const auto next_anim_wait = GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+                    if (next_anim_wait != 0) {
+                        _animStartTick = tick + next_anim_wait;
+                    }
+                    else {
+                        PlayStayAnim();
+                    }
+                }
+                else {
+                    _begFrm = _endFrm;
+                }
+            }
+            else {
+                const auto cur_spr = lerp(_begFrm, _endFrm, static_cast<float>(anim_proc) / 100.0f);
+                RUNTIME_ASSERT((cur_spr >= _begFrm && cur_spr <= _endFrm) || (cur_spr >= _endFrm && cur_spr <= _begFrm));
+
+                if (_curFrm != cur_spr) {
+                    SetCurSpr(cur_spr);
+                }
             }
         }
     }
     else if (_isEffect && !_finishing) {
         if (_isDynamicEffect) {
-            SetAnimFromStart();
+            PlayAnimFromStart();
         }
         else {
             Finish();
-        }
-    }
-    else if (_isShowAnim) {
-        if (_engine->GameTime.GameTick() >= _animNextTick) {
-            _isShowAnim = false;
-            SetStayAnim();
         }
     }
 
@@ -316,18 +337,18 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.ItemHexDefaultAnim;
     }
 
-    SetStayAnim();
+    PlayStayAnim();
     _animBegFrm = _begFrm;
     _animEndFrm = _endFrm;
 
     if (GetIsCanOpen()) {
         if (GetOpened()) {
-            SetSpr(_animEndFrm);
+            SetCurSpr(_animEndFrm);
             _begFrm = _curFrm;
             _endFrm = _curFrm;
         }
         else {
-            SetSpr(_animBegFrm);
+            SetCurSpr(_animBegFrm);
             _begFrm = _curFrm;
             _endFrm = _curFrm;
         }
@@ -351,6 +372,20 @@ void ItemHexView::SetSprite(Sprite* spr)
     }
 }
 
+void ItemHexView::RestoreAlpha()
+{
+    STACK_TRACE_ENTRY();
+
+    Alpha = _maxAlpha;
+}
+
+void ItemHexView::RefreshAlpha()
+{
+    STACK_TRACE_ENTRY();
+
+    _maxAlpha = IsColorize() ? GetAlpha() : 0xFF;
+}
+
 auto ItemHexView::GetEggType() const -> EggAppearenceType
 {
     STACK_TRACE_ENTRY();
@@ -372,44 +407,84 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
     }
 }
 
-void ItemHexView::SetAnimFromEnd()
+void ItemHexView::PlayAnimFromEnd()
 {
     STACK_TRACE_ENTRY();
 
     _begFrm = _animEndFrm;
     _endFrm = _animBegFrm;
-    SetSpr(_begFrm);
+    SetCurSpr(_begFrm);
     _animTick = _engine->GameTime.GameTick();
 }
 
-void ItemHexView::SetAnimFromStart()
+void ItemHexView::PlayAnimFromStart()
 {
     STACK_TRACE_ENTRY();
 
     _begFrm = _animBegFrm;
     _endFrm = _animEndFrm;
-    SetSpr(_begFrm);
+    SetCurSpr(_begFrm);
     _animTick = _engine->GameTime.GameTick();
 }
 
-void ItemHexView::SetAnim(uint beg, uint end)
+void ItemHexView::PlayAnim(uint beg, uint end)
 {
     STACK_TRACE_ENTRY();
 
-    if (beg > _anim->CntFrm - 1) {
+    if (beg >= _anim->CntFrm) {
         beg = _anim->CntFrm - 1;
     }
-    if (end > _anim->CntFrm - 1) {
+    if (end >= _anim->CntFrm) {
         end = _anim->CntFrm - 1;
     }
 
     _begFrm = beg;
     _endFrm = end;
-    SetSpr(_begFrm);
+    SetCurSpr(_begFrm);
     _animTick = _engine->GameTime.GameTick();
 }
 
-void ItemHexView::SetSpr(uint num_spr)
+void ItemHexView::PlayStayAnim()
+{
+    STACK_TRACE_ENTRY();
+
+    if (GetIsShowAnimExt()) {
+        PlayAnim(GetAnimStay0(), GetAnimStay1());
+    }
+    else {
+        PlayAnim(0, _anim->CntFrm - 1);
+    }
+}
+
+void ItemHexView::PlayShowAnim()
+{
+    STACK_TRACE_ENTRY();
+
+    if (GetIsShowAnimExt()) {
+        PlayAnim(GetAnimShow0(), GetAnimShow1());
+    }
+    else {
+        PlayAnim(0, _anim->CntFrm - 1);
+    }
+}
+
+void ItemHexView::PlayHideAnim()
+{
+    STACK_TRACE_ENTRY();
+
+    if (GetIsShowAnimExt()) {
+        PlayAnim(GetAnimHide0(), GetAnimHide1());
+        _animBegFrm = GetAnimHide1();
+        _animEndFrm = GetAnimHide1();
+    }
+    else {
+        PlayAnim(0, _anim->CntFrm - 1);
+        _animBegFrm = _anim->CntFrm - 1;
+        _animEndFrm = _anim->CntFrm - 1;
+    }
+}
+
+void ItemHexView::SetCurSpr(uint num_spr)
 {
     STACK_TRACE_ENTRY();
 
@@ -434,45 +509,5 @@ void ItemHexView::RefreshOffs()
     if (_isDynamicEffect) {
         ScrX += iround(_effCurX);
         ScrY += iround(_effCurY);
-    }
-}
-
-void ItemHexView::SetStayAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        SetAnim(GetAnimStay0(), GetAnimStay1());
-    }
-    else {
-        SetAnim(0, _anim->CntFrm - 1);
-    }
-}
-
-void ItemHexView::SetShowAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        SetAnim(GetAnimShow0(), GetAnimShow1());
-    }
-    else {
-        SetAnim(0, _anim->CntFrm - 1);
-    }
-}
-
-void ItemHexView::SetHideAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        SetAnim(GetAnimHide0(), GetAnimHide1());
-        _animBegFrm = GetAnimHide1();
-        _animEndFrm = GetAnimHide1();
-    }
-    else {
-        SetAnim(0, _anim->CntFrm - 1);
-        _animBegFrm = _anim->CntFrm - 1;
-        _animEndFrm = _anim->CntFrm - 1;
     }
 }
