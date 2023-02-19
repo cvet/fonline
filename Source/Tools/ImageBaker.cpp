@@ -953,11 +953,11 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
         // 0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next
         // character. 0x00000008 = Facade - requires fackwalk file. 0x00000010 = Unknown - used in eye candy,
         // for example, DIVINATION.art.
-        int FrameRate {};
-        int RotationCount {};
-        int PaletteList[4] {};
-        int ActionFrame {};
-        int FrameCount {};
+        uint FrameRate {};
+        uint RotationCount {};
+        uint PaletteList[4] {};
+        uint ActionFrame {};
+        uint FrameCount {};
         int InfoList[8] {};
         int SizeList[8] {};
         int DataList[8] {};
@@ -965,9 +965,9 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
 
     struct ArtFrameInfo
     {
-        int FrameWidth {};
-        int FrameHeight {};
-        int FrameSize {};
+        uint FrameWidth {};
+        uint FrameHeight {};
+        uint FrameSize {};
         int OffsetX {};
         int OffsetY {};
         int DeltaX {};
