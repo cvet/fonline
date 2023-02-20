@@ -2267,7 +2267,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     _primitiveDrawBuf->PrimType = prim;
     _primitiveDrawBuf->PrimZoomed = _spritesZoom != 1.0f;
 
-    _primitiveDrawBuf->Upload(effect->Usage);
+    _primitiveDrawBuf->Upload(effect->Usage, count, count);
     EnableScissor();
     effect->DrawBuffer(_primitiveDrawBuf, 0, count);
     DisableScissor();
