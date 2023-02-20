@@ -1000,7 +1000,12 @@ auto ModelInstance::GetMovingAnim2() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return _curMovingAnim & 0xFFFF;
+    if (_curMovingAnim != -1) {
+        return _curMovingAnim & 0xFFFF;
+    }
+    else {
+        return _isRunning ? ANIM2_RUN : ANIM2_WALK;
+    }
 }
 
 auto ModelInstance::IsAnimationPlaying() const -> bool
