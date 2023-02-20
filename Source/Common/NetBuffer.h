@@ -122,6 +122,14 @@ public:
         *this << i.as_hash();
         return *this;
     }
+
+    void StartMsg(uint msg);
+    void EndMsg();
+
+private:
+    bool _msgStarted {};
+    uint _startedMsg {};
+    size_t _startedBufPos {};
 };
 
 class NetInBuffer final : public NetBuffer

@@ -999,8 +999,9 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         }
 
         CONNECTION_OUTPUT_BEGIN(connection);
-        connection->Bout << NETMSG_PING;
+        connection->Bout.StartMsg(NETMSG_PING);
         connection->Bout << PING_CLIENT;
+        connection->Bout.EndMsg();
         CONNECTION_OUTPUT_END(connection);
 
         connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
@@ -1861,8 +1862,6 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     // Begin data encrypting
     uint encrypt_key = 0;
     connection->Bin >> encrypt_key;
-    connection->Bin.SetEncryptKey(encrypt_key);
-    connection->Bout.SetEncryptKey(encrypt_key);
 
     uint8 padding[28] = {};
     connection->Bin.Pop(padding, sizeof(padding));
@@ -1870,25 +1869,24 @@ void FOServer::Process_Handshake(ClientConnection* connection)
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
-    // Send update files list
-    uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(_updateFilesDesc.size());
+    connection->Bin.SetEncryptKey(encrypt_key);
+    connection->Bout.SetEncryptKey(encrypt_key);
 
-    // With global properties
     vector<uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
-        msg_len += sizeof(uint16) + StoreData(false, &global_vars_data, &global_vars_data_sizes);
+        StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout << NETMSG_UPDATE_FILES_LIST;
-    connection->Bout << msg_len;
+    connection->Bout.StartMsg(NETMSG_UPDATE_FILES_LIST);
     connection->Bout << outdated;
     connection->Bout << static_cast<uint>(_updateFilesDesc.size());
     connection->Bout.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
     }
+    connection->Bout.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 
     connection->WasHandshake = true;
@@ -1918,8 +1916,9 @@ void FOServer::Process_Ping(ClientConnection* connection)
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout << NETMSG_PING;
+    connection->Bout.StartMsg(NETMSG_PING);
     connection->Bout << ping;
+    connection->Bout.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 }
 
@@ -1968,13 +1967,11 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
         connection->UpdateFileIndex = -1;
     }
 
-    const uint msg_len = sizeof(NETMSG_UPDATE_FILE_DATA) + sizeof(msg_len) + sizeof(update_portion) + update_portion;
-
     CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout << NETMSG_UPDATE_FILE_DATA;
-    connection->Bout << msg_len;
+    connection->Bout.StartMsg(NETMSG_UPDATE_FILE_DATA);
     connection->Bout << update_portion;
     connection->Bout.Push(&update_file_data[offset], update_portion);
+    connection->Bout.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 }
 
@@ -2065,7 +2062,8 @@ void FOServer::Process_Register(Player* unlogined_player)
     unlogined_player->Send_TextMsg(0u, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
 
     CONNECTION_OUTPUT_BEGIN(unlogined_player->Connection);
-    unlogined_player->Connection->Bout << NETMSG_REGISTER_SUCCESS;
+    unlogined_player->Connection->Bout.StartMsg(NETMSG_REGISTER_SUCCESS);
+    unlogined_player->Connection->Bout.EndMsg();
     CONNECTION_OUTPUT_END(unlogined_player->Connection);
 }
 
@@ -2219,25 +2217,22 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Login ok
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
-    msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(encrypt_key) + sizeof(player_id);
 
     vector<uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
-    const auto whole_global_vars_data_size = StoreData(false, &global_vars_data, &global_vars_data_sizes);
-    msg_len += sizeof(uint16) + whole_global_vars_data_size;
+    StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
     vector<uint8*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
-    const auto whole_player_data_size = player->StoreData(true, &player_data, &player_data_sizes);
-    msg_len += sizeof(uint16) + whole_player_data_size;
+    player->StoreData(true, &player_data, &player_data_sizes);
 
     CONNECTION_OUTPUT_BEGIN(player->Connection);
-    player->Connection->Bout << NETMSG_LOGIN_SUCCESS;
-    player->Connection->Bout << msg_len;
+    player->Connection->Bout.StartMsg(NETMSG_LOGIN_SUCCESS);
     player->Connection->Bout << encrypt_key;
     player->Connection->Bout << player_id;
     NET_WRITE_PROPERTIES(player->Connection->Bout, global_vars_data, global_vars_data_sizes);
     NET_WRITE_PROPERTIES(player->Connection->Bout, player_data, player_data_sizes);
+    player->Connection->Bout.EndMsg();
     CONNECTION_OUTPUT_END(player->Connection);
 
     player->Connection->Bout.SetEncryptKey(encrypt_key);

@@ -325,7 +325,8 @@ void Updater::Net_OnUpdateFileData()
     RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
     update_file.RemaningSize -= data_size;
     if (update_file.RemaningSize > 0u) {
-        _conn.OutBuf << NETMSG_GET_UPDATE_FILE_DATA;
+        _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE_DATA);
+        _conn.OutBuf.EndMsg();
         _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
     }
     else {
@@ -357,8 +358,9 @@ void Updater::GetNextFile()
     if (!_filesToUpdate.empty()) {
         const auto& next_update_file = _filesToUpdate.front();
 
-        _conn.OutBuf << NETMSG_GET_UPDATE_FILE;
+        _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE);
         _conn.OutBuf << next_update_file.Index;
+        _conn.OutBuf.EndMsg();
 
         DiskFileSystem::DeleteFile(MakeWritePath(_str("~{}", next_update_file.Name)));
         _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(_str("~{}", next_update_file.Name)), true));

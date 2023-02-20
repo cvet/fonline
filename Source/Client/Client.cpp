@@ -734,12 +734,10 @@ void FOClient::Net_SendLogIn()
 
     WriteLog("Player login");
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
-
-    _conn.OutBuf << NETMSG_LOGIN;
-    _conn.OutBuf << msg_len;
+    _conn.OutBuf.StartMsg(NETMSG_LOGIN);
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
+    _conn.OutBuf.EndMsg();
 
     AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
@@ -752,12 +750,10 @@ void FOClient::Net_SendCreatePlayer()
 
     WriteLog("Player registration");
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
-
-    _conn.OutBuf << NETMSG_REGISTER;
-    _conn.OutBuf << msg_len;
+    _conn.OutBuf.StartMsg(NETMSG_REGISTER);
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendText(string_view send_str, uint8 how_say)
@@ -766,12 +762,10 @@ void FOClient::Net_SendText(string_view send_str, uint8 how_say)
 
     NON_CONST_METHOD_HINT();
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(send_str.length());
-
-    _conn.OutBuf << NETMSG_SEND_TEXT;
-    _conn.OutBuf << msg_len;
+    _conn.OutBuf.StartMsg(NETMSG_SEND_TEXT);
     _conn.OutBuf << how_say;
     _conn.OutBuf << send_str;
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendDir(CritterHexView* cr)
@@ -780,10 +774,11 @@ void FOClient::Net_SendDir(CritterHexView* cr)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf << NETMSG_DIR;
+    _conn.OutBuf.StartMsg(NETMSG_DIR);
     _conn.OutBuf << CurMap->GetId();
     _conn.OutBuf << cr->GetId();
     _conn.OutBuf << cr->GetDirAngle();
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendMove(CritterHexView* cr)
@@ -799,12 +794,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
         return;
     }
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ident_t) * 2 + sizeof(uint16) + sizeof(uint16) * 2 + //
-        sizeof(uint16) + static_cast<uint>(sizeof(uint8) * cr->Moving.Steps.size()) + //
-        sizeof(uint16) + static_cast<uint>(sizeof(uint16) * cr->Moving.ControlSteps.size()) + sizeof(int16) * 2;
-
-    _conn.OutBuf << NETMSG_SEND_MOVE;
-    _conn.OutBuf << msg_len;
+    _conn.OutBuf.StartMsg(NETMSG_SEND_MOVE);
     _conn.OutBuf << CurMap->GetId();
     _conn.OutBuf << cr->GetId();
     _conn.OutBuf << cr->Moving.Speed;
@@ -820,6 +810,7 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     }
     _conn.OutBuf << cr->Moving.EndOx;
     _conn.OutBuf << cr->Moving.EndOy;
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendStopMove(CritterHexView* cr)
@@ -828,7 +819,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf << NETMSG_SEND_STOP_MOVE;
+    _conn.OutBuf.StartMsg(NETMSG_SEND_STOP_MOVE);
     _conn.OutBuf << CurMap->GetId();
     _conn.OutBuf << cr->GetId();
     _conn.OutBuf << cr->GetHexX();
@@ -836,6 +827,7 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf << cr->GetHexOffsX();
     _conn.OutBuf << cr->GetHexOffsY();
     _conn.OutBuf << cr->GetDirAngle();
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
@@ -877,12 +869,10 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
     const auto is_pod = prop->IsPlainData();
     if (is_pod) {
-        _conn.OutBuf << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
+        _conn.OutBuf.StartMsg(NETMSG_SEND_POD_PROPERTY(data_size, additional_args));
     }
     else {
-        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(ident_t) + sizeof(uint16) + data_size;
-        _conn.OutBuf << NETMSG_SEND_COMPLEX_PROPERTY;
-        _conn.OutBuf << msg_len;
+        _conn.OutBuf.StartMsg(NETMSG_SEND_COMPLEX_PROPERTY);
     }
 
     _conn.OutBuf << static_cast<char>(type);
@@ -915,6 +905,8 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
             _conn.OutBuf.Push(data, data_size);
         }
     }
+
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uint8 answer)
@@ -923,11 +915,12 @@ void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uint8 answer)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf << NETMSG_SEND_TALK_NPC;
+    _conn.OutBuf.StartMsg(NETMSG_SEND_TALK_NPC);
     _conn.OutBuf << is_npc;
     _conn.OutBuf << (is_npc ? ident_t {id_to_talk} : ident_t {});
     _conn.OutBuf << (!is_npc ? ResolveHash(id_to_talk) : hstring {});
     _conn.OutBuf << answer;
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_SendPing(uint8 ping)
@@ -936,8 +929,9 @@ void FOClient::Net_SendPing(uint8 ping)
 
     NON_CONST_METHOD_HINT();
 
-    _conn.OutBuf << NETMSG_PING;
+    _conn.OutBuf.StartMsg(NETMSG_PING);
     _conn.OutBuf << ping;
+    _conn.OutBuf.EndMsg();
 }
 
 void FOClient::Net_OnUpdateFilesResponse()

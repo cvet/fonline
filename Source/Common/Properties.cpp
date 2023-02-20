@@ -322,11 +322,10 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     reader.VerifyEnd();
 }
 
-auto Properties::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const -> uint
+void Properties::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const
 {
     STACK_TRACE_ENTRY();
 
-    uint whole_size = 0u;
     *all_data = &_storeData;
     *all_data_sizes = &_storeDataSizes;
     _storeData.resize(0u);
@@ -341,7 +340,6 @@ auto Properties::StoreData(bool with_protected, vector<uint8*>** all_data, vecto
     // Store plain properties data
     _storeData.push_back(_podData);
     _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
-    whole_size += _storeDataSizes.back();
 
     // Filter complex data to send
     for (size_t i = 0; i < _storeDataComplexIndices.size();) {
@@ -359,17 +357,13 @@ auto Properties::StoreData(bool with_protected, vector<uint8*>** all_data, vecto
     if (!_storeDataComplexIndices.empty()) {
         _storeData.push_back(reinterpret_cast<uint8*>(_storeDataComplexIndices.data()));
         _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(uint16));
-        whole_size += _storeDataSizes.back();
 
         for (const auto index : _storeDataComplexIndices) {
             const auto* prop = _registrator->_registeredProperties[index];
             _storeData.push_back(_complexData[prop->_complexDataIndex]);
             _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
-            whole_size += _storeDataSizes.back();
         }
     }
-
-    return whole_size;
 }
 
 void Properties::RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes)

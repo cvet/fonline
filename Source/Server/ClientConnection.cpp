@@ -140,6 +140,7 @@ void ClientConnection::GracefulDisconnect()
     _gracefulDisconnected = true;
 
     CONNECTION_OUTPUT_BEGIN(this);
-    Bout << NETMSG_DISCONNECT;
+    Bout.StartMsg(NETMSG_DISCONNECT);
+    Bout.EndMsg();
     CONNECTION_OUTPUT_END(this);
 }

@@ -2117,25 +2117,23 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
-                        globalLines.append('    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(uint);')
                         globalLines.append('    constexpr uint rpc_num = "' + rcName + '"_hash;')
                         for p in rcArgs:
                             globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
-                    
-                        for p in rcArgs:
-                            globalLines.append('    msg_len += CalcNetBufParamLen(in_' + p[1] + ');')
                         if target == 'Server':
                             globalLines.append('    auto* conn = self->Connection;')
                             globalLines.append('    CONNECTION_OUTPUT_BEGIN(conn);')
-                            globalLines.append('    WriteRpcHeader(conn->Bout, msg_len, rpc_num);')
+                            globalLines.append('    WriteRpcHeader(conn->Bout, rpc_num);')
                             for p in rcArgs:
                                 globalLines.append('    WriteNetBuf(conn->Bout, in_' + p[1] + ');')
+                            globalLines.append('    WriteRpcFooter(conn->Bout);')
                             globalLines.append('    CONNECTION_OUTPUT_END(conn);')
                         else:
                             globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')
-                            globalLines.append('    WriteRpcHeader(conn.OutBuf, msg_len, rpc_num);')
+                            globalLines.append('    WriteRpcHeader(conn.OutBuf, rpc_num);')
                             for p in rcArgs:
                                 globalLines.append('    WriteNetBuf(conn.OutBuf, in_' + p[1] + ');')
+                            globalLines.append('    WriteRpcFooter(conn.OutBuf);')
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
                         for p in rcArgs:

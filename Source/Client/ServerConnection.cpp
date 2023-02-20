@@ -177,9 +177,10 @@ void ServerConnection::Process()
             }
 
             if (_isConnected && _netOut.IsEmpty() && _pingTick == 0.0 && _settings.PingPeriod != 0u && Timer::RealtimeTick() >= _pingCallTick) {
-                _netOut << NETMSG_PING;
+                _netOut.StartMsg(NETMSG_PING);
                 _netOut << PING_SERVER;
                 _pingTick = Timer::RealtimeTick();
+                _netOut.EndMsg();
             }
 
             DispatchData();
@@ -808,16 +809,18 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 
 void ServerConnection::Net_SendHandshake()
 {
-    _netOut << NETMSG_HANDSHAKE;
+    _netOut.StartMsg(NETMSG_HANDSHAKE);
     _netOut << static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
     _netOut << encrypt_key;
-    _netOut.SetEncryptKey(encrypt_key);
-    _netIn.SetEncryptKey(encrypt_key);
 
     constexpr uint8 padding[28] = {};
     _netOut.Push(padding, sizeof(padding));
+    _netOut.EndMsg();
+
+    _netOut.SetEncryptKey(encrypt_key);
+    _netIn.SetEncryptKey(encrypt_key);
 }
 
 void ServerConnection::Net_OnPing()
@@ -828,8 +831,9 @@ void ServerConnection::Net_OnPing()
     CHECK_SERVER_IN_BUF_ERROR(*this);
 
     if (ping == PING_CLIENT) {
-        _netOut << NETMSG_PING;
+        _netOut.StartMsg(NETMSG_PING);
         _netOut << PING_CLIENT;
+        _netOut.EndMsg();
     }
     else if (ping == PING_SERVER) {
         const auto cur_tick = Timer::RealtimeTick();

@@ -1535,86 +1535,6 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 }
 
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
-static auto CalcNetBufParamLen(const T& value) -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if constexpr (std::is_same_v<T, string>) {
-        if (value.size() > 0xFFFF) {
-            throw ScriptException("Too big string to send", value.length());
-        }
-
-        return NetBuffer::STRING_LEN_SIZE + static_cast<uint>(value.length());
-    }
-    else if constexpr (std::is_same_v<T, hstring>) {
-        return sizeof(hstring::hash_t);
-    }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
-        return sizeof(value);
-    }
-}
-
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
-static auto CalcNetBufParamLen(const vector<T>& value) -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (value.size() > 0xFFFF) {
-        throw ScriptException("Too big array to send", value.size());
-    }
-
-    if constexpr (std::is_same_v<T, string>) {
-        uint result = 0u;
-        for (const auto& inner_value : value) {
-            result += CalcNetBufParamLen(inner_value);
-        }
-        return NetBuffer::ARRAY_LEN_SIZE + result;
-    }
-    else if constexpr (std::is_same_v<T, hstring>) {
-        return NetBuffer::ARRAY_LEN_SIZE + static_cast<uint>(value.size() * sizeof(hstring::hash_t));
-    }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
-        return NetBuffer::ARRAY_LEN_SIZE + static_cast<uint>(value.size() * sizeof(T));
-    }
-}
-
-template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
-        int> = 0>
-static auto CalcNetBufParamLen(const map<T, U>& value) -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (value.size() > 0xFFFF) {
-        throw ScriptException("Too big dict to send", value.size());
-    }
-
-    uint result = NetBuffer::ARRAY_LEN_SIZE;
-
-    if constexpr (std::is_same_v<T, hstring>) {
-        result += static_cast<uint>(value.size() * sizeof(hstring::hash_t));
-    }
-    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
-        result += static_cast<uint>(value.size() * sizeof(T));
-    }
-
-    if constexpr (std::is_same_v<U, string>) {
-        for (const auto& inner_value : value) {
-            result += CalcNetBufParamLen(inner_value.second);
-        }
-    }
-    else if constexpr (std::is_same_v<U, hstring>) {
-        result += static_cast<uint>(value.size() * sizeof(hstring::hash_t));
-    }
-    else if constexpr (std::is_arithmetic_v<U> || is_script_enum_v<U>) {
-        result += static_cast<uint>(value.size() * sizeof(T));
-    }
-
-    return result;
-}
-
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     STACK_TRACE_ENTRY();
@@ -1714,13 +1634,19 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
     }
 }
 
-[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint msg_len, uint rpc_num)
+[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint rpc_num)
 {
     STACK_TRACE_ENTRY();
 
-    out_buf << NETMSG_RPC;
-    out_buf << msg_len;
+    out_buf.StartMsg(NETMSG_RPC);
     out_buf << rpc_num;
+}
+
+[[maybe_unused]] static void WriteRpcFooter(NetOutBuffer& out_buf)
+{
+    STACK_TRACE_ENTRY();
+
+    out_buf.EndMsg();
 }
 #endif
 

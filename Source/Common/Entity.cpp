@@ -224,11 +224,11 @@ void Entity::SetProperties(const Properties& props)
     _props = props;
 }
 
-auto Entity::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const -> uint
+void Entity::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const
 {
     STACK_TRACE_ENTRY();
 
-    return _props.StoreData(with_protected, all_data, all_data_sizes);
+    _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
 void Entity::RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes)

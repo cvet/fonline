@@ -136,7 +136,7 @@ public:
     [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
 
     void SetProperties(const Properties& props);
-    auto StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& properties_data);
     auto LoadFromText(const map<string, string>& key_values) -> bool;

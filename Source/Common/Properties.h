@@ -299,7 +299,7 @@ public:
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
     void StoreAllData(vector<uint8>& all_data) const;
     void RestoreAllData(const vector<uint8>& all_data);
-    auto StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
     void SetRawData(const Property* prop, const uint8* data, uint data_size);
