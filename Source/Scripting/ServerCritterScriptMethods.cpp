@@ -717,13 +717,9 @@
 
     if (item_swap != nullptr) {
         self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
-        self->OnItemMove.Fire(item_swap, slot);
-        item_swap->OnCritterMove.Fire(self, slot);
     }
 
     self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
-    self->OnItemMove.Fire(item, from_slot);
-    item->OnCritterMove.Fire(self, from_slot);
 }
 
 ///# ...

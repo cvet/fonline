@@ -172,13 +172,9 @@ public:
     void ProcessTimeEvents();
 
     ///@ ExportEvent
-    ENTITY_EVENT(OnFinish);
-    ///@ ExportEvent
     ENTITY_EVENT(OnIdle);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCheckMoveItem, Item* /*item*/, uint8 /*toSlot*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnItemMove, Item* /*item*/, uint8 /*fromSlot*/);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent
@@ -205,12 +201,6 @@ public:
     ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapIdle);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapIn);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapOut);
 
     int LockMapTransfers {};
     uint AllowedToDownloadMap {};

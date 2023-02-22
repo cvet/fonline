@@ -1825,7 +1825,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_
                 continue;
             }
 
-            OnItemWalk.Fire(item, cr, false, dir);
+            item->OnCritterWalk.Fire(cr, false, dir);
 
             if (cr->IsDestroyed()) {
                 return;
@@ -1839,7 +1839,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, uint16 from_hx, uint16 from_
                 continue;
             }
 
-            OnItemWalk.Fire(item, cr, true, dir);
+            item->OnCritterWalk.Fire(cr, true, dir);
 
             if (cr->IsDestroyed()) {
                 return;

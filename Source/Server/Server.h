@@ -160,8 +160,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);

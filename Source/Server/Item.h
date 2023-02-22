@@ -76,11 +76,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(OnWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMove, Critter* /*critter*/, uint8 /*fromSlot*/);
+    ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
 
     bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};

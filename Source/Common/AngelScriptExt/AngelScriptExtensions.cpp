@@ -532,7 +532,6 @@ static bool ScriptString_TryToInt(const string& str, int& result)
 
     result = result_;
     return true;
-
 }
 
 static bool ScriptString_TryToFloat(const string& str, float& result)

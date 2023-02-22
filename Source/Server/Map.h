@@ -145,10 +145,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnLoopEx, int /*loopIndex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIn, Critter* /*cr*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCritterOut, Critter* /*cr*/);
-    ///@ ExportEvent
     ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
