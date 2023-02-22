@@ -368,12 +368,12 @@ auto _str::toUInt() const -> uint
 
 auto _str::toInt64() const -> int64
 {
-    return std::strtoll(_s.c_str(), nullptr, 0);
+    return static_cast<int64>(std::strtoll(_s.c_str(), nullptr, 0));
 }
 
 auto _str::toUInt64() const -> uint64
 {
-    return std::strtoull(_s.c_str(), nullptr, 0);
+    return static_cast<uint64>(std::strtoull(_s.c_str(), nullptr, 0));
 }
 
 auto _str::toFloat() const -> float
