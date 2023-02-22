@@ -174,7 +174,7 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
 {
     STACK_TRACE_ENTRY();
 
-    return _str("{}/{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
+    return _str(work_path).combinePath(_str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path) :

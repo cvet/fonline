@@ -310,7 +310,7 @@ metaFiles = []
 for path in args.meta:
     absPath = os.path.abspath(path)
     if absPath not in metaFiles and 'GeneratedSource' not in absPath:
-        assert os.path.isfile(absPath)
+        assert os.path.isfile(absPath), 'Invalid meta file path ' + path
         metaFiles.append(absPath)
 metaFiles.sort()
 
