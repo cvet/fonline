@@ -499,28 +499,10 @@ static void ScriptString_RawSet(string& str, uint index, uint8 value)
 
 static int ScriptString_ToInt(const string& str, int defaultValue)
 {
-    const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t') {
-        ++p;
-    }
-
     char* end_str = nullptr;
-    int result;
-    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
-        result = static_cast<int>(strtol(p + 2, &end_str, 16));
-    }
-    else {
-        result = static_cast<int>(strtol(p, &end_str, 10));
-    }
+    const auto result = static_cast<int>(std::strtoll(str.c_str(), &end_str, 0));
 
-    if (!end_str || end_str == p) {
-        return defaultValue;
-    }
-
-    while (*end_str == ' ' || *end_str == '\t') {
-        ++end_str;
-    }
-    if (*end_str) {
+    if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
     }
 
@@ -529,22 +511,10 @@ static int ScriptString_ToInt(const string& str, int defaultValue)
 
 static float ScriptString_ToFloat(const string& str, float defaultValue)
 {
-    const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t') {
-        ++p;
-    }
+    char* end_str = nullptr;
+    const auto result = static_cast<float>(std::strtod(str.c_str(), &end_str));
 
-    char* end_str = NULL;
-    const float result = static_cast<float>(strtod(p, &end_str));
-
-    if (!end_str || end_str == p) {
-        return defaultValue;
-    }
-
-    while (*end_str == ' ' || *end_str == '\t') {
-        ++end_str;
-    }
-    if (*end_str) {
+    if (end_str == nullptr || end_str == str.c_str()) {
         return defaultValue;
     }
 
@@ -553,53 +523,24 @@ static float ScriptString_ToFloat(const string& str, float defaultValue)
 
 static bool ScriptString_TryToInt(const string& str, int& result)
 {
-    const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t') {
-        ++p;
-    }
-
     char* end_str = nullptr;
-    int result_;
-    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
-        result_ = static_cast<int>(strtol(p + 2, &end_str, 16));
-    }
-    else {
-        result_ = static_cast<int>(strtol(p, &end_str, 10));
-    }
+    const auto result_ = static_cast<int>(std::strtoll(str.c_str(), &end_str, 0));
 
-    if (!end_str || end_str == p) {
-        return false;
-    }
-
-    while (*end_str == ' ' || *end_str == '\t') {
-        ++end_str;
-    }
-    if (*end_str) {
+    if (end_str == nullptr || end_str == str.c_str()) {
         return false;
     }
 
     result = result_;
     return true;
+
 }
 
 static bool ScriptString_TryToFloat(const string& str, float& result)
 {
-    const char* p = str.c_str();
-    while (*p == ' ' || *p == '\t') {
-        ++p;
-    }
+    char* end_str = nullptr;
+    const auto result_ = static_cast<float>(std::strtod(str.c_str(), &end_str));
 
-    char* end_str = NULL;
-    const float result_ = static_cast<float>(strtod(p, &end_str));
-
-    if (!end_str || end_str == p) {
-        return false;
-    }
-
-    while (*end_str == ' ' || *end_str == '\t') {
-        ++end_str;
-    }
-    if (*end_str) {
+    if (end_str == nullptr || end_str == str.c_str()) {
         return false;
     }
 

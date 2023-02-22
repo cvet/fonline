@@ -152,9 +152,11 @@ static_assert(sizeof(uint8) == 1);
 static_assert(sizeof(int16) == 2);
 static_assert(sizeof(uint16) == 2);
 static_assert(sizeof(int) == 4);
+static_assert(sizeof(long) == 4);
 static_assert(sizeof(uint) == 4);
 static_assert(sizeof(int64) == 8);
 static_assert(sizeof(uint64) == 8);
+static_assert(sizeof(long long) == 8);
 static_assert(sizeof(bool) == 1);
 static_assert(CHAR_BIT == 8);
 

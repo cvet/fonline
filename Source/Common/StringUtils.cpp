@@ -356,47 +356,37 @@ auto _str::isExplicitBool() const -> bool
     return false;
 }
 
-auto _str::toInt() -> int
+auto _str::toInt() const -> int
 {
-    return static_cast<int>(toInt64());
+    return static_cast<int>(std::strtoll(_s.c_str(), nullptr, 0));
 }
 
-auto _str::toUInt() -> uint
+auto _str::toUInt() const -> uint
 {
-    return static_cast<uint>(toInt64());
+    return static_cast<uint>(std::strtoull(_s.c_str(), nullptr, 0));
 }
 
-auto _str::toInt64() -> int64
+auto _str::toInt64() const -> int64
 {
-    trim();
-
-    if (_s.length() >= 2 && _s[0] == '0' && (_s[1] == 'x' || _s[1] == 'X')) {
-        return strtoll(_s.substr(2).c_str(), nullptr, 16);
-    }
-    return strtoll(_s.c_str(), nullptr, 10);
+    return std::strtoll(_s.c_str(), nullptr, 0);
 }
 
-auto _str::toUInt64() -> uint64
+auto _str::toUInt64() const -> uint64
 {
-    trim();
-
-    if (_s.length() >= 2 && _s[0] == '0' && (_s[1] == 'x' || _s[1] == 'X')) {
-        return strtoull(_s.substr(2).c_str(), nullptr, 16);
-    }
-    return strtoull(_s.c_str(), nullptr, 10);
+    return std::strtoull(_s.c_str(), nullptr, 0);
 }
 
 auto _str::toFloat() const -> float
 {
-    return static_cast<float>(atof(_s.c_str()));
+    return static_cast<float>(std::strtod(_s.c_str(), nullptr));
 }
 
 auto _str::toDouble() const -> double
 {
-    return atof(_s.c_str());
+    return std::strtod(_s.c_str(), nullptr);
 }
 
-auto _str::toBool() -> bool
+auto _str::toBool() const -> bool
 {
     if (compareIgnoreCase("true")) {
         return true;
