@@ -94,6 +94,7 @@ public:
     void Push(const void* buf, size_t len);
     void Cut(size_t len);
 
+    // Todo: move NetOutBuffer from << to Write<T>
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     auto operator<<(const T& i) -> NetBuffer&
     {
@@ -121,6 +122,33 @@ public:
     {
         *this << i.as_hash();
         return *this;
+    }
+
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    void Write(std::enable_if_t<true, T> value)
+    {
+        Push(&value, sizeof(T));
+    }
+
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    void Write(std::enable_if_t<true, T> value)
+    {
+        Push(&value.underlying_value(), sizeof(typename T::underlying_type));
+    }
+
+    template<typename T, std::enable_if_t<std::is_convertible_v<T, string_view> && !std::is_same_v<T, hstring>, int> = 0>
+    void Write(std::enable_if_t<true, string_view> value)
+    {
+        RUNTIME_ASSERT(value.length() <= std::numeric_limits<uint16>::max());
+        const auto len = static_cast<uint16>(value.length());
+        Push(&len, sizeof(len));
+        Push(value.data(), len);
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    void Write(std::enable_if_t<true, T> value)
+    {
+        Push(&value.as_hash(), sizeof(hstring::hash_t));
     }
 
     void StartMsg(uint msg);
@@ -156,6 +184,7 @@ public:
     void Pop(void* buf, size_t len);
     void ResetBuf() override;
 
+    // Todo: move NetInBuffer from >> to Read<T>
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     auto operator>>(T& i) -> NetBuffer&
     {
@@ -179,9 +208,41 @@ public:
         return *this;
     }
 
-    auto operator>>(hstring& i) -> NetBuffer& = delete;
-    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    [[nodiscard]] auto Read() -> T
+    {
+        T result = {};
+        Pop(&result, sizeof(T));
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    [[nodiscard]] auto Read() -> T
+    {
+        T result = {};
+        Pop(&result.underlying_value(), sizeof(typename T::underlying_type));
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    [[nodiscard]] auto Read() -> string
+    {
+        string result;
+        uint16 len = 0;
+        Pop(&len, sizeof(len));
+        result.resize(len);
+        Pop(result.data(), len);
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    [[nodiscard]] auto Read(const NameResolver& name_resolver) -> hstring
+    {
+        return ReadHashedString(name_resolver);
+    }
 
 private:
+    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
+
     size_t _bufReadPos {};
 };

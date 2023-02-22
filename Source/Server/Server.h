@@ -257,8 +257,8 @@ private:
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(const DialogAnswerReq& result, Critter* master, Critter* slave) -> uint;
     auto DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
-    auto DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
-    auto DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
+    auto DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& answer, bool recheck) -> bool;
+    auto DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint;
 
     void LogToClients(string_view str);
     void DispatchLogToClients();

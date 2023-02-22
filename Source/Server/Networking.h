@@ -64,10 +64,10 @@ public:
     void AddRef() const;
     void Release() const;
 
-    NetInBuffer Bin;
-    std::mutex BinLocker {};
-    NetOutBuffer Bout;
-    std::mutex BoutLocker {};
+    NetInBuffer InBuf;
+    std::mutex InBufLocker {};
+    NetOutBuffer OutBuf;
+    std::mutex OutBufLocker {};
 
 private:
     mutable std::atomic_int _refCount {1};

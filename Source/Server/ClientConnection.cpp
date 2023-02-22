@@ -38,10 +38,10 @@
 #include "Networking.h"
 
 ClientConnection::ClientConnection(NetConnection* net_connection) :
-    Bin {net_connection->Bin},
-    BinLocker {net_connection->BinLocker},
-    Bout {net_connection->Bout},
-    BoutLocker {net_connection->BoutLocker},
+    InBuf {net_connection->InBuf},
+    InBufLocker {net_connection->InBufLocker},
+    OutBuf {net_connection->OutBuf},
+    OutBufLocker {net_connection->OutBufLocker},
     _netConnection {net_connection}
 {
     STACK_TRACE_ENTRY();
@@ -140,7 +140,7 @@ void ClientConnection::GracefulDisconnect()
     _gracefulDisconnected = true;
 
     CONNECTION_OUTPUT_BEGIN(this);
-    Bout.StartMsg(NETMSG_DISCONNECT);
-    Bout.EndMsg();
+    OutBuf.StartMsg(NETMSG_DISCONNECT);
+    OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(this);
 }

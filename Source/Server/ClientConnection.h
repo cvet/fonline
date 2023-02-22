@@ -39,7 +39,7 @@
 
 #define CHECK_CLIENT_IN_BUF_ERROR(conn) \
     do { \
-        if ((conn)->Bin.IsError()) { \
+        if ((conn)->InBuf.IsError()) { \
             WriteLog("Wrong network data from host '{}'", (conn)->GetHost()); \
             (conn)->HardDisconnect(); \
             return; \
@@ -48,7 +48,7 @@
 
 #define CONNECTION_OUTPUT_BEGIN(conn) \
     { \
-        std::lock_guard locker((conn)->BoutLocker)
+        std::lock_guard locker((conn)->OutBufLocker)
 #define CONNECTION_OUTPUT_END(conn) \
     } \
     (conn)->Dispatch()
@@ -79,10 +79,10 @@ public:
     void HardDisconnect();
     void GracefulDisconnect();
 
-    NetInBuffer& Bin;
-    std::mutex& BinLocker;
-    NetOutBuffer& Bout;
-    std::mutex& BoutLocker;
+    NetInBuffer& InBuf;
+    std::mutex& InBufLocker;
+    NetOutBuffer& OutBuf;
+    std::mutex& OutBufLocker;
 
     bool WasHandshake {};
     uint PingNextTick {};

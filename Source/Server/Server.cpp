@@ -787,20 +787,20 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
         return;
     }
 
-    std::lock_guard locker(connection->BinLocker);
+    std::lock_guard locker(connection->InBufLocker);
 
     if (connection->IsGracefulDisconnected()) {
-        connection->Bin.ResetBuf();
+        connection->InBuf.ResetBuf();
         return;
     }
 
-    connection->Bin.ShrinkReadBuf();
+    connection->InBuf.ShrinkReadBuf();
 
-    if (connection->Bin.NeedProcess()) {
+    if (connection->InBuf.NeedProcess()) {
         connection->LastActivityTime = GameTime.FrameTick();
 
         uint msg = 0;
-        connection->Bin >> msg;
+        connection->InBuf >> msg;
 
         if (!connection->WasHandshake) {
             switch (msg) {
@@ -809,12 +809,12 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 // even if answer data will change its meaning
                 CONNECTION_OUTPUT_BEGIN(connection);
                 connection->DisableCompression();
-                connection->Bout << _stats.CurOnline;
-                connection->Bout << _stats.Uptime;
-                connection->Bout << static_cast<uint>(0);
-                connection->Bout << static_cast<uint8>(0);
-                connection->Bout << static_cast<uint8>(0xF0);
-                connection->Bout << static_cast<uint16>(0xFFFF);
+                connection->OutBuf << _stats.CurOnline;
+                connection->OutBuf << _stats.Uptime;
+                connection->OutBuf << static_cast<uint>(0);
+                connection->OutBuf << static_cast<uint8>(0);
+                connection->OutBuf << static_cast<uint8>(0xF0);
+                connection->OutBuf << static_cast<uint16>(0xFFFF);
                 CONNECTION_OUTPUT_END(connection);
 
                 connection->HardDisconnect();
@@ -826,7 +826,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 break;
 
             default:
-                connection->Bin.SkipMsg(msg);
+                connection->InBuf.SkipMsg(msg);
                 break;
             }
         }
@@ -854,13 +854,13 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 break;
 
             default:
-                connection->Bin.SkipMsg(msg);
+                connection->InBuf.SkipMsg(msg);
                 break;
             }
         }
 
-        if (IsRunInDebugger() && connection->IsInterthreadConnection() && !connection->Bin.NeedProcess()) {
-            RUNTIME_ASSERT(connection->Bin.GetReadPos() == connection->Bin.GetEndPos());
+        if (IsRunInDebugger() && connection->IsInterthreadConnection() && !connection->InBuf.NeedProcess()) {
+            RUNTIME_ASSERT(connection->InBuf.GetReadPos() == connection->InBuf.GetEndPos());
         }
     }
 }
@@ -884,27 +884,27 @@ void FOServer::ProcessPlayer(Player* player)
     }
 
     if (player->Connection->IsGracefulDisconnected()) {
-        std::lock_guard locker(player->Connection->BinLocker);
-        player->Connection->Bin.ResetBuf();
+        std::lock_guard locker(player->Connection->InBufLocker);
+        player->Connection->InBuf.ResetBuf();
         return;
     }
 
     uint msg = 0;
 
     while (!player->Connection->IsHardDisconnected() && !player->Connection->IsGracefulDisconnected()) {
-        std::lock_guard locker(player->Connection->BinLocker);
+        std::lock_guard locker(player->Connection->InBufLocker);
 
-        player->Connection->Bin.ShrinkReadBuf();
+        player->Connection->InBuf.ShrinkReadBuf();
 
-        if (!player->Connection->Bin.NeedProcess()) {
+        if (!player->Connection->InBuf.NeedProcess()) {
             CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
             if (IsRunInDebugger() && player->Connection->IsInterthreadConnection()) {
-                RUNTIME_ASSERT(player->Connection->Bin.GetReadPos() == player->Connection->Bin.GetEndPos());
+                RUNTIME_ASSERT(player->Connection->InBuf.GetReadPos() == player->Connection->InBuf.GetEndPos());
             }
             break;
         }
 
-        player->Connection->Bin >> msg;
+        player->Connection->InBuf >> msg;
 
         switch (msg) {
         case NETMSG_PING:
@@ -915,7 +915,7 @@ void FOServer::ProcessPlayer(Player* player)
             break;
         case NETMSG_SEND_COMMAND:
             Process_Command(
-                player->Connection->Bin, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
+                player->Connection->InBuf, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
             break;
         case NETMSG_DIR:
             Process_Dir(player);
@@ -956,7 +956,7 @@ void FOServer::ProcessPlayer(Player* player)
             Process_Property(player, 0);
             break;
         default:
-            player->Connection->Bin.SkipMsg(msg);
+            player->Connection->InBuf.SkipMsg(msg);
             break;
         }
 
@@ -976,7 +976,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         return;
     }
 
-    if (connection->Bin.IsError()) {
+    if (connection->InBuf.IsError()) {
         WriteLog("Wrong network data from connection '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
@@ -999,9 +999,9 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         }
 
         CONNECTION_OUTPUT_BEGIN(connection);
-        connection->Bout.StartMsg(NETMSG_PING);
-        connection->Bout << PING_CLIENT;
-        connection->Bout.EndMsg();
+        connection->OutBuf.StartMsg(NETMSG_PING);
+        connection->OutBuf << PING_CLIENT;
+        connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(connection);
 
         connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
@@ -1019,9 +1019,9 @@ void FOServer::Process_Text(Player* player)
     uint8 how_say = 0;
     string str;
 
-    player->Connection->Bin >> msg_len;
-    player->Connection->Bin >> how_say;
-    player->Connection->Bin >> str;
+    player->Connection->InBuf >> msg_len;
+    player->Connection->InBuf >> how_say;
+    player->Connection->InBuf >> str;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -1415,7 +1415,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         uint count = 0;
         buf >> hex_x;
         buf >> hex_y;
-        pid = buf.ReadHashedString(*this);
+        pid = buf.Read<hstring>(*this);
         buf >> count;
 
         CHECK_ALLOW_COMMAND();
@@ -1437,7 +1437,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
     case CMD_ADDITEM_SELF: {
         hstring pid;
         uint count = 0;
-        pid = buf.ReadHashedString(*this);
+        pid = buf.Read<hstring>(*this);
         buf >> count;
 
         CHECK_ALLOW_COMMAND();
@@ -1458,7 +1458,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         buf >> hex_x;
         buf >> hex_y;
         buf >> dir;
-        pid = buf.ReadHashedString(*this);
+        pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1478,7 +1478,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         hstring pid;
         buf >> wx;
         buf >> wy;
-        pid = buf.ReadHashedString(*this);
+        pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
 
@@ -1856,21 +1856,21 @@ void FOServer::Process_Handshake(ClientConnection* connection)
 
     // Net protocol
     uint proto_ver = 0;
-    connection->Bin >> proto_ver;
+    connection->InBuf >> proto_ver;
     const auto outdated = (proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION));
 
     // Begin data encrypting
     uint encrypt_key = 0;
-    connection->Bin >> encrypt_key;
+    connection->InBuf >> encrypt_key;
 
     uint8 padding[28] = {};
-    connection->Bin.Pop(padding, sizeof(padding));
+    connection->InBuf.Pop(padding, sizeof(padding));
     UNUSED_VARIABLE(padding);
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
-    connection->Bin.SetEncryptKey(encrypt_key);
-    connection->Bout.SetEncryptKey(encrypt_key);
+    connection->InBuf.SetEncryptKey(encrypt_key);
+    connection->OutBuf.SetEncryptKey(encrypt_key);
 
     vector<uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
@@ -1879,14 +1879,14 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout.StartMsg(NETMSG_UPDATE_FILES_LIST);
-    connection->Bout << outdated;
-    connection->Bout << static_cast<uint>(_updateFilesDesc.size());
-    connection->Bout.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
+    connection->OutBuf.StartMsg(NETMSG_UPDATE_FILES_LIST);
+    connection->OutBuf << outdated;
+    connection->OutBuf << static_cast<uint>(_updateFilesDesc.size());
+    connection->OutBuf.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
     if (!outdated) {
-        NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
+        NET_WRITE_PROPERTIES(connection->OutBuf, global_vars_data, global_vars_data_sizes);
     }
-    connection->Bout.EndMsg();
+    connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 
     connection->WasHandshake = true;
@@ -1900,7 +1900,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     uint8 ping = 0;
 
-    connection->Bin >> ping;
+    connection->InBuf >> ping;
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
@@ -1916,9 +1916,9 @@ void FOServer::Process_Ping(ClientConnection* connection)
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout.StartMsg(NETMSG_PING);
-    connection->Bout << ping;
-    connection->Bout.EndMsg();
+    connection->OutBuf.StartMsg(NETMSG_PING);
+    connection->OutBuf << ping;
+    connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 }
 
@@ -1927,7 +1927,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
     STACK_TRACE_ENTRY();
 
     uint file_index = 0;
-    connection->Bin >> file_index;
+    connection->InBuf >> file_index;
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
@@ -1968,10 +1968,10 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout.StartMsg(NETMSG_UPDATE_FILE_DATA);
-    connection->Bout << update_portion;
-    connection->Bout.Push(&update_file_data[offset], update_portion);
-    connection->Bout.EndMsg();
+    connection->OutBuf.StartMsg(NETMSG_UPDATE_FILE_DATA);
+    connection->OutBuf << update_portion;
+    connection->OutBuf.Push(&update_file_data[offset], update_portion);
+    connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 }
 
@@ -1980,11 +1980,11 @@ void FOServer::Process_Register(Player* unlogined_player)
     STACK_TRACE_ENTRY();
 
     uint msg_len = 0;
-    unlogined_player->Connection->Bin >> msg_len;
+    unlogined_player->Connection->InBuf >> msg_len;
     string name;
-    unlogined_player->Connection->Bin >> name;
+    unlogined_player->Connection->InBuf >> name;
     string password;
-    unlogined_player->Connection->Bin >> password;
+    unlogined_player->Connection->InBuf >> password;
 
     CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
@@ -2062,8 +2062,8 @@ void FOServer::Process_Register(Player* unlogined_player)
     unlogined_player->Send_TextMsg(0u, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
 
     CONNECTION_OUTPUT_BEGIN(unlogined_player->Connection);
-    unlogined_player->Connection->Bout.StartMsg(NETMSG_REGISTER_SUCCESS);
-    unlogined_player->Connection->Bout.EndMsg();
+    unlogined_player->Connection->OutBuf.StartMsg(NETMSG_REGISTER_SUCCESS);
+    unlogined_player->Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(unlogined_player->Connection);
 }
 
@@ -2072,11 +2072,11 @@ void FOServer::Process_Login(Player* unlogined_player)
     STACK_TRACE_ENTRY();
 
     uint msg_len = 0;
-    unlogined_player->Connection->Bin >> msg_len;
+    unlogined_player->Connection->InBuf >> msg_len;
     string name;
-    unlogined_player->Connection->Bin >> name;
+    unlogined_player->Connection->InBuf >> name;
     string password;
-    unlogined_player->Connection->Bin >> password;
+    unlogined_player->Connection->InBuf >> password;
 
     CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
@@ -2227,15 +2227,15 @@ void FOServer::Process_Login(Player* unlogined_player)
     player->StoreData(true, &player_data, &player_data_sizes);
 
     CONNECTION_OUTPUT_BEGIN(player->Connection);
-    player->Connection->Bout.StartMsg(NETMSG_LOGIN_SUCCESS);
-    player->Connection->Bout << encrypt_key;
-    player->Connection->Bout << player_id;
-    NET_WRITE_PROPERTIES(player->Connection->Bout, global_vars_data, global_vars_data_sizes);
-    NET_WRITE_PROPERTIES(player->Connection->Bout, player_data, player_data_sizes);
-    player->Connection->Bout.EndMsg();
+    player->Connection->OutBuf.StartMsg(NETMSG_LOGIN_SUCCESS);
+    player->Connection->OutBuf << encrypt_key;
+    player->Connection->OutBuf << player_id;
+    NET_WRITE_PROPERTIES(player->Connection->OutBuf, global_vars_data, global_vars_data_sizes);
+    NET_WRITE_PROPERTIES(player->Connection->OutBuf, player_data, player_data_sizes);
+    player->Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(player->Connection);
 
-    player->Connection->Bout.SetEncryptKey(encrypt_key);
+    player->Connection->OutBuf.SetEncryptKey(encrypt_key);
 
     // Attach critter
     bool critter_reconnected = false;
@@ -2412,24 +2412,24 @@ void FOServer::Process_Move(Player* player)
     int16 end_hex_ox;
     int16 end_hex_oy;
 
-    player->Connection->Bin >> msg_len;
-    player->Connection->Bin >> map_id;
-    player->Connection->Bin >> cr_id;
-    player->Connection->Bin >> speed;
-    player->Connection->Bin >> start_hx;
-    player->Connection->Bin >> start_hy;
-    player->Connection->Bin >> steps_count;
+    player->Connection->InBuf >> msg_len;
+    player->Connection->InBuf >> map_id;
+    player->Connection->InBuf >> cr_id;
+    player->Connection->InBuf >> speed;
+    player->Connection->InBuf >> start_hx;
+    player->Connection->InBuf >> start_hy;
+    player->Connection->InBuf >> steps_count;
     steps.resize(steps_count);
     for (auto i = 0; i < steps_count; i++) {
-        player->Connection->Bin >> steps[i];
+        player->Connection->InBuf >> steps[i];
     }
-    player->Connection->Bin >> control_steps_count;
+    player->Connection->InBuf >> control_steps_count;
     control_steps.resize(control_steps_count);
     for (auto i = 0; i < control_steps_count; i++) {
-        player->Connection->Bin >> control_steps[i];
+        player->Connection->InBuf >> control_steps[i];
     }
-    player->Connection->Bin >> end_hex_ox;
-    player->Connection->Bin >> end_hex_oy;
+    player->Connection->InBuf >> end_hex_ox;
+    player->Connection->InBuf >> end_hex_oy;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2477,13 +2477,13 @@ void FOServer::Process_StopMove(Player* player)
     int16 hex_oy;
     int16 dir_angle;
 
-    player->Connection->Bin >> map_id;
-    player->Connection->Bin >> cr_id;
-    player->Connection->Bin >> start_hx;
-    player->Connection->Bin >> start_hy;
-    player->Connection->Bin >> hex_ox;
-    player->Connection->Bin >> hex_oy;
-    player->Connection->Bin >> dir_angle;
+    player->Connection->InBuf >> map_id;
+    player->Connection->InBuf >> cr_id;
+    player->Connection->InBuf >> start_hx;
+    player->Connection->InBuf >> start_hy;
+    player->Connection->InBuf >> hex_ox;
+    player->Connection->InBuf >> hex_oy;
+    player->Connection->InBuf >> dir_angle;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2520,9 +2520,9 @@ void FOServer::Process_Dir(Player* player)
     ident_t cr_id;
     int16 dir_angle;
 
-    player->Connection->Bin >> map_id;
-    player->Connection->Bin >> cr_id;
-    player->Connection->Bin >> dir_angle;
+    player->Connection->InBuf >> map_id;
+    player->Connection->InBuf >> cr_id;
+    player->Connection->InBuf >> dir_angle;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2561,44 +2561,44 @@ void FOServer::Process_Property(Player* player, uint data_size)
     uint16 property_index;
 
     if (data_size == 0) {
-        player->Connection->Bin >> msg_len;
+        player->Connection->InBuf >> msg_len;
     }
 
     char type_ = 0;
-    player->Connection->Bin >> type_;
+    player->Connection->InBuf >> type_;
     const auto type = static_cast<NetProperty>(type_);
 
     uint additional_args = 0;
     switch (type) {
     case NetProperty::CritterItem:
         additional_args = 2;
-        player->Connection->Bin >> cr_id;
-        player->Connection->Bin >> item_id;
+        player->Connection->InBuf >> cr_id;
+        player->Connection->InBuf >> item_id;
         break;
     case NetProperty::Critter:
         additional_args = 1;
-        player->Connection->Bin >> cr_id;
+        player->Connection->InBuf >> cr_id;
         break;
     case NetProperty::MapItem:
         additional_args = 1;
-        player->Connection->Bin >> item_id;
+        player->Connection->InBuf >> item_id;
         break;
     case NetProperty::ChosenItem:
         additional_args = 1;
-        player->Connection->Bin >> item_id;
+        player->Connection->InBuf >> item_id;
         break;
     default:
         break;
     }
 
-    player->Connection->Bin >> property_index;
+    player->Connection->InBuf >> property_index;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     PropertyRawData prop_data;
 
     if (data_size != 0) {
-        player->Connection->Bin.Pop(prop_data.Alloc(data_size), data_size);
+        player->Connection->InBuf.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(uint16);
@@ -2610,7 +2610,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
 
         if (len != 0u) {
-            player->Connection->Bin.Pop(prop_data.Alloc(len), len);
+            player->Connection->InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
 
@@ -3329,7 +3329,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             const auto dir_angle = Geometry.GetLineDirAngle(0, 0, ox, oy);
             cr->SetDirAngle(static_cast<int16>(dir_angle));
 
-            goto label_Done;
+            break;
         }
 
         RUNTIME_ASSERT(i < cr->Moving.ControlSteps.size() - 1);
@@ -3340,7 +3340,6 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
         cur_dist += dist;
     }
 
-label_Done:
     if (normalized_time == 1.0f) {
         if (cr->GetHexX() != cr->Moving.EndHexX || cr->GetHexY() != cr->Moving.EndHexY) {
             cr->Send_Position(cr);
@@ -3464,7 +3463,7 @@ auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, 
     return true;
 }
 
-auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool
+auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& answer, bool recheck) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -3630,7 +3629,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer
     return true;
 }
 
-auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint
+auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& answer) -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -3986,36 +3985,42 @@ void FOServer::Process_Dialog(Player* player)
 
     Critter* cr = player->GetOwnedCritter();
 
-    bool is_npc = false;
-    ident_t talk_cr_id;
-    hstring talk_dlg_id;
-    uint8 num_answer = 0;
+    auto&& bin = player->Connection->InBuf;
 
-    player->Connection->Bin >> is_npc;
-    player->Connection->Bin >> talk_cr_id;
-    talk_dlg_id = player->Connection->Bin.ReadHashedString(*this);
-    player->Connection->Bin >> num_answer;
+    const auto cr_id = bin.Read<ident_t>();
+    const auto dlg_pack_id = bin.Read<hstring>(*this);
+    const auto num_answer = bin.Read<uint8>();
 
-    if ((is_npc && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_cr_id)) || (!is_npc && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId != talk_dlg_id))) {
+    if (cr->Talk.Type == TalkType::None) {
+        BreakIntoDebugger();
         CrMngr.CloseTalk(cr);
-        WriteLog("Invalid talk id {} {} {}, client {}", is_npc, talk_cr_id, talk_dlg_id, cr->GetName());
         return;
     }
 
-    if (cr->GetIsHide()) {
-        cr->SetIsHide(false);
+    if ((cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId != cr_id) || (cr->Talk.Type == TalkType::Hex && cr->Talk.DialogPackId != dlg_pack_id)) {
+        WriteLog("Invalid talk data '{}' {} {} {}", cr->GetName(), cr->Talk.Type, cr_id, dlg_pack_id);
+        BreakIntoDebugger();
+        CrMngr.CloseTalk(cr);
+        return;
     }
+
     CrMngr.ProcessTalk(cr, true);
 
-    Critter* npc = nullptr;
+    if (cr->Talk.Type == TalkType::None) {
+        BreakIntoDebugger();
+        return;
+    }
 
-    // Find npc
-    if (is_npc) {
-        npc = CrMngr.GetCritter(talk_cr_id);
-        if (npc == nullptr) {
+    Critter* talker = nullptr;
+
+    if (cr->Talk.Type == TalkType::Critter) {
+        talker = CrMngr.GetCritter(cr_id);
+
+        if (talker == nullptr) {
+            WriteLog("Critter with id {} not found, client '{}'", cr_id, cr->GetName());
+            BreakIntoDebugger();
             cr->Send_TextMsg(cr, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
             CrMngr.CloseTalk(cr);
-            WriteLog("Npc with id {} not found, client '{}'", talk_cr_id, cr->GetName());
             return;
         }
     }
@@ -4024,22 +4029,35 @@ void FOServer::Process_Dialog(Player* player)
     auto* dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
     auto* dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
     if (dialogs == nullptr || dialogs->empty()) {
+        WriteLog("No dialogs, npc '{}', client '{}'", talker->GetName(), cr->GetName());
         CrMngr.CloseTalk(cr);
-        WriteLog("No dialogs, npc '{}', client '{}'", npc->GetName(), cr->GetName());
         return;
     }
 
     // Continue dialog
-    auto* cur_dialog = &cr->Talk.CurDialog;
+    const auto* cur_dialog = &cr->Talk.CurDialog;
     const auto last_dialog = cur_dialog->Id;
-    uint dlg_id;
-    uint force_dialog = 0;
-    DialogAnswer* answer = nullptr;
+
+    uint next_dlg_id;
 
     if (!cr->Talk.Barter) {
         // Barter
+        const auto do_barter = [&] {
+            if (cur_dialog->DlgScriptFuncName) {
+                cr->Send_TextMsg(talker, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
+                return;
+            }
+
+            if (!talker->OnBarter.Fire(cr, true, talker->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(talker, cr, true, talker->GetBarterPlayers() + 1)) {
+                cr->Talk.Barter = true;
+                cr->Talk.StartTick = GameTime.GameTick();
+                cr->Talk.TalkTime = Settings.DlgBarterMaxTime;
+            }
+        };
+
         if (num_answer == ANSWER_BARTER) {
-            goto label_Barter;
+            do_barter();
+            return;
         }
 
         // Refresh
@@ -4062,51 +4080,38 @@ void FOServer::Process_Dialog(Player* player)
         }
 
         // Find answer
-        answer = &(*(cur_dialog->Answers.begin() + num_answer));
+        const auto* answer = &cur_dialog->Answers[num_answer];
 
         // Check demand again
-        if (!DialogCheckDemand(npc, cr, *answer, true)) {
+        if (!DialogCheckDemand(talker, cr, *answer, true)) {
             WriteLog("Secondary check of dialog demands fail, client '{}'", cr->GetName());
             CrMngr.CloseTalk(cr); // End
             return;
         }
 
         // Use result
-        force_dialog = DialogUseResult(npc, cr, *answer);
-        if (force_dialog != 0u) {
-            dlg_id = force_dialog;
+        const uint force_dlg_id = DialogUseResult(talker, cr, *answer);
+        if (force_dlg_id != 0) {
+            next_dlg_id = force_dlg_id;
         }
         else {
-            dlg_id = answer->Link;
+            next_dlg_id = answer->Link;
         }
 
         // Special links
-        switch (dlg_id) {
+        switch (next_dlg_id) {
         case static_cast<uint>(-3):
-            [[fallthrough]];
         case DIALOG_BARTER:
-        label_Barter:
-            if (cur_dialog->DlgScriptFuncName) {
-                cr->Send_TextMsg(npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
-                return;
-            }
-
-            if (!npc->OnBarter.Fire(cr, true, npc->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(npc, cr, true, npc->GetBarterPlayers() + 1)) {
-                cr->Talk.Barter = true;
-                cr->Talk.StartTick = GameTime.GameTick();
-                cr->Talk.TalkTime = Settings.DlgBarterMaxTime;
-            }
+            do_barter();
             return;
         case static_cast<uint>(-2):
-            [[fallthrough]];
         case DIALOG_BACK:
             if (cr->Talk.LastDialogId != 0u) {
-                dlg_id = cr->Talk.LastDialogId;
+                next_dlg_id = cr->Talk.LastDialogId;
                 break;
             }
             [[fallthrough]];
         case static_cast<uint>(-1):
-            [[fallthrough]];
         case DIALOG_END:
             CrMngr.CloseTalk(cr);
             return;
@@ -4116,31 +4121,31 @@ void FOServer::Process_Dialog(Player* player)
     }
     else {
         cr->Talk.Barter = false;
-        dlg_id = cur_dialog->Id;
-        if (npc != nullptr) {
-            npc->OnBarter.Fire(cr, false, npc->GetBarterPlayers() + 1);
-            OnCritterBarter.Fire(npc, cr, false, npc->GetBarterPlayers() + 1);
+        next_dlg_id = cur_dialog->Id;
+        if (talker != nullptr) {
+            talker->OnBarter.Fire(cr, false, talker->GetBarterPlayers() + 1);
+            OnCritterBarter.Fire(talker, cr, false, talker->GetBarterPlayers() + 1);
         }
     }
 
     // Find dialog
-    const auto it_d = std::find_if(dialogs->begin(), dialogs->end(), [dlg_id](const Dialog& dlg) { return dlg.Id == dlg_id; });
+    const auto it_d = std::find_if(dialogs->begin(), dialogs->end(), [next_dlg_id](const Dialog& dlg) { return dlg.Id == next_dlg_id; });
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", dlg_id, cr->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", next_dlg_id, cr->GetName(), dialog_pack->PackId);
         return;
     }
 
     // Compile
-    if (!DialogCompile(npc, cr, *it_d, cr->Talk.CurDialog)) {
+    if (!DialogCompile(talker, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
         return;
     }
 
-    if (dlg_id != last_dialog) {
+    if (next_dlg_id != last_dialog) {
         cr->Talk.LastDialogId = last_dialog;
     }
 
@@ -4150,10 +4155,10 @@ void FOServer::Process_Dialog(Player* player)
         auto failed = false;
 
         cr->Talk.Locked = true;
-        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, npc, &cr->Talk.Lexems)) {
+        if (auto func = ScriptSys->FindFunc<void, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
-        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, npc, &cr->Talk.Lexems)) {
+        if (auto func = ScriptSys->FindFunc<uint, Critter*, Critter*, string*>(cr->Talk.CurDialog.DlgScriptFuncName); func && !func(cr, talker, &cr->Talk.Lexems)) {
             failed = true;
         }
         cr->Talk.Locked = false;
@@ -4168,8 +4173,8 @@ void FOServer::Process_Dialog(Player* player)
 
     // On head text
     if (cr->Talk.CurDialog.Answers.empty()) {
-        if (npc != nullptr) {
-            npc->SendAndBroadcast_MsgLex(npc->VisCr, cr->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cr->Talk.Lexems);
+        if (talker != nullptr) {
+            talker->SendAndBroadcast_MsgLex(talker->VisCr, cr->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cr->Talk.Lexems);
         }
         else {
             auto* map = MapMngr.GetMap(cr->GetMapId());
@@ -4194,9 +4199,9 @@ void FOServer::Process_RemoteCall(Player* player)
     NON_CONST_METHOD_HINT();
 
     uint msg_len;
-    player->Connection->Bin >> msg_len;
+    player->Connection->InBuf >> msg_len;
     uint rpc_num;
-    player->Connection->Bin >> rpc_num;
+    player->Connection->InBuf >> rpc_num;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 

@@ -1591,7 +1591,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
         in_buf.Pop(value.data(), len);
     }
     else if constexpr (std::is_same_v<T, hstring>) {
-        value = in_buf.ReadHashedString(name_resolver);
+        value = in_buf.Read<hstring>(name_resolver);
     }
     else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
         in_buf >> value;

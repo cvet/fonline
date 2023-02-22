@@ -2123,10 +2123,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         if target == 'Server':
                             globalLines.append('    auto* conn = self->Connection;')
                             globalLines.append('    CONNECTION_OUTPUT_BEGIN(conn);')
-                            globalLines.append('    WriteRpcHeader(conn->Bout, rpc_num);')
+                            globalLines.append('    WriteRpcHeader(conn->OutBuf, rpc_num);')
                             for p in rcArgs:
-                                globalLines.append('    WriteNetBuf(conn->Bout, in_' + p[1] + ');')
-                            globalLines.append('    WriteRpcFooter(conn->Bout);')
+                                globalLines.append('    WriteNetBuf(conn->OutBuf, in_' + p[1] + ');')
+                            globalLines.append('    WriteRpcFooter(conn->OutBuf);')
                             globalLines.append('    CONNECTION_OUTPUT_END(conn);')
                         else:
                             globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')
@@ -2158,7 +2158,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             globalLines.append('    auto* conn = self->Connection;')
                             for p in rcArgs:
                                 globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
-                                globalLines.append('    ReadNetBuf(conn->Bin, arg_' + p[1] + ', *self->GetEngine());')
+                                globalLines.append('    ReadNetBuf(conn->InBuf, arg_' + p[1] + ', *self->GetEngine());')
                             globalLines.append('    CHECK_CLIENT_IN_BUF_ERROR(conn);')
                         else:
                             globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')

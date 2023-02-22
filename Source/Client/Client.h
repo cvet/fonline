@@ -306,7 +306,7 @@ protected:
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
-    void Net_SendTalk(bool is_npc, uint id_to_talk, uint8 answer);
+    void Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer);
     void Net_SendText(string_view send_str, uint8 how_say);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);

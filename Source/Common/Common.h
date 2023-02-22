@@ -926,7 +926,7 @@ public:
     {
     }
 
-    template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     auto Read() -> T
     {
         if (_readPos + sizeof(T) > _dataBuf.size()) {
@@ -939,21 +939,21 @@ public:
         return data;
     }
 
-    template<class T>
+    template<typename T>
     auto ReadPtr(size_t size) -> const T*
     {
         _readPos += size;
         return size != 0u ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
     }
 
-    template<class T>
+    template<typename T>
     void ReadPtr(T* ptr)
     {
         _readPos += sizeof(T);
         std::memcpy(ptr, &_dataBuf[_readPos - sizeof(T)], sizeof(T));
     }
 
-    template<class T>
+    template<typename T>
     void ReadPtr(T* ptr, size_t size)
     {
         if (size != 0u) {
@@ -987,7 +987,7 @@ public:
         }
     }
 
-    template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     void Write(std::enable_if_t<true, T> data)
     {
         const auto cur = _dataBuf.size();
@@ -995,7 +995,7 @@ public:
         std::memcpy(&_dataBuf[cur], &data, sizeof(data));
     }
 
-    template<class T>
+    template<typename T>
     void WritePtr(const T* data)
     {
         const auto cur = _dataBuf.size();
@@ -1003,7 +1003,7 @@ public:
         std::memcpy(&_dataBuf[cur], data, sizeof(T));
     }
 
-    template<class T>
+    template<typename T>
     void WritePtr(const T* data, size_t size)
     {
         if (size == 0u) {
@@ -1357,9 +1357,9 @@ static constexpr uint16 MAXHEX_MIN = 10;
 static constexpr uint16 MAXHEX_MAX = 4000;
 
 // Answer
-#define ANSWER_BEGIN (0xF0)
-#define ANSWER_END (0xF1)
-#define ANSWER_BARTER (0xF2)
+static constexpr uint8 ANSWER_BEGIN = 0xF0;
+static constexpr uint8 ANSWER_END = 0xF1;
+static constexpr uint8 ANSWER_BARTER = 0xF2;
 
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.

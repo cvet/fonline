@@ -909,16 +909,15 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     _conn.OutBuf.EndMsg();
 }
 
-void FOClient::Net_SendTalk(bool is_npc, uint id_to_talk, uint8 answer)
+void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NETMSG_SEND_TALK_NPC);
-    _conn.OutBuf << is_npc;
-    _conn.OutBuf << (is_npc ? ident_t {id_to_talk} : ident_t {});
-    _conn.OutBuf << (!is_npc ? ResolveHash(id_to_talk) : hstring {});
+    _conn.OutBuf << cr_id;
+    _conn.OutBuf << dlg_pack_id;
     _conn.OutBuf << answer;
     _conn.OutBuf.EndMsg();
 }
@@ -1087,7 +1086,7 @@ void FOClient::Net_OnAddCritter()
     _conn.InBuf >> is_player_offline;
     _conn.InBuf >> is_chosen;
 
-    const hstring pid = _conn.InBuf.ReadHashedString(*this);
+    const hstring pid = _conn.InBuf.Read<hstring>(*this);
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
     RUNTIME_ASSERT(proto);
 
@@ -1643,7 +1642,7 @@ void FOClient::Net_OnSomeItem()
     ident_t item_id;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
-    const hstring item_pid = _conn.InBuf.ReadHashedString(*this);
+    const hstring item_pid = _conn.InBuf.Read<hstring>(*this);
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -1721,7 +1720,7 @@ void FOClient::Net_OnCritterMoveItem()
         hstring pid;
         _conn.InBuf >> slot;
         _conn.InBuf >> id;
-        pid = _conn.InBuf.ReadHashedString(*this);
+        pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
         slots_data_slot.push_back(slot);
         slots_data_id.push_back(id);
@@ -2023,7 +2022,7 @@ void FOClient::Net_OnChosenAddItem()
     uint8 slot;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
-    pid = _conn.InBuf.ReadHashedString(*this);
+    pid = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf >> slot;
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
@@ -2136,7 +2135,7 @@ void FOClient::Net_OnAddItemOnMap()
     bool is_added;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
-    const auto item_pid = _conn.InBuf.ReadHashedString(*this);
+    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf >> item_hx;
     _conn.InBuf >> item_hy;
     _conn.InBuf >> is_added;
@@ -2226,7 +2225,7 @@ void FOClient::Net_OnEffect()
     uint16 hx;
     uint16 hy;
     uint16 radius;
-    eff_pid = _conn.InBuf.ReadHashedString(*this);
+    eff_pid = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
     _conn.InBuf >> radius;
@@ -2272,7 +2271,7 @@ void FOClient::Net_OnFlyEffect()
     uint16 eff_cr1_hy;
     uint16 eff_cr2_hx;
     uint16 eff_cr2_hy;
-    eff_pid = _conn.InBuf.ReadHashedString(*this);
+    eff_pid = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf >> eff_cr1_id;
     _conn.InBuf >> eff_cr2_id;
     _conn.InBuf >> eff_cr1_hx;
@@ -2494,7 +2493,7 @@ void FOClient::Net_OnChosenTalk()
     _conn.InBuf >> msg_len;
     _conn.InBuf >> is_npc;
     _conn.InBuf >> talk_cr_id;
-    talk_dlg_id = _conn.InBuf.ReadHashedString(*this);
+    talk_dlg_id = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf >> count_answ;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2549,7 +2548,7 @@ void FOClient::Net_OnChosenTalk()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     map<string, string> params;
-    params["TalkerIsNpc"] = _str("{}", is_npc);
+    params["TalkerIsNpc"] = _str("{}", is_npc ? 1 : 0);
     params["TalkerId"] = _str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint());
     params["Text"] = _str("{}", text_to_script);
     params["Answers"] = _str("{}", answers_to_script);
@@ -2603,8 +2602,8 @@ void FOClient::Net_OnLoadMap()
     _conn.InBuf >> msg_len;
     _conn.InBuf >> loc_id;
     _conn.InBuf >> map_id;
-    const auto loc_pid = _conn.InBuf.ReadHashedString(*this);
-    const auto map_pid = _conn.InBuf.ReadHashedString(*this);
+    const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto map_pid = _conn.InBuf.Read<hstring>(*this);
     _conn.InBuf >> map_index_in_loc;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -2676,7 +2675,7 @@ void FOClient::Net_OnGlobalInfo()
         for (auto i = 0; i < count_loc; i++) {
             GmapLocation loc;
             _conn.InBuf >> loc.LocId;
-            loc.LocPid = _conn.InBuf.ReadHashedString(*this);
+            loc.LocPid = _conn.InBuf.Read<hstring>(*this);
             _conn.InBuf >> loc.LocWx;
             _conn.InBuf >> loc.LocWy;
             _conn.InBuf >> loc.Radius;
@@ -2694,7 +2693,7 @@ void FOClient::Net_OnGlobalInfo()
         GmapLocation loc;
         _conn.InBuf >> add;
         _conn.InBuf >> loc.LocId;
-        loc.LocPid = _conn.InBuf.ReadHashedString(*this);
+        loc.LocPid = _conn.InBuf.Read<hstring>(*this);
         _conn.InBuf >> loc.LocWx;
         _conn.InBuf >> loc.LocWy;
         _conn.InBuf >> loc.Radius;
@@ -2764,7 +2763,7 @@ void FOClient::Net_OnSomeItems()
         ident_t item_id;
         hstring item_pid;
         _conn.InBuf >> item_id;
-        item_pid = _conn.InBuf.ReadHashedString(*this);
+        item_pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
         const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
@@ -2803,7 +2802,7 @@ void FOClient::Net_OnAutomapsInfo()
         hstring loc_pid;
         uint16 maps_count;
         _conn.InBuf >> loc_id;
-        loc_pid = _conn.InBuf.ReadHashedString(*this);
+        loc_pid = _conn.InBuf.Read<hstring>(*this);
         _conn.InBuf >> maps_count;
 
         auto it = std::find_if(_automaps.begin(), _automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
@@ -2824,7 +2823,7 @@ void FOClient::Net_OnAutomapsInfo()
             for (uint16 j = 0; j < maps_count; j++) {
                 hstring map_pid;
                 uint8 map_index_in_loc;
-                map_pid = _conn.InBuf.ReadHashedString(*this);
+                map_pid = _conn.InBuf.Read<hstring>(*this);
                 _conn.InBuf >> map_index_in_loc;
 
                 amap.MapPids.push_back(map_pid);
@@ -3854,10 +3853,12 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         //              }
     }
     else if (cmd == "DialogAnswer" && args.size() >= 4) {
-        auto is_npc = (args[1] == "true");
-        auto talker_id = _str(args[2]).toUInt();
-        auto answer_index = _str(args[3]).toUInt();
-        Net_SendTalk(is_npc, talker_id, static_cast<uint8>(answer_index));
+        const auto is_cr = _str(args[1]).toBool();
+        const auto cr_id = is_cr ? ident_t {_str(args[2]).toUInt()} : ident_t {};
+        const auto dlg_pack_id = is_cr ? hstring() : ResolveHash(_str(args[2]).toUInt());
+        const auto answer_index = static_cast<uint8>(_str(args[3]).toUInt());
+
+        Net_SendTalk(cr_id, dlg_pack_id, answer_index);
     }
     else if (cmd == "DrawMiniMap" && args.size() >= 6) {
         static int zoom;

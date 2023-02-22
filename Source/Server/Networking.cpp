@@ -70,8 +70,8 @@ using ssl_context = asio::ssl::context;
 #endif
 
 NetConnection::NetConnection(ServerNetworkSettings& settings) :
-    Bin(settings.NetBufferSize),
-    Bout(settings.NetBufferSize)
+    InBuf(settings.NetBufferSize),
+    OutBuf(settings.NetBufferSize)
 {
     STACK_TRACE_ENTRY();
 }
@@ -178,8 +178,8 @@ public:
 
         // Nothing to send
         {
-            std::lock_guard locker(BoutLocker);
-            if (Bout.IsEmpty()) {
+            std::lock_guard locker(OutBufLocker);
+            if (OutBuf.IsEmpty()) {
                 return;
             }
         }
@@ -205,15 +205,15 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(BoutLocker);
+        std::lock_guard locker(OutBufLocker);
 
-        if (Bout.IsEmpty()) {
+        if (OutBuf.IsEmpty()) {
             return nullptr;
         }
 
         // Compress
         if (_zStreamActive) {
-            const auto to_compr = Bout.GetEndPos();
+            const auto to_compr = OutBuf.GetEndPos();
 
             _outBuf.resize(to_compr + 32);
 
@@ -221,7 +221,7 @@ protected:
                 _outBuf.shrink_to_fit();
             }
 
-            _zStream.next_in = static_cast<Bytef*>(Bout.GetData());
+            _zStream.next_in = static_cast<Bytef*>(OutBuf.GetData());
             _zStream.avail_in = static_cast<uInt>(to_compr);
             _zStream.next_out = static_cast<Bytef*>(_outBuf.data());
             _zStream.avail_out = static_cast<uInt>(_outBuf.size());
@@ -230,14 +230,14 @@ protected:
             RUNTIME_ASSERT(result == Z_OK);
 
             const auto compr = static_cast<size_t>(_zStream.next_out - _outBuf.data());
-            const auto real = static_cast<size_t>(_zStream.next_in - Bout.GetData());
+            const auto real = static_cast<size_t>(_zStream.next_in - OutBuf.GetData());
             out_len = compr;
 
-            Bout.Cut(real);
+            OutBuf.Cut(real);
         }
         // Without compressing
         else {
-            const auto len = Bout.GetEndPos();
+            const auto len = OutBuf.GetEndPos();
 
             _outBuf.resize(len);
 
@@ -245,15 +245,15 @@ protected:
                 _outBuf.shrink_to_fit();
             }
 
-            std::memcpy(_outBuf.data(), Bout.GetData(), len);
+            std::memcpy(_outBuf.data(), OutBuf.GetData(), len);
             out_len = len;
 
-            Bout.Cut(len);
+            OutBuf.Cut(len);
         }
 
         // Normalize buffer size
-        if (Bout.IsEmpty()) {
-            Bout.ResetBuf();
+        if (OutBuf.IsEmpty()) {
+            OutBuf.ResetBuf();
         }
 
         RUNTIME_ASSERT(out_len > 0);
@@ -264,13 +264,13 @@ protected:
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(BinLocker);
+        std::lock_guard locker(InBufLocker);
 
-        if (Bin.GetReadPos() + len < _settings.FloodSize) {
-            Bin.AddData(buf, len);
+        if (InBuf.GetReadPos() + len < _settings.FloodSize) {
+            InBuf.AddData(buf, len);
         }
         else {
-            Bin.ResetBuf();
+            InBuf.ResetBuf();
             Disconnect();
         }
     }

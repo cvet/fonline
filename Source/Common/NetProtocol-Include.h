@@ -567,12 +567,11 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 
 #define NETMSG_SEND_TALK_NPC MAKE_NETMSG_HEADER(109)
-#define NETMSG_SEND_TALK_NPC_SIZE (sizeof(uint) + sizeof(bool) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(uint8))
+#define NETMSG_SEND_TALK_NPC_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(uint8))
 // ////////////////////////////////////////////////////////////////////////
 //
-// bool is_npc
-// ident_t talk_cr_id
-// hstring talk_dlg_id
+// ident_t cr_id
+// hstring dlg_pack_id
 // uint8 answer
 // ////////////////////////////////////////////////////////////////////////
 
