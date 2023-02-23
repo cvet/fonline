@@ -171,7 +171,7 @@ private:
     auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
 
     Properties _props;
-    map<string, vector<EventCallbackData>> _events;
+    unordered_map<string, vector<EventCallbackData>> _events {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};

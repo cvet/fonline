@@ -123,7 +123,7 @@ auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& 
     if (const auto it = _events.find(event_name); it != _events.end()) {
         return FireEvent(&it->second, args);
     }
-    return false;
+    return true;
 }
 
 void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback)
@@ -155,6 +155,10 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(callbacks);
+
+    if (callbacks->empty()) {
+        return true;
+    }
 
     for (const auto& cb : copy(*callbacks)) {
         const auto ex_policy = cb.ExPolicy;
