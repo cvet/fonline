@@ -670,9 +670,11 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     else if (ev.Type == InputEvent::EventType::MouseWheelEvent) {
         if (ev.MouseWheel.Delta > 0) {
             OnMouseDown.Fire(MouseButton::WheelUp);
+            OnMouseUp.Fire(MouseButton::WheelUp);
         }
         else {
             OnMouseDown.Fire(MouseButton::WheelDown);
+            OnMouseUp.Fire(MouseButton::WheelDown);
         }
     }
 }
