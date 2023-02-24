@@ -3102,7 +3102,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #define REGISTER_RELAXED_STRONG_TYPE(type, underlying_type) \
     REGISTER_HARD_STRONG_TYPE(type, underlying_type); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_GENERIC((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #underlying_type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructFromUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " opImplConv() const", SCRIPT_FUNC_THIS((StrongType_UnderlyingConv<type>)), SCRIPT_FUNC_THIS_CONV))
 
     // Entity registrators
