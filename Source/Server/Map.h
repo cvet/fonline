@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
     [[nodiscard]] auto GetItemHex(uint16 hx, uint16 hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(uint16 hx, uint16 hy) -> Item*;
-    [[nodiscard]] auto GetItems() -> vector<Item*>;
+    [[nodiscard]] auto GetItems() -> const vector<Item*>&;
     [[nodiscard]] auto GetItemsHex(uint16 hx, uint16 hy) -> vector<Item*>;
     [[nodiscard]] auto GetItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
@@ -99,9 +99,9 @@ public:
     [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetHexCritter(uint16 hx, uint16 hy, bool dead) -> Critter*;
     [[nodiscard]] auto GetCrittersHex(uint16 hx, uint16 hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritters() -> vector<Critter*>;
-    [[nodiscard]] auto GetPlayers() -> vector<Critter*>;
-    [[nodiscard]] auto GetNpcs() -> vector<Critter*>;
+    [[nodiscard]] auto GetCritters() -> const vector<Critter*>&;
+    [[nodiscard]] auto GetPlayerCritters() -> const vector<Critter*>&;
+    [[nodiscard]] auto GetNonPlayerCritters() -> const vector<Critter*>&;
     [[nodiscard]] auto GetCrittersRaw() -> vector<Critter*>&;
     [[nodiscard]] auto GetPlayersRaw() -> vector<Critter*>&;
     [[nodiscard]] auto GetNpcsRaw() -> vector<Critter*>&;

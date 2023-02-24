@@ -48,81 +48,6 @@ CritterManager::CritterManager(FOServer* engine) :
     STACK_TRACE_ENTRY();
 }
 
-void CritterManager::LinkCritters()
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Link critters");
-
-    int errors = 0;
-
-    const auto critters = GetAllCritters();
-    vector<Critter*> critter_groups;
-    critter_groups.reserve(critters.size());
-
-    // Move all critters to local maps and global map leaders
-    for (auto* cr : critters) {
-        if (!cr->GetMapId() && cr->GetGlobalMapLeaderId() != cr->GetId()) {
-            RUNTIME_ASSERT(cr->GetGlobalMapLeaderId());
-            critter_groups.push_back(cr);
-            continue;
-        }
-
-        auto* map = _engine->MapMngr.GetMap(cr->GetMapId());
-        if (cr->GetMapId() && map == nullptr) {
-            WriteLog("Map {} not found for critter {} at hex {} {}", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY());
-            errors++;
-            continue;
-        }
-
-        if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), ident_t {})) {
-            WriteLog("Error parsing npc {} to map {} at hex {} {}", cr->GetName(), cr->GetMapId(), cr->GetHexX(), cr->GetHexY());
-            errors++;
-            continue;
-        }
-
-        if (map != nullptr) {
-            map->AddCritter(cr);
-        }
-        else {
-            cr->GlobalMapGroup = new vector<Critter*>();
-            cr->GlobalMapGroup->push_back(cr);
-        }
-    }
-
-    // Move critters to global groups
-    for (auto* cr : critter_groups) {
-        if (!_engine->MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId())) {
-            WriteLog("Error parsing npc {} to global group {}", cr->GetName(), cr->GetGlobalMapLeaderId());
-            errors++;
-            continue;
-        }
-
-        const auto leader_id = cr->GetGlobalMapLeaderId();
-        RUNTIME_ASSERT(!cr->GetMapId() && leader_id && leader_id != cr->GetId());
-
-        const auto* leader = _engine->CrMngr.GetCritter(leader_id);
-        if (leader == nullptr) {
-            WriteLog("Error parsing npc {} to group leader {}", cr->GetName(), leader_id);
-            errors++;
-            continue;
-        }
-
-        if (leader->GetMapId()) {
-            WriteLog("Npc {} group leader {} is on map", cr->GetName(), leader->GetName());
-            errors++;
-            continue;
-        }
-
-        cr->GlobalMapGroup = leader->GlobalMapGroup;
-        cr->GlobalMapGroup->push_back(cr);
-    }
-
-    if (errors != 0) {
-        throw ServerInitException("Link critters failed");
-    }
-}
-
 auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*
 {
     STACK_TRACE_ENTRY();
@@ -287,10 +212,10 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
     RUNTIME_ASSERT(can);
     _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, ident_t {});
 
-    _engine->OnCritterInit.Fire(cr, true);
-    ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), true);
+    _engine->EntityMngr.CallInit(cr, true);
 
     _engine->MapMngr.ProcessVisibleItems(cr);
+
     return cr;
 }
 
@@ -606,23 +531,16 @@ void CritterManager::CloseTalk(Critter* cr)
     cr->Send_Talk();
 }
 
-auto CritterManager::PlayersInGame() const -> uint
+auto CritterManager::PlayersInGame() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_engine->EntityMngr.GetPlayers().size());
+    return _engine->EntityMngr.GetPlayers().size();
 }
 
-auto CritterManager::NpcInGame() const -> uint
+auto CritterManager::CrittersInGame() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_engine->EntityMngr.GetCritters().size());
-}
-
-auto CritterManager::CrittersInGame() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return PlayersInGame() + NpcInGame();
+    return _engine->EntityMngr.GetCritters().size();
 }

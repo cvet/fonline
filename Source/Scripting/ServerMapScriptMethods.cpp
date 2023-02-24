@@ -44,7 +44,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Map_SetupScript(Map* self, InitFunc<Map*> initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -53,7 +56,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Map_SetupScriptEx(Map* self, hstring initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -305,7 +311,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ItemComponent component)
 {
-    const auto map_items = self->GetItems();
+    const auto& map_items = self->GetItems();
 
     vector<Item*> items;
     items.reserve(map_items.size());
@@ -327,7 +333,7 @@
 [[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto map_items = self->GetItems();
+    const auto& map_items = self->GetItems();
 
     vector<Item*> items;
     items.reserve(map_items.size());
@@ -670,7 +676,7 @@
         }
     }
     else {
-        const auto map_npcs = self->GetNpcs();
+        const auto map_npcs = self->GetNonPlayerCritters();
         critters.reserve(map_npcs.size());
         for (auto* npc : map_npcs) {
             if (npc->GetProtoId() == pid && npc->CheckFind(findType)) {
@@ -1210,7 +1216,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Map_PlaySound(Map* self, string_view soundName)
 {
-    for (Critter* cr : self->GetPlayers()) {
+    for (Critter* cr : self->GetPlayerCritters()) {
         cr->Send_PlaySound(ident_t {}, soundName);
     }
 }
@@ -1227,7 +1233,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    for (Critter* cr : self->GetPlayers()) {
+    for (Critter* cr : self->GetPlayerCritters()) {
         if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
             cr->Send_PlaySound(ident_t {}, soundName);
         }

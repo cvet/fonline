@@ -69,11 +69,9 @@ public:
     [[nodiscard]] auto GetPlayerById(ident_t id) -> Player*;
     [[nodiscard]] auto GetPlayerByName(string_view name) -> Player*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
-    [[nodiscard]] auto PlayersInGame() const -> uint;
-    [[nodiscard]] auto NpcInGame() const -> uint;
-    [[nodiscard]] auto CrittersInGame() const -> uint;
+    [[nodiscard]] auto PlayersInGame() const -> size_t;
+    [[nodiscard]] auto CrittersInGame() const -> size_t;
 
-    void LinkCritters();
     auto CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*;
     void DeleteCritter(Critter* cr);
     void DeleteInventory(Critter* cr);

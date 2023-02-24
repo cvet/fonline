@@ -40,7 +40,6 @@
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
-DECLARE_EXCEPTION(EntityInitScriptException);
 
 enum class ScriptEnum_uint8 : uint8
 {
@@ -208,17 +207,19 @@ public:
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*;
 
     template<typename T>
-    static void CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time)
+    static auto CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
             if (auto&& init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
                 if (!init_func(entity, first_time)) {
-                    throw EntityInitScriptException("Init func call failed", init_script);
+                    return false;
                 }
             }
             else {
-                throw EntityInitScriptException("Init func not found or has bad signature", init_script);
+                return false;
             }
         }
+
+        return true;
     }
 };

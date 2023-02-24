@@ -1169,8 +1169,14 @@
 [[maybe_unused]] vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
     vector<Item*> items;
+
+    if (!pid) {
+        items.reserve(server->ItemMngr.GetItemsCount());
+    }
+
     for (auto&& [id, item] : server->ItemMngr.GetItems()) {
-        if (!item->IsDestroyed() && (!pid || pid == item->GetProtoId())) {
+        RUNTIME_ASSERT(!item->IsDestroyed());
+        if (!pid || pid == item->GetProtoId()) {
             items.push_back(item);
         }
     }

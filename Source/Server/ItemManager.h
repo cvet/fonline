@@ -60,7 +60,7 @@ public:
     [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
     [[nodiscard]] auto GetItem(ident_t item_id) const -> const Item*;
     [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
-    [[nodiscard]] auto GetItemsCount() const -> uint;
+    [[nodiscard]] auto GetItemsCount() const -> size_t;
     [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;
 
@@ -70,8 +70,6 @@ public:
     auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
     void SubItemCritter(Critter* cr, hstring pid, uint count);
     void SetItemCritter(Critter* cr, hstring pid, uint count);
-
-    void LinkItems();
     void DeleteItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
     void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks);

@@ -46,11 +46,6 @@
 class EntityManager final
 {
 public:
-    using LocationFabric = std::function<Location*(ident_t, const ProtoLocation*)>;
-    using MapFabric = std::function<Map*(ident_t, const ProtoMap*)>;
-    using NpcFabric = std::function<Critter*(ident_t, const ProtoCritter*)>;
-    using ItemFabric = std::function<Item*(ident_t, const ProtoItem*)>;
-
     static constexpr auto ENTITIES_FINALIZATION_FUSE_VALUE = 10000;
 
     EntityManager() = delete;
@@ -73,11 +68,19 @@ public:
     [[nodiscard]] auto GetCritters() -> const unordered_map<ident_t, Critter*>&;
     [[nodiscard]] auto GetItem(ident_t id) -> Item*;
     [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
-    [[nodiscard]] auto GetCritterItems(ident_t cr_id) -> vector<Item*>;
 
-    void LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric);
-    void InitAfterLoad();
+    void LoadEntities();
     void FinalizeEntities();
+
+    auto LoadLocation(ident_t loc_id, bool& is_error) -> Location*;
+    auto LoadMap(ident_t map_id, bool& is_error) -> Map*;
+    auto LoadCritter(ident_t cr_id, Player* owner, bool& is_error) -> Critter*;
+    auto LoadItem(ident_t item_id, bool& is_error) -> Item*;
+
+    void CallInit(Location* loc, bool first_time);
+    void CallInit(Map* map, bool first_time);
+    void CallInit(Critter* cr, bool first_time);
+    void CallInit(Item* item, bool first_time);
 
     void RegisterEntity(Player* entity, ident_t id);
     void UnregisterEntity(Player* entity);
@@ -88,13 +91,15 @@ public:
     void RegisterEntity(Critter* entity);
     void UnregisterEntity(Critter* entity);
     void RegisterEntity(Item* entity);
-    void UnregisterEntity(Item* entity);
+    void UnregisterEntity(Item* entity, bool delete_from_db);
 
     auto GetCustomEntity(string_view entity_class_name, ident_t id) -> ServerEntity*;
     auto CreateCustomEntity(string_view entity_class_name) -> ServerEntity*;
     void DeleteCustomEntity(string_view entity_class_name, ident_t id);
 
 private:
+    auto LoadEntityDoc(string_view collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+
     void RegisterEntityEx(ServerEntity* entity);
     void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
 

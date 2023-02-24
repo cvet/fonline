@@ -492,7 +492,7 @@ auto Map::GetItemGag(uint16 hx, uint16 hy) -> Item*
     return nullptr;
 }
 
-auto Map::GetItems() -> vector<Item*>
+auto Map::GetItems() -> const vector<Item*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -927,7 +927,7 @@ auto Map::GetCrittersHex(uint16 hx, uint16 hy, uint radius, CritterFindType find
     return critters;
 }
 
-auto Map::GetCritters() -> vector<Critter*>
+auto Map::GetCritters() -> const vector<Critter*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -936,7 +936,7 @@ auto Map::GetCritters() -> vector<Critter*>
     return _critters;
 }
 
-auto Map::GetPlayers() -> vector<Critter*>
+auto Map::GetPlayerCritters() -> const vector<Critter*>&
 {
     STACK_TRACE_ENTRY();
 
@@ -945,7 +945,7 @@ auto Map::GetPlayers() -> vector<Critter*>
     return _playerCritters;
 }
 
-auto Map::GetNpcs() -> vector<Critter*>
+auto Map::GetNonPlayerCritters() -> const vector<Critter*>&
 {
     STACK_TRACE_ENTRY();
 

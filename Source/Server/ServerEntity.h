@@ -56,6 +56,9 @@ public:
     [[nodiscard]] auto GetId() const -> ident_t { return _id; }
     [[nodiscard]] auto GetEngine() -> FOServer* { NON_CONST_METHOD_HINT_ONELINE() return _engine; }
     [[nodiscard]] auto GetName() const -> string_view override { return _name; }
+    [[nodiscard]] auto IsInitCalled() const -> bool { return _initCalled; }
+
+    void SetInitCalled() { _initCalled = true; }
 
 protected:
     ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator);
@@ -67,4 +70,5 @@ private:
     void SetId(ident_t id); // Invoked by EntityManager
 
     ident_t _id;
+    bool _initCalled {};
 };

@@ -217,7 +217,7 @@ auto Location::IsCanDelete() const -> bool
 
     // Check for npc
     for (auto* map : _locMaps) {
-        for (const auto* npc : map->GetNpcs()) {
+        for (const auto* npc : map->GetNonPlayerCritters()) {
             if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) || npc->IsHaveGeckItem()) {
                 return false;
             }

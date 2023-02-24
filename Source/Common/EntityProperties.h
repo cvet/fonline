@@ -311,8 +311,6 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, bool, ClientToDelete);
     ///@ ExportProperty ReadOnly Alias = Anim1Life
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Alive);
     ///@ ExportProperty ReadOnly

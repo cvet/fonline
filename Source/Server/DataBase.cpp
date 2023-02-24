@@ -35,6 +35,7 @@
 #include "DiskFileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 
 #if FO_HAVE_JSON
 #include "json.hpp"
@@ -814,7 +815,7 @@ public:
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }
 
-        const auto ping = 42u;
+        constexpr auto ping = 42u;
         if (unqlite_kv_store(ping_db, &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
             unqlite_close(ping_db);
             throw DataBaseException("DbUnQLite Can't write to db", ping_db_path);
@@ -1076,7 +1077,7 @@ public:
         }
 
         mongoc_uri_destroy(mongo_uri);
-        mongoc_client_set_appname(client, "fonline");
+        mongoc_client_set_appname(client, FO_DEV_NAME);
 
         auto* database = mongoc_client_get_database(client, string(db_name).c_str());
         if (database == nullptr) {

@@ -73,7 +73,7 @@ auto Item::ContGetItem(ident_t item_id, bool skip_hidden) -> Item*
 
     RUNTIME_ASSERT(item_id);
 
-    if (_childItems == nullptr) {
+    if (!_childItems) {
         return nullptr;
     }
 
@@ -94,7 +94,7 @@ auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
 
     NON_CONST_METHOD_HINT();
 
-    if (_childItems == nullptr) {
+    if (!_childItems) {
         return {};
     }
 
@@ -115,7 +115,7 @@ auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
 
     NON_CONST_METHOD_HINT();
 
-    if (_childItems == nullptr) {
+    if (!_childItems) {
         return nullptr;
     }
 
@@ -133,7 +133,7 @@ auto Item::ContGetItems(uint stack_id) -> vector<Item*>
 
     NON_CONST_METHOD_HINT();
 
-    if (_childItems == nullptr) {
+    if (!_childItems) {
         return {};
     }
 
@@ -150,5 +150,16 @@ auto Item::ContIsItems() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _childItems != nullptr && !_childItems->empty();
+    return _childItems && !_childItems->empty();
+}
+
+auto Item::ContGetRawItems() -> vector<Item*>&
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_childItems);
+
+    return *_childItems;
 }

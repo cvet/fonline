@@ -46,72 +46,6 @@ ItemManager::ItemManager(FOServer* engine) :
     STACK_TRACE_ENTRY();
 }
 
-void ItemManager::LinkItems()
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Link items");
-
-    int errors = 0;
-
-    for (auto&& [id, item] : GetItems()) {
-        RUNTIME_ASSERT(!item->IsDestroyed());
-
-        if (item->IsStatic()) {
-            WriteLog("Can't link static item {} {}", item->GetName(), item->GetId());
-            errors++;
-            continue;
-        }
-
-        switch (item->GetOwnership()) {
-        case ItemOwnership::CritterInventory: {
-            Critter* cr = _engine->CrMngr.GetCritter(item->GetCritterId());
-            if (cr == nullptr) {
-                WriteLog("Item {} critter {} not found", item->GetName(), item->GetCritterId());
-                errors++;
-                continue;
-            }
-
-            cr->SetItem(item);
-        } break;
-        case ItemOwnership::MapHex: {
-            auto* map = _engine->MapMngr.GetMap(item->GetMapId());
-            if (map == nullptr) {
-                WriteLog("Item {} map {} (hex {} {}) not found", item->GetName(), item->GetMapId(), item->GetHexX(), item->GetHexY());
-                errors++;
-                continue;
-            }
-
-            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
-                WriteLog("Item {} invalid hex position {} {}", item->GetName(), item->GetHexX(), item->GetHexY());
-                errors++;
-                continue;
-            }
-
-            map->SetItem(item, item->GetHexX(), item->GetHexY());
-        } break;
-        case ItemOwnership::ItemContainer: {
-            auto* cont = GetItem(item->GetContainerId());
-            if (cont == nullptr) {
-                WriteLog("Item {} container {} not found", item->GetName(), item->GetContainerId());
-                errors++;
-                continue;
-            }
-
-            SetItemToContainer(cont, item);
-        } break;
-        default:
-            WriteLog("Unknown item {} ownership {}", item->GetName(), item->GetOwnership());
-            errors++;
-            continue;
-        }
-    }
-
-    if (errors != 0) {
-        throw ServerInitException("Link items failed");
-    }
-}
-
 auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     STACK_TRACE_ENTRY();
@@ -179,8 +113,8 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
 
-    if (cont->_childItems == nullptr) {
-        cont->_childItems = new vector<Item*>();
+    if (!cont->_childItems) {
+        cont->_childItems = std::make_unique<vector<Item*>>();
     }
 
     RUNTIME_ASSERT(std::find(cont->_childItems->begin(), cont->_childItems->end(), item) == cont->_childItems->end());
@@ -197,8 +131,8 @@ auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> I
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
 
-    if (cont->_childItems == nullptr) {
-        cont->_childItems = new vector<Item*>();
+    if (!cont->_childItems) {
+        cont->_childItems = std::make_unique<vector<Item*>>();
     }
 
     if (item->GetStackable()) {
@@ -241,8 +175,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     item->SetContainerStack(0);
 
     if (cont->_childItems->empty()) {
-        delete cont->_childItems;
-        cont->_childItems = nullptr;
+        cont->_childItems.reset();
     }
 
     auto sub_item_ids = cont->GetSubItemIds();
@@ -261,11 +194,11 @@ auto ItemManager::GetItems() -> const unordered_map<ident_t, Item*>&
     return _engine->EntityMngr.GetItems();
 }
 
-auto ItemManager::GetItemsCount() const -> uint
+auto ItemManager::GetItemsCount() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_engine->EntityMngr.GetItems().size());
+    return _engine->EntityMngr.GetItems().size();
 }
 
 auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
@@ -279,6 +212,9 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     }
 
     auto* item = new Item(_engine, ident_t {}, proto);
+
+    auto item_holder = RefCountHolder(item);
+
     if (props != nullptr) {
         item->SetProperties(*props);
 
@@ -293,33 +229,19 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         item->SetSubItemIds({});
     }
 
-    // Main collection
     _engine->EntityMngr.RegisterEntity(item);
 
-    // Count
-    if (count != 0) {
+    if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
     }
 
-    // Radio collection
     if (item->GetIsRadio()) {
         RegisterRadio(item);
     }
 
-    // Scripts
-    _engine->OnItemInit.Fire(item, true);
+    _engine->EntityMngr.CallInit(item, true);
 
-    if (!item->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), true);
-    }
-
-    // Verify destroying
-    if (item->IsDestroyed()) {
-        WriteLog("Item destroyed after prototype {} initialization", pid);
-        return nullptr;
-    }
-
-    return item;
+    return !item->IsDestroyed() ? item : nullptr;
 }
 
 void ItemManager::DeleteItem(Item* item)
@@ -342,9 +264,8 @@ void ItemManager::DeleteItem(Item* item)
         EraseItemHolder(item, GetItemHolder(item));
 
         // Delete child items
-        while (item->_childItems != nullptr) {
-            RUNTIME_ASSERT(!item->_childItems->empty());
-            DeleteItem(*item->_childItems->begin());
+        while (item->ContIsItems()) {
+            DeleteItem(item->ContGetRawItems().front());
         }
     }
 
@@ -357,7 +278,7 @@ void ItemManager::DeleteItem(Item* item)
     }
 
     // Erase from main collection
-    _engine->EntityMngr.UnregisterEntity(item);
+    _engine->EntityMngr.UnregisterEntity(item, true);
 
     // Invalidate for use
     item->MarkAsDestroyed();

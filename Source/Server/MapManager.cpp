@@ -58,52 +58,6 @@ MapManager::~MapManager()
     delete[] _mapGrid;
 }
 
-void MapManager::LinkMaps()
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Link maps");
-
-    int errors = 0;
-
-    // Link maps to locations
-    for (auto&& [id, map] : GetMaps()) {
-        const auto loc_id = map->GetLocId();
-        const auto loc_map_index = map->GetLocMapIndex();
-
-        auto* loc = GetLocation(loc_id);
-        if (loc == nullptr) {
-            WriteLog("Location {} for map {} not found", loc_id, map->GetName());
-            errors++;
-            continue;
-        }
-
-        auto& loc_maps = loc->GetMapsRaw();
-        if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
-            loc_maps.resize(loc_map_index + 1);
-        }
-
-        loc_maps[loc_map_index] = map;
-        map->SetLocation(loc);
-    }
-
-    // Verify linkage result
-    for (auto&& [id, loc] : GetLocations()) {
-        auto& loc_maps = loc->GetMapsRaw();
-        for (size_t i = 0; i < loc_maps.size(); i++) {
-            if (loc_maps[i] == nullptr) {
-                WriteLog("Location {} map index {} is empty", loc->GetName(), i);
-                errors++;
-                continue;
-            }
-        }
-    }
-
-    if (errors != 0) {
-        throw ServerInitException("Link maps failed");
-    }
-}
-
 void MapManager::LoadFromResources()
 {
     STACK_TRACE_ENTRY();
@@ -387,17 +341,6 @@ void MapManager::GenerateMapContent(Map* map)
             throw UnreachablePlaceException(LINE_STR);
         }
     }
-
-    // Visible
-    for (auto* npc : map->GetNpcs()) {
-        ProcessVisibleCritters(npc);
-        ProcessVisibleItems(npc);
-    }
-
-    // Map script
-    if (!map->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), true);
-    }
 }
 
 void MapManager::DeleteMapContent(Map* map)
@@ -468,6 +411,8 @@ auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Locat
 
     auto* loc = new Location(_engine, ident_t {}, proto);
 
+    auto loc_holder = RefCountHolder(loc);
+
     loc->SetWorldX(wx);
     loc->SetWorldY(wy);
 
@@ -493,24 +438,29 @@ auto MapManager::CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Locat
 
     _engine->EntityMngr.RegisterEntity(loc);
 
-    // Generate location maps
-    const auto maps = loc->GetMaps();
-
-    for (auto* map : maps) {
+    for (auto* map : copy_hold_ref(loc->GetMaps())) {
         map->SetLocId(loc->GetId());
         GenerateMapContent(map);
     }
 
-    // Init scripts
-    for (auto* map : maps) {
-        for (auto* item : map->GetItems()) {
-            _engine->OnItemInit.Fire(item, true);
-        }
-        _engine->OnMapInit.Fire(map, true);
-    }
-    _engine->OnLocationInit.Fire(loc, true);
+    _engine->EntityMngr.CallInit(loc, true);
 
-    return loc;
+    if (!loc->IsDestroyed()) {
+        for (auto* map : copy_hold_ref(loc->GetMaps())) {
+            if (!map->IsDestroyed()) {
+                for (auto* cr : copy_hold_ref(map->GetCritters())) {
+                    if (!cr->IsDestroyed()) {
+                        ProcessVisibleCritters(cr);
+                    }
+                    if (!cr->IsDestroyed()) {
+                        ProcessVisibleItems(cr);
+                    }
+                }
+            }
+        }
+    }
+
+    return !loc->IsDestroyed() ? loc : nullptr;
 }
 
 auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
@@ -542,16 +492,42 @@ void MapManager::RegenerateMap(Map* map)
 {
     STACK_TRACE_ENTRY();
 
-    _engine->OnMapFinish.Fire(map);
+    RUNTIME_ASSERT(!map->IsDestroyed());
+
+    auto map_holder = RefCountHolder(map);
 
     DeleteMapContent(map);
-    GenerateMapContent(map);
 
-    for (auto* item : map->GetItems()) {
-        _engine->OnItemInit.Fire(item, true);
+    if (!map->IsDestroyed()) {
+        GenerateMapContent(map);
     }
 
-    _engine->OnMapInit.Fire(map, true);
+    if (!map->IsDestroyed()) {
+        for (auto* cr : copy_hold_ref(map->GetCritters())) {
+            if (!cr->IsDestroyed()) {
+                _engine->EntityMngr.CallInit(cr, true);
+            }
+        }
+    }
+
+    if (!map->IsDestroyed()) {
+        for (auto* item : copy_hold_ref(map->GetItems())) {
+            if (!item->IsDestroyed()) {
+                _engine->EntityMngr.CallInit(item, true);
+            }
+        }
+    }
+
+    if (!map->IsDestroyed()) {
+        for (auto* cr : copy_hold_ref(map->GetCritters())) {
+            if (!cr->IsDestroyed()) {
+                ProcessVisibleCritters(cr);
+            }
+            if (!cr->IsDestroyed()) {
+                ProcessVisibleItems(cr);
+            }
+        }
+    }
 }
 
 auto MapManager::GetMap(ident_t map_id) -> Map*
@@ -596,11 +572,11 @@ auto MapManager::GetMaps() -> const unordered_map<ident_t, Map*>&
     return _engine->EntityMngr.GetMaps();
 }
 
-auto MapManager::GetMapsCount() const -> uint
+auto MapManager::GetMapsCount() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_engine->EntityMngr.GetMaps().size());
+    return _engine->EntityMngr.GetMaps().size();
 }
 
 auto MapManager::GetLocationByMap(ident_t map_id) -> Location*
@@ -679,7 +655,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* cl : map->GetPlayers()) {
+    for (auto* cl : map->GetPlayerCritters()) {
         TransitToGlobal(cl, ident_t {});
     }
 }
@@ -693,11 +669,11 @@ auto MapManager::GetLocations() -> const unordered_map<ident_t, Location*>&
     return _engine->EntityMngr.GetLocations();
 }
 
-auto MapManager::GetLocationsCount() const -> uint
+auto MapManager::GetLocationsCount() const -> size_t
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_engine->EntityMngr.GetLocations().size());
+    return _engine->EntityMngr.GetLocations().size();
 }
 
 void MapManager::LocationGarbager()
@@ -707,7 +683,7 @@ void MapManager::LocationGarbager()
     if (_runGarbager) {
         _runGarbager = false;
 
-        for (auto&& [id, loc] : copy(_engine->EntityMngr.GetLocations())) {
+        for (auto* loc : copy_hold_ref(_engine->EntityMngr.GetLocations())) {
             if (!loc->IsDestroyed() && loc->GetAutoGarbage() && loc->IsCanDelete()) {
                 DeleteLocation(loc);
             }
@@ -720,7 +696,8 @@ void MapManager::DeleteLocation(Location* loc)
     STACK_TRACE_ENTRY();
 
     // Start deleting
-    auto&& maps = copy(loc->GetMaps());
+    auto loc_holder = RefCountHolder(loc);
+    auto&& maps = copy_hold_ref(loc->GetMaps());
 
     // Redundant calls
     if (loc->IsDestroying() || loc->IsDestroyed()) {
@@ -1500,7 +1477,7 @@ auto MapManager::Transit(Critter* cr, Map* map, uint16 hx, uint16 hy, uint8 dir,
     return true;
 }
 
-auto MapManager::CanAddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ident_t leader_id) const -> bool
+auto MapManager::CanAddCrToMap(const Critter* cr, const Map* map, uint16 hx, uint16 hy, ident_t leader_id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1511,8 +1488,10 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, iden
         if (!map->IsHexesPassed(hx, hy, cr->GetMultihex())) {
             return false;
         }
-        if (!map->GetLocation()->IsCanEnter(1)) {
-            return false;
+        if (cr->IsOwnedByPlayer()) {
+            if (const auto* loc = map->GetLocation(); loc != nullptr && !loc->IsCanEnter(1)) {
+                return false;
+            }
         }
     }
     else {
@@ -1608,7 +1587,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
         _engine->OnMapCritterOut.Fire(map, cr);
 
-        for (auto* other : copy(cr->VisCr)) {
+        for (auto* other : copy_hold_ref(cr->VisCr)) {
             other->OnCritterDisappeared.Fire(cr);
         }
 
@@ -1702,7 +1681,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     const auto show_cr = (show_cr1 || show_cr2 || show_cr3);
     const auto sneak_base_self = view_cr->GetSneakCoefficient();
 
-    for (auto* cr : map->GetCritters()) {
+    for (auto* cr : copy_hold_ref(map->GetCritters())) {
         if (cr == view_cr || cr->IsDestroyed()) {
             continue;
         }
@@ -2028,7 +2007,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     RUNTIME_ASSERT(map);
 
     const int look = view_cr->GetLookDistance();
-    for (auto* item : map->GetItems()) {
+    for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->GetIsHidden()) {
             continue;
         }
@@ -2073,7 +2052,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
 
     // Critters
     const auto dirs_count = GameSettings::MAP_DIR_COUNT;
-    for (auto* cr : map->GetCritters()) {
+    for (auto* cr : copy_hold_ref(map->GetCritters())) {
         if (cr == view_cr) {
             continue;
         }
@@ -2144,7 +2123,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
     }
 
     // Items
-    for (auto* item : map->GetItems()) {
+    for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->GetIsHidden()) {
             continue;
         }

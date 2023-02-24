@@ -45,7 +45,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -54,7 +57,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 

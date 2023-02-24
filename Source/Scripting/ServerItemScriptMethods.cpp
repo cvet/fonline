@@ -43,7 +43,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -52,7 +55,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 

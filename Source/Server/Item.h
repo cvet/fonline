@@ -70,6 +70,7 @@ public:
     [[nodiscard]] auto ContGetItemByPid(hstring pid, uint stack_id) -> Item*;
     [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
     [[nodiscard]] auto ContIsItems() const -> bool;
+    [[nodiscard]] auto ContGetRawItems() -> vector<Item*>&;
 
     void EvaluateSortValue(const vector<Item*>& items);
 
@@ -84,5 +85,5 @@ public:
     Critter* ViewByCritter {};
 
 private:
-    vector<Item*>* _childItems {};
+    unique_ptr<vector<Item*>> _childItems {};
 };

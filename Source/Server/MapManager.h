@@ -145,23 +145,22 @@ public:
     [[nodiscard]] auto GetLocationByMap(ident_t map_id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
     [[nodiscard]] auto GetLocations() -> const unordered_map<ident_t, Location*>&;
-    [[nodiscard]] auto GetLocationsCount() const -> uint;
+    [[nodiscard]] auto GetLocationsCount() const -> size_t;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMap(ident_t map_id) -> Map*;
     [[nodiscard]] auto GetMap(ident_t map_id) const -> const Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
     [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
-    [[nodiscard]] auto GetMapsCount() const -> uint;
+    [[nodiscard]] auto GetMapsCount() const -> size_t;
     [[nodiscard]] auto CheckKnownLoc(Critter* cr, ident_t loc_id) const -> bool;
-    [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, uint16 hx, uint16 hy, ident_t leader_id) const -> bool;
+    [[nodiscard]] auto CanAddCrToMap(const Critter* cr, const Map* map, uint16 hx, uint16 hy, ident_t leader_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
     void LoadFromResources();
     auto CreateLocation(hstring proto_id, uint16 wx, uint16 wy) -> Location*;
     auto CreateMap(hstring proto_id, Location* loc) -> Map*;
-    void LinkMaps();
     void DeleteLocation(Location* loc);
     void LocationGarbager();
     void RegenerateMap(Map* map);

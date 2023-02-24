@@ -188,15 +188,15 @@ private:
         int64 DataReal {1};
         int64 DataCompressed {1};
         float CompressRatio {};
-        uint MaxOnline {};
-        uint CurOnline {};
+        size_t MaxOnline {};
+        size_t CurOnline {};
         uint CycleTime {};
-        uint Fps {};
+        size_t Fps {};
         uint LoopTime {};
-        uint LoopCycles {};
+        size_t LoopCycles {};
         uint LoopMin {};
         uint LoopMax {};
-        uint LagsCount {};
+        size_t LagsCount {};
     };
 
     struct TextListener
@@ -265,7 +265,7 @@ private:
     ServerStats _stats {};
     map<uint, uint> _regIp {};
     uint _fpsTick {};
-    uint _fpsCounter {};
+    size_t _fpsCounter {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<TextListener> _textListeners {};

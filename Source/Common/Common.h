@@ -1645,6 +1645,42 @@ constexpr auto copy(const T& value) -> T
     return T(value);
 }
 
+template<typename T, typename... Args>
+class ref_vector : public vector<T, Args...>
+{
+public:
+    ~ref_vector()
+    {
+        for (auto* ref : *this) {
+            ref->Release();
+        }
+    }
+};
+
+template<typename T, typename... Args>
+constexpr auto copy_hold_ref(const vector<T, Args...>& value) -> ref_vector<T, Args...>
+{
+    ref_vector<T, Args...> ref_vec;
+    ref_vec.reserve(value.size());
+    for (auto* ref : value) {
+        ref->AddRef();
+        ref_vec.emplace_back(ref);
+    }
+    return ref_vec;
+}
+
+template<typename T, typename U, typename... Args>
+constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_vector<U>
+{
+    ref_vector<U> ref_vec;
+    ref_vec.reserve(value.size());
+    for (auto&& [id, ref] : value) {
+        ref->AddRef();
+        ref_vec.emplace_back(ref);
+    }
+    return ref_vec;
+}
+
 template<typename T, typename T2>
 constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
 {
