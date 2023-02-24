@@ -599,7 +599,7 @@ void FOServer::DrawGui(string_view server_name)
             buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
             buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
             buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
-            buf += _str("Items: {}\n", ItemMngr.GetItems().size());
+            buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
             buf += _str("Cycles per second: {}\n", _stats.Fps);
             buf += _str("Cycle time: {}\n", _stats.CycleTime);
             const auto seconds = _stats.Uptime;

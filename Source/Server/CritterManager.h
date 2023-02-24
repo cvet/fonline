@@ -60,8 +60,7 @@ public:
     auto operator=(CritterManager&&) noexcept = delete;
     ~CritterManager() = default;
 
-    [[nodiscard]] auto GetAllCritters() -> vector<Critter*>;
-    [[nodiscard]] auto GetAllNpc() -> vector<Critter*>;
+    [[nodiscard]] auto GetNonPlayerCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;

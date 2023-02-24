@@ -278,25 +278,7 @@ void CritterManager::DeleteInventory(Critter* cr)
     }
 }
 
-auto CritterManager::GetAllCritters() -> vector<Critter*>
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    const auto& all_critters = _engine->EntityMngr.GetCritters();
-
-    vector<Critter*> critters;
-    critters.reserve(all_critters.size());
-
-    for (auto&& [id, cr] : all_critters) {
-        critters.push_back(cr);
-    }
-
-    return critters;
-}
-
-auto CritterManager::GetAllNpc() -> vector<Critter*>
+auto CritterManager::GetNonPlayerCritters() -> vector<Critter*>
 {
     STACK_TRACE_ENTRY();
 

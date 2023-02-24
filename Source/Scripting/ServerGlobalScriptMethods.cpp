@@ -1000,7 +1000,8 @@
     locations.reserve(server->MapMngr.GetLocationsCount());
 
     for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
+        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && //
+            (loc->IsLocVisible() || (cr != nullptr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
     }
@@ -1214,15 +1215,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Game_GetAllNpc(FOServer* server)
 {
-    vector<Critter*> npcs;
-
-    for (auto* npc_ : server->CrMngr.GetAllNpc()) {
-        if (!npc_->IsDestroyed()) {
-            npcs.push_back(npc_);
-        }
-    }
-
-    return npcs;
+    return server->CrMngr.GetNonPlayerCritters();
 }
 
 ///# ...
@@ -1233,7 +1226,7 @@
 {
     vector<Critter*> npcs;
 
-    for (auto* npc_ : server->CrMngr.GetAllNpc()) {
+    for (auto* npc_ : server->CrMngr.GetNonPlayerCritters()) {
         if (!npc_->IsDestroyed() && (!pid || pid == npc_->GetProtoId())) {
             npcs.push_back(npc_);
         }
@@ -1249,6 +1242,10 @@
 [[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server, hstring pid)
 {
     vector<Map*> maps;
+
+    if (!pid) {
+        maps.reserve(server->MapMngr.GetLocationsCount());
+    }
 
     for (auto&& [id, map] : server->MapMngr.GetMaps()) {
         if (!pid || pid == map->GetProtoId()) {
@@ -1266,6 +1263,10 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetAllLocations(FOServer* server, hstring pid)
 {
     vector<Location*> locations;
+
+    if (!pid) {
+        locations.reserve(server->MapMngr.GetLocationsCount());
+    }
 
     for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (!pid || pid == loc->GetProtoId()) {
