@@ -109,8 +109,8 @@ private:
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};
     unordered_map<uint, MessageCallback> _handlers {};
-    double _pingTick {};
-    double _pingCallTick {};
+    time_point _pingTime {};
+    time_point _pingCallTime {};
     size_t _msgCount {};
     bool _interthreadCommunication {};
     InterthreadDataCallback _interthreadSend {};

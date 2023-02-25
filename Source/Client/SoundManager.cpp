@@ -53,8 +53,8 @@ struct SoundManager::Sound
     int OriginalChannels {};
     int OriginalRate {};
     bool IsMusic {};
-    uint NextPlay {};
-    uint RepeatTime {};
+    time_point NextPlayTime {};
+    time_duration RepeatTime {};
     unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
@@ -168,13 +168,12 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
     }
 
     // Repeat
-    if (sound->RepeatTime != 0u) {
-        if (sound->NextPlay == 0u) {
-            // Set next playing time
-            sound->NextPlay = static_cast<uint>(Timer::RealtimeTick()) + (sound->RepeatTime > 1 ? sound->RepeatTime : 0);
+    if (sound->RepeatTime != time_duration {}) {
+        if (sound->NextPlayTime == time_point {}) {
+            sound->NextPlayTime = Timer::CurTime() + (sound->RepeatTime > std::chrono::milliseconds {1} ? sound->RepeatTime : time_duration {});
         }
 
-        if (static_cast<uint>(Timer::RealtimeTick()) >= sound->NextPlay) {
+        if (Timer::CurTime() >= sound->NextPlayTime) {
             // Set buffer to beginning
             sound->ConvertedBufCur = 0;
             if (sound->OggStream) {
@@ -182,7 +181,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
             }
 
             // Drop timer
-            sound->NextPlay = 0;
+            sound->NextPlayTime = time_point {};
 
             // Process without silent
             return ProcessSound(sound, output);
@@ -198,7 +197,7 @@ auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
     return false;
 }
 
-auto SoundManager::Load(string_view fname, bool is_music, uint repeat_time) -> bool
+auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_time) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -539,7 +538,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     // Find base
     const auto it = sound_names.find(sound_name);
     if (it != sound_names.end()) {
-        return Load(it->second, false, 0);
+        return Load(it->second, false, time_duration {});
     }
 
     // Check random pattern 'NAME_X'
@@ -549,13 +548,13 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     if (count != 0u) {
-        return Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false, 0);
+        return Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false, time_duration {});
     }
 
     return false;
 }
 
-auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
+auto SoundManager::PlayMusic(string_view fname, time_duration repeat_time) -> bool
 {
     STACK_TRACE_ENTRY();
 

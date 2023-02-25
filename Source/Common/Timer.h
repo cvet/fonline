@@ -100,7 +100,7 @@ class Timer final
 public:
     Timer() = delete;
 
-    [[nodiscard]] static auto RealtimeTick() -> double;
+    [[nodiscard]] static auto CurTime() -> time_point;
     [[nodiscard]] static auto GetCurrentDateTime() -> DateTimeStamp;
     [[nodiscard]] static auto DateTimeToFullTime(const DateTimeStamp& dt) -> uint64;
     [[nodiscard]] static auto FullTimeToDateTime(uint64 ft) -> DateTimeStamp;

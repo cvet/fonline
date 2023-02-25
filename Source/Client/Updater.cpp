@@ -50,7 +50,7 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 {
     STACK_TRACE_ENTRY();
 
-    _startTick = Timer::RealtimeTick();
+    _startTime = Timer::CurTime();
 
     _resources.AddDataSource(_settings.EmbeddedResources);
     _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
@@ -157,8 +157,8 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = Timer::RealtimeTick() - _startTick;
-    const auto dots = static_cast<int>(std::fmod((Timer::RealtimeTick() - _startTick) / 100.0, 50.0)) + 1;
+    const auto elapsed_time = time_duration_to_ms<uint>(Timer::CurTime() - _startTime);
+    const auto dots = static_cast<int>(std::fmod(time_duration_to_ms<double>(Timer::CurTime() - _startTime) / 100.0, 50.0)) + 1;
     for ([[maybe_unused]] const auto i : xrange(dots)) {
         update_text += ".";
     }

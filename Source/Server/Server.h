@@ -190,13 +190,12 @@ private:
         float CompressRatio {};
         size_t MaxOnline {};
         size_t CurOnline {};
-        uint CycleTime {};
         size_t Fps {};
-        uint LoopTime {};
-        size_t LoopCycles {};
-        uint LoopMin {};
-        uint LoopMax {};
-        size_t LagsCount {};
+        size_t LoopsCount {};
+        time_duration LastLoopTime {};
+        time_duration WholeLoopsTime {};
+        time_duration LoopMinTime {};
+        time_duration LoopMaxTime {};
     };
 
     struct TextListener

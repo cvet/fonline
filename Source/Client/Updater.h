@@ -67,7 +67,8 @@ private:
         uint Hash {};
     };
 
-    auto MakeWritePath(string_view fname) const -> string;
+    [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
+
     void AddText(uint num_str, string_view num_str_str);
     void Abort(uint num_str, string_view num_str_str);
     void GetNextFile();
@@ -82,7 +83,7 @@ private:
     FileSystem _resources {};
     EffectManager _effectMngr;
     SpriteManager _sprMngr;
-    double _startTick {};
+    time_point _startTime {};
     bool _aborted {};
     vector<string> _messages {};
     bool _fileListReceived {};

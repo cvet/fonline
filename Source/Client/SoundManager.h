@@ -50,14 +50,14 @@ public:
     ~SoundManager();
 
     auto PlaySound(const map<string, string>& sound_names, string_view name) -> bool;
-    auto PlayMusic(string_view fname, uint repeat_time) -> bool;
+    auto PlayMusic(string_view fname, time_duration repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
 
 private:
     struct Sound;
 
-    auto Load(string_view fname, bool is_music, uint repeat_time) -> bool;
+    auto Load(string_view fname, bool is_music, time_duration repeat_time) -> bool;
     auto LoadWav(Sound* sound, string_view fname) -> bool;
     auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
     auto LoadOgg(Sound* sound, string_view fname) -> bool;

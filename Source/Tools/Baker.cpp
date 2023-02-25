@@ -140,7 +140,7 @@ void Baker::BakeAll()
 
     WriteLog("Start bakering");
 
-    const auto start_time = Timer::RealtimeTick();
+    const auto start_time = Timer::CurTime();
 
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(MakeOutputPath("Resources.build-hash"));
     RUNTIME_ASSERT(build_hash_deleted);
@@ -1056,7 +1056,7 @@ void Baker::BakeAll()
         errors++;
     }
 
-    WriteLog("Time {:.2f} seconds", (Timer::RealtimeTick() - start_time) / 1000.0);
+    WriteLog("Time {:.3f} seconds", time_duration_to_ms<double>(Timer::CurTime() - start_time) / 1000.0);
 
     // Finalize
     if (errors != 0) {

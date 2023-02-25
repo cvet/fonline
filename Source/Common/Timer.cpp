@@ -179,11 +179,11 @@ auto GameTimer::IsGameplayPaused() const -> bool
 }
 #endif
 
-auto Timer::RealtimeTick() -> double
+auto Timer::CurTime() -> time_point
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(time_point::clock::now().time_since_epoch()).count()) / 1000000.0;
+    return time_point::clock::now();
 }
 
 auto Timer::GetCurrentDateTime() -> DateTimeStamp

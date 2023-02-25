@@ -355,14 +355,14 @@
 ///# param repeatTime ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_PlayMusic(FOClient* client, string_view musicName, uint repeatTime)
+[[maybe_unused]] bool Client_Game_PlayMusic(FOClient* client, string_view musicName, tick_t repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();
         return true;
     }
 
-    return client->SndMngr.PlayMusic(musicName, repeatTime);
+    return client->SndMngr.PlayMusic(musicName, std::chrono::milliseconds {repeatTime.underlying_value()});
 }
 
 ///# ...

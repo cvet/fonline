@@ -73,7 +73,7 @@ struct ServerConnection::Impl
 };
 
 ServerConnection::ServerConnection(ClientNetworkSettings& settings) :
-    _settings {settings}, //
+    _settings {settings},
     _impl {new Impl()},
     _netIn(_settings.NetBufferSize),
     _netOut(_settings.NetBufferSize)
@@ -117,7 +117,7 @@ void ServerConnection::AddMessageHandler(uint msg, MessageCallback handler)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_handlers.count(msg) == 0u);
+    RUNTIME_ASSERT(_handlers.count(msg) == 0);
 
     _handlers.emplace(msg, std::move(handler));
 }
@@ -176,10 +176,10 @@ void ServerConnection::Process()
                 RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
             }
 
-            if (_isConnected && _netOut.IsEmpty() && _pingTick == 0.0 && _settings.PingPeriod != 0u && Timer::RealtimeTick() >= _pingCallTick) {
+            if (_isConnected && _netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
                 _netOut.StartMsg(NETMSG_PING);
                 _netOut << PING_SERVER;
-                _pingTick = Timer::RealtimeTick();
+                _pingTime = Timer::CurTime();
                 _netOut.EndMsg();
             }
 
@@ -269,7 +269,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
     }
 
     // First try interthread communication
-    if (InterthreadListeners.count(port) != 0u) {
+    if (InterthreadListeners.count(port) != 0) {
         _interthreadReceived.clear();
 
         _interthreadSend = InterthreadListeners[port]([this](const_span<uint8> buf) {
@@ -326,7 +326,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
     if (!_impl->FillSockAddr(_impl->SockAddr, host, port)) {
         return false;
     }
-    if (_settings.ProxyType != 0u && !_impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, static_cast<uint16>(_settings.ProxyPort))) {
+    if (_settings.ProxyType != 0 && !_impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, static_cast<uint16>(_settings.ProxyPort))) {
         return false;
     }
 
@@ -351,7 +351,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
 #endif
 
     // Direct connect
-    if (_settings.ProxyType == 0u) {
+    if (_settings.ProxyType == 0) {
         // Set non blocking mode
 #if FO_WINDOWS
         u_long mode = 1;
@@ -391,7 +391,8 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
                 return false;
             }
 
-            const auto tick = Timer::RealtimeTick();
+            const auto time = Timer::CurTime();
+
             while (true) {
                 const auto receive = ReceiveData(false);
                 if (receive > 0) {
@@ -403,7 +404,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
                     return false;
                 }
 
-                if (Timer::RealtimeTick() - tick >= 10000.0) {
+                if (Timer::CurTime() - time >= std::chrono::milliseconds {10000}) {
                     WriteLog("Proxy answer timeout");
                     return false;
                 }
@@ -836,9 +837,9 @@ void ServerConnection::Net_OnPing()
         _netOut.EndMsg();
     }
     else if (ping == PING_SERVER) {
-        const auto cur_tick = Timer::RealtimeTick();
-        _settings.Ping = iround(cur_tick - _pingTick);
-        _pingTick = 0.0;
-        _pingCallTick = cur_tick + _settings.PingPeriod;
+        const auto time = Timer::CurTime();
+        _settings.Ping = time_duration_to_ms<uint>(time - _pingTime);
+        _pingTime = time_point {};
+        _pingCallTime = time + std::chrono::milliseconds {_settings.PingPeriod};
     }
 }

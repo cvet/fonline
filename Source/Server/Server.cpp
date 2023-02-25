@@ -425,10 +425,11 @@ void FOServer::Shutdown()
     WriteLog("Traffic:");
     WriteLog("Bytes Send: {}", _stats.BytesSend);
     WriteLog("Bytes Recv: {}", _stats.BytesRecv);
-    WriteLog("Cycles count: {}", _stats.LoopCycles);
-    WriteLog("Approx cycle period: {}", _stats.LoopTime / (_stats.LoopCycles != 0u ? _stats.LoopCycles : 1));
-    WriteLog("Min cycle period: {}", _stats.LoopMin);
-    WriteLog("Max cycle period: {}", _stats.LoopMax);
+    WriteLog("Loops count: {}", _stats.LoopsCount);
+    WriteLog("Approx loop time: {}", _stats.LoopsCount != 0 ? time_duration_to_ms<size_t>(_stats.WholeLoopsTime) / _stats.LoopsCount : 0);
+    WriteLog("Last loop time: {}", _stats.LastLoopTime);
+    WriteLog("Min loop time: {}", _stats.LoopMinTime);
+    WriteLog("Max loop time: {}", _stats.LoopMaxTime);
 
     _didFinishDispatcher();
 }
@@ -438,7 +439,7 @@ void FOServer::MainLoop()
     STACK_TRACE_ENTRY();
 
     // Cycle time
-    const auto frame_begin = Timer::RealtimeTick();
+    const auto frame_begin = Timer::CurTime();
 
     // Begin data base changes
     DbStorage.StartChanges();
@@ -550,12 +551,12 @@ void FOServer::MainLoop()
     DispatchLogToClients();
 
     // Fill statistics
-    const uint loop_tick = iround(Timer::RealtimeTick() - frame_begin);
-    _stats.LoopTime += loop_tick;
-    _stats.LoopCycles++;
-    _stats.LoopMax = std::max(loop_tick, _stats.LoopMax);
-    _stats.LoopMax = std::min(loop_tick, _stats.LoopMin);
-    _stats.CycleTime = loop_tick;
+    const auto loop_duration = Timer::CurTime() - frame_begin;
+    _stats.WholeLoopsTime += loop_duration;
+    _stats.LoopsCount++;
+    _stats.LoopMaxTime = std::max(loop_duration, _stats.LoopMaxTime);
+    _stats.LoopMaxTime = std::min(loop_duration, _stats.LoopMaxTime);
+    _stats.LastLoopTime = loop_duration;
     _stats.Uptime = GameTime.FrameTime() - _stats.ServerStartTime;
 
     // Calculate fps
@@ -596,8 +597,8 @@ void FOServer::DrawGui(string_view server_name)
             buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
             buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
             buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
-            buf += _str("Cycles per second: {}\n", _stats.Fps);
-            buf += _str("Cycle time: {}\n", _stats.CycleTime);
+            buf += _str("Loops per second: {}\n", _stats.Fps);
+            buf += _str("Loop time: {}\n", _stats.LastLoopTime);
             const auto seconds = time_duration_to_ms<uint64>(_stats.Uptime);
             buf += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
             buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
