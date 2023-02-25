@@ -48,9 +48,9 @@
 ///# param endOx ...
 ///# param endOy ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, uint showTime, uint color, bool fade, int endOx, int endOy)
+[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, tick_t showTime, uint color, bool fade, int endOx, int endOy)
 {
-    self->AddMapText(text, hx, hy, color, showTime, fade, endOx, endOy);
+    self->AddMapText(text, hx, hy, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOx, endOy);
 }
 
 ///# ...
@@ -104,7 +104,7 @@
     auto& tree = self->GetDrawTree();
     auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
         (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
-        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
+        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
@@ -666,7 +666,7 @@
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto* simply_tile = self->GetField(hx, hy).SimplyTile[roof ? 1 : 0];
+    const auto* simply_tile = self->GetField(hx, hy).SimpleTile[roof ? 1 : 0];
     if (simply_tile != nullptr && layer == 0) {
         return simply_tile->Name;
     }

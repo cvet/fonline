@@ -45,7 +45,7 @@ Player::Player(FOServer* engine, ident_t id, ClientConnection* connection) :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
     PlayerProperties(GetInitRef()),
     Connection {connection},
-    _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
+    _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
 {
     STACK_TRACE_ENTRY();
 
@@ -288,7 +288,7 @@ void Player::Send_Move(Critter* from_cr)
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE);
         Connection->OutBuf << from_cr->GetId();
         Connection->OutBuf << static_cast<uint>(std::ceil(from_cr->Moving.WholeTime));
-        Connection->OutBuf << _engine->GameTime.FrameTick() - from_cr->Moving.StartTick;
+        Connection->OutBuf << time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime);
         Connection->OutBuf << from_cr->Moving.Speed;
         Connection->OutBuf << from_cr->Moving.StartHexX;
         Connection->OutBuf << from_cr->Moving.StartHexY;
@@ -716,9 +716,9 @@ void Player::Send_Talk()
         const auto all_answers = static_cast<uint8>(_ownedCr->Talk.CurDialog.Answers.size());
 
         auto talk_time = _ownedCr->Talk.TalkTime;
-        if (talk_time != 0u) {
-            const auto diff = _engine->GameTime.GameTick() - _ownedCr->Talk.StartTick;
-            talk_time = diff < talk_time ? talk_time - diff : 1;
+        if (talk_time != time_duration {}) {
+            const auto diff = _engine->GameTime.GameplayTime() - _ownedCr->Talk.StartTime;
+            talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds {1};
         }
 
         Connection->OutBuf << is_npc;
@@ -733,7 +733,7 @@ void Player::Send_Talk()
         for (auto& answer : _ownedCr->Talk.CurDialog.Answers) {
             Connection->OutBuf << answer.TextId; // Answers text_id
         }
-        Connection->OutBuf << talk_time; // Talk time
+        Connection->OutBuf << time_duration_to_ms<uint>(talk_time); // Talk time
     }
 
     Connection->OutBuf.EndMsg();

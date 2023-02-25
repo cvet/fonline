@@ -88,7 +88,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ResMngr.IndexFiles();
 
     GameTime.FrameAdvance();
-    _fpsTick = GameTime.FrameTick();
+    _fpsTime = GameTime.FrameTime();
 
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
@@ -402,10 +402,10 @@ void FOClient::MainLoop()
     const auto time_changed = GameTime.FrameAdvance();
 
     // FPS counter
-    if (GameTime.FrameTick() - _fpsTick >= 1000) {
+    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
         Settings.FPS = _fpsCounter;
         _fpsCounter = 0;
-        _fpsTick = GameTime.FrameTick();
+        _fpsTime = GameTime.FrameTime();
     }
     else {
         _fpsCounter++;
@@ -431,7 +431,7 @@ void FOClient::MainLoop()
 
     // Game time
     if (time_changed) {
-        const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
+        const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
 
         SetYear(st.Year);
         SetMonth(st.Month);
@@ -489,25 +489,25 @@ void FOClient::MainLoop()
     SprMngr.EndScene();
 }
 
-void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
+void FOClient::ScreenFade(time_duration time, uint from_color, uint to_color, bool push_back)
 {
     STACK_TRACE_ENTRY();
 
     if (!push_back || _screenEffects.empty()) {
-        _screenEffects.push_back({GameTime.FrameTick(), time, from_color, to_color});
+        _screenEffects.push_back({GameTime.FrameTime(), time, from_color, to_color});
     }
     else {
-        uint last_tick = 0;
+        time_point last_tick;
         for (const auto& e : _screenEffects) {
-            if (e.BeginTick + e.Time > last_tick) {
-                last_tick = e.BeginTick + e.Time;
+            if (e.BeginTime + e.Duration > last_tick) {
+                last_tick = e.BeginTime + e.Duration;
             }
         }
         _screenEffects.push_back({last_tick, time, from_color, to_color});
     }
 }
 
-void FOClient::ScreenQuake(int noise, uint time)
+void FOClient::ScreenQuake(int noise, time_duration time)
 {
     STACK_TRACE_ENTRY();
 
@@ -517,10 +517,10 @@ void FOClient::ScreenQuake(int noise, uint time)
     _screenOffsY = (GenericUtils::Random(0, 1) != 0 ? noise : -noise);
     _screenOffsXf = static_cast<float>(_screenOffsX);
     _screenOffsYf = static_cast<float>(_screenOffsY);
-    _screenOffsStep = std::fabs(_screenOffsXf) / (static_cast<float>(time) / 30.0f);
+    _screenOffsStep = std::fabs(_screenOffsXf) / (time_duration_to_ms<float>(time) / 30.0f);
     Settings.ScrOx += _screenOffsX;
     Settings.ScrOy += _screenOffsY;
-    _screenOffsNextTick = GameTime.GameTick() + 30u;
+    _screenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
 }
 
 void FOClient::ProcessScreenEffectFading()
@@ -535,13 +535,13 @@ void FOClient::ProcessScreenEffectFading()
     for (auto it = _screenEffects.begin(); it != _screenEffects.end();) {
         auto& screen_effect = *it;
 
-        if (GameTime.FrameTick() >= screen_effect.BeginTick + screen_effect.Time) {
+        if (GameTime.FrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
             it = _screenEffects.erase(it);
             continue;
         }
 
-        if (GameTime.FrameTick() >= screen_effect.BeginTick) {
-            const auto proc = GenericUtils::Percent(screen_effect.Time, GameTime.FrameTick() - screen_effect.BeginTick) + 1u;
+        if (GameTime.FrameTime() >= screen_effect.BeginTime) {
+            const auto proc = GenericUtils::Percent(time_duration_to_ms<uint>(screen_effect.Duration), time_duration_to_ms<uint>(GameTime.FrameTime() - screen_effect.BeginTime)) + 1;
             int res[4];
 
             for (auto i = 0; i < 4; i++) {
@@ -567,7 +567,7 @@ void FOClient::ProcessScreenEffectQuake()
 {
     STACK_TRACE_ENTRY();
 
-    if ((_screenOffsX != 0 || _screenOffsY != 0) && GameTime.GameTick() >= _screenOffsNextTick) {
+    if ((_screenOffsX != 0 || _screenOffsY != 0) && GameTime.GameplayTime() >= _screenOffsNextTime) {
         Settings.ScrOx -= _screenOffsX;
         Settings.ScrOy -= _screenOffsY;
 
@@ -593,7 +593,7 @@ void FOClient::ProcessScreenEffectQuake()
         Settings.ScrOx += _screenOffsX;
         Settings.ScrOy += _screenOffsY;
 
-        _screenOffsNextTick = GameTime.GameTick() + 30;
+        _screenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
     }
 }
 
@@ -1315,7 +1315,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
 
     // Critter text on head
     if (fstr_cr != 0 && cr != nullptr) {
-        cr->SetText(_str(get_format(fstr_cr), fstr), COLOR_TEXT, text_delay);
+        cr->SetText(_str(get_format(fstr_cr), fstr), COLOR_TEXT, std::chrono::milliseconds {text_delay});
     }
 
     // Message box text
@@ -1356,7 +1356,7 @@ void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, uint color)
         return;
     }
 
-    CurMap->AddMapText(sstr, hx, hy, color, show_time, false, 0, 0);
+    CurMap->AddMapText(sstr, hx, hy, color, std::chrono::milliseconds {show_time}, false, 0, 0);
 
     FlashGameWindow();
 }
@@ -1530,8 +1530,8 @@ void FOClient::Net_OnCritterMove()
     cr->ClearMove();
 
     cr->Moving.Speed = speed;
-    cr->Moving.StartTick = GameTime.FrameTick();
-    cr->Moving.OffsetTick = offset_time;
+    cr->Moving.StartTime = GameTime.FrameTime();
+    cr->Moving.OffsetTime = std::chrono::milliseconds {offset_time};
     cr->Moving.WholeTime = static_cast<float>(whole_time);
 
     cr->Moving.Steps = steps;
@@ -2933,7 +2933,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
         return 0u;
     }
 
-    auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
+    auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameplayTime()};
 
     size_t index = 1;
     for (; index < _ifaceAnimations.size(); index++) {
@@ -3044,7 +3044,8 @@ void FOClient::AnimProcess()
 
     NON_CONST_METHOD_HINT();
 
-    const auto cur_tick = GameTime.GameTick();
+    const auto time = GameTime.GameplayTime();
+
     for (auto* anim : _ifaceAnimations) {
         if (anim == nullptr || anim->Flags == 0u) {
             continue;
@@ -3056,11 +3057,12 @@ void FOClient::AnimProcess()
         }
 
         if (IsBitSet(anim->Flags, ANIMRUN_TO_END) || IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
-            if (cur_tick - anim->LastTick < anim->Frames->Ticks / anim->Frames->CntFrm) {
+            if (time - anim->LastUpdateTime < std::chrono::milliseconds {anim->Frames->Ticks / anim->Frames->CntFrm}) {
                 continue;
             }
 
-            anim->LastTick = cur_tick;
+            anim->LastUpdateTime = time;
+
             auto end_spr = anim->Frames->CntFrm - 1;
             if (IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
                 end_spr = 0;
@@ -3629,7 +3631,7 @@ void FOClient::LmapPrepareMap()
         pix_y = 0;
     }
 
-    _lmapPrepareNextTick = GameTime.FrameTick() + MINIMAP_PREPARE_TICK;
+    _lmapPrepareNextTime = GameTime.FrameTime() + std::chrono::milliseconds {1000};
 }
 
 void FOClient::GmapNullParams()
@@ -3651,7 +3653,7 @@ void FOClient::WaitDraw()
     STACK_TRACE_ENTRY();
 
     if (_waitPic != nullptr) {
-        SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameTick()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
+        SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameplayTime()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
         SprMngr.Flush();
     }
 }
@@ -3882,7 +3884,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             _lmapWMap[3] = y2;
             LmapPrepareMap();
         }
-        else if (GameTime.FrameTick() >= _lmapPrepareNextTick) {
+        else if (GameTime.FrameTime() >= _lmapPrepareNextTime) {
             LmapPrepareMap();
         }
 
@@ -3897,7 +3899,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "SetCritterContour" && args.size() == 3) {
         if (CurMap != nullptr) {
             auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
-            ident_t cr_id = ident_t {_str(args[2]).toUInt()};
+            const auto cr_id = ident_t {_str(args[2]).toUInt()};
             CurMap->SetCritterContour(cr_id, countour_type);
         }
     }
@@ -4037,7 +4039,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
     if (try_move) {
         cr->Moving.Steps = steps;
         cr->Moving.ControlSteps = control_steps;
-        cr->Moving.StartTick = GameTime.FrameTick();
+        cr->Moving.StartTime = GameTime.FrameTime();
         cr->Moving.Speed = static_cast<uint16>(speed);
         cr->Moving.StartHexX = cr->GetHexX();
         cr->Moving.StartHexY = cr->GetHexY();
@@ -4045,8 +4047,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
         cr->Moving.EndHexY = hy;
         cr->Moving.StartOx = cr->GetHexOffsX();
         cr->Moving.StartOy = cr->GetHexOffsY();
-        cr->Moving.EndOx = ox;
-        cr->Moving.EndOy = oy;
+        cr->Moving.EndOx = static_cast<int16>(ox);
+        cr->Moving.EndOy = static_cast<int16>(oy);
 
         cr->Moving.WholeTime = {};
         cr->Moving.WholeDist = {};

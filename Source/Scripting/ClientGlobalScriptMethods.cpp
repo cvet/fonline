@@ -149,7 +149,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetTick(FOClient* client)
 {
-    return client->GameTime.FrameTick();
+    return time_duration_to_ms<uint>(client->GameTime.FrameTime().time_since_epoch());
 }
 
 ///# ...
@@ -325,20 +325,20 @@
 ///# ...
 ///# param fromColor ...
 ///# param toColor ...
-///# param ms ...
+///# param duration ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, uint fromColor, uint toColor, uint ms)
+[[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, uint fromColor, uint toColor, tick_t duration)
 {
-    client->ScreenFade(ms, fromColor, toColor, true);
+    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, true);
 }
 
 ///# ...
 ///# param noise ...
 ///# param ms ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_QuakeScreen(FOClient* client, uint noise, uint ms)
+[[maybe_unused]] void Client_Game_QuakeScreen(FOClient* client, int noise, tick_t duration)
 {
-    client->ScreenQuake(noise, ms);
+    client->ScreenQuake(noise, std::chrono::milliseconds {duration.underlying_value()});
 }
 
 ///# ...
@@ -550,7 +550,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Game_GetFullSecond(FOClient* client)
+[[maybe_unused]] tick_t Client_Game_GetFullSecond(FOClient* client)
 {
     return client->GameTime.GetFullSecond();
 }
@@ -564,7 +564,7 @@
 ///# param second ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
+[[maybe_unused]] tick_t Client_Game_EvaluateFullSecond(FOClient* client, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
     if (year != 0 && year < client->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
@@ -591,7 +591,7 @@
     }
 
     if (day_ != 0) {
-        const auto month_day = client->GameTime.GameTimeMonthDay(year, month_);
+        const auto month_day = client->GameTime.GameTimeMonthDays(year, month_);
         if (day_ < month_day || day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
@@ -624,9 +624,9 @@
 ///# param minute ...
 ///# param second ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_GetGameTime(FOClient* client, uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
+[[maybe_unused]] void Client_Game_EvaluateGameTime(FOClient* client, tick_t fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)
 {
-    const auto dt = client->GameTime.GetGameTime(fullSecond);
+    const auto dt = client->GameTime.EvaluateGameTime(fullSecond);
     year = dt.Year;
     month = dt.Month;
     dayOfWeek = dt.DayOfWeek;
@@ -904,7 +904,7 @@
         return 0;
     }
 
-    const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex));
     if (si == nullptr) {
         return 0;
     }
@@ -924,7 +924,7 @@
         return 0;
     }
 
-    const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex));
     if (si == nullptr) {
         return 0;
     }
@@ -970,7 +970,7 @@
         return false;
     }
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex));
     return client->SprMngr.IsPixNoTransp(spr_id_, x, y, false);
 }
 
@@ -1012,7 +1012,7 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
     client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(0));
 }
 
@@ -1038,7 +1038,7 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
     client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(color));
 }
 
@@ -1068,7 +1068,7 @@
     auto xx = x;
     auto yy = y;
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
     if (offs) {
         const auto* si = client->SprMngr.GetSpriteInfo(spr_id);
         if (si == nullptr) {
@@ -1105,7 +1105,7 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
     client->SprMngr.DrawSpriteSizeExt(spr_id, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(0));
 }
 
@@ -1133,7 +1133,7 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
     client->SprMngr.DrawSpriteSizeExt(spr_id, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 
@@ -1166,7 +1166,7 @@
     auto xx = x;
     auto yy = y;
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
     if (offs) {
         const auto* si = client->SprMngr.GetSpriteInfo(spr_id);
         if (si == nullptr) {
@@ -1206,7 +1206,7 @@
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex), x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSpritePattern(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex), x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...

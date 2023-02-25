@@ -58,6 +58,8 @@
 #endif
 #endif
 
+time_point steady_clock_since_program_start::start = std::chrono::steady_clock::now();
+
 static std::thread::id MainThreadId;
 
 static bool ExceptionMessageBox = false;

@@ -85,9 +85,9 @@ public:
     std::mutex& OutBufLocker;
 
     bool WasHandshake {};
-    uint PingNextTick {};
+    time_point PingNextTime {};
     bool PingOk {true};
-    uint LastActivityTime {};
+    time_point LastActivityTime {};
     int UpdateFileIndex {-1};
     uint UpdateFilePortion {};
 

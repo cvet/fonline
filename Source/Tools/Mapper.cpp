@@ -746,10 +746,10 @@ void FOMapper::MapperMainLoop()
     GameTime.FrameAdvance();
 
     // FPS counter
-    if (GameTime.FrameTick() - _fpsTick >= 1000) {
+    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
         Settings.FPS = _fpsCounter;
         _fpsCounter = 0;
-        _fpsTick = GameTime.FrameTick();
+        _fpsTime = GameTime.FrameTime();
     }
     else {
         _fpsCounter++;
@@ -940,7 +940,8 @@ auto FOMapper::GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint
 
     const auto count = end - beg + 1;
     const auto ticks = anim->Ticks / anim->CntFrm * count;
-    return anim->Ind[beg + ((GameTime.FrameTick() % ticks) * 100 / ticks) * count / 100];
+    const auto ticks_elapsed = time_duration_to_ms<uint>(GameTime.FrameTime().time_since_epoch());
+    return anim->Ind[beg + ((ticks_elapsed % ticks) * 100 / ticks) * count / 100];
 }
 
 void FOMapper::IntDraw()
@@ -1085,7 +1086,7 @@ void FOMapper::IntDraw()
             if (proto_item->GetPicInv()) {
                 auto* anim = ResMngr.GetInvAnim(proto_item->GetPicInv());
                 if (anim != nullptr) {
-                    SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y + h / 2, w, h / 2, false, true, col);
+                    SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x, y + h / 2, w, h / 2, false, true, col);
                 }
             }
 
@@ -1117,7 +1118,7 @@ void FOMapper::IntDraw()
             }
 
             auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
-            SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h / 2, false, true, col);
+            SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x, y, w, h / 2, false, true, col);
 
             auto& name = (*CurTileNames)[i];
             auto pos = _str(name).str().find_last_of('/');
@@ -1187,7 +1188,7 @@ void FOMapper::IntDraw()
                 col = COLOR_SPRITE_RED;
             }
 
-            SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h, false, true, col);
+            SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x, y, w, h, false, true, col);
 
             SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), _str("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && (inner_item->GetCritterSlot() != 0u)) {
@@ -1301,12 +1302,12 @@ void FOMapper::ObjDraw()
         if (anim == nullptr) {
             anim = ResMngr.ItemHexDefaultAnim;
         }
-        SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true, 0);
+        SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true, 0);
 
         if (item->GetPicInv()) {
             auto* anim = ResMngr.GetInvAnim(item->GetPicInv());
             if (anim != nullptr) {
-                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, 0);
+                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, 0);
             }
         }
     }
@@ -3053,9 +3054,9 @@ void FOMapper::CurDraw()
     case CUR_MODE_MOVE_SELECTION: {
         auto* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
         if (anim != nullptr) {
-            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
+            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameplayTime()));
             if (si != nullptr) {
-                SprMngr.DrawSprite(anim->GetCurSprId(GameTime.GameTick()), Settings.MouseX, Settings.MouseY, COLOR_SPRITE);
+                SprMngr.DrawSprite(anim->GetCurSprId(GameTime.GameplayTime()), Settings.MouseX, Settings.MouseY, COLOR_SPRITE);
             }
         }
     } break;
@@ -3090,7 +3091,7 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
+            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameplayTime()));
             if (si != nullptr) {
                 hx -= hx % Settings.MapTileStep;
                 hy -= hy % Settings.MapTileStep;
@@ -3105,7 +3106,7 @@ void FOMapper::CurDraw()
                     y += Settings.MapRoofOffsY;
                 }
 
-                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), //
+                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), //
                     static_cast<int>((x + Settings.ScrOx) / CurMap->GetSpritesZoom()), static_cast<int>((y + Settings.ScrOy) / CurMap->GetSpritesZoom()), //
                     static_cast<int>(si->Width / CurMap->GetSpritesZoom()), static_cast<int>(si->Height / CurMap->GetSpritesZoom()), true, false, 0);
             }
@@ -3217,13 +3218,13 @@ auto FOMapper::IsCurInInterface() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (IntVisible && SubTabsActive && IsCurInRectNoTransp(SubTabsPic->GetCurSprId(GameTime.GameTick()), SubTabsRect, SubTabsX, SubTabsY)) {
+    if (IntVisible && SubTabsActive && IsCurInRectNoTransp(SubTabsPic->GetCurSprId(GameTime.GameplayTime()), SubTabsRect, SubTabsX, SubTabsY)) {
         return true;
     }
-    if (IntVisible && IsCurInRectNoTransp(IntMainPic->GetCurSprId(GameTime.GameTick()), IntWMain, IntX, IntY)) {
+    if (IntVisible && IsCurInRectNoTransp(IntMainPic->GetCurSprId(GameTime.GameplayTime()), IntWMain, IntX, IntY)) {
         return true;
     }
-    if (ObjVisible && !SelectedEntities.empty() && IsCurInRectNoTransp(ObjWMainPic->GetCurSprId(GameTime.GameTick()), ObjWMain, ObjX, ObjY)) {
+    if (ObjVisible && !SelectedEntities.empty() && IsCurInRectNoTransp(ObjWMainPic->GetCurSprId(GameTime.GameplayTime()), ObjWMain, ObjX, ObjY)) {
         return true;
     }
     return false;
@@ -3248,7 +3249,7 @@ void FOMapper::ConsoleDraw()
         SprMngr.DrawSprite(ConsolePic->GetSprId(), IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
 
         auto str = ConsoleStr;
-        str.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
+        str.insert(ConsoleCur, time_duration_to_ms<uint>(GameTime.FrameTime().time_since_epoch()) % 800 < 400 ? "!" : ".");
         SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, 0, FONT_DEFAULT);
     }
 }
@@ -3327,7 +3328,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
         Keyb.FillChar(dik, dik_text, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
         ConsoleLastKey = dik;
         ConsoleLastKeyText = dik_text;
-        ConsoleKeyTick = GameTime.FrameTick();
+        ConsoleKeyTime = GameTime.FrameTime();
         ConsoleAccelerate = 1;
         return;
     }
@@ -3349,8 +3350,8 @@ void FOMapper::ConsoleProcess()
         return;
     }
 
-    if (static_cast<int>(GameTime.FrameTick() - ConsoleKeyTick) >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
-        ConsoleKeyTick = GameTime.FrameTick();
+    if (time_duration_to_ms<int>(GameTime.FrameTime() - ConsoleKeyTime) >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
+        ConsoleKeyTime = GameTime.FrameTime();
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
         Keyb.FillChar(ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
     }

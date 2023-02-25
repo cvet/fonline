@@ -254,7 +254,7 @@ public:
     [[nodiscard]] auto GetViewSize() const -> tuple<int, int>;
     [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
-    [[nodiscard]] auto GetAnimDuration() const -> uint;
+    [[nodiscard]] auto GetAnimDuration() const -> time_duration;
     [[nodiscard]] auto IsCombatMode() const -> bool;
 
     void SetupFrame();
@@ -296,7 +296,7 @@ private:
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float;
-    [[nodiscard]] auto GetTick() const -> uint;
+    [[nodiscard]] auto GetTime() const -> time_point;
 
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(const ModelInstance* cur);
@@ -328,8 +328,8 @@ private:
     ModelAnimationController* _moveAnimController {};
     int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
-    uint _lastDrawTick {};
-    uint _endTick {};
+    time_point _lastDrawTime {};
+    time_point _endTime {};
     mat44 _matRot {};
     mat44 _matScale {};
     mat44 _matScaleBase {};
@@ -343,7 +343,7 @@ private:
     float _moveDirAngle {};
     float _targetMoveDirAngle {};
     vec3 _groundPos {};
-    bool _useGameTimer {};
+    bool _useGameplayTimer {};
     float _animPosProc {};
     float _animPosTime {};
     float _animPosPeriod {};

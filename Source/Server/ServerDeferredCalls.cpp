@@ -115,7 +115,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     if (delay > 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+        call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
     }
 
     _savedCalls.emplace(call.Id);
@@ -152,7 +152,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     RUNTIME_ASSERT(call_doc.count("Script") && !std::get<string>(call_doc["Script"]).empty());
 
-    call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond);
+    call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond.underlying_value());
 
     _serverEngine->DbStorage.Insert("DeferredCalls", call.Id, call_doc);
 
@@ -198,7 +198,7 @@ void ServerDeferredCallManager::LoadDeferredCalls()
         DeferredCall call;
 
         call.Id = call_id;
-        call.FireFullSecond = static_cast<uint>(std::get<int64>(call_doc["FireFullSecond"]));
+        call.FireFullSecond = tick_t {static_cast<tick_t::underlying_type>(std::get<int64>(call_doc["FireFullSecond"]))};
 
         const auto func_name = _serverEngine->ToHashedString(std::get<string>(call_doc["Script"]));
         call.EmptyFunc = _serverEngine->ScriptSys->FindFunc<void>(func_name);

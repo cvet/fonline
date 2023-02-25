@@ -132,13 +132,11 @@ auto Field::AddTile(AnyFrames* anim, int16 ox, int16 oy, uint8 layer, bool is_ro
 
     Tile* tile;
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
-    auto*& stile = SimplyTile[is_roof ? 1 : 0];
+    auto*& stile = SimpleTile[is_roof ? 1 : 0];
 
     if (tiles_vec == nullptr && stile == nullptr && ox == 0 && oy == 0 && layer == 0u) {
-        static Tile simply_tile;
-
         stile = anim;
-        tile = &simply_tile;
+        tile = &SimpleTileStub;
     }
     else {
         if (tiles_vec == nullptr) {
@@ -161,7 +159,7 @@ void Field::EraseTile(uint index, bool is_roof)
     STACK_TRACE_ENTRY();
 
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
-    auto*& stile = SimplyTile[is_roof ? 1 : 0];
+    auto*& stile = SimpleTile[is_roof ? 1 : 0];
 
     if (index == 0 && (stile != nullptr)) {
         stile = nullptr;
@@ -185,7 +183,7 @@ auto Field::GetTilesCount(bool is_roof) -> uint
     STACK_TRACE_ENTRY();
 
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
-    auto*& stile = SimplyTile[is_roof ? 1 : 0];
+    auto*& stile = SimpleTile[is_roof ? 1 : 0];
 
     return (stile != nullptr ? 1 : 0) + (tiles_vec != nullptr ? static_cast<uint>(tiles_vec->size()) : 0);
 }
@@ -195,12 +193,11 @@ auto Field::GetTile(uint index, bool is_roof) -> Field::Tile&
     STACK_TRACE_ENTRY();
 
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
-    auto*& stile = SimplyTile[is_roof ? 1 : 0];
+    auto*& stile = SimpleTile[is_roof ? 1 : 0];
 
     if (index == 0 && (stile != nullptr)) {
-        static Tile simply_tile;
-        simply_tile.Anim = stile;
-        return simply_tile;
+        SimpleTileStub.Anim = stile;
+        return SimpleTileStub;
     }
     return tiles_vec->at(index - (stile != nullptr ? 1 : 0));
 }
@@ -669,7 +666,7 @@ void MapView::AddTile(const MapTile& tile)
     }
 }
 
-void MapView::AddMapText(string_view str, uint16 hx, uint16 hy, uint color, uint show_time, bool fade, int ox, int oy)
+void MapView::AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time_duration show_time, bool fade, int ox, int oy)
 {
     STACK_TRACE_ENTRY();
 
@@ -678,8 +675,8 @@ void MapView::AddMapText(string_view str, uint16 hx, uint16 hy, uint color, uint
     map_text.HexY = hy;
     map_text.Color = (color != 0u ? color : COLOR_TEXT);
     map_text.Fade = fade;
-    map_text.StartTick = _engine->GameTime.GameTick();
-    map_text.Tick = show_time > 0 ? show_time : _engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100;
+    map_text.StartTime = _engine->GameTime.GameplayTime();
+    map_text.Duration = show_time != time_duration {} ? show_time : std::chrono::milliseconds {_engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100};
     map_text.Text = str;
     map_text.Pos = GetRectForText(hx, hy);
     map_text.EndPos = IRect(map_text.Pos, ox, oy);
@@ -1101,11 +1098,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
             _drawCursorX = -1;
         }
         else {
-            static auto last_cur_x = 0;
-            static uint16 last_hx = 0;
-            static uint16 last_hy = 0;
-
-            if (refresh || hx != last_hx || hy != last_hy) {
+            if (refresh || hx != _lastCurHx || hy != _lastCurHy) {
                 if (cr->IsAlive()) {
                     const auto find_path = FindPath(cr, cx, cy, hx, hy, -1);
                     if (!find_path) {
@@ -1119,12 +1112,12 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
                     _drawCursorX = -1;
                 }
 
-                last_hx = hx;
-                last_hy = hy;
-                last_cur_x = _drawCursorX;
+                _lastCurHx = hx;
+                _lastCurHy = hy;
+                _lastCurX = _drawCursorX;
             }
             else {
-                _drawCursorX = last_cur_x;
+                _drawCursorX = _lastCurX;
             }
         }
     }
@@ -1221,7 +1214,7 @@ void MapView::RebuildMap(int rx, int ry)
 
         // Track
         if (_isShowTrack && GetHexTrack(nx, ny) != 0) {
-            const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameTick()) : _picTrack2->GetCurSprId(_engine->GameTime.GameTick()));
+            const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSprId(_engine->GameTime.GameplayTime()));
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
             auto& spr = _mainTree.AddSprite(DrawOrderType::Track, nx, ny, //
                 _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, //
@@ -1231,7 +1224,7 @@ void MapView::RebuildMap(int rx, int ry)
 
         // Hex Lines
         if (_isShowHex) {
-            const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameTick());
+            const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameplayTime());
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
             auto& spr = _mainTree.AddSprite(DrawOrderType::HexGrid, nx, ny, //
                 si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, //
@@ -1429,7 +1422,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         // Track
         if (_isShowTrack && (GetHexTrack(nx, ny) != 0)) {
-            const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameTick()) : _picTrack2->GetCurSprId(_engine->GameTime.GameTick()));
+            const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSprId(_engine->GameTime.GameplayTime()));
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
             auto& spr = _mainTree.InsertSprite(DrawOrderType::Track, nx, ny, //
                 _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, //
@@ -1439,7 +1432,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         // Hex lines
         if (_isShowHex) {
-            const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameTick());
+            const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameplayTime());
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
             auto& spr = _mainTree.InsertSprite(DrawOrderType::HexGrid, nx, ny, //
                 si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, //
@@ -2608,7 +2601,7 @@ void MapView::DrawMap()
 
     // Cursor flat
     if (_cursorPrePic != nullptr) {
-        DrawCursor(_cursorPrePic->GetCurSprId(_engine->GameTime.GameTick()));
+        DrawCursor(_cursorPrePic->GetCurSprId(_engine->GameTime.GameplayTime()));
     }
 
     // Sprites
@@ -2629,12 +2622,12 @@ void MapView::DrawMap()
 
     // Cursor
     if (_cursorPostPic != nullptr) {
-        DrawCursor(_cursorPostPic->GetCurSprId(_engine->GameTime.GameTick()));
+        DrawCursor(_cursorPostPic->GetCurSprId(_engine->GameTime.GameplayTime()));
     }
 
     if (_cursorXPic != nullptr) {
         if (_drawCursorX < 0) {
-            DrawCursor(_cursorXPic->GetCurSprId(_engine->GameTime.GameTick()));
+            DrawCursor(_cursorXPic->GetCurSprId(_engine->GameTime.GameplayTime()));
         }
         else if (_drawCursorX > 0) {
             DrawCursor(_str("{}", _drawCursorX));
@@ -2659,17 +2652,17 @@ void MapView::DrawMapTexts()
         cr->DrawTextOnHead();
     }
 
-    const auto tick = _engine->GameTime.GameTick();
+    const auto time = _engine->GameTime.GameplayTime();
 
     for (auto it = _mapTexts.begin(); it != _mapTexts.end();) {
         const auto& map_text = *it;
 
-        if (tick < map_text.StartTick + map_text.Tick) {
+        if (time < map_text.StartTime + map_text.Duration) {
             const auto& field = GetField(map_text.HexX, map_text.HexY);
 
             if (field.IsView) {
-                const auto dt = tick - map_text.StartTick;
-                const auto percent = GenericUtils::Percent(map_text.Tick, dt);
+                const auto dt = time_duration_to_ms<uint>(time - map_text.StartTime);
+                const auto percent = GenericUtils::Percent(time_duration_to_ms<uint>(map_text.Duration), dt);
                 const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
                 const auto half_hex_width = _engine->Settings.MapHexWidth / 2;
                 const auto half_hex_height = _engine->Settings.MapHexHeight / 2;
@@ -2680,10 +2673,10 @@ void MapView::DrawMapTexts()
                 if (map_text.Fade) {
                     color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
                 }
-                else if (map_text.Tick > 500) {
-                    const auto hide = map_text.Tick - 200;
+                else if (map_text.Duration > std::chrono::milliseconds {500}) {
+                    const auto hide = time_duration_to_ms<uint>(map_text.Duration - std::chrono::milliseconds {200});
                     if (dt >= hide) {
-                        const auto alpha = 255u * (100u - GenericUtils::Percent(map_text.Tick - hide, dt - hide)) / 100u;
+                        const auto alpha = 255u * (100u - GenericUtils::Percent(time_duration_to_ms<uint>(map_text.Duration) - hide, dt - hide)) / 100;
                         color = (alpha << 24) | (color & 0xFFFFFF);
                     }
                 }
@@ -2862,13 +2855,13 @@ auto MapView::Scroll() -> bool
     // Scroll delay
     auto time_k = 1.0f;
     if (_engine->Settings.ScrollDelay != 0u) {
-        const auto tick = _engine->GameTime.FrameTick();
-        static auto last_tick = tick;
-        if (tick - last_tick < _engine->Settings.ScrollDelay / 2) {
+        const auto time = _engine->GameTime.FrameTime();
+        if (time - _scrollLastTime < std::chrono::milliseconds {_engine->Settings.ScrollDelay / 2}) {
             return false;
         }
-        time_k = static_cast<float>(tick - last_tick) / static_cast<float>(_engine->Settings.ScrollDelay);
-        last_tick = tick;
+
+        time_k = time_duration_to_ms<float>(time - _scrollLastTime) / static_cast<float>(_engine->Settings.ScrollDelay);
+        _scrollLastTime = time;
     }
 
     const auto is_scroll = IsScrollEnabled();
@@ -2883,14 +2876,14 @@ auto MapView::Scroll() -> bool
 
     // Check critter scroll lock
     if (AutoScroll.HardLockedCritter && !is_scroll) {
-        auto* cr = GetCritter(AutoScroll.HardLockedCritter);
-        if ((cr != nullptr) && (cr->GetHexX() != _screenHexX || cr->GetHexY() != _screenHexY)) {
+        const auto* cr = GetCritter(AutoScroll.HardLockedCritter);
+        if (cr != nullptr && (cr->GetHexX() != _screenHexX || cr->GetHexY() != _screenHexY)) {
             ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.02f, true);
         }
     }
 
     if (AutoScroll.SoftLockedCritter && !is_scroll) {
-        auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
+        const auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
         if (cr != nullptr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
             const auto [ox, oy] = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
             ScrollOffset(ox, oy, 0.02f, true);
@@ -3343,11 +3336,11 @@ void MapView::AddCritterInternal(CritterHexView* cr)
 {
     STACK_TRACE_ENTRY();
 
-    uint fading_tick = 0u;
+    time_point fading_time;
 
     if (cr->GetId()) {
         if (auto* prev_cr = GetCritter(cr->GetId()); prev_cr != nullptr) {
-            fading_tick = prev_cr->FadingTick;
+            fading_time = prev_cr->FadingTime;
             DestroyCritter(prev_cr);
         }
 
@@ -3360,8 +3353,8 @@ void MapView::AddCritterInternal(CritterHexView* cr)
 
     cr->Init();
 
-    const auto game_tick = _engine->GameTime.GameTick();
-    cr->FadingTick = game_tick + _engine->Settings.FadingDuration - (fading_tick > game_tick ? fading_tick - game_tick : 0);
+    const auto time = _engine->GameTime.GameplayTime();
+    cr->FadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (fading_time > time ? fading_time - time : time_duration {});
 }
 
 void MapView::DestroyCritter(CritterHexView* cr)

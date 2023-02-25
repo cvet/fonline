@@ -204,7 +204,7 @@ static void AdminManager(FOServer* server, uint16 port)
         }
 
         // Sleep to prevent panel DDOS or keys brute force
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 

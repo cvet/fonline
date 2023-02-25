@@ -108,7 +108,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> ide
 
     if (delay > 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+        call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
     }
 
     _deferredCalls.emplace_back(std::move(call));
@@ -159,7 +159,7 @@ void DeferredCallManager::Process()
         done = true;
 
         for (auto it = _deferredCalls.begin(); it != _deferredCalls.end(); ++it) {
-            if (full_second >= it->FireFullSecond) {
+            if (full_second.underlying_value() >= it->FireFullSecond.underlying_value()) {
                 DeferredCall call = copy(*it);
                 it = _deferredCalls.erase(it);
                 OnDeferredCallRemoved(call);

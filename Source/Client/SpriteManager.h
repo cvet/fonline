@@ -156,8 +156,8 @@ struct SpriteInfo
 struct AnyFrames
 {
     [[nodiscard]] auto GetSprId(uint num_frm = 0u) const -> uint;
-    [[nodiscard]] auto GetCurSprId(uint tick) const -> uint;
-    [[nodiscard]] auto GetCurSprIndex(uint tick) const -> uint;
+    [[nodiscard]] auto GetCurSprId(time_point time) const -> uint;
+    [[nodiscard]] auto GetCurSprIndex(time_point time) const -> uint;
     [[nodiscard]] auto GetDir(uint dir) -> AnyFrames*;
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids

@@ -48,7 +48,7 @@ CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* pro
 {
     STACK_TRACE_ENTRY();
 
-    _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
+    _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u)};
     DrawEffect = _engine->EffectMngr.Effects.Critter;
     auto layers = GetModelLayers();
     layers.resize(LAYERS3D_COUNT);
@@ -77,22 +77,22 @@ void CritterHexView::Finish()
     CritterView::Finish();
 
     SetFade(false);
-    _finishingTime = FadingTick;
+    _finishingTime = FadingTime;
 }
 
 auto CritterHexView::IsFinished() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _finishingTime != 0 && _engine->GameTime.GameTick() > _finishingTime;
+    return _finishingTime != time_point {} && _engine->GameTime.GameplayTime() >= _finishingTime;
 }
 
 void CritterHexView::SetFade(bool fade_up)
 {
     STACK_TRACE_ENTRY();
 
-    const auto tick = _engine->GameTime.GameTick();
-    FadingTick = tick + _engine->Settings.FadingDuration - (FadingTick > tick ? FadingTick - tick : 0);
+    const auto time = _engine->GameTime.GameplayTime();
+    FadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (FadingTime > time ? FadingTime - time : time_duration {0});
     _fadeUp = fade_up;
     _fadingEnabled = true;
 }
@@ -101,8 +101,8 @@ auto CritterHexView::GetFadeAlpha() -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    const auto tick = _engine->GameTime.GameTick();
-    const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTick > tick ? FadingTick - tick : 0u);
+    const auto time = _engine->GameTime.GameplayTime();
+    const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTime > time ? time_duration_to_ms<uint>(FadingTime - time) : 0);
     if (fading_proc == 100u) {
         _fadingEnabled = false;
     }
@@ -157,8 +157,8 @@ void CritterHexView::ClearMove()
 
     Moving.Steps = {};
     Moving.ControlSteps = {};
-    Moving.StartTick = {};
-    Moving.OffsetTick = {};
+    Moving.StartTime = {};
+    Moving.OffsetTime = {};
     Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
@@ -193,13 +193,13 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
         _needReset = true;
 #if FO_ENABLE_3D
         if (_model != nullptr) {
-            _resetTick = _engine->GameTime.GameTick() + _model->GetAnimDuration();
+            _resetTime = _engine->GameTime.GameplayTime() + _model->GetAnimDuration();
         }
         else {
-            _resetTick = _engine->GameTime.GameTick() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
+            _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000};
         }
 #else
-        _resetTick = _engine->GameTime.GameTick() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
+        _resetTime = _engine->GameTime.GameplayTime() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
 #endif
     } break;
     case ACTION_CONNECT:
@@ -214,7 +214,7 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
         SetFade(true);
         AnimateStay();
         _needReset = true;
-        _resetTick = _engine->GameTime.GameTick(); // Fast
+        _resetTime = _engine->GameTime.GameplayTime(); // Fast
         break;
     case ACTION_REFRESH:
 #if FO_ENABLE_3D
@@ -251,7 +251,7 @@ void CritterHexView::NextAnim(bool erase_front)
         return;
     }
 
-    _animStartTick = _engine->GameTime.GameTick();
+    _animStartTime = _engine->GameTime.GameplayTime();
 
     const auto& cr_anim = _animSequence.front();
 
@@ -295,7 +295,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(anim1, anim2)) {
-            _animSequence.push_back(CritterAnim {nullptr, 0, 0, 0, anim1, anim2, fixed_context_item});
+            _animSequence.push_back(CritterAnim {nullptr, time_duration {}, 0, 0, anim1, anim2, fixed_context_item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -311,7 +311,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
     {
         auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
         if (anim != nullptr) {
-            _animSequence.push_back(CritterAnim {anim, anim->Ticks, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, fixed_context_item});
+            _animSequence.push_back(CritterAnim {anim, std::chrono::milliseconds {anim->Ticks}, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, fixed_context_item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -330,7 +330,7 @@ void CritterHexView::AnimateStay()
 
     ClearAnim();
 
-    _animStartTick = _engine->GameTime.GameTick();
+    _animStartTime = _engine->GameTime.GameplayTime();
 
     auto anim1 = GetAnim1();
     auto anim2 = GetAnim2();
@@ -390,7 +390,7 @@ void CritterHexView::AnimateStay()
             _engine->OnCritterAnimationProcess.Fire(true, this, anim1, anim2, nullptr);
 
             _stayAnim.Anim = anim;
-            _stayAnim.AnimTick = anim->Ticks;
+            _stayAnim.AnimDuration = std::chrono::milliseconds {anim->Ticks};
             _stayAnim.BeginFrm = 0;
             _stayAnim.EndFrm = anim->CntFrm - 1;
 
@@ -431,7 +431,7 @@ auto CritterHexView::IsNeedReset() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _needReset && _engine->GameTime.GameTick() >= _resetTick;
+    return _needReset && _engine->GameTime.GameplayTime() >= _resetTime;
 }
 
 void CritterHexView::ResetOk()
@@ -591,8 +591,8 @@ void CritterHexView::Process()
     }
 
     // Extra offsets
-    if (_offsExtNextTick != 0u && _engine->GameTime.GameTick() >= _offsExtNextTick) {
-        _offsExtNextTick = _engine->GameTime.GameTick() + 30;
+    if (_offsExtNextTime != time_point {} && _engine->GameTime.GameplayTime() >= _offsExtNextTime) {
+        _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
 
         const auto dist = GenericUtils::DistSqrt(0, 0, iround(_oxExt), iround(_oyExt));
         const auto dist_div = dist / 10u;
@@ -605,7 +605,7 @@ void CritterHexView::Process()
         _oyExt += _oyExtSpeed * mul;
 
         if (GenericUtils::DistSqrt(0, 0, iround(_oxExt), iround(_oyExt)) > dist) {
-            _offsExtNextTick = 0;
+            _offsExtNextTime = time_point {};
             _oxExt = 0.0f;
             _oyExt = 0.0f;
         }
@@ -615,7 +615,7 @@ void CritterHexView::Process()
 
     // Animation
     const auto& cur_anim = !_animSequence.empty() ? _animSequence.front() : _stayAnim;
-    const auto anim_proc = (_engine->GameTime.GameTick() - _animStartTick) * 100 / (cur_anim.AnimTick != 0 ? cur_anim.AnimTick : 100);
+    const auto anim_proc = time_duration_to_ms<uint>(_engine->GameTime.GameplayTime() - _animStartTime) * 100 / (cur_anim.AnimDuration != time_duration {} ? time_duration_to_ms<uint>(cur_anim.AnimDuration) : 100);
 
     // Change frames
 #if FO_ENABLE_3D
@@ -650,7 +650,7 @@ void CritterHexView::Process()
 
     // Fidget animation
     // Todo: fidget animation to scripts
-    if (_engine->GameTime.GameTick() >= _tickFidget) {
+    if (_engine->GameTime.GameplayTime() >= _fidgetTime) {
 #if FO_ENABLE_3D
         const auto is_combat_mode = _model != nullptr && _model->IsCombatMode();
 #else
@@ -661,7 +661,7 @@ void CritterHexView::Process()
             Action(ACTION_FIDGET, 0, nullptr, false);
         }
 
-        _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2);
+        _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2)};
     }
 
     // Combat mode
@@ -698,7 +698,7 @@ void CritterHexView::ProcessMoving()
         return;
     }
 
-    auto normalized_time = static_cast<float>(_engine->GameTime.FrameTick() - Moving.StartTick + Moving.OffsetTick) / Moving.WholeTime;
+    auto normalized_time = time_duration_to_ms<float>(_engine->GameTime.FrameTime() - Moving.StartTime + Moving.OffsetTime) / Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = Moving.WholeDist * normalized_time;
@@ -888,7 +888,7 @@ void CritterHexView::AddExtraOffs(int ext_ox, int ext_oy)
     _oxExtSpeed = -_oxExtSpeed;
     _oyExtSpeed = -_oyExtSpeed;
 
-    _offsExtNextTick = _engine->GameTime.GameTick() + 30;
+    _offsExtNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {30};
 
     RefreshOffs();
 }
@@ -907,13 +907,13 @@ void CritterHexView::RefreshOffs()
     }
 }
 
-void CritterHexView::SetText(string_view str, uint color, uint text_delay)
+void CritterHexView::SetText(string_view str, uint color, time_duration text_delay)
 {
     STACK_TRACE_ENTRY();
 
-    _tickStartText = _engine->GameTime.GameTick();
+    _startTextTime = _engine->GameTime.GameplayTime();
     _strTextOnHead = str;
-    _tickTextDelay = text_delay;
+    _textShowDuration = text_delay;
     _textOnHeadColor = color;
 }
 
@@ -1013,12 +1013,12 @@ void CritterHexView::DrawTextOnHead()
             str = _strTextOnHead;
             color = _textOnHeadColor;
 
-            if (_tickTextDelay > 500) {
-                const auto dt = _engine->GameTime.GameTick() - _tickStartText;
-                const auto hide = _tickTextDelay - 200;
+            if (_textShowDuration > std::chrono::milliseconds {500}) {
+                const auto dt = time_duration_to_ms<uint>(_engine->GameTime.GameplayTime() - _startTextTime);
+                const auto hide = time_duration_to_ms<uint>(_textShowDuration - std::chrono::milliseconds {200});
 
                 if (dt >= hide) {
-                    const auto alpha = 0xFF * (100 - GenericUtils::Percent(_tickTextDelay - hide, dt - hide)) / 100;
+                    const auto alpha = 0xFF * (100 - GenericUtils::Percent(time_duration_to_ms<uint>(_textShowDuration) - hide, dt - hide)) / 100;
                     color = (alpha << 24) | (color & 0xFFFFFF);
                 }
             }
@@ -1027,7 +1027,7 @@ void CritterHexView::DrawTextOnHead()
         _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (Alpha << 24) | (color & 0xFFFFFF), -1);
     }
 
-    if (_engine->GameTime.GameTick() - _tickStartText >= _tickTextDelay && !_strTextOnHead.empty()) {
+    if (_engine->GameTime.GameplayTime() - _startTextTime >= _textShowDuration && !_strTextOnHead.empty()) {
         _strTextOnHead = "";
     }
 }

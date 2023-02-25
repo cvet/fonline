@@ -252,8 +252,68 @@ struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_
 {
 };
 
+///@ ExportType ident_t uint RelaxedStrong
 using ident_t = strong_type<uint>;
 static_assert(sizeof(ident_t) == sizeof(uint));
+
+///@ ExportType tick_t uint RelaxedStrong
+using tick_t = strong_type<uint>;
+static_assert(sizeof(tick_t) == sizeof(uint));
+
+// Game clock (since program start)
+struct steady_clock_since_program_start
+{
+    using rep = long long;
+    using period = std::nano;
+    using duration = std::chrono::nanoseconds;
+    using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+    static constexpr bool is_steady = true;
+
+    static time_point start;
+
+    [[nodiscard]] static time_point now() noexcept { return time_point {std::chrono::steady_clock::now() - start}; }
+};
+
+using time_point = steady_clock_since_program_start::time_point;
+using time_duration = steady_clock_since_program_start::duration;
+
+template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+inline static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
+{
+    return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
+}
+
+template<>
+struct fmt::formatter<time_duration>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const time_duration& t, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", time_duration_to_ms<size_t>(t));
+    }
+};
+
+template<>
+struct fmt::formatter<time_point>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const time_point& t, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", time_duration_to_ms<size_t>(t.time_since_epoch()));
+    }
+};
 
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
@@ -1262,7 +1322,7 @@ struct fmt::formatter<hstring>
 // ReSharper disable CppInconsistentNaming
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto MAX_HOLO_INFO = 250;
-static constexpr auto PROCESS_TALK_TICK = 1000;
+static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;

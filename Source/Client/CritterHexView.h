@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishingTime != 0; }
+    [[nodiscard]] auto IsFinishing() const -> bool { return _finishingTime != time_point {}; }
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
@@ -88,7 +88,7 @@ public:
     void ClearAnim();
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
-    void SetText(string_view str, uint color, uint text_delay);
+    void SetText(string_view str, uint color, time_duration text_delay);
     void DrawTextOnHead();
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
@@ -106,15 +106,15 @@ public:
     bool Visible {true};
     Sprite* SprDraw {};
     bool SprDrawValid {};
-    uint FadingTick {};
+    time_point FadingTime {};
 
     struct
     {
         uint16 Speed {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
-        uint StartTick {};
-        uint OffsetTick {};
+        time_point StartTime {};
+        time_duration OffsetTime {};
         uint16 StartHexX {};
         uint16 StartHexY {};
         uint16 EndHexX {};
@@ -133,7 +133,7 @@ private:
     struct CritterAnim
     {
         AnyFrames* Anim {};
-        uint AnimTick {};
+        time_duration AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
         uint IndAnim1 {};
@@ -155,22 +155,22 @@ private:
     MapView* _map;
 
     bool _needReset {};
-    uint _resetTick {};
+    time_point _resetTime {};
 
     uint _curFrmIndex {};
-    uint _animStartTick {};
+    time_point _animStartTime {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
 
-    uint _finishingTime {};
+    time_point _finishingTime {};
     bool _fadingEnabled {};
     bool _fadeUp {};
 
-    uint _tickFidget {};
+    time_point _fidgetTime {};
 
     string _strTextOnHead {};
-    uint _tickStartText {};
-    uint _tickTextDelay {};
+    time_point _startTextTime {};
+    time_duration _textShowDuration {};
     uint _textOnHeadColor {COLOR_TEXT};
 
     int _oxAnim {};
@@ -179,7 +179,7 @@ private:
     float _oyExt {};
     float _oxExtSpeed {};
     float _oyExtSpeed {};
-    uint _offsExtNextTick {};
+    time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D
     unique_del_ptr<ModelInstance> _model {};

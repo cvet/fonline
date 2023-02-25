@@ -45,9 +45,6 @@
 ///@ ExportEntity Map Map MapView HasProto
 ///@ ExportEntity Location Location LocationView HasProto
 
-static_assert(sizeof(ident_t) == sizeof(uint));
-///@ ExportType ident_t uint RelaxedStrong
-
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     inline auto GetProperty##prop() const->const Property* \
     { \

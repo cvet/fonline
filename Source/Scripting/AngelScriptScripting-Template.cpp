@@ -300,7 +300,7 @@ struct ASContextExtendedData
     std::unordered_map<size_t, StackTraceEntryStorage>* ScriptCallCacheEntries {};
     std::string Info {};
     asIScriptContext* Parent {};
-    uint64_t SuspendEndTick {};
+    time_point SuspendEndTime {};
 #ifdef TRACY_ENABLE
     vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
@@ -383,7 +383,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.Parent = nullptr;
         ctx_ext.Info.clear();
-        ctx_ext.SuspendEndTick = 0u;
+        ctx_ext.SuspendEndTime = {};
     }
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
@@ -482,11 +482,11 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         }
 
         vector<asIScriptContext*> resume_contexts;
-        const auto tick = GameEngine->GameTime.FrameTick();
+        const auto time = GameEngine->GameTime.FrameTime();
 
         for (auto* ctx : BusyContexts) {
             auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
-            if ((ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED) && ctx_ext.SuspendEndTick != static_cast<uint>(-1) && tick >= ctx_ext.SuspendEndTick) {
+            if ((ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED) && time >= ctx_ext.SuspendEndTime) {
                 resume_contexts.push_back(ctx);
             }
         }
@@ -2167,7 +2167,7 @@ static void Global_Yield(uint time)
     RUNTIME_ASSERT(ctx);
     auto* game_engine = static_cast<FOEngine*>(ctx->GetEngine()->GetUserData());
     auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
-    ctx_ext.SuspendEndTick = time != static_cast<uint>(-1) ? game_engine->GameTime.FrameTick() + time : static_cast<uint>(-1);
+    ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 #else
     throw ScriptCompilerException("Stub");

@@ -64,7 +64,7 @@ public:
     [[nodiscard]] auto IsNpc() const -> bool { return !IsOwnedByPlayer(); }
     [[nodiscard]] auto GetOwner() const -> const Player* { return _player; }
     [[nodiscard]] auto GetOwner() -> Player* { return _player; }
-    [[nodiscard]] auto GetOfflineTime() const -> uint;
+    [[nodiscard]] auto GetOfflineTime() const -> time_duration;
     [[nodiscard]] auto IsAlive() const -> bool;
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
@@ -167,7 +167,7 @@ public:
     void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
 
-    void AddTimeEvent(hstring func_name, uint rate, uint duration, int identifier);
+    void AddTimeEvent(hstring func_name, uint rate, tick_t duration, int identifier);
     void EraseTimeEvent(size_t index);
     void ProcessTimeEvents();
 
@@ -213,7 +213,7 @@ public:
     unordered_set<ident_t> VisCr3 {};
     unordered_set<ident_t> VisItem {};
 
-    uint CacheValuesNextTick {};
+    time_point CacheValuesNextTime {};
     uint LookCacheValue {};
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
@@ -246,7 +246,7 @@ public:
         uint Uid {};
         vector<uint8> Steps {};
         vector<uint16> ControlSteps {};
-        uint StartTick {};
+        time_point StartTime {};
         uint16 StartHexX {};
         uint16 StartHexY {};
         uint16 EndHexX {};
@@ -262,7 +262,7 @@ public:
 private:
     Player* _player {};
     bool _playerDetached {};
-    uint _playerDetachTick {};
+    time_point _playerDetachTime {};
     vector<Item*> _invItems {};
-    uint _talkNextTick {};
+    time_point _talkNextTime {};
 };

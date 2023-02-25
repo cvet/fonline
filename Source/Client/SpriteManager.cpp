@@ -102,18 +102,20 @@ auto AnyFrames::GetSprId(uint num_frm) const -> uint
     return Ind[num_frm % CntFrm];
 }
 
-auto AnyFrames::GetCurSprId(uint tick) const -> uint
+auto AnyFrames::GetCurSprId(time_point time) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return CntFrm > 1 ? Ind[tick % Ticks * 100 / Ticks * CntFrm / 100] : Ind[0];
+    const auto ticks = time_duration_to_ms<size_t>(time.time_since_epoch());
+    return CntFrm > 1 ? Ind[ticks % Ticks * 100 / Ticks * CntFrm / 100] : Ind[0];
 }
 
-auto AnyFrames::GetCurSprIndex(uint tick) const -> uint
+auto AnyFrames::GetCurSprIndex(time_point time) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return CntFrm > 1 ? tick % Ticks * 100 / Ticks * CntFrm / 100 : 0;
+    const auto ticks = time_duration_to_ms<size_t>(time.time_since_epoch());
+    return CntFrm > 1 ? ticks % Ticks * 100 / Ticks * CntFrm / 100 : 0;
 }
 
 auto AnyFrames::GetDir(uint dir) -> AnyFrames*

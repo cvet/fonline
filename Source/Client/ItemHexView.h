@@ -104,10 +104,10 @@ private:
     uint _endFrm {};
     uint _animBegFrm {};
     uint _animEndFrm {};
-    uint _animTick {};
+    time_point _animTime {};
     uint8 _maxAlpha {0xFF};
     bool _isAnimLooped {};
-    uint _animStartTick {};
+    time_point _animStartTime {};
 
     bool _isEffect {};
     bool _isDynamicEffect {};
@@ -118,14 +118,14 @@ private:
     float _effCurX {};
     float _effCurY {};
     uint _effDist {};
-    uint _effLastTick {};
+    time_point _effUpdateLastTime {};
     int _effDir {};
     vector<pair<uint16, uint16>> _effSteps {};
 
     bool _fading {};
-    uint _fadingEndTick {};
+    time_point _fadingEndTime {};
     bool _fadeUp {};
 
     bool _finishing {};
-    uint _finishingTime {};
+    time_point _finishingTime {};
 };

@@ -127,5 +127,5 @@ public:
 
 private:
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
-    uint _talkNextTick {};
+    time_point _talkNextTime {};
 };

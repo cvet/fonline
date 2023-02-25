@@ -388,7 +388,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_FireTime);
+    ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncName);
     ///@ ExportProperty

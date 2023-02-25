@@ -412,18 +412,18 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
 
     NON_CONST_METHOD_HINT();
 
-    if (!force && _engine->GameTime.GameTick() < cr->_talkNextTick) {
+    if (!force && _engine->GameTime.GameplayTime() < cr->_talkNextTime) {
         return;
     }
 
-    cr->_talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
+    cr->_talkNextTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME};
 
     if (cr->Talk.Type == TalkType::None) {
         return;
     }
 
     // Check time of talk
-    if (cr->Talk.TalkTime != 0 && _engine->GameTime.GameTick() - cr->Talk.StartTick > cr->Talk.TalkTime) {
+    if (cr->Talk.TalkTime != time_duration {} && _engine->GameTime.GameplayTime() - cr->Talk.StartTime >= cr->Talk.TalkTime) {
         CloseTalk(cr);
         return;
     }

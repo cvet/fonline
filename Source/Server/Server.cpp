@@ -348,8 +348,8 @@ void FOServer::Start()
     DbStorage.CommitChanges();
 
     GameTime.FrameAdvance();
-    _stats.ServerStartTick = GameTime.FrameTick();
-    _fpsTick = GameTime.FrameTick();
+    _stats.ServerStartTime = GameTime.FrameTime();
+    _fpsTime = GameTime.FrameTime();
     _started = true;
 
     WriteLog("Start server complete!");
@@ -429,7 +429,6 @@ void FOServer::Shutdown()
     WriteLog("Approx cycle period: {}", _stats.LoopTime / (_stats.LoopCycles != 0u ? _stats.LoopCycles : 1));
     WriteLog("Min cycle period: {}", _stats.LoopMin);
     WriteLog("Max cycle period: {}", _stats.LoopMax);
-    WriteLog("Count of lags (>100ms): {}", _stats.LagsCount);
 
     _didFinishDispatcher();
 }
@@ -446,7 +445,7 @@ void FOServer::MainLoop()
 
     // Advance time
     if (GameTime.FrameAdvance()) {
-        const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
+        const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
         SetYear(st.Year);
         SetMonth(st.Month);
         SetDay(st.Day);
@@ -557,16 +556,13 @@ void FOServer::MainLoop()
     _stats.LoopMax = std::max(loop_tick, _stats.LoopMax);
     _stats.LoopMax = std::min(loop_tick, _stats.LoopMin);
     _stats.CycleTime = loop_tick;
-    if (loop_tick > 100) {
-        _stats.LagsCount++;
-    }
-    _stats.Uptime = (GameTime.FrameTick() - _stats.ServerStartTick) / 1000;
+    _stats.Uptime = GameTime.FrameTime() - _stats.ServerStartTime;
 
     // Calculate fps
-    if (GameTime.FrameTick() - _fpsTick >= 1000) {
+    if (GameTime.FrameTime() - _fpsTime >= std::chrono::milliseconds {1000}) {
         _stats.Fps = _fpsCounter;
         _fpsCounter = 0;
-        _fpsTick = GameTime.FrameTick();
+        _fpsTime = GameTime.FrameTime();
     }
     else {
         _fpsCounter++;
@@ -593,7 +589,7 @@ void FOServer::DrawGui(string_view server_name)
         ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
         if (ImGui::TreeNode("Info")) {
             buf = "";
-            const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
+            const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
             buf += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
             buf += _str("Connections: {}\n", _stats.CurOnline);
             buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
@@ -602,11 +598,11 @@ void FOServer::DrawGui(string_view server_name)
             buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
             buf += _str("Cycles per second: {}\n", _stats.Fps);
             buf += _str("Cycle time: {}\n", _stats.CycleTime);
-            const auto seconds = _stats.Uptime;
+            const auto seconds = time_duration_to_ms<uint64>(_stats.Uptime);
             buf += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
             buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
             buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-            buf += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / (_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+            buf += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
             ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
             ImGui::TreePop();
         }
@@ -701,7 +697,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     connection->InBuf.ShrinkReadBuf();
 
     if (connection->InBuf.NeedProcess()) {
-        connection->LastActivityTime = GameTime.FrameTick();
+        connection->LastActivityTime = GameTime.FrameTime();
 
         uint msg = 0;
         connection->InBuf >> msg;
@@ -713,8 +709,8 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 // even if answer data will change its meaning
                 CONNECTION_OUTPUT_BEGIN(connection);
                 connection->DisableCompression();
-                connection->OutBuf << _stats.CurOnline;
-                connection->OutBuf << _stats.Uptime;
+                connection->OutBuf << static_cast<uint>(_stats.CurOnline);
+                connection->OutBuf << time_duration_to_ms<uint>(_stats.Uptime);
                 connection->OutBuf << static_cast<uint>(0);
                 connection->OutBuf << static_cast<uint8>(0);
                 connection->OutBuf << static_cast<uint8>(0xF0);
@@ -864,7 +860,7 @@ void FOServer::ProcessPlayer(Player* player)
             break;
         }
 
-        player->Connection->LastActivityTime = GameTime.FrameTick();
+        player->Connection->LastActivityTime = GameTime.FrameTime();
 
         CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
     }
@@ -886,17 +882,17 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         return;
     }
 
-    if (connection->LastActivityTime == 0u) {
-        connection->LastActivityTime = GameTime.FrameTick();
+    if (connection->LastActivityTime == time_point {}) {
+        connection->LastActivityTime = GameTime.FrameTime();
     }
 
-    if (Settings.InactivityDisconnectTime != 0u && GameTime.FrameTick() - connection->LastActivityTime >= Settings.InactivityDisconnectTime) {
+    if (Settings.InactivityDisconnectTime != 0u && GameTime.FrameTime() - connection->LastActivityTime >= std::chrono::milliseconds {Settings.InactivityDisconnectTime}) {
         WriteLog("Connection activity timeout from ip '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
 
-    if (connection->WasHandshake && (connection->PingNextTick == 0u || GameTime.FrameTick() >= connection->PingNextTick)) {
+    if (connection->WasHandshake && (connection->PingNextTime == time_point {} || GameTime.FrameTime() >= connection->PingNextTime)) {
         if (!connection->PingOk && !IsRunInDebugger()) {
             connection->HardDisconnect();
             return;
@@ -908,7 +904,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(connection);
 
-        connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
+        connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
         connection->PingOk = false;
     }
 }
@@ -1142,8 +1138,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        string str = _str("Unlogined players: {}, Logined players: {}, Critters: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", //
-            _unloginedPlayers.size(), CrMngr.PlayersInGame(), CrMngr.CrittersInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - _stats.ServerStartTick) / 1000 / 60);
+        string str = _str("Unlogined players: {}, Logined players: {}, Critters: {}, Frame time: {}, Server uptime: {}", //
+            _unloginedPlayers.size(), CrMngr.PlayersInGame(), CrMngr.CrittersInGame(), GameTime.FrameTime(), GameTime.FrameTime() - _stats.ServerStartTime);
 
         result += str;
 
@@ -1594,7 +1590,7 @@ void FOServer::ProcessCritter(Critter* cr)
     STACK_TRACE_ENTRY();
 
 #if FO_SINGLEPLAYER
-    if (GameTime.IsGamePaused()) {
+    if (GameTime.IsGameplayPaused()) {
         return;
     }
 #endif
@@ -1625,9 +1621,9 @@ void FOServer::ProcessCritter(Critter* cr)
 
     // Cache look distance
     // Todo: disable look distance caching
-    if (GameTime.GameTick() >= cr->CacheValuesNextTick) {
+    if (GameTime.GameplayTime() >= cr->CacheValuesNextTime) {
         cr->LookCacheValue = cr->GetLookDistance();
-        cr->CacheValuesNextTick = GameTime.GameTick() + 3000;
+        cr->CacheValuesNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {3000};
     }
 
     // Time events
@@ -1638,7 +1634,7 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 
     // Remove player critter from game
-    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
+    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0 && cr->GetOfflineTime() >= std::chrono::milliseconds {Settings.MinimumOfflineTime}) {
         LogoutCritter(cr);
     }
 }
@@ -1829,7 +1825,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     if (ping == PING_CLIENT) {
         connection->PingOk = true;
-        connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
+        connection->PingNextTime = GameTime.FrameTime() + std::chrono::milliseconds {PING_CLIENT_LIFE_TIME};
         return;
     }
 
@@ -1937,20 +1933,20 @@ void FOServer::Process_Register(Player* unlogined_player)
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0u) {
         auto ip = unlogined_player->Connection->GetIp();
-        const auto reg_tick = Settings.RegistrationTimeout * 1000;
+        const auto reg_tick = std::chrono::milliseconds {Settings.RegistrationTimeout * 1000};
         if (const auto it = _regIp.find(ip); it != _regIp.end()) {
             auto& last_reg = it->second;
-            const auto tick = GameTime.FrameTick();
+            const auto tick = GameTime.FrameTime();
             if (tick - last_reg < reg_tick) {
                 unlogined_player->Send_TextMsg(nullptr, STR_NET_REGISTRATION_IP_WAIT, SAY_NETMSG, TEXTMSG_GAME);
-                unlogined_player->Send_TextMsgLex(nullptr, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, _str("$time{}", (reg_tick - (tick - last_reg)) / 60000 + 1));
+                unlogined_player->Send_TextMsgLex(nullptr, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, _str("$time{}", time_duration_to_ms<uint>(reg_tick - (tick - last_reg)) / 60000 + 1));
                 unlogined_player->Connection->GracefulDisconnect();
                 return;
             }
             last_reg = tick;
         }
         else {
-            _regIp.insert(std::make_pair(ip, GameTime.FrameTick()));
+            _regIp.emplace(ip, GameTime.FrameTime());
         }
     }
 
@@ -3104,7 +3100,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
     RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
 
     const auto move_uid = cr->Moving.Uid;
-    auto normalized_time = static_cast<float>(GameTime.FrameTick() - cr->Moving.StartTick) / cr->Moving.WholeTime;
+    auto normalized_time = time_duration_to_ms<float>(GameTime.FrameTime() - cr->Moving.StartTime) / cr->Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
@@ -3263,7 +3259,7 @@ void FOServer::MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 st
     }
 
     cr->Moving.Speed = speed;
-    cr->Moving.StartTick = GameTime.FrameTick();
+    cr->Moving.StartTime = GameTime.FrameTime();
     cr->Moving.Steps = steps;
     cr->Moving.ControlSteps = control_steps;
     cr->Moving.StartHexX = start_hx;
@@ -3832,8 +3828,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
     cl->Talk.DialogPackId = selected_dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
-    cl->Talk.StartTick = GameTime.GameTick();
-    cl->Talk.TalkTime = Settings.DlgTalkMaxTime;
+    cl->Talk.StartTime = GameTime.GameplayTime();
+    cl->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgTalkMaxTime};
     cl->Talk.Barter = false;
     cl->Talk.IgnoreDistance = ignore_distance;
 
@@ -3951,8 +3947,8 @@ void FOServer::Process_Dialog(Player* player)
 
             if (!talker->OnBarter.Fire(cr, true, talker->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(talker, cr, true, talker->GetBarterPlayers() + 1)) {
                 cr->Talk.Barter = true;
-                cr->Talk.StartTick = GameTime.GameTick();
-                cr->Talk.TalkTime = Settings.DlgBarterMaxTime;
+                cr->Talk.StartTime = GameTime.GameplayTime();
+                cr->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgBarterMaxTime};
             }
         };
 
@@ -4088,8 +4084,8 @@ void FOServer::Process_Dialog(Player* player)
         return;
     }
 
-    cr->Talk.StartTick = GameTime.GameTick();
-    cr->Talk.TalkTime = Settings.DlgTalkMaxTime;
+    cr->Talk.StartTime = GameTime.GameplayTime();
+    cr->Talk.TalkTime = std::chrono::milliseconds {Settings.DlgTalkMaxTime};
     cr->Send_Talk();
 }
 

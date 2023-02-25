@@ -131,7 +131,8 @@ public:
     int ScrX {};
     int ScrY {};
     Sprite* SpriteChain {};
-    AnyFrames* SimplyTile[2] {};
+    AnyFrames* SimpleTile[2] {};
+    Tile SimpleTileStub {};
     vector<Tile>* Tiles[2] {};
     vector<CritterHexView*>* Critters {};
     vector<ItemHexView*>* Items {};
@@ -185,7 +186,7 @@ public:
 
     void AddTile(const MapTile& tile);
 
-    void AddMapText(string_view str, uint16 hx, uint16 hy, uint color, uint show_time, bool fade, int ox, int oy);
+    void AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time_duration show_time, bool fade, int ox, int oy);
     auto GetRectForText(uint16 hx, uint16 hy) -> IRect;
 
     auto FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint16& end_x, uint16& end_y, int cut) -> optional<FindPathResult>;
@@ -291,8 +292,8 @@ private:
     {
         uint16 HexX {};
         uint16 HexY {};
-        uint StartTick {};
-        uint Tick {};
+        time_point StartTime {};
+        time_duration Duration {};
         string Text {};
         uint Color {};
         bool Fade {};
@@ -355,6 +356,8 @@ private:
     Sprites _mainTree;
     Sprites _tilesTree;
     Sprites _roofTree;
+
+    time_point _scrollLastTime {};
 
     AnyFrames* _picTrack1 {};
     AnyFrames* _picTrack2 {};
@@ -431,6 +434,9 @@ private:
     AnyFrames* _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
+    int _lastCurX {};
+    uint16 _lastCurHx {};
+    uint16 _lastCurHy {};
 
     set<hstring> _fastPids {};
     set<hstring> _ignorePids {};

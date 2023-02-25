@@ -70,12 +70,13 @@ void Map::Process()
 {
     STACK_TRACE_ENTRY();
 
-    const auto tick = _engine->GameTime.GameTick();
-    ProcessLoop(0, GetLoopTime1(), tick);
-    ProcessLoop(1, GetLoopTime2(), tick);
-    ProcessLoop(2, GetLoopTime3(), tick);
-    ProcessLoop(3, GetLoopTime4(), tick);
-    ProcessLoop(4, GetLoopTime5(), tick);
+    const auto time = _engine->GameTime.GameplayTime();
+
+    ProcessLoop(0, GetLoopTime1(), time_duration_to_ms<uint>(time.time_since_epoch()));
+    ProcessLoop(1, GetLoopTime2(), time_duration_to_ms<uint>(time.time_since_epoch()));
+    ProcessLoop(2, GetLoopTime3(), time_duration_to_ms<uint>(time.time_since_epoch()));
+    ProcessLoop(3, GetLoopTime4(), time_duration_to_ms<uint>(time.time_since_epoch()));
+    ProcessLoop(4, GetLoopTime5(), time_duration_to_ms<uint>(time.time_since_epoch()));
 }
 
 void Map::ProcessLoop(int index, uint time, uint tick)

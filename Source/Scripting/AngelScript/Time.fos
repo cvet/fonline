@@ -143,7 +143,7 @@ uint GetDaysInMonth(uint16 year, uint16 month)
 string GetTimeString(const string format, uint fullSecond)
 {
     uint16 year = 0, month = 0, day = 0, dayOfWeek = 0, hour = 0, minute = 0, second = 0;
-    Game.GetGameTime(fullSecond, year, month, day, dayOfWeek, hour, minute, second);
+    Game.EvaluateGameTime(fullSecond, year, month, day, dayOfWeek, hour, minute, second);
     return GetTimeString(format, year, month, day, dayOfWeek, hour, minute, second);
 }
 
@@ -189,7 +189,7 @@ string DateTimeToString(uint gameTime)
     uint16 hour = 0;
     uint16 minute = 0;
     uint16 second = 0;
-    Game.GetGameTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
+    Game.EvaluateGameTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
     return "" + (day > 9 ? ("" + day) : ("0" + day)) + "." + (month > 9 ? ("" + month) : ("0" + month)) + "." + year + " " +
            (hour > 9 ? ("" + hour) : ("0" + hour)) + ":" + (minute > 9 ? ("" + minute) : ("0" + minute));
 }

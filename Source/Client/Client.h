@@ -116,10 +116,10 @@ public:
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
-    void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
-    void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
-    void ScreenQuake(int noise, uint time);
+    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
+    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
+    void ScreenFade(time_duration time, uint from_color, uint to_color, bool push_back);
+    void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
@@ -258,15 +258,15 @@ protected:
     {
         AnyFrames* Frames {};
         AtlasType ResType {};
-        uint LastTick {};
+        time_point LastUpdateTime {};
         uint16 Flags {};
         uint CurSpr {};
     };
 
     struct ScreenEffect
     {
-        uint BeginTick {};
-        uint Time {};
+        time_point BeginTime {};
+        time_duration Duration {};
         uint StartColor {};
         uint EndColor {};
     };
@@ -291,8 +291,6 @@ protected:
         vector<string> MapNames {};
         uint CurMap {};
     };
-
-    static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
     void ProcessAutoLogin();
     void ProcessInputEvents();
@@ -392,7 +390,7 @@ protected:
     bool _isAutoLogin {};
     PlayerView* _curPlayer {};
     LocationView* _curLocation {};
-    uint _fpsTick {};
+    time_point _fpsTime {};
     uint _fpsCounter {};
     int _screenModeMain {SCREEN_WAIT};
     ItemView* _someItem {};
@@ -410,7 +408,7 @@ protected:
     float _screenOffsXf {};
     float _screenOffsYf {};
     float _screenOffsStep {};
-    uint _screenOffsNextTick {};
+    time_point _screenOffsNextTime {};
     uint _gameMouseStay {};
     uint _daySumRGB {};
     CritterView* _chosen {};
@@ -429,7 +427,7 @@ protected:
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};
-    uint _lmapPrepareNextTick {};
+    time_point _lmapPrepareNextTime {};
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
 };

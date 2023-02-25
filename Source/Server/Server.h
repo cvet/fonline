@@ -181,8 +181,8 @@ public:
 private:
     struct ServerStats
     {
-        uint ServerStartTick {};
-        uint Uptime {};
+        time_point ServerStartTime {};
+        time_duration Uptime {};
         int64 BytesSend {};
         int64 BytesRecv {};
         int64 DataReal {1};
@@ -263,8 +263,8 @@ private:
 
     std::atomic_bool _started {};
     ServerStats _stats {};
-    map<uint, uint> _regIp {};
-    uint _fpsTick {};
+    map<uint, time_point> _regIp {};
+    time_point _fpsTime {};
     size_t _fpsCounter {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};

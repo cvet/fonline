@@ -373,7 +373,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) :
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    _useGameTimer = true;
+    _useGameplayTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
 }
 
@@ -793,16 +793,15 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         _speedAdjustCur = speed;
 
         // End time
-        const auto tick = GetTick();
         if (IsBitSet(flags, ANIMATION_ONE_TIME)) {
-            _endTick = tick + static_cast<uint>(period / GetSpeed() * 1000.0f);
+            _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint>(period / GetSpeed() * 1000.0f)};
         }
         else {
-            _endTick = 0;
+            _endTime = time_point {};
         }
 
         // Force redraw
-        _lastDrawTick = 0;
+        _lastDrawTime = time_point {};
     }
 
     // Set animation for children
@@ -1012,7 +1011,7 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return GetTick() < _endTick;
+    return GetTime() < _endTime;
 }
 
 auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
@@ -1060,14 +1059,14 @@ auto ModelInstance::GetSpeed() const -> float
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
-auto ModelInstance::GetTick() const -> uint
+auto ModelInstance::GetTime() const -> time_point
 {
     STACK_TRACE_ENTRY();
 
-    if (_useGameTimer) {
-        return _modelMngr._gameTime.GameTick();
+    if (_useGameplayTimer) {
+        return _modelMngr._gameTime.GameplayTime();
     }
-    return _modelMngr._gameTime.FrameTick();
+    return _modelMngr._gameTime.FrameTime();
 }
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
@@ -1292,7 +1291,7 @@ void ModelInstance::SetTimer(bool use_game_timer)
 {
     STACK_TRACE_ENTRY();
 
-    _useGameTimer = use_game_timer;
+    _useGameplayTimer = use_game_timer;
 }
 
 void ModelInstance::GenerateCombinedMeshes()
@@ -1790,7 +1789,7 @@ auto ModelInstance::NeedDraw() const -> bool
         return true;
     }
 
-    return _combinedMeshesSize != 0u && (_lastDrawTick == 0u || GetTick() - _lastDrawTick >= _modelMngr._animDelay);
+    return _combinedMeshesSize != 0 && (_lastDrawTime == time_point {} || GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animDelay});
 }
 
 void ModelInstance::Draw()
@@ -1800,9 +1799,10 @@ void ModelInstance::Draw()
     _forceRedraw = false;
 
     // Move timer
-    const auto tick = GetTick();
-    const auto elapsed = _lastDrawTick != 0u ? 0.001f * static_cast<float>(tick - _lastDrawTick) : 0.0f;
-    _lastDrawTick = tick;
+    const auto time = GetTime();
+    const auto elapsed = _lastDrawTime != time_point {} ? 0.001f * time_duration_to_ms<float>(time - _lastDrawTime) : 0.0f;
+
+    _lastDrawTime = time;
 
     // Move animation
     const auto w = _frameWidth / FRAME_SCALE;
@@ -2060,11 +2060,11 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     return tuple {x, y};
 }
 
-auto ModelInstance::GetAnimDuration() const -> uint
+auto ModelInstance::GetAnimDuration() const -> time_duration
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_animPosPeriod * 1000.0f);
+    return std::chrono::milliseconds {static_cast<uint>(_animPosPeriod * 1000.0f)};
 }
 
 void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, vec3 move)
