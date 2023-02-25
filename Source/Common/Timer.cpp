@@ -34,6 +34,10 @@
 #include "Timer.h"
 #include "WinApi-Include.h"
 
+#if !FO_WINDOWS
+#include <sys/time.h>
+#endif
+
 GameTimer::GameTimer(TimerSettings& settings) :
     _settings {settings}
 {
