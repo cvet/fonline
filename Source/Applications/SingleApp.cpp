@@ -118,17 +118,17 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
 #else
         while (!App->Settings.Quit) {
-            const auto start_loop = Timer::RealtimeTick();
+            const auto start_loop = Timer::CurTime();
 
             MainEntry(nullptr);
 
             if (!App->Settings.VSync && App->Settings.FixedFPS != 0) {
                 if (App->Settings.FixedFPS > 0) {
                     static auto balance = 0.0;
-                    const auto elapsed = Timer::RealtimeTick() - start_loop;
+                    const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - start_loop).count()) / 1000000.0;
                     const auto need_elapsed = 1000.0 / static_cast<double>(App->Settings.FixedFPS);
-                    if (need_elapsed > elapsed) {
-                        const auto sleep = need_elapsed - elapsed + balance;
+                    if (need_elapsed > elapsed_ms) {
+                        const auto sleep = need_elapsed - elapsed_ms + balance;
                         balance = fmod(sleep, 1.0);
                         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
                     }
