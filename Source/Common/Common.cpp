@@ -396,6 +396,41 @@ void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
+FrameBalancer::FrameBalancer(bool enabled, int fixed_fps) :
+    _enabled {enabled},
+    _fixedFps {fixed_fps}
+{
+}
+
+void FrameBalancer::StartLoop()
+{
+    if (!_enabled) {
+        return;
+    }
+
+    _loopStart = Timer::CurTime();
+}
+
+void FrameBalancer::EndLoop()
+{
+    if (!_enabled) {
+        return;
+    }
+
+    if (_fixedFps > 0) {
+        const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - _loopStart).count()) / 1000000.0;
+        const auto need_elapsed = 1000.0 / static_cast<double>(_fixedFps);
+        if (need_elapsed > elapsed_ms) {
+            const auto sleep = need_elapsed - elapsed_ms + _balance;
+            _balance = std::fmod(sleep, 1.0);
+            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+        }
+    }
+    else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(-_fixedFps));
+    }
+}
+
 // Dummy symbols for web build to avoid linker errors
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)

@@ -1800,6 +1800,21 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
+class FrameBalancer
+{
+public:
+    FrameBalancer(bool enabled, int fixed_fps);
+
+    void StartLoop();
+    void EndLoop();
+
+private:
+    bool _enabled {};
+    int _fixedFps {};
+    time_point _loopStart {};
+    double _balance {};
+};
+
 // Interthread communication between server and client
 using InterthreadDataCallback = std::function<void(const_span<uint8>)>;
 extern map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;

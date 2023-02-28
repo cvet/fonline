@@ -169,27 +169,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balance = 0.0;
+        auto balancer = FrameBalancer(!App->Settings.VSync && App->Settings.FixedFPS != 0, App->Settings.FixedFPS);
 
         while (!App->Settings.Quit) {
-            const auto start_loop = Timer::CurTime();
-
+            balancer.StartLoop();
             MainEntry(nullptr);
-
-            if (!App->Settings.VSync && App->Settings.FixedFPS != 0) {
-                if (App->Settings.FixedFPS > 0) {
-                    const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - start_loop).count()) / 1000000.0;
-                    const auto need_elapsed = 1000.0 / static_cast<double>(App->Settings.FixedFPS);
-                    if (need_elapsed > elapsed_ms) {
-                        const auto sleep = need_elapsed - elapsed_ms + balance;
-                        balance = std::fmod(sleep, 1.0);
-                        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
-                    }
-                }
-                else {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(-App->Settings.FixedFPS));
-                }
-            }
+            balancer.EndLoop();
         }
 #endif
 
