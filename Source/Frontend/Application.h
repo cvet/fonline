@@ -252,12 +252,14 @@ class AppWindow final
 
 public:
     [[nodiscard]] auto GetSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
     void GrabInput(bool enable);
     void SetSize(int w, int h);
+    void SetScreenSize(int w, int h);
     void SetPosition(int x, int y);
     void Minimize();
     auto ToggleFullscreen(bool enable) -> bool;
@@ -266,14 +268,16 @@ public:
     void Destroy();
 
     EventObserver<> OnWindowSizeChanged {};
+    EventObserver<> OnScreenSizeChanged {};
 
 private:
     AppWindow() = default;
 
     WindowInternalHandle* _windowHandle {};
     bool _grabbed {};
-    int _nonConstHelper {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
+    EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
+    int _nonConstHelper {};
 };
 
 class AppRender final

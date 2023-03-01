@@ -159,7 +159,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     DummyAnimation->CntFrm = 1;
     DummyAnimation->Ticks = 100;
 
-    _eventUnsubscriber += _window->OnWindowSizeChanged += [this] { OnWindowSizeChanged(); };
+    _eventUnsubscriber += _window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
 SpriteManager::~SpriteManager()
@@ -191,20 +191,53 @@ void SpriteManager::SetWindowSize(int w, int h)
     _window->SetSize(w, h);
 }
 
-auto SpriteManager::GetWindowPosition() const -> tuple<int, int>
+auto SpriteManager::GetScreenSize() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();
 
-    return _window->GetPosition();
+    return _window->GetScreenSize();
 }
 
-void SpriteManager::SetWindowPosition(int x, int y)
+void SpriteManager::SetScreenSize(int w, int h)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    const auto diff_w = w - App->Settings.ScreenWidth;
+    const auto diff_h = h - App->Settings.ScreenHeight;
 
-    _window->SetPosition(x, y);
+    if (!App->Settings.Fullscreen) {
+        const auto [x, y] = _window->GetPosition();
+        _window->SetPosition(x - diff_w / 2, y - diff_h / 2);
+    }
+    else {
+        _windowSizeDiffX += diff_w / 2;
+        _windowSizeDiffY += diff_h / 2;
+    }
+
+    _window->SetScreenSize(w, h);
+}
+
+void SpriteManager::SwitchFullscreen()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!App->Settings.Fullscreen) {
+        if (_window->ToggleFullscreen(true)) {
+            App->Settings.Fullscreen = true;
+        }
+    }
+    else {
+        if (_window->ToggleFullscreen(false)) {
+            App->Settings.Fullscreen = false;
+
+            if (_windowSizeDiffX != 0 || _windowSizeDiffY != 0) {
+                const auto [x, y] = _window->GetPosition();
+                _window->SetPosition(x - _windowSizeDiffX, y - _windowSizeDiffY);
+                _windowSizeDiffX = 0;
+                _windowSizeDiffY = 0;
+            }
+        }
+    }
 }
 
 void SpriteManager::SetMousePosition(int x, int y)
@@ -301,7 +334,7 @@ void SpriteManager::EndScene()
     }
 }
 
-void SpriteManager::OnWindowSizeChanged()
+void SpriteManager::OnScreenSizeChanged()
 {
     STACK_TRACE_ENTRY();
 

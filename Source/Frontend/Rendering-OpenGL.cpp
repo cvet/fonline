@@ -114,8 +114,14 @@ static bool ForceGlslEsProfile {};
 static SDL_Window* SdlWindow {};
 static SDL_GLContext GlContext {};
 static GLint BaseFrameBufObj {};
+static bool BaseFrameBufObjBinded {};
+static int BaseFrameBufWidth {};
+static int BaseFrameBufHeight {};
+static int TargetWidth {};
+static int TargetHeight {};
 static mat44 ProjectionMatrixColMaj {};
 static RenderTexture* DummyTexture {};
+static IRect ViewPortRect {};
 
 // ReSharper disable CppInconsistentNaming
 static bool OGL_version_2_0 {};
@@ -339,6 +345,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #endif
 
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &BaseFrameBufObj));
+    BaseFrameBufWidth = settings.ScreenWidth;
+    BaseFrameBufHeight = settings.ScreenHeight;
 
     // Calculate atlas size
     GLint max_texture_size;
@@ -603,65 +611,61 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float left, float right, float bottom, f
     return result;
 }
 
+auto OpenGL_Renderer::GetViewPort() -> IRect
+{
+    STACK_TRACE_ENTRY();
+
+    return ViewPortRect;
+}
+
 void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     STACK_TRACE_ENTRY();
 
-    int width;
-    int height;
+    int vp_ox;
+    int vp_oy;
+    int vp_width;
+    int vp_height;
+    int screen_width;
+    int screen_height;
 
     if (tex != nullptr) {
         const auto* opengl_tex = static_cast<OpenGL_Texture*>(tex);
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
-        width = opengl_tex->Width;
-        height = opengl_tex->Height;
+        BaseFrameBufObjBinded = false;
+
+        vp_ox = 0;
+        vp_oy = 0;
+        vp_width = opengl_tex->Width;
+        vp_height = opengl_tex->Height;
+        screen_width = vp_width;
+        screen_height = vp_height;
     }
     else {
         GL(glBindFramebuffer(GL_FRAMEBUFFER, BaseFrameBufObj));
-        width = Settings->ScreenWidth;
-        height = Settings->ScreenHeight;
+        BaseFrameBufObjBinded = true;
+
+        const float back_buf_aspect = static_cast<float>(BaseFrameBufWidth) / static_cast<float>(BaseFrameBufHeight);
+        const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
+        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufHeight) * screen_aspect : static_cast<float>(BaseFrameBufHeight) * back_buf_aspect);
+        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BaseFrameBufWidth) / back_buf_aspect : static_cast<float>(BaseFrameBufWidth) / screen_aspect);
+
+        vp_ox = (BaseFrameBufWidth - fit_width) / 2;
+        vp_oy = (BaseFrameBufHeight - fit_height) / 2;
+        vp_width = fit_width;
+        vp_height = fit_height;
+        screen_width = Settings->ScreenWidth;
+        screen_height = Settings->ScreenHeight;
     }
 
-    GL(glViewport(0, 0, width, height));
+    ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
+    GL(glViewport(vp_ox, vp_oy, vp_width, vp_height));
 
-    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(screen_width), static_cast<float>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
-    // Todo: scretch main view for main render target
-    /*
-     *int w, h;
-    bool screen_size;
-    if (!rtStack.empty()) {
-        RenderTarget* rt = rtStack.back();
-        w = rt->TargetTexture->Width;
-        h = rt->TargetTexture->Height;
-        screen_size = (rt->ScreenSize && !rt->Width && !rt->Height);
-    }
-    else {
-        GetWindowSize(w, h);
-        screen_size = true;
-    }
-
-    if (screen_size && settings.Fullscreen) {
-        // Preserve aspect ratio in fullscreen mode
-        float native_aspect = (float)w / h;
-        float aspect = (float)settings.ScreenWidth / settings.ScreenHeight;
-        int new_w = (int)roundf((aspect <= native_aspect ? (float)h * aspect : (float)h * native_aspect));
-        int new_h = (int)roundf((aspect <= native_aspect ? (float)w / native_aspect : (float)w / aspect));
-        GL(glViewport((w - new_w) / 2, (h - new_h) / 2, new_w, new_h));
-    }
-    else {
-        GL(glViewport(0, 0, w, h));
-    }
-
-    if (screen_size) {
-        AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)settings.ScreenWidth, (float)settings.ScreenHeight, 0.0f, -1.0f, 1.0f);
-    }
-    else {
-        AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f);
-    }
-    projectionMatrixCM.Transpose(); // Convert to column major order
-    */
+    TargetWidth = screen_width;
+    TargetHeight = screen_height;
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
@@ -699,8 +703,26 @@ void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 {
     STACK_TRACE_ENTRY();
 
+    int l, t, r, b;
+
+    if (ViewPortRect.Width() != TargetWidth || ViewPortRect.Height() != TargetHeight) {
+        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetWidth);
+        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetHeight);
+
+        l = ViewPortRect.Left + iround(static_cast<float>(x) * x_ratio);
+        t = ViewPortRect.Top + iround(static_cast<float>(y) * y_ratio);
+        r = ViewPortRect.Left + iround(static_cast<float>(x + width) * x_ratio);
+        b = ViewPortRect.Top + iround(static_cast<float>(y + height) * y_ratio);
+    }
+    else {
+        l = ViewPortRect.Left + x;
+        t = ViewPortRect.Top + y;
+        r = ViewPortRect.Left + x + width;
+        b = ViewPortRect.Top + y + height;
+    }
+
     GL(glEnable(GL_SCISSOR_TEST));
-    GL(glScissor(x, Settings->ScreenHeight - (y + height), width, height));
+    GL(glScissor(l, ViewPortRect.Top + ViewPortRect.Bottom - b, r - l, b - t));
 }
 
 void OpenGL_Renderer::DisableScissor()
@@ -708,6 +730,16 @@ void OpenGL_Renderer::DisableScissor()
     STACK_TRACE_ENTRY();
 
     GL(glDisable(GL_SCISSOR_TEST));
+}
+
+void OpenGL_Renderer::OnResizeWindow(int width, int height)
+{
+    BaseFrameBufWidth = width;
+    BaseFrameBufHeight = height;
+
+    if (BaseFrameBufObjBinded) {
+        SetRenderTarget(nullptr);
+    }
 }
 
 OpenGL_Texture::~OpenGL_Texture()

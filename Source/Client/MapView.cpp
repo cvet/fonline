@@ -395,7 +395,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto) :
     _hexField.resize(_maxHexX * _maxHexY);
     _hexLight.resize(_maxHexX * _maxHexY * 3);
 
-    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnWindowSizeChanged += [this] { OnWindowSizeChanged(); };
+    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
 MapView::~MapView()
@@ -4275,7 +4275,7 @@ auto MapView::GetMapDayTime() const -> int
     return map_time >= 0 ? map_time : GetGlobalDayTime();
 }
 
-void MapView::OnWindowSizeChanged()
+void MapView::OnScreenSizeChanged()
 {
     STACK_TRACE_ENTRY();
 

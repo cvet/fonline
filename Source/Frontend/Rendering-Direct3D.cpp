@@ -138,6 +138,11 @@ static bool ScissorEnabled {};
 static D3D11_RECT ScissorRect {};
 static D3D11_RECT DisabledScissorRect {};
 static D3D11_VIEWPORT ViewPort {};
+static IRect ViewPortRect {};
+static int BackBufWidth {};
+static int BackBufHeight {};
+static int TargetWidth {};
+static int TargetHeight {};
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
@@ -405,6 +410,9 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     const auto d3d_create_back_buf_rt_view = D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
     back_buf->Release();
+
+    BackBufWidth = settings.ScreenWidth;
+    BackBufHeight = settings.ScreenHeight;
 
     // One pixel staging texture
     D3D11_TEXTURE2D_DESC one_pix_staging_desc;
@@ -726,45 +734,76 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float left, float right, float bottom,
     return result;
 }
 
+auto Direct3D_Renderer::GetViewPort() -> IRect
+{
+    STACK_TRACE_ENTRY();
+
+    return ViewPortRect;
+}
+
 void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
 {
     STACK_TRACE_ENTRY();
 
-    int width;
-    int height;
+    int vp_ox;
+    int vp_oy;
+    int vp_width;
+    int vp_height;
+    int screen_width;
+    int screen_height;
 
     if (tex != nullptr) {
         const auto* d3d_tex = static_cast<Direct3D_Texture*>(tex);
         CurRenderTarget = d3d_tex->RenderTargetView;
         CurDepthStencil = d3d_tex->DepthStencilView;
-        width = d3d_tex->Width;
-        height = d3d_tex->Height;
+
+        vp_ox = 0;
+        vp_oy = 0;
+        vp_width = d3d_tex->Width;
+        vp_height = d3d_tex->Height;
+        screen_width = vp_width;
+        screen_height = vp_height;
     }
     else {
         CurRenderTarget = MainRenderTarget;
         CurDepthStencil = nullptr;
-        width = Settings->ScreenWidth;
-        height = Settings->ScreenHeight;
+
+        const float back_buf_aspect = static_cast<float>(BackBufWidth) / static_cast<float>(BackBufHeight);
+        const float screen_aspect = static_cast<float>(Settings->ScreenWidth) / static_cast<float>(Settings->ScreenHeight);
+        const int fit_width = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufHeight) * screen_aspect : static_cast<float>(BackBufHeight) * back_buf_aspect);
+        const int fit_height = iround(screen_aspect <= back_buf_aspect ? static_cast<float>(BackBufWidth) / back_buf_aspect : static_cast<float>(BackBufWidth) / screen_aspect);
+
+        vp_ox = (BackBufWidth - fit_width) / 2;
+        vp_oy = (BackBufHeight - fit_height) / 2;
+        vp_width = fit_width;
+        vp_height = fit_height;
+        screen_width = Settings->ScreenWidth;
+        screen_height = Settings->ScreenHeight;
     }
 
     D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
 
-    ViewPort.Width = static_cast<FLOAT>(width);
-    ViewPort.Height = static_cast<FLOAT>(height);
+    ViewPortRect = IRect {vp_ox, vp_oy, vp_ox + vp_width, vp_oy + vp_height};
+
+    ViewPort.Width = static_cast<FLOAT>(vp_width);
+    ViewPort.Height = static_cast<FLOAT>(vp_height);
     ViewPort.MinDepth = 0.0f;
     ViewPort.MaxDepth = 1.0f;
-    ViewPort.TopLeftX = 0.0f;
-    ViewPort.TopLeftY = 0.0f;
+    ViewPort.TopLeftX = static_cast<FLOAT>(vp_ox);
+    ViewPort.TopLeftY = static_cast<FLOAT>(vp_oy);
 
     D3DDeviceContext->RSSetViewports(1, &ViewPort);
 
-    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, -10.0f, 10.0f);
+    ProjectionMatrixColMaj = CreateOrthoMatrix(0.0f, static_cast<float>(screen_width), static_cast<float>(screen_height), 0.0f, -10.0f, 10.0f);
     ProjectionMatrixColMaj.Transpose(); // Convert to column major order
 
-    DisabledScissorRect.left = 0;
-    DisabledScissorRect.top = 0;
-    DisabledScissorRect.right = width;
-    DisabledScissorRect.bottom = height;
+    DisabledScissorRect.left = vp_ox;
+    DisabledScissorRect.top = vp_oy;
+    DisabledScissorRect.right = vp_ox + vp_width;
+    DisabledScissorRect.bottom = vp_oy + vp_height;
+
+    TargetWidth = screen_width;
+    TargetHeight = screen_height;
 }
 
 void Direct3D_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
@@ -799,10 +838,21 @@ void Direct3D_Renderer::EnableScissor(int x, int y, int width, int height)
 {
     STACK_TRACE_ENTRY();
 
-    ScissorRect.left = x;
-    ScissorRect.top = y;
-    ScissorRect.right = x + width;
-    ScissorRect.bottom = y + height;
+    if (ViewPortRect.Width() != TargetWidth || ViewPortRect.Height() != TargetHeight) {
+        const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetWidth);
+        const float y_ratio = static_cast<float>(ViewPortRect.Height()) / static_cast<float>(TargetHeight);
+
+        ScissorRect.left = ViewPortRect.Left + iround(static_cast<float>(x) * x_ratio);
+        ScissorRect.top = ViewPortRect.Top + iround(static_cast<float>(y) * y_ratio);
+        ScissorRect.right = ViewPortRect.Left + iround(static_cast<float>(x + width) * x_ratio);
+        ScissorRect.bottom = ViewPortRect.Top + iround(static_cast<float>(y + height) * y_ratio);
+    }
+    else {
+        ScissorRect.left = ViewPortRect.Left + x;
+        ScissorRect.top = ViewPortRect.Top + y;
+        ScissorRect.right = ViewPortRect.Left + x + width;
+        ScissorRect.bottom = ViewPortRect.Top + y + height;
+    }
 
     ScissorEnabled = true;
 }
@@ -812,6 +862,38 @@ void Direct3D_Renderer::DisableScissor()
     STACK_TRACE_ENTRY();
 
     ScissorEnabled = false;
+}
+
+void Direct3D_Renderer::OnResizeWindow(int width, int height)
+{
+    const auto is_cur_rt = CurRenderTarget == MainRenderTarget;
+
+    if (is_cur_rt) {
+        CurRenderTarget = nullptr;
+        RUNTIME_ASSERT(!CurDepthStencil);
+        D3DDeviceContext->OMSetRenderTargets(1, &CurRenderTarget, CurDepthStencil);
+    }
+
+    MainRenderTarget->Release();
+    MainRenderTarget = nullptr;
+
+    const auto d3d_resize_buffers = SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_UNKNOWN, 0);
+    RUNTIME_ASSERT(SUCCEEDED(d3d_resize_buffers));
+
+    ID3D11Texture2D* back_buf = nullptr;
+    const auto d3d_get_back_buf = SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
+    RUNTIME_ASSERT(SUCCEEDED(d3d_get_back_buf));
+    RUNTIME_ASSERT(back_buf);
+    const auto d3d_create_back_buf_rt_view = D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
+    RUNTIME_ASSERT(SUCCEEDED(d3d_create_back_buf_rt_view));
+    back_buf->Release();
+
+    BackBufWidth = width;
+    BackBufHeight = height;
+
+    if (is_cur_rt) {
+        SetRenderTarget(nullptr);
+    }
 }
 
 Direct3D_Texture::~Direct3D_Texture()

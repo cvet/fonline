@@ -332,7 +332,7 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
-    void OnWindowSizeChanged();
+    void OnScreenSizeChanged();
 
     EventUnsubscriber _eventUnsubscriber {};
 

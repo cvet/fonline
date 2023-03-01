@@ -262,6 +262,21 @@ void AppWindow::SetSize(int w, int h)
     UNUSED_VARIABLE(h);
 }
 
+auto AppWindow::GetScreenSize() const -> tuple<int, int>
+{
+    STACK_TRACE_ENTRY();
+
+    return {1000, 1000};
+}
+
+void AppWindow::SetScreenSize(int w, int h)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(w);
+    UNUSED_VARIABLE(h);
+}
+
 auto AppWindow::GetPosition() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();

@@ -260,7 +260,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop) { OnSetItemOpened(entity, prop); });
     }
 
-    _eventUnsubscriber += window->OnWindowSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
+    _eventUnsubscriber += window->OnScreenSizeChanged += [this] { OnScreenSizeChanged.Fire(); };
 
     ScreenFadeOut();
 
@@ -3731,22 +3731,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
     }
     else if (cmd == "SwitchFullscreen") {
-        if (!Settings.Fullscreen) {
-            if (SprMngr.EnableFullscreen()) {
-                Settings.Fullscreen = true;
-            }
-        }
-        else {
-            if (SprMngr.DisableFullscreen()) {
-                Settings.Fullscreen = false;
-
-                if (_windowResolutionDiffX != 0 || _windowResolutionDiffY != 0) {
-                    const auto [x, y] = SprMngr.GetWindowPosition();
-                    SprMngr.SetWindowPosition(x - _windowResolutionDiffX, y - _windowResolutionDiffY);
-                    _windowResolutionDiffX = _windowResolutionDiffY = 0;
-                }
-            }
-        }
+        SprMngr.SwitchFullscreen();
     }
     else if (cmd == "MinimizeWindow") {
         SprMngr.MinimizeWindow();
@@ -3796,19 +3781,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "SetResolution" && args.size() >= 3) {
         auto w = _str(args[1]).toInt();
         auto h = _str(args[2]).toInt();
-        auto diff_w = w - Settings.ScreenWidth;
-        auto diff_h = h - Settings.ScreenHeight;
 
+        SprMngr.SetScreenSize(w, h);
         SprMngr.SetWindowSize(w, h);
-
-        if (!Settings.Fullscreen) {
-            const auto [x, y] = SprMngr.GetWindowPosition();
-            SprMngr.SetWindowPosition(x - diff_w / 2, y - diff_h / 2);
-        }
-        else {
-            _windowResolutionDiffX += diff_w / 2;
-            _windowResolutionDiffY += diff_h / 2;
-        }
     }
     else if (cmd == "RefreshAlwaysOnTop") {
         SprMngr.SetAlwaysOnTop(Settings.AlwaysOnTop);

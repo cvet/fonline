@@ -202,7 +202,7 @@ public:
 
     [[nodiscard]] auto GetWindow() { NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
-    [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
+    [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
@@ -223,7 +223,8 @@ public:
 #endif
 
     void SetWindowSize(int w, int h);
-    void SetWindowPosition(int x, int y);
+    void SetScreenSize(int w, int h);
+    void SwitchFullscreen();
     void SetMousePosition(int x, int y);
     void MinimizeWindow();
     auto EnableFullscreen() -> bool;
@@ -292,7 +293,7 @@ private:
     void RenderModel(ModelInstance* model);
 #endif
 
-    void OnWindowSizeChanged();
+    void OnScreenSizeChanged();
 
     RenderSettings& _settings;
     AppWindow* _window;
@@ -332,6 +333,8 @@ private:
     vector<uint> _eggData {};
     vector<uint> _borderBuf {};
     float _spritesZoom {1.0f};
+    int _windowSizeDiffX {};
+    int _windowSizeDiffY {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};

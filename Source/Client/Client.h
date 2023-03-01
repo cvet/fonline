@@ -383,8 +383,6 @@ protected:
     EventUnsubscriber _eventUnsubscriber {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
-    int _windowResolutionDiffX {};
-    int _windowResolutionDiffY {};
     string _loginName {};
     string _loginPassword {};
     bool _isAutoLogin {};
