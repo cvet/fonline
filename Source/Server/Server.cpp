@@ -599,7 +599,7 @@ void FOServer::DrawGui(string_view server_name)
             buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
             buf += _str("Loops per second: {}\n", _stats.Fps);
             buf += _str("Loop time: {}\n", _stats.LastLoopTime);
-            const auto seconds = time_duration_to_ms<uint64>(_stats.Uptime);
+            const auto seconds = time_duration_to_ms<uint64>(_stats.Uptime) / 1000;
             buf += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
             buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
             buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
