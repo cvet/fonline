@@ -3569,6 +3569,15 @@ void FOMapper::ShowMap(MapView* map)
     SelectClear();
 
     CurMap = map;
+
+    if (const auto day_time = CurMap->GetCurDayTime(); day_time >= 0) {
+        SetHour(day_time / 60 % 24);
+        SetMinute(day_time % 60);
+    }
+    else {
+        SetHour(12);
+        SetMinute(0);
+    }
 }
 
 void FOMapper::SaveMap(MapView* map, string_view custom_name)

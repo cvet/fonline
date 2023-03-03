@@ -4270,6 +4270,10 @@ auto MapView::GetMapDayTime() const -> int
 {
     STACK_TRACE_ENTRY();
 
+    if (_mapperMode) {
+        return GetGlobalDayTime();
+    }
+
     const auto map_time = GetCurDayTime();
 
     return map_time >= 0 ? map_time : GetGlobalDayTime();
