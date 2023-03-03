@@ -115,7 +115,9 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     if (delay > 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
+        if (time_mul != 0) {
+            call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
+        }
     }
 
     _savedCalls.emplace(call.Id);
