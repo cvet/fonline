@@ -222,10 +222,11 @@ FIXED_SETTING(uint, Anim2CombatBegin, 0);
 FIXED_SETTING(uint, Anim2CombatIdle, 0);
 FIXED_SETTING(uint, Anim2CombatEnd, 0);
 FIXED_SETTING(string, PlayerOffAppendix, "_off");
-VARIABLE_SETTING(bool, ShowPlayerNames, false);
-VARIABLE_SETTING(bool, ShowNpcNames, false);
-VARIABLE_SETTING(bool, ShowCritId, false);
-VARIABLE_SETTING(bool, ShowGroups, true);
+VARIABLE_SETTING(bool, ShowCritterName, true);
+VARIABLE_SETTING(bool, ShowCritterHeadText, true);
+VARIABLE_SETTING(bool, ShowPlayerName, true);
+VARIABLE_SETTING(bool, ShowNpcName, true);
+VARIABLE_SETTING(bool, ShowDeadNpcName, true);
 FIXED_SETTING(int, NameOffset, 0);
 SETTING_GROUP_END();
 

@@ -681,6 +681,10 @@ void CritterHexView::Process()
         }
     }
 #endif
+
+    if (!_strTextOnHead.empty() && _engine->GameTime.GameplayTime() - _startTextTime >= _textShowDuration) {
+        _strTextOnHead = "";
+    }
 }
 
 void CritterHexView::ProcessMoving()
@@ -935,6 +939,24 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
     }
 }
 
+auto CritterHexView::IsNameVisible() const -> bool
+{
+    if (!_engine->Settings.ShowCritterName) {
+        return false;
+    }
+    if (!_engine->Settings.ShowPlayerName && IsOwnedByPlayer()) {
+        return false;
+    }
+    if (!_engine->Settings.ShowNpcName && IsNpc()) {
+        return false;
+    }
+    if (!_engine->Settings.ShowDeadNpcName && IsNpc() && IsDead()) {
+        return false;
+    }
+
+    return true;
+}
+
 void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const
 {
     STACK_TRACE_ENTRY();
@@ -943,20 +965,10 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
 
     string str;
     if (_strTextOnHead.empty()) {
-        if (IsOwnedByPlayer() && !_engine->Settings.ShowPlayerNames) {
-            return;
-        }
-        if (IsNpc() && !_engine->Settings.ShowNpcNames) {
-            return;
-        }
-
-        name_visible = true;
+        name_visible = IsNameVisible();
 
         str = _name;
 
-        if (_engine->Settings.ShowCritId) {
-            str += _str("  {}", GetId());
-        }
         if (_ownedByPlayer && _isPlayerOffline) {
             str += _engine->Settings.PlayerOffAppendix;
         }
@@ -977,57 +989,44 @@ void CritterHexView::DrawTextOnHead()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
+    if (!SprDrawValid) {
+        return;
+    }
+
+    string str;
+    uint color;
+
     if (_strTextOnHead.empty()) {
-        if (IsOwnedByPlayer() && !_engine->Settings.ShowPlayerNames) {
+        if (!IsNameVisible()) {
             return;
         }
-        if (IsNpc() && !_engine->Settings.ShowNpcNames) {
-            return;
+
+        str = _name;
+
+        if (_ownedByPlayer && _isPlayerOffline) {
+            str += _engine->Settings.PlayerOffAppendix;
         }
-    }
 
-    if (SprDrawValid) {
-        int x = 0;
-        int y = 0;
-        GetNameTextPos(x, y);
-        const auto r = IRect(x - 100, y - 200, x + 100, y);
-
-        string str;
-        uint color;
-        if (_strTextOnHead.empty()) {
-            str = _name;
-
-            if (_engine->Settings.ShowCritId) {
-                str += _str(" ({} {} {})", GetId(), GetHexX(), GetHexY());
-            }
-            if (_ownedByPlayer && _isPlayerOffline) {
-                str += _engine->Settings.PlayerOffAppendix;
-            }
-
-            color = GetNameColor();
-            if (color == 0u) {
-                color = _textOnHeadColor;
-            }
-        }
-        else {
-            str = _strTextOnHead;
+        color = GetNameColor();
+        if (color == 0) {
             color = _textOnHeadColor;
-
-            if (_textShowDuration > std::chrono::milliseconds {500}) {
-                const auto dt = time_duration_to_ms<uint>(_engine->GameTime.GameplayTime() - _startTextTime);
-                const auto hide = time_duration_to_ms<uint>(_textShowDuration - std::chrono::milliseconds {200});
-
-                if (dt >= hide) {
-                    const auto alpha = 0xFF * (100 - GenericUtils::Percent(time_duration_to_ms<uint>(_textShowDuration) - hide, dt - hide)) / 100;
-                    color = (alpha << 24) | (color & 0xFFFFFF);
-                }
-            }
+        }
+    }
+    else {
+        if (!_engine->Settings.ShowCritterHeadText) {
+            return;
         }
 
-        _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (Alpha << 24) | (color & 0xFFFFFF), -1);
+        str = _strTextOnHead;
+        color = _textOnHeadColor;
     }
 
-    if (_engine->GameTime.GameplayTime() - _startTextTime >= _textShowDuration && !_strTextOnHead.empty()) {
-        _strTextOnHead = "";
-    }
+    int x = 0;
+    int y = 0;
+    GetNameTextPos(x, y);
+    const auto r = IRect(x - 100, y - 200, x + 100, y);
+
+    _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (Alpha << 24) | (color & 0xFFFFFF), -1);
 }

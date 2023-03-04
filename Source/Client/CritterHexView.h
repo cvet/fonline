@@ -67,6 +67,7 @@ public:
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
+    [[nodiscard]] auto IsNameVisible() const -> bool;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
     [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
