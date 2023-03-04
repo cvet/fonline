@@ -286,7 +286,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
         swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         swap_chain_desc.BufferDesc.RefreshRate.Numerator = 144;
         swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
-        swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+        swap_chain_desc.Flags = 0;
         swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swap_chain_desc.OutputWindow = hwnd;
         swap_chain_desc.SampleDesc.Count = 1;
@@ -877,7 +877,7 @@ void Direct3D_Renderer::OnResizeWindow(int width, int height)
     MainRenderTarget->Release();
     MainRenderTarget = nullptr;
 
-    const auto d3d_resize_buffers = SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_UNKNOWN, 0);
+    const auto d3d_resize_buffers = SwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
     RUNTIME_ASSERT(SUCCEEDED(d3d_resize_buffers));
 
     ID3D11Texture2D* back_buf = nullptr;
