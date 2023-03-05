@@ -105,6 +105,14 @@
 
 ///# ...
 ///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsOnMap(CritterView* self)
+{
+    return dynamic_cast<CritterHexView*>(self) != nullptr;
+}
+
+///# ...
+///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsMoving(CritterView* self)
 {
