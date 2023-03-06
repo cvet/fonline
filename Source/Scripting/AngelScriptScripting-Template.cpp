@@ -1065,6 +1065,12 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
             new (construct_addr) hstring(resolve_hash(data));
         }
+        else if (prop->IsBaseTypeEnum()) {
+            RUNTIME_ASSERT(data_size != 0);
+            RUNTIME_ASSERT(data_size <= 4);
+            std::memset(construct_addr, 0, sizeof(int));
+            std::memcpy(construct_addr, data, data_size);
+        }
         else {
             RUNTIME_ASSERT(data_size != 0);
             std::memcpy(construct_addr, data, data_size);
@@ -1359,8 +1365,22 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     for (const auto i : xrange(arr->GetSize())) {
                         const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hash), sizeof(hstring::hash_t));
+                        std::memcpy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
+                    }
+                }
+                else if (prop->IsBaseTypeEnum()) {
+                    if (prop->GetBaseSize() == sizeof(int)) {
+                        prop_data.Pass(arr->At(0), data_size);
+                    }
+                    else {
+                        auto* buf = prop_data.Alloc(data_size);
+
+                        for (const auto i : xrange(arr->GetSize())) {
+                            const auto e = static_cast<const int*>(arr->At(i));
+                            std::memcpy(buf, &e, prop->GetBaseSize());
+                            buf += prop->GetBaseSize();
+                        }
                     }
                 }
                 else {
@@ -1401,11 +1421,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     const auto* arr = *static_cast<const CScriptArray**>(value);
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hkey), prop->GetDictKeySize());
+                        std::memcpy(buf, &hkey, prop->GetDictKeySize());
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = static_cast<const int*>(key);
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&ekey), prop->GetDictKeySize());
+                        std::memcpy(buf, &ekey, prop->GetDictKeySize());
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
@@ -1434,7 +1454,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         else if (prop->IsBaseTypeHash()) {
                             for (uint i = 0; i < arr_size; i++) {
                                 const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
-                                std::memcpy(buf, reinterpret_cast<const uint8*>(&hash), sizeof(hstring::hash_t));
+                                std::memcpy(buf, &hash, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
                             }
                         }
@@ -1467,11 +1487,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     const auto& str = *static_cast<const string*>(value);
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hkey), prop->GetDictKeySize());
+                        std::memcpy(buf, &hkey, prop->GetDictKeySize());
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = static_cast<const int*>(key);
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&ekey), prop->GetDictKeySize());
+                        std::memcpy(buf, &ekey, prop->GetDictKeySize());
                     }
                     else {
                         std::memcpy(buf, key, prop->GetDictKeySize());
@@ -1504,11 +1524,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 for (auto&& [key, value] : dict_map) {
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hkey), key_element_size);
+                        std::memcpy(buf, &hkey, key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = static_cast<const int*>(key);
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&ekey), key_element_size);
+                        std::memcpy(buf, &ekey, key_element_size);
                     }
                     else {
                         std::memcpy(buf, key, key_element_size);
@@ -1517,7 +1537,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                     if (prop->IsBaseTypeHash()) {
                         const auto hash = static_cast<const hstring*>(value)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uint8*>(&hash), value_element_size);
+                        std::memcpy(buf, &hash, value_element_size);
                     }
                     else {
                         std::memcpy(buf, value, value_element_size);
