@@ -1377,7 +1377,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         auto* buf = prop_data.Alloc(data_size);
 
                         for (const auto i : xrange(arr->GetSize())) {
-                            const auto e = static_cast<const int*>(arr->At(i));
+                            const auto e = *static_cast<const int*>(arr->At(i));
                             std::memcpy(buf, &e, prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
