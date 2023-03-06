@@ -1041,7 +1041,7 @@ auto MapView::GetRectForText(uint16 hx, uint16 hy) -> IRect
     return {-result.Width() / 2, -result.Height(), result.Width() / 2, 0};
 }
 
-auto MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy) -> bool
+void MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1069,8 +1069,6 @@ auto MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uin
         }
         field.AddSpriteToChain(effect_item->SprDraw);
     }
-
-    return true;
 }
 
 void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh)

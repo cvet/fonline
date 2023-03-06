@@ -149,8 +149,7 @@ void ServerConnection::Process()
     if (_isConnected) {
         if (ReceiveData(true) >= 0) {
             while (_isConnected && _netIn.NeedProcess()) {
-                uint msg = 0;
-                _netIn >> msg;
+                const auto msg = _netIn.Read<uint>();
 
                 CHECK_SERVER_IN_BUF_ERROR(*this);
 
@@ -178,7 +177,7 @@ void ServerConnection::Process()
 
             if (_isConnected && _netOut.IsEmpty() && _pingTime == time_point {} && _settings.PingPeriod != 0 && Timer::CurTime() >= _pingCallTime) {
                 _netOut.StartMsg(NETMSG_PING);
-                _netOut << PING_SERVER;
+                _netOut.Write(PING_SERVER);
                 _pingTime = Timer::CurTime();
                 _netOut.EndMsg();
             }
@@ -199,7 +198,7 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
         return for_write ? true : !_interthreadReceived.empty();
     }
 
-    timeval tv = {0, 0};
+    constexpr timeval tv = {0, 0};
 
     FD_ZERO(&_impl->NetSockSet);
     FD_SET(_impl->NetSock, &_impl->NetSockSet);
@@ -423,18 +422,18 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
         // Authentication
         if (_settings.ProxyType == PROXY_SOCKS4) {
             // Connect
-            _netOut << static_cast<uint8>(4); // Socks version
-            _netOut << static_cast<uint8>(1); // Connect command
-            _netOut << static_cast<uint16>(_impl->SockAddr.sin_port);
-            _netOut << static_cast<uint>(_impl->SockAddr.sin_addr.s_addr);
-            _netOut << static_cast<uint8>(0);
+            _netOut.Write(static_cast<uint8>(4)); // Socks version
+            _netOut.Write(static_cast<uint8>(1)); // Connect command
+            _netOut.Write(static_cast<uint16>(_impl->SockAddr.sin_port));
+            _netOut.Write(static_cast<uint>(_impl->SockAddr.sin_addr.s_addr));
+            _netOut.Write(static_cast<uint8>(0));
 
             if (!send_recv()) {
                 return false;
             }
 
-            _netIn >> b1; // Null byte
-            _netIn >> b2; // Answer code
+            b1 = _netIn.Read<uint8>(); // Null byte
+            b2 = _netIn.Read<uint8>(); // Answer code
             if (b2 != 0x5A) {
                 switch (b2) {
                 case 0x5B:
@@ -454,30 +453,30 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
             }
         }
         else if (_settings.ProxyType == PROXY_SOCKS5) {
-            _netOut << static_cast<uint8>(5); // Socks version
-            _netOut << static_cast<uint8>(1); // Count methods
-            _netOut << static_cast<uint8>(2); // Method
+            _netOut.Write(static_cast<uint8>(5)); // Socks version
+            _netOut.Write(static_cast<uint8>(1)); // Count methods
+            _netOut.Write(static_cast<uint8>(2)); // Method
 
             if (!send_recv()) {
                 return false;
             }
 
-            _netIn >> b1; // Socks version
-            _netIn >> b2; // Method
+            b1 = _netIn.Read<uint8>(); // Socks version
+            b2 = _netIn.Read<uint8>(); // Method
             if (b2 == 2) // User/Password
             {
-                _netOut << static_cast<uint8>(1); // Subnegotiation version
-                _netOut << static_cast<uint8>(_settings.ProxyUser.length()); // Name length
+                _netOut.Write(static_cast<uint8>(1)); // Subnegotiation version
+                _netOut.Write(static_cast<uint8>(_settings.ProxyUser.length())); // Name length
                 _netOut.Push(_settings.ProxyUser.c_str(), _settings.ProxyUser.length()); // Name
-                _netOut << static_cast<uint8>(_settings.ProxyPass.length()); // Pass length
+                _netOut.Write(static_cast<uint8>(_settings.ProxyPass.length())); // Pass length
                 _netOut.Push(_settings.ProxyPass.c_str(), _settings.ProxyPass.length()); // Pass
 
                 if (!send_recv()) {
                     return false;
                 }
 
-                _netIn >> b1; // Subnegotiation version
-                _netIn >> b2; // Status
+                b1 = _netIn.Read<uint8>(); // Subnegotiation version
+                b2 = _netIn.Read<uint8>(); // Status
                 if (b2 != 0) {
                     WriteLog("Invalid proxy user or password");
                     return false;
@@ -490,19 +489,19 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
             }
 
             // Connect
-            _netOut << static_cast<uint8>(5); // Socks version
-            _netOut << static_cast<uint8>(1); // Connect command
-            _netOut << static_cast<uint8>(0); // Reserved
-            _netOut << static_cast<uint8>(1); // IP v4 address
-            _netOut << static_cast<uint>(_impl->SockAddr.sin_addr.s_addr);
-            _netOut << static_cast<uint16>(_impl->SockAddr.sin_port);
+            _netOut.Write(static_cast<uint8>(5)); // Socks version
+            _netOut.Write(static_cast<uint8>(1)); // Connect command
+            _netOut.Write(static_cast<uint8>(0)); // Reserved
+            _netOut.Write(static_cast<uint8>(1)); // IP v4 address
+            _netOut.Write(static_cast<uint>(_impl->SockAddr.sin_addr.s_addr));
+            _netOut.Write(static_cast<uint16>(_impl->SockAddr.sin_port));
 
             if (!send_recv()) {
                 return false;
             }
 
-            _netIn >> b1; // Socks version
-            _netIn >> b2; // Answer code
+            b1 = _netIn.Read<uint8>(); // Socks version
+            b2 = _netIn.Read<uint8>(); // Answer code
 
             if (b2 != 0) {
                 switch (b2) {
@@ -811,10 +810,10 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 void ServerConnection::Net_SendHandshake()
 {
     _netOut.StartMsg(NETMSG_HANDSHAKE);
-    _netOut << static_cast<uint>(FO_COMPATIBILITY_VERSION);
+    _netOut.Write(static_cast<uint>(FO_COMPATIBILITY_VERSION));
 
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
-    _netOut << encrypt_key;
+    _netOut.Write(encrypt_key);
 
     constexpr uint8 padding[28] = {};
     _netOut.Push(padding, sizeof(padding));
@@ -826,14 +825,13 @@ void ServerConnection::Net_SendHandshake()
 
 void ServerConnection::Net_OnPing()
 {
-    uint8 ping;
-    _netIn >> ping;
+    const auto ping = _netIn.Read<uint8>();
 
     CHECK_SERVER_IN_BUF_ERROR(*this);
 
     if (ping == PING_CLIENT) {
         _netOut.StartMsg(NETMSG_PING);
-        _netOut << PING_CLIENT;
+        _netOut.Write(PING_CLIENT);
         _netOut.EndMsg();
     }
     else if (ping == PING_SERVER) {

@@ -71,6 +71,7 @@ public:
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id, bool skip_hide) -> Item*;
     [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetConstRawItems() const -> const vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> Item*;
     [[nodiscard]] auto GetItemByPidSlot(hstring item_pid, int slot) -> Item*;
     [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
@@ -78,7 +79,6 @@ public:
     [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
     [[nodiscard]] auto CountItems() const -> uint;
-    [[nodiscard]] auto GetInventory() -> vector<Item*>&;
     [[nodiscard]] auto IsHaveGeckItem() const -> bool;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
@@ -110,51 +110,51 @@ public:
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
 
-    void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
+    void Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Broadcast_Move();
     void Broadcast_Position();
-    void Broadcast_Action(int action, int action_ext, Item* item);
+    void Broadcast_Action(int action, int action_ext, const Item* item);
     void Broadcast_Dir();
     void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
 
-    void SendAndBroadcast_Action(int action, int action_ext, Item* item);
-    void SendAndBroadcast_MoveItem(Item* item, uint8 action, uint8 prev_slot);
-    void SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
+    void SendAndBroadcast_Action(int action, int action_ext, const Item* item);
+    void SendAndBroadcast_MoveItem(const Item* item, uint8 action, uint8 prev_slot);
+    void SendAndBroadcast_Animate(uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
     void SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text);
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
 
-    void Send_Property(NetProperty type, const Property* prop, ServerEntity* entity);
-    void Send_Move(Critter* from_cr);
-    void Send_Dir(Critter* from_cr);
-    void Send_AddCritter(Critter* cr);
-    void Send_RemoveCritter(Critter* cr);
-    void Send_LoadMap(Map* map);
-    void Send_Position(Critter* cr);
-    void Send_AddItemOnMap(Item* item);
-    void Send_EraseItemFromMap(Item* item);
-    void Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm);
-    void Send_AddItem(Item* item);
-    void Send_EraseItem(Item* item);
+    void Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
+    void Send_Move(const Critter* from_cr);
+    void Send_Dir(const Critter* from_cr);
+    void Send_AddCritter(const Critter* cr);
+    void Send_RemoveCritter(const Critter* cr);
+    void Send_LoadMap(const Map* map);
+    void Send_Position(const Critter* cr);
+    void Send_AddItemOnMap(const Item* item);
+    void Send_EraseItemFromMap(const Item* item);
+    void Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm);
+    void Send_AddItem(const Item* item);
+    void Send_EraseItem(const Item* item);
     void Send_GlobalInfo(uint8 flags);
-    void Send_GlobalLocation(Location* loc, bool add);
+    void Send_GlobalLocation(const Location* loc, bool add);
     void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
-    void Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy);
+    void Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy);
     void Send_AllProperties();
     void Send_Talk();
     void Send_TimeSync();
-    void Send_Text(Critter* from_cr, string_view text, uint8 how_say);
+    void Send_Text(const Critter* from_cr, string_view text, uint8 how_say);
     void Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text);
-    void Send_TextMsg(Critter* from_cr, uint str_num, uint8 how_say, uint16 num_msg);
+    void Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 num_msg);
     void Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
+    void Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
     void Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
-    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-    void Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 prev_slot);
-    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
-    void Send_AutomapsInfo(void* locs_vec, Location* loc);
+    void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item);
+    void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot);
+    void Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
+    void Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
+    void Send_AutomapsInfo(const void* locs_vec, const Location* loc);
     void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);

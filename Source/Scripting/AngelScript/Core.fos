@@ -151,7 +151,6 @@
 #define COMMAND_CHECKVAR              (30)
 #define COMMAND_SETVAR                (31)
 #define COMMAND_SETTIME               (32)
-#define COMMAND_BAN                   (33)
 #define COMMAND_DELETE_ACCOUNT        (34)
 #define COMMAND_CHANGE_PASSWORD       (35)
 #define COMMAND_DROP_UID              (36)

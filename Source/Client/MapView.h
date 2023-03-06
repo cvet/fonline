@@ -258,7 +258,7 @@ public:
     void SetSkipRoof(uint16 hx, uint16 hy);
     void MarkRoofNum(int hxi, int hyi, int16 num);
 
-    auto RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy) -> bool;
+    void RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
 
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);

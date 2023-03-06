@@ -67,37 +67,36 @@ public:
     void SetName(string_view name);
     void SetOwnedCritter(Critter* cr);
 
-    void Send_Property(NetProperty type, const Property* prop, Entity* entity);
-
-    void Send_Move(Critter* from_cr);
-    void Send_Dir(Critter* from_cr);
-    void Send_AddCritter(Critter* cr);
-    void Send_RemoveCritter(Critter* cr);
-    void Send_LoadMap(Map* map);
-    void Send_Position(Critter* cr);
-    void Send_AddItemOnMap(Item* item);
-    void Send_EraseItemFromMap(Item* item);
-    void Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm);
-    void Send_AddItem(Item* item);
-    void Send_EraseItem(Item* item);
+    void Send_Move(const Critter* from_cr);
+    void Send_Dir(const Critter* from_cr);
+    void Send_AddCritter(const Critter* cr);
+    void Send_RemoveCritter(const Critter* cr);
+    void Send_LoadMap(const Map* map);
+    void Send_Property(NetProperty type, const Property* prop, const Entity* entity);
+    void Send_Position(const Critter* cr);
+    void Send_AddItemOnMap(const Item* item);
+    void Send_EraseItemFromMap(const Item* item);
+    void Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm);
+    void Send_AddItem(const Item* item);
+    void Send_EraseItem(const Item* item);
     void Send_GlobalInfo(uint8 flags);
-    void Send_GlobalLocation(Location* loc, bool add);
+    void Send_GlobalLocation(const Location* loc, bool add);
     void Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog);
-    void Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy);
+    void Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy);
     void Send_AllProperties();
     void Send_Talk();
     void Send_TimeSync();
-    void Send_Text(Critter* from_cr, string_view text, uint8 how_say);
+    void Send_Text(const Critter* from_cr, string_view text, uint8 how_say);
     void Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text);
-    void Send_TextMsg(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg);
+    void Send_TextMsg(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg);
     void Send_TextMsg(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
+    void Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
     void Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
-    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-    void Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 prev_slot);
-    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
-    void Send_AutomapsInfo(void* locs_vec, Location* loc);
+    void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item);
+    void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot);
+    void Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
+    void Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
+    void Send_AutomapsInfo(const void* locs_vec, const Location* loc);
     void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
@@ -105,7 +104,7 @@ public:
     void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str);
     void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems);
     void Send_ViewMap();
-    void Send_SomeItem(Item* item); // Without checks
+    void Send_SomeItem(const Item* item); // Without checks
     void Send_PlaceToGameComplete();
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();

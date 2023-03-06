@@ -1633,7 +1633,6 @@ static constexpr uint8 ACCESS_ADMIN = 3;
 #define CMD_RUNSCRIPT (20)
 #define CMD_REGENMAP (25)
 #define CMD_SETTIME (32)
-#define CMD_BAN (33)
 #define CMD_LOG (37)
 
 static constexpr uint16 ANIMRUN_TO_END = 0x0001;

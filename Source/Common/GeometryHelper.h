@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-constexpr auto MAX_HEX_OFFSET = 50; // Must be not an odd
+constexpr auto MAX_HEX_OFFSET = 50; // Todo: remove hex offset limit
 
 class GeometryHelper final
 {

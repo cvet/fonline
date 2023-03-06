@@ -94,50 +94,20 @@ public:
     void Push(const void* buf, size_t len);
     void Cut(size_t len);
 
-    // Todo: move NetOutBuffer from << to Write<T>
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
-    auto operator<<(const T& i) -> NetBuffer&
-    {
-        Push(&i, sizeof(T));
-        return *this;
-    }
-
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
-    auto operator<<(const T& i) -> NetBuffer&
-    {
-        Push(&i.underlying_value(), sizeof(typename T::underlying_type));
-        return *this;
-    }
-
-    auto operator<<(string_view i) -> NetBuffer&
-    {
-        RUNTIME_ASSERT(i.length() <= std::numeric_limits<uint16>::max());
-        const auto len = static_cast<uint16>(i.length());
-        Push(&len, sizeof(len));
-        Push(i.data(), len);
-        return *this;
-    }
-
-    auto operator<<(hstring i) -> NetBuffer&
-    {
-        *this << i.as_hash();
-        return *this;
-    }
-
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
-    void Write(std::enable_if_t<true, T> value)
+    void Write(T value)
     {
         Push(&value, sizeof(T));
     }
 
     template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
-    void Write(std::enable_if_t<true, T> value)
+    void Write(T value)
     {
         Push(&value.underlying_value(), sizeof(typename T::underlying_type));
     }
 
-    template<typename T, std::enable_if_t<std::is_convertible_v<T, string_view> && !std::is_same_v<T, hstring>, int> = 0>
-    void Write(std::enable_if_t<true, string_view> value)
+    template<typename T, std::enable_if_t<std::is_same_v<T, string_view> || std::is_same_v<T, string>, int> = 0>
+    void Write(T value)
     {
         RUNTIME_ASSERT(value.length() <= std::numeric_limits<uint16>::max());
         const auto len = static_cast<uint16>(value.length());
@@ -146,9 +116,10 @@ public:
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
-    void Write(std::enable_if_t<true, T> value)
+    void Write(T value)
     {
-        Push(&value.as_hash(), sizeof(hstring::hash_t));
+        const auto hash = value.as_hash();
+        Push(&hash, sizeof(hash));
     }
 
     void StartMsg(uint msg);
@@ -183,30 +154,6 @@ public:
     void ShrinkReadBuf();
     void Pop(void* buf, size_t len);
     void ResetBuf() override;
-
-    // Todo: move NetInBuffer from >> to Read<T>
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
-    auto operator>>(T& i) -> NetBuffer&
-    {
-        Pop(&i, sizeof(T));
-        return *this;
-    }
-
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
-    auto operator>>(T& i) -> NetBuffer&
-    {
-        Pop(&i.underlying_value(), sizeof(typename T::underlying_type));
-        return *this;
-    }
-
-    auto operator>>(string& i) -> NetBuffer&
-    {
-        uint16 len = 0;
-        Pop(&len, sizeof(len));
-        i.resize(len);
-        Pop(i.data(), len);
-        return *this;
-    }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     [[nodiscard]] auto Read() -> T

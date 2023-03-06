@@ -737,8 +737,8 @@ void FOClient::Net_SendLogIn()
     WriteLog("Player login");
 
     _conn.OutBuf.StartMsg(NETMSG_LOGIN);
-    _conn.OutBuf << _loginName;
-    _conn.OutBuf << _loginPassword;
+    _conn.OutBuf.Write(_loginName);
+    _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
 
     AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
@@ -753,8 +753,8 @@ void FOClient::Net_SendCreatePlayer()
     WriteLog("Player registration");
 
     _conn.OutBuf.StartMsg(NETMSG_REGISTER);
-    _conn.OutBuf << _loginName;
-    _conn.OutBuf << _loginPassword;
+    _conn.OutBuf.Write(_loginName);
+    _conn.OutBuf.Write(_loginPassword);
     _conn.OutBuf.EndMsg();
 }
 
@@ -765,8 +765,8 @@ void FOClient::Net_SendText(string_view send_str, uint8 how_say)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NETMSG_SEND_TEXT);
-    _conn.OutBuf << how_say;
-    _conn.OutBuf << send_str;
+    _conn.OutBuf.Write(how_say);
+    _conn.OutBuf.Write(send_str);
     _conn.OutBuf.EndMsg();
 }
 
@@ -777,9 +777,9 @@ void FOClient::Net_SendDir(CritterHexView* cr)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NETMSG_DIR);
-    _conn.OutBuf << CurMap->GetId();
-    _conn.OutBuf << cr->GetId();
-    _conn.OutBuf << cr->GetDirAngle();
+    _conn.OutBuf.Write(CurMap->GetId());
+    _conn.OutBuf.Write(cr->GetId());
+    _conn.OutBuf.Write(cr->GetDirAngle());
     _conn.OutBuf.EndMsg();
 }
 
@@ -797,21 +797,21 @@ void FOClient::Net_SendMove(CritterHexView* cr)
     }
 
     _conn.OutBuf.StartMsg(NETMSG_SEND_MOVE);
-    _conn.OutBuf << CurMap->GetId();
-    _conn.OutBuf << cr->GetId();
-    _conn.OutBuf << cr->Moving.Speed;
-    _conn.OutBuf << cr->Moving.StartHexX;
-    _conn.OutBuf << cr->Moving.StartHexY;
-    _conn.OutBuf << static_cast<uint16>(cr->Moving.Steps.size());
-    for (auto step : cr->Moving.Steps) {
-        _conn.OutBuf << step;
+    _conn.OutBuf.Write(CurMap->GetId());
+    _conn.OutBuf.Write(cr->GetId());
+    _conn.OutBuf.Write(cr->Moving.Speed);
+    _conn.OutBuf.Write(cr->Moving.StartHexX);
+    _conn.OutBuf.Write(cr->Moving.StartHexY);
+    _conn.OutBuf.Write(static_cast<uint16>(cr->Moving.Steps.size()));
+    for (const auto step : cr->Moving.Steps) {
+        _conn.OutBuf.Write(step);
     }
-    _conn.OutBuf << static_cast<uint16>(cr->Moving.ControlSteps.size());
-    for (auto control_step : cr->Moving.ControlSteps) {
-        _conn.OutBuf << control_step;
+    _conn.OutBuf.Write(static_cast<uint16>(cr->Moving.ControlSteps.size()));
+    for (const auto control_step : cr->Moving.ControlSteps) {
+        _conn.OutBuf.Write(control_step);
     }
-    _conn.OutBuf << cr->Moving.EndOx;
-    _conn.OutBuf << cr->Moving.EndOy;
+    _conn.OutBuf.Write(cr->Moving.EndOx);
+    _conn.OutBuf.Write(cr->Moving.EndOy);
     _conn.OutBuf.EndMsg();
 }
 
@@ -822,13 +822,13 @@ void FOClient::Net_SendStopMove(CritterHexView* cr)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NETMSG_SEND_STOP_MOVE);
-    _conn.OutBuf << CurMap->GetId();
-    _conn.OutBuf << cr->GetId();
-    _conn.OutBuf << cr->GetHexX();
-    _conn.OutBuf << cr->GetHexY();
-    _conn.OutBuf << cr->GetHexOffsX();
-    _conn.OutBuf << cr->GetHexOffsY();
-    _conn.OutBuf << cr->GetDirAngle();
+    _conn.OutBuf.Write(CurMap->GetId());
+    _conn.OutBuf.Write(cr->GetId());
+    _conn.OutBuf.Write(cr->GetHexX());
+    _conn.OutBuf.Write(cr->GetHexY());
+    _conn.OutBuf.Write(cr->GetHexOffsX());
+    _conn.OutBuf.Write(cr->GetHexOffsY());
+    _conn.OutBuf.Write(cr->GetDirAngle());
     _conn.OutBuf.EndMsg();
 }
 
@@ -877,32 +877,32 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
         _conn.OutBuf.StartMsg(NETMSG_SEND_COMPLEX_PROPERTY);
     }
 
-    _conn.OutBuf << static_cast<char>(type);
+    _conn.OutBuf.Write(static_cast<char>(type));
 
     switch (type) {
     case NetProperty::CritterItem:
-        _conn.OutBuf << dynamic_cast<ItemView*>(client_entity)->GetCritterId();
-        _conn.OutBuf << client_entity->GetId();
+        _conn.OutBuf.Write(dynamic_cast<ItemView*>(client_entity)->GetCritterId());
+        _conn.OutBuf.Write(client_entity->GetId());
         break;
     case NetProperty::Critter:
-        _conn.OutBuf << client_entity->GetId();
+        _conn.OutBuf.Write(client_entity->GetId());
         break;
     case NetProperty::MapItem:
-        _conn.OutBuf << client_entity->GetId();
+        _conn.OutBuf.Write(client_entity->GetId());
         break;
     case NetProperty::ChosenItem:
-        _conn.OutBuf << client_entity->GetId();
+        _conn.OutBuf.Write(client_entity->GetId());
         break;
     default:
         break;
     }
 
     if (is_pod) {
-        _conn.OutBuf << prop->GetRegIndex();
+        _conn.OutBuf.Write(prop->GetRegIndex());
         _conn.OutBuf.Push(data, data_size);
     }
     else {
-        _conn.OutBuf << prop->GetRegIndex();
+        _conn.OutBuf.Write(prop->GetRegIndex());
         if (data_size != 0u) {
             _conn.OutBuf.Push(data, data_size);
         }
@@ -918,9 +918,9 @@ void FOClient::Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NETMSG_SEND_TALK_NPC);
-    _conn.OutBuf << cr_id;
-    _conn.OutBuf << dlg_pack_id;
-    _conn.OutBuf << answer;
+    _conn.OutBuf.Write(cr_id);
+    _conn.OutBuf.Write(dlg_pack_id);
+    _conn.OutBuf.Write(answer);
     _conn.OutBuf.EndMsg();
 }
 
@@ -931,7 +931,7 @@ void FOClient::Net_SendPing(uint8 ping)
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf.StartMsg(NETMSG_PING);
-    _conn.OutBuf << ping;
+    _conn.OutBuf.Write(ping);
     _conn.OutBuf.EndMsg();
 }
 
@@ -939,12 +939,9 @@ void FOClient::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    bool outdated;
-    uint data_size;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> outdated;
-    _conn.InBuf >> data_size;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto outdated = _conn.InBuf.Read<bool>();
+    const auto data_size = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1022,12 +1019,9 @@ void FOClient::Net_OnLoginSuccess()
 
     AddMessage(FOMB_GAME, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
-    uint msg_len;
-    uint encrypt_key;
-    ident_t player_id;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> encrypt_key;
-    _conn.InBuf >> player_id;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto encrypt_key = _conn.InBuf.Read<uint>();
+    const auto player_id = _conn.InBuf.Read<ident_t>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
     NET_READ_PROPERTIES(_conn.InBuf, _playerPropertiesData);
@@ -1050,43 +1044,26 @@ void FOClient::Net_OnAddCritter()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    _conn.InBuf >> msg_len;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
 
-    ident_t cr_id;
-    uint16 hx;
-    uint16 hy;
-    int16 hex_ox;
-    int16 hex_oy;
-    int16 dir_angle;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> hex_ox;
-    _conn.InBuf >> hex_oy;
-    _conn.InBuf >> dir_angle;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex_ox = _conn.InBuf.Read<int16>();
+    const auto hex_oy = _conn.InBuf.Read<int16>();
+    const auto dir_angle = _conn.InBuf.Read<int16>();
 
-    CritterCondition cond;
-    uint anim1_alive;
-    uint anim1_ko;
-    uint anim1_dead;
-    uint anim2_alive;
-    uint anim2_ko;
-    uint anim2_dead;
-    _conn.InBuf >> cond;
-    _conn.InBuf >> anim1_alive;
-    _conn.InBuf >> anim1_ko;
-    _conn.InBuf >> anim1_dead;
-    _conn.InBuf >> anim2_alive;
-    _conn.InBuf >> anim2_ko;
-    _conn.InBuf >> anim2_dead;
+    const auto cond = _conn.InBuf.Read<CritterCondition>();
+    const auto anim1_alive = _conn.InBuf.Read<uint>();
+    const auto anim1_ko = _conn.InBuf.Read<uint>();
+    const auto anim1_dead = _conn.InBuf.Read<uint>();
+    const auto anim2_alive = _conn.InBuf.Read<uint>();
+    const auto anim2_ko = _conn.InBuf.Read<uint>();
+    const auto anim2_dead = _conn.InBuf.Read<uint>();
 
-    bool is_owned_by_player;
-    bool is_player_offline;
-    bool is_chosen;
-    _conn.InBuf >> is_owned_by_player;
-    _conn.InBuf >> is_player_offline;
-    _conn.InBuf >> is_chosen;
+    const auto is_owned_by_player = _conn.InBuf.Read<bool>();
+    const auto is_player_offline = _conn.InBuf.Read<bool>();
+    const auto is_chosen = _conn.InBuf.Read<bool>();
 
     const hstring pid = _conn.InBuf.Read<hstring>(*this);
     const auto* proto = ProtoMngr.GetProtoCritter(pid);
@@ -1137,8 +1114,7 @@ void FOClient::Net_OnRemoveCritter()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    _conn.InBuf >> cr_id;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1172,16 +1148,11 @@ void FOClient::Net_OnText()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t cr_id;
-    uint8 how_say;
-    string text;
-    bool unsafe_text;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> how_say;
-    _conn.InBuf >> text;
-    _conn.InBuf >> unsafe_text;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto how_say = _conn.InBuf.Read<uint8>();
+    const auto text = _conn.InBuf.Read<string>();
+    const auto unsafe_text = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1190,10 +1161,13 @@ void FOClient::Net_OnText()
         return;
     }
 
+    string str = text;
+
     if (unsafe_text) {
-        Keyb.EraseInvalidChars(text, KIF_NO_SPEC_SYMBOLS);
+        Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
-    OnText(text, cr_id, how_say);
+
+    OnText(str, cr_id, how_say);
 }
 
 void FOClient::Net_OnTextMsg(bool with_lexems)
@@ -1201,22 +1175,17 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     STACK_TRACE_ENTRY();
 
     if (with_lexems) {
-        uint msg_len;
-        _conn.InBuf >> msg_len;
+        [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     }
 
-    ident_t cr_id;
-    uint8 how_say;
-    uint16 msg_num;
-    uint num_str;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> how_say;
-    _conn.InBuf >> msg_num;
-    _conn.InBuf >> num_str;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto how_say = _conn.InBuf.Read<uint8>();
+    const auto msg_num = _conn.InBuf.Read<uint16>();
+    const auto num_str = _conn.InBuf.Read<uint>();
 
     string lexems;
     if (with_lexems) {
-        _conn.InBuf >> lexems;
+        lexems = _conn.InBuf.Read<string>();
     }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1365,18 +1334,12 @@ void FOClient::Net_OnMapText()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    uint16 hx;
-    uint16 hy;
-    uint color;
-    string text;
-    bool unsafe_text;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> color;
-    _conn.InBuf >> text;
-    _conn.InBuf >> unsafe_text;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto color = _conn.InBuf.Read<uint>();
+    const auto text = _conn.InBuf.Read<string>();
+    const auto unsafe_text = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1390,27 +1353,24 @@ void FOClient::Net_OnMapText()
         return;
     }
 
+    string str = text;
+
     if (unsafe_text) {
-        Keyb.EraseInvalidChars(text, KIF_NO_SPEC_SYMBOLS);
+        Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
-    OnMapText(text, hx, hy, color);
+    OnMapText(str, hx, hy, color);
 }
 
 void FOClient::Net_OnMapTextMsg()
 {
     STACK_TRACE_ENTRY();
 
-    uint16 hx;
-    uint16 hy;
-    uint color;
-    uint16 msg_num;
-    uint num_str;
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> color;
-    _conn.InBuf >> msg_num;
-    _conn.InBuf >> num_str;
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto color = _conn.InBuf.Read<uint>();
+    const auto msg_num = _conn.InBuf.Read<uint16>();
+    const auto num_str = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1428,20 +1388,13 @@ void FOClient::Net_OnMapTextMsgLex()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    uint16 hx;
-    uint16 hy;
-    uint color;
-    uint16 msg_num;
-    uint num_str;
-    string lexems;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> color;
-    _conn.InBuf >> msg_num;
-    _conn.InBuf >> num_str;
-    _conn.InBuf >> lexems;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto color = _conn.InBuf.Read<uint>();
+    const auto msg_num = _conn.InBuf.Read<uint16>();
+    const auto num_str = _conn.InBuf.Read<uint>();
+    const auto lexems = _conn.InBuf.Read<string>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1459,10 +1412,8 @@ void FOClient::Net_OnCritterDir()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    int16 dir_angle;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> dir_angle;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto dir_angle = _conn.InBuf.Read<int16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1481,39 +1432,30 @@ void FOClient::Net_OnCritterMove()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t cr_id;
-    uint whole_time;
-    uint offset_time;
-    uint16 speed;
-    uint16 start_hx;
-    uint16 start_hy;
-    uint16 steps_count;
-    vector<uint8> steps;
-    uint16 control_steps_count;
-    vector<uint16> control_steps;
-    int16 end_hex_ox;
-    int16 end_hex_oy;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto whole_time = _conn.InBuf.Read<uint>();
+    const auto offset_time = _conn.InBuf.Read<uint>();
+    const auto speed = _conn.InBuf.Read<uint16>();
+    const auto start_hx = _conn.InBuf.Read<uint16>();
+    const auto start_hy = _conn.InBuf.Read<uint16>();
 
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> whole_time;
-    _conn.InBuf >> offset_time;
-    _conn.InBuf >> speed;
-    _conn.InBuf >> start_hx;
-    _conn.InBuf >> start_hy;
-    _conn.InBuf >> steps_count;
+    const auto steps_count = _conn.InBuf.Read<uint16>();
+    vector<uint8> steps;
     steps.resize(steps_count);
     for (auto i = 0; i < steps_count; i++) {
-        _conn.InBuf >> steps[i];
+        steps[i] = _conn.InBuf.Read<uint8>();
     }
-    _conn.InBuf >> control_steps_count;
+
+    const auto control_steps_count = _conn.InBuf.Read<uint16>();
+    vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
     for (auto i = 0; i < control_steps_count; i++) {
-        _conn.InBuf >> control_steps[i];
+        control_steps[i] = _conn.InBuf.Read<uint16>();
     }
-    _conn.InBuf >> end_hex_ox;
-    _conn.InBuf >> end_hex_oy;
+
+    const auto end_hex_ox = _conn.InBuf.Read<int16>();
+    const auto end_hex_oy = _conn.InBuf.Read<int16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1551,10 +1493,13 @@ void FOClient::Net_OnCritterMove()
 
     cr->Moving.WholeDist = 0.0f;
 
+    auto next_start_hx = start_hx;
+    auto next_start_hy = start_hy;
     auto control_step_begin = 0;
+
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hx = start_hx;
-        auto hy = start_hy;
+        auto hx = next_start_hx;
+        auto hy = next_start_hy;
 
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
@@ -1563,7 +1508,7 @@ void FOClient::Net_OnCritterMove()
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx, hy);
 
         if (i == 0) {
             ox -= cr->Moving.StartOx;
@@ -1580,8 +1525,8 @@ void FOClient::Net_OnCritterMove()
         cr->Moving.WholeDist += dist;
 
         control_step_begin = cr->Moving.ControlSteps[i];
-        start_hx = hx;
-        start_hy = hy;
+        next_start_hx = hx;
+        next_start_hy = hy;
 
         cr->Moving.EndHexX = hx;
         cr->Moving.EndHexY = hy;
@@ -1606,19 +1551,14 @@ void FOClient::Net_OnCritterStopMove()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    uint16 start_hx;
-    uint16 start_hy;
-    int16 hex_ox;
-    int16 hex_oy;
-    int16 dir_angle;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
 
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> start_hx;
-    _conn.InBuf >> start_hy;
-    _conn.InBuf >> hex_ox;
-    _conn.InBuf >> hex_oy;
-    _conn.InBuf >> dir_angle;
+    // Todo: slowly move to stop hex
+    [[maybe_unused]] const auto hx = _conn.InBuf.Read<uint16>();
+    [[maybe_unused]] const auto hy = _conn.InBuf.Read<uint16>();
+    [[maybe_unused]] const auto hex_ox = _conn.InBuf.Read<int16>();
+    [[maybe_unused]] const auto hex_oy = _conn.InBuf.Read<int16>();
+    [[maybe_unused]] const auto dir_angle = _conn.InBuf.Read<int16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1640,11 +1580,9 @@ void FOClient::Net_OnSomeItem()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t item_id;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> item_id;
-    const hstring item_pid = _conn.InBuf.Read<hstring>(*this);
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto item_pid = _conn.InBuf.Read<hstring>(*this);
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -1665,14 +1603,10 @@ void FOClient::Net_OnCritterAction()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    int action;
-    int action_ext;
-    bool is_item;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> action;
-    _conn.InBuf >> action_ext;
-    _conn.InBuf >> is_item;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto action = _conn.InBuf.Read<int>();
+    const auto action_ext = _conn.InBuf.Read<int>();
+    const auto is_item = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1693,36 +1627,23 @@ void FOClient::Net_OnCritterMoveItem()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t cr_id;
-    uint8 action;
-    uint8 prev_slot;
-    bool is_item;
-    uint8 cur_slot;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> action;
-    _conn.InBuf >> prev_slot;
-    _conn.InBuf >> is_item;
-    _conn.InBuf >> cur_slot;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto action = _conn.InBuf.Read<uint8>();
+    const auto prev_slot = _conn.InBuf.Read<uint8>();
+    const auto is_item = _conn.InBuf.Read<bool>();
+    const auto cur_slot = _conn.InBuf.Read<uint8>();
 
-    // Slot items
-    uint16 slots_data_count;
-    _conn.InBuf >> slots_data_count;
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    const auto slots_data_count = _conn.InBuf.Read<uint16>();
 
     vector<uint8> slots_data_slot;
     vector<ident_t> slots_data_id;
     vector<hstring> slots_data_pid;
     vector<vector<vector<uint8>>> slots_data_data;
     for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
-        uint8 slot;
-        ident_t id;
-        hstring pid;
-        _conn.InBuf >> slot;
-        _conn.InBuf >> id;
-        pid = _conn.InBuf.Read<hstring>(*this);
+        const auto slot = _conn.InBuf.Read<uint8>();
+        const auto id = _conn.InBuf.Read<ident_t>();
+        const auto pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
         slots_data_slot.push_back(slot);
         slots_data_id.push_back(id);
@@ -1786,18 +1707,12 @@ void FOClient::Net_OnCritterAnimate()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    uint anim1;
-    uint anim2;
-    bool is_item;
-    bool clear_sequence;
-    bool delay_play;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> anim1;
-    _conn.InBuf >> anim2;
-    _conn.InBuf >> is_item;
-    _conn.InBuf >> clear_sequence;
-    _conn.InBuf >> delay_play;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto anim1 = _conn.InBuf.Read<uint>();
+    const auto anim2 = _conn.InBuf.Read<uint>();
+    const auto is_item = _conn.InBuf.Read<bool>();
+    const auto clear_sequence = _conn.InBuf.Read<bool>();
+    const auto delay_play = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1823,14 +1738,10 @@ void FOClient::Net_OnCritterSetAnims()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    CritterCondition cond;
-    uint anim1;
-    uint anim2;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> cond;
-    _conn.InBuf >> anim1;
-    _conn.InBuf >> anim2;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto cond = _conn.InBuf.Read<CritterCondition>();
+    const auto anim1 = _conn.InBuf.Read<uint>();
+    const auto anim2 = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1866,12 +1777,9 @@ void FOClient::Net_OnCritterTeleport()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    uint16 to_hx;
-    uint16 to_hy;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> to_hx;
-    _conn.InBuf >> to_hy;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto to_hx = _conn.InBuf.Read<uint16>();
+    const auto to_hy = _conn.InBuf.Read<uint16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1904,18 +1812,12 @@ void FOClient::Net_OnCritterPos()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t cr_id;
-    uint16 hx;
-    uint16 hy;
-    int16 hex_ox;
-    int16 hex_oy;
-    int16 dir_angle;
-    _conn.InBuf >> cr_id;
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> hex_ox;
-    _conn.InBuf >> hex_oy;
-    _conn.InBuf >> dir_angle;
+    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex_ox = _conn.InBuf.Read<int16>();
+    const auto hex_oy = _conn.InBuf.Read<int16>();
+    const auto dir_angle = _conn.InBuf.Read<int16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1969,8 +1871,7 @@ void FOClient::Net_OnAllProperties()
 
     WriteLog("Chosen properties");
 
-    uint msg_len;
-    _conn.InBuf >> msg_len;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -2018,14 +1919,10 @@ void FOClient::Net_OnChosenAddItem()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t item_id;
-    hstring pid;
-    uint8 slot;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> item_id;
-    pid = _conn.InBuf.Read<hstring>(*this);
-    _conn.InBuf >> slot;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto pid = _conn.InBuf.Read<hstring>(*this);
+    const auto slot = _conn.InBuf.Read<uint8>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -2073,8 +1970,7 @@ void FOClient::Net_OnChosenEraseItem()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t item_id;
-    _conn.InBuf >> item_id;
+    const auto item_id = _conn.InBuf.Read<ident_t>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2130,17 +2026,12 @@ void FOClient::Net_OnAddItemOnMap()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t item_id;
-    uint16 item_hx;
-    uint16 item_hy;
-    bool is_added;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> item_id;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto item_pid = _conn.InBuf.Read<hstring>(*this);
-    _conn.InBuf >> item_hx;
-    _conn.InBuf >> item_hy;
-    _conn.InBuf >> is_added;
+    const auto item_hx = _conn.InBuf.Read<uint16>();
+    const auto item_hy = _conn.InBuf.Read<uint16>();
+    const auto is_added = _conn.InBuf.Read<bool>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -2166,10 +2057,8 @@ void FOClient::Net_OnEraseItemFromMap()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t item_id;
-    bool is_deleted;
-    _conn.InBuf >> item_id;
-    _conn.InBuf >> is_deleted;
+    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto is_deleted = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2199,12 +2088,9 @@ void FOClient::Net_OnAnimateItem()
 {
     STACK_TRACE_ENTRY();
 
-    ident_t item_id;
-    uint8 from_frm;
-    uint8 to_frm;
-    _conn.InBuf >> item_id;
-    _conn.InBuf >> from_frm;
-    _conn.InBuf >> to_frm;
+    const auto item_id = _conn.InBuf.Read<ident_t>();
+    const auto from_frm = _conn.InBuf.Read<uint8>();
+    const auto to_frm = _conn.InBuf.Read<uint8>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2223,14 +2109,11 @@ void FOClient::Net_OnEffect()
 {
     STACK_TRACE_ENTRY();
 
-    hstring eff_pid;
-    uint16 hx;
-    uint16 hy;
-    uint16 radius;
-    eff_pid = _conn.InBuf.Read<hstring>(*this);
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> radius;
+    const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto radius = _conn.InBuf.Read<uint16>();
+    RUNTIME_ASSERT(radius < MAX_HEX_OFFSET);
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2239,13 +2122,7 @@ void FOClient::Net_OnEffect()
         return;
     }
 
-    // Base hex effect
     CurMap->RunEffectItem(eff_pid, hx, hy, hx, hy);
-
-    // Radius hexes effect
-    if (radius > MAX_HEX_OFFSET) {
-        radius = MAX_HEX_OFFSET;
-    }
 
     const auto [sx, sy] = Geometry.GetHexOffsets((hx % 2) != 0);
     const auto maxhx = CurMap->GetWidth();
@@ -2261,25 +2138,18 @@ void FOClient::Net_OnEffect()
     }
 }
 
-// Todo: synchronize effects showing (for example shot and kill)
 void FOClient::Net_OnFlyEffect()
 {
     STACK_TRACE_ENTRY();
 
-    hstring eff_pid;
-    ident_t eff_cr1_id;
-    ident_t eff_cr2_id;
-    uint16 eff_cr1_hx;
-    uint16 eff_cr1_hy;
-    uint16 eff_cr2_hx;
-    uint16 eff_cr2_hy;
-    eff_pid = _conn.InBuf.Read<hstring>(*this);
-    _conn.InBuf >> eff_cr1_id;
-    _conn.InBuf >> eff_cr2_id;
-    _conn.InBuf >> eff_cr1_hx;
-    _conn.InBuf >> eff_cr1_hy;
-    _conn.InBuf >> eff_cr2_hx;
-    _conn.InBuf >> eff_cr2_hy;
+    const auto eff_pid = _conn.InBuf.Read<hstring>(*this);
+    const auto eff_cr1_id = _conn.InBuf.Read<ident_t>();
+    const auto eff_cr2_id = _conn.InBuf.Read<ident_t>();
+
+    auto eff_cr1_hx = _conn.InBuf.Read<uint16>();
+    auto eff_cr1_hy = _conn.InBuf.Read<uint16>();
+    auto eff_cr2_hx = _conn.InBuf.Read<uint16>();
+    auto eff_cr2_hy = _conn.InBuf.Read<uint16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2300,21 +2170,17 @@ void FOClient::Net_OnFlyEffect()
         eff_cr2_hy = cr2->GetHexY();
     }
 
-    if (!CurMap->RunEffectItem(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
-        WriteLog("Run effect '{}' failed", eff_pid);
-    }
+    CurMap->RunEffectItem(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy);
 }
 
 void FOClient::Net_OnPlaySound()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    uint synchronize_cr_id;
-    string sound_name;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> synchronize_cr_id;
-    _conn.InBuf >> sound_name;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    // Todo: synchronize effects showing (for example shot and kill)
+    [[maybe_unused]] const auto synchronize_cr_id = _conn.InBuf.Read<uint>();
+    const auto sound_name = _conn.InBuf.Read<string>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2354,15 +2220,13 @@ void FOClient::Net_OnProperty(uint data_size)
 
     uint msg_len;
     if (data_size == 0u) {
-        _conn.InBuf >> msg_len;
+        msg_len = _conn.InBuf.Read<uint>();
     }
     else {
         msg_len = 0;
     }
 
-    char type_ = 0;
-    _conn.InBuf >> type_;
-    const auto type = static_cast<NetProperty>(type_);
+    const auto type = _conn.InBuf.Read<NetProperty>();
 
     ident_t cr_id;
     ident_t item_id;
@@ -2371,27 +2235,26 @@ void FOClient::Net_OnProperty(uint data_size)
     switch (type) {
     case NetProperty::CritterItem:
         additional_args = 2;
-        _conn.InBuf >> cr_id;
-        _conn.InBuf >> item_id;
+        cr_id = _conn.InBuf.Read<ident_t>();
+        item_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::Critter:
         additional_args = 1;
-        _conn.InBuf >> cr_id;
+        cr_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::MapItem:
         additional_args = 1;
-        _conn.InBuf >> item_id;
+        item_id = _conn.InBuf.Read<ident_t>();
         break;
     case NetProperty::ChosenItem:
         additional_args = 1;
-        _conn.InBuf >> item_id;
+        item_id = _conn.InBuf.Read<ident_t>();
         break;
     default:
         break;
     }
 
-    uint16 property_index;
-    _conn.InBuf >> property_index;
+    const auto property_index = _conn.InBuf.Read<uint16>();
 
     PropertyRawData prop_data;
 
@@ -2485,32 +2348,23 @@ void FOClient::Net_OnChosenTalk()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    bool is_npc;
-    ident_t talk_cr_id;
-    hstring talk_dlg_id;
-    uint8 count_answ;
-    uint text_id;
-    uint talk_time;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> is_npc;
-    _conn.InBuf >> talk_cr_id;
-    talk_dlg_id = _conn.InBuf.Read<hstring>(*this);
-    _conn.InBuf >> count_answ;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto is_npc = _conn.InBuf.Read<bool>();
+    const auto talk_cr_id = _conn.InBuf.Read<ident_t>();
+    const auto talk_dlg_id = _conn.InBuf.Read<hstring>(*this);
+    const auto count_answ = _conn.InBuf.Read<uint8>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (count_answ == 0u) {
-        // End dialog
+    if (count_answ == 0) {
         if (IsScreenPresent(SCREEN_DIALOG)) {
             HideScreen(SCREEN_DIALOG);
         }
+
         return;
     }
 
-    // Text params
-    string lexems;
-    _conn.InBuf >> lexems;
+    const auto lexems = _conn.InBuf.Read<string>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2519,17 +2373,13 @@ void FOClient::Net_OnChosenTalk()
         return;
     }
 
-    // Find critter
     auto* npc = is_npc ? CurMap->GetCritter(talk_cr_id) : nullptr;
 
-    // Main text
-    _conn.InBuf >> text_id;
+    const auto text_id = _conn.InBuf.Read<uint>();
 
-    // Answers
     vector<uint> answers_texts;
-    uint answ_text_id = 0;
     for (auto i = 0; i < count_answ; i++) {
-        _conn.InBuf >> answ_text_id;
+        const auto answ_text_id = _conn.InBuf.Read<uint>();
         answers_texts.push_back(answ_text_id);
     }
 
@@ -2545,7 +2395,7 @@ void FOClient::Net_OnChosenTalk()
         answers_to_script += string(!answers_to_script.empty() ? "\n" : "") + str;
     }
 
-    _conn.InBuf >> talk_time;
+    const auto talk_time = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2562,20 +2412,13 @@ void FOClient::Net_OnTimeSync()
 {
     STACK_TRACE_ENTRY();
 
-    uint16 year;
-    uint16 month;
-    uint16 day;
-    uint16 hour;
-    uint16 minute;
-    uint16 second;
-    uint16 multiplier;
-    _conn.InBuf >> year;
-    _conn.InBuf >> month;
-    _conn.InBuf >> day;
-    _conn.InBuf >> hour;
-    _conn.InBuf >> minute;
-    _conn.InBuf >> second;
-    _conn.InBuf >> multiplier;
+    const auto year = _conn.InBuf.Read<uint16>();
+    const auto month = _conn.InBuf.Read<uint16>();
+    const auto day = _conn.InBuf.Read<uint16>();
+    const auto hour = _conn.InBuf.Read<uint16>();
+    const auto minute = _conn.InBuf.Read<uint16>();
+    const auto second = _conn.InBuf.Read<uint16>();
+    const auto multiplier = _conn.InBuf.Read<uint16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2596,19 +2439,12 @@ void FOClient::Net_OnLoadMap()
 
     WriteLog("Change map..");
 
-    uint msg_len;
-    ident_t loc_id;
-    ident_t map_id;
-    uint8 map_index_in_loc;
-
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> loc_id;
-    _conn.InBuf >> map_id;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto loc_id = _conn.InBuf.Read<ident_t>();
+    const auto map_id = _conn.InBuf.Read<ident_t>();
     const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
     const auto map_pid = _conn.InBuf.Read<hstring>(*this);
-    _conn.InBuf >> map_index_in_loc;
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
+    const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
     if (map_pid) {
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
@@ -2661,46 +2497,43 @@ void FOClient::Net_OnGlobalInfo()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    uint8 info_flags;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> info_flags;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto info_flags = _conn.InBuf.Read<uint8>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
         _worldmapLoc.clear();
 
-        uint16 count_loc;
-        _conn.InBuf >> count_loc;
+        const auto count_loc = _conn.InBuf.Read<uint16>();
 
         for (auto i = 0; i < count_loc; i++) {
             GmapLocation loc;
-            _conn.InBuf >> loc.LocId;
+            loc.LocId = _conn.InBuf.Read<ident_t>();
             loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-            _conn.InBuf >> loc.LocWx;
-            _conn.InBuf >> loc.LocWy;
-            _conn.InBuf >> loc.Radius;
-            _conn.InBuf >> loc.Color;
-            _conn.InBuf >> loc.Entrances;
+            loc.LocWx = _conn.InBuf.Read<uint16>();
+            loc.LocWy = _conn.InBuf.Read<uint16>();
+            loc.Radius = _conn.InBuf.Read<uint16>();
+            loc.Color = _conn.InBuf.Read<uint>();
+            loc.Entrances = _conn.InBuf.Read<uint8>();
 
-            if (loc.LocId != 0u) {
+            if (loc.LocId) {
                 _worldmapLoc.push_back(loc);
             }
         }
     }
 
     if (IsBitSet(info_flags, GM_INFO_LOCATION)) {
-        bool add;
+        const auto add = _conn.InBuf.Read<bool>();
+
         GmapLocation loc;
-        _conn.InBuf >> add;
-        _conn.InBuf >> loc.LocId;
+        loc.LocId = _conn.InBuf.Read<ident_t>();
         loc.LocPid = _conn.InBuf.Read<hstring>(*this);
-        _conn.InBuf >> loc.LocWx;
-        _conn.InBuf >> loc.LocWy;
-        _conn.InBuf >> loc.Radius;
-        _conn.InBuf >> loc.Color;
-        _conn.InBuf >> loc.Entrances;
+        loc.LocWx = _conn.InBuf.Read<uint16>();
+        loc.LocWy = _conn.InBuf.Read<uint16>();
+        loc.Radius = _conn.InBuf.Read<uint16>();
+        loc.Color = _conn.InBuf.Read<uint>();
+        loc.Entrances = _conn.InBuf.Read<uint8>();
 
         const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
         if (add) {
@@ -2724,12 +2557,9 @@ void FOClient::Net_OnGlobalInfo()
     }
 
     if (IsBitSet(info_flags, GM_INFO_FOG)) {
-        uint16 zx;
-        uint16 zy;
-        uint8 fog;
-        _conn.InBuf >> zx;
-        _conn.InBuf >> zy;
-        _conn.InBuf >> fog;
+        const auto zx = _conn.InBuf.Read<uint16>();
+        const auto zy = _conn.InBuf.Read<uint16>();
+        const auto fog = _conn.InBuf.Read<uint8>();
 
         _worldmapFog.Set2Bit(zx, zy, fog);
     }
@@ -2749,23 +2579,17 @@ void FOClient::Net_OnSomeItems()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    int param;
-    bool is_null;
-    uint items_count;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> param;
-    _conn.InBuf >> is_null;
-    _conn.InBuf >> items_count;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto param = _conn.InBuf.Read<int>();
+    [[maybe_unused]] const auto is_null = _conn.InBuf.Read<bool>();
+    const auto items_count = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
-        ident_t item_id;
-        hstring item_pid;
-        _conn.InBuf >> item_id;
-        item_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto item_id = _conn.InBuf.Read<ident_t>();
+        const auto item_pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
         const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
@@ -2785,37 +2609,29 @@ void FOClient::Net_OnAutomapsInfo()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    bool clear;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> clear;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto clear = _conn.InBuf.Read<bool>();
 
     if (clear) {
         _automaps.clear();
     }
 
-    uint16 locs_count;
-    _conn.InBuf >> locs_count;
+    const auto locs_count = _conn.InBuf.Read<uint16>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     for (uint16 i = 0; i < locs_count; i++) {
-        uint loc_id;
-        hstring loc_pid;
-        uint16 maps_count;
-        _conn.InBuf >> loc_id;
-        loc_pid = _conn.InBuf.Read<hstring>(*this);
-        _conn.InBuf >> maps_count;
+        const auto loc_id = _conn.InBuf.Read<ident_t>();
+        const auto loc_pid = _conn.InBuf.Read<hstring>(*this);
+        const auto maps_count = _conn.InBuf.Read<uint16>();
 
         auto it = std::find_if(_automaps.begin(), _automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
 
-        // Delete from collection
-        if (maps_count == 0u) {
+        if (maps_count == 0) {
             if (it != _automaps.end()) {
                 _automaps.erase(it);
             }
         }
-        // Add or modify
         else {
             Automap amap;
             amap.LocId = loc_id;
@@ -2823,10 +2639,8 @@ void FOClient::Net_OnAutomapsInfo()
             amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid.as_uint()));
 
             for (uint16 j = 0; j < maps_count; j++) {
-                hstring map_pid;
-                uint8 map_index_in_loc;
-                map_pid = _conn.InBuf.Read<hstring>(*this);
-                _conn.InBuf >> map_index_in_loc;
+                const auto map_pid = _conn.InBuf.Read<hstring>(*this);
+                const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
                 amap.MapPids.push_back(map_pid);
                 amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid.as_uint(), map_index_in_loc)));
@@ -2848,14 +2662,10 @@ void FOClient::Net_OnViewMap()
 {
     STACK_TRACE_ENTRY();
 
-    uint16 hx;
-    uint16 hy;
-    ident_t loc_id;
-    uint loc_ent;
-    _conn.InBuf >> hx;
-    _conn.InBuf >> hy;
-    _conn.InBuf >> loc_id;
-    _conn.InBuf >> loc_ent;
+    const auto hx = _conn.InBuf.Read<uint16>();
+    const auto hy = _conn.InBuf.Read<uint16>();
+    const auto loc_id = _conn.InBuf.Read<ident_t>();
+    const auto loc_ent = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2879,10 +2689,8 @@ void FOClient::Net_OnRemoteCall()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    _conn.InBuf >> msg_len;
-    uint rpc_num;
-    _conn.InBuf >> rpc_num;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto rpc_num = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2958,7 +2766,7 @@ void FOClient::AnimFree(uint anim_id)
 
     RUNTIME_ASSERT(anim_id < _ifaceAnimations.size());
 
-    if (_ifaceAnimations[anim_id]) {
+    if (_ifaceAnimations[anim_id] != nullptr) {
         delete _ifaceAnimations[anim_id];
         _ifaceAnimations[anim_id] = nullptr;
     }
@@ -2968,7 +2776,7 @@ auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
+    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
         return 0;
     }
     return _ifaceAnimations[anim_id]->Frames->Ind[_ifaceAnimations[anim_id]->CurSpr];
@@ -2978,7 +2786,7 @@ auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
+    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
         return 0;
     }
     return _ifaceAnimations[anim_id]->CurSpr;
@@ -2988,7 +2796,7 @@ auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
+    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
         return 0;
     }
     return _ifaceAnimations[anim_id]->Frames->CntFrm;
@@ -3000,7 +2808,7 @@ auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 
     NON_CONST_METHOD_HINT();
 
-    if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
+    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
         return 0;
     }
     return _ifaceAnimations[anim_id]->Frames;
@@ -3012,7 +2820,7 @@ void FOClient::AnimRun(uint anim_id, uint flags)
 
     NON_CONST_METHOD_HINT();
 
-    if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
+    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
         return;
     }
 

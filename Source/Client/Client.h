@@ -273,7 +273,7 @@ protected:
 
     struct GmapLocation
     {
-        uint LocId {};
+        ident_t LocId {};
         hstring LocPid {};
         uint16 LocWx {};
         uint16 LocWy {};
@@ -284,7 +284,7 @@ protected:
 
     struct Automap
     {
-        uint LocId {};
+        ident_t LocId {};
         hstring LocPid {};
         string LocName {};
         vector<hstring> MapPids {};

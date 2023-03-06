@@ -228,7 +228,7 @@ void NetBuffer::SetEncryptKey(uint seed)
 {
     STACK_TRACE_ENTRY();
 
-    if (seed == 0u) {
+    if (seed == 0) {
         _encryptActive = false;
         return;
     }
@@ -325,7 +325,7 @@ void NetOutBuffer::Push(const void* buf, size_t len)
 {
     STACK_TRACE_ENTRY();
 
-    if (_isError || len == 0u) {
+    if (_isError || len == 0) {
         return;
     }
 
@@ -341,7 +341,7 @@ void NetOutBuffer::Cut(size_t len)
 {
     STACK_TRACE_ENTRY();
 
-    if (_isError || len == 0u) {
+    if (_isError || len == 0) {
         return;
     }
 
@@ -416,7 +416,7 @@ void NetInBuffer::AddData(const void* buf, size_t len)
 {
     STACK_TRACE_ENTRY();
 
-    if (_isError || len == 0u) {
+    if (_isError || len == 0) {
         return;
     }
 
@@ -444,7 +444,7 @@ void NetInBuffer::Pop(void* buf, size_t len)
         return;
     }
 
-    if (len == 0u) {
+    if (len == 0) {
         return;
     }
 
@@ -472,11 +472,11 @@ void NetInBuffer::ShrinkReadBuf()
     }
 
     if (_bufReadPos >= _bufEndPos) {
-        if (_bufReadPos != 0u) {
+        if (_bufReadPos != 0) {
             ResetBuf();
         }
     }
-    else if (_bufReadPos != 0u) {
+    else if (_bufReadPos != 0) {
         for (auto i = _bufReadPos; i < _bufEndPos; i++) {
             _bufData[i - _bufReadPos] = _bufData[i];
         }
@@ -490,8 +490,7 @@ auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
 
-    hstring::hash_t h;
-    *this >> h;
+    const auto h = Read<hstring::hash_t>();
 
     hstring result;
 

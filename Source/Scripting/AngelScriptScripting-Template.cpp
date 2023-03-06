@@ -1540,14 +1540,15 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
     STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
-        out_buf << static_cast<uint16>(value.length());
+        RUNTIME_ASSERT(value.length() <= 0xFFFF);
+        out_buf.Write(static_cast<uint16>(value.length()));
         out_buf.Push(value.data(), value.length());
     }
     else if constexpr (std::is_same_v<T, hstring>) {
-        out_buf << value;
+        out_buf.Write(value);
     }
     else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
-        out_buf << value;
+        out_buf.Write(value);
     }
 }
 
@@ -1556,7 +1557,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     STACK_TRACE_ENTRY();
 
-    out_buf << static_cast<uint16>(value.size());
+    RUNTIME_ASSERT(value.size() <= 0xFFFF);
+    out_buf.Write(static_cast<uint16>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value);
@@ -1571,7 +1573,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
     STACK_TRACE_ENTRY();
 
-    out_buf << static_cast<uint16>(value.size());
+    RUNTIME_ASSERT(value.size() <= 0xFFFF);
+    out_buf.Write(static_cast<uint16>(value.size()));
 
     for (const auto& inner_value : value) {
         WriteNetBuf(out_buf, inner_value.first);
@@ -1585,8 +1588,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
     STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, string>) {
-        uint16 len = 0;
-        in_buf >> len;
+        const auto len = in_buf.Read<uint16>();
         value.resize(len);
         in_buf.Pop(value.data(), len);
     }
@@ -1594,7 +1596,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
         value = in_buf.Read<hstring>(name_resolver);
     }
     else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
-        in_buf >> value;
+        value = in_buf.Read<T>();
     }
 }
 
@@ -1603,8 +1605,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name
 {
     STACK_TRACE_ENTRY();
 
-    uint16 inner_values_count = 0;
-    in_buf >> inner_values_count;
+    const auto inner_values_count = in_buf.Read<uint16>();
     value.reserve(inner_values_count);
 
     for (uint16 i = 0; i < inner_values_count; i++) {
@@ -1622,8 +1623,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 {
     STACK_TRACE_ENTRY();
 
-    uint16 inner_values_count = 0;
-    in_buf >> inner_values_count;
+    const auto inner_values_count = in_buf.Read<uint16>();
 
     for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value_first;
@@ -1639,7 +1639,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
     STACK_TRACE_ENTRY();
 
     out_buf.StartMsg(NETMSG_RPC);
-    out_buf << rpc_num;
+    out_buf.Write(rpc_num);
 }
 
 [[maybe_unused]] static void WriteRpcFooter(NetOutBuffer& out_buf)

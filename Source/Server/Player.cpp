@@ -95,7 +95,7 @@ auto Player::GetPort() const -> uint16
     return Connection->GetPort();
 }
 
-void Player::Send_AddCritter(Critter* cr)
+void Player::Send_AddCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -107,23 +107,23 @@ void Player::Send_AddCritter(Critter* cr)
     CONNECTION_OUTPUT_BEGIN(Connection);
 
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
-    Connection->OutBuf << cr->GetId();
-    Connection->OutBuf << cr->GetHexX();
-    Connection->OutBuf << cr->GetHexY();
-    Connection->OutBuf << cr->GetHexOffsX();
-    Connection->OutBuf << cr->GetHexOffsY();
-    Connection->OutBuf << cr->GetDirAngle();
-    Connection->OutBuf << cr->GetCond();
-    Connection->OutBuf << cr->GetAnim1Alive();
-    Connection->OutBuf << cr->GetAnim1Knockout();
-    Connection->OutBuf << cr->GetAnim1Dead();
-    Connection->OutBuf << cr->GetAnim2Alive();
-    Connection->OutBuf << cr->GetAnim2Knockout();
-    Connection->OutBuf << cr->GetAnim2Dead();
-    Connection->OutBuf << cr->IsOwnedByPlayer();
-    Connection->OutBuf << (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
-    Connection->OutBuf << is_chosen;
-    Connection->OutBuf << cr->GetProtoId();
+    Connection->OutBuf.Write(cr->GetId());
+    Connection->OutBuf.Write(cr->GetHexX());
+    Connection->OutBuf.Write(cr->GetHexY());
+    Connection->OutBuf.Write(cr->GetHexOffsX());
+    Connection->OutBuf.Write(cr->GetHexOffsY());
+    Connection->OutBuf.Write(cr->GetDirAngle());
+    Connection->OutBuf.Write(cr->GetCond());
+    Connection->OutBuf.Write(cr->GetAnim1Alive());
+    Connection->OutBuf.Write(cr->GetAnim1Knockout());
+    Connection->OutBuf.Write(cr->GetAnim1Dead());
+    Connection->OutBuf.Write(cr->GetAnim2Alive());
+    Connection->OutBuf.Write(cr->GetAnim2Knockout());
+    Connection->OutBuf.Write(cr->GetAnim2Dead());
+    Connection->OutBuf.Write(cr->IsOwnedByPlayer());
+    Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
+    Connection->OutBuf.Write(is_chosen);
+    Connection->OutBuf.Write(cr->GetProtoId());
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
 
@@ -138,7 +138,7 @@ void Player::Send_AddCritter(Critter* cr)
     }
 }
 
-void Player::Send_RemoveCritter(Critter* cr)
+void Player::Send_RemoveCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -146,12 +146,12 @@ void Player::Send_RemoveCritter(Critter* cr)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_REMOVE_CRITTER);
-    Connection->OutBuf << cr->GetId();
+    Connection->OutBuf.Write(cr->GetId());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_LoadMap(Map* map)
+void Player::Send_LoadMap(const Map* map)
 {
     STACK_TRACE_ENTRY();
 
@@ -186,11 +186,11 @@ void Player::Send_LoadMap(Map* map)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_LOADMAP);
-    Connection->OutBuf << (loc != nullptr ? loc->GetId() : ident_t {});
-    Connection->OutBuf << (map != nullptr ? map->GetId() : ident_t {});
-    Connection->OutBuf << pid_loc;
-    Connection->OutBuf << pid_map;
-    Connection->OutBuf << map_index_in_loc;
+    Connection->OutBuf.Write(loc != nullptr ? loc->GetId() : ident_t {});
+    Connection->OutBuf.Write(map != nullptr ? map->GetId() : ident_t {});
+    Connection->OutBuf.Write(pid_loc);
+    Connection->OutBuf.Write(pid_map);
+    Connection->OutBuf.Write(map_index_in_loc);
     if (map != nullptr) {
         NET_WRITE_PROPERTIES(Connection->OutBuf, map_data, map_data_sizes);
         NET_WRITE_PROPERTIES(Connection->OutBuf, loc_data, loc_data_sizes);
@@ -199,7 +199,7 @@ void Player::Send_LoadMap(Map* map)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Property(NetProperty type, const Property* prop, Entity* entity)
+void Player::Send_Property(NetProperty type, const Property* prop, const Entity* entity)
 {
     STACK_TRACE_ENTRY();
 
@@ -242,33 +242,33 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
         Connection->OutBuf.StartMsg(NETMSG_COMPLEX_PROPERTY);
     }
 
-    Connection->OutBuf << static_cast<char>(type);
+    Connection->OutBuf.Write(type);
 
     switch (type) {
     case NetProperty::CritterItem:
-        Connection->OutBuf << dynamic_cast<Item*>(entity)->GetCritterId();
-        Connection->OutBuf << dynamic_cast<ServerEntity*>(entity)->GetId();
+        Connection->OutBuf.Write(dynamic_cast<const Item*>(entity)->GetCritterId());
+        Connection->OutBuf.Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
         break;
     case NetProperty::Critter:
-        Connection->OutBuf << dynamic_cast<ServerEntity*>(entity)->GetId();
+        Connection->OutBuf.Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
         break;
     case NetProperty::MapItem:
-        Connection->OutBuf << dynamic_cast<ServerEntity*>(entity)->GetId();
+        Connection->OutBuf.Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
         break;
     case NetProperty::ChosenItem:
-        Connection->OutBuf << dynamic_cast<ServerEntity*>(entity)->GetId();
+        Connection->OutBuf.Write(dynamic_cast<const ServerEntity*>(entity)->GetId());
         break;
     default:
         break;
     }
 
     if (is_pod) {
-        Connection->OutBuf << prop->GetRegIndex();
+        Connection->OutBuf.Write(prop->GetRegIndex());
         Connection->OutBuf.Push(data, data_size);
     }
     else {
-        Connection->OutBuf << prop->GetRegIndex();
-        if (data_size != 0u) {
+        Connection->OutBuf.Write(prop->GetRegIndex());
+        if (data_size != 0) {
             Connection->OutBuf.Push(data, data_size);
         }
     }
@@ -277,7 +277,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Move(Critter* from_cr)
+void Player::Send_Move(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -286,40 +286,40 @@ void Player::Send_Move(Critter* from_cr)
     if (!from_cr->Moving.Steps.empty()) {
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE);
-        Connection->OutBuf << from_cr->GetId();
-        Connection->OutBuf << static_cast<uint>(std::ceil(from_cr->Moving.WholeTime));
-        Connection->OutBuf << time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime);
-        Connection->OutBuf << from_cr->Moving.Speed;
-        Connection->OutBuf << from_cr->Moving.StartHexX;
-        Connection->OutBuf << from_cr->Moving.StartHexY;
-        Connection->OutBuf << static_cast<uint16>(from_cr->Moving.Steps.size());
-        for (auto step : from_cr->Moving.Steps) {
-            Connection->OutBuf << step;
+        Connection->OutBuf.Write(from_cr->GetId());
+        Connection->OutBuf.Write(static_cast<uint>(std::ceil(from_cr->Moving.WholeTime)));
+        Connection->OutBuf.Write(time_duration_to_ms<uint>(_engine->GameTime.FrameTime() - from_cr->Moving.StartTime));
+        Connection->OutBuf.Write(from_cr->Moving.Speed);
+        Connection->OutBuf.Write(from_cr->Moving.StartHexX);
+        Connection->OutBuf.Write(from_cr->Moving.StartHexY);
+        Connection->OutBuf.Write(static_cast<uint16>(from_cr->Moving.Steps.size()));
+        for (const auto step : from_cr->Moving.Steps) {
+            Connection->OutBuf.Write(step);
         }
-        Connection->OutBuf << static_cast<uint16>(from_cr->Moving.ControlSteps.size());
-        for (auto control_step : from_cr->Moving.ControlSteps) {
-            Connection->OutBuf << control_step;
+        Connection->OutBuf.Write(static_cast<uint16>(from_cr->Moving.ControlSteps.size()));
+        for (const auto control_step : from_cr->Moving.ControlSteps) {
+            Connection->OutBuf.Write(control_step);
         }
-        Connection->OutBuf << from_cr->Moving.EndOx;
-        Connection->OutBuf << from_cr->Moving.EndOy;
+        Connection->OutBuf.Write(from_cr->Moving.EndOx);
+        Connection->OutBuf.Write(from_cr->Moving.EndOy);
         Connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(Connection);
     }
     else {
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->OutBuf.StartMsg(NETMSG_CRITTER_STOP_MOVE);
-        Connection->OutBuf << from_cr->GetId();
-        Connection->OutBuf << from_cr->GetHexX();
-        Connection->OutBuf << from_cr->GetHexY();
-        Connection->OutBuf << from_cr->GetHexOffsX();
-        Connection->OutBuf << from_cr->GetHexOffsY();
-        Connection->OutBuf << from_cr->GetDirAngle();
+        Connection->OutBuf.Write(from_cr->GetId());
+        Connection->OutBuf.Write(from_cr->GetHexX());
+        Connection->OutBuf.Write(from_cr->GetHexY());
+        Connection->OutBuf.Write(from_cr->GetHexOffsX());
+        Connection->OutBuf.Write(from_cr->GetHexOffsY());
+        Connection->OutBuf.Write(from_cr->GetDirAngle());
         Connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(Connection);
     }
 }
 
-void Player::Send_Dir(Critter* from_cr)
+void Player::Send_Dir(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -327,13 +327,13 @@ void Player::Send_Dir(Critter* from_cr)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_DIR);
-    Connection->OutBuf << from_cr->GetId();
-    Connection->OutBuf << from_cr->GetDirAngle();
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(from_cr->GetDirAngle());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Action(Critter* from_cr, int action, int action_ext, Item* item)
+void Player::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -343,15 +343,15 @@ void Player::Send_Action(Critter* from_cr, int action, int action_ext, Item* ite
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ACTION);
-    Connection->OutBuf << from_cr->GetId();
-    Connection->OutBuf << action;
-    Connection->OutBuf << action_ext;
-    Connection->OutBuf << (item != nullptr);
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(action);
+    Connection->OutBuf.Write(action_ext);
+    Connection->OutBuf.Write(item != nullptr);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 prev_slot)
+void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -366,7 +366,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 pre
     vector<vector<uint>*> items_data_sizes;
 
     if (!is_chosen) {
-        const auto& inv_items = from_cr->GetInventory();
+        const auto& inv_items = from_cr->GetConstRawItems();
         items.reserve(inv_items.size());
         for (const auto* item_ : inv_items) {
             const auto slot = item_->GetCritterSlot();
@@ -387,24 +387,24 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uint8 action, uint8 pre
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_MOVE_ITEM);
-    Connection->OutBuf << from_cr->GetId();
-    Connection->OutBuf << action;
-    Connection->OutBuf << prev_slot;
-    Connection->OutBuf << (item != nullptr);
-    Connection->OutBuf << (item != nullptr ? item->GetCritterSlot() : uint8());
-    Connection->OutBuf << static_cast<uint16>(items.size());
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(action);
+    Connection->OutBuf.Write(prev_slot);
+    Connection->OutBuf.Write(item != nullptr);
+    Connection->OutBuf.Write(item != nullptr ? item->GetCritterSlot() : uint8());
+    Connection->OutBuf.Write(static_cast<uint16>(items.size()));
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];
-        Connection->OutBuf << item_->GetCritterSlot();
-        Connection->OutBuf << item_->GetId();
-        Connection->OutBuf << item_->GetProtoId();
+        Connection->OutBuf.Write(item_->GetCritterSlot());
+        Connection->OutBuf.Write(item_->GetId());
+        Connection->OutBuf.Write(item_->GetProtoId());
         NET_WRITE_PROPERTIES(Connection->OutBuf, items_data[i], items_data_sizes[i]);
     }
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
+void Player::Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
@@ -414,17 +414,17 @@ void Player::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, 
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ANIMATE);
-    Connection->OutBuf << from_cr->GetId();
-    Connection->OutBuf << anim1;
-    Connection->OutBuf << anim2;
-    Connection->OutBuf << (item != nullptr);
-    Connection->OutBuf << clear_sequence;
-    Connection->OutBuf << delay_play;
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(anim1);
+    Connection->OutBuf.Write(anim2);
+    Connection->OutBuf.Write(item != nullptr);
+    Connection->OutBuf.Write(clear_sequence);
+    Connection->OutBuf.Write(delay_play);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
+void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
     STACK_TRACE_ENTRY();
 
@@ -432,15 +432,15 @@ void Player::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, 
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_SET_ANIMS);
-    Connection->OutBuf << from_cr->GetId();
-    Connection->OutBuf << cond;
-    Connection->OutBuf << anim1;
-    Connection->OutBuf << anim2;
+    Connection->OutBuf.Write(from_cr->GetId());
+    Connection->OutBuf.Write(cond);
+    Connection->OutBuf.Write(anim1);
+    Connection->OutBuf.Write(anim2);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AddItemOnMap(Item* item)
+void Player::Send_AddItemOnMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -454,17 +454,17 @@ void Player::Send_AddItemOnMap(Item* item)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ADD_ITEM_ON_MAP);
-    Connection->OutBuf << item->GetId();
-    Connection->OutBuf << item->GetProtoId();
-    Connection->OutBuf << item->GetHexX();
-    Connection->OutBuf << item->GetHexY();
-    Connection->OutBuf << is_added;
+    Connection->OutBuf.Write(item->GetId());
+    Connection->OutBuf.Write(item->GetProtoId());
+    Connection->OutBuf.Write(item->GetHexX());
+    Connection->OutBuf.Write(item->GetHexY());
+    Connection->OutBuf.Write(is_added);
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_EraseItemFromMap(Item* item)
+void Player::Send_EraseItemFromMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -472,13 +472,13 @@ void Player::Send_EraseItemFromMap(Item* item)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ERASE_ITEM_FROM_MAP);
-    Connection->OutBuf << item->GetId();
-    Connection->OutBuf << item->ViewPlaceOnMap;
+    Connection->OutBuf.Write(item->GetId());
+    Connection->OutBuf.Write(item->ViewPlaceOnMap);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
+void Player::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
 {
     STACK_TRACE_ENTRY();
 
@@ -486,14 +486,14 @@ void Player::Send_AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ANIMATE_ITEM);
-    Connection->OutBuf << item->GetId();
-    Connection->OutBuf << from_frm;
-    Connection->OutBuf << to_frm;
+    Connection->OutBuf.Write(item->GetId());
+    Connection->OutBuf.Write(from_frm);
+    Connection->OutBuf.Write(to_frm);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AddItem(Item* item)
+void Player::Send_AddItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -509,15 +509,15 @@ void Player::Send_AddItem(Item* item)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ADD_ITEM);
-    Connection->OutBuf << item->GetId();
-    Connection->OutBuf << item->GetProtoId();
-    Connection->OutBuf << item->GetCritterSlot();
+    Connection->OutBuf.Write(item->GetId());
+    Connection->OutBuf.Write(item->GetProtoId());
+    Connection->OutBuf.Write(item->GetCritterSlot());
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_EraseItem(Item* item)
+void Player::Send_EraseItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -525,7 +525,7 @@ void Player::Send_EraseItem(Item* item)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_REMOVE_ITEM);
-    Connection->OutBuf << item->GetId();
+    Connection->OutBuf.Write(item->GetId());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -533,8 +533,6 @@ void Player::Send_EraseItem(Item* item)
 void Player::Send_GlobalInfo(uint8 info_flags)
 {
     STACK_TRACE_ENTRY();
-
-#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(uint16) + sizeof(uint) + sizeof(uint8))
 
     NON_CONST_METHOD_HINT();
 
@@ -544,36 +542,37 @@ void Player::Send_GlobalInfo(uint8 info_flags)
 
     auto loc_count = static_cast<uint16>(known_locs.size());
 
-    // Parse message
     CONNECTION_OUTPUT_BEGIN(Connection);
 
     Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf << info_flags;
+    Connection->OutBuf.Write(info_flags);
 
     if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
-        Connection->OutBuf << loc_count;
+        Connection->OutBuf.Write(loc_count);
 
-        constexpr char empty_loc[SEND_LOCATION_SIZE] = {0, 0, 0, 0};
         for (uint16 i = 0; i < loc_count;) {
-            auto loc_id = known_locs[i];
+            const auto loc_id = known_locs[i];
             const auto* loc = _engine->MapMngr.GetLocation(loc_id);
             if (loc != nullptr && !loc->GetToGarbage()) {
                 i++;
-                Connection->OutBuf << loc_id;
-                Connection->OutBuf << loc->GetProtoId();
-                Connection->OutBuf << loc->GetWorldX();
-                Connection->OutBuf << loc->GetWorldY();
-                Connection->OutBuf << loc->GetRadius();
-                Connection->OutBuf << loc->GetColor();
+                Connection->OutBuf.Write(loc_id);
+                Connection->OutBuf.Write(loc->GetProtoId());
+                Connection->OutBuf.Write(loc->GetWorldX());
+                Connection->OutBuf.Write(loc->GetWorldY());
+                Connection->OutBuf.Write(loc->GetRadius());
+                Connection->OutBuf.Write(loc->GetColor());
                 uint8 count = 0;
                 if (loc->IsNonEmptyMapEntrances()) {
                     count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
                 }
-                Connection->OutBuf << count;
+                Connection->OutBuf.Write(count);
             }
             else {
                 loc_count--;
                 _engine->MapMngr.EraseKnownLoc(_ownedCr, loc_id);
+
+                constexpr size_t send_location_size = sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint16) * 2 + sizeof(uint16) + sizeof(uint) + sizeof(uint8);
+                constexpr char empty_loc[send_location_size] = {0};
                 Connection->OutBuf.Push(empty_loc, sizeof(empty_loc));
             }
         }
@@ -595,7 +594,7 @@ void Player::Send_GlobalInfo(uint8 info_flags)
     }
 }
 
-void Player::Send_GlobalLocation(Location* loc, bool add)
+void Player::Send_GlobalLocation(const Location* loc, bool add)
 {
     STACK_TRACE_ENTRY();
 
@@ -605,23 +604,21 @@ void Player::Send_GlobalLocation(Location* loc, bool add)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf << info_flags;
-    Connection->OutBuf << add;
-    Connection->OutBuf << loc->GetId();
-    Connection->OutBuf << loc->GetProtoId();
-    Connection->OutBuf << loc->GetWorldX();
-    Connection->OutBuf << loc->GetWorldY();
-    Connection->OutBuf << loc->GetRadius();
-    Connection->OutBuf << loc->GetColor();
+    Connection->OutBuf.Write(info_flags);
+    Connection->OutBuf.Write(add);
+    Connection->OutBuf.Write(loc->GetId());
+    Connection->OutBuf.Write(loc->GetProtoId());
+    Connection->OutBuf.Write(loc->GetWorldX());
+    Connection->OutBuf.Write(loc->GetWorldY());
+    Connection->OutBuf.Write(loc->GetRadius());
+    Connection->OutBuf.Write(loc->GetColor());
     uint8 count = 0;
     if (loc->IsNonEmptyMapEntrances()) {
         count = static_cast<uint8>(loc->GetMapEntrances().size() / 2);
     }
-    Connection->OutBuf << count;
+    Connection->OutBuf.Write(count);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
-
-#undef SEND_LOCATION_SIZE
 }
 
 void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
@@ -634,15 +631,15 @@ void Player::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_GLOBAL_INFO);
-    Connection->OutBuf << info_flags;
-    Connection->OutBuf << zx;
-    Connection->OutBuf << zy;
-    Connection->OutBuf << fog;
+    Connection->OutBuf.Write(info_flags);
+    Connection->OutBuf.Write(zx);
+    Connection->OutBuf.Write(zy);
+    Connection->OutBuf.Write(fog);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Position(Critter* cr)
+void Player::Send_Position(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -650,12 +647,12 @@ void Player::Send_Position(Critter* cr)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_POS);
-    Connection->OutBuf << cr->GetId();
-    Connection->OutBuf << cr->GetHexX();
-    Connection->OutBuf << cr->GetHexY();
-    Connection->OutBuf << cr->GetHexOffsX();
-    Connection->OutBuf << cr->GetHexOffsY();
-    Connection->OutBuf << cr->GetDirAngle();
+    Connection->OutBuf.Write(cr->GetId());
+    Connection->OutBuf.Write(cr->GetHexX());
+    Connection->OutBuf.Write(cr->GetHexY());
+    Connection->OutBuf.Write(cr->GetHexOffsX());
+    Connection->OutBuf.Write(cr->GetHexOffsY());
+    Connection->OutBuf.Write(cr->GetDirAngle());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -677,7 +674,7 @@ void Player::Send_AllProperties()
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy)
+void Player::Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -685,9 +682,9 @@ void Player::Send_Teleport(Critter* cr, uint16 to_hx, uint16 to_hy)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_TELEPORT);
-    Connection->OutBuf << cr->GetId();
-    Connection->OutBuf << to_hx;
-    Connection->OutBuf << to_hy;
+    Connection->OutBuf.Write(cr->GetId());
+    Connection->OutBuf.Write(to_hx);
+    Connection->OutBuf.Write(to_hy);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -707,10 +704,10 @@ void Player::Send_Talk()
     Connection->OutBuf.StartMsg(NETMSG_TALK_NPC);
 
     if (close) {
-        Connection->OutBuf << is_npc;
-        Connection->OutBuf << _ownedCr->Talk.CritterId;
-        Connection->OutBuf << _ownedCr->Talk.DialogPackId;
-        Connection->OutBuf << static_cast<uint8>(0);
+        Connection->OutBuf.Write(is_npc);
+        Connection->OutBuf.Write(_ownedCr->Talk.CritterId);
+        Connection->OutBuf.Write(_ownedCr->Talk.DialogPackId);
+        Connection->OutBuf.Write(static_cast<uint8>(0));
     }
     else {
         const auto all_answers = static_cast<uint8>(_ownedCr->Talk.CurDialog.Answers.size());
@@ -721,19 +718,19 @@ void Player::Send_Talk()
             talk_time = diff < talk_time ? talk_time - diff : std::chrono::milliseconds {1};
         }
 
-        Connection->OutBuf << is_npc;
-        Connection->OutBuf << _ownedCr->Talk.CritterId;
-        Connection->OutBuf << _ownedCr->Talk.DialogPackId;
-        Connection->OutBuf << all_answers;
-        Connection->OutBuf << static_cast<uint16>(_ownedCr->Talk.Lexems.length()); // Lexems length
-        if (_ownedCr->Talk.Lexems.length() != 0u) {
-            Connection->OutBuf.Push(_ownedCr->Talk.Lexems.c_str(), _ownedCr->Talk.Lexems.length()); // Lexems string
+        Connection->OutBuf.Write(is_npc);
+        Connection->OutBuf.Write(_ownedCr->Talk.CritterId);
+        Connection->OutBuf.Write(_ownedCr->Talk.DialogPackId);
+        Connection->OutBuf.Write(all_answers);
+        Connection->OutBuf.Write(static_cast<uint16>(_ownedCr->Talk.Lexems.length()));
+        if (_ownedCr->Talk.Lexems.length() != 0) {
+            Connection->OutBuf.Push(_ownedCr->Talk.Lexems.c_str(), _ownedCr->Talk.Lexems.length());
         }
-        Connection->OutBuf << _ownedCr->Talk.CurDialog.TextId; // Main text_id
-        for (auto& answer : _ownedCr->Talk.CurDialog.Answers) {
-            Connection->OutBuf << answer.TextId; // Answers text_id
+        Connection->OutBuf.Write(_ownedCr->Talk.CurDialog.TextId);
+        for (const auto& answer : _ownedCr->Talk.CurDialog.Answers) {
+            Connection->OutBuf.Write(answer.TextId);
         }
-        Connection->OutBuf << time_duration_to_ms<uint>(talk_time); // Talk time
+        Connection->OutBuf.Write(time_duration_to_ms<uint>(talk_time));
     }
 
     Connection->OutBuf.EndMsg();
@@ -748,18 +745,18 @@ void Player::Send_TimeSync()
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_TIME_SYNC);
-    Connection->OutBuf << _engine->GetYear();
-    Connection->OutBuf << _engine->GetMonth();
-    Connection->OutBuf << _engine->GetDay();
-    Connection->OutBuf << _engine->GetHour();
-    Connection->OutBuf << _engine->GetMinute();
-    Connection->OutBuf << _engine->GetSecond();
-    Connection->OutBuf << _engine->GetTimeMultiplier();
+    Connection->OutBuf.Write(_engine->GetYear());
+    Connection->OutBuf.Write(_engine->GetMonth());
+    Connection->OutBuf.Write(_engine->GetDay());
+    Connection->OutBuf.Write(_engine->GetHour());
+    Connection->OutBuf.Write(_engine->GetMinute());
+    Connection->OutBuf.Write(_engine->GetSecond());
+    Connection->OutBuf.Write(_engine->GetTimeMultiplier());
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Text(Critter* from_cr, string_view text, uint8 how_say)
+void Player::Send_Text(const Critter* from_cr, string_view text, uint8 how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -779,21 +776,21 @@ void Player::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool 
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_TEXT);
-    Connection->OutBuf << from_id;
-    Connection->OutBuf << how_say;
-    Connection->OutBuf << text;
-    Connection->OutBuf << unsafe_text;
+    Connection->OutBuf.Write(from_id);
+    Connection->OutBuf.Write(how_say);
+    Connection->OutBuf.Write(text);
+    Connection->OutBuf.Write(unsafe_text);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg)
+void Player::Send_TextMsg(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0u) {
+    if (num_str == 0) {
         return;
     }
 
@@ -801,10 +798,10 @@ void Player::Send_TextMsg(Critter* from_cr, uint num_str, uint8 how_say, uint16 
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MSG);
-    Connection->OutBuf << from_id;
-    Connection->OutBuf << how_say;
-    Connection->OutBuf << num_msg;
-    Connection->OutBuf << num_str;
+    Connection->OutBuf.Write(from_id);
+    Connection->OutBuf.Write(how_say);
+    Connection->OutBuf.Write(num_msg);
+    Connection->OutBuf.Write(num_str);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -815,27 +812,27 @@ void Player::Send_TextMsg(ident_t from_id, uint num_str, uint8 how_say, uint16 n
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0u) {
+    if (num_str == 0) {
         return;
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MSG);
-    Connection->OutBuf << from_id;
-    Connection->OutBuf << how_say;
-    Connection->OutBuf << num_msg;
-    Connection->OutBuf << num_str;
+    Connection->OutBuf.Write(from_id);
+    Connection->OutBuf.Write(how_say);
+    Connection->OutBuf.Write(num_msg);
+    Connection->OutBuf.Write(num_str);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
+void Player::Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0u) {
+    if (num_str == 0) {
         return;
     }
 
@@ -843,11 +840,11 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uint8 how_say, uint
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MSG_LEX);
-    Connection->OutBuf << from_id;
-    Connection->OutBuf << how_say;
-    Connection->OutBuf << num_msg;
-    Connection->OutBuf << num_str;
-    Connection->OutBuf << lexems;
+    Connection->OutBuf.Write(from_id);
+    Connection->OutBuf.Write(how_say);
+    Connection->OutBuf.Write(num_msg);
+    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -858,17 +855,17 @@ void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint1
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0u) {
+    if (num_str == 0) {
         return;
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MSG_LEX);
-    Connection->OutBuf << from_id;
-    Connection->OutBuf << how_say;
-    Connection->OutBuf << num_msg;
-    Connection->OutBuf << num_str;
-    Connection->OutBuf << lexems;
+    Connection->OutBuf.Write(from_id);
+    Connection->OutBuf.Write(how_say);
+    Connection->OutBuf.Write(num_msg);
+    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -881,11 +878,11 @@ void Player::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bo
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT);
-    Connection->OutBuf << hx;
-    Connection->OutBuf << hy;
-    Connection->OutBuf << color;
-    Connection->OutBuf << text;
-    Connection->OutBuf << unsafe_text;
+    Connection->OutBuf.Write(hx);
+    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(color);
+    Connection->OutBuf.Write(text);
+    Connection->OutBuf.Write(unsafe_text);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -898,11 +895,11 @@ void Player::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, u
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT_MSG);
-    Connection->OutBuf << hx;
-    Connection->OutBuf << hy;
-    Connection->OutBuf << color;
-    Connection->OutBuf << num_msg;
-    Connection->OutBuf << num_str;
+    Connection->OutBuf.Write(hx);
+    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(color);
+    Connection->OutBuf.Write(num_msg);
+    Connection->OutBuf.Write(num_str);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -915,23 +912,25 @@ void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_MAP_TEXT_MSG_LEX);
-    Connection->OutBuf << hx;
-    Connection->OutBuf << hy;
-    Connection->OutBuf << color;
-    Connection->OutBuf << num_msg;
-    Connection->OutBuf << num_str;
-    Connection->OutBuf << lexems;
+    Connection->OutBuf.Write(hx);
+    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(color);
+    Connection->OutBuf.Write(num_msg);
+    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
+void Player::Send_AutomapsInfo(const void* locs_vec, const Location* loc)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     // Todo: restore automaps
+    UNUSED_VARIABLE(locs_vec);
+    UNUSED_VARIABLE(loc);
     /*if (locs_vec)
     {
         LocationVec* locs = (LocationVec*)locs_vec;
@@ -947,28 +946,28 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
 
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->OutBuf.StartMsg(NETMSG_AUTOMAPS_INFO);
-        Connection->OutBuf << (bool)true; // Clear list
-        Connection->OutBuf << (uint16)locs->size();
+        Connection->OutBuf.Write((bool)true; // Clear list
+        Connection->OutBuf.Write((uint16)locs->size();
         for (uint i = 0, j = (uint)locs->size(); i < j; i++)
         {
             Location* loc_ = (*locs)[i];
-            Connection->OutBuf << loc_->GetId();
-            Connection->OutBuf << loc_->GetProtoId();
+            Connection->OutBuf.Write(loc_->GetId();
+            Connection->OutBuf.Write(loc_->GetProtoId();
             if (loc_->IsNonEmptyAutomaps())
             {
                 CScriptArray* automaps = loc_->GetAutomaps();
-                Connection->OutBuf << (uint16)automaps->GetSize();
+                Connection->OutBuf.Write((uint16)automaps->GetSize();
                 for (uint k = 0, l = (uint)automaps->GetSize(); k < l; k++)
                 {
                     hstring pid = *(hash*)automaps->At(k);
-                    Connection->OutBuf << pid;
-                    Connection->OutBuf << (uint8)loc_->GetMapIndex(pid);
+                    Connection->OutBuf.Write(pid;
+                    Connection->OutBuf.Write((uint8)loc_->GetMapIndex(pid);
                 }
                 automaps->Release();
             }
             else
             {
-                Connection->OutBuf << (uint16)0;
+                Connection->OutBuf.Write((uint16)0;
             }
         }
         Connection->OutBuf.EndMsg();
@@ -981,18 +980,18 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
 
         CONNECTION_OUTPUT_BEGIN(Connection);
         Connection->OutBuf.StartMsg(NETMSG_AUTOMAPS_INFO);
-        Connection->OutBuf << (bool)false; // Append this information
-        Connection->OutBuf << (uint16)1;
-        Connection->OutBuf << loc->GetId();
-        Connection->OutBuf << loc->GetProtoId();
-        Connection->OutBuf << (uint16)(automaps ? automaps->GetSize() : 0);
+        Connection->OutBuf.Write((bool)false; // Append this information
+        Connection->OutBuf.Write((uint16)1;
+        Connection->OutBuf.Write(loc->GetId();
+        Connection->OutBuf.Write(loc->GetProtoId();
+        Connection->OutBuf.Write((uint16)(automaps ? automaps->GetSize() : 0);
         if (automaps)
         {
             for (uint i = 0, j = (uint)automaps->GetSize(); i < j; i++)
             {
                 hash pid = *(hash*)automaps->At(i);
-                Connection->OutBuf << pid;
-                Connection->OutBuf << (uint8)loc->GetMapIndex(pid);
+                Connection->OutBuf.Write(pid;
+                Connection->OutBuf.Write((uint8)loc->GetMapIndex(pid);
             }
         }
         Connection->OutBuf.EndMsg();
@@ -1011,10 +1010,10 @@ void Player::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_EFFECT);
-    Connection->OutBuf << eff_pid;
-    Connection->OutBuf << hx;
-    Connection->OutBuf << hy;
-    Connection->OutBuf << radius;
+    Connection->OutBuf.Write(eff_pid);
+    Connection->OutBuf.Write(hx);
+    Connection->OutBuf.Write(hy);
+    Connection->OutBuf.Write(radius);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -1027,13 +1026,13 @@ void Player::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_i
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_FLY_EFFECT);
-    Connection->OutBuf << eff_pid;
-    Connection->OutBuf << from_cr_id;
-    Connection->OutBuf << to_cr_id;
-    Connection->OutBuf << from_hx;
-    Connection->OutBuf << from_hy;
-    Connection->OutBuf << to_hx;
-    Connection->OutBuf << to_hy;
+    Connection->OutBuf.Write(eff_pid);
+    Connection->OutBuf.Write(from_cr_id);
+    Connection->OutBuf.Write(to_cr_id);
+    Connection->OutBuf.Write(from_hx);
+    Connection->OutBuf.Write(from_hy);
+    Connection->OutBuf.Write(to_hx);
+    Connection->OutBuf.Write(to_hy);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -1046,8 +1045,8 @@ void Player::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_PLAY_SOUND);
-    Connection->OutBuf << cr_id_synchronize;
-    Connection->OutBuf << sound_name;
+    Connection->OutBuf.Write(cr_id_synchronize);
+    Connection->OutBuf.Write(sound_name);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -1062,15 +1061,15 @@ void Player::Send_ViewMap()
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_VIEW_MAP);
-    Connection->OutBuf << _ownedCr->ViewMapHx;
-    Connection->OutBuf << _ownedCr->ViewMapHy;
-    Connection->OutBuf << _ownedCr->ViewMapLocId;
-    Connection->OutBuf << _ownedCr->ViewMapLocEnt;
+    Connection->OutBuf.Write(_ownedCr->ViewMapHx);
+    Connection->OutBuf.Write(_ownedCr->ViewMapHy);
+    Connection->OutBuf.Write(_ownedCr->ViewMapLocId);
+    Connection->OutBuf.Write(_ownedCr->ViewMapLocEnt);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SomeItem(Item* item)
+void Player::Send_SomeItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -1082,8 +1081,8 @@ void Player::Send_SomeItem(Item* item)
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_SOME_ITEM);
-    Connection->OutBuf << item->GetId();
-    Connection->OutBuf << item->GetProtoId();
+    Connection->OutBuf.Write(item->GetId());
+    Connection->OutBuf.Write(item->GetProtoId());
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -1112,7 +1111,7 @@ void Player::Send_AddAllItems()
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 
-    for (auto* item : _ownedCr->_invItems) {
+    for (const auto* item : _ownedCr->_invItems) {
         Send_AddItem(item);
     }
 
@@ -1149,20 +1148,20 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
 
     vector<vector<uint8*>*> items_data(items != nullptr ? items->size() : 0);
     vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
-    for (size_t i = 0, j = items_data.size(); i < j; i++) {
+    for (size_t i = 0; i < items_data.size(); i++) {
         items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_SOME_ITEMS);
-    Connection->OutBuf << param;
-    Connection->OutBuf << (items == nullptr);
-    Connection->OutBuf << static_cast<uint>(items != nullptr ? items->size() : 0);
+    Connection->OutBuf.Write(param);
+    Connection->OutBuf.Write(items == nullptr);
+    Connection->OutBuf.Write(static_cast<uint>(items != nullptr ? items->size() : 0));
     if (items != nullptr) {
-        for (size_t i = 0, j = items_data.size(); i < j; i++) {
+        for (size_t i = 0; i < items_data.size(); i++) {
             const auto* item = items->at(i);
-            Connection->OutBuf << item->GetId();
-            Connection->OutBuf << item->GetProtoId();
+            Connection->OutBuf.Write(item->GetId());
+            Connection->OutBuf.Write(item->GetProtoId());
             NET_WRITE_PROPERTIES(Connection->OutBuf, items_data[i], items_data_sizes[i]);
         }
     }

@@ -220,12 +220,9 @@ void Updater::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    bool outdated;
-    uint data_size;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> outdated;
-    _conn.InBuf >> data_size;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto outdated = _conn.InBuf.Read<bool>();
+    const auto data_size = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -303,10 +300,8 @@ void Updater::Net_OnUpdateFileData()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    uint data_size;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> data_size;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint>();
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);
@@ -359,7 +354,7 @@ void Updater::GetNextFile()
         const auto& next_update_file = _filesToUpdate.front();
 
         _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE);
-        _conn.OutBuf << next_update_file.Index;
+        _conn.OutBuf.Write(next_update_file.Index);
         _conn.OutBuf.EndMsg();
 
         DiskFileSystem::DeleteFile(MakeWritePath(_str("~{}", next_update_file.Name)));

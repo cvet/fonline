@@ -723,27 +723,22 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 
 #define NET_WRITE_PROPERTIES(bout, data_vec, data_sizes_vec) \
     do { \
-        (bout) << (uint16)(data_vec)->size(); \
-        for (size_t i_ = 0, j_ = (data_vec)->size(); i_ < j_; i_++) { \
-            uint data_size_ = (data_sizes_vec)->at(i_); \
-            (bout) << data_size_; \
-            if (data_size_ > 0u) { \
-                (bout).Push((data_vec)->at(i_), data_size_); \
-            } \
+        RUNTIME_ASSERT((data_vec)->size() <= 0xFFFF); \
+        bout.Write<uint16>(static_cast<uint16>((data_vec)->size())); \
+        for (size_t i_ = 0; i_ < (data_vec)->size(); i_++) { \
+            const auto data_size_ = static_cast<uint>(data_sizes_vec->at(i_)); \
+            bout.Write<uint>(data_size_); \
+            bout.Push((data_vec)->at(i_), data_size_); \
         } \
     } while (0)
 
 #define NET_READ_PROPERTIES(bin, data_vec) \
     do { \
-        uint16 data_count_; \
-        (bin) >> data_count_; \
-        (data_vec).resize(data_count_); \
+        const auto data_count_ = bin.Read<uint16>(); \
+        data_vec.resize(data_count_); \
         for (uint16 i_ = 0; i_ < data_count_; i_++) { \
-            uint data_size_; \
-            (bin) >> data_size_; \
-            (data_vec)[i_].resize(data_size_); \
-            if (data_size_ > 0u) { \
-                (bin).Pop(&(data_vec)[i_][0], data_size_); \
-            } \
+            const auto data_size_ = bin.Read<uint>(); \
+            data_vec[i_].resize(data_size_); \
+            bin.Pop(data_vec[i_].data(), data_size_); \
         } \
     } while (0)

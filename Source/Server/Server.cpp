@@ -700,8 +700,7 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     if (connection->InBuf.NeedProcess()) {
         connection->LastActivityTime = GameTime.FrameTime();
 
-        uint msg = 0;
-        connection->InBuf >> msg;
+        const auto msg = connection->InBuf.Read<uint>();
 
         if (!connection->WasHandshake) {
             switch (msg) {
@@ -710,12 +709,12 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 // even if answer data will change its meaning
                 CONNECTION_OUTPUT_BEGIN(connection);
                 connection->DisableCompression();
-                connection->OutBuf << static_cast<uint>(_stats.CurOnline);
-                connection->OutBuf << time_duration_to_ms<uint>(_stats.Uptime);
-                connection->OutBuf << static_cast<uint>(0);
-                connection->OutBuf << static_cast<uint8>(0);
-                connection->OutBuf << static_cast<uint8>(0xF0);
-                connection->OutBuf << static_cast<uint16>(0xFFFF);
+                connection->OutBuf.Write(static_cast<uint>(_stats.CurOnline));
+                connection->OutBuf.Write(time_duration_to_ms<uint>(_stats.Uptime));
+                connection->OutBuf.Write(static_cast<uint>(0));
+                connection->OutBuf.Write(static_cast<uint8>(0));
+                connection->OutBuf.Write(static_cast<uint8>(0xF0));
+                connection->OutBuf.Write(static_cast<uint16>(0xFFFF));
                 CONNECTION_OUTPUT_END(connection);
 
                 connection->HardDisconnect();
@@ -790,8 +789,6 @@ void FOServer::ProcessPlayer(Player* player)
         return;
     }
 
-    uint msg = 0;
-
     while (!player->Connection->IsHardDisconnected() && !player->Connection->IsGracefulDisconnected()) {
         std::lock_guard locker(player->Connection->InBufLocker);
 
@@ -805,7 +802,7 @@ void FOServer::ProcessPlayer(Player* player)
             break;
         }
 
-        player->Connection->InBuf >> msg;
+        const auto msg = player->Connection->InBuf.Read<uint>();
 
         switch (msg) {
         case NETMSG_PING:
@@ -901,7 +898,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
 
         CONNECTION_OUTPUT_BEGIN(connection);
         connection->OutBuf.StartMsg(NETMSG_PING);
-        connection->OutBuf << PING_CLIENT;
+        connection->OutBuf.Write(PING_CLIENT);
         connection->OutBuf.EndMsg();
         CONNECTION_OUTPUT_END(connection);
 
@@ -916,13 +913,9 @@ void FOServer::Process_Text(Player* player)
 
     Critter* cr = player->GetOwnedCritter();
 
-    uint msg_len = 0;
-    uint8 how_say = 0;
-    string str;
-
-    player->Connection->InBuf >> msg_len;
-    player->Connection->InBuf >> how_say;
-    player->Connection->InBuf >> str;
+    [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
+    auto how_say = player->Connection->InBuf.Read<uint8>();
+    const auto str = player->Connection->InBuf.Read<string>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -1052,11 +1045,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
     auto* cl_ = player->GetOwnedCritter();
 
-    uint msg_len = 0;
-    uint8 cmd = 0;
-
-    buf >> msg_len;
-    buf >> cmd;
+    [[maybe_unused]] const auto msg_len = buf.Read<uint>();
+    const auto cmd = buf.Read<uint8>();
 
     auto sstr = string(cl_ != nullptr ? "" : admin_panel);
     auto allow_command = OnPlayerAllowCommand.Fire(player, sstr, cmd);
@@ -1113,8 +1103,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb(istr);
     } break;
     case CMD_GAMEINFO: {
-        auto info = 0;
-        buf >> info;
+        const auto info = buf.Read<int>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1149,8 +1138,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_CRITID: {
-        string name;
-        buf >> name;
+        const auto name = buf.Read<string>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1163,12 +1151,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_MOVECRIT: {
-        ident_t cr_id;
-        uint16 hex_x = 0;
-        uint16 hex_y = 0;
-        buf >> cr_id;
-        buf >> hex_x;
-        buf >> hex_y;
+        const auto cr_id = buf.Read<ident_t>();
+        const auto hex_x = buf.Read<uint16>();
+        const auto hex_y = buf.Read<uint16>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1197,8 +1182,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_DISCONCRIT: {
-        ident_t cr_id;
-        buf >> cr_id;
+        const auto cr_id = buf.Read<ident_t>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1244,12 +1228,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_PROPERTY: {
-        ident_t cr_id;
-        string property_name;
-        auto property_value = 0;
-        buf >> cr_id;
-        buf >> property_name;
-        buf >> property_value;
+        const auto cr_id = buf.Read<ident_t>();
+        const auto property_name = buf.Read<string>();
+        const auto property_value = buf.Read<int>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1273,10 +1254,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_GETACCESS: {
-        string name_access;
-        string pasw_access;
-        buf >> name_access;
-        buf >> pasw_access;
+        const auto name_access = buf.Read<string>();
+        const auto pasw_access = buf.Read<string>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1297,7 +1276,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto allow = false;
         if (wanted_access != -1) {
-            auto& pass = pasw_access;
+            auto pass = pasw_access;
             allow = OnPlayerGetAccess.Fire(player, wanted_access, pass);
         }
 
@@ -1310,14 +1289,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Access changed.");
     } break;
     case CMD_ADDITEM: {
-        uint16 hex_x = 0;
-        uint16 hex_y = 0;
-        hstring pid;
-        uint count = 0;
-        buf >> hex_x;
-        buf >> hex_y;
-        pid = buf.Read<hstring>(*this);
-        buf >> count;
+        const auto hex_x = buf.Read<uint16>();
+        const auto hex_y = buf.Read<uint16>();
+        const auto pid = buf.Read<hstring>(*this);
+        const auto count = buf.Read<uint>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1336,10 +1311,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_ADDITEM_SELF: {
-        hstring pid;
-        uint count = 0;
-        pid = buf.Read<hstring>(*this);
-        buf >> count;
+        const auto pid = buf.Read<hstring>(*this);
+        const auto count = buf.Read<uint>();
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1352,14 +1325,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_ADDNPC: {
-        uint16 hex_x = 0;
-        uint16 hex_y = 0;
-        uint8 dir = 0;
-        hstring pid;
-        buf >> hex_x;
-        buf >> hex_y;
-        buf >> dir;
-        pid = buf.Read<hstring>(*this);
+        const auto hex_x = buf.Read<uint16>();
+        const auto hex_y = buf.Read<uint16>();
+        const auto dir = buf.Read<uint8>();
+        const auto pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1374,12 +1343,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_ADDLOCATION: {
-        uint16 wx = 0;
-        uint16 wy = 0;
-        hstring pid;
-        buf >> wx;
-        buf >> wy;
-        pid = buf.Read<hstring>(*this);
+        const auto wx = buf.Read<uint16>();
+        const auto wy = buf.Read<uint16>();
+        const auto pid = buf.Read<hstring>(*this);
 
         CHECK_ALLOW_COMMAND();
 
@@ -1392,14 +1358,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_RUNSCRIPT: {
-        string func_name;
-        int param0 = 0;
-        int param1 = 0;
-        int param2 = 0;
-        buf >> func_name;
-        buf >> param0;
-        buf >> param1;
-        buf >> param2;
+        const auto func_name = buf.Read<string>();
+        const auto param0 = buf.Read<int>();
+        const auto param1 = buf.Read<int>();
+        const auto param2 = buf.Read<int>();
 
         CHECK_ALLOW_COMMAND();
 
@@ -1442,37 +1404,18 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         logcb("Regenerate map complete.");
     } break;
     case CMD_SETTIME: {
-        auto multiplier = 0;
-        auto year = 0;
-        auto month = 0;
-        auto day = 0;
-        auto hour = 0;
-        auto minute = 0;
-        auto second = 0;
-        buf >> multiplier;
-        buf >> year;
-        buf >> month;
-        buf >> day;
-        buf >> hour;
-        buf >> minute;
-        buf >> second;
+        const auto multiplier = buf.Read<int>();
+        const auto year = buf.Read<int>();
+        const auto month = buf.Read<int>();
+        const auto day = buf.Read<int>();
+        const auto hour = buf.Read<int>();
+        const auto minute = buf.Read<int>();
+        const auto second = buf.Read<int>();
 
         CHECK_ALLOW_COMMAND();
 
         SetGameTime(multiplier, year, month, day, hour, minute, second);
         logcb("Time changed.");
-    } break;
-    case CMD_BAN: {
-        string name;
-        string params;
-        uint ban_hours = 0;
-        string info;
-        buf >> name;
-        buf >> params;
-        buf >> ban_hours;
-        buf >> info;
-
-        CHECK_ALLOW_COMMAND();
     } break;
     case CMD_LOG: {
         char flags[16];
@@ -1775,13 +1718,11 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     NON_CONST_METHOD_HINT();
 
     // Net protocol
-    uint proto_ver = 0;
-    connection->InBuf >> proto_ver;
-    const auto outdated = (proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION));
+    const auto proto_ver = connection->InBuf.Read<uint>();
+    const auto outdated = proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
     // Begin data encrypting
-    uint encrypt_key = 0;
-    connection->InBuf >> encrypt_key;
+    const auto encrypt_key = connection->InBuf.Read<uint>();
 
     uint8 padding[28] = {};
     connection->InBuf.Pop(padding, sizeof(padding));
@@ -1800,8 +1741,8 @@ void FOServer::Process_Handshake(ClientConnection* connection)
 
     CONNECTION_OUTPUT_BEGIN(connection);
     connection->OutBuf.StartMsg(NETMSG_UPDATE_FILES_LIST);
-    connection->OutBuf << outdated;
-    connection->OutBuf << static_cast<uint>(_updateFilesDesc.size());
+    connection->OutBuf.Write(outdated);
+    connection->OutBuf.Write(static_cast<uint>(_updateFilesDesc.size()));
     connection->OutBuf.Push(_updateFilesDesc.data(), _updateFilesDesc.size());
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->OutBuf, global_vars_data, global_vars_data_sizes);
@@ -1818,9 +1759,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     NON_CONST_METHOD_HINT();
 
-    uint8 ping = 0;
-
-    connection->InBuf >> ping;
+    const auto ping = connection->InBuf.Read<uint8>();
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
@@ -1837,7 +1776,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     CONNECTION_OUTPUT_BEGIN(connection);
     connection->OutBuf.StartMsg(NETMSG_PING);
-    connection->OutBuf << ping;
+    connection->OutBuf.Write(ping);
     connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(connection);
 }
@@ -1846,12 +1785,11 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
 {
     STACK_TRACE_ENTRY();
 
-    uint file_index = 0;
-    connection->InBuf >> file_index;
+    const auto file_index = connection->InBuf.Read<uint>();
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
-    if (file_index >= static_cast<uint>(_updateFilesData.size())) {
+    if (file_index >= _updateFilesData.size()) {
         WriteLog("Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->GracefulDisconnect();
         return;
@@ -1889,7 +1827,7 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
 
     CONNECTION_OUTPUT_BEGIN(connection);
     connection->OutBuf.StartMsg(NETMSG_UPDATE_FILE_DATA);
-    connection->OutBuf << update_portion;
+    connection->OutBuf.Write(update_portion);
     connection->OutBuf.Push(&update_file_data[offset], update_portion);
     connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(connection);
@@ -1899,12 +1837,9 @@ void FOServer::Process_Register(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len = 0;
-    unlogined_player->Connection->InBuf >> msg_len;
-    string name;
-    unlogined_player->Connection->InBuf >> name;
-    string password;
-    unlogined_player->Connection->InBuf >> password;
+    [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
+    const auto name = unlogined_player->Connection->InBuf.Read<string>();
+    const auto password = unlogined_player->Connection->InBuf.Read<string>();
 
     CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
@@ -1991,12 +1926,9 @@ void FOServer::Process_Login(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len = 0;
-    unlogined_player->Connection->InBuf >> msg_len;
-    string name;
-    unlogined_player->Connection->InBuf >> name;
-    string password;
-    unlogined_player->Connection->InBuf >> password;
+    [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
+    const auto name = unlogined_player->Connection->InBuf.Read<string>();
+    const auto password = unlogined_player->Connection->InBuf.Read<string>();
 
     CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
@@ -2148,8 +2080,8 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     CONNECTION_OUTPUT_BEGIN(player->Connection);
     player->Connection->OutBuf.StartMsg(NETMSG_LOGIN_SUCCESS);
-    player->Connection->OutBuf << encrypt_key;
-    player->Connection->OutBuf << player_id;
+    player->Connection->OutBuf.Write(encrypt_key);
+    player->Connection->OutBuf.Write(player_id);
     NET_WRITE_PROPERTIES(player->Connection->OutBuf, global_vars_data, global_vars_data_sizes);
     NET_WRITE_PROPERTIES(player->Connection->OutBuf, player_data, player_data_sizes);
     player->Connection->OutBuf.EndMsg();
@@ -2297,37 +2229,31 @@ void FOServer::Process_Move(Player* player)
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    ident_t map_id;
-    ident_t cr_id;
-    uint16 speed;
-    uint16 start_hx;
-    uint16 start_hy;
-    uint16 steps_count;
-    vector<uint8> steps;
-    uint16 control_steps_count;
-    vector<uint16> control_steps;
-    int16 end_hex_ox;
-    int16 end_hex_oy;
+    [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
+    const auto map_id = player->Connection->InBuf.Read<ident_t>();
+    const auto cr_id = player->Connection->InBuf.Read<ident_t>();
+    const auto speed = player->Connection->InBuf.Read<uint16>();
 
-    player->Connection->InBuf >> msg_len;
-    player->Connection->InBuf >> map_id;
-    player->Connection->InBuf >> cr_id;
-    player->Connection->InBuf >> speed;
-    player->Connection->InBuf >> start_hx;
-    player->Connection->InBuf >> start_hy;
-    player->Connection->InBuf >> steps_count;
+    // Todo: validate start/stop position
+    const auto start_hx = player->Connection->InBuf.Read<uint16>();
+    const auto start_hy = player->Connection->InBuf.Read<uint16>();
+
+    const auto steps_count = player->Connection->InBuf.Read<uint16>();
+    vector<uint8> steps;
     steps.resize(steps_count);
     for (auto i = 0; i < steps_count; i++) {
-        player->Connection->InBuf >> steps[i];
+        steps[i] = player->Connection->InBuf.Read<uint8>();
     }
-    player->Connection->InBuf >> control_steps_count;
+
+    const auto control_steps_count = player->Connection->InBuf.Read<uint16>();
+    vector<uint16> control_steps;
     control_steps.resize(control_steps_count);
     for (auto i = 0; i < control_steps_count; i++) {
-        player->Connection->InBuf >> control_steps[i];
+        control_steps[i] = player->Connection->InBuf.Read<uint16>();
     }
-    player->Connection->InBuf >> end_hex_ox;
-    player->Connection->InBuf >> end_hex_oy;
+
+    const auto end_hex_ox = player->Connection->InBuf.Read<int16>();
+    const auto end_hex_oy = player->Connection->InBuf.Read<int16>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2367,21 +2293,15 @@ void FOServer::Process_StopMove(Player* player)
 
     NON_CONST_METHOD_HINT();
 
-    ident_t map_id;
-    ident_t cr_id;
-    uint16 start_hx;
-    uint16 start_hy;
-    int16 hex_ox;
-    int16 hex_oy;
-    int16 dir_angle;
+    const auto map_id = player->Connection->InBuf.Read<ident_t>();
+    const auto cr_id = player->Connection->InBuf.Read<ident_t>();
 
-    player->Connection->InBuf >> map_id;
-    player->Connection->InBuf >> cr_id;
-    player->Connection->InBuf >> start_hx;
-    player->Connection->InBuf >> start_hy;
-    player->Connection->InBuf >> hex_ox;
-    player->Connection->InBuf >> hex_oy;
-    player->Connection->InBuf >> dir_angle;
+    // Todo: validate stop position
+    const auto start_hx = player->Connection->InBuf.Read<uint16>();
+    const auto start_hy = player->Connection->InBuf.Read<uint16>();
+    const auto hex_ox = player->Connection->InBuf.Read<int16>();
+    const auto hex_oy = player->Connection->InBuf.Read<int16>();
+    const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2414,13 +2334,9 @@ void FOServer::Process_Dir(Player* player)
 
     NON_CONST_METHOD_HINT();
 
-    ident_t map_id;
-    ident_t cr_id;
-    int16 dir_angle;
-
-    player->Connection->InBuf >> map_id;
-    player->Connection->InBuf >> cr_id;
-    player->Connection->InBuf >> dir_angle;
+    const auto map_id = player->Connection->InBuf.Read<ident_t>();
+    const auto cr_id = player->Connection->InBuf.Read<ident_t>();
+    const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2453,43 +2369,41 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     Critter* cr = player->GetOwnedCritter();
 
-    uint msg_len;
-    ident_t cr_id;
-    ident_t item_id;
-    uint16 property_index;
+    [[maybe_unused]] uint msg_len = 0;
 
     if (data_size == 0) {
-        player->Connection->InBuf >> msg_len;
+        msg_len = player->Connection->InBuf.Read<uint>();
     }
 
-    char type_ = 0;
-    player->Connection->InBuf >> type_;
-    const auto type = static_cast<NetProperty>(type_);
+    const auto type = player->Connection->InBuf.Read<NetProperty>();
+
+    ident_t cr_id;
+    ident_t item_id;
 
     uint additional_args = 0;
     switch (type) {
     case NetProperty::CritterItem:
         additional_args = 2;
-        player->Connection->InBuf >> cr_id;
-        player->Connection->InBuf >> item_id;
+        cr_id = player->Connection->InBuf.Read<ident_t>();
+        item_id = player->Connection->InBuf.Read<ident_t>();
         break;
     case NetProperty::Critter:
         additional_args = 1;
-        player->Connection->InBuf >> cr_id;
+        cr_id = player->Connection->InBuf.Read<ident_t>();
         break;
     case NetProperty::MapItem:
         additional_args = 1;
-        player->Connection->InBuf >> item_id;
+        item_id = player->Connection->InBuf.Read<ident_t>();
         break;
     case NetProperty::ChosenItem:
         additional_args = 1;
-        player->Connection->InBuf >> item_id;
+        item_id = player->Connection->InBuf.Read<ident_t>();
         break;
     default:
         break;
     }
 
-    player->Connection->InBuf >> property_index;
+    const auto property_index = player->Connection->InBuf.Read<uint16>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2507,7 +2421,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
             return;
         }
 
-        if (len != 0u) {
+        if (len != 0) {
             player->Connection->InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
@@ -4096,10 +4010,8 @@ void FOServer::Process_RemoteCall(Player* player)
 
     NON_CONST_METHOD_HINT();
 
-    uint msg_len;
-    player->Connection->InBuf >> msg_len;
-    uint rpc_num;
-    player->Connection->InBuf >> rpc_num;
+    [[maybe_unused]] const auto msg_len = player->Connection->InBuf.Read<uint>();
+    const auto rpc_num = player->Connection->InBuf.Read<uint>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
