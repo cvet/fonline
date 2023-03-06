@@ -3690,51 +3690,59 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         WaitDraw();
     }
     else if (cmd == "MoveItem" && args.size() == 5) {
-        auto item_count = _str(args[1]).toUInt();
-        auto item_id = ident_t {_str(args[2]).toUInt()};
-        auto item_swap_id = ident_t {_str(args[3]).toUInt()};
-        auto to_slot = _str(args[4]).toInt();
-        auto* item = GetChosen()->GetItem(item_id);
-        auto* item_swap = (item_swap_id ? GetChosen()->GetItem(item_swap_id) : nullptr);
-        auto* old_item = item->CreateRefClone();
-        int from_slot = item->GetCritterSlot();
+        auto* chosen = GetChosen();
+        if (chosen != nullptr) {
+            auto item_count = _str(args[1]).toUInt();
+            auto item_id = ident_t {_str(args[2]).toUInt()};
+            auto item_swap_id = ident_t {_str(args[3]).toUInt()};
+            auto to_slot = _str(args[4]).toInt();
+            auto* item = GetChosen()->GetItem(item_id);
+            auto* item_swap = (item_swap_id ? GetChosen()->GetItem(item_swap_id) : nullptr);
+            auto* old_item = item->CreateRefClone();
+            int from_slot = item->GetCritterSlot();
+            auto* map_chosen = GetMapChosen();
 
-        // Move
-        auto is_light = item->GetIsLight();
-        if (to_slot == -1) {
-            GetMapChosen()->Action(ACTION_DROP_ITEM, from_slot, item, true);
-            if (item->GetStackable() && item_count < item->GetCount()) {
-                item->SetCount(item->GetCount() - item_count);
+            auto is_light = item->GetIsLight();
+            if (to_slot == -1) {
+                if (map_chosen != nullptr) {
+                    map_chosen->Action(ACTION_DROP_ITEM, from_slot, item, true);
+                }
+
+                if (item->GetStackable() && item_count < item->GetCount()) {
+                    item->SetCount(item->GetCount() - item_count);
+                }
+                else {
+                    chosen->DeleteItem(item, true);
+                    item = nullptr;
+                }
             }
             else {
-                GetMapChosen()->DeleteItem(item, true);
-                item = nullptr;
+                item->SetCritterSlot(static_cast<uint8>(to_slot));
+                if (item_swap != nullptr) {
+                    item_swap->SetCritterSlot(static_cast<uint8>(from_slot));
+                }
+
+                if (map_chosen != nullptr) {
+                    map_chosen->Action(ACTION_MOVE_ITEM, from_slot, item, true);
+                    if (item_swap != nullptr) {
+                        map_chosen->Action(ACTION_MOVE_ITEM_SWAP, to_slot, item_swap, true);
+                    }
+                }
             }
+
+            // Light
+            if (CurMap != nullptr) {
+                CurMap->RebuildFog();
+
+                if (is_light && (to_slot == 0 || (from_slot == 0 && to_slot != -1))) {
+                    CurMap->RebuildLight();
+                }
+            }
+
+            // Notify scripts about item changing
+            OnItemInvChanged.Fire(item, old_item);
+            old_item->Release();
         }
-        else {
-            item->SetCritterSlot(static_cast<uint8>(to_slot));
-            if (item_swap != nullptr) {
-                item_swap->SetCritterSlot(static_cast<uint8>(from_slot));
-            }
-
-            GetMapChosen()->Action(ACTION_MOVE_ITEM, from_slot, item, true);
-            if (item_swap != nullptr) {
-                GetMapChosen()->Action(ACTION_MOVE_ITEM_SWAP, to_slot, item_swap, true);
-            }
-        }
-
-        // Light
-        if (CurMap != nullptr) {
-            CurMap->RebuildFog();
-
-            if (is_light && (to_slot == 0 || (from_slot == 0 && to_slot != -1))) {
-                CurMap->RebuildLight();
-            }
-        }
-
-        // Notify scripts about item changing
-        OnItemInvChanged.Fire(item, old_item);
-        old_item->Release();
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (CurMap != nullptr) {
