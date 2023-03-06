@@ -198,7 +198,8 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
         return for_write ? true : !_interthreadReceived.empty();
     }
 
-    constexpr timeval tv = {0, 0};
+    // ReSharper disable once CppLocalVariableMayBeConst
+    timeval tv = {0, 0};
 
     FD_ZERO(&_impl->NetSockSet);
     FD_SET(_impl->NetSock, &_impl->NetSockSet);

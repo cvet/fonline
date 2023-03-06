@@ -33,29 +33,26 @@
 
 // Todo: make entities positioning free in space, without hard-linking to hex
 // Todo: add third 'up' coordinate to positioning that allow create multidimensional maps
-// Todo: use Common.h as precompiled header?
 // Todo: use smart pointers instead raw
 // Todo: fix all PVS Studio warnings
 // Todo: SHA replace to openssl SHA
-// Todo: improve valgrind
 // Todo: wrap fonline code to namespace
-// Todo: id and hash to 8 byte integer
-// Todo: research about std::filesystem
+// Todo: ident_t 8 byte integer
+// Todo: hash_t 8 byte integer
+// Todo: tick_t 8 byte integer
 // Todo: c-style arrays to std::array
 // Todo: use more noexcept
 // Todo: use more constexpr
 // Todo: improve BitReader/BitWriter to better network/disk space utilization
 // Todo: cast between numeric types via numeric_cast<to>(from)
-// Todo: clang debug builds with sanitiziers
-// Todo: time ticks to uint64
 // Todo: improve custom exceptions for every subsustem
 // Todo: temporary entities, disable writing to data base
 // Todo: RUNTIME_ASSERT to assert?
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-// Todo: move from 32 bit hashes to 64 bit
 // Todo: split meanings of int8/char and uint8/byte in code
 
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
+// ReSharper disable CppInconsistentNaming
 
 #pragma once
 
@@ -122,7 +119,6 @@
 
 // Todo: improve named enums
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
-// ReSharper disable once CppInconsistentNaming
 inline auto format_as(T v)
 {
     return fmt::underlying(v);
@@ -190,7 +186,6 @@ using const_span = span<const T>;
 
 // Strong types
 template<typename T>
-// ReSharper disable CppInconsistentNaming
 struct strong_type
 {
     using underlying_type = T;
@@ -325,7 +320,6 @@ using quaternion = aiQuaternion;
 using color4 = aiColor4D;
 
 // Template helpers
-// ReSharper disable CppInconsistentNaming
 template<typename T>
 class has_size
 {
@@ -356,7 +350,6 @@ template<template<typename...> class Ref, typename... Args>
 struct is_specialization<Ref<Args...>, Ref> : std::true_type
 {
 };
-// ReSharper restore CppInconsistentNaming
 
 // Profiling & stack trace obtaining
 #define CONCAT(x, y) CONCAT_INDIRECT(x, y)
@@ -680,7 +673,6 @@ private:
 };
 
 template<typename T>
-// ReSharper disable once CppInconsistentNaming
 class ptr final
 {
     static_assert(std::is_base_of_v<RefCounter, T>, "T must inherit from RefCounter");
@@ -749,7 +741,6 @@ public:
     auto operator==(const type& other) -> bool { return _value == other._value; }
     auto operator!=(const T* other) -> bool { return _value != other; }
     auto operator!=(const type& other) -> bool { return _value != other._value; }
-    // ReSharper disable once CppInconsistentNaming
     auto get() -> T* { return _value; }
 
 private:
@@ -757,7 +748,6 @@ private:
 };
 
 // C-strings literal helpers
-// ReSharper disable once CppInconsistentNaming
 constexpr uint const_hash(const char* input)
 {
     return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
@@ -815,7 +805,6 @@ public:
     auto operator=(RefCountHolder&& other) = delete;
     ~RefCountHolder() { _ref->Release(); }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto get() const -> T* { return _ref; }
 
 private:
@@ -1258,7 +1247,6 @@ using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
 
 // Hashing
-// ReSharper disable CppInconsistentNaming
 struct hstring
 {
     using hash_t = uint;
@@ -1315,12 +1303,9 @@ struct fmt::formatter<hstring>
     }
 };
 
-// ReSharper restore CppInconsistentNaming
-
 // Generic constants
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
-// ReSharper disable CppInconsistentNaming
 static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TIME = 1000;
@@ -1422,39 +1407,23 @@ static constexpr uint8 ANSWER_BEGIN = 0xF0;
 static constexpr uint8 ANSWER_END = 0xF1;
 static constexpr uint8 ANSWER_BARTER = 0xF2;
 
-// Show screen modes
-// Ouput: it is 'uint param' in Critter::ShowScreen.
-// Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.
-#define SHOW_SCREEN_CLOSE (0) // Close top window.
-#define SHOW_SCREEN_TIMER (1) // Timer box. Output: picture index in INVEN.LST. Input I: time in game minutes (1..599).
-#define SHOW_SCREEN_DIALOGBOX (2) // Dialog box. Output: buttons - 0..20. Input I: Choosed button - 0..19.
-#define SHOW_SCREEN_SKILLBOX (3) // Skill box. Input I: selected skill.
-#define SHOW_SCREEN_BAG (4) // Bag box. Input I: id of selected item.
-#define SHOW_SCREEN_SAY (5) // Say box. Output: all symbols - 0 or only numbers - any number. Input S: typed string.
-#define SHOW_ELEVATOR (6) // Elevator. Output: look ELEVATOR_* macro. Input I: Choosed level button.
-#define SHOW_SCREEN_INVENTORY (7) // Inventory.
-#define SHOW_SCREEN_CHARACTER (8) // Character.
-#define SHOW_SCREEN_FIXBOY (9) // Fix-boy.
-#define SHOW_SCREEN_PIPBOY (10) // Pip-boy.
-#define SHOW_SCREEN_MINIMAP (11) // Mini-map.
-
 // Critter actions
 // Flags for chosen:
 // l - hardcoded local call
 // s - hardcoded server call
 // for all others critters actions call only server
 //  flags actionExt item
-#define ACTION_MOVE_ITEM (2) // l s from slot +
-#define ACTION_MOVE_ITEM_SWAP (3) // l s from slot +
-#define ACTION_DROP_ITEM (5) // l s from slot +
-#define ACTION_KNOCKOUT (16) // s 0 - knockout anim2begin
-#define ACTION_STANDUP (17) // s 0 - knockout anim2end
-#define ACTION_FIDGET (18) // l
-#define ACTION_DEAD (19) // s dead type anim2 (see Anim2 in _animation.fos)
-#define ACTION_CONNECT (20)
-#define ACTION_DISCONNECT (21)
-#define ACTION_RESPAWN (22) // s
-#define ACTION_REFRESH (23) // s
+static constexpr int ACTION_MOVE_ITEM = 2; // l s from slot +
+static constexpr int ACTION_MOVE_ITEM_SWAP = 3; // l s from slot +
+static constexpr int ACTION_DROP_ITEM = 5; // l s from slot +
+static constexpr int ACTION_KNOCKOUT = 16; // s 0 - knockout anim2begin
+static constexpr int ACTION_STANDUP = 17; // s 0 - knockout anim2end
+static constexpr int ACTION_FIDGET = 18; // l
+static constexpr int ACTION_DEAD = 19; // s dead type anim2 (see Anim2 in _animation.fos)
+static constexpr int ACTION_CONNECT = 20;
+static constexpr int ACTION_DISCONNECT = 21;
+static constexpr int ACTION_RESPAWN = 22; // s
+static constexpr int ACTION_REFRESH = 23; // s
 
 // Look checks
 static constexpr uint LOOK_CHECK_DIR = 0x01;
@@ -1465,20 +1434,20 @@ static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
 
 // Anims
-#define ANIM1_UNARMED (1)
-#define ANIM2_IDLE (1)
-#define ANIM2_WALK (3)
-#define ANIM2_WALK_BACK (15)
-#define ANIM2_LIMP (4)
-#define ANIM2_RUN (5)
-#define ANIM2_RUN_BACK (16)
-#define ANIM2_TURN_RIGHT (17)
-#define ANIM2_TURN_LEFT (18)
-#define ANIM2_PANIC_RUN (6)
-#define ANIM2_SNEAK_WALK (7)
-#define ANIM2_SNEAK_RUN (8)
-#define ANIM2_IDLE_PRONE_FRONT (86)
-#define ANIM2_DEAD_FRONT (102)
+static constexpr uint ANIM1_UNARMED = 1;
+static constexpr uint ANIM2_IDLE = 1;
+static constexpr uint ANIM2_WALK = 3;
+static constexpr uint ANIM2_WALK_BACK = 15;
+static constexpr uint ANIM2_LIMP = 4;
+static constexpr uint ANIM2_RUN = 5;
+static constexpr uint ANIM2_RUN_BACK = 16;
+static constexpr uint ANIM2_TURN_RIGHT = 17;
+static constexpr uint ANIM2_TURN_LEFT = 18;
+static constexpr uint ANIM2_PANIC_RUN = 6;
+static constexpr uint ANIM2_SNEAK_WALK = 7;
+static constexpr uint ANIM2_SNEAK_RUN = 8;
+static constexpr uint ANIM2_IDLE_PRONE_FRONT = 86;
+static constexpr uint ANIM2_DEAD_FRONT = 102;
 
 // Property type in network interaction
 enum class NetProperty : uint8
@@ -1580,16 +1549,6 @@ struct GameSettings
 #endif
 };
 
-// Uses
-#define USE_PRIMARY (0)
-#define USE_SECONDARY (1)
-#define USE_THIRD (2)
-#define USE_RELOAD (3)
-#define USE_USE (4)
-#define MAX_USES (3)
-#define USE_NONE (15)
-#define MAKE_ITEM_MODE(use, aim) ((((aim) << 4) | ((use)&0xF)) & 0xFF)
-
 // Radio
 static constexpr uint16 RADIO_DISABLE_SEND = 0x01;
 static constexpr uint16 RADIO_DISABLE_RECV = 0x02;
@@ -1617,24 +1576,25 @@ static constexpr uint8 ACCESS_MODER = 2;
 static constexpr uint8 ACCESS_ADMIN = 3;
 
 // Commands
-#define CMD_EXIT (1)
-#define CMD_MYINFO (2)
-#define CMD_GAMEINFO (3)
-#define CMD_CRITID (4)
-#define CMD_MOVECRIT (5)
-#define CMD_DISCONCRIT (7)
-#define CMD_TOGLOBAL (8)
-#define CMD_PROPERTY (10)
-#define CMD_GETACCESS (11)
-#define CMD_ADDITEM (12)
-#define CMD_ADDITEM_SELF (14)
-#define CMD_ADDNPC (15)
-#define CMD_ADDLOCATION (16)
-#define CMD_RUNSCRIPT (20)
-#define CMD_REGENMAP (25)
-#define CMD_SETTIME (32)
-#define CMD_LOG (37)
+static constexpr auto CMD_EXIT = 1;
+static constexpr auto CMD_MYINFO = 2;
+static constexpr auto CMD_GAMEINFO = 3;
+static constexpr auto CMD_CRITID = 4;
+static constexpr auto CMD_MOVECRIT = 5;
+static constexpr auto CMD_DISCONCRIT = 7;
+static constexpr auto CMD_TOGLOBAL = 8;
+static constexpr auto CMD_PROPERTY = 10;
+static constexpr auto CMD_GETACCESS = 11;
+static constexpr auto CMD_ADDITEM = 12;
+static constexpr auto CMD_ADDITEM_SELF = 14;
+static constexpr auto CMD_ADDNPC = 15;
+static constexpr auto CMD_ADDLOCATION = 16;
+static constexpr auto CMD_RUNSCRIPT = 20;
+static constexpr auto CMD_REGENMAP = 25;
+static constexpr auto CMD_SETTIME = 32;
+static constexpr auto CMD_LOG = 37;
 
+// Client anim flags
 static constexpr uint16 ANIMRUN_TO_END = 0x0001;
 static constexpr uint16 ANIMRUN_FROM_END = 0x0002;
 static constexpr uint16 ANIMRUN_CYCLE = 0x0004;
@@ -1644,6 +1604,7 @@ static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
     return static_cast<uint>(frm + 1) << 16;
 }
 
+// Foreach helper
 template<typename T>
 class irange_iterator final
 {
@@ -1698,6 +1659,7 @@ constexpr auto xrange(T value)
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
+// Copy helper
 // Todo: optimize copy() to pass placement storage for value
 template<typename T>
 constexpr auto copy(const T& value) -> T
@@ -1741,6 +1703,7 @@ constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_v
     return ref_vec;
 }
 
+// Vector pointer cast
 template<typename T, typename T2>
 constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
 {
@@ -1752,6 +1715,7 @@ constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
     return result;
 }
 
+// Lerp
 template<typename T, typename U = std::decay_t<T>>
 constexpr std::enable_if_t<!std::is_integral_v<U>, U> lerp(T v1, T v2, float t)
 {
@@ -1775,8 +1739,6 @@ constexpr auto iround(T value) -> int
 {
     return static_cast<int>(std::lround(value));
 }
-
-// ReSharper restore CppInconsistentNaming
 
 class NameResolver
 {
