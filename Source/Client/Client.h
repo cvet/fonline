@@ -286,9 +286,7 @@ protected:
     {
         ident_t LocId {};
         hstring LocPid {};
-        string LocName {};
         vector<hstring> MapPids {};
-        vector<string> MapNames {};
         uint CurMap {};
     };
 

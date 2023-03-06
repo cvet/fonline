@@ -1276,7 +1276,6 @@ list( APPEND FO_COMMON_SOURCE
 	"Source/Common/MapLoader.h"
 	"Source/Common/MsgFiles.cpp"
 	"Source/Common/MsgFiles.h"
-	"Source/Common/MsgStr-Include.h"
 	"Source/Common/NetBuffer.cpp"
 	"Source/Common/NetBuffer.h"
 	"Source/Common/NetCommand.cpp"

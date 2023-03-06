@@ -73,13 +73,19 @@ static constexpr auto FT_SKIPLINES_END(uint l) -> uint
 
 // Colors
 static constexpr auto COLOR_SPRITE = COLOR_RGB(128, 128, 128);
-static constexpr auto COLOR_SPRITE_RED = static_cast<uint>(COLOR_SPRITE | (255 << 16));
+static constexpr auto COLOR_SPRITE_RED = COLOR_SPRITE | 255 << 16;
 static constexpr auto COLOR_TEXT = COLOR_RGB(60, 248, 0);
 static constexpr auto COLOR_TEXT_WHITE = COLOR_RGB(255, 255, 255);
 static constexpr auto COLOR_TEXT_DWHITE = COLOR_RGB(191, 191, 191);
 static constexpr auto COLOR_TEXT_RED = COLOR_RGB(200, 0, 0);
-#define COLOR_SCRIPT_SPRITE(c) ((c) != 0u ? (c) : COLOR_SPRITE)
-#define COLOR_SCRIPT_TEXT(c) ((c) != 0u ? (c) : COLOR_TEXT)
+static constexpr auto COLOR_SCRIPT_SPRITE(uint color) -> uint
+{
+    return color != 0 ? color : COLOR_SPRITE;
+}
+static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> uint
+{
+    return color != 0 ? color : COLOR_TEXT;
+}
 
 enum class AtlasType
 {
@@ -155,7 +161,7 @@ struct SpriteInfo
 
 struct AnyFrames
 {
-    [[nodiscard]] auto GetSprId(uint num_frm = 0u) const -> uint;
+    [[nodiscard]] auto GetSprId(uint num_frm = 0) const -> uint;
     [[nodiscard]] auto GetCurSprId(time_point time) const -> uint;
     [[nodiscard]] auto GetCurSprIndex(time_point time) const -> uint;
     [[nodiscard]] auto GetDir(uint dir) -> AnyFrames*;

@@ -2636,14 +2636,12 @@ void FOClient::Net_OnAutomapsInfo()
             Automap amap;
             amap.LocId = loc_id;
             amap.LocPid = loc_pid;
-            amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid.as_uint()));
 
             for (uint16 j = 0; j < maps_count; j++) {
                 const auto map_pid = _conn.InBuf.Read<hstring>(*this);
                 const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
                 amap.MapPids.push_back(map_pid);
-                amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid.as_uint(), map_index_in_loc)));
             }
 
             if (it != _automaps.end()) {
