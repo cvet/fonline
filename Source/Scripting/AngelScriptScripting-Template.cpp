@@ -1424,7 +1424,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         std::memcpy(buf, &hkey, prop->GetDictKeySize());
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, prop->GetDictKeySize());
                     }
                     else {
@@ -1456,6 +1456,19 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                                 std::memcpy(buf, &hash, sizeof(hstring::hash_t));
                                 buf += sizeof(hstring::hash_t);
+                            }
+                        }
+                        else if (prop->IsBaseTypeEnum()) {
+                            if (prop->GetBaseSize() == sizeof(int)) {
+                                std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
+                                buf += arr_size * prop->GetBaseSize();
+                            }
+                            else {
+                                for (uint i = 0; i < arr_size; i++) {
+                                    const auto e = *static_cast<const int*>(arr->At(i));
+                                    std::memcpy(buf, &e, prop->GetBaseSize());
+                                    buf += prop->GetBaseSize();
+                                }
                             }
                         }
                         else {
@@ -1490,7 +1503,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         std::memcpy(buf, &hkey, prop->GetDictKeySize());
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, prop->GetDictKeySize());
                     }
                     else {
@@ -1527,7 +1540,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                         std::memcpy(buf, &hkey, key_element_size);
                     }
                     else if (prop->IsDictKeyEnum()) {
-                        const auto ekey = static_cast<const int*>(key);
+                        const auto ekey = *static_cast<const int*>(key);
                         std::memcpy(buf, &ekey, key_element_size);
                     }
                     else {
