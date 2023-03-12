@@ -163,6 +163,8 @@ public:
     ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uint8 /*dir*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnItemStackChanged, Item* /*item*/, int /*countDiff*/);
 
     ProtoManager ProtoMngr;
     ServerDeferredCallManager ServerDeferredCalls;

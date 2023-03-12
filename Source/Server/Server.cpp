@@ -2713,7 +2713,7 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     const auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
     const auto old_count = entity->GetProperties().GetValue<uint>(prop);
-    if (static_cast<int>(new_count) > 0 && (item->GetStackable() || new_count == 1)) {
+    if (new_count > 0 && (item->GetStackable() || new_count == 1)) {
         const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
         ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
     }
@@ -4022,31 +4022,29 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
 {
     STACK_TRACE_ENTRY();
 
-    // Checks
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
-    if (proto_item == nullptr || count == 0u) {
+    if (proto_item == nullptr || count == 0) {
         return nullptr;
     }
 
-    // Check blockers
     if (check_blocks && !map->IsPlaceForProtoItem(hx, hy, proto_item)) {
         return nullptr;
     }
 
-    // Create instance
     auto* item = ItemMngr.CreateItem(pid, count, props);
     if (item == nullptr) {
         return nullptr;
     }
 
-    // Add on map
     if (!map->AddItem(item, hx, hy)) {
         ItemMngr.DeleteItem(item);
         return nullptr;
     }
 
-    // Recursive non-stacked items
+    // Recursive for non-stacked items
     if (!proto_item->GetStackable() && count > 1) {
+        // Todo: reowrk non-stacked items creation from recursive to loop
+        RUNTIME_ASSERT(count < 10000);
         return CreateItemOnHex(map, hx, hy, pid, count - 1, props, true);
     }
 

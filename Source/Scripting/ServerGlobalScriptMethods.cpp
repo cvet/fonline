@@ -221,7 +221,7 @@
     }
 
     auto count_ = count;
-    if (count_ == 0u) {
+    if (count_ == 0) {
         count_ = item->GetCount();
     }
     if (count_ > item->GetCount()) {
@@ -247,7 +247,7 @@
     }
 
     auto count_ = count;
-    if (count_ == 0u) {
+    if (count_ == 0) {
         count_ = item->GetCount();
     }
     if (count_ > item->GetCount()) {
@@ -277,7 +277,7 @@
     }
 
     auto count_ = count;
-    if (count_ == 0u) {
+    if (count_ == 0) {
         count_ = item->GetCount();
     }
     if (count_ > item->GetCount()) {
@@ -308,7 +308,7 @@
     }
 
     auto count_ = count;
-    if (count_ == 0u) {
+    if (count_ == 0) {
         count_ = item->GetCount();
     }
     if (count_ > item->GetCount()) {
@@ -334,7 +334,7 @@
     }
 
     auto count_ = count;
-    if (count_ == 0u) {
+    if (count_ == 0) {
         count_ = item->GetCount();
     }
     if (count_ > item->GetCount()) {
@@ -361,7 +361,7 @@
     }
 
     auto count_ = count;
-    if (count_ == 0u) {
+    if (count_ == 0) {
         count_ = item->GetCount();
     }
     if (count_ > item->GetCount()) {
@@ -516,13 +516,14 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, Item* item, uint count)
 {
-    if (item != nullptr && count > 0u) {
+    if (item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
         if (count >= cur_count) {
             server->ItemMngr.DeleteItem(item);
         }
         else {
             item->SetCount(cur_count - count);
+            server->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
 }
@@ -543,13 +544,14 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, ident_t itemId, uint count)
 {
-    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0u) {
+    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0) {
         const auto cur_count = item->GetCount();
         if (count >= cur_count) {
             server->ItemMngr.DeleteItem(item);
         }
         else {
             item->SetCount(cur_count - count);
+            server->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
 }

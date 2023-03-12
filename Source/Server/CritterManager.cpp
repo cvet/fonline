@@ -57,13 +57,13 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
 
-    // Add
     if (item->GetStackable()) {
         auto* item_already = cr->GetItemByPid(item->GetProtoId());
         if (item_already != nullptr) {
             const auto count = item->GetCount();
             _engine->ItemMngr.DeleteItem(item);
             item_already->SetCount(item_already->GetCount() + count);
+            _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
             return item_already;
         }
     }
@@ -76,7 +76,6 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     item_ids.emplace_back(item->GetId());
     cr->SetItemIds(std::move(item_ids));
 
-    // Send
     if (send) {
         cr->Send_AddItem(item);
         if (item->GetCritterSlot() != 0) {
@@ -84,7 +83,6 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         }
     }
 
-    // Change item
     _engine->OnCritterMoveItem.Fire(cr, item, static_cast<uint8>(-1));
 
     return item;

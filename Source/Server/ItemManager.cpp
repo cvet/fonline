@@ -136,11 +136,13 @@ auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> I
     }
 
     if (item->GetStackable()) {
-        auto* item_ = cont->ContGetItemByPid(item->GetProtoId(), stack_id);
-        if (item_ != nullptr) {
-            item_->SetCount(item_->GetCount() + item->GetCount());
+        auto* item_already = cont->ContGetItemByPid(item->GetProtoId(), stack_id);
+        if (item_already != nullptr) {
+            const auto count = item->GetCount();
             DeleteItem(item);
-            return item_;
+            item_already->SetCount(item_already->GetCount() + count);
+            _engine->OnItemStackChanged.Fire(item_already, +static_cast<int>(count));
+            return item_already;
         }
     }
 
@@ -303,6 +305,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     RUNTIME_ASSERT(new_item->GetOwnership() == ItemOwnership::Nowhere);
 
     item->SetCount(item_count - count);
+    _engine->OnItemStackChanged.Fire(item, -static_cast<int>(count));
 
     return new_item;
 }
@@ -420,6 +423,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
     if (item != nullptr) {
         if (item->GetStackable()) {
             item->SetCount(item->GetCount() + count);
+            _engine->OnItemStackChanged.Fire(item, +static_cast<int>(count));
             result = item;
         }
         else {
@@ -482,6 +486,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 
     if (item != nullptr && item->GetStackable()) {
         item->SetCount(item->GetCount() + count);
+        _engine->OnItemStackChanged.Fire(item, +static_cast<int>(count));
         result = item;
     }
     else {
@@ -535,6 +540,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count)
         }
         else {
             item->SetCount(item->GetCount() - count);
+            _engine->OnItemStackChanged.Fire(item, -static_cast<int>(count));
         }
     }
     else {
