@@ -1934,7 +1934,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('{')
                         globalLines.append('    STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
-                        globalLines.append('    ENTITY_VERIFY(self);')
+                        globalLines.append('    ENTITY_VERIFY_RETURN(self, true);')
                         argIndex = 0
                         for p in evArgs:
                             argType = metaTypeToEngineType(p[0], target, False)
@@ -1942,7 +1942,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                                 argType = argType[:-1]
                             globalLines.append('    auto&& arg_' + p[1] + ' = *reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')));')
                             if p[0] in gameEntities:
-                                globalLines.append('    ENTITY_VERIFY(arg_' + p[1] + ');')
+                                globalLines.append('    ENTITY_VERIFY_RETURN(arg_' + p[1] + ', true);')
                             argIndex += 1
                         for p in evArgs:
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
@@ -2021,10 +2021,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         if not isASCompiler:
                             globalLines.append('    STACK_TRACE_ENTRY();')
                             globalLines.append('    ENTITY_VERIFY_NULL(self);')
-                            globalLines.append('    ENTITY_VERIFY(self);')
+                            globalLines.append('    ENTITY_VERIFY_RETURN(self, true);')
                             for p in evArgs:
                                 if p[0] in gameEntities:
-                                    globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
+                                    globalLines.append('    ENTITY_VERIFY_RETURN(' + p[1] + ', true);')
                             for p in evArgs:
                                 globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                             if isExported:

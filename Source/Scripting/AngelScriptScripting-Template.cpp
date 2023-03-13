@@ -179,6 +179,7 @@ struct SCRIPTING_CLASS : public ScriptSystem
 
 #define ENTITY_VERIFY_NULL(e)
 #define ENTITY_VERIFY(e)
+#define ENTITY_VERIFY_RETURN(e, ret)
 
 static GlobalSettings DummySettings {};
 
@@ -238,6 +239,10 @@ public:
 #define ENTITY_VERIFY(e) \
     if ((e) != nullptr && (e)->IsDestroyed()) { \
         throw ScriptException("Access to destroyed entity"); \
+    }
+#define ENTITY_VERIFY_RETURN(e, ret) \
+    if ((e) != nullptr && (e)->IsDestroyed()) { \
+        return ret; \
     }
 #endif
 
