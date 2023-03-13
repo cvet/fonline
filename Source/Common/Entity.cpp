@@ -150,6 +150,8 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* 
     }
 }
 
+// Param callbacks mutable beacuse callbacks may change it, so make it explicit
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
 auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool
 {
     STACK_TRACE_ENTRY();
