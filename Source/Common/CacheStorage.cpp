@@ -201,7 +201,6 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
     if (!file) {
-        WriteLog(LogType::Warning, "Can't open read cache at '{}'", path);
         return {};
     }
 
@@ -223,7 +222,6 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
     if (!file) {
-        WriteLog(LogType::Warning, "Can't open read cache at '{}'", path);
         return {};
     }
 
