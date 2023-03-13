@@ -2433,13 +2433,13 @@ static void Global_Get(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static auto Entity_GetSelf(T* entity) -> T*
+static auto Entity_GetSelfForEvent(T* entity) -> T*
 {
     STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
+    // Don't verify entity for destroying
     ENTITY_VERIFY_NULL(entity);
-    ENTITY_VERIFY(entity);
     return entity;
 #else
     throw ScriptCompilerException("Stub");
@@ -3265,7 +3265,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, entity_name event_name "Event@ get_" event_name "()", SCRIPT_FUNC_THIS((Entity_GetSelf<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, entity_name event_name "Event@ get_" event_name "()", SCRIPT_FUNC_THIS((Entity_GetSelfForEvent<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry)
 
