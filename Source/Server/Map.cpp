@@ -41,9 +41,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _staticMap {static_map},
     _mapLocation {location}

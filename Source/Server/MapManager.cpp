@@ -102,8 +102,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     cr_props.RestoreAllData(props_data);
 
-                    auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto);
-                    cr->SetProperties(cr_props);
+                    auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto, &cr_props);
 
                     static_map.CritterBillets.emplace_back(cr_id, cr);
 
@@ -136,8 +135,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     item_props.RestoreAllData(props_data);
 
-                    auto* item = new Item(_engine, ident_t {}, item_proto);
-                    item->SetProperties(item_props);
+                    auto* item = new Item(_engine, ident_t {}, item_proto, &item_props);
 
                     static_map.ItemBillets.emplace_back(item_id, item);
 

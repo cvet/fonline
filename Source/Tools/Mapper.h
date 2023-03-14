@@ -212,14 +212,14 @@ public:
     auto SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool;
     void SelectDelete();
 
-    auto AddCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*;
-    auto AddItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*;
-    void AddTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof);
+    auto CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*;
+    auto CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*;
+    void CreateTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof);
     auto CloneEntity(Entity* entity) -> Entity*;
 
     void BufferCopy();
     void BufferCut();
-    void BufferPaste(int hx, int hy);
+    void BufferPaste(int hx_offset, int hy_offset);
 
     void ObjDraw();
     void DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r);

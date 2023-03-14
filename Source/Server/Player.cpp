@@ -41,8 +41,8 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, ident_t id, ClientConnection* connection) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
+Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props),
     PlayerProperties(GetInitRef()),
     Connection {connection},
     _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}

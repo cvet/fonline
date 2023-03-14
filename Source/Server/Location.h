@@ -46,7 +46,7 @@ class Location final : public ServerEntity, public EntityWithProto, public Locat
 {
 public:
     Location() = delete;
-    Location(FOServer* engine, ident_t id, const ProtoLocation* proto);
+    Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr);
     Location(const Location&) = delete;
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;

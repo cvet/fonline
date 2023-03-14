@@ -160,7 +160,7 @@ public:
         uint16 CritterLastHexY {};
     };
 
-    MapView(FOClient* engine, ident_t id, const ProtoMap* proto);
+    MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -219,8 +219,9 @@ public:
     void SwitchShowHex();
 
     // Critters
-    auto AddCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
-    auto AddCritter(ident_t id, const ProtoCritter* proto, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
+    auto AddReceivedCritter(ident_t id, hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
+    auto AddMapperCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
+    auto AddMapperCritter(hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const Properties* props) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<CritterHexView*>;
@@ -232,8 +233,9 @@ public:
     void SetMultihex(uint16 hx, uint16 hy, uint multihex, bool set);
 
     // Items
-    auto AddItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
-    auto AddItem(ident_t id, hstring pid, uint16 hx, uint16 hy, bool is_added, const vector<vector<uint8>>* data) -> ItemHexView*;
+    auto AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, const vector<vector<uint8>>& data) -> ItemHexView*;
+    auto AddMapperItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
+    auto AddMapperItem(hstring pid, uint16 hx, uint16 hy, const Properties* props) -> ItemHexView*;
     auto GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*;
     auto GetItem(uint16 hx, uint16 hy, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
@@ -282,6 +284,7 @@ public:
 
     auto GetTempEntityId() const -> ident_t;
 
+    auto ValidateForSave() const -> vector<string>;
     auto SaveToText() const -> string;
 
     AutoScrollInfo AutoScroll {};
@@ -307,11 +310,11 @@ private:
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) -> bool;
 
-    void AddCritterInternal(CritterHexView* cr);
+    auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
 
-    void AddItemInternal(ItemHexView* item);
+    auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
 

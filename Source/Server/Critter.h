@@ -53,7 +53,7 @@ class Critter final : public ServerEntity, public EntityWithProto, public Critte
 
 public:
     Critter() = delete;
-    Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto);
+    Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props = nullptr);
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;

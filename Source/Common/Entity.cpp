@@ -35,12 +35,16 @@
 #include "Application.h"
 #include "Log.h"
 
-Entity::Entity(const PropertyRegistrator* registrator) :
+Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) :
     _props {registrator}
 {
     STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
+
+    if (props != nullptr) {
+        _props = *props;
+    }
 }
 
 void Entity::AddRef() const noexcept
@@ -223,13 +227,6 @@ void Entity::MarkAsDestroyed()
     _isDestroyed = true;
 }
 
-void Entity::SetProperties(const Properties& props)
-{
-    STACK_TRACE_ENTRY();
-
-    _props = props;
-}
-
 void Entity::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const
 {
     STACK_TRACE_ENTRY();
@@ -322,7 +319,7 @@ void Entity::SetValueAsFloat(int prop_index, float value)
 }
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) :
-    Entity(registrator),
+    Entity(registrator, nullptr),
     _protoId {proto_id}
 {
     STACK_TRACE_ENTRY();
@@ -366,7 +363,7 @@ auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
     return _componentHashes.count(hash) != 0u;
 }
 
-EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) :
+EntityWithProto::EntityWithProto(const ProtoEntity* proto) :
     _proto {proto}
 {
     STACK_TRACE_ENTRY();
@@ -374,7 +371,6 @@ EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) :
     RUNTIME_ASSERT(_proto);
 
     _proto->AddRef();
-    owner->SetProperties(_proto->GetProperties());
 }
 
 EntityWithProto::~EntityWithProto()

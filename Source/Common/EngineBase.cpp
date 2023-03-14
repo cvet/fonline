@@ -37,7 +37,7 @@
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
-    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)), //
+    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this), nullptr),
     GameProperties(GetInitRef()),
     Settings {settings},
     Geometry(settings),

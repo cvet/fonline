@@ -45,7 +45,7 @@ class CritterView : public ClientEntity, public EntityWithProto, public CritterP
 {
 public:
     CritterView() = delete;
-    CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto);
+    CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
     CritterView(const CritterView&) = delete;
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
@@ -69,8 +69,8 @@ public:
     virtual void Init();
     virtual void Finish();
     void MarkAsDestroyed() override;
-    virtual auto AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*;
-    virtual void DeleteItem(ItemView* item, bool animate);
+    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*;
+    virtual void DeleteInvItem(ItemView* item, bool animate);
     void DeleteAllItems();
     void SetName(string_view name);
     void SetPlayer(bool is_player, bool is_chosen);

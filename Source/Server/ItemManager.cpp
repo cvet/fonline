@@ -213,13 +213,12 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         return nullptr;
     }
 
-    auto* item = new Item(_engine, ident_t {}, proto);
+    auto* item = new Item(_engine, ident_t {}, proto, props);
 
     auto item_holder = RefCountHolder(item);
 
+    // Reset ownership properties
     if (props != nullptr) {
-        item->SetProperties(*props);
-
         item->SetOwnership(ItemOwnership::Nowhere);
         item->SetMapId(ident_t {});
         item->SetHexX(0);

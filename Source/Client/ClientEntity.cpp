@@ -34,8 +34,8 @@
 #include "ClientEntity.h"
 #include "StringUtils.h"
 
-ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator) :
-    Entity(registrator),
+ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+    Entity(registrator, props),
     _engine {engine},
     _id {id}
 {

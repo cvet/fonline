@@ -743,8 +743,7 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, ident_t id) -
             return nullptr;
         }
 
-        auto* entity = new ServerEntity(_engine, id, registrator);
-        entity->SetProperties(props);
+        auto* entity = new ServerEntity(_engine, id, registrator, &props);
 
         RegisterEntityEx(entity);
         all_entities.emplace(id, entity);
@@ -759,7 +758,7 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
     STACK_TRACE_ENTRY();
 
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
-    auto* entity = new ServerEntity(_engine, ident_t {}, registrator);
+    auto* entity = new ServerEntity(_engine, ident_t {}, registrator, nullptr);
 
     RegisterEntityEx(entity);
     auto& all_entities = _allCustomEntities[string(entity_class_name)];

@@ -1554,13 +1554,13 @@ void FOMapper::IntLMouseDown()
         }
         else if (CurMode == CUR_MODE_PLACE_OBJECT) {
             if (IsObjectMode() && !(*CurItemProtos).empty() != 0u) {
-                AddItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1, nullptr);
+                CreateItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1, nullptr);
             }
             else if (IsTileMode() && !CurTileNames->empty()) {
-                AddTile((*CurTileNames)[GetTabIndex()], SelectHexX1, SelectHexY1, 0, 0, TileLayer, DrawRoof);
+                CreateTile((*CurTileNames)[GetTabIndex()], SelectHexX1, SelectHexY1, 0, 0, static_cast<uint8>(TileLayer), DrawRoof);
             }
             else if (IsCritMode() && !CurNpcProtos->empty()) {
-                AddCritter((*CurNpcProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1);
+                CreateCritter((*CurNpcProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1);
             }
         }
 
@@ -1637,7 +1637,7 @@ void FOMapper::IntLMouseDown()
                 }
 
                 if (add) {
-                    AddItem(proto_item->GetProtoId(), 0, 0, SelectedEntities[0]);
+                    CreateItem(proto_item->GetProtoId(), 0, 0, SelectedEntities[0]);
                 }
             }
         }
@@ -1674,7 +1674,7 @@ void FOMapper::IntLMouseDown()
                     if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
                         auto* owner = CurMap->GetCritter(InContItem->GetCritterId());
                         RUNTIME_ASSERT(owner);
-                        owner->DeleteItem(InContItem, true);
+                        owner->DeleteInvItem(InContItem, true);
                     }
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = CurMap->GetItem(InContItem->GetContainerId());
@@ -2661,12 +2661,11 @@ void FOMapper::SelectDelete()
 {
     STACK_TRACE_ENTRY();
 
-    auto entities = SelectedEntities;
-    for (auto* entity : entities) {
+    for (auto* entity : copy_hold_ref(SelectedEntities)) {
         DeleteEntity(entity);
     }
 
-    for (auto& stile : SelectedTile) {
+    for (const auto& stile : SelectedTile) {
         auto& f = CurMap->GetField(stile.HexX, stile.HexY);
         auto& tiles = CurMap->GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
 
@@ -2690,7 +2689,7 @@ void FOMapper::SelectDelete()
     CurMode = CUR_MODE_DEFAULT;
 }
 
-auto FOMapper::AddCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
+auto FOMapper::CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
 {
     STACK_TRACE_ENTRY();
 
@@ -2700,7 +2699,6 @@ auto FOMapper::AddCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
     if (proto == nullptr) {
         return nullptr;
     }
-
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return nullptr;
     }
@@ -2710,7 +2708,7 @@ auto FOMapper::AddCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
 
     SelectClear();
 
-    CritterHexView* cr = CurMap->AddCritter(ident_t {}, proto, hx, hy, Geometry.DirToAngle(NpcDir), {});
+    CritterHexView* cr = CurMap->AddMapperCritter(pid, hx, hy, Geometry.DirToAngle(NpcDir), nullptr);
 
     SelectAdd(cr);
 
@@ -2720,45 +2718,42 @@ auto FOMapper::AddCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*
     return cr;
 }
 
-auto FOMapper::AddItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*
+auto FOMapper::CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(CurMap);
 
     // Checks
-    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
-    if (proto_item == nullptr) {
+    const auto* proto = ProtoMngr.GetProtoItem(pid);
+    if (proto == nullptr) {
         return nullptr;
     }
     if (owner == nullptr && (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight())) {
         return nullptr;
     }
-    if (proto_item->IsStatic() && owner != nullptr) {
+    if (proto->IsStatic() && owner != nullptr) {
         return nullptr;
     }
 
-    // Clear selection
     if (owner == nullptr) {
         SelectClear();
     }
 
-    // Create
     ItemView* item = nullptr;
 
     if (owner != nullptr) {
         if (auto* cr = dynamic_cast<CritterHexView*>(owner); cr != nullptr) {
-            item = cr->AddItem(cr->GetMap()->GetTempEntityId(), proto_item, 0u, {});
+            item = cr->AddInvItem(cr->GetMap()->GetTempEntityId(), proto, 0, {});
         }
         if (auto* cont = dynamic_cast<ItemHexView*>(owner); cont != nullptr) {
-            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto_item, 0u, {});
+            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto, 0, {});
         }
     }
     else {
-        item = CurMap->AddItem(CurMap->GetTempEntityId(), proto_item->GetProtoId(), hx, hy, true, nullptr);
+        item = CurMap->AddMapperItem(proto->GetProtoId(), hx, hy, nullptr);
     }
 
-    // Select
     if (owner == nullptr) {
         SelectAdd(item);
         CurMode = CUR_MODE_DEFAULT;
@@ -2771,7 +2766,7 @@ auto FOMapper::AddItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> Item
     return item;
 }
 
-void FOMapper::AddTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof)
+void FOMapper::CreateTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof)
 {
     STACK_TRACE_ENTRY();
 
@@ -2796,61 +2791,44 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 
     RUNTIME_ASSERT(CurMap);
 
-    ClientEntity* owner;
+    ClientEntity* clone;
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-        uint16 hx = cr->GetHexX();
-        uint16 hy = cr->GetHexY();
-
-        if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
-            auto place_found = false;
-            for (uint8 d = 0; d < 6; d++) {
-                uint16 hx_ = hx;
-                uint16 hy_ = hy;
-                Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
-                if (CurMap->GetField(hx_, hy_).GetActiveCritter() == nullptr) {
-                    hx = hx_;
-                    hy = hy_;
-                    place_found = true;
-                    break;
-                }
-            }
-            if (!place_found) {
-                return nullptr;
-            }
-        }
-
-        // Todo: clone entities
-        owner = CurMap->AddCritter(CurMap->GetTempEntityId(), dynamic_cast<const ProtoCritter*>(cr->GetProto()), hx, hy, cr->GetDirAngle(), {});
+        clone = CurMap->AddMapperCritter(cr->GetProtoId(), cr->GetHexX(), cr->GetHexY(), cr->GetDirAngle(), &cr->GetProperties());
     }
     else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        owner = CurMap->AddItem(CurMap->GetTempEntityId(), item->GetProtoId(), item->GetHexX(), item->GetHexY(), true, nullptr);
+        clone = CurMap->AddMapperItem(item->GetProtoId(), item->GetHexX(), item->GetHexY(), &item->GetProperties());
     }
     else {
         return nullptr;
     }
 
-    SelectAdd(owner);
+    SelectAdd(clone);
 
-    // Todo: clone children
-    std::function<void(Entity*, Entity*)> add_entity_children = [&add_entity_children](Entity* from, Entity* to) {
-        UNUSED_VARIABLE(add_entity_children);
-        throw NotImplementedException(LINE_STR);
-        /*for (auto* from_child : from->GetChildren())
-        {
+    /*std::function<void(Entity*, Entity*)> add_entity_children = [&add_entity_children](Entity* fromE, Entity* toE) {
+        if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+            clone = CurMap->AddMapperCritter(CurMap->GetTempEntityId(), dynamic_cast<const ProtoCritter*>(cr->GetProto()), hx, hy, cr->GetDirAngle(), {});
+        }
+        else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+            clone = CurMap->AddMapperItem(CurMap->GetTempEntityId(), item->GetProtoId(), item->GetHexX(), item->GetHexY(), true, nullptr);
+        }
+
+        for (auto* from_child : from->GetChildren()) {
             RUNTIME_ASSERT(from_child->Type == EntityType::Item);
             ItemView* to_child = new ItemView(--pmap->LastEntityId, (ProtoItem*)from_child->Proto);
             to_child->_props = from_child->_props;
-            if (to->Type == EntityType::CritterView)
-                ((CritterView*)to)->AddItem(to_child);
-            else
+            if (to->Type == EntityType::CritterView) {
+                ((CritterView*)to)->AddMapperItem(to_child);
+            }
+            else {
                 ((ItemView*)to)->ContSetItem(to_child);
+            }
             add_entity_children(from_child, to_child);
-        }*/
+        }
     };
-    add_entity_children(entity, owner);
+    add_entity_children(entity, clone);*/
 
-    return owner;
+    return clone;
 }
 
 void FOMapper::BufferCopy()
@@ -2930,7 +2908,7 @@ void FOMapper::BufferCut()
     SelectDelete();
 }
 
-void FOMapper::BufferPaste(int, int)
+void FOMapper::BufferPaste(int hx_offset, int hy_offset)
 {
     STACK_TRACE_ENTRY();
 
@@ -2940,51 +2918,31 @@ void FOMapper::BufferPaste(int, int)
 
     SelectClear();
 
-    // Paste map objects
     for (const auto& entity_buf : EntitiesBuffer) {
-        if (entity_buf.HexX >= CurMap->GetWidth() || entity_buf.HexY >= CurMap->GetHeight()) {
+        const auto hx = static_cast<int>(entity_buf.HexX) + hx_offset;
+        const auto hy = static_cast<int>(entity_buf.HexY) + hy_offset;
+
+        if (hx < 0 || hx >= CurMap->GetWidth() || hy < 0 || hy >= CurMap->GetHeight()) {
             continue;
         }
 
-        auto hx = entity_buf.HexX;
-        auto hy = entity_buf.HexY;
+        //Entity* clone;
 
-        const Entity* owner;
         if (entity_buf.IsCritter) {
-            if (CurMap->GetField(hx, hy).GetActiveCritter() != nullptr) {
-                auto place_founded = false;
-                for (int d = 0; d < 6; d++) {
-                    uint16 hx_ = entity_buf.HexX;
-                    uint16 hy_ = entity_buf.HexY;
-                    Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
-                    if (CurMap->GetField(hx_, hy_).GetActiveCritter() == nullptr) {
-                        hx = hx_;
-                        hy = hy_;
-                        place_founded = true;
-                        break;
-                    }
-                }
-                if (!place_founded) {
-                    continue;
-                }
-            }
-
-            auto* cr = CurMap->AddCritter(CurMap->GetTempEntityId(), static_cast<const ProtoCritter*>(entity_buf.Proto), hx, hy, 0, {});
-            cr->SetProperties(*entity_buf.Props);
-            cr->Init();
-            SelectAdd(cr);
-            owner = cr;
+            //auto* cr = CurMap->AddMapperCritter(CurMap->GetTempEntityId(), static_cast<const ProtoCritter*>(entity_buf.Proto), hx, hy, 0, entity_buf.Props);
+            // cr->Init();
+            // SelectAdd(cr);
+            // clone = cr;
         }
         else if (entity_buf.IsItem) {
-            auto* item = CurMap->AddItem(CurMap->GetTempEntityId(), entity_buf.Proto->GetProtoId(), hx, hy, false, nullptr);
-            item->SetProperties(*entity_buf.Props);
-            SelectAdd(item);
-            owner = item;
+            //auto* item = CurMap->AddMapperItem(CurMap->GetTempEntityId(), entity_buf.Proto->GetProtoId(), hx, hy, false, entity_buf.Props);
+            //SelectAdd(item);
+            // clone = item;
         }
 
         // Todo: need attention!
-        UNUSED_VARIABLE(owner);
-        throw NotImplementedException(LINE_STR);
+        //UNUSED_VARIABLE(clone);
+        //throw NotImplementedException(LINE_STR);
         /*auto* pmap = dynamic_cast<ProtoMap*>(CurMap->Proto);
         std::function<void(EntityBuf*, Entity*)> add_entity_children = [&add_entity_children, &pmap](EntityBuf* entity_buf) {
             for (auto& child_buf : entity_buf->Children) {
@@ -2992,7 +2950,7 @@ void FOMapper::BufferPaste(int, int)
                 ItemView* child = new ItemView(--pmap->LastEntityId, (ProtoItem*)child_buf->Proto);
                 child->_props = *child_buf->_props;
                 if (entity->Type == EntityType::CritterView)
-                    ((CritterView*)entity)->AddItem(child);
+                    ((CritterView*)entity)->AddMapperItem(child);
                 else
                     ((ItemView*)entity)->ContSetItem(child);
                 add_entity_children(child_buf, child);
@@ -3001,23 +2959,27 @@ void FOMapper::BufferPaste(int, int)
         add_entity_children(&entity_buf, owner);*/
     }
 
-    // Paste tiles
-    for (auto& tile_buf : TilesBuffer) {
-        if (tile_buf.HexX < CurMap->GetWidth() && tile_buf.HexY < CurMap->GetHeight()) {
-            // Create
-            CurMap->SetTile(tile_buf.Name, tile_buf.HexX, tile_buf.HexY, tile_buf.OffsX, tile_buf.OffsY, tile_buf.Layer, tile_buf.IsRoof, true);
+    for (const auto& tile_buf : TilesBuffer) {
+        const auto hx = static_cast<int>(tile_buf.HexX) + hx_offset;
+        const auto hy = static_cast<int>(tile_buf.HexY) + hy_offset;
 
-            // Select helper
-            bool sel_added = false;
-            for (auto& stile : SelectedTile) {
-                if (stile.HexX == tile_buf.HexX && stile.HexY == tile_buf.HexY && stile.IsRoof == tile_buf.IsRoof) {
-                    sel_added = true;
-                    break;
-                }
+        if (hx < 0 || hx >= CurMap->GetWidth() || hy < 0 || hy >= CurMap->GetHeight()) {
+            continue;
+        }
+
+        CurMap->SetTile(tile_buf.Name, tile_buf.HexX, tile_buf.HexY, tile_buf.OffsX, tile_buf.OffsY, tile_buf.Layer, tile_buf.IsRoof, true);
+
+        bool sel_added = false;
+
+        for (const auto& stile : SelectedTile) {
+            if (stile.HexX == tile_buf.HexX && stile.HexY == tile_buf.HexY && stile.IsRoof == tile_buf.IsRoof) {
+                sel_added = true;
+                break;
             }
-            if (!sel_added) {
-                SelectedTile.push_back({tile_buf.HexX, tile_buf.HexY, tile_buf.IsRoof});
-            }
+        }
+
+        if (!sel_added) {
+            SelectedTile.push_back({tile_buf.HexX, tile_buf.HexY, tile_buf.IsRoof});
         }
     }
 }
@@ -3527,11 +3489,11 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         MapLoader::Load(
             map_name, map_file.GetStr(), ProtoMngr, *this,
             [new_map](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-                const auto* new_critter = new_map->AddCritter(id, proto, kv);
+                const auto* new_critter = new_map->AddMapperCritter(id, proto, kv);
                 return new_critter != nullptr;
             },
             [new_map](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
-                const auto* new_item = new_map->AddItem(id, proto, kv);
+                const auto* new_item = new_map->AddMapperItem(id, proto, kv);
                 return new_item != nullptr;
             },
             [new_map](MapTile&& tile) -> bool {
@@ -3588,6 +3550,15 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
 
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     RUNTIME_ASSERT(it != LoadedMaps.end());
+
+    const auto map_errors = map->ValidateForSave();
+    if (!map_errors.empty()) {
+        for (const auto& error : map_errors) {
+            AddMess(error);
+        }
+
+        return;
+    }
 
     const auto fomap_content = map->SaveToText();
 

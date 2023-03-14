@@ -1046,7 +1046,7 @@ void FOClient::Net_OnAddCritter()
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
 
-    const auto cr_id = _conn.InBuf.Read<ident_t>();
+    const auto id = _conn.InBuf.Read<ident_t>();
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
     const auto hex_ox = _conn.InBuf.Read<int16>();
@@ -1066,8 +1066,6 @@ void FOClient::Net_OnAddCritter()
     const auto is_chosen = _conn.InBuf.Read<bool>();
 
     const hstring pid = _conn.InBuf.Read<hstring>(*this);
-    const auto* proto = ProtoMngr.GetProtoCritter(pid);
-    RUNTIME_ASSERT(proto);
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -1076,10 +1074,14 @@ void FOClient::Net_OnAddCritter()
     CritterView* cr;
 
     if (CurMap != nullptr) {
-        cr = CurMap->AddCritter(cr_id, proto, hx, hy, dir_angle, _tempPropertiesData);
+        cr = CurMap->AddReceivedCritter(id, pid, hx, hy, dir_angle, _tempPropertiesData);
+        RUNTIME_ASSERT(cr);
     }
     else {
-        cr = new CritterView(this, cr_id, proto);
+        const auto* proto = ProtoMngr.GetProtoCritter(pid);
+        RUNTIME_ASSERT(proto);
+
+        cr = new CritterView(this, id, proto);
         cr->RestoreData(_tempPropertiesData);
         _worldmapCritters.emplace_back(cr);
     }
@@ -1678,7 +1680,7 @@ void FOClient::Net_OnCritterMoveItem()
         for (uint16 i = 0; i < slots_data_count; i++) {
             const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
             RUNTIME_ASSERT(proto_item != nullptr);
-            cr->AddItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
+            cr->AddInvItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
         }
 
         int64 hash_sum = 0;
@@ -1941,13 +1943,13 @@ void FOClient::Net_OnChosenAddItem()
     if (prev_item != nullptr) {
         prev_slot = prev_item->GetCritterSlot();
         prev_light_hash = prev_item->LightGetHash();
-        chosen->DeleteItem(prev_item, false);
+        chosen->DeleteInvItem(prev_item, false);
     }
 
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
     RUNTIME_ASSERT(proto_item);
 
-    auto* item = chosen->AddItem(item_id, proto_item, slot, _tempPropertiesData);
+    auto* item = chosen->AddInvItem(item_id, proto_item, slot, _tempPropertiesData);
 
     item->AddRef();
 
@@ -1991,7 +1993,7 @@ void FOClient::Net_OnChosenEraseItem()
     auto* item_clone = item->CreateRefClone();
 
     const auto rebuild_light = (CurMap != nullptr && item->GetIsLight() && item->GetCritterSlot() != 0u);
-    chosen->DeleteItem(item, true);
+    chosen->DeleteInvItem(item, true);
     if (rebuild_light) {
         CurMap->RebuildLight();
     }
@@ -2042,8 +2044,13 @@ void FOClient::Net_OnAddItemOnMap()
         return;
     }
 
-    auto* item = CurMap->AddItem(item_id, item_pid, item_hx, item_hy, is_added, &_tempPropertiesData);
+    auto* item = CurMap->AddReceivedItem(item_id, item_pid, item_hx, item_hy, _tempPropertiesData);
+
     if (item != nullptr) {
+        if (is_added) {
+            item->PlayShowAnim();
+        }
+
         OnItemMapIn.Fire(item);
 
         // Refresh borders
@@ -3710,7 +3717,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                     item->SetCount(item->GetCount() - item_count);
                 }
                 else {
-                    chosen->DeleteItem(item, true);
+                    chosen->DeleteInvItem(item, true);
                     item = nullptr;
                 }
             }

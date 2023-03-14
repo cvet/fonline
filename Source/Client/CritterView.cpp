@@ -36,9 +36,9 @@
 #include "ItemView.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
@@ -94,7 +94,7 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-auto CritterView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -112,7 +112,7 @@ auto CritterView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const 
     return item;
 }
 
-void CritterView::DeleteItem(ItemView* item, bool animate)
+void CritterView::DeleteInvItem(ItemView* item, bool animate)
 {
     STACK_TRACE_ENTRY();
 
@@ -133,7 +133,7 @@ void CritterView::DeleteAllItems()
     STACK_TRACE_ENTRY();
 
     while (!_items.empty()) {
-        DeleteItem(*_items.begin(), false);
+        DeleteInvItem(*_items.begin(), false);
     }
 }
 

@@ -35,9 +35,9 @@
 #include "Client.h"
 #include "StringUtils.h"
 
-ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
@@ -63,9 +63,7 @@ auto ItemView::CreateRefClone() const -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* clone = new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto));
-    clone->SetProperties(GetProperties());
-    return clone;
+    return new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
 }
 
 auto ItemView::LightGetHash() const -> uint

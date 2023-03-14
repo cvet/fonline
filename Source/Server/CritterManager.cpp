@@ -185,10 +185,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         hy = hy_;
     }
 
-    auto* cr = new Critter(_engine, ident_t {}, nullptr, proto);
-    if (props != nullptr) {
-        cr->SetProperties(*props);
-    }
+    auto* cr = new Critter(_engine, ident_t {}, nullptr, proto, props);
 
     _engine->EntityMngr.RegisterEntity(cr);
 

@@ -64,7 +64,7 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 
 public:
     Map() = delete;
-    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map);
+    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props = nullptr);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;

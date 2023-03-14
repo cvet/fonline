@@ -51,7 +51,7 @@ class Item final : public ServerEntity, public EntityWithProto, public ItemPrope
 
 public:
     Item() = delete;
-    Item(FOServer* engine, ident_t id, const ProtoItem* proto);
+    Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;

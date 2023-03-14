@@ -42,8 +42,8 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto) :
-    CritterView(map->GetEngine(), id, proto),
+CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props) :
+    CritterView(map->GetEngine(), id, proto, props),
     _map {map}
 {
     STACK_TRACE_ENTRY();
@@ -118,11 +118,11 @@ auto CritterHexView::GetCurAnim() -> CritterAnim*
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
-auto CritterHexView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
+auto CritterHexView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = CritterView::AddItem(id, proto, slot, properties_data);
+    auto* item = CritterView::AddInvItem(id, proto, slot, properties_data);
 
     if (item->GetCritterSlot() != 0u && !IsAnim()) {
         AnimateStay();
@@ -131,11 +131,11 @@ auto CritterHexView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, con
     return item;
 }
 
-void CritterHexView::DeleteItem(ItemView* item, bool animate)
+void CritterHexView::DeleteInvItem(ItemView* item, bool animate)
 {
     STACK_TRACE_ENTRY();
 
-    CritterView::DeleteItem(item, animate);
+    CritterView::DeleteInvItem(item, animate);
 
     if (animate && !IsAnim()) {
         AnimateStay();

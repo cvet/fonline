@@ -58,7 +58,7 @@
         throw ScriptException("Invalid item prototype");
     }
 
-    return mapper->AddItem(pid, hx, hy, nullptr);
+    return mapper->CreateItem(pid, hx, hy, nullptr);
 }
 
 ///# ...
@@ -78,7 +78,7 @@
         throw ScriptException("Invalid critter prototype");
     }
 
-    return mapper->AddCritter(pid, hx, hy);
+    return mapper->CreateCritter(pid, hx, hy);
 }
 
 ///# ...

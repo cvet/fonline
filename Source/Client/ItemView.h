@@ -43,7 +43,7 @@ class ItemView : public ClientEntity, public EntityWithProto, public ItemPropert
 {
 public:
     ItemView() = delete;
-    ItemView(FOClient* engine, ident_t id, const ProtoItem* proto);
+    ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
     ItemView(const ItemView&) = delete;
     ItemView(ItemView&&) noexcept = delete;
     auto operator=(const ItemView&) = delete;
