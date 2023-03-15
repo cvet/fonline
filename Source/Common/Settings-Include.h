@@ -198,6 +198,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual DummySettings);
 FIXED_SETTING(int, StartYear, 2000);
+FIXED_SETTING(uint, DebuggingDeltaTimeCap, 100);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

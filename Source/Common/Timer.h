@@ -84,6 +84,7 @@ private:
     time_point _frameTime {};
     time_point _gameplayTimeBase {};
     time_point _gameplayTimeFrame {};
+    time_duration _debuggingOffset {};
 
     uint64 _yearStartFullTime {};
     int _gameTimeMultiplier {};

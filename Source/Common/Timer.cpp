@@ -43,6 +43,8 @@ GameTimer::GameTimer(TimerSettings& settings) :
 {
     STACK_TRACE_ENTRY();
 
+    _frameTime = time_point::clock::now();
+
     Reset(static_cast<uint16>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
     FrameAdvance();
 }
@@ -68,7 +70,20 @@ auto GameTimer::FrameAdvance() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    _frameTime = time_point::clock::now();
+    const auto now_time = time_point::clock::now();
+
+    if (IsRunInDebugger() && _settings.DebuggingDeltaTimeCap != 0) {
+        const auto dt = time_duration_to_ms<uint>(now_time - _frameTime - _debuggingOffset);
+
+        if (dt > _settings.DebuggingDeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds {dt - _settings.DebuggingDeltaTimeCap};
+        }
+
+        _frameTime = now_time - _debuggingOffset;
+    }
+    else {
+        _frameTime = now_time;
+    }
 
 #if FO_SINGLEPLAYER
     if (_isGameplayPaused) {
@@ -76,11 +91,11 @@ auto GameTimer::FrameAdvance() -> bool
     }
 #endif
 
-    const auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(GameplayTime() - _gameplayTimeBase).count();
-    const auto fs = tick_t {static_cast<tick_t::underlying_type>(_fullSecondBase.underlying_value() + (dt / 1000 * _gameTimeMultiplier + dt % 1000 * _gameTimeMultiplier / 1000))};
+    const auto whole_dt = time_duration_to_ms<tick_t::underlying_type>(GameplayTime() - _gameplayTimeBase);
+    const auto full_seconds = tick_t {static_cast<tick_t::underlying_type>(_fullSecondBase.underlying_value() + (whole_dt / 1000 * _gameTimeMultiplier + whole_dt % 1000 * _gameTimeMultiplier / 1000))};
 
-    if (_fullSecond != fs) {
-        _fullSecond = fs;
+    if (_fullSecond != full_seconds) {
+        _fullSecond = full_seconds;
         return true;
     }
 
