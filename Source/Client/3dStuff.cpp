@@ -137,7 +137,7 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
 }
 
 ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
-    _settings {settings}, //
+    _settings {settings},
     _resources {resources},
     _effectMngr {effect_mngr},
     _gameTime {game_time},
@@ -911,7 +911,7 @@ void ModelInstance::RefreshMoveAnimation()
                 return;
             }
 
-            anim2 = (angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT);
+            anim2 = angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT;
             _playTurnAnimation = true;
         }
         else if (_playTurnAnimation) {
@@ -921,11 +921,12 @@ void ModelInstance::RefreshMoveAnimation()
 
     float speed = 1.0f;
     const auto index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
-    if (index == _curMovingAnim) {
+    if (index == _curMovingAnimIndex) {
         return;
     }
 
-    _curMovingAnim = index;
+    _curMovingAnimIndex = index;
+    _curMovingAnim2 = anim2;
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
@@ -933,7 +934,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     constexpr float smooth_time = 0.0001f;
 
-    if (index >= 0) {
+    if (index != -1) {
         const auto* anim_set = _moveAnimController->GetAnimationSet(index);
         const uint new_track = _currentMoveTrack == 0 ? 1 : 0;
 
@@ -999,8 +1000,8 @@ auto ModelInstance::GetMovingAnim2() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (_curMovingAnim != -1) {
-        return _curMovingAnim & 0xFFFF;
+    if (_curMovingAnimIndex != -1) {
+        return _curMovingAnim2;
     }
     else {
         return _isRunning ? ANIM2_RUN : ANIM2_WALK;

@@ -351,7 +351,8 @@ private:
     vector<ModelCutData*> _allCuts {};
     bool _isMoving {};
     bool _isMovingBack {};
-    int _curMovingAnim {-1};
+    int _curMovingAnimIndex {-1};
+    uint _curMovingAnim2 {};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};
