@@ -1497,7 +1497,7 @@ void FOClient::Net_OnCritterMove()
 
     auto next_start_hx = start_hx;
     auto next_start_hy = start_hy;
-    auto control_step_begin = 0;
+    uint16 control_step_begin = 0;
 
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
         auto hx = next_start_hx;
@@ -3856,13 +3856,13 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
         RUNTIME_ASSERT(cr->Moving.Speed > 0);
         const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
-        auto start_hx = cr->Moving.StartHexX;
-        auto start_hy = cr->Moving.StartHexY;
+        auto next_start_hx = cr->Moving.StartHexX;
+        auto next_start_hy = cr->Moving.StartHexY;
+        uint16 control_step_begin = 0;
 
-        auto control_step_begin = 0;
         for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-            auto hx2 = start_hx;
-            auto hy2 = start_hy;
+            auto hx2 = next_start_hx;
+            auto hy2 = next_start_hy;
 
             RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
             RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
@@ -3871,7 +3871,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
                 RUNTIME_ASSERT(move_ok);
             }
 
-            auto&& [ox2, oy2] = Geometry.GetHexInterval(start_hx, start_hy, hx2, hy2);
+            auto&& [ox2, oy2] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx2, hy2);
 
             if (i == 0) {
                 ox2 -= cr->Moving.StartOx;
@@ -3889,8 +3889,8 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
             cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
 
             control_step_begin = cr->Moving.ControlSteps[i];
-            start_hx = hx2;
-            start_hy = hy2;
+            next_start_hx = hx2;
+            next_start_hy = hy2;
 
             if (i == cr->Moving.ControlSteps.size() - 1) {
                 RUNTIME_ASSERT(hx2 == cr->Moving.EndHexX);

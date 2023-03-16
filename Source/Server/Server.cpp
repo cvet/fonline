@@ -2235,7 +2235,6 @@ void FOServer::Process_Move(Player* player)
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
     const auto speed = player->Connection->InBuf.Read<uint16>();
 
-    // Todo: validate start/stop position
     const auto start_hx = player->Connection->InBuf.Read<uint16>();
     const auto start_hy = player->Connection->InBuf.Read<uint16>();
 
@@ -2276,7 +2275,28 @@ void FOServer::Process_Move(Player* player)
         return;
     }
 
-    // Todo: validate moving steps programmaticaly
+    // Validate path
+    // Todo: validate player moving path
+    /*auto next_start_hx = start_hx;
+    auto next_start_hy = start_hy;
+    uint16 control_step_begin = 0;
+
+    for (size_t i = 0; i < control_steps.size(); i++) {
+        auto hx = next_start_hx;
+        auto hy = next_start_hy;
+
+        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
+            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            if (!move_ok || !map->IsMovePassed(hx, hy)) {
+            }
+        }
+
+        control_step_begin = cr->Moving.ControlSteps[i];
+        next_start_hx = hx;
+        next_start_hy = hy;
+    }*/
 
     uint checked_speed = speed;
     if (!OnPlayerCheckMove.Fire(player, cr, checked_speed)) {
@@ -2285,7 +2305,48 @@ void FOServer::Process_Move(Player* player)
         return;
     }
 
-    MoveCritter(cr, static_cast<uint16>(checked_speed), start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
+    // Fix async errors
+    const auto cr_hx = cr->GetHexX();
+    const auto cr_hy = cr->GetHexY();
+
+    if (cr_hx != start_hx || cr_hy != start_hy) {
+        FindPathInput find_input;
+        find_input.MapId = map_id;
+        find_input.FromCritter = cr;
+        find_input.FromHexX = cr_hx;
+        find_input.FromHexY = cr_hy;
+        find_input.ToHexX = start_hx;
+        find_input.ToHexY = start_hy;
+        find_input.Multihex = cr->GetMultihex();
+
+        const auto find_result = MapMngr.FindPath(find_input);
+
+        if (find_result.Result != FindPathOutput::ResultType::Ok) {
+            BreakIntoDebugger();
+            player->Send_Position(cr);
+            return;
+        }
+
+        // Insert part of path to beginning of whole path
+        for (auto& control_step : control_steps) {
+            control_step += static_cast<uint16>(find_result.Steps.size());
+        }
+
+        control_steps.insert(control_steps.begin(), find_result.ControlSteps.begin(), find_result.ControlSteps.end());
+        steps.insert(steps.begin(), find_result.Steps.begin(), find_result.Steps.end());
+    }
+
+    if (end_hex_ox < -Settings.MapHexWidth / 2 || end_hex_ox > Settings.MapHexWidth / 2) {
+        BreakIntoDebugger();
+    }
+    if (end_hex_oy < -Settings.MapHexHeight / 2 || end_hex_oy > Settings.MapHexHeight / 2) {
+        BreakIntoDebugger();
+    }
+
+    const auto clamped_end_hex_ox = std::clamp(end_hex_ox, static_cast<int16>(-Settings.MapHexWidth / 2), static_cast<int16>(Settings.MapHexWidth / 2));
+    const auto clamped_end_hex_oy = std::clamp(end_hex_oy, static_cast<int16>(-Settings.MapHexHeight / 2), static_cast<int16>(Settings.MapHexHeight / 2));
+
+    MoveCritter(cr, static_cast<uint16>(checked_speed), steps, control_steps, clamped_end_hex_ox, clamped_end_hex_oy, false);
 }
 
 void FOServer::Process_StopMove(Player* player)
@@ -2297,12 +2358,12 @@ void FOServer::Process_StopMove(Player* player)
     const auto map_id = player->Connection->InBuf.Read<ident_t>();
     const auto cr_id = player->Connection->InBuf.Read<ident_t>();
 
-    // Todo: validate stop position
-    const auto start_hx = player->Connection->InBuf.Read<uint16>();
-    const auto start_hy = player->Connection->InBuf.Read<uint16>();
-    const auto hex_ox = player->Connection->InBuf.Read<int16>();
-    const auto hex_oy = player->Connection->InBuf.Read<int16>();
-    const auto dir_angle = player->Connection->InBuf.Read<int16>();
+    // Todo: validate stop position and place critter in it
+    [[maybe_unused]] const auto start_hx = player->Connection->InBuf.Read<uint16>();
+    [[maybe_unused]] const auto start_hy = player->Connection->InBuf.Read<uint16>();
+    [[maybe_unused]] const auto hex_ox = player->Connection->InBuf.Read<int16>();
+    [[maybe_unused]] const auto hex_oy = player->Connection->InBuf.Read<int16>();
+    [[maybe_unused]] const auto dir_angle = player->Connection->InBuf.Read<int16>();
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
@@ -2343,13 +2404,11 @@ void FOServer::Process_Dir(Player* player)
 
     auto* map = MapMngr.GetMap(map_id);
     if (map == nullptr) {
-        BreakIntoDebugger();
         return;
     }
 
-    Critter* cr = map->GetCritter(cr_id);
+    auto* cr = map->GetCritter(cr_id);
     if (cr == nullptr) {
-        BreakIntoDebugger();
         return;
     }
 
@@ -3001,7 +3060,7 @@ void FOServer::ProcessMove(Critter* cr)
 
             // Success
             cr->TargetMoving.State = MovingState::Success;
-            MoveCritter(cr, cr->TargetMoving.Speed, cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
+            MoveCritter(cr, cr->TargetMoving.Speed, find_path.Steps, find_path.ControlSteps, 0, 0, true);
         }
     }
 }
@@ -3021,14 +3080,15 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
 
     const auto dist_pos = cr->Moving.WholeDist * normalized_time;
 
-    auto start_hx = cr->Moving.StartHexX;
-    auto start_hy = cr->Moving.StartHexY;
+    auto next_start_hx = cr->Moving.StartHexX;
+    auto next_start_hy = cr->Moving.StartHexY;
     auto cur_dist = 0.0f;
 
-    auto control_step_begin = 0;
+    uint16 control_step_begin = 0;
+
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hx = start_hx;
-        auto hy = start_hy;
+        auto hx = next_start_hx;
+        auto hy = next_start_hy;
 
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
@@ -3037,7 +3097,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx, hy);
 
         if (i == 0) {
             ox -= cr->Moving.StartOx;
@@ -3067,8 +3127,8 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             RUNTIME_ASSERT(step_index >= control_step_begin);
             RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
 
-            auto hx2 = start_hx;
-            auto hy2 = start_hy;
+            auto hx2 = next_start_hx;
+            auto hy2 = next_start_hy;
 
             for (auto j2 = control_step_begin; j2 < step_index; j2++) {
                 const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
@@ -3118,7 +3178,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             const auto cr_hy = cr->GetHexY();
             const auto moved = (cr_hx != old_hx || cr_hy != old_hy);
 
-            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(start_hx, start_hy, cr_hx, cr_hy);
+            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, cr_hx, cr_hy);
             if (i == 0) {
                 cr_ox -= cr->Moving.StartOx;
                 cr_oy -= cr->Moving.StartOy;
@@ -3148,8 +3208,8 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
         RUNTIME_ASSERT(i < cr->Moving.ControlSteps.size() - 1);
 
         control_step_begin = cr->Moving.ControlSteps[i];
-        start_hx = hx;
-        start_hy = hy;
+        next_start_hx = hx;
+        next_start_hy = hy;
         cur_dist += dist;
     }
 
@@ -3163,16 +3223,17 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
     }
 }
 
-void FOServer::MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 start_hy, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self)
+void FOServer::MoveCritter(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self)
 {
     STACK_TRACE_ENTRY();
 
     cr->ClearMove();
 
     const auto* map = MapMngr.GetMap(cr->GetMapId());
-    if (map == nullptr) {
-        return;
-    }
+    RUNTIME_ASSERT(map);
+
+    const auto start_hx = cr->GetHexX();
+    const auto start_hy = cr->GetHexY();
 
     cr->Moving.Speed = speed;
     cr->Moving.StartTime = GameTime.FrameTime();
@@ -3191,10 +3252,13 @@ void FOServer::MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 st
     RUNTIME_ASSERT(cr->Moving.Speed > 0);
     const auto base_move_speed = static_cast<float>(cr->Moving.Speed);
 
-    auto control_step_begin = 0;
+    auto next_start_hx = start_hx;
+    auto next_start_hy = start_hy;
+    uint16 control_step_begin = 0;
+
     for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
-        auto hx = start_hx;
-        auto hy = start_hy;
+        auto hx = next_start_hx;
+        auto hy = next_start_hy;
 
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
@@ -3203,7 +3267,7 @@ void FOServer::MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 st
             RUNTIME_ASSERT(move_ok);
         }
 
-        auto&& [ox, oy] = Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
+        auto&& [ox, oy] = Geometry.GetHexInterval(next_start_hx, next_start_hy, hx, hy);
 
         if (i == 0) {
             ox -= cr->Moving.StartOx;
@@ -3221,8 +3285,8 @@ void FOServer::MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 st
         cr->Moving.WholeDist += dist;
 
         control_step_begin = cr->Moving.ControlSteps[i];
-        start_hx = hx;
-        start_hy = hy;
+        next_start_hx = hx;
+        next_start_hy = hy;
 
         cr->Moving.EndHexX = hx;
         cr->Moving.EndHexY = hy;

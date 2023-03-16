@@ -508,6 +508,8 @@ void Critter::Broadcast_Move()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }
@@ -520,6 +522,8 @@ void Critter::Broadcast_Move()
 void Critter::Broadcast_Position()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (VisCr.empty()) {
         return;
@@ -534,6 +538,8 @@ void Critter::Broadcast_Action(int action, int action_ext, const Item* item)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }
@@ -547,6 +553,8 @@ void Critter::Broadcast_Dir()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }
@@ -559,6 +567,8 @@ void Critter::Broadcast_Dir()
 void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (VisCr.empty()) {
         return;

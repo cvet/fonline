@@ -250,7 +250,7 @@ private:
     void ProcessCritter(Critter* cr);
     void ProcessMove(Critter* cr);
     void ProcessMoveBySteps(Critter* cr, Map* map);
-    void MoveCritter(Critter* cr, uint16 speed, uint16 start_hx, uint16 start_hy, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self);
+    void MoveCritter(Critter* cr, uint16 speed, const vector<uint8>& steps, const vector<uint16>& control_steps, int16 end_hex_ox, int16 end_hex_oy, bool send_self);
     void LogoutCritter(Critter* cr);
 
     auto DialogScriptDemand(const DialogAnswerReq& demand, Critter* master, Critter* slave) -> bool;

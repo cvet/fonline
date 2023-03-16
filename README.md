@@ -206,6 +206,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: split meanings of int8/char and uint8/byte in code
 * Common: improve named enums
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
+* Common: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
 * Common: pass name to exceptions context args
 * Common: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
 * Common: recursion guard for EventDispatcher
@@ -213,6 +214,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
+* Common: rework built-in string messages
 * Common: optimize copy() to pass placement storage for value
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
@@ -264,6 +266,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
+* PropertiesSerializator: maybe need some optional warning for unknown properties
 * Settings-Include: rework global Quit setting
 * Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
@@ -282,6 +285,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * EntityManager: load global map critters
+* Item: make possible create static/dynamic items from any proto (and leave IsStatic flag as prereq for initial creation)
 * Location: EntranceScriptBindId
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
@@ -291,24 +295,20 @@ Please follow these instructions to understand how to use this engine by design:
 * Player: restore automaps
 * Player: allow attach many critters to sigle player
 * Server: disable look distance caching
-* Server: validate start/stop position
-* Server: validate moving steps programmaticaly
-* Server: validate stop position
+* Server: validate player moving path
+* Server: validate stop position and place critter in it
 * Server: control max size explicitly, add option to property registration
 * Server: verify property data from client
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: don't remeber but need check (IsPlaneNoTalk)
+* Server: reowrk non-stacked items creation from recursive to loop
 * Server: improve ban system
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ServerDeferredCalls: improve deferred calls
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
 * EffectBaker: enable auto map bindings
 * ImageBaker: swap colors of fo palette once in header
-* Mapper: clone entities
-* Mapper: clone children
-* Mapper: need attention!
-* Mapper: map resizing
 * Mapper: mapper render iface layer
 * ParticleEditor: improve EmitterAttacher (2)
 * ParticleEditor: improve ActionSet

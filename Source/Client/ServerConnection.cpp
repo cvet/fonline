@@ -33,6 +33,7 @@
 
 #include "ServerConnection.h"
 #include "ClientScripting.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
@@ -140,6 +141,10 @@ void ServerConnection::Process()
 {
     STACK_TRACE_ENTRY();
 
+    if (_settings.ArtificalLags != 0 && !_artificalLagTime.has_value()) {
+        _artificalLagTime = Timer::CurTime() + std::chrono::milliseconds {GenericUtils::Random(_settings.ArtificalLags / 2, _settings.ArtificalLags)};
+    }
+
     if (_isConnecting) {
         if (!CheckSocketStatus(true)) {
             return;
@@ -193,6 +198,15 @@ void ServerConnection::Process()
 auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
 {
     STACK_TRACE_ENTRY();
+
+    if (_artificalLagTime.has_value()) {
+        if (Timer::CurTime() >= _artificalLagTime.value()) {
+            _artificalLagTime.reset();
+        }
+        else {
+            return false;
+        }
+    }
 
     if (_interthreadCommunication) {
         return for_write ? true : !_interthreadReceived.empty();
