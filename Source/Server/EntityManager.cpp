@@ -538,9 +538,9 @@ void EntityManager::CallInit(Item* item, bool first_time)
     }
 
     if (!item->IsDestroyed() && item->IsInnerItems()) {
-        for (auto* sub_item : copy_hold_ref(item->GetRawInnerItems())) {
-            if (!sub_item->IsDestroyed()) {
-                CallInit(sub_item, first_time);
+        for (auto* inner_item : copy_hold_ref(item->GetRawInnerItems())) {
+            if (!inner_item->IsDestroyed()) {
+                CallInit(inner_item, first_time);
             }
         }
     }

@@ -1606,26 +1606,27 @@ void FOServer::LogoutCritter(Critter* cr)
         item->Release();
     };
 
-    std::function<void(Item*)> remove_sub_items;
-    remove_sub_items = [&remove_sub_items, &remove_item](Item* cont) {
-        auto& sub_items = cont->GetRawInnerItems();
+    std::function<void(Item*)> remove_inner_items;
 
-        for (auto* sub_item : sub_items) {
-            if (sub_item->IsInnerItems()) {
-                remove_sub_items(sub_item);
+    remove_inner_items = [&remove_inner_items, &remove_item](Item* cont) {
+        auto& inner_items = cont->GetRawInnerItems();
+
+        for (auto* inner_item : inner_items) {
+            if (inner_item->IsInnerItems()) {
+                remove_inner_items(inner_item);
             }
         }
 
-        for (auto* sub_item : sub_items) {
-            remove_item(sub_item);
+        for (auto* inner_item : inner_items) {
+            remove_item(inner_item);
         }
 
-        sub_items.clear();
+        inner_items.clear();
     };
 
     for (auto* item : inv_items) {
         if (item->IsInnerItems()) {
-            remove_sub_items(item);
+            remove_inner_items(item);
         }
 
         remove_item(item);
