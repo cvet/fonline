@@ -53,7 +53,7 @@ class Critter final : public ServerEntity, public EntityWithProto, public Critte
 
 public:
     Critter() = delete;
-    Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto);
+    Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props = nullptr);
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
@@ -69,16 +69,16 @@ public:
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto GetItem(ident_t item_id, bool skip_hide) -> Item*;
-    [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetConstRawItems() const -> const vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetItemByPid(hstring item_pid) -> Item*;
-    [[nodiscard]] auto GetItemByPidSlot(hstring item_pid, int slot) -> Item*;
-    [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
-    [[nodiscard]] auto GetItemsSlot(int slot) -> vector<Item*>;
-    [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
-    [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
-    [[nodiscard]] auto CountItems() const -> uint;
+    [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto GetRawInvItems() -> vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetConstRawInvItems() const -> const vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> Item*;
+    [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, int slot) -> Item*;
+    [[nodiscard]] auto GetInvItemSlot(int slot) -> Item*;
+    [[nodiscard]] auto GetInvItemsSlot(int slot) -> vector<Item*>;
+    [[nodiscard]] auto CountInvItemPid(hstring item_pid) const -> uint;
+    [[nodiscard]] auto RealCountInvItems() const -> uint { return static_cast<uint>(_invItems.size()); }
+    [[nodiscard]] auto CountInvItems() const -> uint;
     [[nodiscard]] auto IsHaveGeckItem() const -> bool;
     [[nodiscard]] auto GetCrSelf(ident_t cr_id) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
@@ -122,8 +122,8 @@ public:
     void SendAndBroadcast_Animate(uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
     void SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text);
-    void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg);
-    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
+    void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num);
+    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
 
     void Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity);
     void Send_Move(const Critter* from_cr);
@@ -146,10 +146,10 @@ public:
     void Send_TimeSync();
     void Send_Text(const Critter* from_cr, string_view text, uint8 how_say);
     void Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text);
-    void Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 num_msg);
-    void Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 num_msg);
-    void Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
-    void Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
+    void Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num);
+    void Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num);
+    void Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
+    void Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
     void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item);
     void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot);
     void Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
@@ -159,8 +159,8 @@ public:
     void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
     void Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
-    void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str);
-    void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems);
+    void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num);
+    void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_AddAllItems();

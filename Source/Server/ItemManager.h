@@ -79,8 +79,8 @@ public:
     void SetItemToContainer(Item* cont, Item* item);
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
-    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 text_msg, uint num_str, vector<uint16>& channels);
-    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 text_msg, uint num_str, string_view lexems);
+    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, vector<uint16>& channels);
+    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems);
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:
@@ -91,5 +91,6 @@ private:
 
     FOServer* _engine;
     unordered_set<Item*> _radioItems {};
+    uint _radioSendCounter {};
     bool _nonConstHelper {};
 };

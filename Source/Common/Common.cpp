@@ -84,11 +84,15 @@ static StackTraceData StackTrace;
 
 void SetMainThread() noexcept
 {
+    NO_STACK_TRACE_ENTRY();
+
     MainThreadId = std::this_thread::get_id();
 }
 
 auto IsMainThread() noexcept -> bool
 {
+    NO_STACK_TRACE_ENTRY();
+
     return MainThreadId == std::this_thread::get_id();
 }
 
@@ -112,6 +116,8 @@ void DeleteGlobalData()
 
 static auto InsertCatchedMark(const string& st) -> string
 {
+    NO_STACK_TRACE_ENTRY();
+
     const auto catched_st = GetStackTrace();
 
     // Skip 'Stack trace (most recent ...'
@@ -133,6 +139,8 @@ static auto InsertCatchedMark(const string& st) -> string
 
 void ReportExceptionAndExit(const std::exception& ex)
 {
+    NO_STACK_TRACE_ENTRY();
+
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
@@ -160,6 +168,8 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
+    NO_STACK_TRACE_ENTRY();
+
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
@@ -192,6 +202,8 @@ void ShowExceptionMessageBox(bool enabled)
 
 void PushStackTrace(const SourceLocationData& loc) noexcept
 {
+    NO_STACK_TRACE_ENTRY();
+
 #if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return;
@@ -207,6 +219,8 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
 
 void PopStackTrace() noexcept
 {
+    NO_STACK_TRACE_ENTRY();
+
 #if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return;
@@ -220,6 +234,8 @@ void PopStackTrace() noexcept
 
 auto GetStackTrace() -> string
 {
+    NO_STACK_TRACE_ENTRY();
+
 #if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return "Stack trace disabled for non main thread";
@@ -255,6 +271,8 @@ auto GetStackTrace() -> string
 
 auto GetRealStackTrace() -> string
 {
+    NO_STACK_TRACE_ENTRY();
+
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
     }
@@ -304,9 +322,9 @@ auto GetRealStackTrace() -> string
 static bool RunInDebugger = false;
 static std::once_flag RunInDebuggerOnce;
 
-auto IsRunInDebugger() -> bool
+auto IsRunInDebugger() noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
@@ -400,10 +418,13 @@ FrameBalancer::FrameBalancer(bool enabled, int fixed_fps) :
     _enabled {enabled},
     _fixedFps {fixed_fps}
 {
+    STACK_TRACE_ENTRY();
 }
 
 void FrameBalancer::StartLoop()
 {
+    STACK_TRACE_ENTRY();
+
     if (!_enabled) {
         return;
     }
@@ -413,6 +434,8 @@ void FrameBalancer::StartLoop()
 
 void FrameBalancer::EndLoop()
 {
+    STACK_TRACE_ENTRY();
+
     if (!_enabled) {
         return;
     }
@@ -435,21 +458,29 @@ void FrameBalancer::EndLoop()
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void SDL_UnloadObject(void* handle)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void emscripten_sleep(unsigned int ms)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif

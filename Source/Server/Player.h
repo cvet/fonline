@@ -50,7 +50,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, ident_t id, ClientConnection* connection);
+    Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props = nullptr);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -88,10 +88,10 @@ public:
     void Send_TimeSync();
     void Send_Text(const Critter* from_cr, string_view text, uint8 how_say);
     void Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text);
-    void Send_TextMsg(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg);
-    void Send_TextMsg(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg);
-    void Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
-    void Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems);
+    void Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num);
+    void Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num);
+    void Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
+    void Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
     void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item);
     void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot);
     void Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
@@ -101,8 +101,8 @@ public:
     void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name);
     void Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
-    void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str);
-    void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems);
+    void Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num);
+    void Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
     void Send_ViewMap();
     void Send_SomeItem(const Item* item); // Without checks
     void Send_PlaceToGameComplete();

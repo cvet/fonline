@@ -194,7 +194,7 @@
 
     // On chosen
     if (auto* chosen = client->GetChosen(); chosen != nullptr) {
-        item = chosen->GetItem(itemId);
+        item = chosen->GetInvItem(itemId);
     }
 
     // On map
@@ -206,7 +206,7 @@
         if (item == nullptr) {
             for (auto* cr : client->CurMap->GetCritters()) {
                 if (!cr->IsChosen()) {
-                    item = cr->GetItem(itemId);
+                    item = cr->GetInvItem(itemId);
 
                     if (item != nullptr) {
                         break;
@@ -219,7 +219,7 @@
         if (item == nullptr) {
             for (auto* cr : client->GetWorldmapCritters()) {
                 if (!cr->IsChosen()) {
-                    item = cr->GetItem(itemId);
+                    item = cr->GetInvItem(itemId);
 
                     if (item != nullptr) {
                         break;

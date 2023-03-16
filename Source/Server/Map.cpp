@@ -41,9 +41,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+Map::Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _staticMap {static_map},
     _mapLocation {location}
@@ -234,12 +234,9 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (item == nullptr) {
-        return false;
-    }
-    if (item->IsStatic()) {
-        return false;
-    }
+    RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(!item->IsStatic());
+
     if (hx >= GetWidth() || hy >= GetHeight()) {
         return false;
     }
@@ -1040,36 +1037,36 @@ void Map::SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsaf
     }
 }
 
-void Map::SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 text_msg, uint num_str)
+void Map::SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= GetWidth() || hy >= GetHeight() || num_str == 0u) {
+    if (hx >= GetWidth() || hy >= GetHeight() || str_num == 0u) {
         return;
     }
 
     for (auto* cr : _playerCritters) {
         if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
-            cr->Send_MapTextMsg(hx, hy, color, text_msg, num_str);
+            cr->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
         }
     }
 }
 
-void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 text_msg, uint num_str, string_view lexems)
+void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (hx >= GetWidth() || hy >= GetHeight() || num_str == 0u) {
+    if (hx >= GetWidth() || hy >= GetHeight() || str_num == 0u) {
         return;
     }
 
     for (auto* cr : _playerCritters) {
         if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
-            cr->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems);
+            cr->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
         }
     }
 }

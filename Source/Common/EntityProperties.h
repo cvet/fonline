@@ -121,8 +121,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ident_t, ContainerId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, SubItemIds);
+    ///@ ExportProperty ReadOnly Alias = SubItemIds
+    ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerItemIds);
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty Resource

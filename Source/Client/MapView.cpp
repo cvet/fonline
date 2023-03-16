@@ -44,26 +44,52 @@ static constexpr auto MAX_LIGHT_ALPHA = 255;
 
 static auto EvaluateItemDrawOrder(const ItemHexView* item) -> DrawOrderType
 {
-    return item->GetIsFlat() ? (!item->IsAnyScenery() ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (!item->IsAnyScenery() ? DrawOrderType::Item : DrawOrderType::Scenery);
+    NO_STACK_TRACE_ENTRY();
+
+    return item->GetIsFlat() ? (!item->GetIsScenery() && !item->GetIsWall() ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (!item->GetIsScenery() && !item->GetIsWall() ? DrawOrderType::Item : DrawOrderType::Scenery);
 }
 
 static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 {
+    NO_STACK_TRACE_ENTRY();
+
     return cr->IsDead() && !cr->GetIsNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
 }
 
 static auto EvaluateTileDrawOrder(const Field::Tile& tile) -> DrawOrderType
 {
+    NO_STACK_TRACE_ENTRY();
+
     return static_cast<DrawOrderType>(static_cast<int>(DrawOrderType::Tile) + static_cast<int>(tile.Layer));
 }
 
-Field::~Field()
+void Field::AddCritter(CritterHexView* cr)
 {
-    delete Critters;
-    delete Tiles[0];
-    delete Tiles[1];
-    delete Items;
-    delete BlockLinesItems;
+    STACK_TRACE_ENTRY();
+
+    if (Critters == nullptr) {
+        Critters = new vector<CritterHexView*>();
+    }
+
+    RUNTIME_ASSERT(std::find(Critters->begin(), Critters->end(), cr) == Critters->end());
+    Critters->push_back(cr);
+}
+
+void Field::EraseCritter(CritterHexView* cr)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(Critters != nullptr);
+
+    const auto it = std::find(Critters->begin(), Critters->end(), cr);
+    RUNTIME_ASSERT(it != Critters->end());
+
+    Critters->erase(it);
+
+    if (Critters->empty()) {
+        delete Critters;
+        Critters = nullptr;
+    }
 }
 
 void Field::AddItem(ItemHexView* item, ItemHexView* block_lines_item)
@@ -134,7 +160,7 @@ auto Field::AddTile(AnyFrames* anim, int16 ox, int16 oy, uint8 layer, bool is_ro
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
     auto*& stile = SimpleTile[is_roof ? 1 : 0];
 
-    if (tiles_vec == nullptr && stile == nullptr && ox == 0 && oy == 0 && layer == 0u) {
+    if (tiles_vec == nullptr && stile == nullptr && ox == 0 && oy == 0 && layer == 0) {
         stile = anim;
         tile = &SimpleTileStub;
     }
@@ -161,9 +187,10 @@ void Field::EraseTile(uint index, bool is_roof)
     auto*& tiles_vec = Tiles[is_roof ? 1 : 0];
     auto*& stile = SimpleTile[is_roof ? 1 : 0];
 
-    if (index == 0 && (stile != nullptr)) {
+    if (index == 0 && stile != nullptr) {
         stile = nullptr;
-        if ((tiles_vec != nullptr) && (tiles_vec->front().OffsX == 0) && (tiles_vec->front().OffsY == 0) && (tiles_vec->front().Layer == 0u)) {
+
+        if (tiles_vec != nullptr && tiles_vec->front().OffsX == 0 && tiles_vec->front().OffsY == 0 && tiles_vec->front().Layer == 0) {
             stile = tiles_vec->front().Anim;
             tiles_vec->erase(tiles_vec->begin());
         }
@@ -217,35 +244,6 @@ auto Field::GetActiveCritter() -> CritterHexView*
     return nullptr;
 }
 
-void Field::AddCritter(CritterHexView* cr)
-{
-    STACK_TRACE_ENTRY();
-
-    if (Critters == nullptr) {
-        Critters = new vector<CritterHexView*>();
-    }
-
-    RUNTIME_ASSERT(std::find(Critters->begin(), Critters->end(), cr) == Critters->end());
-    Critters->push_back(cr);
-}
-
-void Field::EraseCritter(CritterHexView* cr)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(Critters != nullptr);
-
-    const auto it = std::find(Critters->begin(), Critters->end(), cr);
-    RUNTIME_ASSERT(it != Critters->end());
-
-    Critters->erase(it);
-
-    if (Critters->empty()) {
-        delete Critters;
-        Critters = nullptr;
-    }
-}
-
 void Field::ProcessCache()
 {
     STACK_TRACE_ENTRY();
@@ -269,13 +267,13 @@ void Field::ProcessCache()
 
     if (Items != nullptr) {
         for (const auto* item : *Items) {
-            if (!Flags.IsWall && item->IsWall()) {
+            if (!Flags.IsWall && item->GetIsWall()) {
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->GetIsLightThru();
 
                 Corner = item->GetCorner();
             }
-            else if (!Flags.IsScen && item->IsScenery()) {
+            else if (!Flags.IsScen && item->GetIsScenery()) {
                 Flags.IsScen = true;
 
                 if (!Flags.IsWall) {
@@ -334,16 +332,19 @@ void Field::UnvalidateSpriteChain() const
 {
     STACK_TRACE_ENTRY();
 
+    // SpriteChain changed outside
     if (SpriteChain != nullptr) {
+        RUNTIME_ASSERT(SpriteChain->Valid);
         while (SpriteChain != nullptr) {
+            RUNTIME_ASSERT(SpriteChain->Valid);
             SpriteChain->Unvalidate();
         }
     }
 }
 
-MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), //
-    EntityWithProto(this, proto),
+MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()), //
+    EntityWithProto(proto),
     MapProperties(GetInitRef()),
     _mainTree(engine->SprMngr, _spritesPool),
     _tilesTree(engine->SprMngr, _spritesPool),
@@ -388,12 +389,12 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto) :
         _picHexMaskData = si->Atlas->MainTex->GetTextureRegion(mask_x, mask_y, si->Width, si->Height);
     }
 
-    _maxHexX = GetWidth();
-    _maxHexY = GetHeight();
+    _width = GetWidth();
+    _height = GetHeight();
 
     _findPathGrid.resize((MAX_FIND_PATH * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
-    _hexField.resize(_maxHexX * _maxHexY);
-    _hexLight.resize(_maxHexX * _maxHexY * 3);
+    _hexField.resize(static_cast<size_t>(_width * _height));
+    _hexLight.resize(static_cast<size_t>(_width * _height));
 
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
@@ -418,6 +419,14 @@ MapView::~MapView()
 
     for (const auto* spr : _spritesPool) {
         delete spr;
+    }
+
+    for (auto&& field : _hexField) {
+        delete field.Critters;
+        delete field.Tiles[0];
+        delete field.Tiles[1];
+        delete field.Items;
+        delete field.BlockLinesItems;
     }
 }
 
@@ -450,9 +459,9 @@ void MapView::EnableMapperMode()
     _mapperMode = true;
     _isShowTrack = true;
 
-    _tilesField.resize(_maxHexX * _maxHexY);
-    _roofsField.resize(_maxHexX * _maxHexY);
-    _hexTrack.resize(_maxHexX * _maxHexY);
+    _tilesField.resize(static_cast<size_t>(_width * _height));
+    _roofsField.resize(static_cast<size_t>(_width * _height));
+    _hexTrack.resize(static_cast<size_t>(_width * _height));
 }
 
 void MapView::LoadStaticData()
@@ -483,7 +492,7 @@ void MapView::LoadStaticData()
             reader.ReadPtr<uint8>(props_data.data(), props_data_size);
             item_props.RestoreAllData(props_data);
 
-            auto* static_item = new ItemHexView(this, static_id, item_proto, item_props);
+            auto* static_item = new ItemHexView(this, static_id, item_proto, &item_props);
 
             AddItemInternal(static_item);
         }
@@ -506,7 +515,7 @@ void MapView::LoadStaticData()
             MapTile tile;
             reader.ReadPtr(&tile, sizeof(tile));
 
-            RUNTIME_ASSERT(tile.HexX < _maxHexX && tile.HexY < _maxHexY);
+            RUNTIME_ASSERT(tile.HexX < _width && tile.HexY < _height);
             auto& field = GetField(tile.HexX, tile.HexY);
             const auto anim_name = _engine->ResolveHash(tile.NameHash);
             auto* anim = _engine->ResMngr.GetItemAnim(anim_name);
@@ -524,9 +533,9 @@ void MapView::LoadStaticData()
 
     // Index roof
     auto roof_num = 1;
-    for (const auto hx : xrange(_maxHexX)) {
-        for (const auto hy : xrange(_maxHexY)) {
-            if (GetField(hx, hy).GetTilesCount(true) != 0u) {
+    for (const auto hx : xrange(_width)) {
+        for (const auto hy : xrange(_height)) {
+            if (GetField(hx, hy).GetTilesCount(true) != 0) {
                 MarkRoofNum(hx, hy, static_cast<int16>(roof_num));
                 roof_num++;
             }
@@ -534,14 +543,14 @@ void MapView::LoadStaticData()
     }
 
     // Scroll blocks borders
-    for (const auto hx : xrange(_maxHexX)) {
-        for (const auto hy : xrange(_maxHexY)) {
+    for (const auto hx : xrange(_width)) {
+        for (const auto hy : xrange(_height)) {
             auto& field = GetField(hx, hy);
             if (field.Flags.ScrollBlock) {
                 for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
                     auto hx_ = hx;
                     auto hy_ = hy;
-                    _engine->Geometry.MoveHexByDir(hx_, hy_, static_cast<uint8>(dir), _maxHexX, _maxHexY);
+                    _engine->Geometry.MoveHexByDir(hx_, hy_, static_cast<uint8>(dir), _width, _height);
                     GetField(hx_, hy_).Flags.IsMoveBlocked = true;
                 }
             }
@@ -649,12 +658,12 @@ void MapView::AddTile(const MapTile& tile)
     RUNTIME_ASSERT(_mapperMode);
 
     if (!tile.IsRoof) {
-        _tilesField[tile.HexY * _maxHexX + tile.HexX].push_back(tile);
-        _tilesField[tile.HexY * _maxHexX + tile.HexX].back().IsSelected = false;
+        _tilesField[tile.HexY * _width + tile.HexX].push_back(tile);
+        _tilesField[tile.HexY * _width + tile.HexX].back().IsSelected = false;
     }
     else {
-        _roofsField[tile.HexY * _maxHexX + tile.HexX].push_back(tile);
-        _roofsField[tile.HexY * _maxHexX + tile.HexX].back().IsSelected = false;
+        _roofsField[tile.HexY * _width + tile.HexX].push_back(tile);
+        _roofsField[tile.HexY * _width + tile.HexX].back().IsSelected = false;
     }
 
     const auto anim_name = _engine->ResolveHash(tile.NameHash);
@@ -673,7 +682,7 @@ void MapView::AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time
     MapText map_text;
     map_text.HexX = hx;
     map_text.HexY = hy;
-    map_text.Color = (color != 0u ? color : COLOR_TEXT);
+    map_text.Color = (color != 0 ? color : COLOR_TEXT);
     map_text.Fade = fade;
     map_text.StartTime = _engine->GameTime.GameplayTime();
     map_text.Duration = show_time != time_duration {} ? show_time : std::chrono::milliseconds {_engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100};
@@ -714,7 +723,7 @@ void MapView::AddItemToField(ItemHexView* item)
     field.AddItem(item, nullptr);
 
     if (item->IsNonEmptyBlockLines()) {
-        _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _maxHexX, _maxHexY, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).AddItem(nullptr, item); });
+        _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).AddItem(nullptr, item); });
     }
 }
 
@@ -729,59 +738,85 @@ void MapView::RemoveItemFromField(ItemHexView* item)
     field.EraseItem(item, nullptr);
 
     if (item->IsNonEmptyBlockLines()) {
-        _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _maxHexX, _maxHexY, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).EraseItem(nullptr, item); });
+        _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).EraseItem(nullptr, item); });
     }
 }
 
-auto MapView::AddItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*
+auto MapView::AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, const vector<vector<uint8>>& data) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(id);
-
-    if (_itemsMap.count(id) != 0) {
-        return nullptr;
-    }
-
-    auto* item = new ItemHexView(this, id, proto, proto->GetProperties());
-    if (!item->LoadFromText(props_kv)) {
-        item->Release();
-        return nullptr;
-    }
-
-    AddItemInternal(item);
-
-    return item;
-}
-
-auto MapView::AddItem(ident_t id, hstring pid, uint16 hx, uint16 hy, bool is_added, const vector<vector<uint8>>* data) -> ItemHexView*
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(id);
-    RUNTIME_ASSERT(!(hx >= _maxHexX || hy >= _maxHexY));
+    RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     RUNTIME_ASSERT(proto);
 
-    auto* item = new ItemHexView(this, id, proto, data, hx, hy);
+    auto* item = new ItemHexView(this, id, proto);
 
-    if (is_added) {
-        item->PlayShowAnim();
-    }
+    item->RestoreData(data);
+    item->SetHexX(hx);
+    item->SetHexY(hy);
 
-    AddItemInternal(item);
-
-    return item;
+    return AddItemInternal(item);
 }
 
-void MapView::AddItemInternal(ItemHexView* item)
+auto MapView::AddMapperItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_mapperMode);
+    RUNTIME_ASSERT(id);
+    RUNTIME_ASSERT(_itemsMap.count(id) == 0);
+
+    auto props = copy(proto->GetProperties());
+    if (!props.ApplyFromText(props_kv)) {
+        return nullptr;
+    }
+
+    auto* item = new ItemHexView(this, id, proto, &props);
+
+    if (item->GetHexX() >= _width) {
+        item->SetHexX(_width - 1);
+    }
+    if (item->GetHexY() >= _height) {
+        item->SetHexY(_height - 1);
+    }
+
+    return AddItemInternal(item);
+}
+
+auto MapView::AddMapperItem(hstring pid, uint16 hx, uint16 hy, const Properties* props) -> ItemHexView*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_mapperMode);
+
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+    if (proto == nullptr) {
+        return nullptr;
+    }
+
+    if (hx >= _width || hy >= _height) {
+        return nullptr;
+    }
+
+    auto* item = new ItemHexView(this, GetTempEntityId(), proto, props);
+
+    item->SetHexX(hx);
+    item->SetHexY(hy);
+
+    return AddItemInternal(item);
+}
+auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
-    RUNTIME_ASSERT(hx < _maxHexX && hy < _maxHexY);
+    RUNTIME_ASSERT(hx < _width && hy < _height);
+
+    item->SetOwnership(ItemOwnership::MapHex);
 
     if (item->GetId()) {
         if (auto* prev_item = GetItem(item->GetId()); prev_item != nullptr) {
@@ -814,6 +849,8 @@ void MapView::AddItemInternal(ItemHexView* item)
         _itemsMap.emplace(item->GetId(), item);
     }
 
+    item->Init();
+
     AddItemToField(item);
 
     if (item->IsStatic() && item->GetIsLight()) {
@@ -828,7 +865,7 @@ void MapView::AddItemInternal(ItemHexView* item)
                 (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, //
                 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
             if (!item->GetIsNoLightInfluence()) {
-                spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
+                spr.SetLight(item->GetCorner(), GetLightHex(0, 0), _width, _height);
             }
             item->SetSprite(&spr);
 
@@ -842,8 +879,10 @@ void MapView::AddItemInternal(ItemHexView* item)
 
     // Sort
     const auto& field = GetField(hx, hy);
-    std::sort(field.Items->begin(), field.Items->end(), [](auto* i1, auto* i2) { return i1->IsScenery() && !i2->IsScenery(); });
-    std::sort(field.Items->begin(), field.Items->end(), [](auto* i1, auto* i2) { return i1->IsWall() && !i2->IsWall(); });
+    std::sort(field.Items->begin(), field.Items->end(), [](auto* i1, auto* i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
+    std::sort(field.Items->begin(), field.Items->end(), [](auto* i1, auto* i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
+
+    return item;
 }
 
 void MapView::MoveItem(ItemHexView* item, uint16 hx, uint16 hy)
@@ -868,7 +907,7 @@ void MapView::MoveItem(ItemHexView* item, uint16 hx, uint16 hy)
             (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), //
             &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
         if (!item->GetIsNoLightInfluence()) {
-            item->SprDraw->SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
+            item->SprDraw->SetLight(item->GetCorner(), GetLightHex(0, 0), _width, _height);
         }
         field.AddSpriteToChain(item->SprDraw);
     }
@@ -930,7 +969,7 @@ auto MapView::GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
-    if (hx >= _maxHexX || hy >= _maxHexY || GetField(hx, hy).Items == nullptr) {
+    if (hx >= _width || hy >= _height || GetField(hx, hy).Items == nullptr) {
         return nullptr;
     }
 
@@ -947,7 +986,7 @@ auto MapView::GetItem(uint16 hx, uint16 hy, ident_t id) -> ItemHexView*
 {
     STACK_TRACE_ENTRY();
 
-    if (hx >= _maxHexX || hy >= _maxHexY || GetField(hx, hy).Items == nullptr) {
+    if (hx >= _width || hy >= _height || GetField(hx, hy).Items == nullptr) {
         return nullptr;
     }
 
@@ -1045,30 +1084,19 @@ void MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uin
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!(from_hx >= _maxHexX || from_hy >= _maxHexY || to_hx >= _maxHexX || to_hy >= _maxHexY));
+    RUNTIME_ASSERT(!(from_hx >= _width || from_hy >= _height || to_hx >= _width || to_hy >= _height));
 
     const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
     RUNTIME_ASSERT(proto);
-    RUNTIME_ASSERT(proto->IsStatic());
 
-    auto* effect_item = new ItemHexView(this, ident_t {}, proto, nullptr, from_hx, from_hy);
+    auto* effect_item = new ItemHexView(this, ident_t {}, proto);
+
+    effect_item->SetHexX(from_hx);
+    effect_item->SetHexY(from_hy);
+
+    AddItemInternal(effect_item);
+
     effect_item->SetEffect(to_hx, to_hy);
-
-    AddItemToField(effect_item);
-
-    _allItems.emplace_back(effect_item);
-    _staticItems.emplace_back(effect_item);
-
-    if (IsHexToDraw(from_hx, from_hy)) {
-        auto& field = GetField(from_hx, from_hy);
-        effect_item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(effect_item), from_hx, from_hy + effect_item->GetDrawOrderOffsetHexY(), //
-            _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, //
-            0, &effect_item->SprId, &effect_item->ScrX, &effect_item->ScrY, &effect_item->Alpha, &effect_item->DrawEffect, &effect_item->SprDrawValid);
-        if (!effect_item->GetIsNoLightInfluence()) {
-            effect_item->SprDraw->SetLight(effect_item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
-        }
-        field.AddSpriteToChain(effect_item->SprDraw);
-    }
 }
 
 void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh)
@@ -1092,7 +1120,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
         const auto cy = cr->GetHexY();
         const auto mh = cr->GetMultihex();
 
-        if ((cx == hx && cy == hy) || (field.Flags.IsMoveBlocked && (mh == 0u || !_engine->Geometry.CheckDist(cx, cy, hx, hy, mh)))) {
+        if ((cx == hx && cy == hy) || (field.Flags.IsMoveBlocked && (mh == 0 || !_engine->Geometry.CheckDist(cx, cy, hx, hy, mh)))) {
             _drawCursorX = -1;
         }
         else {
@@ -1159,16 +1187,16 @@ void MapView::DrawCursor(string_view text)
     _engine->SprMngr.DrawStr(r, text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, -1);
 }
 
-void MapView::RebuildMap(int rx, int ry)
+void MapView::RebuildMap(int screen_hx, int screen_hy)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(!_viewField.empty());
 
-    for (auto i = 0, j = _hVisible * _wVisible; i < j; i++) {
+    for (int i = 0, j = _hVisible * _wVisible; i < j; i++) {
         const auto hx = _viewField[i].HexX;
         const auto hy = _viewField[i].HexY;
-        if (hx < 0 || hy < 0 || hx >= _maxHexX || hy >= _maxHexY) {
+        if (hx < 0 || hy < 0 || hx >= _width || hy >= _height) {
             continue;
         }
 
@@ -1177,7 +1205,7 @@ void MapView::RebuildMap(int rx, int ry)
         field.UnvalidateSpriteChain();
     }
 
-    InitView(rx, ry);
+    InitView(screen_hx, screen_hy);
 
     // Light
     RealRebuildLight();
@@ -1197,7 +1225,7 @@ void MapView::RebuildMap(int rx, int ry)
     for (const auto i : xrange(_hVisible * _wVisible)) {
         const auto& vf = _viewField[i];
 
-        if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _maxHexX || vf.HexY >= _maxHexY) {
+        if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _width || vf.HexY >= _height) {
             continue;
         }
 
@@ -1237,31 +1265,31 @@ void MapView::RebuildMap(int rx, int ry)
                     if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowScen && item->IsScenery()) {
+                    if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowItem && !item->IsAnyScenery()) {
+                    if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowWall && item->IsWall()) {
+                    if (!_engine->Settings.ShowWall && item->GetIsWall()) {
                         continue;
                     }
                 }
                 else {
                     const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
-                    if (!_engine->Settings.ShowScen && !is_fast && item->IsScenery()) {
+                    if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowItem && !is_fast && !item->IsAnyScenery()) {
+                    if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowWall && !is_fast && item->IsWall()) {
+                    if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
                         continue;
                     }
                     if (!_engine->Settings.ShowFast && is_fast) {
                         continue;
                     }
-                    if (_ignorePids.count(item->GetProtoId()) != 0u) {
+                    if (_ignorePids.count(item->GetProtoId()) != 0) {
                         continue;
                     }
                 }
@@ -1270,7 +1298,7 @@ void MapView::RebuildMap(int rx, int ry)
                     _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
                     0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence()) {
-                    spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
+                    spr.SetLight(item->GetCorner(), GetLightHex(0, 0), _width, _height);
                 }
                 item->SetSprite(&spr);
                 field.AddSpriteToChain(&spr);
@@ -1287,7 +1315,7 @@ void MapView::RebuildMap(int rx, int ry)
                 auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(cr), nx, ny, //
                     _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
                     0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-                spr.SetLight(CornerType::EastWest, _hexLight.data(), _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, GetLightHex(0, 0), _width, _height);
                 cr->SprDraw = &spr;
 
                 cr->RefreshOffs();
@@ -1308,8 +1336,8 @@ void MapView::RebuildMap(int rx, int ry)
     }
     _mainTree.SortByMapPos();
 
-    _screenHexX = rx;
-    _screenHexY = ry;
+    _screenHexX = screen_hx;
+    _screenHexY = screen_hy;
 
     _engine->OnRenderMap.Fire();
 }
@@ -1325,7 +1353,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
     auto hide_hex = [this](ViewField& vf) {
         const auto nxi = vf.HexX;
         const auto nyi = vf.HexY;
-        if (nxi < 0 || nyi < 0 || nxi >= _maxHexX || nyi >= _maxHexY) {
+        if (nxi < 0 || nyi < 0 || nxi >= _width || nyi >= _height) {
             return;
         }
 
@@ -1396,7 +1424,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
             }
         }
 
-        if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _maxHexX && vf.HexY < _maxHexY) {
+        if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
             auto& field = GetField(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
             field.ScrX = vf.ScrX;
             field.ScrY = vf.ScrY;
@@ -1404,7 +1432,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
     }
 
     auto show_hex = [this](ViewField& vf) {
-        if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _maxHexX || vf.HexY >= _maxHexY) {
+        if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _width || vf.HexY >= _height) {
             return;
         }
 
@@ -1445,31 +1473,31 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowScen && item->IsScenery()) {
+                    if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowItem && !item->IsAnyScenery()) {
+                    if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowWall && item->IsWall()) {
+                    if (!_engine->Settings.ShowWall && item->GetIsWall()) {
                         continue;
                     }
                 }
                 else {
                     const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
-                    if (!_engine->Settings.ShowScen && !is_fast && item->IsScenery()) {
+                    if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowItem && !is_fast && !item->IsAnyScenery()) {
+                    if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
                         continue;
                     }
-                    if (!_engine->Settings.ShowWall && !is_fast && item->IsWall()) {
+                    if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
                         continue;
                     }
                     if (!_engine->Settings.ShowFast && is_fast) {
                         continue;
                     }
-                    if (_ignorePids.count(item->GetProtoId()) != 0u) {
+                    if (_ignorePids.count(item->GetProtoId()) != 0) {
                         continue;
                     }
                 }
@@ -1478,7 +1506,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
                     0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence()) {
-                    spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
+                    spr.SetLight(item->GetCorner(), GetLightHex(0, 0), _width, _height);
                 }
                 item->SetSprite(&spr);
                 field.AddSpriteToChain(&spr);
@@ -1495,7 +1523,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                 auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, //
                     _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, //
                     0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-                spr.SetLight(CornerType::EastWest, _hexLight.data(), _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, GetLightHex(0, 0), _width, _height);
                 cr->SprDraw = &spr;
 
                 cr->RefreshOffs();
@@ -1516,7 +1544,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         // Tiles
         const auto tiles_count = field.GetTilesCount(false);
-        if (_engine->Settings.ShowTile && (tiles_count != 0u)) {
+        if (_engine->Settings.ShowTile && (tiles_count != 0)) {
             for (uint i = 0; i < tiles_count; i++) {
                 const auto& tile = field.GetTile(i, false);
                 const auto spr_id = tile.Anim->GetSprId(0);
@@ -1539,7 +1567,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         // Roof
         const auto roofs_count = field.GetTilesCount(true);
-        if (_engine->Settings.ShowRoof && (roofs_count != 0u) && ((_roofSkip == 0) || _roofSkip != field.RoofNum)) {
+        if (_engine->Settings.ShowRoof && (roofs_count != 0) && ((_roofSkip == 0) || _roofSkip != field.RoofNum)) {
             for (uint i = 0; i < roofs_count; i++) {
                 const auto& roof = field.GetTile(i, true);
                 const auto spr_id = roof.Anim->GetSprId(0);
@@ -1600,7 +1628,7 @@ void MapView::ClearHexLight()
 {
     STACK_TRACE_ENTRY();
 
-    std::memset(_hexLight.data(), 0, _hexLight.size() * sizeof(uint8));
+    std::memset(GetLightHex(0, 0), 0, _hexLight.size() * sizeof(_hexLight[0]));
 }
 
 void MapView::PrepareLightToDraw()
@@ -1647,13 +1675,11 @@ void MapView::MarkLight(uint16 hx, uint16 hy, uint inten)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
-
     const auto light = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
     const auto lr = light * _lightProcentR / 100;
     const auto lg = light * _lightProcentG / 100;
     const auto lb = light * _lightProcentB / 100;
-    auto* p = &_hexLight[hy * _maxHexX * 3 + hx * 3];
+    auto* p = reinterpret_cast<uint8*>(&_hexLight[hy * _width + hx]);
 
     if (lr > *p) {
         *p = static_cast<uint8>(lr);
@@ -1670,11 +1696,13 @@ void MapView::MarkLightEndNeighbor(uint16 hx, uint16 hy, bool north_south, uint 
 {
     STACK_TRACE_ENTRY();
 
-    auto& field = GetField(hx, hy);
+    const auto& field = GetField(hx, hy);
+
     if (field.Flags.IsWall) {
         const auto lt = field.Corner;
+
         if ((north_south && (lt == CornerType::NorthSouth || lt == CornerType::North || lt == CornerType::West)) || (!north_south && (lt == CornerType::EastWest || lt == CornerType::East)) || lt == CornerType::South) {
-            auto* p = &_hexLight[hy * _maxHexX * 3 + hx * 3];
+            auto* p = reinterpret_cast<uint8*>(&_hexLight[hy * _width + hx]);
             const auto light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto light_self = static_cast<int>(inten / 2u) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto lr_full = light_full * _lightProcentR / 100;
@@ -1709,44 +1737,50 @@ void MapView::MarkLightEnd(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 
 {
     STACK_TRACE_ENTRY();
 
-    auto is_wall = false;
-    auto north_south = false;
-    auto& field = GetField(to_hx, to_hy);
+    bool is_wall = false;
+    bool north_south = false;
+    const auto& field = GetField(to_hx, to_hy);
+
     if (field.Flags.IsWall) {
         is_wall = true;
+
         if (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West) {
             north_south = true;
         }
     }
 
     const int dir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+
     if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
         MarkLight(to_hx, to_hy, inten);
+
         if (is_wall) {
             if (north_south) {
                 if (to_hy > 0) {
                     MarkLightEndNeighbor(to_hx, to_hy - 1, true, inten);
                 }
-                if (to_hy < _maxHexY - 1) {
+                if (to_hy < _height - 1) {
                     MarkLightEndNeighbor(to_hx, to_hy + 1, true, inten);
                 }
             }
             else {
                 if (to_hx > 0) {
                     MarkLightEndNeighbor(to_hx - 1, to_hy, false, inten);
+
                     if (to_hy > 0) {
                         MarkLightEndNeighbor(to_hx - 1, to_hy - 1, false, inten);
                     }
-                    if (to_hy < _maxHexY - 1) {
+                    if (to_hy < _height - 1) {
                         MarkLightEndNeighbor(to_hx - 1, to_hy + 1, false, inten);
                     }
                 }
-                if (to_hx < _maxHexX - 1) {
+                if (to_hx < _width - 1) {
                     MarkLightEndNeighbor(to_hx + 1, to_hy, false, inten);
+
                     if (to_hy > 0) {
                         MarkLightEndNeighbor(to_hx + 1, to_hy - 1, false, inten);
                     }
-                    if (to_hy < _maxHexY - 1) {
+                    if (to_hy < _height - 1) {
                         MarkLightEndNeighbor(to_hx + 1, to_hy + 1, false, inten);
                     }
                 }
@@ -1759,10 +1793,12 @@ void MapView::MarkLightStep(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16
 {
     STACK_TRACE_ENTRY();
 
-    auto& field = GetField(to_hx, to_hy);
+    const auto& field = GetField(to_hx, to_hy);
+
     if (field.Flags.IsWallTransp) {
-        const auto north_south = (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West);
+        const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
         const int dir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+
         if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
             MarkLight(to_hx, to_hy, inten);
         }
@@ -1831,8 +1867,8 @@ void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy,
         if (ox != 0) {
             // Left side
             ox = old_curx1_i + ox;
-            if (ox < 0 || ox >= _maxHexX || GetField(ox, old_cury1_i).Flags.IsLightBlocked) {
-                hx = (ox < 0 || ox >= _maxHexX ? old_curx1_i : ox);
+            if (ox < 0 || ox >= _width || GetField(ox, old_cury1_i).Flags.IsLightBlocked) {
+                hx = (ox < 0 || ox >= _width ? old_curx1_i : ox);
                 hy = old_cury1_i;
                 if (can_mark) {
                     MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
@@ -1845,9 +1881,9 @@ void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy,
 
             // Right side
             oy = old_cury1_i + oy;
-            if (oy < 0 || oy >= _maxHexY || GetField(old_curx1_i, oy).Flags.IsLightBlocked) {
+            if (oy < 0 || oy >= _height || GetField(old_curx1_i, oy).Flags.IsLightBlocked) {
                 hx = old_curx1_i;
-                hy = (oy < 0 || oy >= _maxHexY ? old_cury1_i : oy);
+                hy = (oy < 0 || oy >= _height ? old_cury1_i : oy);
                 if (can_mark) {
                     MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
                 }
@@ -1859,9 +1895,9 @@ void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy,
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= _maxHexX || cury1_i < 0 || cury1_i >= _maxHexY || GetField(curx1_i, cury1_i).Flags.IsLightBlocked) {
-            hx = (curx1_i < 0 || curx1_i >= _maxHexX ? old_curx1_i : curx1_i);
-            hy = (cury1_i < 0 || cury1_i >= _maxHexY ? old_cury1_i : cury1_i);
+        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || GetField(curx1_i, cury1_i).Flags.IsLightBlocked) {
+            hx = (curx1_i < 0 || curx1_i >= _width ? old_curx1_i : curx1_i);
+            hy = (cury1_i < 0 || cury1_i >= _height ? old_cury1_i : cury1_i);
             if (can_mark) {
                 MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
             }
@@ -1968,8 +2004,8 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
                 _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, dir);
             }
 
-            auto hx_ = static_cast<uint16>(std::clamp(hx_far, 0, _maxHexX - 1));
-            auto hy_ = static_cast<uint16>(std::clamp(hy_far, 0, _maxHexY - 1));
+            auto hx_ = static_cast<uint16>(std::clamp(hx_far, 0, _width - 1));
+            auto hy_ = static_cast<uint16>(std::clamp(hy_far, 0, _height - 1));
             if (IsBitSet(ls.Flags, LIGHT_DISABLE_DIR(i))) {
                 hx_ = hx;
                 hy_ = hy;
@@ -2089,8 +2125,8 @@ void MapView::CollectLightSources()
     // Items in critters slots
     for (auto* cr : _critters) {
         auto added = false;
-        for (const auto* item : cr->GetItems()) {
-            if (item->GetIsLight() && item->GetCritterSlot() != 0u) {
+        for (const auto* item : cr->GetInvItems()) {
+            if (item->GetIsLight() && item->GetCritterSlot() != 0) {
                 _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOx, &cr->SprOy});
                 added = true;
             }
@@ -2125,7 +2161,7 @@ void MapView::RebuildTiles()
 
             const auto hxi = _viewField[vpos].HexX;
             const auto hyi = _viewField[vpos].HexY;
-            if (hxi < 0 || hyi < 0 || hxi >= _maxHexX || hyi >= _maxHexY) {
+            if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
                 continue;
             }
 
@@ -2134,7 +2170,7 @@ void MapView::RebuildTiles()
 
             auto& field = GetField(hx, hy);
             const auto tiles_count = field.GetTilesCount(false);
-            if (tiles_count == 0u) {
+            if (tiles_count == 0) {
                 continue;
             }
 
@@ -2180,7 +2216,7 @@ void MapView::RebuildRoof()
             const auto vpos = y2 + x;
             const auto hxi = _viewField[vpos].HexX;
             const auto hyi = _viewField[vpos].HexY;
-            if (hxi < 0 || hyi < 0 || hxi >= _maxHexX || hyi >= _maxHexY) {
+            if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
                 continue;
             }
 
@@ -2189,7 +2225,7 @@ void MapView::RebuildRoof()
 
             auto& field = GetField(hx, hy);
             const auto roofs_count = field.GetTilesCount(true);
-            if (roofs_count == 0u) {
+            if (roofs_count == 0) {
                 continue;
             }
 
@@ -2238,13 +2274,13 @@ void MapView::MarkRoofNum(int hxi, int hyi, int16 num)
 {
     STACK_TRACE_ENTRY();
 
-    if (hxi < 0 || hyi < 0 || hxi >= _maxHexX || hyi >= _maxHexY) {
+    if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
         return;
     }
 
     const auto hx = static_cast<uint16>(hxi);
     const auto hy = static_cast<uint16>(hyi);
-    if (GetField(hx, hy).GetTilesCount(true) == 0u) {
+    if (GetField(hx, hy).GetTilesCount(true) == 0) {
         return;
     }
     if (GetField(hx, hy).RoofNum != 0) {
@@ -2253,7 +2289,7 @@ void MapView::MarkRoofNum(int hxi, int hyi, int16 num)
 
     for (auto x = 0; x < _engine->Settings.MapRoofSkipSize; x++) {
         for (auto y = 0; y < _engine->Settings.MapRoofSkipSize; y++) {
-            if (hxi + x >= 0 && hxi + x < _maxHexX && hyi + y >= 0 && hyi + y < _maxHexY) {
+            if (hxi + x >= 0 && hxi + x < _width && hyi + y >= 0 && hyi + y < _height) {
                 GetField(static_cast<uint16>(hxi + x), static_cast<uint16>(hyi + y)).RoofNum = num;
             }
         }
@@ -2269,7 +2305,7 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (spr_id == 0u) {
+    if (spr_id == 0) {
         return false;
     }
 
@@ -2331,6 +2367,99 @@ auto MapView::MeasureMapBorders(const Field::Tile& tile, bool is_roof) -> bool
     return MeasureMapBorders(tile.Anim->GetSprId(0), ox, oy);
 }
 
+void MapView::Resize(uint16 width, uint16 height)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_mapperMode);
+
+    RUNTIME_ASSERT(width >= MAXHEX_MIN && width <= MAXHEX_MAX);
+    RUNTIME_ASSERT(height >= MAXHEX_MIN && height <= MAXHEX_MAX);
+
+    for (int i = 0, j = _hVisible * _wVisible; i < j; i++) {
+        const auto& vf = _viewField[i];
+        if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
+            auto& field = GetField(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
+            field.IsView = false;
+            field.UnvalidateSpriteChain();
+        }
+    }
+
+    // Remove objects on shrink
+    for (uint16 hy = 0; hy < std::max(height, _height); hy++) {
+        for (uint16 hx = 0; hx < std::max(width, _width); hx++) {
+            if (hx >= width || hy >= height) {
+                auto& field = GetField(hx, hy);
+
+                if (field.Critters != nullptr) {
+                    for (auto* cr : copy(*field.Critters)) {
+                        DestroyCritter(cr);
+                    }
+                }
+
+                if (field.Items != nullptr) {
+                    for (auto* item : copy(*field.Items)) {
+                        DestroyItem(item);
+                    }
+                }
+
+                while (field.GetTilesCount(false) != 0) {
+                    field.EraseTile(0, false);
+                }
+                while (field.GetTilesCount(true) != 0) {
+                    field.EraseTile(0, true);
+                }
+
+                RUNTIME_ASSERT(field.Critters == nullptr || field.Critters->empty());
+                RUNTIME_ASSERT(field.Items == nullptr || field.Items->empty());
+                RUNTIME_ASSERT(field.GetTilesCount(false) == 0);
+                RUNTIME_ASSERT(field.GetTilesCount(true) == 0);
+                RUNTIME_ASSERT(!field.SpriteChain);
+            }
+        }
+    }
+
+    const auto prev_width = _width;
+    const auto prev_height = _height;
+
+    SetWidth(width);
+    SetHeight(height);
+    _width = width;
+    _height = height;
+    _screenHexX = std::min(_screenHexX, _width - 1);
+    _screenHexY = std::min(_screenHexY, _height - 1);
+
+    const auto safe_resize_square_vec = [&](auto& vec) {
+        const auto prev_vec = vec;
+
+        vec.resize(static_cast<size_t>(_width * _height));
+
+        for (size_t hy = 0; hy < std::max(prev_height, _height); hy++) {
+            for (size_t hx = 0; hx < std::max(prev_width, _width); hx++) {
+                if (hx < _width && hy < _height && hx < prev_width && hy < prev_height) {
+                    vec[hy * _width + hx] = prev_vec[hy * prev_width + hx];
+                }
+                else if (hx < _width && hy < _height) {
+                    vec[hy * _width + hx] = {};
+                }
+            }
+        }
+    };
+
+    safe_resize_square_vec(_hexField);
+    safe_resize_square_vec(_hexLight);
+    safe_resize_square_vec(_tilesField);
+    safe_resize_square_vec(_roofsField);
+    safe_resize_square_vec(_hexTrack);
+
+    // Recache
+    for (size_t i = 0; i < static_cast<size_t>(_width * _height); i++) {
+        _hexField[i].ProcessCache();
+    }
+
+    RefreshMap();
+}
+
 void MapView::SwitchShowHex()
 {
     STACK_TRACE_ENTRY();
@@ -2364,7 +2493,7 @@ void MapView::SwitchShowTrack()
     RefreshMap();
 }
 
-void MapView::InitView(int cx, int cy)
+void MapView::InitView(int screen_hx, int screen_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -2384,8 +2513,8 @@ void MapView::InitView(int cx, int cy)
         }
 
         // Subtract offset
-        cx -= abs(vw);
-        cy -= abs(vh);
+        screen_hx -= abs(vw);
+        screen_hy -= abs(vh);
 
         const auto xa = -(_wRight * _engine->Settings.MapHexWidth);
         const auto xb = -(_engine->Settings.MapHexWidth / 2) - (_wRight * _engine->Settings.MapHexWidth);
@@ -2393,11 +2522,11 @@ void MapView::InitView(int cx, int cy)
         const auto wx = iround(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom());
 
         for (auto yv = 0; yv < _hVisible; yv++) {
-            auto hx = cx + yv / 2 + (yv & 1);
-            auto hy = cy + (yv - (hx - cx - (cx & 1)) / 2);
+            auto hx = screen_hx + yv / 2 + (yv & 1);
+            auto hy = screen_hy + (yv - (hx - screen_hx - (screen_hx & 1)) / 2);
             auto ox = ((yv & 1) != 0 ? xa : xb);
 
-            if (yv == 0 && ((cx & 1) != 0)) {
+            if (yv == 0 && ((screen_hx & 1) != 0)) {
                 hy++;
             }
 
@@ -2425,8 +2554,8 @@ void MapView::InitView(int cx, int cy)
         // Calculate data
         const auto halfw = GetViewWidth() / 2 + _wRight;
         const auto halfh = GetViewHeight() / 2 + _hTop;
-        auto basehx = cx - halfh / 2 - halfw;
-        auto basehy = cy - halfh / 2 + halfw;
+        auto basehx = screen_hx - halfh / 2 - halfw;
+        auto basehy = screen_hy - halfh / 2 + halfw;
         auto y2 = 0;
         auto xa = -_engine->Settings.MapHexWidth * _wRight;
         auto xb = -_engine->Settings.MapHexWidth * _wRight - _engine->Settings.MapHexWidth / 2;
@@ -2471,9 +2600,9 @@ void MapView::ResizeView()
     STACK_TRACE_ENTRY();
 
     if (!_viewField.empty()) {
-        for (auto i = 0, j = _hVisible * _wVisible; i < j; i++) {
+        for (int i = 0, j = _hVisible * _wVisible; i < j; i++) {
             const auto& vf = _viewField[i];
-            if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _maxHexX && vf.HexY < _maxHexY) {
+            if (vf.HexX >= 0 && vf.HexY >= 0 && vf.HexX < _width && vf.HexY < _height) {
                 auto& field = GetField(static_cast<uint16>(vf.HexX), static_cast<uint16>(vf.HexY));
                 field.IsView = false;
                 field.UnvalidateSpriteChain();
@@ -2537,12 +2666,11 @@ void MapView::ChangeZoom(int zoom)
     }
 }
 
-void MapView::GetScreenHexes(int& sx, int& sy) const
+auto MapView::GetScreenHexes() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();
 
-    sx = _screenHexX;
-    sy = _screenHexY;
+    return {_screenHexX, _screenHexY};
 }
 
 void MapView::GetHexCurrentPosition(uint16 hx, uint16 hy, int& x, int& y) const
@@ -2722,9 +2850,6 @@ void MapView::PrepareFogToDraw()
             int hy = base_hy;
             const int chosen_dir = chosen->GetDir();
             const auto dist_shoot = chosen->GetAttackDist();
-            const auto maxhx = GetWidth();
-            const auto maxhy = GetHeight();
-
             const auto half_hw = _engine->Settings.MapHexWidth / 2;
             const auto half_hh = _engine->Settings.MapHexHeight / 2;
 
@@ -2755,8 +2880,8 @@ void MapView::PrepareFogToDraw()
                         _engine->Geometry.MoveHexByDirUnsafe(hx, hy, static_cast<uint8>(dir));
                     }
 
-                    auto hx_ = static_cast<uint16>(std::clamp(hx, 0, maxhx - 1));
-                    auto hy_ = static_cast<uint16>(std::clamp(hy, 0, maxhy - 1));
+                    auto hx_ = static_cast<uint16>(std::clamp(hx, 0, _width - 1));
+                    auto hy_ = static_cast<uint16>(std::clamp(hy, 0, _height - 1));
                     if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
                         const int dir_ = _engine->Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
                         auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
@@ -2852,7 +2977,7 @@ auto MapView::Scroll() -> bool
 
     // Scroll delay
     auto time_k = 1.0f;
-    if (_engine->Settings.ScrollDelay != 0u) {
+    if (_engine->Settings.ScrollDelay != 0) {
         const auto time = _engine->GameTime.FrameTime();
         if (time - _scrollLastTime < std::chrono::milliseconds {_engine->Settings.ScrollDelay / 2}) {
             return false;
@@ -2925,7 +3050,7 @@ auto MapView::Scroll() -> bool
             return false;
         }
 
-        if (GenericUtils::DistSqrt(0, 0, iround(AutoScroll.OffsX), iround(AutoScroll.OffsY)) == 0u) {
+        if (GenericUtils::DistSqrt(0, 0, iround(AutoScroll.OffsX), iround(AutoScroll.OffsY)) == 0) {
             AutoScroll.Active = false;
         }
     }
@@ -3063,20 +3188,20 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
             return true;
         }
 
-        if (_viewField[pos].HexX < 0 || _viewField[pos].HexY < 0 || _viewField[pos].HexX >= _maxHexX || _viewField[pos].HexY >= _maxHexY) {
+        if (_viewField[pos].HexX < 0 || _viewField[pos].HexY < 0 || _viewField[pos].HexX >= _width || _viewField[pos].HexY >= _height) {
             return true;
         }
 
         auto hx = static_cast<uint16>(_viewField[pos].HexX);
         auto hy = static_cast<uint16>(_viewField[pos].HexY);
 
-        _engine->Geometry.MoveHexByDir(hx, hy, dir1, _maxHexX, _maxHexY);
+        _engine->Geometry.MoveHexByDir(hx, hy, dir1, _width, _height);
         if (GetField(hx, hy).Flags.ScrollBlock) {
             return true;
         }
 
         if (dir2 >= 0) {
-            _engine->Geometry.MoveHexByDir(hx, hy, dir2, _maxHexX, _maxHexY);
+            _engine->Geometry.MoveHexByDir(hx, hy, dir2, _width, _height);
             if (GetField(hx, hy).Flags.ScrollBlock) {
                 return true;
             }
@@ -3193,11 +3318,8 @@ void MapView::ScrollToHex(int hx, int hy, float speed, bool can_stop)
 {
     STACK_TRACE_ENTRY();
 
-    auto sx = 0;
-    auto sy = 0;
-    GetScreenHexes(sx, sy);
-
-    const auto [ox, oy] = _engine->Geometry.GetHexInterval(sx, sy, hx, hy);
+    auto&& [sx, sy] = GetScreenHexes();
+    auto&& [ox, oy] = _engine->Geometry.GetHexInterval(sx, sy, hx, hy);
 
     AutoScroll.Active = false;
     ScrollOffset(ox, oy, speed, can_stop);
@@ -3227,6 +3349,8 @@ void MapView::AddCritterToField(CritterHexView* cr)
 
     const auto hx = cr->GetHexX();
     const auto hy = cr->GetHexY();
+    RUNTIME_ASSERT(hx < _width && hy < _height);
+
     auto& field = GetField(hx, hy);
 
     field.AddCritter(cr);
@@ -3240,7 +3364,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
             _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, //
             &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, //
             &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-        spr.SetLight(CornerType::EastWest, _hexLight.data(), _maxHexX, _maxHexY);
+        spr.SetLight(CornerType::EastWest, GetLightHex(0, 0), _width, _height);
         cr->SprDraw = &spr;
 
         cr->RefreshOffs();
@@ -3298,39 +3422,76 @@ auto MapView::GetCritter(ident_t id) -> CritterHexView*
     return it != _crittersMap.end() ? it->second : nullptr;
 }
 
-auto MapView::AddCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*
+auto MapView::AddReceivedCritter(ident_t id, hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
-    if (id && _crittersMap.count(id) != 0u) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(id);
+    RUNTIME_ASSERT(hx < _width && hy < _height);
+
+    const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
+    RUNTIME_ASSERT(proto);
 
     auto* cr = new CritterHexView(this, id, proto);
-    if (!cr->LoadFromText(props_kv)) {
-        cr->Release();
-        return nullptr;
-    }
 
-    AddCritterInternal(cr);
-    return cr;
-}
-
-auto MapView::AddCritter(ident_t id, const ProtoCritter* proto, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*
-{
-    STACK_TRACE_ENTRY();
-
-    auto* cr = new CritterHexView(this, id, proto);
     cr->RestoreData(data);
     cr->SetHexX(hx);
     cr->SetHexY(hy);
     cr->ChangeDirAngle(dir_angle);
 
-    AddCritterInternal(cr);
-    return cr;
+    return AddCritterInternal(cr);
 }
 
-void MapView::AddCritterInternal(CritterHexView* cr)
+auto MapView::AddMapperCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_mapperMode);
+    RUNTIME_ASSERT(id);
+    RUNTIME_ASSERT(_crittersMap.count(id) == 0);
+
+    auto props = copy(proto->GetProperties());
+    if (!props.ApplyFromText(props_kv)) {
+        return nullptr;
+    }
+
+    auto* cr = new CritterHexView(this, id, proto, &props);
+
+    if (cr->GetHexX() >= _width) {
+        cr->SetHexX(_width - 1);
+    }
+    if (cr->GetHexY() >= _height) {
+        cr->SetHexY(_height - 1);
+    }
+
+    return AddCritterInternal(cr);
+}
+
+auto MapView::AddMapperCritter(hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const Properties* props) -> CritterHexView*
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_mapperMode);
+
+    const auto* proto = _engine->ProtoMngr.GetProtoCritter(pid);
+    if (proto == nullptr) {
+        return nullptr;
+    }
+
+    if (hx >= _width || hy >= _height) {
+        return nullptr;
+    }
+
+    auto* cr = new CritterHexView(this, GetTempEntityId(), proto, props);
+
+    cr->SetHexX(hx);
+    cr->SetHexY(hy);
+    cr->ChangeDirAngle(dir_angle);
+
+    return AddCritterInternal(cr);
+}
+
+auto MapView::AddCritterInternal(CritterHexView* cr) -> CritterHexView*
 {
     STACK_TRACE_ENTRY();
 
@@ -3347,12 +3508,14 @@ void MapView::AddCritterInternal(CritterHexView* cr)
 
     _critters.emplace_back(cr);
 
-    AddCritterToField(cr);
-
     cr->Init();
+
+    AddCritterToField(cr);
 
     const auto time = _engine->GameTime.GameplayTime();
     cr->FadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (fading_time > time ? fading_time - time : time_duration {});
+
+    return cr;
 }
 
 void MapView::DestroyCritter(CritterHexView* cr)
@@ -3372,7 +3535,7 @@ void MapView::DestroyCritter(CritterHexView* cr)
     }
 
     RemoveCritterFromField(cr);
-    cr->DeleteAllItems();
+    cr->DeleteAllInvItems();
     cr->MarkAsDestroyed();
     cr->Release();
 }
@@ -3451,7 +3614,7 @@ void MapView::MoveCritter(CritterHexView* cr, uint16 hx, uint16 hy, bool smoothl
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cr->GetMap() == this);
-    RUNTIME_ASSERT(hx < _maxHexX && hy < _maxHexY);
+    RUNTIME_ASSERT(hx < _width && hy < _height);
 
     const auto old_hx = cr->GetHexX();
     const auto old_hy = cr->GetHexY();
@@ -3477,13 +3640,13 @@ void MapView::SetMultihex(uint16 hx, uint16 hy, uint multihex, bool set)
 {
     STACK_TRACE_ENTRY();
 
-    if (multihex != 0u) {
+    if (multihex != 0) {
         auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
             const auto cx = static_cast<int16>(hx) + sx[i];
             const auto cy = static_cast<int16>(hy) + sy[i];
-            if (cx >= 0 && cy >= 0 && cx < _maxHexX && cy < _maxHexY) {
+            if (cx >= 0 && cy >= 0 && cx < _width && cy < _height) {
                 auto& neighbor = GetField(static_cast<uint16>(cx), static_cast<uint16>(cy));
                 neighbor.Flags.IsMultihex = set;
                 neighbor.ProcessCache();
@@ -3524,7 +3687,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
                     }
                     else if (mask_color_r == 100) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 0u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 0);
                     }
                     else if (mask_color_r == 150) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 3u : 4u);
@@ -3534,7 +3697,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
                     }
                 }
 
-                if (hx_ >= 0 && hy_ >= 0 && hx_ < _maxHexX && hy_ < _maxHexY) {
+                if (hx_ >= 0 && hy_ >= 0 && hx_ < _width && hy_ < _height) {
                     hx = static_cast<uint16>(hx_);
                     hy = static_cast<uint16>(hy_);
 
@@ -3584,31 +3747,31 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
             if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent()) {
                 continue;
             }
-            if (!_engine->Settings.ShowScen && item->IsScenery()) {
+            if (!_engine->Settings.ShowScen && item->GetIsScenery()) {
                 continue;
             }
-            if (!_engine->Settings.ShowItem && !item->IsAnyScenery()) {
+            if (!_engine->Settings.ShowItem && !item->GetIsScenery() && !item->GetIsWall()) {
                 continue;
             }
-            if (!_engine->Settings.ShowWall && item->IsWall()) {
+            if (!_engine->Settings.ShowWall && item->GetIsWall()) {
                 continue;
             }
         }
         else {
             const auto is_fast = _fastPids.count(item->GetProtoId()) != 0;
-            if (item->IsScenery() && !_engine->Settings.ShowScen && !is_fast) {
+            if (!_engine->Settings.ShowScen && !is_fast && item->GetIsScenery()) {
                 continue;
             }
-            if (!item->IsAnyScenery() && !_engine->Settings.ShowItem && !is_fast) {
+            if (!_engine->Settings.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
                 continue;
             }
-            if (item->IsWall() && !_engine->Settings.ShowWall && !is_fast) {
+            if (!_engine->Settings.ShowWall && !is_fast && item->GetIsWall()) {
                 continue;
             }
             if (!_engine->Settings.ShowFast && is_fast) {
                 continue;
             }
-            if (_ignorePids.count(item->GetProtoId()) != 0u) {
+            if (_ignorePids.count(item->GetProtoId()) != 0) {
                 continue;
             }
         }
@@ -3768,13 +3931,13 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
             for (const auto j : xrange(GameSettings::MAP_DIR_COUNT)) {
                 auto nx = hx + sx[j];
                 auto ny = hy + sy[j];
-                if (nx < 0 || ny < 0 || nx >= _maxHexX || ny >= _maxHexY || GRID_AT(nx, ny)) {
+                if (nx < 0 || ny < 0 || nx >= _width || ny >= _height || GRID_AT(nx, ny)) {
                     continue;
                 }
 
                 GRID_AT(nx, ny) = -1;
 
-                if (mh == 0u) {
+                if (mh == 0) {
                     if (GetField(static_cast<uint16>(nx), static_cast<uint16>(ny)).Flags.IsMoveBlocked) {
                         continue;
                     }
@@ -3786,7 +3949,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     for (uint k = 0; k < mh; k++) {
                         _engine->Geometry.MoveHexByDirUnsafe(nx_, ny_, static_cast<uint8>(j));
                     }
-                    if (nx_ < 0 || ny_ < 0 || nx_ >= _maxHexX || ny_ >= _maxHexY) {
+                    if (nx_ < 0 || ny_ < 0 || nx_ >= _width || ny_ >= _height) {
                         continue;
                     }
                     if (GetField(static_cast<uint16>(nx_), static_cast<uint16>(ny_)).Flags.IsMoveBlocked) {
@@ -3978,7 +4141,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
             uint16 trace_ty = end_y;
 
             for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, _maxHexX, _maxHexY, 0.0f);
+                LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, _width, _height, 0.0f);
                 uint16 next_hx = trace_hx;
                 uint16 next_hy = trace_hy;
                 vector<uint8> direct_steps;
@@ -4000,7 +4163,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 
                 if (failed) {
                     RUNTIME_ASSERT(i > 0);
-                    _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), _maxHexX, _maxHexY);
+                    _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), _width, _height);
                     continue;
                 }
 
@@ -4065,7 +4228,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
         auto check_hx = hx;
         auto check_hy = hy;
 
-        if (!_engine->Geometry.MoveHexByDir(check_hx, check_hy, dir, _maxHexX, _maxHexY)) {
+        if (!_engine->Geometry.MoveHexByDir(check_hx, check_hy, dir, _width, _height)) {
             return false;
         }
 
@@ -4125,7 +4288,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
         ClearHexTrack();
     }
 
-    if (dist == 0u) {
+    if (dist == 0) {
         dist = _engine->Geometry.DistGame(hx, hy, tx, ty);
     }
 
@@ -4134,7 +4297,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
     auto old_cx = cx;
     auto old_cy = cy;
 
-    LineTracer line_tracer(_engine->Geometry, hx, hy, tx, ty, _maxHexX, _maxHexY, angle);
+    LineTracer line_tracer(_engine->Geometry, hx, hy, tx, ty, _width, _height, angle);
 
     for (uint i = 0; i < dist; i++) {
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -4201,7 +4364,7 @@ void MapView::FindSetCenter(int cx, int cy)
         auto i = 0;
 
         for (; i < steps; i++) {
-            if (!_engine->Geometry.MoveHexByDir(sx, sy, static_cast<uint8>(dirs[i % dirs_index]), _maxHexX, _maxHexY)) {
+            if (!_engine->Geometry.MoveHexByDir(sx, sy, static_cast<uint8>(dirs[i % dirs_index]), _width, _height)) {
                 break;
             }
 
@@ -4219,7 +4382,7 @@ void MapView::FindSetCenter(int cx, int cy)
         }
 
         for (; i < steps; i++) {
-            _engine->Geometry.MoveHexByDir(hx, hy, _engine->Geometry.ReverseDir(static_cast<uint8>(dirs[i % dirs_index])), _maxHexX, _maxHexY);
+            _engine->Geometry.MoveHexByDir(hx, hy, _engine->Geometry.ReverseDir(static_cast<uint8>(dirs[i % dirs_index])), _width, _height);
         }
     };
 
@@ -4299,7 +4462,7 @@ auto MapView::GetTiles(uint16 hx, uint16 hy, bool is_roof) -> vector<MapTile>&
 
     RUNTIME_ASSERT(_mapperMode);
 
-    return is_roof ? _roofsField[hy * _maxHexX + hx] : _tilesField[hy * _maxHexX + hx];
+    return is_roof ? _roofsField[hy * _width + hx] : _tilesField[hy * _width + hx];
 }
 
 void MapView::ClearSelTiles()
@@ -4308,10 +4471,10 @@ void MapView::ClearSelTiles()
 
     RUNTIME_ASSERT(_mapperMode);
 
-    for (const auto hx : xrange(_maxHexX)) {
-        for (const auto hy : xrange(_maxHexY)) {
+    for (const auto hx : xrange(_width)) {
+        for (const auto hy : xrange(_height)) {
             auto& field = GetField(hx, hy);
-            if (field.GetTilesCount(false) != 0u) {
+            if (field.GetTilesCount(false) != 0) {
                 auto& tiles = GetTiles(hx, hy, false);
                 for (uint i = 0; i < tiles.size();) {
                     if (tiles[i].IsSelected) {
@@ -4323,7 +4486,7 @@ void MapView::ClearSelTiles()
                     }
                 }
             }
-            if (field.GetTilesCount(true) != 0u) {
+            if (field.GetTilesCount(true) != 0) {
                 auto& roofs = GetTiles(hx, hy, true);
                 for (uint i = 0; i < roofs.size();) {
                     if (roofs[i].IsSelected) {
@@ -4345,8 +4508,8 @@ void MapView::ParseSelTiles()
 
     RUNTIME_ASSERT(_mapperMode);
 
-    for (const auto hx : xrange(_maxHexX)) {
-        for (const auto hy : xrange(_maxHexY)) {
+    for (const auto hx : xrange(_width)) {
+        for (const auto hy : xrange(_height)) {
             for (auto r = 0; r <= 1; r++) {
                 const auto roof = (r == 1);
                 auto& tiles = GetTiles(hx, hy, roof);
@@ -4371,7 +4534,7 @@ void MapView::SetTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, ui
 
     RUNTIME_ASSERT(_mapperMode);
 
-    if (hx >= _maxHexX || hy >= _maxHexY) {
+    if (hx >= _width || hy >= _height) {
         return;
     }
 
@@ -4459,7 +4622,7 @@ void MapView::SwitchIgnorePid(hstring pid)
 
     RUNTIME_ASSERT(_mapperMode);
 
-    if (_ignorePids.count(pid) != 0u) {
+    if (_ignorePids.count(pid) != 0) {
         _ignorePids.erase(pid);
     }
     else {
@@ -4515,7 +4678,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
             }
 
             for (auto i = 0; i <= adx; i++) {
-                if (hx >= 0 && hy >= 0 && hx < _maxHexX && hy < _maxHexY) {
+                if (hx >= 0 && hy >= 0 && hx < _width && hy < _height) {
                     hexes.emplace_back(hx, hy);
                 }
 
@@ -4590,7 +4753,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
             }
 
             for (auto j = (i & 1) != 0 ? 1 : 0; j < hw; j += 2) {
-                if (hx >= 0 && hy >= 0 && hx < _maxHexX && hy < _maxHexY) {
+                if (hx >= 0 && hy >= 0 && hx < _width && hy < _height) {
                     hexes.emplace_back(hx, hy);
                 }
 
@@ -4615,8 +4778,8 @@ void MapView::MarkBlockedHexes()
 
     RUNTIME_ASSERT(_mapperMode);
 
-    for (uint16 hx = 0; hx < _maxHexX; hx++) {
-        for (uint16 hy = 0; hy < _maxHexY; hy++) {
+    for (uint16 hx = 0; hx < _width; hx++) {
+        for (uint16 hy = 0; hy < _height; hy++) {
             const auto& field = GetField(hx, hy);
             auto& track = GetHexTrack(hx, hy);
 
@@ -4655,6 +4818,27 @@ auto MapView::GetTempEntityId() const -> ident_t
     return ident_t {max_id - 1};
 }
 
+auto MapView::ValidateForSave() const -> vector<string>
+{
+    STACK_TRACE_ENTRY();
+
+    vector<string> errors;
+
+    unordered_set<const CritterHexView*> cr_reported;
+
+    for (const auto* cr : _critters) {
+        for (const auto* cr2 : _critters) {
+            if (cr != cr2 && cr->GetHexX() == cr2->GetHexX() && cr->GetHexY() == cr2->GetHexY() && cr_reported.count(cr) == 0 && cr_reported.count(cr2) == 0) {
+                errors.emplace_back(_str("Critters have same hex coords at {} {}", cr->GetHexX(), cr->GetHexY()));
+                cr_reported.emplace(cr);
+                cr_reported.emplace(cr2);
+            }
+        }
+    }
+
+    return errors;
+}
+
 auto MapView::SaveToText() const -> string
 {
     STACK_TRACE_ENTRY();
@@ -4690,8 +4874,8 @@ auto MapView::SaveToText() const -> string
     }
 
     // Tiles
-    for (uint16 hy = 0; hy < _maxHexY; hy++) {
-        for (uint16 hx = 0; hx < _maxHexX; hx++) {
+    for (uint16 hy = 0; hy < _height; hy++) {
+        for (uint16 hx = 0; hx < _width; hx++) {
             const auto fill_tile = [&](const MapTile& tile) {
                 map<string, string> kv;
                 kv["PicMap"] = _engine->ResolveHash(tile.NameHash);
@@ -4712,10 +4896,10 @@ auto MapView::SaveToText() const -> string
                 fill_section("Tile", kv);
             };
 
-            for (const auto& tile : _tilesField[hy * _maxHexX + hx]) {
+            for (const auto& tile : _tilesField[hy * _width + hx]) {
                 fill_tile(tile);
             }
-            for (const auto& tile : _roofsField[hy * _maxHexX + hx]) {
+            for (const auto& tile : _roofsField[hy * _width + hx]) {
                 fill_tile(tile);
             }
         }

@@ -64,7 +64,7 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 
 public:
     Map() = delete;
-    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map);
+    Map(FOServer* engine, ident_t id, const ProtoMap* proto, Location* location, const StaticMap* static_map, const Properties* props = nullptr);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -120,8 +120,8 @@ public:
     void PlaceItemBlocks(uint16 hx, uint16 hy, Item* item);
     void RemoveItemBlocks(uint16 hx, uint16 hy, Item* item);
     void SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text);
-    void SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 text_msg, uint num_str);
-    void SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 text_msg, uint num_str, string_view lexems);
+    void SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num);
+    void SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems);
     void AddCritter(Critter* cr);
     void EraseCritter(Critter* cr);
     auto AddItem(Item* item, uint16 hx, uint16 hy) -> bool;

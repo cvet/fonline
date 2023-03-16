@@ -83,7 +83,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, uint stackId)
 {
-    return self->ContGetItems(stackId);
+    return self->GetInnerItems(stackId);
 }
 
 ///# ...

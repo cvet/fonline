@@ -54,16 +54,16 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Automatic id fixier
-    unordered_set<uint> busy_ids;
-    const auto process_id = [&busy_ids](uint id) {
+    unordered_set<ident_t::underlying_type> busy_ids;
+    const auto process_id = [&busy_ids](ident_t::underlying_type id) -> ident_t {
         if (!busy_ids.insert(id).second) {
-            uint new_id = std::numeric_limits<uint>::max();
+            auto new_id = std::numeric_limits<ident_t::underlying_type>::max();
             while (!busy_ids.insert(new_id).second) {
                 new_id--;
             }
-            return new_id;
+            return ident_t {new_id};
         }
-        return id;
+        return ident_t {id};
     };
 
     // Critters
@@ -81,7 +81,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto critter '{}' not found", proto_name));
         }
-        else if (!cr_load(ident_t {id}, proto, kv)) {
+        else if (!cr_load(id, proto, kv)) {
             errors.emplace_back(_str("Unable to load critter '{}' properties", proto_name));
         }
     }
@@ -100,7 +100,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto item '{}' not found", proto_name));
         }
-        else if (!item_load(ident_t {id}, proto, kv)) {
+        else if (!item_load(id, proto, kv)) {
             errors.emplace_back(_str("Unable to load item '{}' properties", proto_name));
         }
     }

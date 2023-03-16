@@ -43,7 +43,7 @@ class ItemView : public ClientEntity, public EntityWithProto, public ItemPropert
 {
 public:
     ItemView() = delete;
-    ItemView(FOClient* engine, ident_t id, const ProtoItem* proto);
+    ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
     ItemView(const ItemView&) = delete;
     ItemView(ItemView&&) noexcept = delete;
     auto operator=(const ItemView&) = delete;
@@ -51,19 +51,14 @@ public:
     ~ItemView() override = default;
 
     [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
-    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
-    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
-    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
-    [[nodiscard]] auto IsColorize() const -> bool { return GetIsColorize(); }
-    [[nodiscard]] auto GetColor() const -> uint { return GetLightColor() & 0xFFFFFF; }
-    [[nodiscard]] auto GetAlpha() const -> uint8 { return GetLightColor() >> 24; }
-    [[nodiscard]] auto LightGetHash() const -> uint;
-    [[nodiscard]] auto GetInnerItems() -> vector<ItemView*>;
-
+    [[nodiscard]] auto EvaluateLightHash() const -> uint;
+    [[nodiscard]] auto GetInnerItems() -> const vector<ItemView*>&;
+    [[nodiscard]] auto GetConstInnerItems() const -> vector<const ItemView*>;
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 
     void MarkAsDestroyed() override;
-    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& properties_data) -> ItemView*;
+    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const Properties* props) -> ItemView*;
+    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
     void DeleteInnerItem(ItemView* item);
 
 protected:

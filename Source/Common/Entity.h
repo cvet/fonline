@@ -132,11 +132,8 @@ public:
     [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
     [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
 
-    void SetProperties(const Properties& props);
     void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
-    void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
-    void RestoreData(const vector<vector<uint8>>& properties_data);
-    auto LoadFromText(const map<string, string>& key_values) -> bool;
+    void RestoreData(const vector<vector<uint8>>& props_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
@@ -154,7 +151,7 @@ public:
     virtual void MarkAsDestroyed();
 
 protected:
-    explicit Entity(const PropertyRegistrator* registrator);
+    Entity(const PropertyRegistrator* registrator, const Properties* props);
     virtual ~Entity() = default;
 
     auto GetInitRef() -> Properties& { return _props; }
@@ -190,7 +187,7 @@ public:
     string CollectionName {};
 
 protected:
-    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator);
+    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props);
 
     const hstring _protoId;
     unordered_set<hstring> _components {};
@@ -210,7 +207,7 @@ public:
     [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
 
 protected:
-    EntityWithProto(Entity* owner, const ProtoEntity* proto);
+    explicit EntityWithProto(const ProtoEntity* proto);
     virtual ~EntityWithProto();
 
     const ProtoEntity* _proto;

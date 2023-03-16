@@ -35,9 +35,9 @@
 #include "Client.h"
 #include "StringUtils.h"
 
-LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+LocationView::LocationView(FOClient* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();

@@ -91,7 +91,7 @@
 
         color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
         is_flat = proto_item->GetIsFlat();
-        const auto is_item = !proto_item->IsAnyScenery();
+        const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
         no_light = (is_flat && !is_item);
         draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
         draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
@@ -166,14 +166,14 @@
 
     // On Chosen
     if (item == nullptr && self->GetEngine()->GetChosen() != nullptr) {
-        item = self->GetEngine()->GetChosen()->GetItem(itemId);
+        item = self->GetEngine()->GetChosen()->GetInvItem(itemId);
     }
 
     // On other critters
     if (item == nullptr) {
         for (auto* cr : self->GetCritters()) {
             if (!cr->IsChosen()) {
-                item = cr->GetItem(itemId);
+                item = cr->GetInvItem(itemId);
             }
         }
     }
@@ -329,7 +329,7 @@
 {
     vector<CritterHexView*> critters;
     self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-    return vec_downcast<CritterView*>(critters);
+    return vec_cast<CritterView*>(critters);
 }
 
 ///# ...
@@ -356,7 +356,7 @@
     preBlockHy = pre_block.second;
     blockHx = block.first;
     blockHy = block.second;
-    return vec_downcast<CritterView*>(critters);
+    return vec_cast<CritterView*>(critters);
 }
 
 ///# ...

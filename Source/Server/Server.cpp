@@ -1594,7 +1594,7 @@ void FOServer::LogoutCritter(Critter* cr)
     auto* map = MapMngr.GetMap(cr->GetMapId());
     MapMngr.EraseCrFromMap(cr, map);
 
-    auto& inv_items = cr->GetRawItems();
+    auto& inv_items = cr->GetRawInvItems();
 
     const auto remove_item = [this](Item* item) {
         if (item->GetIsRadio()) {
@@ -1608,10 +1608,10 @@ void FOServer::LogoutCritter(Critter* cr)
 
     std::function<void(Item*)> remove_sub_items;
     remove_sub_items = [&remove_sub_items, &remove_item](Item* cont) {
-        auto& sub_items = cont->ContGetRawItems();
+        auto& sub_items = cont->GetRawInnerItems();
 
         for (auto* sub_item : sub_items) {
-            if (sub_item->ContIsItems()) {
+            if (sub_item->IsInnerItems()) {
                 remove_sub_items(sub_item);
             }
         }
@@ -1624,7 +1624,7 @@ void FOServer::LogoutCritter(Critter* cr)
     };
 
     for (auto* item : inv_items) {
-        if (item->ContIsItems()) {
+        if (item->IsInnerItems()) {
             remove_sub_items(item);
         }
 
@@ -2471,14 +2471,14 @@ void FOServer::Process_Property(Player* player, uint data_size)
         if (prop != nullptr) {
             auto* cr = CrMngr.GetCritter(cr_id);
             if (cr != nullptr) {
-                entity = cr->GetItem(item_id, true);
+                entity = cr->GetInvItem(item_id, true);
             }
         }
         break;
     case NetProperty::ChosenItem:
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = cr->GetItem(item_id, true);
+            entity = cr->GetInvItem(item_id, true);
         }
         break;
     case NetProperty::Map:
@@ -3324,7 +3324,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
                 entity = master;
             }
             else if (demand.Type == DR_PROP_ITEM) {
-                entity = master->GetItemSlot(1);
+                entity = master->GetInvItemSlot(1);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
@@ -3379,32 +3379,32 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
             const auto pid = demand.ParamHash;
             switch (demand.Op) {
             case '>':
-                if (static_cast<int>(master->CountItemPid(pid)) > demand.Value) {
+                if (static_cast<int>(master->CountInvItemPid(pid)) > demand.Value) {
                     continue;
                 }
                 break;
             case '<':
-                if (static_cast<int>(master->CountItemPid(pid)) < demand.Value) {
+                if (static_cast<int>(master->CountInvItemPid(pid)) < demand.Value) {
                     continue;
                 }
                 break;
             case '=':
-                if (static_cast<int>(master->CountItemPid(pid)) == demand.Value) {
+                if (static_cast<int>(master->CountInvItemPid(pid)) == demand.Value) {
                     continue;
                 }
                 break;
             case '!':
-                if (static_cast<int>(master->CountItemPid(pid)) != demand.Value) {
+                if (static_cast<int>(master->CountInvItemPid(pid)) != demand.Value) {
                     continue;
                 }
                 break;
             case '}':
-                if (static_cast<int>(master->CountItemPid(pid)) >= demand.Value) {
+                if (static_cast<int>(master->CountInvItemPid(pid)) >= demand.Value) {
                     continue;
                 }
                 break;
             case '{':
-                if (static_cast<int>(master->CountItemPid(pid)) <= demand.Value) {
+                if (static_cast<int>(master->CountInvItemPid(pid)) <= demand.Value) {
                     continue;
                 }
                 break;
@@ -3486,7 +3486,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 entity = master;
             }
             else if (result.Type == DR_PROP_ITEM) {
-                entity = master->GetItemSlot(1);
+                entity = master->GetInvItemSlot(1);
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
@@ -3527,7 +3527,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
             continue;
         case DR_ITEM: {
             const auto pid = result.ParamHash;
-            const int cur_count = master->CountItemPid(pid);
+            const int cur_count = master->CountInvItemPid(pid);
             auto need_count = cur_count;
 
             switch (result.Op) {

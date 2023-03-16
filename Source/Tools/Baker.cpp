@@ -699,7 +699,7 @@ void Baker::BakeAll()
                             [&](ident_t id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
                                 auto props = copy(proto->GetProperties());
 
-                                if (props.LoadFromText(kv)) {
+                                if (props.ApplyFromText(kv)) {
                                     map_errors += ValidateProperties(props, _str("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                     map_cr_count++;
@@ -719,7 +719,7 @@ void Baker::BakeAll()
                             [&](ident_t id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
                                 auto props = copy(proto->GetProperties());
 
-                                if (props.LoadFromText(kv)) {
+                                if (props.ApplyFromText(kv)) {
                                     map_errors += ValidateProperties(props, _str("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                     map_item_count++;
@@ -729,11 +729,11 @@ void Baker::BakeAll()
                                     map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                     map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
-                                    if (proto->IsStatic() && !proto->GetIsHidden()) {
+                                    if (proto->GetIsStatic() && !proto->GetIsHidden()) {
                                         const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
                                         auto client_props = copy(client_proto->GetProperties());
 
-                                        if (client_props.LoadFromText(kv)) {
+                                        if (client_props.ApplyFromText(kv)) {
                                             map_scen_count++;
                                             map_scen_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                             map_scen_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());

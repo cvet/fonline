@@ -44,9 +44,7 @@ class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties& props);
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data);
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data, uint16 hx, uint16 hy);
+    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -55,7 +53,7 @@ public:
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
@@ -63,6 +61,7 @@ public:
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isAnimLooped || (_isDynamicEffect && !_finishing) || _fading; }
 
+    void Init();
     void RefreshAnim();
     void RestoreAlpha();
     void RefreshAlpha();
@@ -90,9 +89,6 @@ public:
     bool SprDrawValid {};
 
 private:
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto);
-
-    void AfterConstruction();
     void SetFade(bool fade_up);
     void SetCurSpr(uint num_spr);
 

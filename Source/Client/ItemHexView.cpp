@@ -40,56 +40,18 @@
 #include "Sprites.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto) :
-    ItemView(map->GetEngine(), id, proto),
+ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
+    ItemView(map->GetEngine(), id, proto, props),
     _map {map}
+{
+    STACK_TRACE_ENTRY();
+}
+
+void ItemHexView::Init()
 {
     STACK_TRACE_ENTRY();
 
     DrawEffect = _engine->EffectMngr.Effects.Generic;
-}
-
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties& props) :
-    ItemHexView(map, id, proto)
-{
-    STACK_TRACE_ENTRY();
-
-    SetProperties(props);
-
-    AfterConstruction();
-}
-
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data) :
-    ItemHexView(map, id, proto)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(props_data);
-    RestoreData(*props_data);
-
-    AfterConstruction();
-}
-
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const vector<vector<uint8>>* props_data, uint16 hx, uint16 hy) :
-    ItemHexView(map, id, proto)
-{
-    STACK_TRACE_ENTRY();
-
-    if (props_data != nullptr) {
-        RestoreData(*props_data);
-    }
-
-    SetHexX(hx);
-    SetHexY(hy);
-
-    AfterConstruction();
-}
-
-void ItemHexView::AfterConstruction()
-{
-    STACK_TRACE_ENTRY();
-
-    SetOwnership(ItemOwnership::MapHex);
 
     RefreshAnim();
     RefreshAlpha();
@@ -365,7 +327,7 @@ void ItemHexView::SetSprite(Sprite* spr)
     }
 
     if (SprDrawValid) {
-        SprDraw->SetColor(IsColorize() ? GetColor() : 0);
+        SprDraw->SetColor(GetIsColorize() ? GetLightColor() & 0xFFFFFF : 0);
         SprDraw->SetEggAppearence(GetEggType());
         if (GetIsBadItem()) {
             SprDraw->SetContour(ContourType::Red);
@@ -384,7 +346,7 @@ void ItemHexView::RefreshAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    _maxAlpha = IsColorize() ? GetAlpha() : 0xFF;
+    _maxAlpha = GetIsColorize() ? GetLightColor() >> 24 : 0xFF;
 }
 
 auto ItemHexView::GetEggType() const -> EggAppearenceType

@@ -102,8 +102,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     cr_props.RestoreAllData(props_data);
 
-                    auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto);
-                    cr->SetProperties(cr_props);
+                    auto* cr = new Critter(_engine, ident_t {}, nullptr, cr_proto, &cr_props);
 
                     static_map.CritterBillets.emplace_back(cr_id, cr);
 
@@ -136,8 +135,7 @@ void MapManager::LoadFromResources()
                     reader.ReadPtr<uint8>(props_data.data(), props_data_size);
                     item_props.RestoreAllData(props_data);
 
-                    auto* item = new Item(_engine, ident_t {}, item_proto);
-                    item->SetProperties(item_props);
+                    auto* item = new Item(_engine, ident_t {}, item_proto, &item_props);
 
                     static_map.ItemBillets.emplace_back(item_id, item);
 
@@ -151,24 +149,22 @@ void MapManager::LoadFromResources()
                     }
 
                     // Bind scripts
-                    if (item->IsStatic()) {
-                        if (item->GetSceneryScript()) {
-                            item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(item->GetSceneryScript());
-                            if (!item->SceneryScriptFunc) {
-                                throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
-                            }
+                    if (item->GetSceneryScript()) {
+                        item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(item->GetSceneryScript());
+                        if (!item->SceneryScriptFunc) {
+                            throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
                         }
+                    }
 
-                        if (item->GetTriggerScript()) {
-                            item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(item->GetTriggerScript());
-                            if (!item->TriggerScriptFunc) {
-                                throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
-                            }
+                    if (item->GetTriggerScript()) {
+                        item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(item->GetTriggerScript());
+                        if (!item->TriggerScriptFunc) {
+                            throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
                         }
                     }
 
                     // Sort
-                    if (item->IsStatic()) {
+                    if (item->GetIsStatic()) {
                         RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
 
                         if (!item->GetIsHiddenInStatic()) {
@@ -183,6 +179,7 @@ void MapManager::LoadFromResources()
                             static_map.HexItemBillets.emplace_back(item_id, item);
                         }
                         else {
+                            RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer);
                             static_map.ChildItemBillets.emplace_back(item_id, item);
                         }
                     }
@@ -192,11 +189,11 @@ void MapManager::LoadFromResources()
 
         reader.VerifyEnd();
 
-        // Fill hex flags
+        // Fill hex flags from static items on map
         static_map.HexFlags.resize(static_cast<size_t>(maxhx * maxhy), 0);
 
         for (auto&& [item_id, item] : static_map.ItemBillets) {
-            if (!item->IsStatic()) {
+            if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetIsStatic()) {
                 continue;
             }
 

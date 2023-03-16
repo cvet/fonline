@@ -58,7 +58,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     RUNTIME_ASSERT(item);
 
     if (item->GetStackable()) {
-        auto* item_already = cr->GetItemByPid(item->GetProtoId());
+        auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
         if (item_already != nullptr) {
             const auto count = item->GetCount();
             _engine->ItemMngr.DeleteItem(item);
@@ -185,10 +185,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
         hy = hy_;
     }
 
-    auto* cr = new Critter(_engine, ident_t {}, nullptr, proto);
-    if (props != nullptr) {
-        cr->SetProperties(*props);
-    }
+    auto* cr = new Critter(_engine, ident_t {}, nullptr, proto, props);
 
     _engine->EntityMngr.RegisterEntity(cr);
 
@@ -240,7 +237,7 @@ void CritterManager::DeleteCritter(Critter* cr)
         cr->LockMapTransfers++;
         auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
-        while (cr->GetMapId() || cr->GlobalMapGroup != nullptr || cr->RealCountItems() != 0) {
+        while (cr->GetMapId() || cr->GlobalMapGroup != nullptr || cr->RealCountInvItems() != 0) {
             // Delete inventory
             DeleteInventory(cr);
 

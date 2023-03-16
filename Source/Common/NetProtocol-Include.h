@@ -213,7 +213,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ident_t cr_id
 // uint8 how_say
 // uint16 MSG_num
-// uint num_str
+// uint str_num
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MSG_LEX MAKE_NETMSG_HEADER(34)
@@ -224,7 +224,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ident_t cr_id
 // uint8 how_say
 // uint16 MSG_num
-// uint num_str
+// uint str_num
 // string lexems
 // ////////////////////////////////////////////////////////////////////////
 
@@ -249,7 +249,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint16 hy
 // uint color
 // uint16 MSG_num
-// uint num_str
+// uint str_num
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP_TEXT_MSG_LEX MAKE_NETMSG_HEADER(37)
@@ -261,7 +261,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint16 hy
 // uint color
 // uint16 MSG_num
-// uint num_str
+// uint str_num
 // string lexems
 // ////////////////////////////////////////////////////////////////////////
 

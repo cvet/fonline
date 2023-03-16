@@ -368,12 +368,6 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         return {};
     }
 
-    if (proto->IsStatic()) {
-        WriteLog("Proto item {} is static", item_pid);
-        is_error = true;
-        return {};
-    }
-
     auto* item = new Item(_engine, item_id, proto);
     if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
@@ -387,12 +381,11 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
 
     RegisterEntity(item);
 
-    const auto sub_item_ids = item->GetSubItemIds();
-    for (const auto& sub_item_id : sub_item_ids) {
-        auto* sub_item = LoadItem(sub_item_id, is_error);
-        if (sub_item != nullptr) {
-            auto* cont = item;
-            _engine->ItemMngr.SetItemToContainer(cont, sub_item);
+    const auto inner_item_ids = item->GetInnerItemIds();
+    for (const auto& inner_item_id : inner_item_ids) {
+        auto* inner_item = LoadItem(inner_item_id, is_error);
+        if (inner_item != nullptr) {
+            _engine->ItemMngr.SetItemToContainer(item, inner_item); // NOLINT(readability-suspicious-call-argument)
         }
     }
 
@@ -516,7 +509,7 @@ void EntityManager::CallInit(Critter* cr, bool first_time)
     }
 
     if (!cr->IsDestroyed()) {
-        for (auto* item : copy_hold_ref(cr->GetRawItems())) {
+        for (auto* item : copy_hold_ref(cr->GetRawInvItems())) {
             if (!item->IsDestroyed()) {
                 CallInit(item, first_time);
             }
@@ -544,8 +537,8 @@ void EntityManager::CallInit(Item* item, bool first_time)
         ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), first_time);
     }
 
-    if (!item->IsDestroyed() && item->ContIsItems()) {
-        for (auto* sub_item : copy_hold_ref(item->ContGetRawItems())) {
+    if (!item->IsDestroyed() && item->IsInnerItems()) {
+        for (auto* sub_item : copy_hold_ref(item->GetRawInnerItems())) {
             if (!sub_item->IsDestroyed()) {
                 CallInit(sub_item, first_time);
             }
@@ -743,8 +736,7 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, ident_t id) -
             return nullptr;
         }
 
-        auto* entity = new ServerEntity(_engine, id, registrator);
-        entity->SetProperties(props);
+        auto* entity = new ServerEntity(_engine, id, registrator, &props);
 
         RegisterEntityEx(entity);
         all_entities.emplace(id, entity);
@@ -759,7 +751,7 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
     STACK_TRACE_ENTRY();
 
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
-    auto* entity = new ServerEntity(_engine, ident_t {}, registrator);
+    auto* entity = new ServerEntity(_engine, ident_t {}, registrator, nullptr);
 
     RegisterEntityEx(entity);
     auto& all_entities = _allCustomEntities[string(entity_class_name)];

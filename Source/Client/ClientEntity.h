@@ -59,7 +59,7 @@ public:
     void MarkAsDestroyed() override;
 
 protected:
-    ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator);
+    ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
 
     FOClient* _engine;
     string _name {};

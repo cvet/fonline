@@ -83,9 +83,8 @@ struct FindPathResult
     vector<uint16> ControlSteps {};
 };
 
-class Field final
+struct Field
 {
-public:
     struct Tile
     {
         AnyFrames* Anim {};
@@ -106,23 +105,16 @@ public:
         bool IsMultihex : 1;
     };
 
-    Field() = default;
-    Field(const Field&) = delete;
-    Field(Field&&) noexcept = default;
-    auto operator=(const Field&) = delete;
-    auto operator=(Field&&) noexcept = delete;
-    ~Field();
-
     [[nodiscard]] auto GetActiveCritter() -> CritterHexView*;
     [[nodiscard]] auto GetTilesCount(bool is_roof) -> uint;
     [[nodiscard]] auto GetTile(uint index, bool is_roof) -> Tile&;
 
-    auto AddTile(AnyFrames* anim, int16 ox, int16 oy, uint8 layer, bool is_roof) -> Tile&;
-    void AddItem(ItemHexView* item, ItemHexView* block_lines_item);
-    void EraseItem(ItemHexView* item, ItemHexView* block_lines_item);
-    void EraseTile(uint index, bool is_roof);
     void AddCritter(CritterHexView* cr);
     void EraseCritter(CritterHexView* cr);
+    void AddItem(ItemHexView* item, ItemHexView* block_lines_item);
+    void EraseItem(ItemHexView* item, ItemHexView* block_lines_item);
+    auto AddTile(AnyFrames* anim, int16 ox, int16 oy, uint8 layer, bool is_roof) -> Tile&;
+    void EraseTile(uint index, bool is_roof);
     void ProcessCache();
     void AddSpriteToChain(Sprite* spr);
     void UnvalidateSpriteChain() const;
@@ -160,7 +152,7 @@ public:
         uint16 CritterLastHexY {};
     };
 
-    MapView(FOClient* engine, ident_t id, const ProtoMap* proto);
+    MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -169,10 +161,10 @@ public:
 
     [[nodiscard]] auto IsMapperMode() const -> bool { return _mapperMode; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _maxHexX + hx]; }
-    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[hy * _maxHexX + hx].IsView; }
-    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _maxHexX + hx]; }
-    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _maxHexX * 3 + hx * 3]; }
+    [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _width + hx]; }
+    [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[hy * _width + hx].IsView; }
+    [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _width + hx]; }
+    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return reinterpret_cast<uint8*>(&_hexLight[hy * _width + hx]); }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
@@ -199,11 +191,11 @@ public:
 
     void ChangeZoom(int zoom); // < 0 in, > 0 out, 0 normalize
 
-    void GetScreenHexes(int& sx, int& sy) const;
+    auto GetScreenHexes() const -> tuple<int, int>;
     void GetHexCurrentPosition(uint16 hx, uint16 hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void RebuildMap(int rx, int ry);
+    void RebuildMap(int screen_hx, int screen_hy);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
@@ -211,6 +203,7 @@ public:
     auto MeasureMapBorders(uint spr_id, int ox, int oy) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     auto MeasureMapBorders(const Field::Tile& tile, bool is_roof) -> bool;
+    void Resize(uint16 width, uint16 height);
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -219,8 +212,9 @@ public:
     void SwitchShowHex();
 
     // Critters
-    auto AddCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
-    auto AddCritter(ident_t id, const ProtoCritter* proto, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
+    auto AddReceivedCritter(ident_t id, hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const vector<vector<uint8>>& data) -> CritterHexView*;
+    auto AddMapperCritter(ident_t id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
+    auto AddMapperCritter(hstring pid, uint16 hx, uint16 hy, int16 dir_angle, const Properties* props) -> CritterHexView*;
     auto GetCritter(ident_t id) -> CritterHexView*;
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> vector<CritterHexView*>;
@@ -232,8 +226,9 @@ public:
     void SetMultihex(uint16 hx, uint16 hy, uint multihex, bool set);
 
     // Items
-    auto AddItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
-    auto AddItem(ident_t id, hstring pid, uint16 hx, uint16 hy, bool is_added, const vector<vector<uint8>>* data) -> ItemHexView*;
+    auto AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, const vector<vector<uint8>>& data) -> ItemHexView*;
+    auto AddMapperItem(ident_t id, const ProtoItem* proto, const map<string, string>& props_kv) -> ItemHexView*;
+    auto AddMapperItem(hstring pid, uint16 hx, uint16 hy, const Properties* props) -> ItemHexView*;
     auto GetItem(uint16 hx, uint16 hy, hstring pid) -> ItemHexView*;
     auto GetItem(uint16 hx, uint16 hy, ident_t id) -> ItemHexView*;
     auto GetItem(ident_t id) -> ItemHexView*;
@@ -282,6 +277,7 @@ public:
 
     auto GetTempEntityId() const -> ident_t;
 
+    auto ValidateForSave() const -> vector<string>;
     auto SaveToText() const -> string;
 
     AutoScrollInfo AutoScroll {};
@@ -307,18 +303,18 @@ private:
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) -> bool;
 
-    void AddCritterInternal(CritterHexView* cr);
+    auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
 
-    void AddItemInternal(ItemHexView* item);
+    auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
 
     void DrawMapTexts();
 
     void PrepareFogToDraw();
-    void InitView(int cx, int cy);
+    void InitView(int screen_hx, int screen_hy);
     void ResizeView();
 
     // Lighting
@@ -337,8 +333,8 @@ private:
     EventUnsubscriber _eventUnsubscriber {};
 
     bool _mapperMode {};
-    uint16 _maxHexX {};
-    uint16 _maxHexY {};
+    uint16 _width {};
+    uint16 _height {};
 
     vector<CritterHexView*> _critters {};
     unordered_map<ident_t, CritterHexView*> _crittersMap {};
@@ -400,7 +396,7 @@ private:
 
     bool _requestRebuildLight {};
     bool _requestRenderLight {};
-    vector<uint8> _hexLight {};
+    vector<uint> _hexLight {};
 
     int _prevMapDayTime {};
     int _prevGlobalDayTime {};

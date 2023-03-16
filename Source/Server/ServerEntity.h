@@ -61,7 +61,7 @@ public:
     void SetInitCalled() { _initCalled = true; }
 
 protected:
-    ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator);
+    ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props);
 
     FOServer* _engine;
     string _name {};

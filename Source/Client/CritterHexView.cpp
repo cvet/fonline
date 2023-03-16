@@ -42,8 +42,8 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto) :
-    CritterView(map->GetEngine(), id, proto),
+CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props) :
+    CritterView(map->GetEngine(), id, proto, props),
     _map {map}
 {
     STACK_TRACE_ENTRY();
@@ -103,7 +103,7 @@ auto CritterHexView::GetFadeAlpha() -> uint8
 
     const auto time = _engine->GameTime.GameplayTime();
     const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTime > time ? time_duration_to_ms<uint>(FadingTime - time) : 0);
-    if (fading_proc == 100u) {
+    if (fading_proc == 100) {
         _fadingEnabled = false;
     }
 
@@ -118,24 +118,37 @@ auto CritterHexView::GetCurAnim() -> CritterAnim*
     return IsAnim() ? &_animSequence.front() : nullptr;
 }
 
-auto CritterHexView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
+auto CritterHexView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = CritterView::AddItem(id, proto, slot, properties_data);
+    auto* item = CritterView::AddInvItem(id, proto, slot, props);
 
-    if (item->GetCritterSlot() != 0u && !IsAnim()) {
+    if (item->GetCritterSlot() != 0 && !IsAnim()) {
         AnimateStay();
     }
 
     return item;
 }
 
-void CritterHexView::DeleteItem(ItemView* item, bool animate)
+auto CritterHexView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    CritterView::DeleteItem(item, animate);
+    auto* item = CritterView::AddInvItem(id, proto, slot, props_data);
+
+    if (item->GetCritterSlot() != 0 && !IsAnim()) {
+        AnimateStay();
+    }
+
+    return item;
+}
+
+void CritterHexView::DeleteInvItem(ItemView* item, bool animate)
+{
+    STACK_TRACE_ENTRY();
+
+    CritterView::DeleteInvItem(item, animate);
 
     if (animate && !IsAnim()) {
         AnimateStay();
@@ -273,7 +286,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
     STACK_TRACE_ENTRY();
 
     const auto dir = GetDir();
-    if (anim1 == 0u) {
+    if (anim1 == 0) {
         anim1 = GetAnim1();
     }
 
@@ -419,7 +432,7 @@ auto CritterHexView::IsHaveLightSources() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    for (const auto* item : _items) {
+    for (const auto* item : _invItems) {
         if (item->GetIsLight()) {
             return true;
         }
@@ -448,14 +461,14 @@ auto CritterHexView::GetAnim2() const -> uint
     switch (GetCond()) {
     case CritterCondition::Alive:
 #if FO_ENABLE_3D
-        return GetAnim2Alive() != 0u ? GetAnim2Alive() : (_model != nullptr && _model->IsCombatMode() && _engine->Settings.Anim2CombatIdle != 0u ? _engine->Settings.Anim2CombatIdle : ANIM2_IDLE);
+        return GetAnim2Alive() != 0 ? GetAnim2Alive() : (_model != nullptr && _model->IsCombatMode() && _engine->Settings.Anim2CombatIdle != 0 ? _engine->Settings.Anim2CombatIdle : ANIM2_IDLE);
 #else
-        return GetAnim2Alive() != 0u ? GetAnim2Alive() : ANIM2_IDLE;
+        return GetAnim2Alive() != 0 ? GetAnim2Alive() : ANIM2_IDLE;
 #endif
     case CritterCondition::Knockout:
-        return GetAnim2Knockout() != 0u ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
+        return GetAnim2Knockout() != 0 ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
     case CritterCondition::Dead:
-        return GetAnim2Dead() != 0u ? GetAnim2Dead() : ANIM2_DEAD_FRONT;
+        return GetAnim2Dead() != 0 ? GetAnim2Dead() : ANIM2_DEAD_FRONT;
     }
     return ANIM2_IDLE;
 }
@@ -464,7 +477,7 @@ auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (anim1 == 0u) {
+    if (anim1 == 0) {
         anim1 = GetAnim1();
     }
 
@@ -634,11 +647,11 @@ void CritterHexView::Process()
         if (_model != nullptr && !_model->IsAnimationPlaying()) {
             NextAnim(true);
         }
-        else if (_model == nullptr && anim_proc >= 100u) {
+        else if (_model == nullptr && anim_proc >= 100) {
             NextAnim(true);
         }
 #else
-        if (anim_proc >= 100u) {
+        if (anim_proc >= 100) {
             NextAnim(true);
         }
 #endif
@@ -668,11 +681,11 @@ void CritterHexView::Process()
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (const auto is_combat = GetIsModelInCombatMode(); is_combat != _model->IsCombatMode()) {
-            if (_engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u && !IsMoving()) {
-                if (_engine->Settings.Anim2CombatBegin != 0u && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
+            if (_engine->Settings.Anim2CombatIdle != 0 && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0 && !IsMoving()) {
+                if (_engine->Settings.Anim2CombatBegin != 0 && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
                     Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
                 }
-                else if (_engine->Settings.Anim2CombatEnd != 0u && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
+                else if (_engine->Settings.Anim2CombatEnd != 0 && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
                     Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
                 }
             }

@@ -195,20 +195,20 @@ auto Updater::MakeWritePath(string_view fname) const -> string
     return _str(_settings.ResourcesDir).combinePath(fname).str();
 }
 
-void Updater::AddText(uint num_str, string_view num_str_str)
+void Updater::AddText(uint str_num, string_view num_str_str)
 {
     STACK_TRACE_ENTRY();
 
     _messages.emplace_back(num_str_str);
 }
 
-void Updater::Abort(uint num_str, string_view num_str_str)
+void Updater::Abort(uint str_num, string_view num_str_str)
 {
     STACK_TRACE_ENTRY();
 
     _aborted = true;
 
-    AddText(num_str, num_str_str);
+    AddText(str_num, num_str_str);
     _conn.Disconnect();
 
     if (_tempFile) {

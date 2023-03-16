@@ -35,9 +35,9 @@
 #include "Client.h"
 #include "StringUtils.h"
 
-ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+ItemView::ItemView(FOClient* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
@@ -63,30 +63,40 @@ auto ItemView::CreateRefClone() const -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* clone = new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto));
-    clone->SetProperties(GetProperties());
-    return clone;
+    return new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(_proto), &GetProperties());
 }
 
-auto ItemView::LightGetHash() const -> uint
+auto ItemView::EvaluateLightHash() const -> uint
 {
     STACK_TRACE_ENTRY();
 
     return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
 }
 
-auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& properties_data) -> ItemView*
+auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto);
-    item->RestoreData(properties_data);
+    auto* item = new ItemView(_engine, id, proto, props);
 
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
     _innerItems.push_back(item);
+
+    std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+
+    return item;
+}
+
+auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& props_data) -> ItemView*
+{
+    STACK_TRACE_ENTRY();
+
+    auto* item = AddInnerItem(id, proto, stack_id, nullptr);
+
+    item->RestoreData(props_data);
 
     std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
@@ -109,9 +119,16 @@ void ItemView::DeleteInnerItem(ItemView* item)
     item->Release();
 }
 
-auto ItemView::GetInnerItems() -> vector<ItemView*>
+auto ItemView::GetInnerItems() -> const vector<ItemView*>&
 {
     STACK_TRACE_ENTRY();
 
     return _innerItems;
+}
+
+auto ItemView::GetConstInnerItems() const -> vector<const ItemView*>
+{
+    STACK_TRACE_ENTRY();
+
+    return vec_cast<const ItemView*>(_innerItems);
 }

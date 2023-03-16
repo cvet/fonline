@@ -55,7 +55,7 @@ static void WriteProtosToBinary(vector<uint8>& data, const unordered_map<hstring
 
         writer.Write<uint16>(static_cast<uint16>(proto_item->GetComponents().size()));
         for (const auto& component : proto_item->GetComponents()) {
-            const auto component_str = component.as_str();
+            auto&& component_str = component.as_str();
             writer.Write<uint16>(static_cast<uint16>(component_str.length()));
             writer.WritePtr(component_str.data(), component_str.length());
         }
@@ -116,7 +116,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
             }
         }
         else if (key == "$Components" && !value.empty()) {
-            if (to_kv.count("$Components") == 0u) {
+            if (to_kv.count("$Components") == 0) {
                 to_kv["$Components"] = value;
             }
             else {
@@ -156,7 +156,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
             auto& kv = *pkv;
             auto name = kv.count("$Name") ? kv["$Name"] : file.GetName();
             auto pid = name_resolver.ToHashedString(name);
-            if (files_protos.count(pid) != 0u) {
+            if (files_protos.count(pid) != 0) {
                 throw ProtoManagerException("Proto already loaded", name);
             }
 
@@ -206,7 +206,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
     // Protos
     for (auto&& [pid, kv] : files_protos) {
         auto base_name = pid.as_str();
-        RUNTIME_ASSERT(protos.count(pid) == 0u);
+        RUNTIME_ASSERT(protos.count(pid) == 0);
 
         // Fill content from parents
         map<string, string> final_kv;
@@ -236,11 +236,12 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
         injection("$InjectOverride", true);
 
         // Create proto
-        auto* proto = new T(pid, property_registrator);
-        if (!proto->LoadFromText(final_kv)) {
-            delete proto;
+        auto props = Properties(property_registrator);
+        if (!props.ApplyFromText(final_kv)) {
             throw ProtoManagerException("Proto item fail to load properties", base_name);
         }
+
+        auto* proto = new T(pid, property_registrator, &props);
 
         // Components
         if (final_kv.count("$Components")) {
@@ -268,7 +269,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
 
             auto* msg = new FOMsg();
             uint str_num = 0;
-            while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
+            while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0) {
                 const auto count = temp_msg.Count(str_num);
                 auto new_str_num = str_num;
 

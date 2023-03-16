@@ -36,9 +36,9 @@
 #include "ItemView.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto, const Properties* props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
@@ -60,11 +60,11 @@ void CritterView::MarkAsDestroyed()
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* item : _items) {
+    for (auto* item : _invItems) {
         item->MarkAsDestroyed();
         item->Release();
     }
-    _items.clear();
+    _invItems.clear();
 
     Entity::MarkAsDestroying();
     Entity::MarkAsDestroyed();
@@ -94,31 +94,43 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-auto CritterView::AddItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& properties_data) -> ItemView*
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     auto* item = new ItemView(_engine, id, proto);
-    item->RestoreData(properties_data);
 
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    _items.push_back(item);
+    _invItems.push_back(item);
 
-    std::sort(_items.begin(), _items.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 
     return item;
 }
 
-void CritterView::DeleteItem(ItemView* item, bool animate)
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = std::find(_items.begin(), _items.end(), item);
-    RUNTIME_ASSERT(it != _items.end());
-    _items.erase(it);
+    auto* item = AddInvItem(id, proto, slot, nullptr);
+
+    item->RestoreData(props_data);
+
+    std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+
+    return item;
+}
+
+void CritterView::DeleteInvItem(ItemView* item, bool animate)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto it = std::find(_invItems.begin(), _invItems.end(), item);
+    RUNTIME_ASSERT(it != _invItems.end());
+    _invItems.erase(it);
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetCritterId(ident_t {});
@@ -128,22 +140,22 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     item->Release();
 }
 
-void CritterView::DeleteAllItems()
+void CritterView::DeleteAllInvItems()
 {
     STACK_TRACE_ENTRY();
 
-    while (!_items.empty()) {
-        DeleteItem(*_items.begin(), false);
+    while (!_invItems.empty()) {
+        DeleteInvItem(*_invItems.begin(), false);
     }
 }
 
-auto CritterView::GetItem(ident_t item_id) -> ItemView*
+auto CritterView::GetInvItem(ident_t item_id) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _items) {
+    for (auto* item : _invItems) {
         if (item->GetId() == item_id) {
             return item;
         }
@@ -151,13 +163,13 @@ auto CritterView::GetItem(ident_t item_id) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
+auto CritterView::GetInvItemByPid(hstring item_pid) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _items) {
+    for (auto* item : _invItems) {
         if (item->GetProtoId() == item_pid) {
             return item;
         }
@@ -165,13 +177,20 @@ auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetItems() -> const vector<ItemView*>&
+auto CritterView::GetInvItems() -> const vector<ItemView*>&
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    return _items;
+    return _invItems;
+}
+
+auto CritterView::GetConstInvItems() const -> vector<const ItemView*>
+{
+    STACK_TRACE_ENTRY();
+
+    return vec_cast<const ItemView*>(_invItems);
 }
 
 auto CritterView::CheckFind(CritterFindType find_type) const -> bool

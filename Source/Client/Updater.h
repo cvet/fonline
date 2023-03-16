@@ -69,8 +69,8 @@ private:
 
     [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
 
-    void AddText(uint num_str, string_view num_str_str);
-    void Abort(uint num_str, string_view num_str_str);
+    void AddText(uint str_num, string_view num_str_str);
+    void Abort(uint str_num, string_view num_str_str);
     void GetNextFile();
 
     void Net_OnConnect(bool success);

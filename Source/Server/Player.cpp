@@ -41,8 +41,8 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, ident_t id, ClientConnection* connection) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
+Player::Player(FOServer* engine, ident_t id, ClientConnection* connection, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props),
     PlayerProperties(GetInitRef()),
     Connection {connection},
     _talkNextTime {_engine->GameTime.GameplayTime() + std::chrono::milliseconds {PROCESS_TALK_TIME}}
@@ -366,7 +366,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     vector<vector<uint>*> items_data_sizes;
 
     if (!is_chosen) {
-        const auto& inv_items = from_cr->GetConstRawItems();
+        const auto& inv_items = from_cr->GetConstRawInvItems();
         items.reserve(inv_items.size());
         for (const auto* item_ : inv_items) {
             const auto slot = item_->GetCritterSlot();
@@ -784,13 +784,13 @@ void Player::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg)
+void Player::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0) {
+    if (str_num == 0) {
         return;
     }
 
@@ -800,19 +800,19 @@ void Player::Send_TextMsg(const Critter* from_cr, uint num_str, uint8 how_say, u
     Connection->OutBuf.StartMsg(NETMSG_MSG);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(num_msg);
-    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(str_num);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsg(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg)
+void Player::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0) {
+    if (str_num == 0) {
         return;
     }
 
@@ -820,19 +820,19 @@ void Player::Send_TextMsg(ident_t from_id, uint num_str, uint8 how_say, uint16 n
     Connection->OutBuf.StartMsg(NETMSG_MSG);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(num_msg);
-    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(str_num);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
+void Player::Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0) {
+    if (str_num == 0) {
         return;
     }
 
@@ -842,20 +842,20 @@ void Player::Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say
     Connection->OutBuf.StartMsg(NETMSG_MSG_LEX);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(num_msg);
-    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(str_num);
     Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
+void Player::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (num_str == 0) {
+    if (str_num == 0) {
         return;
     }
 
@@ -863,8 +863,8 @@ void Player::Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint1
     Connection->OutBuf.StartMsg(NETMSG_MSG_LEX);
     Connection->OutBuf.Write(from_id);
     Connection->OutBuf.Write(how_say);
-    Connection->OutBuf.Write(num_msg);
-    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(str_num);
     Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -887,7 +887,7 @@ void Player::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bo
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str)
+void Player::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
 {
     STACK_TRACE_ENTRY();
 
@@ -898,13 +898,13 @@ void Player::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, u
     Connection->OutBuf.Write(hx);
     Connection->OutBuf.Write(hy);
     Connection->OutBuf.Write(color);
-    Connection->OutBuf.Write(num_msg);
-    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(str_num);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems)
+void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
@@ -915,8 +915,8 @@ void Player::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg
     Connection->OutBuf.Write(hx);
     Connection->OutBuf.Write(hy);
     Connection->OutBuf.Write(color);
-    Connection->OutBuf.Write(num_msg);
-    Connection->OutBuf.Write(num_str);
+    Connection->OutBuf.Write(msg_num);
+    Connection->OutBuf.Write(str_num);
     Connection->OutBuf.Write(lexems);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);

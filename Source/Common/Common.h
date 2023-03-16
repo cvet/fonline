@@ -362,6 +362,7 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 #define FORCE_INLINE inline
 #endif
 
+// Todo: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
 #ifdef TRACY_ENABLE
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
@@ -381,6 +382,7 @@ using tracy::SourceLocationData;
     STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() ZoneScoped
 #endif
+#define NO_STACK_TRACE_ENTRY()
 
 #else
 struct SourceLocationData // Same as tracy::SourceLocationData
@@ -402,6 +404,7 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 #define STACK_TRACE_FIRST_ENTRY() SetMainThread()
 #define STACK_TRACE_ENTRY()
 #endif
+#define NO_STACK_TRACE_ENTRY()
 #endif
 
 extern void SetMainThread() noexcept;
@@ -423,7 +426,7 @@ struct StackTraceScopeEntry
 
 // Engine exception handling
 extern auto GetRealStackTrace() -> string;
-extern auto IsRunInDebugger() -> bool;
+extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
@@ -1787,7 +1790,7 @@ constexpr auto copy_hold_ref(const unordered_map<T, U, Args...>& value) -> ref_v
 
 // Vector pointer cast
 template<typename T, typename T2>
-constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
+constexpr auto vec_cast(const vector<T2>& value) -> vector<T>
 {
     vector<T> result;
     result.reserve(value.size());

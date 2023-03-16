@@ -113,13 +113,13 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
 
-    if (!cont->_childItems) {
-        cont->_childItems = std::make_unique<vector<Item*>>();
+    if (!cont->_innerItems) {
+        cont->_innerItems = std::make_unique<vector<Item*>>();
     }
 
-    RUNTIME_ASSERT(std::find(cont->_childItems->begin(), cont->_childItems->end(), item) == cont->_childItems->end());
+    RUNTIME_ASSERT(std::find(cont->_innerItems->begin(), cont->_innerItems->end(), item) == cont->_innerItems->end());
 
-    cont->_childItems->push_back(item);
+    cont->_innerItems->push_back(item);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(cont->GetId());
 }
@@ -131,12 +131,12 @@ auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> I
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
 
-    if (!cont->_childItems) {
-        cont->_childItems = std::make_unique<vector<Item*>>();
+    if (!cont->_innerItems) {
+        cont->_innerItems = std::make_unique<vector<Item*>>();
     }
 
     if (item->GetStackable()) {
-        auto* item_already = cont->ContGetItemByPid(item->GetProtoId(), stack_id);
+        auto* item_already = cont->GetInnerItemByPid(item->GetProtoId(), stack_id);
         if (item_already != nullptr) {
             const auto count = item->GetCount();
             DeleteItem(item);
@@ -147,13 +147,13 @@ auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> I
     }
 
     item->SetContainerStack(stack_id);
-    item->EvaluateSortValue(*cont->_childItems);
+    item->EvaluateSortValue(*cont->_innerItems);
     SetItemToContainer(cont, item);
 
-    auto sub_item_ids = cont->GetSubItemIds();
-    RUNTIME_ASSERT(std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId()) == sub_item_ids.end());
-    sub_item_ids.emplace_back(item->GetId());
-    cont->SetSubItemIds(std::move(sub_item_ids));
+    auto inner_item_ids = cont->GetInnerItemIds();
+    RUNTIME_ASSERT(std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId()) == inner_item_ids.end());
+    inner_item_ids.emplace_back(item->GetId());
+    cont->SetInnerItemIds(std::move(inner_item_ids));
 
     return item;
 }
@@ -165,26 +165,26 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cont);
-    RUNTIME_ASSERT(cont->_childItems);
+    RUNTIME_ASSERT(cont->_innerItems);
     RUNTIME_ASSERT(item);
 
-    const auto it = std::find(cont->_childItems->begin(), cont->_childItems->end(), item);
-    RUNTIME_ASSERT(it != cont->_childItems->end());
-    cont->_childItems->erase(it);
+    const auto it = std::find(cont->_innerItems->begin(), cont->_innerItems->end(), item);
+    RUNTIME_ASSERT(it != cont->_innerItems->end());
+    cont->_innerItems->erase(it);
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId(ident_t {});
     item->SetContainerStack(0);
 
-    if (cont->_childItems->empty()) {
-        cont->_childItems.reset();
+    if (cont->_innerItems->empty()) {
+        cont->_innerItems.reset();
     }
 
-    auto sub_item_ids = cont->GetSubItemIds();
-    const auto sub_item_id_it = std::find(sub_item_ids.begin(), sub_item_ids.end(), item->GetId());
-    RUNTIME_ASSERT(sub_item_id_it != sub_item_ids.end());
-    sub_item_ids.erase(sub_item_id_it);
-    cont->SetSubItemIds(std::move(sub_item_ids));
+    auto inner_item_ids = cont->GetInnerItemIds();
+    const auto inner_item_id_it = std::find(inner_item_ids.begin(), inner_item_ids.end(), item->GetId());
+    RUNTIME_ASSERT(inner_item_id_it != inner_item_ids.end());
+    inner_item_ids.erase(inner_item_id_it);
+    cont->SetInnerItemIds(std::move(inner_item_ids));
 }
 
 auto ItemManager::GetItems() -> const unordered_map<ident_t, Item*>&
@@ -213,13 +213,12 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         return nullptr;
     }
 
-    auto* item = new Item(_engine, ident_t {}, proto);
+    auto* item = new Item(_engine, ident_t {}, proto, props);
 
     auto item_holder = RefCountHolder(item);
 
+    // Reset ownership properties
     if (props != nullptr) {
-        item->SetProperties(*props);
-
         item->SetOwnership(ItemOwnership::Nowhere);
         item->SetMapId(ident_t {});
         item->SetHexX(0);
@@ -228,7 +227,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         item->SetCritterSlot(0);
         item->SetContainerId(ident_t {});
         item->SetContainerStack(0);
-        item->SetSubItemIds({});
+        item->SetInnerItemIds({});
     }
 
     _engine->EntityMngr.RegisterEntity(item);
@@ -261,13 +260,13 @@ void ItemManager::DeleteItem(Item* item)
     _engine->OnItemFinish.Fire(item);
 
     // Tear off from environment
-    while (item->GetOwnership() != ItemOwnership::Nowhere || item->ContIsItems()) {
+    while (item->GetOwnership() != ItemOwnership::Nowhere || item->IsInnerItems()) {
         // Delete from owner
         EraseItemHolder(item, GetItemHolder(item));
 
         // Delete child items
-        while (item->ContIsItems()) {
-            DeleteItem(item->ContGetRawItems().front());
+        while (item->IsInnerItems()) {
+            DeleteItem(item->GetRawInnerItems().front());
         }
     }
 
@@ -417,7 +416,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
 
     RUNTIME_ASSERT(cont);
 
-    auto* item = cont->ContGetItemByPid(pid, stack_id);
+    auto* item = cont->GetInnerItemByPid(pid, stack_id);
     Item* result = nullptr;
 
     if (item != nullptr) {
@@ -481,7 +480,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
         return nullptr;
     }
 
-    auto* item = cr->GetItemByPid(pid);
+    auto* item = cr->GetInvItemByPid(pid);
     Item* result = nullptr;
 
     if (item != nullptr && item->GetStackable()) {
@@ -559,7 +558,7 @@ void ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count)
 {
     STACK_TRACE_ENTRY();
 
-    const auto cur_count = cr->CountItemPid(pid);
+    const auto cur_count = cr->CountInvItemPid(pid);
     if (cur_count > count) {
         SubItemCritter(cr, pid, cur_count - count);
     }
@@ -597,12 +596,12 @@ void ItemManager::UnregisterRadio(Item* radio)
     }
 }
 
-void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 text_msg, uint num_str, vector<uint16>& channels)
+void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, vector<uint16>& channels)
 {
     STACK_TRACE_ENTRY();
 
     vector<Item*> radios;
-    for (auto* item : cr->GetRawItems()) {
+    for (auto* item : cr->GetRawInvItems()) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
             channels.push_back(item->GetRadioChannel());
             radios.push_back(item);
@@ -610,15 +609,16 @@ void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text,
     }
 
     for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, text_msg, num_str, "");
+        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, msg_num, str_num, "");
     }
 }
 
-void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 text_msg, uint num_str, string_view lexems)
+void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
-    // Broadcast
+    NON_CONST_METHOD_HINT();
+
     if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {
         return;
     }
@@ -630,13 +630,9 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
     auto broadcast_map_id = ident_t {};
     auto broadcast_loc_id = ident_t {};
 
-    // Multiple sending controlling
-    // Not thread safe, but this not so important in this case
-    static uint msg_count = 0;
-    msg_count++;
+    const auto cur_send = ++_radioSendCounter;
 
-    // Send
-    for (auto* radio : _radioItems) {
+    for (const auto* radio : _radioItems) {
         if (!radio->IsDestroyed() && radio->GetRadioChannel() == channel && radio->RadioIsRecvActive()) {
             if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->GetRadioBroadcastRecv() != RADIO_BROADCAST_FORCE_ALL) {
                 if (broadcast_type == RADIO_BROADCAST_WORLD) {
@@ -662,7 +658,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         broadcast_loc_id = map->GetLocation()->GetId();
                     }
                 }
-                else if (!(broadcast >= 101 && broadcast <= 200) /*RADIO_BROADCAST_ZONE*/) {
+                else if (broadcast < 101 || broadcast > 200 /*RADIO_BROADCAST_ZONE*/) {
                     continue;
                 }
             }
@@ -672,7 +668,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
 
             if (radio->GetOwnership() == ItemOwnership::CritterInventory) {
                 auto* cr = _engine->CrMngr.GetCritter(radio->GetCritterId());
-                if (cr != nullptr && cr->RadioMessageSended != msg_count) {
+                if (cr != nullptr && cr->RadioMessageSended != cur_send) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL) {
                         if (broadcast == RADIO_BROADCAST_MAP) {
                             if (broadcast_map_id != cr->GetMapId()) {
@@ -700,13 +696,13 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         cr->Send_TextEx(radio->GetId(), text, SAY_RADIO, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        cr->Send_TextMsgLex(radio->GetId(), num_str, SAY_RADIO, text_msg, lexems);
+                        cr->Send_TextMsgLex(radio->GetId(), str_num, SAY_RADIO, msg_num, lexems);
                     }
                     else {
-                        cr->Send_TextMsg(radio->GetId(), num_str, SAY_RADIO, text_msg);
+                        cr->Send_TextMsg(radio->GetId(), str_num, SAY_RADIO, msg_num);
                     }
 
-                    cr->RadioMessageSended = msg_count;
+                    cr->RadioMessageSended = cur_send;
                 }
             }
             else if (radio->GetOwnership() == ItemOwnership::MapHex) {
@@ -725,7 +721,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         }
                         else if (broadcast >= 101 && broadcast <= 200) // RADIO_BROADCAST_ZONE
                         {
-                            auto* loc = map->GetLocation();
+                            const auto* loc = map->GetLocation();
                             if (!_engine->MapMngr.IsIntersectZone(from_wx, from_wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), broadcast - 101)) {
                                 continue;
                             }
@@ -739,10 +735,10 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
                         map->SetText(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, unsafe_text);
                     }
                     else if (!lexems.empty()) {
-                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems);
+                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, msg_num, str_num, lexems);
                     }
                     else {
-                        map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str);
+                        map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, msg_num, str_num);
                     }
                 }
             }

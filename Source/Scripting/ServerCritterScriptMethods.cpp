@@ -505,7 +505,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Critter_CountItem(Critter* self, hstring protoId)
 {
-    return self->CountItemPid(protoId);
+    return self->CountInvItemPid(protoId);
 }
 
 ///# ...
@@ -517,7 +517,7 @@
         throw ScriptException("Proto id arg is zero");
     }
 
-    const auto count = self->CountItemPid(pid);
+    const auto count = self->CountInvItemPid(pid);
     if (count == 0) {
         return;
     }
@@ -573,7 +573,7 @@
         return nullptr;
     }
 
-    return self->GetItem(itemId, false);
+    return self->GetInvItem(itemId, false);
 }
 
 ///# ...
@@ -591,7 +591,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
 {
-    for (auto* item : self->GetRawItems()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -609,7 +609,7 @@
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    for (auto* item : self->GetRawItems()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -623,7 +623,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self)
 {
-    return self->GetRawItems();
+    return self->GetRawInvItems();
 }
 
 ///# ...
@@ -633,9 +633,9 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
 {
     vector<Item*> items;
-    items.reserve(self->GetRawItems().size());
+    items.reserve(self->GetRawInvItems().size());
 
-    for (auto* item : self->GetRawItems()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
@@ -654,9 +654,9 @@
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     vector<Item*> items;
-    items.reserve(self->GetRawItems().size());
+    items.reserve(self->GetRawInvItems().size());
 
-    for (auto* item : self->GetRawItems()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
@@ -672,9 +672,9 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, hstring protoId)
 {
     vector<Item*> items;
-    items.reserve(self->GetRawItems().size());
+    items.reserve(self->GetRawInvItems().size());
 
-    for (auto* item : self->GetRawItems()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetProtoId() == protoId) {
             items.push_back(item);
         }
@@ -693,7 +693,7 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetItem(itemId, self->IsOwnedByPlayer());
+    auto* item = self->GetInvItem(itemId, self->IsOwnedByPlayer());
     if (item == nullptr) {
         throw ScriptException("Item not found");
     }
@@ -711,7 +711,7 @@
         throw ScriptException("Can't move item");
     }
 
-    auto* item_swap = slot != 0 ? self->GetItemSlot(slot) : nullptr;
+    auto* item_swap = slot != 0 ? self->GetInvItemSlot(slot) : nullptr;
     const auto from_slot = item->GetCritterSlot();
 
     item->SetCritterSlot(slot);

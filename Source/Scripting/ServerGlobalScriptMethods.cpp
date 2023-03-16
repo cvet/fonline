@@ -682,16 +682,16 @@
 ///@ ExportMethod
 [[maybe_unused]] tick_t Server_Game_EvaluateFullSecond(FOServer* server, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 {
-    if (year != 0u && year < server->Settings.StartYear) {
+    if (year != 0 && year < server->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
     }
-    if (year != 0u && year > server->Settings.StartYear + 100) {
+    if (year != 0 && year > server->Settings.StartYear + 100) {
         throw ScriptException("Invalid year", year);
     }
-    if (month != 0u && month < 1) {
+    if (month != 0 && month < 1) {
         throw ScriptException("Invalid month", month);
     }
-    if (month != 0u && month > 12) {
+    if (month != 0 && month > 12) {
         throw ScriptException("Invalid month", month);
     }
 
@@ -699,21 +699,21 @@
     auto month_ = month;
     auto day_ = day;
 
-    if (year_ == 0u) {
+    if (year_ == 0) {
         year_ = server->GetYear();
     }
-    if (month_ == 0u) {
+    if (month_ == 0) {
         month_ = server->GetMonth();
     }
 
-    if (day_ != 0u) {
+    if (day_ != 0) {
         const auto month_day = server->GameTime.GameTimeMonthDays(year, month_);
         if (day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
     }
 
-    if (day_ == 0u) {
+    if (day_ == 0) {
         day_ = server->GetDay();
     }
 

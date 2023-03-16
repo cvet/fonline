@@ -33,29 +33,29 @@
 
 #include "EntityProtos.h"
 
-ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator) :
-    ProtoEntity(proto_id, registrator),
+ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+    ProtoEntity(proto_id, registrator, props),
     ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 }
 
-ProtoCritter::ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator) :
-    ProtoEntity(proto_id, registrator),
+ProtoCritter::ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+    ProtoEntity(proto_id, registrator, props),
     CritterProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 }
 
-ProtoMap::ProtoMap(hstring proto_id, const PropertyRegistrator* registrator) :
-    ProtoEntity(proto_id, registrator),
+ProtoMap::ProtoMap(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+    ProtoEntity(proto_id, registrator, props),
     MapProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 }
 
-ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator) :
-    ProtoEntity(proto_id, registrator),
+ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+    ProtoEntity(proto_id, registrator, props),
     LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();

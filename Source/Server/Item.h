@@ -51,26 +51,24 @@ class Item final : public ServerEntity, public EntityWithProto, public ItemPrope
 
 public:
     Item() = delete;
-    Item(FOServer* engine, ident_t id, const ProtoItem* proto);
+    Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
     auto operator=(Item&&) noexcept = delete;
     ~Item() override = default;
 
+    // Todo: make possible create static/dynamic items from any proto (and leave IsStatic flag as prereq for initial creation)
     [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
-    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
-    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
-    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
-    [[nodiscard]] auto ContGetItem(ident_t item_id, bool skip_hidden) -> Item*;
-    [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
-    [[nodiscard]] auto ContGetItemByPid(hstring pid, uint stack_id) -> Item*;
-    [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
-    [[nodiscard]] auto ContIsItems() const -> bool;
-    [[nodiscard]] auto ContGetRawItems() -> vector<Item*>&;
+    [[nodiscard]] auto GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*;
+    [[nodiscard]] auto GetAllInnerItems(bool skip_hidden) -> vector<Item*>;
+    [[nodiscard]] auto GetInnerItemByPid(hstring pid, uint stack_id) -> Item*;
+    [[nodiscard]] auto GetInnerItems(uint stack_id) -> vector<Item*>;
+    [[nodiscard]] auto IsInnerItems() const -> bool;
+    [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
 
     void EvaluateSortValue(const vector<Item*>& items);
 
@@ -85,5 +83,5 @@ public:
     Critter* ViewByCritter {};
 
 private:
-    unique_ptr<vector<Item*>> _childItems {};
+    unique_ptr<vector<Item*>> _innerItems {};
 };

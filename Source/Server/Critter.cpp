@@ -41,9 +41,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Critter::Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+Critter::Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     CritterProperties(GetInitRef()),
     _player {owner}
 {
@@ -373,7 +373,7 @@ void Critter::SetItem(Item* item)
     item->SetCritterId(GetId());
 }
 
-auto Critter::GetItem(ident_t item_id, bool skip_hide) -> Item*
+auto Critter::GetInvItem(ident_t item_id, bool skip_hide) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -394,7 +394,7 @@ auto Critter::GetItem(ident_t item_id, bool skip_hide) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPid(hstring item_pid) -> Item*
+auto Critter::GetInvItemByPid(hstring item_pid) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -408,7 +408,7 @@ auto Critter::GetItemByPid(hstring item_pid) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
+auto Critter::GetInvItemByPidSlot(hstring item_pid, int slot) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -422,7 +422,7 @@ auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemSlot(int slot) -> Item*
+auto Critter::GetInvItemSlot(int slot) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -436,7 +436,7 @@ auto Critter::GetItemSlot(int slot) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemsSlot(int slot) -> vector<Item*>
+auto Critter::GetInvItemsSlot(int slot) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -453,7 +453,7 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     return items;
 }
 
-auto Critter::CountItemPid(hstring pid) const -> uint
+auto Critter::CountInvItemPid(hstring pid) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -466,7 +466,7 @@ auto Critter::CountItemPid(hstring pid) const -> uint
     return res;
 }
 
-auto Critter::CountItems() const -> uint
+auto Critter::CountInvItems() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -668,11 +668,11 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
     }
 }
 
-void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg)
+void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
-    Send_TextMsg(this, num_str, how_say, num_msg);
+    Send_TextMsg(this, str_num, how_say, msg_num);
 
     if (to_cr.empty()) {
         return;
@@ -693,19 +693,19 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         }
 
         if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsg(this, num_str, how_say, num_msg);
+            cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsg(this, num_str, how_say, num_msg);
+            cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
     }
 }
 
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
-    Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
+    Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
 
     if (to_cr.empty()) {
         return;
@@ -726,10 +726,10 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         }
 
         if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
+            cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
+            cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
     }
 }
@@ -1022,47 +1022,47 @@ void Critter::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool
     }
 }
 
-void Critter::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 num_msg)
+void Critter::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsg(from_cr, str_num, how_say, num_msg);
+        _player->Send_TextMsg(from_cr, str_num, how_say, msg_num);
     }
 }
 
-void Critter::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 num_msg)
+void Critter::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsg(from_id, str_num, how_say, num_msg);
+        _player->Send_TextMsg(from_id, str_num, how_say, msg_num);
     }
 }
 
-void Critter::Send_TextMsgLex(const Critter* from_cr, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
+void Critter::Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_cr, num_str, how_say, num_msg, lexems);
+        _player->Send_TextMsgLex(from_cr, str_num, how_say, msg_num, lexems);
     }
 }
 
-void Critter::Send_TextMsgLex(ident_t from_id, uint num_str, uint8 how_say, uint16 num_msg, string_view lexems)
+void Critter::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_id, num_str, how_say, num_msg, lexems);
+        _player->Send_TextMsgLex(from_id, str_num, how_say, msg_num, lexems);
     }
 }
 
@@ -1165,25 +1165,25 @@ void Critter::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, b
     }
 }
 
-void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str)
+void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsg(hx, hy, color, num_msg, num_str);
+        _player->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
     }
 }
 
-void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 num_msg, uint num_str, string_view lexems)
+void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsgLex(hx, hy, color, num_msg, num_str, lexems);
+        _player->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
     }
 }
 

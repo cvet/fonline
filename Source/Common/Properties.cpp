@@ -412,7 +412,7 @@ void Properties::RestoreData(const vector<vector<uint8>>& all_data)
     RestoreData(all_data_ext, all_data_sizes);
 }
 
-auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
+auto Properties::ApplyFromText(const map<string, string>& key_values) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -446,7 +446,7 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
         }
 
         // Parse
-        if (!LoadPropertyFromText(prop, value)) {
+        if (!ApplyPropertyFromText(prop, value)) {
             is_error = true;
         }
     }
@@ -510,7 +510,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
     return key_values;
 }
 
-auto Properties::LoadPropertyFromText(const Property* prop, string_view text) -> bool
+auto Properties::ApplyPropertyFromText(const Property* prop, string_view text) -> bool
 {
     STACK_TRACE_ENTRY();
 

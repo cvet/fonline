@@ -37,9 +37,9 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto) :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)),
-    EntityWithProto(this, proto),
+Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
     LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
