@@ -212,7 +212,7 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
             _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000};
         }
 #else
-        _resetTime = _engine->GameTime.GameplayTime() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
+        _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000};
 #endif
     } break;
     case ACTION_CONNECT:
