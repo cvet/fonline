@@ -374,6 +374,11 @@ static void ScriptString_Clear(string& str)
     str.clear();
 }
 
+static string ScriptString_Replace(const string& str, const string& str_from, const string& str_to)
+{
+    return _str(str).replace(str_from, str_to);
+}
+
 static string ScriptString_SubString(const string& str, int start, int count)
 {
     if (!IndexUTF8ToRaw(str, start)) {
@@ -666,6 +671,8 @@ void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine
     r = engine->RegisterObjectMethod("string", "void rawSet(uint, uint8)", SCRIPT_FUNC_THIS(ScriptString_RawSet), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
 
+    r = engine->RegisterObjectMethod("string", "string replace(const string &in, const string &in) const", SCRIPT_FUNC_THIS(ScriptString_Replace), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("string", "string substr(uint start = 0, int count = -1) const", SCRIPT_FUNC_THIS(ScriptString_SubString), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("string", "int find(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirst), SCRIPT_FUNC_THIS_CONV);
