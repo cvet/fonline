@@ -1891,7 +1891,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     uint disallow_msg_num = 0;
     uint disallow_str_num = 0;
     string lexems;
-    const auto allow = OnPlayerRegistration.Fire(unlogined_player->Connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
+    const auto allow = OnPlayerRegistration.Fire(unlogined_player, name, disallow_msg_num, disallow_str_num, lexems);
     if (!allow) {
         if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
             unlogined_player->Send_TextMsgLex(nullptr, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
@@ -1976,7 +1976,7 @@ void FOServer::Process_Login(Player* unlogined_player)
         uint disallow_msg_num = 0;
         uint disallow_str_num = 0;
         string lexems;
-        if (const auto allow = OnPlayerLogin.Fire(unlogined_player->Connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
+        if (const auto allow = OnPlayerLogin.Fire(unlogined_player, name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
                 unlogined_player->Send_TextMsgLex(nullptr, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
             }
