@@ -394,7 +394,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
 
     _findPathGrid.resize((MAX_FIND_PATH * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
     _hexField.resize(static_cast<size_t>(_width * _height));
-    _hexLight.resize(static_cast<size_t>(_width * _height));
+    _hexLight.resize(static_cast<size_t>(_width * _height * 3));
 
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
@@ -853,7 +853,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
 
     AddItemToField(item);
 
-    if (item->IsStatic() && item->GetIsLight()) {
+    if (!_mapperMode && item->IsStatic() && item->GetIsLight()) {
         _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
     }
 
@@ -1624,13 +1624,6 @@ void MapView::RebuildMapOffset(int ox, int oy)
     _engine->OnRenderMap.Fire();
 }
 
-void MapView::ClearHexLight()
-{
-    STACK_TRACE_ENTRY();
-
-    std::memset(GetLightHex(0, 0), 0, _hexLight.size() * sizeof(_hexLight[0]));
-}
-
 void MapView::PrepareLightToDraw()
 {
     STACK_TRACE_ENTRY();
@@ -1679,7 +1672,7 @@ void MapView::MarkLight(uint16 hx, uint16 hy, uint inten)
     const auto lr = light * _lightProcentR / 100;
     const auto lg = light * _lightProcentG / 100;
     const auto lb = light * _lightProcentB / 100;
-    auto* p = reinterpret_cast<uint8*>(&_hexLight[hy * _width + hx]);
+    auto* p = GetLightHex(hx, hy);
 
     if (lr > *p) {
         *p = static_cast<uint8>(lr);
@@ -1702,7 +1695,7 @@ void MapView::MarkLightEndNeighbor(uint16 hx, uint16 hy, bool north_south, uint 
         const auto lt = field.Corner;
 
         if ((north_south && (lt == CornerType::NorthSouth || lt == CornerType::North || lt == CornerType::West)) || (!north_south && (lt == CornerType::EastWest || lt == CornerType::East)) || lt == CornerType::South) {
-            auto* p = reinterpret_cast<uint8*>(&_hexLight[hy * _width + hx]);
+            auto* p = GetLightHex(hx, hy);
             const auto light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto light_self = static_cast<int>(inten / 2u) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto lr_full = light_full * _lightProcentR / 100;
@@ -2078,10 +2071,11 @@ void MapView::RealRebuildLight()
 
     RUNTIME_ASSERT(!_viewField.empty());
 
+    std::memset(_hexLight.data(), 0, _hexLight.size());
+
     _hasGlobalLights = false;
     _lightPointsCount = 0;
     _lightSoftPoints.clear();
-    ClearHexLight();
     CollectLightSources();
 
     _lightMinHx = _viewField[0].HexX;
@@ -2089,7 +2083,7 @@ void MapView::RealRebuildLight()
     _lightMinHy = _viewField[_wVisible - 1].HexY;
     _lightMaxHy = _viewField[_hVisible * _wVisible - _wVisible].HexY;
 
-    for (auto& ls : _lightSources) {
+    for (const auto& ls : _lightSources) {
         if (static_cast<int>(ls.HexX) >= _lightMinHx - ls.Distance && static_cast<int>(ls.HexX) <= _lightMaxHx + ls.Distance && //
             static_cast<int>(ls.HexY) >= _lightMinHy - ls.Distance && static_cast<int>(ls.HexY) <= _lightMaxHy + ls.Distance) {
             ParseLightTriangleFan(ls);
@@ -2447,10 +2441,12 @@ void MapView::Resize(uint16 width, uint16 height)
     };
 
     safe_resize_square_vec(_hexField);
-    safe_resize_square_vec(_hexLight);
     safe_resize_square_vec(_tilesField);
     safe_resize_square_vec(_roofsField);
     safe_resize_square_vec(_hexTrack);
+
+    _hexLight.resize(static_cast<size_t>(_width * _height));
+    std::memset(_hexLight.data(), 0, _hexLight.size());
 
     // Recache
     for (size_t i = 0; i < static_cast<size_t>(_width * _height); i++) {

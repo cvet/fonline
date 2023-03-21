@@ -164,7 +164,7 @@ public:
     [[nodiscard]] auto GetField(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _width + hx]; }
     [[nodiscard]] auto IsHexToDraw(uint16 hx, uint16 hy) const -> bool { return _hexField[hy * _width + hx].IsView; }
     [[nodiscard]] auto GetHexTrack(uint16 hx, uint16 hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _width + hx]; }
-    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return reinterpret_cast<uint8*>(&_hexLight[hy * _width + hx]); }
+    [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _width * 3 + hx * 3]; }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
@@ -244,9 +244,7 @@ public:
     auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, int extra_range, bool check_transparent) -> CritterHexView*;
     auto GetEntityAtScreenPos(int x, int y, int extra_range, bool check_transparent) -> ClientEntity*;
 
-    void ClearHexLight();
     void RebuildLight() { _requestRebuildLight = _requestRenderLight = true; }
-    auto GetLights() -> vector<LightSource>& { return _lightSources; }
 
     void RebuildTiles();
     void RebuildRoof();
@@ -396,7 +394,7 @@ private:
 
     bool _requestRebuildLight {};
     bool _requestRenderLight {};
-    vector<uint> _hexLight {};
+    vector<uint8> _hexLight {};
 
     int _prevMapDayTime {};
     int _prevGlobalDayTime {};
