@@ -187,35 +187,26 @@ Please follow these instructions to understand how to use this engine by design:
 
 * Common: make entities positioning free in space, without hard-linking to hex
 * Common: add third 'up' coordinate to positioning that allow create multidimensional maps
-* Common: use Common.h as precompiled header?
 * Common: use smart pointers instead raw
 * Common: fix all PVS Studio warnings
 * Common: SHA replace to openssl SHA
-* Common: improve valgrind
 * Common: wrap fonline code to namespace
-* Common: id and hash to 8 byte integer
-* Common: research about std::filesystem
+* Common: ident_t 8 byte integer
+* Common: hash_t 8 byte integer
+* Common: tick_t 8 byte integer
 * Common: c-style arrays to std::array
 * Common: use more noexcept
 * Common: use more constexpr
 * Common: improve BitReader/BitWriter to better network/disk space utilization
 * Common: cast between numeric types via numeric_cast<to>(from)
-* Common: clang debug builds with sanitiziers
-* Common: time ticks to uint64
 * Common: improve custom exceptions for every subsustem
 * Common: temporary entities, disable writing to data base
 * Common: RUNTIME_ASSERT to assert?
 * Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
+* Common: split meanings of int8/char and uint8/byte in code
 * Common: improve named enums
-* Common: split meanings if int8 and char in code
-* Common: move from 32 bit hashes to 64 bit
-* Common: rename uchar to uint8 and use uint8_t as alias
-* Common: rename ushort to uint16 and use uint16_t as alias
-* Common: rename uint to uint32 and use uint32_t as alias
-* Common: rename char to int8 and use int8_t as alias
-* Common: rename short to int16 and use int16_t as alias
-* Common: rename int to int32 and use int32_t as alias
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
+* Common: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
 * Common: pass name to exceptions context args
 * Common: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
 * Common: recursion guard for EventDispatcher
@@ -223,6 +214,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
+* Common: rework built-in string messages
 * Common: optimize copy() to pass placement storage for value
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
@@ -232,14 +224,13 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: process default animations
 * 3dStuff: remove unnecessary allocations from 3d
 * 3dStuff: fix AtlasType referencing in 3dStuff
+* Client: slowly move to stop hex
 * Client: synchronize effects showing (for example shot and kill)
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
 * CritterHexView: fidget animation to scripts
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
-* MapView: optimize, collect separate collection with IsNeedProcess
 * MapView: rework smooth item re-appearing before same item still on map
-* MapView: optimize lighting rebuilding to skip unvisible lights
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
 * SparkExtension: improve particles in 2D
@@ -263,6 +254,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
 * EntityProperties: implement Location InitScript
+* GeometryHelper: remove hex offset limit
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: colorize log texts
@@ -274,6 +266,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
+* PropertiesSerializator: maybe need some optional warning for unknown properties
 * Settings-Include: rework global Quit setting
 * Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
@@ -281,20 +274,18 @@ Please follow these instructions to understand how to use this engine by design:
 * Settings-Include: move resource files control (include/exclude/pack rules) to cmake
 * Settings: improve editable entry for arrays
 * Application: move all these statics to App class fields
-* Application: rework sdl_event.text.text
-* Rendering-Direct3D: pass additional defines to shaders (passed + internal)
+* Rendering-OpenGL: make workarounds for work without ARB_uniform_buffer_object
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
-* Rendering-OpenGL: bind time, random, anim
-* Rendering: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * AngelScriptScripting-Template: GetASObjectInfo add detailed info about object
 * ClientCritterScriptMethods: improve run particles for 2D animations
 * ClientCritterScriptMethods: improve animation callbacks for 2D animations
-* MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
 * AdminPanel: admin panel network to Asio
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
+* EntityManager: load global map critters
+* Item: make possible create static/dynamic items from any proto (and leave IsStatic flag as prereq for initial creation)
 * Location: EntranceScriptBindId
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
@@ -304,21 +295,20 @@ Please follow these instructions to understand how to use this engine by design:
 * Player: restore automaps
 * Player: allow attach many critters to sigle player
 * Server: disable look distance caching
-* Server: validate moving steps programmaticaly
+* Server: validate player moving path
+* Server: validate stop position and place critter in it
 * Server: control max size explicitly, add option to property registration
 * Server: verify property data from client
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: don't remeber but need check (IsPlaneNoTalk)
+* Server: reowrk non-stacked items creation from recursive to loop
 * Server: improve ban system
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ServerDeferredCalls: improve deferred calls
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
+* EffectBaker: enable auto map bindings
 * ImageBaker: swap colors of fo palette once in header
-* Mapper: clone entities
-* Mapper: clone children
-* Mapper: need attention! (3)
-* Mapper: map resizing
 * Mapper: mapper render iface layer
 * ParticleEditor: improve EmitterAttacher (2)
 * ParticleEditor: improve ActionSet

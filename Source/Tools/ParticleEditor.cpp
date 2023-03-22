@@ -113,7 +113,9 @@ struct ParticleEditor::Impl
     bool Changed {};
 };
 
-ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) : EditorAssetView("Particle Editor", editor, asset_path), _impl {std::make_unique<Impl>()}
+ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
+    EditorAssetView("Particle Editor", editor, asset_path),
+    _impl {std::make_unique<Impl>()}
 {
     STACK_TRACE_ENTRY();
 

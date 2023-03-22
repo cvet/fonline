@@ -34,41 +34,21 @@
 #include "ClientEntity.h"
 #include "StringUtils.h"
 
-ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
+ClientEntity::ClientEntity(FOClient* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+    Entity(registrator, props),
+    _engine {engine},
+    _id {id}
 {
     STACK_TRACE_ENTRY();
 
     _name = _str("{}_{}", GetClassName(), _id);
 }
 
-auto ClientEntity::GetId() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return _id;
-}
-
-void ClientEntity::SetId(uint id)
+void ClientEntity::SetId(ident_t id)
 {
     STACK_TRACE_ENTRY();
 
     _id = id;
-}
-
-auto ClientEntity::GetEngine() -> FOClient*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine;
-}
-
-auto ClientEntity::GetName() const -> string_view
-{
-    STACK_TRACE_ENTRY();
-
-    return GetProperties().GetRegistrator()->GetClassName();
 }
 
 void ClientEntity::MarkAsDestroyed()

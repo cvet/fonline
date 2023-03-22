@@ -58,13 +58,15 @@
 #endif
 #endif
 
+time_point steady_clock_since_program_start::start = std::chrono::steady_clock::now();
+
 static std::thread::id MainThreadId;
 
 static bool ExceptionMessageBox = false;
 
 hstring::entry hstring::_zeroEntry;
 
-map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
@@ -82,11 +84,15 @@ static StackTraceData StackTrace;
 
 void SetMainThread() noexcept
 {
+    NO_STACK_TRACE_ENTRY();
+
     MainThreadId = std::this_thread::get_id();
 }
 
 auto IsMainThread() noexcept -> bool
 {
+    NO_STACK_TRACE_ENTRY();
+
     return MainThreadId == std::this_thread::get_id();
 }
 
@@ -108,14 +114,37 @@ void DeleteGlobalData()
     }
 }
 
+static auto InsertCatchedMark(const string& st) -> string
+{
+    NO_STACK_TRACE_ENTRY();
+
+    const auto catched_st = GetStackTrace();
+
+    // Skip 'Stack trace (most recent ...'
+    auto pos = catched_st.find('\n');
+    if (pos == string::npos) {
+        return st;
+    }
+
+    // Find stack traces intercection
+    pos = st.find(catched_st.substr(pos + 1));
+    if (pos == string::npos) {
+        return st;
+    }
+
+    // Insert in end of line
+    pos = st.find('\n', pos);
+    return st.substr(0, pos).append(" <- Catched here").append(pos != string::npos ? st.substr(pos) : "");
+}
+
 void ReportExceptionAndExit(const std::exception& ex)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}\nShutdown!", ex.what(), ex_info->StackTrace(), GetStackTrace());
+        WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
     }
     else {
         WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
@@ -128,7 +157,7 @@ void ReportExceptionAndExit(const std::exception& ex)
     CreateDumpMessage("FatalException", ex.what());
 
     if (ex_info != nullptr) {
-        MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->StackTrace());
+        MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
     }
     else {
         MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
@@ -139,12 +168,12 @@ void ReportExceptionAndExit(const std::exception& ex)
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
     if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nCatched at: {}", ex.what(), ex_info != nullptr ? ex_info->StackTrace() : "", GetStackTrace());
+        WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
     }
     else {
         WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
@@ -156,7 +185,7 @@ void ReportExceptionAndContinue(const std::exception& ex)
 
     if (ExceptionMessageBox) {
         if (ex_info != nullptr) {
-            MessageBox::ShowErrorMessage("Error", ex.what(), ex_info->StackTrace());
+            MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
         }
         else {
             MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
@@ -173,6 +202,8 @@ void ShowExceptionMessageBox(bool enabled)
 
 void PushStackTrace(const SourceLocationData& loc) noexcept
 {
+    NO_STACK_TRACE_ENTRY();
+
 #if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return;
@@ -188,6 +219,8 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
 
 void PopStackTrace() noexcept
 {
+    NO_STACK_TRACE_ENTRY();
+
 #if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return;
@@ -201,6 +234,8 @@ void PopStackTrace() noexcept
 
 auto GetStackTrace() -> string
 {
+    NO_STACK_TRACE_ENTRY();
+
 #if !FO_NO_MANUAL_STACK_TRACE
     if (!IsMainThread()) {
         return "Stack trace disabled for non main thread";
@@ -236,6 +271,8 @@ auto GetStackTrace() -> string
 
 auto GetRealStackTrace() -> string
 {
+    NO_STACK_TRACE_ENTRY();
+
     if (IsRunInDebugger()) {
         return "Stack trace disabled (debugger detected)";
     }
@@ -285,9 +322,9 @@ auto GetRealStackTrace() -> string
 static bool RunInDebugger = false;
 static std::once_flag RunInDebuggerOnce;
 
-auto IsRunInDebugger() -> bool
+auto IsRunInDebugger() noexcept -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     std::call_once(RunInDebuggerOnce, [] { RunInDebugger = ::IsDebuggerPresent() != FALSE; });
@@ -377,25 +414,73 @@ void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
+FrameBalancer::FrameBalancer(bool enabled, int fixed_fps) :
+    _enabled {enabled},
+    _fixedFps {fixed_fps}
+{
+    STACK_TRACE_ENTRY();
+}
+
+void FrameBalancer::StartLoop()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_enabled) {
+        return;
+    }
+
+    _loopStart = Timer::CurTime();
+}
+
+void FrameBalancer::EndLoop()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_enabled) {
+        return;
+    }
+
+    if (_fixedFps > 0) {
+        const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - _loopStart).count()) / 1000000.0;
+        const auto need_elapsed = 1000.0 / static_cast<double>(_fixedFps);
+        if (need_elapsed > elapsed_ms) {
+            const auto sleep = need_elapsed - elapsed_ms + _balance;
+            _balance = std::fmod(sleep, 1.0);
+            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+        }
+    }
+    else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(-_fixedFps));
+    }
+}
+
 // Dummy symbols for web build to avoid linker errors
 #if FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void SDL_UnloadObject(void* handle)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 
 void emscripten_sleep(unsigned int ms)
 {
+    STACK_TRACE_ENTRY();
+
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif

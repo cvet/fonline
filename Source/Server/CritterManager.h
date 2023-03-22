@@ -60,21 +60,18 @@ public:
     auto operator=(CritterManager&&) noexcept = delete;
     ~CritterManager() = default;
 
-    [[nodiscard]] auto GetAllCritters() -> vector<Critter*>;
-    [[nodiscard]] auto GetAllNpc() -> vector<Critter*>;
+    [[nodiscard]] auto GetNonPlayerCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapCritters(ushort wx, ushort wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetCritter(uint cr_id) -> Critter*;
-    [[nodiscard]] auto GetCritter(uint cr_id) const -> const Critter*;
-    [[nodiscard]] auto GetPlayerById(uint id) -> Player*;
+    [[nodiscard]] auto GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritter(ident_t cr_id) -> Critter*;
+    [[nodiscard]] auto GetCritter(ident_t cr_id) const -> const Critter*;
+    [[nodiscard]] auto GetPlayerById(ident_t id) -> Player*;
     [[nodiscard]] auto GetPlayerByName(string_view name) -> Player*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
-    [[nodiscard]] auto PlayersInGame() const -> uint;
-    [[nodiscard]] auto NpcInGame() const -> uint;
-    [[nodiscard]] auto CrittersInGame() const -> uint;
+    [[nodiscard]] auto PlayersInGame() const -> size_t;
+    [[nodiscard]] auto CrittersInGame() const -> size_t;
 
-    void LinkCritters();
-    auto CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
+    auto CreateCritter(hstring proto_id, const Properties* props, Map* map, uint16 hx, uint16 hy, uint8 dir, bool accuracy) -> Critter*;
     void DeleteCritter(Critter* cr);
     void DeleteInventory(Critter* cr);
     auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;

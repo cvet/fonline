@@ -105,6 +105,14 @@
 
 ///# ...
 ///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsOnMap(CritterView* self)
+{
+    return dynamic_cast<CritterHexView*>(self) != nullptr;
+}
+
+///# ...
+///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsMoving(CritterView* self)
 {
@@ -217,7 +225,7 @@
 [[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
     uint result = 0;
-    for (const auto* item : self->GetItems()) {
+    for (const auto* item : self->GetInvItems()) {
         if (!protoId || item->GetProtoId() == protoId) {
             result += item->GetCount();
         }
@@ -230,9 +238,9 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, uint itemId)
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
 {
-    return self->GetItem(itemId);
+    return self->GetInvItem(itemId);
 }
 
 ///# ...
@@ -247,7 +255,7 @@
     }
 
     if (proto_item->GetStackable()) {
-        for (auto* item : self->GetItems()) {
+        for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 return item;
             }
@@ -255,7 +263,7 @@
     }
     else {
         ItemView* another_slot = nullptr;
-        for (auto* item : self->GetItems()) {
+        for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
                 if (item->GetCritterSlot() == 0) {
                     return item;
@@ -275,7 +283,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
 {
-    for (auto* item : self->GetItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -293,7 +301,7 @@
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
-    for (auto* item : self->GetItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -307,7 +315,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
-    return self->GetItems();
+    return self->GetInvItems();
 }
 
 ///# ...
@@ -317,9 +325,9 @@
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
 {
     vector<ItemView*> items;
-    items.reserve(self->GetItems().size());
+    items.reserve(self->GetInvItems().size());
 
-    for (auto* item : self->GetItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
@@ -338,9 +346,9 @@
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
     vector<ItemView*> items;
-    items.reserve(self->GetItems().size());
+    items.reserve(self->GetInvItems().size());
 
-    for (auto* item : self->GetItems()) {
+    for (auto* item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
@@ -496,7 +504,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, ushort hx, ushort hy, int ox, int oy, uint speed)
+[[maybe_unused]] void Client_Critter_MoveToHex(CritterView* self, uint16 hx, uint16 hy, int ox, int oy, uint speed)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -529,7 +537,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_ChangeDir(CritterView* self, uchar dir)
+[[maybe_unused]] void Client_Critter_ChangeDir(CritterView* self, uint8 dir)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -540,7 +548,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_ChangeDirAngle(CritterView* self, short dirAngle)
+[[maybe_unused]] void Client_Critter_ChangeDirAngle(CritterView* self, int16 dirAngle)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -548,4 +556,13 @@
     }
 
     self->GetEngine()->CritterLookTo(hex_cr, dirAngle);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint8 Client_Critter_GetAlpha(CritterView* self)
+{
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    return hex_cr != nullptr ? hex_cr->Alpha : 0xFF;
 }

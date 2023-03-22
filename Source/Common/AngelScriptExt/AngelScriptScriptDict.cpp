@@ -91,8 +91,9 @@ CScriptDict* CScriptDict::Create(asITypeInfo* ot)
     void* mem = userAlloc(sizeof(CScriptDict));
     if (mem == 0) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Out of memory");
+        }
 
         return 0;
     }
@@ -109,8 +110,9 @@ CScriptDict* CScriptDict::Create(asITypeInfo* ot, void* initList)
     void* mem = userAlloc(sizeof(CScriptDict));
     if (mem == 0) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Out of memory");
+        }
 
         return 0;
     }
@@ -130,20 +132,22 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
 {
     // Make sure the subtype can be instanciated with a default factory/constructor,
     // otherwise we won't be able to instanciate the elements.
-    int typeId = ot->GetSubTypeId(subTypeIndex);
-    if (typeId == asTYPEID_VOID)
+    const int typeId = ot->GetSubTypeId(subTypeIndex);
+    if (typeId == asTYPEID_VOID) {
         return false;
+    }
     if ((typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE)) {
-        asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById(typeId);
-        asDWORD flags = subtype->GetFlags();
+        const asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById(typeId);
+        const asDWORD flags = subtype->GetFlags();
         if ((flags & asOBJ_VALUE) && !(flags & asOBJ_POD)) {
             // Verify that there is a default constructor
             bool found = false;
             for (asUINT n = 0; n < subtype->GetBehaviourCount(); n++) {
                 asEBehaviours beh;
-                asIScriptFunction* func = subtype->GetBehaviourByIndex(n, &beh);
-                if (beh != asBEHAVE_CONSTRUCT)
+                const asIScriptFunction* func = subtype->GetBehaviourByIndex(n, &beh);
+                if (beh != asBEHAVE_CONSTRUCT) {
                     continue;
+                }
 
                 if (func->GetParamCount() == 0) {
                     // Found the default constructor
@@ -166,7 +170,7 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
             if (!ot->GetEngine()->GetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE)) {
                 // Verify that there is a default factory
                 for (asUINT n = 0; n < subtype->GetFactoryCount(); n++) {
-                    asIScriptFunction* func = subtype->GetFactoryByIndex(n);
+                    const asIScriptFunction* func = subtype->GetFactoryByIndex(n);
                     if (func->GetParamCount() == 0) {
                         // Found the default factory
                         found = true;
@@ -183,8 +187,9 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
         }
 
         // If the object type is not garbage collected then the dict also doesn't need to be
-        if (!(flags & asOBJ_GC))
+        if (!(flags & asOBJ_GC)) {
             dontGarbageCollect = true;
+        }
     }
     else if (!(typeId & asTYPEID_OBJHANDLE)) {
         // Dicts with primitives cannot form circular references,
@@ -198,8 +203,8 @@ static bool CScriptDict_TemplateCallbackExt(asITypeInfo* ot, int subTypeIndex, b
         // If it is possible to determine that the handle cannot refer to an object type
         // that can potentially form a circular reference with the dict then it is not
         // necessary to make the dict garbage collected.
-        asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById(typeId);
-        asDWORD flags = subtype->GetFlags();
+        const asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById(typeId);
+        const asDWORD flags = subtype->GetFlags();
         if (!(flags & asOBJ_GC)) {
             if ((flags & asOBJ_SCRIPT_OBJECT)) {
                 // Even if a script class is by itself not garbage collected, it is possible
@@ -232,10 +237,12 @@ static bool CScriptDict_TemplateCallback(asITypeInfo* ot, bool& dontGarbageColle
 // Registers the template dict type
 void RegisterScriptDict(asIScriptEngine* engine)
 {
-    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
+    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0) {
         RegisterScriptDict_Native(engine);
-    else
+    }
+    else {
         RegisterScriptDict_Generic(engine);
+    }
 }
 
 static void RegisterScriptDict_Native(asIScriptEngine* engine)
@@ -325,8 +332,9 @@ CScriptDict::CScriptDict(asITypeInfo* ot)
     dictMap = new DictMap(DictMapComparator(keyTypeId));
 
     // Notify the GC of the successful creation
-    if (objType->GetFlags() & asOBJ_GC)
+    if (objType->GetFlags() & asOBJ_GC) {
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
+    }
 }
 
 CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
@@ -339,24 +347,28 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     valueTypeId = objType->GetSubTypeId(1);
     dictMap = new DictMap(DictMapComparator(keyTypeId));
 
-    asIScriptEngine* engine = ot->GetEngine();
-    asBYTE* buffer = (asBYTE*)listBuffer;
+    const asIScriptEngine* engine = ot->GetEngine();
+    asBYTE* buffer = static_cast<asBYTE*>(listBuffer);
     asUINT length = *(asUINT*)buffer;
     buffer += sizeof(asUINT);
 
     while (length--) {
-        if (asPWORD(buffer) & 0x3)
+        if (asPWORD(buffer) & 0x3) {
             buffer += 4 - (asPWORD(buffer) & 0x3);
+        }
 
         void* key = buffer;
         if (keyTypeId & asTYPEID_MASK_OBJECT) {
-            asITypeInfo* ot = engine->GetTypeInfoById(keyTypeId);
-            if (ot->GetFlags() & asOBJ_VALUE)
+            const asITypeInfo* ot = engine->GetTypeInfoById(keyTypeId);
+            if (ot->GetFlags() & asOBJ_VALUE) {
                 buffer += ot->GetSize();
-            else
+            }
+            else {
                 buffer += sizeof(void*);
-            if (ot->GetFlags() & asOBJ_REF && !(keyTypeId & asTYPEID_OBJHANDLE))
-                key = *(void**)key;
+            }
+            if (ot->GetFlags() & asOBJ_REF && !(keyTypeId & asTYPEID_OBJHANDLE)) {
+                key = *static_cast<void**>(key);
+            }
         }
         else if (keyTypeId == asTYPEID_VOID) {
             buffer += sizeof(void*);
@@ -367,13 +379,16 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
 
         void* value = buffer;
         if (valueTypeId & asTYPEID_MASK_OBJECT) {
-            asITypeInfo* ot = engine->GetTypeInfoById(valueTypeId);
-            if (ot->GetFlags() & asOBJ_VALUE)
+            const asITypeInfo* ot = engine->GetTypeInfoById(valueTypeId);
+            if (ot->GetFlags() & asOBJ_VALUE) {
                 buffer += ot->GetSize();
-            else
+            }
+            else {
                 buffer += sizeof(void*);
-            if (ot->GetFlags() & asOBJ_REF && !(valueTypeId & asTYPEID_OBJHANDLE))
-                value = *(void**)value;
+            }
+            if (ot->GetFlags() & asOBJ_REF && !(valueTypeId & asTYPEID_OBJHANDLE)) {
+                value = *static_cast<void**>(value);
+            }
         }
         else if (valueTypeId == asTYPEID_VOID) {
             buffer += sizeof(void*);
@@ -386,8 +401,9 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     }
 
     // Notify the GC of the successful creation
-    if (objType->GetFlags() & asOBJ_GC)
+    if (objType->GetFlags() & asOBJ_GC) {
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
+    }
 }
 
 CScriptDict::CScriptDict(const CScriptDict& other)
@@ -400,12 +416,14 @@ CScriptDict::CScriptDict(const CScriptDict& other)
     valueTypeId = objType->GetSubTypeId(1);
     dictMap = new DictMap(DictMapComparator(keyTypeId));
 
-    DictMap* dict = (DictMap*)other.dictMap;
-    for (auto it = dict->begin(); it != dict->end(); ++it)
+    DictMap* dict = static_cast<DictMap*>(other.dictMap);
+    for (auto it = dict->begin(); it != dict->end(); ++it) {
         Set(it->first, it->second);
+    }
 
-    if (objType->GetFlags() & asOBJ_GC)
+    if (objType->GetFlags() & asOBJ_GC) {
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject(this, objType);
+    }
 }
 
 CScriptDict& CScriptDict::operator=(const CScriptDict& other)
@@ -414,9 +432,10 @@ CScriptDict& CScriptDict::operator=(const CScriptDict& other)
     if (&other != this && other.objType == objType) {
         Clear();
 
-        DictMap* dict = (DictMap*)other.dictMap;
-        for (auto it = dict->begin(); it != dict->end(); ++it)
+        DictMap* dict = static_cast<DictMap*>(other.dictMap);
+        for (auto it = dict->begin(); it != dict->end(); ++it) {
             Set(it->first, it->second);
+        }
     }
 
     return *this;
@@ -425,31 +444,32 @@ CScriptDict& CScriptDict::operator=(const CScriptDict& other)
 CScriptDict::~CScriptDict()
 {
     Clear();
-    delete (DictMap*)dictMap;
+    delete static_cast<DictMap*>(dictMap);
 
-    if (objType)
+    if (objType) {
         objType->Release();
+    }
 }
 
 asUINT CScriptDict::GetSize() const
 {
-    DictMap* dict = (DictMap*)dictMap;
+    const DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    return (asUINT)dict->size();
+    return static_cast<asUINT>(dict->size());
 }
 
 bool CScriptDict::IsEmpty() const
 {
-    DictMap* dict = (DictMap*)dictMap;
+    const DictMap* dict = static_cast<DictMap*>(dictMap);
 
     return dict->empty();
 }
 
 void CScriptDict::Set(void* key, void* value)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    auto it = dict->find(key);
+    const auto it = dict->find(key);
     if (it == dict->end()) {
         key = CopyObject(objType, 0, key);
         value = CopyObject(objType, 1, value);
@@ -464,9 +484,9 @@ void CScriptDict::Set(void* key, void* value)
 
 void CScriptDict::SetIfNotExist(void* key, void* value)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    auto it = dict->find(key);
+    const auto it = dict->find(key);
     if (it == dict->end()) {
         key = CopyObject(objType, 0, key);
         value = CopyObject(objType, 1, value);
@@ -476,9 +496,9 @@ void CScriptDict::SetIfNotExist(void* key, void* value)
 
 bool CScriptDict::Remove(void* key)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    auto it = dict->find(key);
+    const auto it = dict->find(key);
     if (it != dict->end()) {
         DestroyObject(objType, 0, it->first);
         DestroyObject(objType, 1, it->second);
@@ -491,7 +511,7 @@ bool CScriptDict::Remove(void* key)
 
 asUINT CScriptDict::RemoveValues(void* value)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
     asUINT result = 0;
 
     for (auto it = dict->begin(); it != dict->end();) {
@@ -511,7 +531,7 @@ asUINT CScriptDict::RemoveValues(void* value)
 
 void CScriptDict::Clear()
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
     for (auto it = dict->begin(), end = dict->end(); it != end; ++it) {
         DestroyObject(objType, 0, it->first);
@@ -522,13 +542,14 @@ void CScriptDict::Clear()
 
 void* CScriptDict::Get(void* key)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    auto it = dict->find(key);
+    const auto it = dict->find(key);
     if (it == dict->end()) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Key not found");
+        }
         return NULL;
     }
 
@@ -537,77 +558,85 @@ void* CScriptDict::Get(void* key)
 
 void* CScriptDict::GetDefault(void* key, void* defaultValue)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    auto it = dict->find(key);
-    if (it == dict->end())
+    const auto it = dict->find(key);
+    if (it == dict->end()) {
         return defaultValue;
+    }
 
     return it->second;
 }
 
 void* CScriptDict::GetKey(asUINT index)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= (asUINT)dict->size()) {
+    if (index >= static_cast<asUINT>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Index out of bounds");
+        }
         return NULL;
     }
 
     auto it = dict->begin();
-    while (index--)
+    while (index--) {
         it++;
+    }
 
     return it->first;
 }
 
 void* CScriptDict::GetValue(asUINT index)
 {
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    if (index >= (asUINT)dict->size()) {
+    if (index >= static_cast<asUINT>(dict->size())) {
         asIScriptContext* ctx = asGetActiveContext();
-        if (ctx)
+        if (ctx) {
             ctx->SetException("Index out of bounds");
+        }
         return NULL;
     }
 
     auto it = dict->begin();
-    while (index--)
+    while (index--) {
         it++;
+    }
 
     return it->second;
 }
 
 bool CScriptDict::Exists(void* key) const
 {
-    DictMap* dict = (DictMap*)dictMap;
+    const DictMap* dict = static_cast<DictMap*>(dictMap);
 
     return dict->count(key) > 0;
 }
 
 bool CScriptDict::operator==(const CScriptDict& other) const
 {
-    if (objType != other.objType)
+    if (objType != other.objType) {
         return false;
+    }
 
-    if (GetSize() != other.GetSize())
+    if (GetSize() != other.GetSize()) {
         return false;
+    }
 
-    DictMap* dict1 = (DictMap*)dictMap;
-    DictMap* dict2 = (DictMap*)other.dictMap;
+    DictMap* dict1 = static_cast<DictMap*>(dictMap);
+    DictMap* dict2 = static_cast<DictMap*>(other.dictMap);
 
     auto it1 = dict1->begin();
     auto it2 = dict2->begin();
-    auto end1 = dict1->end();
-    auto end2 = dict2->end();
+    const auto end1 = dict1->end();
+    const auto end2 = dict2->end();
 
     while (it1 != end1 && it2 != end2) {
-        if (!Equals(keyTypeId, (*it1).first, (*it2).first) || !Equals(valueTypeId, (*it1).second, (*it2).second))
+        if (!Equals(keyTypeId, (*it1).first, (*it2).first) || !Equals(valueTypeId, (*it1).second, (*it2).second)) {
             return false;
+        }
         it1++;
         it2++;
     }
@@ -632,17 +661,19 @@ void CScriptDict::EnumReferences(asIScriptEngine* engine)
     //       protected so that it doesn't get lost during the iteration if the array is modified
 
     // If the array is holding handles, then we need to notify the GC of them
-    DictMap* dict = (DictMap*)dictMap;
+    DictMap* dict = static_cast<DictMap*>(dictMap);
 
-    bool keysHandle = (keyTypeId & asTYPEID_MASK_OBJECT) != 0;
-    bool valuesHandle = (valueTypeId & asTYPEID_MASK_OBJECT) != 0;
+    const bool keysHandle = (keyTypeId & asTYPEID_MASK_OBJECT) != 0;
+    const bool valuesHandle = (valueTypeId & asTYPEID_MASK_OBJECT) != 0;
 
     if (keysHandle || valuesHandle) {
         for (auto it = dict->begin(), end = dict->end(); it != end; ++it) {
-            if (keysHandle)
+            if (keysHandle) {
                 engine->GCEnumCallback(it->first);
-            if (valuesHandle)
+            }
+            if (valuesHandle) {
                 engine->GCEnumCallback(it->second);
+            }
         }
     }
 }
@@ -693,59 +724,69 @@ bool CScriptDict::GetFlag()
 
 void CScriptDict::GetMap(std::vector<std::pair<void*, void*>>& data) const
 {
-    DictMap* dict = (DictMap*)dictMap;
+    const DictMap* dict = static_cast<DictMap*>(dictMap);
     data.reserve(data.size() + dict->size());
-    for (const auto& kv : *dict)
+    for (const auto& kv : *dict) {
         data.push_back(std::pair<void*, void*>(kv.first, kv.second));
+    }
 }
 
 // internal
 static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 {
-    int subTypeId = objType->GetSubTypeId(subTypeIndex);
-    asITypeInfo* subType = objType->GetSubType(subTypeIndex);
+    const int subTypeId = objType->GetSubTypeId(subTypeIndex);
+    const asITypeInfo* subType = objType->GetSubType(subTypeIndex);
     asIScriptEngine* engine = objType->GetEngine();
 
-    if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE))
+    if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE)) {
         return engine->CreateScriptObjectCopy(value, subType);
+    }
 
     int elementSize;
-    if (subTypeId & asTYPEID_MASK_OBJECT)
+    if (subTypeId & asTYPEID_MASK_OBJECT) {
         elementSize = sizeof(asPWORD);
-    else
+    }
+    else {
         elementSize = engine->GetSizeOfPrimitiveType(subTypeId);
+    }
 
     void* ptr = userAlloc(elementSize);
     memset(ptr, 0, elementSize);
 
     if (subTypeId & asTYPEID_OBJHANDLE) {
-        *(void**)ptr = *(void**)value;
-        if (*(void**)value)
-            subType->GetEngine()->AddRefScriptObject(*(void**)value, subType);
+        *static_cast<void**>(ptr) = *static_cast<void**>(value);
+        if (*static_cast<void**>(value)) {
+            subType->GetEngine()->AddRefScriptObject(*static_cast<void**>(value), subType);
+        }
     }
-    else if (subTypeId == asTYPEID_BOOL || subTypeId == asTYPEID_INT8 || subTypeId == asTYPEID_UINT8)
-        *(char*)ptr = *(char*)value;
-    else if (subTypeId == asTYPEID_INT16 || subTypeId == asTYPEID_UINT16)
-        *(short*)ptr = *(short*)value;
-    else if (subTypeId == asTYPEID_INT32 || subTypeId == asTYPEID_UINT32 || subTypeId == asTYPEID_FLOAT || subTypeId > asTYPEID_DOUBLE) // enums have a type id larger than doubles
-        *(int*)ptr = *(int*)value;
-    else if (subTypeId == asTYPEID_INT64 || subTypeId == asTYPEID_UINT64 || subTypeId == asTYPEID_DOUBLE)
-        *(double*)ptr = *(double*)value;
+    else if (subTypeId == asTYPEID_BOOL || subTypeId == asTYPEID_INT8 || subTypeId == asTYPEID_UINT8) {
+        *static_cast<char*>(ptr) = *static_cast<char*>(value);
+    }
+    else if (subTypeId == asTYPEID_INT16 || subTypeId == asTYPEID_UINT16) {
+        *static_cast<int16*>(ptr) = *static_cast<int16*>(value);
+    }
+    else if (subTypeId == asTYPEID_INT32 || subTypeId == asTYPEID_UINT32 || subTypeId == asTYPEID_FLOAT || subTypeId > asTYPEID_DOUBLE) { // enums have a type id larger than doubles
+        *static_cast<int*>(ptr) = *static_cast<int*>(value);
+    }
+    else if (subTypeId == asTYPEID_INT64 || subTypeId == asTYPEID_UINT64 || subTypeId == asTYPEID_DOUBLE) {
+        *static_cast<double*>(ptr) = *static_cast<double*>(value);
+    }
 
     return ptr;
 }
 
 static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 {
-    int subTypeId = objType->GetSubTypeId(subTypeIndex);
+    const int subTypeId = objType->GetSubTypeId(subTypeIndex);
     asIScriptEngine* engine = objType->GetEngine();
 
     if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE)) {
         engine->ReleaseScriptObject(value, engine->GetTypeInfoById(subTypeId));
     }
     else {
-        if (subTypeId & asTYPEID_OBJHANDLE && *(void**)value)
-            engine->ReleaseScriptObject(*(void**)value, engine->GetTypeInfoById(subTypeId));
+        if (subTypeId & asTYPEID_OBJHANDLE && *static_cast<void**>(value)) {
+            engine->ReleaseScriptObject(*static_cast<void**>(value), engine->GetTypeInfoById(subTypeId));
+        }
 
         userFree(value);
     }
@@ -767,13 +808,13 @@ static bool Less(int typeId, const void* a, const void* b)
     InitTypeId();
 
     if (typeId == stringTypeId) {
-        const std::string& aStr = *(const std::string*)a;
-        const std::string& bStr = *(const std::string*)b;
+        const std::string& aStr = *static_cast<const std::string*>(a);
+        const std::string& bStr = *static_cast<const std::string*>(b);
         return aStr < bStr;
     }
     if (typeId == hstringTypeId) {
-        const hstring& aStr = *(const hstring*)a;
-        const hstring& bStr = *(const hstring*)b;
+        const hstring& aStr = *static_cast<const hstring*>(a);
+        const hstring& bStr = *static_cast<const hstring*>(b);
         return aStr < bStr;
     }
 
@@ -784,23 +825,27 @@ static bool Less(int typeId, const void* a, const void* b)
         case asTYPEID_BOOL:
             return COMPARE(bool);
         case asTYPEID_INT8:
-            return COMPARE(signed char);
+            return COMPARE(int8);
         case asTYPEID_UINT8:
-            return COMPARE(unsigned char);
+            return COMPARE(uint8);
         case asTYPEID_INT16:
-            return COMPARE(signed short);
+            return COMPARE(int16);
         case asTYPEID_UINT16:
-            return COMPARE(unsigned short);
+            return COMPARE(uint16);
         case asTYPEID_INT32:
-            return COMPARE(signed int);
+            return COMPARE(int);
         case asTYPEID_UINT32:
-            return COMPARE(unsigned int);
+            return COMPARE(uint);
+        case asTYPEID_INT64:
+            return COMPARE(int64);
+        case asTYPEID_UINT64:
+            return COMPARE(uint64);
         case asTYPEID_FLOAT:
             return COMPARE(float);
         case asTYPEID_DOUBLE:
             return COMPARE(double);
         default:
-            return COMPARE(signed int); // All enums fall in this case
+            return COMPARE(int); // All enums fall in this case
 #undef COMPARE
         }
     }
@@ -817,13 +862,13 @@ static bool Equals(int typeId, const void* a, const void* b)
     InitTypeId();
 
     if (typeId == stringTypeId) {
-        const std::string& aStr = *(const std::string*)a;
-        const std::string& bStr = *(const std::string*)b;
+        const std::string& aStr = *static_cast<const std::string*>(a);
+        const std::string& bStr = *static_cast<const std::string*>(b);
         return aStr == bStr;
     }
     if (typeId == hstringTypeId) {
-        const hstring& aStr = *(const hstring*)a;
-        const hstring& bStr = *(const hstring*)b;
+        const hstring& aStr = *static_cast<const hstring*>(a);
+        const hstring& bStr = *static_cast<const hstring*>(b);
         return aStr == bStr;
     }
 
@@ -834,23 +879,23 @@ static bool Equals(int typeId, const void* a, const void* b)
         case asTYPEID_BOOL:
             return COMPARE(bool);
         case asTYPEID_INT8:
-            return COMPARE(signed char);
+            return COMPARE(int8);
         case asTYPEID_UINT8:
-            return COMPARE(unsigned char);
+            return COMPARE(uint8);
         case asTYPEID_INT16:
-            return COMPARE(signed short);
+            return COMPARE(int16);
         case asTYPEID_UINT16:
-            return COMPARE(unsigned short);
+            return COMPARE(uint16);
         case asTYPEID_INT32:
-            return COMPARE(signed int);
+            return COMPARE(int);
         case asTYPEID_UINT32:
-            return COMPARE(unsigned int);
+            return COMPARE(uint);
         case asTYPEID_FLOAT:
             return COMPARE(float);
         case asTYPEID_DOUBLE:
             return COMPARE(double);
         default:
-            return COMPARE(signed int); // All enums fall here
+            return COMPARE(int); // All enums fall here
 #undef COMPARE
         }
     }

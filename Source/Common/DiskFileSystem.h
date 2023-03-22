@@ -62,7 +62,7 @@ public:
     auto Read(void* buf, size_t len) -> bool;
     auto Write(const void* buf, size_t len) -> bool;
     auto Write(string_view str) -> bool;
-    auto Write(const_span<uchar> data) -> bool;
+    auto Write(const_span<uint8> data) -> bool;
     auto SetPos(int offset, DiskFileSeek origin) -> bool;
 
 private:

@@ -34,59 +34,31 @@
 #include "Timer.h"
 #include "WinApi-Include.h"
 
-#if FO_WINDOWS
-#include <mmsystem.h>
-#else
+#if !FO_WINDOWS
 #include <sys/time.h>
 #endif
 
-struct TimerData
-{
-    TimerData()
-    {
-#if FO_WINDOWS
-        LARGE_INTEGER qpc_frequency;
-        ::QueryPerformanceFrequency(&qpc_frequency);
-        QpcFrequency = static_cast<double>(qpc_frequency.QuadPart);
-        LARGE_INTEGER qpc_value;
-        ::QueryPerformanceCounter(&qpc_value);
-        InitialRealtimeTick = static_cast<double>(qpc_value.QuadPart) / QpcFrequency * 1000.0;
-
-#elif FO_WEB
-        InitialRealtimeTick = ::emscripten_get_now();
-
-#else
-        struct timeval tv;
-        ::gettimeofday(&tv, nullptr);
-        InitialRealtimeTick = static_cast<double>(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0;
-#endif
-    }
-
-    double InitialRealtimeTick {};
-#if FO_WINDOWS
-    double QpcFrequency {};
-#endif
-};
-GLOBAL_DATA(TimerData, Data);
-
-GameTimer::GameTimer(TimerSettings& settings) : _settings {settings}
+GameTimer::GameTimer(TimerSettings& settings) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 
-    Reset(static_cast<ushort>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
+    _frameTime = time_point::clock::now();
+
+    Reset(static_cast<uint16>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
     FrameAdvance();
 }
 
-void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier)
+void GameTimer::Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier)
 {
     STACK_TRACE_ENTRY();
 
 #if FO_SINGLEPLAYER
-    _isPaused = false;
+    _isGameplayPaused = false;
 #endif
 
     _gameTimeMultiplier = multiplier;
-    _gameTickBase = _gameTickFast = _timerTick;
+    _gameplayTimeBase = _gameplayTimeFrame = _frameTime;
 
     const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     _yearStartFullTime = Timer::DateTimeToFullTime(dt);
@@ -98,72 +70,86 @@ auto GameTimer::FrameAdvance() -> bool
 {
     STACK_TRACE_ENTRY();
 
-    _timerTick = iround(Timer::RealtimeTick());
-    RUNTIME_ASSERT(_timerTick != 0);
+    const auto now_time = time_point::clock::now();
+
+    if (IsRunInDebugger() && _settings.DebuggingDeltaTimeCap != 0) {
+        const auto dt = time_duration_to_ms<uint>(now_time - _frameTime - _debuggingOffset);
+
+        if (dt > _settings.DebuggingDeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds {dt - _settings.DebuggingDeltaTimeCap};
+        }
+
+        _frameTime = now_time - _debuggingOffset;
+    }
+    else {
+        _frameTime = now_time;
+    }
 
 #if FO_SINGLEPLAYER
-    if (_isPaused) {
+    if (_isGameplayPaused) {
         return false;
     }
 #endif
 
-    const auto dt = GameTick() - _gameTickBase;
-    const auto fs = _fullSecondBase + (dt / 1000 * _gameTimeMultiplier + dt % 1000 * _gameTimeMultiplier / 1000);
+    const auto whole_dt = time_duration_to_ms<tick_t::underlying_type>(GameplayTime() - _gameplayTimeBase);
+    const auto full_seconds = tick_t {static_cast<tick_t::underlying_type>(_fullSecondBase.underlying_value() + (whole_dt / 1000 * _gameTimeMultiplier + whole_dt % 1000 * _gameTimeMultiplier / 1000))};
 
-    if (_fullSecond != fs) {
-        _fullSecond = fs;
+    if (_fullSecond != full_seconds) {
+        _fullSecond = full_seconds;
         return true;
     }
 
     return false;
 }
 
-auto GameTimer::FrameTick() const -> uint
+auto GameTimer::FrameTime() const -> time_point
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_timerTick != 0);
-    return _timerTick;
+    return _frameTime;
 }
 
-auto GameTimer::GameTick() const -> uint
+auto GameTimer::GameplayTime() const -> time_point
 {
     STACK_TRACE_ENTRY();
 
 #if FO_SINGLEPLAYER
-    if (_isPaused) {
-        return _gameTickBase;
+    if (_isGameplayPaused) {
+        return _gameplayTimeBase;
     }
 #endif
-    return _gameTickBase + (FrameTick() - _gameTickFast);
+
+    return _gameplayTimeBase + (FrameTime() - _gameplayTimeFrame);
 }
 
-auto GameTimer::GetFullSecond() const -> uint
+auto GameTimer::GetFullSecond() const -> tick_t
 {
     STACK_TRACE_ENTRY();
 
     return _fullSecond;
 }
 
-auto GameTimer::EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second) const -> uint
+auto GameTimer::EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const -> tick_t
 {
     STACK_TRACE_ENTRY();
 
     const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     auto ft = Timer::DateTimeToFullTime(dt);
     ft -= _yearStartFullTime;
-    return static_cast<uint>(ft / 10000000ULL);
+
+    return tick_t {static_cast<tick_t::underlying_type>(ft / 10000000ULL)};
 }
 
-auto GameTimer::GetGameTime(uint full_second) const -> DateTimeStamp
+auto GameTimer::EvaluateGameTime(tick_t full_second) const -> DateTimeStamp
 {
     STACK_TRACE_ENTRY();
 
-    const auto ft = _yearStartFullTime + static_cast<uint64>(full_second) * 10000000ULL;
+    const auto ft = _yearStartFullTime + static_cast<uint64>(full_second.underlying_value()) * 10000000ULL;
+
     return Timer::FullTimeToDateTime(ft);
 }
 
-auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
+auto GameTimer::GameTimeMonthDays(uint16 year, uint16 month) const -> uint16
 {
     STACK_TRACE_ENTRY();
 
@@ -187,44 +173,32 @@ auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
 }
 
 #if FO_SINGLEPLAYER
-void GameTimer::SetGamePause(bool pause)
+void GameTimer::SetGameplayPause(bool pause)
 {
     STACK_TRACE_ENTRY();
 
-    if (_isPaused == pause) {
+    if (_isGameplayPaused == pause) {
         return;
     }
 
-    _gameTickBase = GameTick();
-    _gameTickFast = FrameTick();
-    _isPaused = pause;
+    _gameplayTimeBase = GameplayTime();
+    _gameplayTimeFrame = _frameTime;
+    _isGameplayPaused = pause;
 }
 
-auto GameTimer::IsGamePaused() const -> bool
+auto GameTimer::IsGameplayPaused() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _isPaused;
+    return _isGameplayPaused;
 }
 #endif
 
-auto Timer::RealtimeTick() -> double
+auto Timer::CurTime() -> time_point
 {
     STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    LARGE_INTEGER qpc_value;
-    ::QueryPerformanceCounter(&qpc_value);
-    return static_cast<double>(qpc_value.QuadPart) / Data->QpcFrequency * 1000.0 - Data->InitialRealtimeTick;
-
-#elif FO_WEB
-    return ::emscripten_get_now() - Data->InitialRealtimeTick;
-
-#else
-    struct timeval tv;
-    ::gettimeofday(&tv, nullptr);
-    return static_cast<double>(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0 - Data->InitialRealtimeTick;
-#endif
+    return time_point::clock::now();
 }
 
 auto Timer::GetCurrentDateTime() -> DateTimeStamp
@@ -235,7 +209,7 @@ auto Timer::GetCurrentDateTime() -> DateTimeStamp
 
 #if FO_WINDOWS
     SYSTEMTIME st;
-    GetLocalTime(&st);
+    ::GetLocalTime(&st);
 
     dt.Year = st.wYear;
     dt.Month = st.wMonth;
@@ -247,11 +221,17 @@ auto Timer::GetCurrentDateTime() -> DateTimeStamp
     dt.Milliseconds = st.wMilliseconds;
 
 #else
-    time_t long_time;
-    time(&long_time);
+    time_t t;
+    std::time(&t);
 
-    struct tm* lt = localtime(&long_time);
-    dt.Year = lt->tm_year + 1900, dt.Month = lt->tm_mon + 1, dt.DayOfWeek = lt->tm_wday, dt.Day = lt->tm_mday, dt.Hour = lt->tm_hour, dt.Minute = lt->tm_min, dt.Second = lt->tm_sec;
+    const auto* lt = std::localtime(&t);
+    dt.Year = static_cast<uint16>(lt->tm_year + 1900);
+    dt.Month = static_cast<uint16>(lt->tm_mon + 1);
+    dt.DayOfWeek = static_cast<uint16>(lt->tm_wday);
+    dt.Day = static_cast<uint16>(lt->tm_mday);
+    dt.Hour = static_cast<uint16>(lt->tm_hour);
+    dt.Minute = static_cast<uint16>(lt->tm_min);
+    dt.Second = static_cast<uint16>(lt->tm_sec);
 
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -303,13 +283,13 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
 
     // Base
     ft /= 10000ULL;
-    dt.Milliseconds = static_cast<ushort>(ft % 1000ULL);
+    dt.Milliseconds = static_cast<uint16>(ft % 1000ULL);
     ft /= 1000ULL;
-    dt.Second = static_cast<ushort>(ft % 60ULL);
+    dt.Second = static_cast<uint16>(ft % 60ULL);
     ft /= 60ULL;
-    dt.Minute = static_cast<ushort>(ft % 60ULL);
+    dt.Minute = static_cast<uint16>(ft % 60ULL);
     ft /= 60ULL;
-    dt.Hour = static_cast<ushort>(ft % 24ULL);
+    dt.Hour = static_cast<uint16>(ft % 24ULL);
     ft /= 24ULL;
 
     // Year
@@ -328,7 +308,7 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
         year--;
     }
 
-    dt.Year = static_cast<ushort>(year + 1601);
+    dt.Year = static_cast<uint16>(year + 1601);
     ft = days;
 
     // Month
@@ -339,13 +319,13 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
     for (auto i = 0; i < 12; i++) {
         if (static_cast<uint>(ft) >= count[i] && static_cast<uint>(ft) < count[i + 1]) {
             ft -= count[i];
-            dt.Month = static_cast<ushort>(i) + 1;
+            dt.Month = static_cast<uint16>(i) + 1;
             break;
         }
     }
 
     // Day
-    dt.Day = static_cast<ushort>(ft) + 1;
+    dt.Day = static_cast<uint16>(ft) + 1;
 
     // Day of week
     const auto a = (14 - dt.Month) / 12;

@@ -47,7 +47,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, ushort hx, ushort hy)
+[[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, uint16 hx, uint16 hy)
 {
     if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -58,7 +58,7 @@
         throw ScriptException("Invalid item prototype");
     }
 
-    return mapper->AddItem(pid, hx, hy, nullptr);
+    return mapper->CreateItem(pid, hx, hy, nullptr);
 }
 
 ///# ...
@@ -67,7 +67,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, ushort hx, ushort hy)
+[[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, uint16 hx, uint16 hy)
 {
     if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -78,7 +78,7 @@
         throw ScriptException("Invalid critter prototype");
     }
 
-    return mapper->AddCritter(pid, hx, hy);
+    return mapper->CreateCritter(pid, hx, hy);
 }
 
 ///# ...
@@ -86,7 +86,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_GetItem(FOMapper* mapper, ushort hx, ushort hy)
+[[maybe_unused]] ItemView* Mapper_Game_GetItem(FOMapper* mapper, uint16 hx, uint16 hy)
 {
     return mapper->CurMap->GetItem(hx, hy, hstring());
 }
@@ -96,7 +96,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, uint16 hx, uint16 hy)
 {
     auto&& hex_items = mapper->CurMap->GetItems(hx, hy);
 
@@ -116,7 +116,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
+[[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, uint16 hx, uint16 hy, CritterFindType findType)
 {
     const auto critters = mapper->CurMap->GetCritters(hx, hy, findType);
     return !critters.empty() ? critters.front() : nullptr;
@@ -128,9 +128,9 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, uint16 hx, uint16 hy, CritterFindType findType)
 {
-    return vec_downcast<CritterView*>(mapper->CurMap->GetCritters(hx, hy, findType));
+    return vec_cast<CritterView*>(mapper->CurMap->GetCritters(hx, hy, findType));
 }
 
 ///# ...
@@ -138,7 +138,7 @@
 ///# param hx ...
 ///# param hy ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, ushort hx, ushort hy)
+[[maybe_unused]] void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, uint16 hx, uint16 hy)
 {
     auto hx_ = hx;
     auto hy_ = hy;
@@ -238,7 +238,7 @@
 ///# param roof ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Game_GetTilesCount(FOMapper* mapper, ushort hx, ushort hy, bool roof)
+[[maybe_unused]] uint Mapper_Game_GetTilesCount(FOMapper* mapper, uint16 hx, uint16 hy, bool roof)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -260,7 +260,7 @@
 ///# param roof ...
 ///# param layer ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_DeleteTile(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] void Mapper_Game_DeleteTile(FOMapper* mapper, uint16 hx, uint16 hy, bool roof, int layer)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -312,7 +312,7 @@
 ///# param roof ...
 ///# param picHash ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hstring picHash)
+[[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, uint16 hx, uint16 hy, int ox, int oy, int layer, bool roof, hstring picHash)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -331,7 +331,7 @@
     auto layer_ = layer;
     layer_ = std::clamp(layer_, 0, 4);
 
-    mapper->CurMap->SetTile(picHash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
+    mapper->CurMap->SetTile(picHash, hx, hy, static_cast<int16>(ox), static_cast<int16>(oy), static_cast<uint8>(layer_), roof, false);
 }
 
 ///# ...
@@ -341,7 +341,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hstring Mapper_Game_GetTileNameEx(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] hstring Mapper_Game_GetTileNameEx(FOMapper* mapper, uint16 hx, uint16 hy, bool roof, int layer)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -372,7 +372,7 @@
 ///# param roof ...
 ///# param picName ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_AddTileName(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string_view picName)
+[[maybe_unused]] void Mapper_Game_AddTileName(FOMapper* mapper, uint16 hx, uint16 hy, int ox, int oy, int layer, bool roof, string_view picName)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -392,7 +392,7 @@
     layer_ = std::clamp(layer_, 0, 4);
 
     const auto pic_hash = mapper->ToHashedString(picName);
-    mapper->CurMap->SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
+    mapper->CurMap->SetTile(pic_hash, hx, hy, static_cast<int16>(ox), static_cast<int16>(oy), static_cast<uint8>(layer_), roof, false);
 }
 
 ///# ...
@@ -468,7 +468,7 @@
 ///# param width ...
 ///# param height ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_ResizeMap(FOMapper* mapper, ushort width, ushort height)
+[[maybe_unused]] void Mapper_Game_ResizeMap(FOMapper* mapper, uint16 width, uint16 height)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");

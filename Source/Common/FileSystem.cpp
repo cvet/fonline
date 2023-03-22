@@ -35,7 +35,13 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
+FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds) :
+    _isLoaded {true},
+    _fileName {name},
+    _filePath {path},
+    _fileSize {size},
+    _writeTime {write_time},
+    _dataSource {ds}
 {
     STACK_TRACE_ENTRY();
 }
@@ -110,17 +116,20 @@ auto FileHeader::Duplicate() const -> FileHeader
     return {_fileName, _filePath, _fileSize, _writeTime, _dataSource};
 }
 
-File::File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uchar>&& buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {std::move(buf)}
+File::File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<const uint8>&& buf) :
+    FileHeader(name, path, size, write_time, ds),
+    _fileBuf {std::move(buf)}
 {
     STACK_TRACE_ENTRY();
 }
 
-File::File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uchar> buf, bool make_copy) : FileHeader(name, path, static_cast<uint>(buf.size()), write_time, ds)
+File::File(string_view name, string_view path, uint64 write_time, DataSource* ds, const_span<uint8> buf, bool make_copy) :
+    FileHeader(name, path, static_cast<uint>(buf.size()), write_time, ds)
 {
     STACK_TRACE_ENTRY();
 
     if (make_copy) {
-        auto* buf_copy = new uchar[buf.size()];
+        auto* buf_copy = new uint8[buf.size()];
         std::memcpy(buf_copy, buf.data(), buf.size());
         _fileBuf = {buf_copy, [](auto* p) { delete[] p; }};
     }
@@ -139,20 +148,20 @@ auto File::GetStr() const -> string
     return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
 }
 
-auto File::GetData() const -> vector<uchar>
+auto File::GetData() const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    vector<uchar> result;
+    vector<uint8> result;
     result.resize(_fileSize);
     std::memcpy(result.data(), _fileBuf.get(), _fileSize);
     return result;
 }
 
-auto File::GetBuf() const -> const uchar*
+auto File::GetBuf() const -> const uint8*
 {
     STACK_TRACE_ENTRY();
 
@@ -162,7 +171,7 @@ auto File::GetBuf() const -> const uchar*
     return _fileBuf.get();
 }
 
-auto File::GetCurBuf() const -> const uchar*
+auto File::GetCurBuf() const -> const uint8*
 {
     STACK_TRACE_ENTRY();
 
@@ -228,10 +237,10 @@ auto File::FindFragment(string_view fragment) -> bool
     }
 
     for (auto i = _curPos; i < _fileSize - fragment.size(); i++) {
-        if (_fileBuf.get()[i] == static_cast<uchar>(fragment[0])) {
+        if (_fileBuf.get()[i] == static_cast<uint8>(fragment[0])) {
             auto not_match = false;
             for (uint j = 1; j < fragment.size(); j++) {
-                if (_fileBuf.get()[static_cast<size_t>(i) + j] != static_cast<uchar>(fragment[j])) {
+                if (_fileBuf.get()[static_cast<size_t>(i) + j] != static_cast<uint8>(fragment[j])) {
                     not_match = true;
                     break;
                 }
@@ -285,14 +294,14 @@ auto File::GetStrNT() -> string
     return str;
 }
 
-auto File::GetUChar() -> uchar
+auto File::GetUChar() -> uint8
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    if (_curPos + sizeof(uchar) > _fileSize) {
+    if (_curPos + sizeof(uint8) > _fileSize) {
         throw FileSystemExeption("Read file error", _fileName);
     }
 
@@ -300,38 +309,38 @@ auto File::GetUChar() -> uchar
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetBEUShort() -> ushort
+auto File::GetBEUShort() -> uint16
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    if (_curPos + sizeof(ushort) > _fileSize) {
+    if (_curPos + sizeof(uint16) > _fileSize) {
         throw FileSystemExeption("Read file error", _fileName);
     }
 
-    ushort res = 0;
-    auto* cres = reinterpret_cast<uchar*>(&res);
+    uint16 res = 0;
+    auto* cres = reinterpret_cast<uint8*>(&res);
     cres[1] = _fileBuf.get()[_curPos++];
     cres[0] = _fileBuf.get()[_curPos++];
     return res;
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetLEUShort() -> ushort
+auto File::GetLEUShort() -> uint16
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    if (_curPos + sizeof(ushort) > _fileSize) {
+    if (_curPos + sizeof(uint16) > _fileSize) {
         throw FileSystemExeption("Read file error", _fileName);
     }
 
-    ushort res = 0;
-    auto* cres = reinterpret_cast<uchar*>(&res);
+    uint16 res = 0;
+    auto* cres = reinterpret_cast<uint8*>(&res);
     cres[0] = _fileBuf.get()[_curPos++];
     cres[1] = _fileBuf.get()[_curPos++];
     return res;
@@ -350,7 +359,7 @@ auto File::GetBEUInt() -> uint
     }
 
     uint res = 0;
-    auto* cres = reinterpret_cast<uchar*>(&res);
+    auto* cres = reinterpret_cast<uint8*>(&res);
     for (auto i = 3; i >= 0; i--) {
         cres[i] = _fileBuf.get()[_curPos++];
     }
@@ -370,7 +379,7 @@ auto File::GetLEUInt() -> uint
     }
 
     uint res = 0;
-    auto* cres = reinterpret_cast<uchar*>(&res);
+    auto* cres = reinterpret_cast<uint8*>(&res);
     for (auto i = 0; i <= 3; i++) {
         cres[i] = _fileBuf.get()[_curPos++];
     }
@@ -388,7 +397,8 @@ FileCollection::FileCollection(initializer_list<FileHeader> files)
     }
 }
 
-FileCollection::FileCollection(vector<FileHeader> files) : _allFiles {std::move(files)}
+FileCollection::FileCollection(vector<FileHeader> files) :
+    _allFiles {std::move(files)}
 {
     STACK_TRACE_ENTRY();
 }

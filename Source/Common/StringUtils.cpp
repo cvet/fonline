@@ -110,7 +110,7 @@ auto _str::lengthUtf8() const -> size_t
     const auto* str = _s.c_str();
 
     while (*str != 0) {
-        length += static_cast<unsigned int>((*str++ & 0xC0) != 0x80);
+        length += static_cast<uint>((*str++ & 0xC0) != 0x80);
     }
     return length;
 }
@@ -356,47 +356,37 @@ auto _str::isExplicitBool() const -> bool
     return false;
 }
 
-auto _str::toInt() -> int
+auto _str::toInt() const -> int
 {
-    return static_cast<int>(toInt64());
+    return static_cast<int>(std::strtoll(_s.c_str(), nullptr, 0));
 }
 
-auto _str::toUInt() -> uint
+auto _str::toUInt() const -> uint
 {
-    return static_cast<uint>(toInt64());
+    return static_cast<uint>(std::strtoull(_s.c_str(), nullptr, 0));
 }
 
-auto _str::toInt64() -> int64
+auto _str::toInt64() const -> int64
 {
-    trim();
-
-    if (_s.length() >= 2 && _s[0] == '0' && (_s[1] == 'x' || _s[1] == 'X')) {
-        return strtoll(_s.substr(2).c_str(), nullptr, 16);
-    }
-    return strtoll(_s.c_str(), nullptr, 10);
+    return static_cast<int64>(std::strtoll(_s.c_str(), nullptr, 0));
 }
 
-auto _str::toUInt64() -> uint64
+auto _str::toUInt64() const -> uint64
 {
-    trim();
-
-    if (_s.length() >= 2 && _s[0] == '0' && (_s[1] == 'x' || _s[1] == 'X')) {
-        return strtoull(_s.substr(2).c_str(), nullptr, 16);
-    }
-    return strtoull(_s.c_str(), nullptr, 10);
+    return static_cast<uint64>(std::strtoull(_s.c_str(), nullptr, 0));
 }
 
 auto _str::toFloat() const -> float
 {
-    return static_cast<float>(atof(_s.c_str()));
+    return static_cast<float>(std::strtod(_s.c_str(), nullptr));
 }
 
 auto _str::toDouble() const -> double
 {
-    return atof(_s.c_str());
+    return std::strtod(_s.c_str(), nullptr);
 }
 
-auto _str::toBool() -> bool
+auto _str::toBool() const -> bool
 {
     if (compareIgnoreCase("true")) {
         return true;
@@ -590,7 +580,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
         return 0xFFFD; \
     } while (0)
 
-    const auto c = *reinterpret_cast<const uchar*>(str.data());
+    const auto c = *reinterpret_cast<const uint8*>(str.data());
     if (c < 0x80) {
         if (length != nullptr) {
             *length = 1;
@@ -613,7 +603,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
     }
 
     if (c == 0xe0) {
-        if (reinterpret_cast<const uchar*>(str.data())[1] < 0xa0) {
+        if (reinterpret_cast<const uint8*>(str.data())[1] < 0xa0) {
             DECODE_FAIL();
         }
 
@@ -637,7 +627,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
     }
 
     if (c == 0xf0) {
-        if (reinterpret_cast<const uchar*>(str.data())[1] < 0x90) {
+        if (reinterpret_cast<const uint8*>(str.data())[1] < 0x90) {
             DECODE_FAIL();
         }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
@@ -660,7 +650,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
     }
 
     if (c == 0xf4) {
-        if (reinterpret_cast<const uchar*>(str.data())[1] > 0x8f) {
+        if (reinterpret_cast<const uint8*>(str.data())[1] > 0x8f) {
             DECODE_FAIL();
         }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
@@ -804,18 +794,18 @@ struct Utf8Data
         UpperTable.resize(0x10000);
 
         for (uint i = 0; i < 0x10000; i++) {
-            UpperTable[i] = static_cast<ushort>(i);
+            UpperTable[i] = static_cast<uint16>(i);
         }
 
         for (uint i = 0; i < 0x10000; i++) {
             const auto l = utf8::Lower(i);
             if (l != i) {
-                UpperTable[l] = static_cast<ushort>(i);
+                UpperTable[l] = static_cast<uint16>(i);
             }
         }
     }
 
-    vector<ushort> UpperTable {};
+    vector<uint16> UpperTable {};
 };
 GLOBAL_DATA(Utf8Data, Data);
 

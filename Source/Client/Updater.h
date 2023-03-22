@@ -67,9 +67,10 @@ private:
         uint Hash {};
     };
 
-    auto MakeWritePath(string_view fname) const -> string;
-    void AddText(uint num_str, string_view num_str_str);
-    void Abort(uint num_str, string_view num_str_str);
+    [[nodiscard]] auto MakeWritePath(string_view fname) const -> string;
+
+    void AddText(uint str_num, string_view num_str_str);
+    void Abort(uint str_num, string_view num_str_str);
     void GetNextFile();
 
     void Net_OnConnect(bool success);
@@ -82,16 +83,16 @@ private:
     FileSystem _resources {};
     EffectManager _effectMngr;
     SpriteManager _sprMngr;
-    double _startTick {};
+    time_point _startTime {};
     bool _aborted {};
     vector<string> _messages {};
     bool _fileListReceived {};
     vector<UpdateFile> _filesToUpdate {};
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
-    vector<uchar> _updateFileBuf {};
+    vector<uint8> _updateFileBuf {};
     AnyFrames* _splashPic {};
-    vector<vector<uchar>> _globalsPropertiesData {};
+    vector<vector<uint8>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };
 

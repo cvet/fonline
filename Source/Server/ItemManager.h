@@ -57,10 +57,10 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    [[nodiscard]] auto GetItem(uint item_id) -> Item*;
-    [[nodiscard]] auto GetItem(uint item_id) const -> const Item*;
-    [[nodiscard]] auto GetItems() -> const unordered_map<uint, Item*>&;
-    [[nodiscard]] auto GetItemsCount() const -> uint;
+    [[nodiscard]] auto GetItem(ident_t item_id) -> Item*;
+    [[nodiscard]] auto GetItem(ident_t item_id) const -> const Item*;
+    [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
+    [[nodiscard]] auto GetItemsCount() const -> size_t;
     [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;
 
@@ -68,21 +68,19 @@ public:
     auto SplitItem(Item* item, uint count) -> Item*;
     auto AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*;
     auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
-    auto SubItemCritter(Critter* cr, hstring pid, uint count, vector<Item*>* erased_items) -> bool;
-    auto SetItemCritter(Critter* cr, hstring pid, uint count) -> bool;
-
-    void LinkItems();
+    void SubItemCritter(Critter* cr, hstring pid, uint count);
+    void SetItemCritter(Critter* cr, hstring pid, uint count);
     void DeleteItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
-    void MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks);
+    void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks);
     void MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks);
     auto AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*;
     void EraseItemFromContainer(Item* cont, Item* item);
     void SetItemToContainer(Item* cont, Item* item);
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
-    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels);
-    void RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems);
+    void RadioSendText(Critter* cr, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, vector<uint16>& channels);
+    void RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t from_map_id, uint16 from_wx, uint16 from_wy, string_view text, bool unsafe_text, uint16 msg_num, uint str_num, string_view lexems);
     void ChangeItemStatistics(hstring pid, int val) const;
 
 private:
@@ -93,5 +91,6 @@ private:
 
     FOServer* _engine;
     unordered_set<Item*> _radioItems {};
+    uint _radioSendCounter {};
     bool _nonConstHelper {};
 };

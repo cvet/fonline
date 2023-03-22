@@ -41,8 +41,8 @@ class NetBuffer
 {
 public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
-    static constexpr size_t STRING_LEN_SIZE = sizeof(ushort);
-    static constexpr size_t ARRAY_LEN_SIZE = sizeof(ushort);
+    static constexpr size_t STRING_LEN_SIZE = sizeof(uint16);
+    static constexpr size_t ARRAY_LEN_SIZE = sizeof(uint16);
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -52,7 +52,7 @@ public:
     virtual ~NetBuffer() = default;
 
     [[nodiscard]] auto IsError() const -> bool;
-    [[nodiscard]] auto GetData() -> uchar*;
+    [[nodiscard]] auto GetData() -> uint8*;
     [[nodiscard]] auto GetEndPos() const -> size_t;
 
     void SetError(bool value);
@@ -62,24 +62,27 @@ public:
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int move) -> uchar;
-    void CopyBuf(const void* from, void* to, uchar crypt_key, size_t len);
+    auto EncryptKey(int move) -> uint8;
+    void CopyBuf(const void* from, void* to, uint8 crypt_key, size_t len);
 
     bool _isError {};
-    unique_ptr<uchar[]> _bufData {};
+    unique_ptr<uint8[]> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufLen {};
     size_t _bufEndPos {};
     bool _encryptActive {};
     int _encryptKeyPos {};
-    uchar _encryptKeys[CRYPT_KEYS_COUNT] {};
+    uint8 _encryptKeys[CRYPT_KEYS_COUNT] {};
     bool _nonConstHelper {};
 };
 
 class NetOutBuffer final : public NetBuffer
 {
 public:
-    explicit NetOutBuffer(size_t buf_len) : NetBuffer(buf_len) { }
+    explicit NetOutBuffer(size_t buf_len) :
+        NetBuffer(buf_len)
+    {
+    }
     NetOutBuffer(const NetOutBuffer&) = delete;
     NetOutBuffer(NetOutBuffer&&) noexcept = default;
     auto operator=(const NetOutBuffer&) = delete;
@@ -92,32 +95,49 @@ public:
     void Cut(size_t len);
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
-    auto operator<<(const T& i) -> NetBuffer&
+    void Write(T value)
     {
-        Push(&i, sizeof(T));
-        return *this;
+        Push(&value, sizeof(T));
     }
 
-    auto operator<<(string_view i) -> NetBuffer&
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    void Write(T value)
     {
-        RUNTIME_ASSERT(i.length() <= std::numeric_limits<ushort>::max());
-        const auto len = static_cast<ushort>(i.length());
+        Push(&value.underlying_value(), sizeof(typename T::underlying_type));
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, string_view> || std::is_same_v<T, string>, int> = 0>
+    void Write(T value)
+    {
+        RUNTIME_ASSERT(value.length() <= std::numeric_limits<uint16>::max());
+        const auto len = static_cast<uint16>(value.length());
         Push(&len, sizeof(len));
-        Push(i.data(), len);
-        return *this;
+        Push(value.data(), len);
     }
 
-    auto operator<<(hstring i) -> NetBuffer&
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    void Write(T value)
     {
-        *this << i.as_hash();
-        return *this;
+        const auto hash = value.as_hash();
+        Push(&hash, sizeof(hash));
     }
+
+    void StartMsg(uint msg);
+    void EndMsg();
+
+private:
+    bool _msgStarted {};
+    uint _startedMsg {};
+    size_t _startedBufPos {};
 };
 
 class NetInBuffer final : public NetBuffer
 {
 public:
-    explicit NetInBuffer(size_t buf_len) : NetBuffer(buf_len) { }
+    explicit NetInBuffer(size_t buf_len) :
+        NetBuffer(buf_len)
+    {
+    }
     NetInBuffer(const NetInBuffer&) = delete;
     NetInBuffer(NetInBuffer&&) noexcept = default;
     auto operator=(const NetInBuffer&) = delete;
@@ -136,24 +156,40 @@ public:
     void ResetBuf() override;
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
-    auto operator>>(T& i) -> NetBuffer&
+    [[nodiscard]] auto Read() -> T
     {
-        Pop(&i, sizeof(T));
-        return *this;
+        T result = {};
+        Pop(&result, sizeof(T));
+        return result;
     }
 
-    auto operator>>(string& i) -> NetBuffer&
+    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    [[nodiscard]] auto Read() -> T
     {
-        ushort len = 0;
+        T result = {};
+        Pop(&result.underlying_value(), sizeof(typename T::underlying_type));
+        return result;
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    [[nodiscard]] auto Read() -> string
+    {
+        string result;
+        uint16 len = 0;
         Pop(&len, sizeof(len));
-        i.resize(len);
-        Pop(i.data(), len);
-        return *this;
+        result.resize(len);
+        Pop(result.data(), len);
+        return result;
     }
 
-    auto operator>>(hstring& i) -> NetBuffer& = delete;
-    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    [[nodiscard]] auto Read(const NameResolver& name_resolver) -> hstring
+    {
+        return ReadHashedString(name_resolver);
+    }
 
 private:
+    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
+
     size_t _bufReadPos {};
 };

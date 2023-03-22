@@ -64,10 +64,11 @@
 #define ACTION_REFRESH           (23) // s
 
 // Slots
-#define SLOT_INV   (0) // Inventory
-#define SLOT_HAND1 (1) // Weapon slot
-#define SLOT_HAND2 (2) // Extended slot
-#define SLOT_ARMOR (3) // Armor slot
+#define SLOT_INV    (0) // Inventory
+#define SLOT_HAND1  (1) // Weapon slot
+#define SLOT_HAND2  (2) // Extended slot
+#define SLOT_ARMOR  (3) // Armor slot
+#define SLOT_GROUND uint8(-1)
 
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
@@ -150,7 +151,6 @@
 #define COMMAND_CHECKVAR              (30)
 #define COMMAND_SETVAR                (31)
 #define COMMAND_SETTIME               (32)
-#define COMMAND_BAN                   (33)
 #define COMMAND_DELETE_ACCOUNT        (34)
 #define COMMAND_CHANGE_PASSWORD       (35)
 #define COMMAND_DROP_UID              (36)

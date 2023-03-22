@@ -34,7 +34,10 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* name_resolver, ConfigFileOption options) : _fileNameHint {fname_hint}, _nameResolver {name_resolver}, _options {options}
+ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* name_resolver, ConfigFileOption options) :
+    _fileNameHint {fname_hint},
+    _nameResolver {name_resolver},
+    _options {options}
 {
     STACK_TRACE_ENTRY();
 

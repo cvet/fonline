@@ -76,7 +76,7 @@ struct MeshData
 
     ModelBone* Owner {};
     vector<Vertex3D> Vertices {};
-    vector<ushort> Indices {};
+    vector<uint16> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
     vector<mat44> SkinBoneOffsets {};
@@ -245,6 +245,7 @@ public:
     [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto GetAnim1() const -> uint;
     [[nodiscard]] auto GetAnim2() const -> uint;
+    [[nodiscard]] auto GetMovingAnim2() const -> uint;
     [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
@@ -253,13 +254,13 @@ public:
     [[nodiscard]] auto GetViewSize() const -> tuple<int, int>;
     [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
-    [[nodiscard]] auto GetAnimDuration() const -> uint;
+    [[nodiscard]] auto GetAnimDuration() const -> time_duration;
     [[nodiscard]] auto IsCombatMode() const -> bool;
 
     void SetupFrame();
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
-    void SetDir(uchar dir, bool smooth_rotation);
+    void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
     void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
     void SetRotation(float rx, float ry, float rz);
@@ -295,7 +296,7 @@ private:
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float;
-    [[nodiscard]] auto GetTick() const -> uint;
+    [[nodiscard]] auto GetTime() const -> time_point;
 
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(const ModelInstance* cur);
@@ -327,8 +328,8 @@ private:
     ModelAnimationController* _moveAnimController {};
     int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
-    uint _lastDrawTick {};
-    uint _endTick {};
+    time_point _lastDrawTime {};
+    time_point _endTime {};
     mat44 _matRot {};
     mat44 _matScale {};
     mat44 _matScaleBase {};
@@ -342,7 +343,7 @@ private:
     float _moveDirAngle {};
     float _targetMoveDirAngle {};
     vec3 _groundPos {};
-    bool _useGameTimer {};
+    bool _useGameplayTimer {};
     float _animPosProc {};
     float _animPosTime {};
     float _animPosPeriod {};
@@ -350,7 +351,8 @@ private:
     vector<ModelCutData*> _allCuts {};
     bool _isMoving {};
     bool _isMovingBack {};
-    int _curMovingAnim {-1};
+    int _curMovingAnimIndex {-1};
+    uint _curMovingAnim2 {};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};

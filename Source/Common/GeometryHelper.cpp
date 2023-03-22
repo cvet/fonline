@@ -33,7 +33,8 @@
 
 #include "GeometryHelper.h"
 
-GeometryHelper::GeometryHelper(GeometrySettings& settings) : _settings {settings}
+GeometryHelper::GeometryHelper(GeometrySettings& settings) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 }
@@ -63,10 +64,10 @@ void GeometryHelper::InitializeHexOffsets() const
     const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        _sxEven = new short[size];
-        _syEven = new short[size];
-        _sxOdd = new short[size];
-        _syOdd = new short[size];
+        _sxEven = new int16[size];
+        _syEven = new int16[size];
+        _sxOdd = new int16[size];
+        _syOdd = new int16[size];
 
         auto pos = 0;
         auto xe = 0;
@@ -79,13 +80,13 @@ void GeometryHelper::InitializeHexOffsets() const
             MoveHexByDirUnsafe(xo, yo, 0u);
 
             for (auto j = 0; j < 6; j++) {
-                const uchar dir = (j + 2) % 6;
+                const uint8 dir = (j + 2) % 6;
 
                 for (auto k = 0; k < i + 1; k++) {
-                    _sxEven[pos] = static_cast<short>(xe);
-                    _syEven[pos] = static_cast<short>(ye);
-                    _sxOdd[pos] = static_cast<short>(xo - 1);
-                    _syOdd[pos] = static_cast<short>(yo);
+                    _sxEven[pos] = static_cast<int16>(xe);
+                    _syEven[pos] = static_cast<int16>(ye);
+                    _sxOdd[pos] = static_cast<int16>(xo - 1);
+                    _syOdd[pos] = static_cast<int16>(yo);
 
                     pos++;
 
@@ -96,8 +97,8 @@ void GeometryHelper::InitializeHexOffsets() const
         }
     }
     else {
-        _sxEven = _sxOdd = new short[size];
-        _syEven = _syOdd = new short[size];
+        _sxEven = _sxOdd = new int16[size];
+        _syEven = _syOdd = new int16[size];
 
         auto pos = 0;
         auto hx = 0;
@@ -107,7 +108,7 @@ void GeometryHelper::InitializeHexOffsets() const
             MoveHexByDirUnsafe(hx, hy, 0u);
 
             for (auto j = 0; j < 5; j++) {
-                uchar dir;
+                uint8 dir;
                 int steps;
 
                 switch (j) {
@@ -136,8 +137,8 @@ void GeometryHelper::InitializeHexOffsets() const
                 }
 
                 for (auto k = 0; k < steps; k++) {
-                    _sxEven[pos] = static_cast<short>(hx);
-                    _syEven[pos] = static_cast<short>(hy);
+                    _sxEven[pos] = static_cast<int16>(hx);
+                    _syEven[pos] = static_cast<int16>(hy);
 
                     pos++;
 
@@ -180,7 +181,7 @@ auto GeometryHelper::DistGame(int x1, int y1, int x2, int y2) const -> uint
     }
 }
 
-auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uchar
+auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -255,7 +256,7 @@ auto GeometryHelper::GetNearDir(int x1, int y1, int x2, int y2) const -> uchar
     return 0;
 }
 
-auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uchar
+auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -316,7 +317,7 @@ auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2) const -> uchar
     }
 }
 
-auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar
+auto GeometryHelper::GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -469,55 +470,55 @@ auto GeometryHelper::GetYProj() const -> float
     return 1.0f / std::sin(_settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
 }
 
-auto GeometryHelper::DirToAngle(uchar dir) const -> short
+auto GeometryHelper::DirToAngle(uint8 dir) const -> int16
 {
     STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return static_cast<short>(dir * 60 + 30);
+        return static_cast<int16>(dir * 60 + 30);
     }
     else {
-        return static_cast<short>(dir * 45 + 45);
+        return static_cast<int16>(dir * 45 + 45);
     }
 }
 
-auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
+auto GeometryHelper::AngleToDir(int16 dir_angle) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        return static_cast<uchar>(NormalizeAngle(dir_angle) / 60);
+        return static_cast<uint8>(NormalizeAngle(dir_angle) / 60);
     }
     else {
-        return static_cast<uchar>(NormalizeAngle(static_cast<short>(dir_angle - 45 / 2)) / 45);
+        return static_cast<uint8>(NormalizeAngle(static_cast<int16>(dir_angle - 45 / 2)) / 45);
     }
 }
 
-auto GeometryHelper::NormalizeAngle(short dir_angle) const -> short
+auto GeometryHelper::NormalizeAngle(int16 dir_angle) const -> int16
 {
     STACK_TRACE_ENTRY();
 
     while (dir_angle < 0) {
         dir_angle += 360;
     }
-    return static_cast<short>(dir_angle % 360);
+    return static_cast<int16>(dir_angle % 360);
 }
 
-auto GeometryHelper::CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool
+auto GeometryHelper::CheckDist(uint16 x1, uint16 y1, uint16 x2, uint16 y2, uint dist) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return DistGame(x1, y1, x2, y2) <= dist;
 }
 
-auto GeometryHelper::ReverseDir(uchar dir) const -> uchar
+auto GeometryHelper::ReverseDir(uint8 dir) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uchar>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
+    return static_cast<uint8>((dir + GameSettings::MAP_DIR_COUNT / 2) % GameSettings::MAP_DIR_COUNT);
 }
 
-auto GeometryHelper::MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool
+auto GeometryHelper::MoveHexByDir(uint16& hx, uint16& hy, uint8 dir, uint16 maxhx, uint16 maxhy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -525,14 +526,14 @@ auto GeometryHelper::MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxh
     int hy_ = hy;
 
     if (MoveHexByDirUnsafe(hx_, hy_, dir, maxhx, maxhy)) {
-        hx = static_cast<ushort>(hx_);
-        hy = static_cast<ushort>(hy_);
+        hx = static_cast<uint16>(hx_);
+        hy = static_cast<uint16>(hy_);
         return true;
     }
     return false;
 }
 
-auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool
+auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir, uint16 maxhx, uint16 maxhy) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -540,7 +541,7 @@ auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxh
     return hx >= 0 && hx < maxhx && hy >= 0 && hy < maxhy;
 }
 
-void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
+void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uint8 dir) const
 {
     STACK_TRACE_ENTRY();
 
@@ -616,7 +617,7 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
     }
 }
 
-auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const short*, const short*>
+auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const int16*, const int16*>
 {
     STACK_TRACE_ENTRY();
 
@@ -665,7 +666,7 @@ auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_
     }
 }
 
-void GeometryHelper::ForEachBlockLines(const vector<uchar>& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const
+void GeometryHelper::ForEachBlockLines(const vector<uint8>& lines, uint16 hx, uint16 hy, uint16 maxhx, uint16 maxhy, const std::function<void(uint16, uint16)>& work) const
 {
     STACK_TRACE_ENTRY();
 
@@ -680,9 +681,9 @@ void GeometryHelper::ForEachBlockLines(const vector<uchar>& lines, ushort hx, us
             continue;
         }
 
-        for (uchar k = 0; k < steps; k++) {
+        for (uint8 k = 0; k < steps; k++) {
             if (MoveHexByDirUnsafe(hx_, hy_, dir, maxhx, maxhy)) {
-                work(static_cast<ushort>(hx_), static_cast<ushort>(hy_));
+                work(static_cast<uint16>(hx_), static_cast<uint16>(hy_));
             }
         }
     }

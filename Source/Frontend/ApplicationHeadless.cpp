@@ -163,7 +163,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
+Application::Application(int argc, char** argv, bool client_mode) :
+    Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -254,6 +255,21 @@ auto AppWindow::GetSize() const -> tuple<int, int>
 }
 
 void AppWindow::SetSize(int w, int h)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(w);
+    UNUSED_VARIABLE(h);
+}
+
+auto AppWindow::GetScreenSize() const -> tuple<int, int>
+{
+    STACK_TRACE_ENTRY();
+
+    return {1000, 1000};
+}
+
+void AppWindow::SetScreenSize(int w, int h)
 {
     STACK_TRACE_ENTRY();
 
@@ -485,7 +501,7 @@ auto AppAudio::GetStreamSize() -> uint
     return 0u;
 }
 
-auto AppAudio::GetSilence() -> uchar
+auto AppAudio::GetSilence() -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -503,7 +519,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     RUNTIME_ASSERT(IsEnabled());
 }
 
-auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
+auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -517,7 +533,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
     return true;
 }
 
-void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
+void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 

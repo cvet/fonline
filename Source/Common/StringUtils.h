@@ -43,11 +43,21 @@ class _str final
 public:
     _str() = default;
     _str(const _str&) = default;
-    explicit _str(string s) : _s(std::move(s)) { }
-    explicit _str(const char* s) : _s(s) { }
-    explicit _str(string_view s) : _s(s) { }
+    explicit _str(string s) :
+        _s(std::move(s))
+    {
+    }
+    explicit _str(const char* s) :
+        _s(s)
+    {
+    }
+    explicit _str(string_view s) :
+        _s(s)
+    {
+    }
     template<typename... Args>
-    explicit _str(string_view format, Args... args) : _s(fmt::format(format, args...))
+    explicit _str(string_view format, Args... args) :
+        _s(fmt::format(format, args...))
     {
     }
     _str(_str&&) noexcept = default;
@@ -103,13 +113,13 @@ public:
     [[nodiscard]] auto isInt() const -> bool;
     [[nodiscard]] auto isFloat() const -> bool;
     [[nodiscard]] auto isExplicitBool() const -> bool;
-    [[nodiscard]] auto toInt() -> int;
-    [[nodiscard]] auto toUInt() -> uint;
-    [[nodiscard]] auto toInt64() -> int64;
-    [[nodiscard]] auto toUInt64() -> uint64;
+    [[nodiscard]] auto toInt() const -> int;
+    [[nodiscard]] auto toUInt() const -> uint;
+    [[nodiscard]] auto toInt64() const -> int64;
+    [[nodiscard]] auto toUInt64() const -> uint64;
     [[nodiscard]] auto toFloat() const -> float;
     [[nodiscard]] auto toDouble() const -> double;
-    [[nodiscard]] auto toBool() -> bool;
+    [[nodiscard]] auto toBool() const -> bool;
 
     auto formatPath() -> _str&;
     auto extractDir() -> _str&;

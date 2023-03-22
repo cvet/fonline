@@ -88,7 +88,7 @@ public:
 private:
     struct Impl;
 
-    auto ConnectToHost(string_view host, ushort port) -> bool;
+    auto ConnectToHost(string_view host, uint16 port) -> bool;
     auto ReceiveData(bool unpack) -> int;
     auto DispatchData() -> bool;
     auto CheckSocketStatus(bool for_write) -> bool;
@@ -100,7 +100,7 @@ private:
     Impl* _impl;
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
-    vector<uchar> _incomeBuf {};
+    vector<uint8> _incomeBuf {};
     NetInBuffer _netIn;
     NetOutBuffer _netOut;
     bool _isConnecting {};
@@ -109,10 +109,11 @@ private:
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};
     unordered_map<uint, MessageCallback> _handlers {};
-    double _pingTick {};
-    double _pingCallTick {};
+    time_point _pingTime {};
+    time_point _pingCallTime {};
     size_t _msgCount {};
     bool _interthreadCommunication {};
     InterthreadDataCallback _interthreadSend {};
-    vector<uchar> _interthreadReceived {};
+    vector<uint8> _interthreadReceived {};
+    optional<time_point> _artificalLagTime {};
 };

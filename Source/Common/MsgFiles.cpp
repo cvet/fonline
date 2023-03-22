@@ -55,7 +55,7 @@ struct MsgFilesData
 };
 GLOBAL_DATA(MsgFilesData, Data);
 
-static void HexToStr(uchar hex, char* str)
+static void HexToStr(uint8 hex, char* str)
 {
     STACK_TRACE_ENTRY();
 
@@ -70,11 +70,11 @@ static void HexToStr(uchar hex, char* str)
     }
 }
 
-static auto StrToHex(const char* str) -> uchar
+static auto StrToHex(const char* str) -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    uchar result = 0;
+    uint8 result = 0;
     for (auto i = 0; i < 2; i++) {
         const auto c = *str++;
         if (c < 'A') {
@@ -105,7 +105,7 @@ void FOMsg::AddStr(uint num, string_view str)
     _strData.insert(std::make_pair(num, str));
 }
 
-void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
+void FOMsg::AddBinary(uint num, const uint8* binary, uint len)
 {
     STACK_TRACE_ENTRY();
 
@@ -204,11 +204,11 @@ auto FOMsg::GetInt(uint num) const -> int
     return _str(it->second).toInt();
 }
 
-auto FOMsg::GetBinary(uint num) const -> vector<uchar>
+auto FOMsg::GetBinary(uint num) const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
-    vector<uchar> result;
+    vector<uint8> result;
 
     if (Count(num) == 0u) {
         return result;
@@ -265,14 +265,14 @@ auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
     return false;
 }
 
-auto FOMsg::GetBinaryData() const -> vector<uchar>
+auto FOMsg::GetBinaryData() const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
     // Fill raw data
     const auto count = static_cast<uint>(_strData.size());
 
-    vector<uchar> data;
+    vector<uint8> data;
     data.resize(sizeof(count));
     std::memcpy(data.data(), &count, sizeof(count));
 
@@ -291,14 +291,14 @@ auto FOMsg::GetBinaryData() const -> vector<uchar>
     return data;
 }
 
-auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
+auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
 {
     STACK_TRACE_ENTRY();
 
     Clear();
 
     // Read count of strings
-    const uchar* buf = data.data();
+    const uint8* buf = data.data();
     uint count = 0;
     std::memcpy(&count, buf, sizeof(count));
     buf += sizeof(count);

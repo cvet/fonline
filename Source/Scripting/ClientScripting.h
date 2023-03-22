@@ -44,7 +44,10 @@ class FOClient;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    explicit ClientScriptSystem(FOClient* engine) : _engine {engine} { }
+    explicit ClientScriptSystem(FOClient* engine) :
+        _engine {engine}
+    {
+    }
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};

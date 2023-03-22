@@ -48,9 +48,9 @@
 ///# param endOx ...
 ///# param endOy ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, ushort hx, ushort hy, uint showTime, uint color, bool fade, int endOx, int endOy)
+[[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, tick_t showTime, uint color, bool fade, int endOx, int endOy)
 {
-    self->AddMapText(text, hx, hy, color, showTime, fade, endOx, endOy);
+    self->AddMapText(text, hx, hy, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOx, endOy);
 }
 
 ///# ...
@@ -91,7 +91,7 @@
 
         color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
         is_flat = proto_item->GetIsFlat();
-        const auto is_item = !proto_item->IsAnyScenery();
+        const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
         no_light = (is_flat && !is_item);
         draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
         draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
@@ -102,9 +102,9 @@
 
     auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
     auto& tree = self->GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<ushort>(draw_order_hy_offset), //
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
         (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
-        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
+        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
@@ -155,9 +155,9 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Map_GetItem(MapView* self, uint itemId)
+[[maybe_unused]] ItemView* Client_Map_GetItem(MapView* self, ident_t itemId)
 {
-    if (itemId == 0u) {
+    if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
@@ -166,14 +166,14 @@
 
     // On Chosen
     if (item == nullptr && self->GetEngine()->GetChosen() != nullptr) {
-        item = self->GetEngine()->GetChosen()->GetItem(itemId);
+        item = self->GetEngine()->GetChosen()->GetInvItem(itemId);
     }
 
     // On other critters
     if (item == nullptr) {
         for (auto* cr : self->GetCritters()) {
             if (!cr->IsChosen()) {
-                item = cr->GetItem(itemId);
+                item = cr->GetInvItem(itemId);
             }
         }
     }
@@ -208,7 +208,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemView*> Client_Map_GetVisibleItemsOnHex(MapView* self, uint16 hx, uint16 hy)
 {
     auto&& hex_items = self->GetItems(hx, hy);
 
@@ -228,9 +228,9 @@
 ///# param critterId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Map_GetCritter(MapView* self, uint critterId)
+[[maybe_unused]] CritterView* Client_Map_GetCritter(MapView* self, ident_t critterId)
 {
-    if (critterId == 0u) {
+    if (!critterId) {
         return nullptr;
     }
 
@@ -293,7 +293,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, ushort hx, ushort hy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCritters(MapView* self, uint16 hx, uint16 hy, uint radius, CritterFindType findType)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -325,11 +325,11 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersInPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType)
 {
     vector<CritterHexView*> critters;
     self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-    return vec_downcast<CritterView*>(critters);
+    return vec_cast<CritterView*>(critters);
 }
 
 ///# ...
@@ -346,17 +346,17 @@
 ///# param blockHy ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+[[maybe_unused]] vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, CritterFindType findType, uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy)
 {
     vector<CritterHexView*> critters;
-    pair<ushort, ushort> block = {};
-    pair<ushort, ushort> pre_block = {};
+    pair<uint16, uint16> block = {};
+    pair<uint16, uint16> pre_block = {};
     self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, &critters, findType, &block, &pre_block, nullptr, true);
     preBlockHx = pre_block.first;
     preBlockHy = pre_block.second;
     blockHx = block.first;
     blockHy = block.second;
-    return vec_downcast<CritterView*>(critters);
+    return vec_cast<CritterView*>(critters);
 }
 
 ///# ...
@@ -367,10 +367,10 @@
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Map_GetHexInPath(MapView* self, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
+[[maybe_unused]] void Client_Map_GetHexInPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)
 {
-    pair<ushort, ushort> pre_block = {};
-    pair<ushort, ushort> block = {};
+    pair<uint16, uint16> pre_block = {};
+    pair<uint16, uint16> block = {};
     self->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
@@ -384,7 +384,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uchar> Client_Map_GetPath(MapView* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
 {
     if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -429,7 +429,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uchar> Client_Map_GetPath(MapView* self, CritterView* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] vector<uint8> Client_Map_GetPath(MapView* self, CritterView* cr, uint16 toHx, uint16 toHy, uint cut)
 {
     if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
@@ -477,7 +477,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
 {
     if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -519,7 +519,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, CritterView* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Client_Map_GetPathLength(MapView* self, CritterView* cr, uint16 toHx, uint16 toHy, uint cut)
 {
     if (toHx >= self->GetWidth() || toHy >= self->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
@@ -562,7 +562,7 @@
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_MoveScreenToHex(MapView* self, ushort hx, ushort hy, uint speed, bool canStop)
+[[maybe_unused]] void Client_Map_MoveScreenToHex(MapView* self, uint16 hx, uint16 hy, uint speed, bool canStop)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -594,10 +594,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_LockScreenScroll(MapView* self, CritterView* cr, bool softLock, bool unlockIfSame)
 {
-    const auto id = (cr != nullptr ? cr->GetId() : 0);
+    const auto id = cr != nullptr ? cr->GetId() : ident_t {};
     if (softLock) {
         if (unlockIfSame && id == self->AutoScroll.SoftLockedCritter) {
-            self->AutoScroll.SoftLockedCritter = 0;
+            self->AutoScroll.SoftLockedCritter = ident_t {};
         }
         else {
             self->AutoScroll.SoftLockedCritter = id;
@@ -608,7 +608,7 @@
     }
     else {
         if (unlockIfSame && id == self->AutoScroll.HardLockedCritter) {
-            self->AutoScroll.HardLockedCritter = 0;
+            self->AutoScroll.HardLockedCritter = ident_t {};
         }
         else {
             self->AutoScroll.HardLockedCritter = id;
@@ -623,7 +623,7 @@
 ///# param steps ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Map_MoveHexByDir(MapView* self, ushort& hx, ushort& hy, uchar dir, uint steps)
+[[maybe_unused]] bool Client_Map_MoveHexByDir(MapView* self, uint16& hx, uint16& hy, uint8 dir, uint steps)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
@@ -657,7 +657,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hstring Client_Map_GetTileName(MapView* self, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] hstring Client_Map_GetTileName(MapView* self, uint16 hx, uint16 hy, bool roof, int layer)
 {
     if (hx >= self->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
@@ -666,7 +666,7 @@
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto* simply_tile = self->GetField(hx, hy).SimplyTile[roof ? 1 : 0];
+    const auto* simply_tile = self->GetField(hx, hy).SimpleTile[roof ? 1 : 0];
     if (simply_tile != nullptr && layer == 0) {
         return simply_tile->Name;
     }
@@ -754,7 +754,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_GetHexScreenPos(MapView* self, ushort hx, ushort hy, int& x, int& y)
+[[maybe_unused]] bool Client_Map_GetHexScreenPos(MapView* self, uint16 hx, uint16 hy, int& x, int& y)
 {
     x = 0;
     y = 0;
@@ -778,10 +778,10 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, int x, int y, ushort& hx, ushort& hy)
+[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, int x, int y, uint16& hx, uint16& hy)
 {
-    ushort hx_ = 0;
-    ushort hy_ = 0;
+    uint16 hx_ = 0;
+    uint16 hy_ = 0;
     const auto result = self->GetHexAtScreenPos(x, y, hx_, hy_, nullptr, nullptr);
     if (result) {
         hx = hx_;
@@ -800,10 +800,10 @@
 ///# param oy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, int x, int y, ushort& hx, ushort& hy, int& ox, int& oy)
+[[maybe_unused]] bool Client_Map_GetHexAtScreenPos(MapView* self, int x, int y, uint16& hx, uint16& hy, int& ox, int& oy)
 {
-    ushort hx_ = 0;
-    ushort hy_ = 0;
+    uint16 hx_ = 0;
+    uint16 hy_ = 0;
     const auto result = self->GetHexAtScreenPos(x, y, hx_, hy_, &ox, &oy);
     if (result) {
         hx = hx_;
@@ -864,7 +864,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_IsMapHexPassed(MapView* self, ushort hx, ushort hy)
+[[maybe_unused]] bool Client_Map_IsMapHexPassed(MapView* self, uint16 hx, uint16 hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -878,7 +878,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Map_IsMapHexShooted(MapView* self, ushort hx, ushort hy)
+[[maybe_unused]] bool Client_Map_IsMapHexShooted(MapView* self, uint16 hx, uint16 hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hex args");

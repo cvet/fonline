@@ -81,7 +81,7 @@ void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
     Name = name_resolver.ToHashedString(tmp);
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
-    if (reader.Read<uchar>() != 0u) {
+    if (reader.Read<uint8>() != 0) {
         AttachedMesh = std::make_unique<MeshData>();
         AttachedMesh->Load(reader, name_resolver);
         AttachedMesh->Owner = this;
@@ -137,7 +137,7 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
 }
 
 ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
-    _settings {settings}, //
+    _settings {settings},
     _resources {resources},
     _effectMngr {effect_mngr},
     _gameTime {game_time},
@@ -361,7 +361,8 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
+ModelInstance::ModelInstance(ModelManager& model_mngr) :
+    _modelMngr(model_mngr)
 {
     STACK_TRACE_ENTRY();
 
@@ -372,7 +373,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    _useGameTimer = true;
+    _useGameplayTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
 }
 
@@ -759,8 +760,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         _bodyAnimController->Reset();
 
         // Smooth time
-        auto smooth_time = (IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime);
-        auto start_time = period * period_proc / 100.0f;
+        const auto smooth_time = IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime;
+        const auto start_time = period * period_proc / 100.0f;
         if (IsBitSet(flags, ANIMATION_STAY)) {
             period = start_time + 0.0002f;
         }
@@ -792,16 +793,15 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         _speedAdjustCur = speed;
 
         // End time
-        const auto tick = GetTick();
         if (IsBitSet(flags, ANIMATION_ONE_TIME)) {
-            _endTick = tick + static_cast<uint>(period / GetSpeed() * 1000.0f);
+            _endTime = GetTime() + std::chrono::milliseconds {static_cast<uint>(period / GetSpeed() * 1000.0f)};
         }
         else {
-            _endTick = 0;
+            _endTime = time_point {};
         }
 
         // Force redraw
-        _lastDrawTick = 0;
+        _lastDrawTime = time_point {};
     }
 
     // Set animation for children
@@ -911,7 +911,7 @@ void ModelInstance::RefreshMoveAnimation()
                 return;
             }
 
-            anim2 = (angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT);
+            anim2 = angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT;
             _playTurnAnimation = true;
         }
         else if (_playTurnAnimation) {
@@ -921,11 +921,12 @@ void ModelInstance::RefreshMoveAnimation()
 
     float speed = 1.0f;
     const auto index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
-    if (index == _curMovingAnim) {
+    if (index == _curMovingAnimIndex) {
         return;
     }
 
-    _curMovingAnim = index;
+    _curMovingAnimIndex = index;
+    _curMovingAnim2 = anim2;
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
@@ -933,7 +934,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     constexpr float smooth_time = 0.0001f;
 
-    if (index >= 0) {
+    if (index != -1) {
         const auto* anim_set = _moveAnimController->GetAnimationSet(index);
         const uint new_track = _currentMoveTrack == 0 ? 1 : 0;
 
@@ -995,11 +996,23 @@ auto ModelInstance::GetAnim2() const -> uint
     return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
 }
 
+auto ModelInstance::GetMovingAnim2() const -> uint
+{
+    STACK_TRACE_ENTRY();
+
+    if (_curMovingAnimIndex != -1) {
+        return _curMovingAnim2;
+    }
+    else {
+        return _isRunning ? ANIM2_RUN : ANIM2_WALK;
+    }
+}
+
 auto ModelInstance::IsAnimationPlaying() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return GetTick() < _endTick;
+    return GetTime() < _endTime;
 }
 
 auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
@@ -1047,14 +1060,14 @@ auto ModelInstance::GetSpeed() const -> float
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
-auto ModelInstance::GetTick() const -> uint
+auto ModelInstance::GetTime() const -> time_point
 {
     STACK_TRACE_ENTRY();
 
-    if (_useGameTimer) {
-        return _modelMngr._gameTime.GameTick();
+    if (_useGameplayTimer) {
+        return _modelMngr._gameTime.GameplayTime();
     }
-    return _modelMngr._gameTime.FrameTick();
+    return _modelMngr._gameTime.FrameTime();
 }
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
@@ -1199,7 +1212,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     }
 }
 
-void ModelInstance::SetDir(uchar dir, bool smooth_rotation)
+void ModelInstance::SetDir(uint8 dir, bool smooth_rotation)
 {
     STACK_TRACE_ENTRY();
 
@@ -1279,7 +1292,7 @@ void ModelInstance::SetTimer(bool use_game_timer)
 {
     STACK_TRACE_ENTRY();
 
-    _useGameTimer = use_game_timer;
+    _useGameplayTimer = use_game_timer;
 }
 
 void ModelInstance::GenerateCombinedMeshes()
@@ -1404,7 +1417,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         indices.insert(indices.end(), mesh_data->Indices.begin(), mesh_data->Indices.end());
 
         // Add indices offset
-        const auto index_offset = static_cast<ushort>(vertices.size() - mesh_data->Vertices.size());
+        const auto index_offset = static_cast<uint16>(vertices.size() - mesh_data->Vertices.size());
         const auto start_index = indices.size() - mesh_data->Indices.size();
         for (auto i = start_index, j = indices.size(); i < j; i++) {
             indices[i] += index_offset;
@@ -1542,7 +1555,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
     auto& indices = combined_mesh->MeshBuf->Indices;
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
-        vector<ushort> result_indices;
+        vector<uint16> result_indices;
         vector<uint> result_mesh_vertices;
         vector<uint> result_mesh_indices;
 
@@ -1581,9 +1594,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     result_vertices.push_back(v1);
                     result_vertices.push_back(v2);
                     result_vertices.push_back(v3);
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
                     continue;
                 }
 
@@ -1611,17 +1624,17 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         result_vertices.push_back(vv1);
                         result_vertices.push_back(vv2);
                         result_vertices.push_back(vv3);
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
 
                         // Second face
                         result_vertices.push_back(vv3);
                         result_vertices.push_back(vv2);
                         result_vertices.push_back(vv4);
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
                     }
                     else if (!ignore && sum == 1) {
                         // 1 1 -1, corner out
@@ -1633,9 +1646,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         result_vertices.push_back(vv1);
                         result_vertices.push_back(vv2);
                         result_vertices.push_back(vv3);
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
                     }
                     else if (ignore || outside) {
                         if (ignore && sum == 0) {
@@ -1646,9 +1659,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         result_vertices.push_back(v1);
                         result_vertices.push_back(v2);
                         result_vertices.push_back(v3);
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                        result_indices.push_back(static_cast<uint16>(result_indices.size()));
                     }
                 }
                 else {
@@ -1661,9 +1674,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                     result_vertices.push_back(v1);
                     result_vertices.push_back(v2);
                     result_vertices.push_back(v3);
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
+                    result_indices.push_back(static_cast<uint16>(result_indices.size()));
                 }
             }
 
@@ -1777,7 +1790,7 @@ auto ModelInstance::NeedDraw() const -> bool
         return true;
     }
 
-    return _combinedMeshesSize != 0u && (_lastDrawTick == 0u || GetTick() - _lastDrawTick >= _modelMngr._animDelay);
+    return _combinedMeshesSize != 0 && (_lastDrawTime == time_point {} || GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animDelay});
 }
 
 void ModelInstance::Draw()
@@ -1787,9 +1800,10 @@ void ModelInstance::Draw()
     _forceRedraw = false;
 
     // Move timer
-    const auto tick = GetTick();
-    const auto elapsed = _lastDrawTick != 0u ? 0.001f * static_cast<float>(tick - _lastDrawTick) : 0.0f;
-    _lastDrawTick = tick;
+    const auto time = GetTime();
+    const auto elapsed = _lastDrawTime != time_point {} ? 0.001f * time_duration_to_ms<float>(time - _lastDrawTime) : 0.0f;
+
+    _lastDrawTime = time;
 
     // Move animation
     const auto w = _frameWidth / FRAME_SCALE;
@@ -2047,11 +2061,11 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     return tuple {x, y};
 }
 
-auto ModelInstance::GetAnimDuration() const -> uint
+auto ModelInstance::GetAnimDuration() const -> time_duration
 {
     STACK_TRACE_ENTRY();
 
-    return static_cast<uint>(_animPosPeriod * 1000.0f);
+    return std::chrono::milliseconds {static_cast<uint>(_animPosPeriod * 1000.0f)};
 }
 
 void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, vec3 move)
@@ -2065,7 +2079,8 @@ void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, 
     }
 }
 
-ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
+ModelInformation::ModelInformation(ModelManager& model_mngr) :
+    _modelMngr {model_mngr}
 {
     STACK_TRACE_ENTRY();
 
@@ -2906,7 +2921,8 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
     return shape;
 }
 
-ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mngr}
+ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) :
+    _modelMngr {model_mngr}
 {
     STACK_TRACE_ENTRY();
 }

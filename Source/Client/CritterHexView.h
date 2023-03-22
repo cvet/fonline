@@ -48,7 +48,7 @@ class CritterHexView final : public CritterView
 {
 public:
     CritterHexView() = delete;
-    CritterHexView(MapView* map, uint id, const ProtoCritter* proto);
+    CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
     CritterHexView(const CritterHexView&) = delete;
     CritterHexView(CritterHexView&&) noexcept = delete;
     auto operator=(const CritterHexView&) = delete;
@@ -63,10 +63,11 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishingTime != 0; }
+    [[nodiscard]] auto IsFinishing() const -> bool { return _finishingTime != time_point {}; }
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
+    [[nodiscard]] auto IsNameVisible() const -> bool;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
     [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
@@ -74,9 +75,10 @@ public:
 
     void Init() override;
     void Finish() override;
-    auto AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView* override;
-    void DeleteItem(ItemView* item, bool animate) override;
-    void ChangeDir(uchar dir);
+    auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView* override;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
+    void DeleteInvItem(ItemView* item, bool animate) override;
+    void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);
     void ChangeLookDirAngle(int dir_angle);
     void ChangeMoveDirAngle(int dir_angle);
@@ -88,7 +90,7 @@ public:
     void ClearAnim();
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
-    void SetText(string_view str, uint color, uint text_delay);
+    void SetText(string_view str, uint color, time_duration text_delay);
     void DrawTextOnHead();
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
@@ -100,40 +102,40 @@ public:
     uint SprId {};
     int SprOx {};
     int SprOy {};
-    uchar Alpha {};
+    uint8 Alpha {};
 
     RenderEffect* DrawEffect {};
     bool Visible {true};
     Sprite* SprDraw {};
     bool SprDrawValid {};
-    uint FadingTick {};
+    time_point FadingTime {};
 
     struct
     {
-        ushort Speed {};
-        vector<uchar> Steps {};
-        vector<ushort> ControlSteps {};
-        uint StartTick {};
-        uint OffsetTick {};
-        ushort StartHexX {};
-        ushort StartHexY {};
-        ushort EndHexX {};
-        ushort EndHexY {};
+        uint16 Speed {};
+        vector<uint8> Steps {};
+        vector<uint16> ControlSteps {};
+        time_point StartTime {};
+        time_duration OffsetTime {};
+        uint16 StartHexX {};
+        uint16 StartHexY {};
+        uint16 EndHexX {};
+        uint16 EndHexY {};
         float WholeTime {};
         float WholeDist {};
-        short StartOx {};
-        short StartOy {};
-        short EndOx {};
-        short EndOy {};
-        ushort RealHexX {};
-        ushort RealHexY {};
+        int16 StartOx {};
+        int16 StartOy {};
+        int16 EndOx {};
+        int16 EndOy {};
+        uint16 RealHexX {};
+        uint16 RealHexY {};
     } Moving {};
 
 private:
     struct CritterAnim
     {
         AnyFrames* Anim {};
-        uint AnimTick {};
+        time_duration AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
         uint IndAnim1 {};
@@ -144,7 +146,7 @@ private:
 #if FO_ENABLE_3D
     [[nodiscard]] auto GetModelLayersData() const -> const int*;
 #endif
-    [[nodiscard]] auto GetFadeAlpha() -> uchar;
+    [[nodiscard]] auto GetFadeAlpha() -> uint8;
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
     void SetFade(bool fade_up);
@@ -155,22 +157,22 @@ private:
     MapView* _map;
 
     bool _needReset {};
-    uint _resetTick {};
+    time_point _resetTime {};
 
     uint _curFrmIndex {};
-    uint _animStartTick {};
+    time_point _animStartTime {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
 
-    uint _finishingTime {};
+    time_point _finishingTime {};
     bool _fadingEnabled {};
     bool _fadeUp {};
 
-    uint _tickFidget {};
+    time_point _fidgetTime {};
 
     string _strTextOnHead {};
-    uint _tickStartText {};
-    uint _tickTextDelay {};
+    time_point _startTextTime {};
+    time_duration _textShowDuration {};
     uint _textOnHeadColor {COLOR_TEXT};
 
     int _oxAnim {};
@@ -179,7 +181,7 @@ private:
     float _oyExt {};
     float _oxExtSpeed {};
     float _oyExtSpeed {};
-    uint _offsExtNextTick {};
+    time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D
     unique_del_ptr<ModelInstance> _model {};

@@ -44,9 +44,7 @@ class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props);
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data);
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy);
+    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -55,46 +53,44 @@ public:
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
     [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isShowAnim || (_isDynamicEffect && !_finishing) || _fading; }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isAnimLooped || (_isDynamicEffect && !_finishing) || _fading; }
 
+    void Init();
     void RefreshAnim();
-    void RestoreAlpha() { Alpha = _maxAlpha; }
-    void RefreshAlpha() { _maxAlpha = IsColorize() ? GetAlpha() : 0xFF; }
+    void RestoreAlpha();
+    void RefreshAlpha();
     void SetSprite(Sprite* spr);
     void Finish();
     void StopFinishing();
     void Process();
-    void SetEffect(ushort to_hx, ushort to_hy);
+    void SetEffect(uint16 to_hx, uint16 to_hy);
     void SkipFade();
-    void SetAnimFromEnd();
-    void SetAnimFromStart();
-    void SetAnim(uint beg, uint end);
+    void PlayAnimFromEnd();
+    void PlayAnimFromStart();
+    void PlayAnim(uint beg, uint end);
+    void PlayStayAnim();
+    void PlayShowAnim();
+    void PlayHideAnim();
     void RefreshOffs();
-    void SetStayAnim();
-    void SetShowAnim();
-    void SetHideAnim();
 
     uint SprId {};
     int ScrX {};
     int ScrY {};
-    uchar Alpha {};
+    uint8 Alpha {};
 
     RenderEffect* DrawEffect {};
     Sprite* SprDraw {};
     bool SprDrawValid {};
 
 private:
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto);
-
-    void AfterConstruction();
     void SetFade(bool fade_up);
-    void SetSpr(uint num_spr);
+    void SetCurSpr(uint num_spr);
 
     MapView* _map;
 
@@ -104,10 +100,10 @@ private:
     uint _endFrm {};
     uint _animBegFrm {};
     uint _animEndFrm {};
-    uint _animTick {};
-    uchar _maxAlpha {0xFF};
-    bool _isShowAnim {};
-    uint _animNextTick {};
+    time_point _animTime {};
+    uint8 _maxAlpha {0xFF};
+    bool _isAnimLooped {};
+    time_point _animStartTime {};
 
     bool _isEffect {};
     bool _isDynamicEffect {};
@@ -118,14 +114,14 @@ private:
     float _effCurX {};
     float _effCurY {};
     uint _effDist {};
-    uint _effLastTick {};
+    time_point _effUpdateLastTime {};
     int _effDir {};
-    vector<pair<ushort, ushort>> _effSteps {};
+    vector<pair<uint16, uint16>> _effSteps {};
 
     bool _fading {};
-    uint _fadingEndTick {};
+    time_point _fadingEndTime {};
     bool _fadeUp {};
 
     bool _finishing {};
-    uint _finishingTime {};
+    time_point _finishingTime {};
 };

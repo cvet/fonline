@@ -45,7 +45,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -54,7 +57,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -103,7 +109,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, uint16 hx, uint16 hy, uint8 dir)
 {
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
@@ -121,7 +127,7 @@
         if (dir < GameSettings::MAP_DIR_COUNT && self->GetDir() != dir) {
             self->ChangeDir(dir);
         }
-        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, 0, true)) {
+        if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, ident_t {})) {
             throw ScriptException("Transit fail");
         }
     }
@@ -138,7 +144,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, uint16 hx, uint16 hy, uint8 dir)
 {
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
@@ -152,7 +158,7 @@
         dir_ = 0;
     }
 
-    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, 0, true)) {
+    if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, dir_, 2, ident_t {})) {
         throw ScriptException("Transit to map hex fail");
     }
 
@@ -171,7 +177,7 @@
         throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId() != 0u && !self->GetEngine()->MapMngr.TransitToGlobal(self, 0, true)) {
+    if (self->GetMapId() && !self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
         throw ScriptException("Transit to global failed");
     }
 }
@@ -184,17 +190,17 @@
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         throw ScriptException("Critter already on global");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, 0, true)) {
+    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, ident_t {})) {
         throw ScriptException("Transit to global failed");
     }
 
     for (auto* cr_ : group) {
         if (cr_ != nullptr && !cr_->IsDestroyed()) {
-            self->GetEngine()->MapMngr.TransitToGlobal(cr_, self->GetId(), true);
+            self->GetEngine()->MapMngr.TransitToGlobal(cr_, self->GetId());
         }
     }
 }
@@ -207,7 +213,7 @@
     if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         throw ScriptException("Critter already on global");
     }
     if (leader == nullptr) {
@@ -218,7 +224,7 @@
         throw ScriptException("Leader is not on global map");
     }
 
-    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, leader->GetId(), true)) {
+    if (!self->GetEngine()->MapMngr.TransitToGlobal(self, leader->GetId())) {
         throw ScriptException("Transit fail");
     }
 }
@@ -262,7 +268,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ViewMap(Critter* self, Map* map, uint look, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_ViewMap(Critter* self, Map* map, uint look, uint16 hx, uint16 hy, uint8 dir)
 {
     if (map == nullptr) {
         throw ScriptException("Map arg is null");
@@ -287,11 +293,11 @@
 
     self->ViewMapId = map->GetId();
     self->ViewMapPid = map->GetProtoId();
-    self->ViewMapLook = static_cast<ushort>(look_);
+    self->ViewMapLook = static_cast<uint16>(look_);
     self->ViewMapHx = hx;
     self->ViewMapHy = hy;
     self->ViewMapDir = dir_;
-    self->ViewMapLocId = 0;
+    self->ViewMapLocId = ident_t {};
     self->ViewMapLocEnt = 0;
     self->Send_LoadMap(map);
 }
@@ -300,7 +306,7 @@
 ///# param howSay ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_Say(Critter* self, uchar howSay, string_view text)
+[[maybe_unused]] void Server_Critter_Say(Critter* self, uint8 howSay, string_view text)
 {
     if (howSay != SAY_FLASH_WINDOW && text.empty()) {
         return;
@@ -312,7 +318,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_Text(self, howSay != SAY_FLASH_WINDOW ? text : " ", howSay);
     }
-    else if (self->GetMapId() != 0u) {
+    else if (self->GetMapId()) {
         self->SendAndBroadcast_Text(self->VisCr, text, howSay, false);
     }
 }
@@ -322,7 +328,7 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uchar howSay, ushort textMsg, uint numStr)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, uint16 textMsg, uint numStr)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;
@@ -331,7 +337,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_TextMsg(self, numStr, howSay, textMsg);
     }
-    else if (self->GetMapId() != 0u) {
+    else if (self->GetMapId()) {
         self->SendAndBroadcast_Msg(self->VisCr, numStr, howSay, textMsg);
     }
 }
@@ -342,7 +348,7 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uchar howSay, ushort textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uint8 howSay, uint16 textMsg, uint numStr, string_view lexems)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;
@@ -351,7 +357,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_TextMsgLex(self, numStr, howSay, textMsg, lexems);
     }
-    else if (self->GetMapId() != 0u) {
+    else if (self->GetMapId()) {
         self->SendAndBroadcast_MsgLex(self->VisCr, numStr, howSay, textMsg, lexems);
     }
 }
@@ -359,7 +365,7 @@
 ///# ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetDir(Critter* self, uchar dir)
+[[maybe_unused]] void Server_Critter_SetDir(Critter* self, uint8 dir)
 {
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid direction arg");
@@ -377,7 +383,7 @@
 ///# ...
 ///# param dir_angle ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetDirAngle(Critter* self, short dir_angle)
+[[maybe_unused]] void Server_Critter_SetDirAngle(Critter* self, int16 dir_angle)
 {
     const auto normalized_dir_angle = self->GetEngine()->Geometry.NormalizeAngle(dir_angle);
 
@@ -458,7 +464,7 @@
         return true;
     }
 
-    const auto& critters = (self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup);
+    const auto& critters = self->GetMapId() ? self->VisCrSelf : *self->GlobalMapGroup;
     return std::find(critters.begin(), critters.end(), cr) != critters.end();
 }
 
@@ -476,7 +482,7 @@
         return true;
     }
 
-    const auto& critters = (self->GetMapId() ? self->VisCr : *self->GlobalMapGroup);
+    const auto& critters = self->GetMapId() ? self->VisCr : *self->GlobalMapGroup;
     return std::find(critters.begin(), critters.end(), cr) != critters.end();
 }
 
@@ -499,26 +505,41 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Critter_CountItem(Critter* self, hstring protoId)
 {
-    return self->CountItemPid(protoId);
+    return self->CountInvItemPid(protoId);
 }
 
 ///# ...
 ///# param pid ...
-///# param count ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_DeleteItem(Critter* self, hstring pid, uint count)
+[[maybe_unused]] void Server_Critter_DeleteItem(Critter* self, hstring pid)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
 
-    auto count_ = count;
-    if (count_ == 0) {
-        count_ = self->CountItemPid(pid);
+    const auto count = self->CountInvItemPid(pid);
+    if (count == 0) {
+        return;
     }
 
-    return self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count_, nullptr);
+    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
+}
+
+///# ...
+///# param pid ...
+///# param count ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_DeleteItem(Critter* self, hstring pid, uint count)
+{
+    if (!pid) {
+        throw ScriptException("Proto id arg is zero");
+    }
+
+    if (count == 0) {
+        return;
+    }
+
+    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
 }
 
 ///# ...
@@ -535,7 +556,7 @@
         throw ScriptException("Invalid proto", pid);
     }
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
@@ -546,13 +567,13 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, uint itemId)
+[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ident_t itemId)
 {
-    if (itemId == 0u) {
+    if (!itemId) {
         return nullptr;
     }
 
-    return self->GetItem(itemId, false);
+    return self->GetInvItem(itemId, false);
 }
 
 ///# ...
@@ -570,7 +591,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
 {
-    for (auto* item : self->GetInventory()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -588,7 +609,7 @@
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-    for (auto* item : self->GetInventory()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -602,7 +623,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self)
 {
-    return self->GetInventory();
+    return self->GetRawInvItems();
 }
 
 ///# ...
@@ -612,9 +633,9 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
 {
     vector<Item*> items;
-    items.reserve(self->GetInventory().size());
+    items.reserve(self->GetRawInvItems().size());
 
-    for (auto* item : self->GetInventory()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
@@ -633,9 +654,9 @@
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     vector<Item*> items;
-    items.reserve(self->GetInventory().size());
+    items.reserve(self->GetRawInvItems().size());
 
-    for (auto* item : self->GetInventory()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
@@ -651,9 +672,9 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, hstring protoId)
 {
     vector<Item*> items;
-    items.reserve(self->GetInventory().size());
+    items.reserve(self->GetRawInvItems().size());
 
-    for (auto* item : self->GetInventory()) {
+    for (auto* item : self->GetRawInvItems()) {
         if (item->GetProtoId() == protoId) {
             items.push_back(item);
         }
@@ -666,13 +687,13 @@
 ///# param itemId ...
 ///# param slot ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, uint itemId, uchar slot)
+[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, uint8 slot)
 {
-    if (itemId == 0u) {
+    if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetItem(itemId, self->IsOwnedByPlayer());
+    auto* item = self->GetInvItem(itemId, self->IsOwnedByPlayer());
     if (item == nullptr) {
         throw ScriptException("Item not found");
     }
@@ -690,7 +711,7 @@
         throw ScriptException("Can't move item");
     }
 
-    auto* item_swap = slot != 0 ? self->GetItemSlot(slot) : nullptr;
+    auto* item_swap = slot != 0 ? self->GetInvItemSlot(slot) : nullptr;
     const auto from_slot = item->GetCritterSlot();
 
     item->SetCritterSlot(slot);
@@ -703,6 +724,7 @@
     if (item_swap != nullptr) {
         self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
     }
+
     self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
 }
 
@@ -806,9 +828,9 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, uint locId)
+[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, ident_t locId)
 {
-    if (locId == 0u) {
+    if (!locId) {
         throw ScriptException("Invalid location id");
     }
 
@@ -819,9 +841,9 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, uint locId)
+[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, ident_t locId)
 {
-    if (locId == 0u) {
+    if (!locId) {
         throw ScriptException("Invalid location id");
     }
 
@@ -840,7 +862,7 @@
         self->Send_AutomapsInfo(nullptr, loc);
     }
 
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         self->Send_GlobalLocation(loc, true);
     }
 
@@ -859,7 +881,7 @@
     if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
         gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
         self->SetGlobalMapFog(gmap_fog);
-        if (self->GetMapId() == 0u) {
+        if (!self->GetMapId()) {
             self->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
         }
     }
@@ -869,9 +891,9 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, uint locId)
+[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, ident_t locId)
 {
-    if (locId == 0u) {
+    if (!locId) {
         throw ScriptException("Invalid location id");
     }
 
@@ -881,7 +903,7 @@
 
     self->GetEngine()->MapMngr.EraseKnownLoc(self, locId);
 
-    if (self->GetMapId() == 0u) {
+    if (!self->GetMapId()) {
         if (auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
             self->Send_GlobalLocation(loc, false);
         }
@@ -893,7 +915,7 @@
 ///# param zoneY ...
 ///# param fog ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetFog(Critter* self, ushort zoneX, ushort zoneY, int fog)
+[[maybe_unused]] void Server_Critter_SetFog(Critter* self, uint16 zoneX, uint16 zoneY, int fog)
 {
     if (fog < GM_FOG_FULL || fog > GM_FOG_NONE) {
         throw ScriptException("Invalid fog arg");
@@ -925,7 +947,7 @@
 ///# param zoneY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Server_Critter_GetFog(Critter* self, ushort zoneX, ushort zoneY)
+[[maybe_unused]] int Server_Critter_GetFog(Critter* self, uint16 zoneX, uint16 zoneY)
 {
     if (zoneX >= self->GetEngine()->Settings.GlobalMapWidth || zoneY >= self->GetEngine()->Settings.GlobalMapHeight) {
         return GM_FOG_FULL;
@@ -1010,7 +1032,7 @@
 ///# param cut ...
 ///# param speed ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, ushort hx, ushort hy, uint cut, uint speed)
+[[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, uint16 hx, uint16 hy, uint cut, uint speed)
 {
     self->TargetMoving = {};
     self->TargetMoving.State = MovingState::InProgress;
@@ -1041,7 +1063,7 @@
 ///# ...
 ///# param gagId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, uint& gagId)
+[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, ident_t& gagId)
 {
     gagId = self->TargetMoving.GagEntityId;
 
@@ -1056,7 +1078,7 @@
 ///# param duration ...
 ///# param identifier ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, uint duration, int identifier)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, tick_t duration, int identifier)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -1071,7 +1093,7 @@
 ///# param identifier ...
 ///# param rate ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, uint duration, int identifier, uint rate)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, tick_t duration, int identifier, uint rate)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -1106,7 +1128,7 @@
 ///# param rates ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, int identifier, vector<uint>& indexes, vector<uint>& durations, vector<uint>& rates)
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, int identifier, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
     auto&& te_fire_times = self->GetTE_FireTime();
@@ -1121,7 +1143,7 @@
     for (size_t i = 0; i < te_identifiers.size(); i++) {
         if (te_identifiers[i] == identifier) {
             indexes.push_back(static_cast<uint>(i));
-            durations.push_back(te_fire_times[i] > full_second ? te_fire_times[i] - full_second : 0);
+            durations.push_back(tick_t {te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0});
             rates.push_back(te_rates[i]);
             count++;
         }
@@ -1138,7 +1160,7 @@
 ///# param rates ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, const vector<int>& findIdentifiers, vector<int>& identifiers, vector<uint>& indexes, vector<uint>& durations, vector<uint>& rates)
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, const vector<int>& findIdentifiers, vector<int>& identifiers, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
     auto&& te_fire_times = self->GetTE_FireTime();
@@ -1155,7 +1177,7 @@
             if (te_identifiers[i] == identifier) {
                 identifiers.push_back(te_identifiers[i]);
                 indexes.push_back(static_cast<uint>(i));
-                durations.push_back(te_fire_times[i] > full_second ? te_fire_times[i] - full_second : 0);
+                durations.push_back(tick_t {te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0});
                 rates.push_back(te_rates[i]);
                 count++;
             }
@@ -1170,7 +1192,7 @@
 ///# param newDuration ...
 ///# param newRate ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeTimeEvent(Critter* self, uint index, uint newDuration, uint newRate)
+[[maybe_unused]] void Server_Critter_ChangeTimeEvent(Critter* self, uint index, tick_t newDuration, uint newRate)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
     auto&& te_fire_times = self->GetTE_FireTime();

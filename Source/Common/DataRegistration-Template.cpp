@@ -107,7 +107,7 @@ static void RestoreProperty(PropertyRegistrator* registrator, string_view access
 #undef RESTORE_ARGS_PASS
 }
 
-void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info_bin)
+void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info_bin)
 {
     STACK_TRACE_ENTRY();
 
@@ -149,11 +149,11 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
         static unordered_map<string, const type_info*> enum_type_map = {
-            {"int8", &typeid(char)},
-            {"int16", &typeid(short)},
+            {"int8", &typeid(int8)},
+            {"int16", &typeid(int16)},
             {"int", &typeid(int)},
-            {"uint8", &typeid(uchar)},
-            {"uint16", &typeid(ushort)},
+            {"uint8", &typeid(uint8)},
+            {"uint16", &typeid(uint16)},
             {"uint", &typeid(uint)},
         };
 
@@ -230,7 +230,7 @@ void Baker_RegisterData(FOEngineBase* engine)
     engine->FinalizeDataRegistration();
 }
 
-auto Baker_GetRestoreInfo() -> vector<uchar>
+auto Baker_GetRestoreInfo() -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -247,7 +247,7 @@ auto Baker_GetRestoreInfo() -> vector<uchar>
         }
     }
 
-    vector<uchar> restore_info_bin;
+    vector<uint8> restore_info_bin;
     restore_info_bin.reserve(estimated_size + 1024u);
 
     auto writer = DataWriter(restore_info_bin);

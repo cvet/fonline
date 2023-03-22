@@ -105,7 +105,7 @@ public:
     [[nodiscard]] auto GetConnection() -> ServerConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
-    [[nodiscard]] auto GetWorldmapCritter(uint cr_id) -> CritterView*;
+    [[nodiscard]] auto GetWorldmapCritter(ident_t cr_id) -> CritterView*;
     [[nodiscard]] auto GetWorldmapCritters() -> vector<CritterView*> { return _worldmapCritters; }
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
@@ -113,12 +113,13 @@ public:
 
     void Shutdown();
     void MainLoop();
-    void AddMessage(uchar mess_type, string_view msg);
+    void ConsoleMessage(string_view msg);
+    void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
-    void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
-    void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
-    void ScreenQuake(int noise, uint time);
+    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
+    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
+    void ScreenFade(time_duration time, uint from_color, uint to_color, bool push_back);
+    void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
@@ -138,8 +139,8 @@ public:
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, string> params);
 
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<ushort, ushort, int, int>, int> pos_or_dir, uint speed);
-    void CritterLookTo(CritterHexView* cr, variant<uchar, short> dir_or_angle);
+    void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
+    void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
@@ -200,9 +201,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, uint16& /*hexX*/, uint16& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, uint& /*crId*/, uint& /*delay*/);
+    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, ident_t /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
@@ -220,9 +221,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uint8 /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uint8 /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
 
@@ -257,41 +258,37 @@ protected:
     {
         AnyFrames* Frames {};
         AtlasType ResType {};
-        uint LastTick {};
-        ushort Flags {};
+        time_point LastUpdateTime {};
+        uint16 Flags {};
         uint CurSpr {};
     };
 
     struct ScreenEffect
     {
-        uint BeginTick {};
-        uint Time {};
+        time_point BeginTime {};
+        time_duration Duration {};
         uint StartColor {};
         uint EndColor {};
     };
 
     struct GmapLocation
     {
-        uint LocId {};
+        ident_t LocId {};
         hstring LocPid {};
-        ushort LocWx {};
-        ushort LocWy {};
-        ushort Radius {};
+        uint16 LocWx {};
+        uint16 LocWy {};
+        uint16 Radius {};
         uint Color {};
-        uchar Entrances {};
+        uint8 Entrances {};
     };
 
     struct Automap
     {
-        uint LocId {};
+        ident_t LocId {};
         hstring LocPid {};
-        string LocName {};
         vector<hstring> MapPids {};
-        vector<string> MapNames {};
         uint CurMap {};
     };
-
-    static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
     void ProcessAutoLogin();
     void ProcessInputEvents();
@@ -305,12 +302,12 @@ protected:
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
-    void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
-    void Net_SendText(string_view send_str, uchar how_say);
+    void Net_SendTalk(ident_t cr_id, hstring dlg_pack_id, uint8 answer);
+    void Net_SendText(string_view send_str, uint8 how_say);
     void Net_SendDir(CritterHexView* cr);
     void Net_SendMove(CritterHexView* cr);
     void Net_SendStopMove(CritterHexView* cr);
-    void Net_SendPing(uchar ping);
+    void Net_SendPing(uint8 ping);
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();
@@ -357,8 +354,8 @@ protected:
     void Net_OnViewMap();
     void Net_OnRemoteCall();
 
-    void OnText(string_view str, uint crid, int how_say);
-    void OnMapText(string_view str, ushort hx, ushort hy, uint color);
+    void OnText(string_view str, ident_t cr_id, int how_say);
+    void OnMapText(string_view str, uint16 hx, uint16 hy, uint color);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);
@@ -384,23 +381,21 @@ protected:
     EventUnsubscriber _eventUnsubscriber {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
-    int _windowResolutionDiffX {};
-    int _windowResolutionDiffY {};
     string _loginName {};
     string _loginPassword {};
     bool _isAutoLogin {};
     PlayerView* _curPlayer {};
     LocationView* _curLocation {};
-    uint _fpsTick {};
+    time_point _fpsTime {};
     uint _fpsCounter {};
     int _screenModeMain {SCREEN_WAIT};
     ItemView* _someItem {};
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};
-    vector<vector<uchar>> _globalsPropertiesData {};
-    vector<vector<uchar>> _playerPropertiesData {};
-    vector<vector<uchar>> _tempPropertiesData {};
-    vector<vector<uchar>> _tempPropertiesDataExt {};
+    vector<vector<uint8>> _globalsPropertiesData {};
+    vector<vector<uint8>> _playerPropertiesData {};
+    vector<vector<uint8>> _tempPropertiesData {};
+    vector<vector<uint8>> _tempPropertiesDataExt {};
     LanguagePack _curLang {};
     vector<IfaceAnim*> _ifaceAnimations {};
     vector<ScreenEffect> _screenEffects {};
@@ -409,12 +404,12 @@ protected:
     float _screenOffsXf {};
     float _screenOffsYf {};
     float _screenOffsStep {};
-    uint _screenOffsNextTick {};
+    time_point _screenOffsNextTime {};
     uint _gameMouseStay {};
     uint _daySumRGB {};
     CritterView* _chosen {};
     AnyFrames* _waitPic {};
-    uchar _pupTransferType {};
+    uint8 _pupTransferType {};
     uint _pupContId {};
     hstring _pupContPid {};
     uint _holoInfo[MAX_HOLO_INFO] {};
@@ -428,9 +423,7 @@ protected:
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};
-    uint _lmapPrepareNextTick {};
-    uchar _dlgIsNpc {};
-    uint _dlgNpcId {};
+    time_point _lmapPrepareNextTime {};
     const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
 };

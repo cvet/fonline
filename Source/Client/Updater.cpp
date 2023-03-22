@@ -42,11 +42,15 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 
-Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _resources), _sprMngr(_settings, window, _resources, _effectMngr)
+Updater::Updater(GlobalSettings& settings, AppWindow* window) :
+    _settings {settings},
+    _conn(settings),
+    _effectMngr(_settings, _resources),
+    _sprMngr(_settings, window, _resources, _effectMngr)
 {
     STACK_TRACE_ENTRY();
 
-    _startTick = Timer::RealtimeTick();
+    _startTime = Timer::CurTime();
 
     _resources.AddDataSource(_settings.EmbeddedResources);
     _resources.AddDataSource(_settings.ResourcesDir, DataSourceType::DirRoot);
@@ -153,8 +157,8 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
-    const auto elapsed_time = Timer::RealtimeTick() - _startTick;
-    const auto dots = static_cast<int>(std::fmod((Timer::RealtimeTick() - _startTick) / 100.0, 50.0)) + 1;
+    const auto elapsed_time = time_duration_to_ms<uint>(Timer::CurTime() - _startTime);
+    const auto dots = static_cast<int>(std::fmod(time_duration_to_ms<double>(Timer::CurTime() - _startTime) / 100.0, 50.0)) + 1;
     for ([[maybe_unused]] const auto i : xrange(dots)) {
         update_text += ".";
     }
@@ -191,20 +195,20 @@ auto Updater::MakeWritePath(string_view fname) const -> string
     return _str(_settings.ResourcesDir).combinePath(fname).str();
 }
 
-void Updater::AddText(uint num_str, string_view num_str_str)
+void Updater::AddText(uint str_num, string_view num_str_str)
 {
     STACK_TRACE_ENTRY();
 
     _messages.emplace_back(num_str_str);
 }
 
-void Updater::Abort(uint num_str, string_view num_str_str)
+void Updater::Abort(uint str_num, string_view num_str_str)
 {
     STACK_TRACE_ENTRY();
 
     _aborted = true;
 
-    AddText(num_str, num_str_str);
+    AddText(str_num, num_str_str);
     _conn.Disconnect();
 
     if (_tempFile) {
@@ -216,16 +220,13 @@ void Updater::Net_OnUpdateFilesResponse()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    bool outdated;
-    uint data_size;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> outdated;
-    _conn.InBuf >> data_size;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto outdated = _conn.InBuf.Read<bool>();
+    const auto data_size = _conn.InBuf.Read<uint>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    vector<uchar> data;
+    vector<uint8> data;
     data.resize(data_size);
     _conn.InBuf.Pop(data.data(), data_size);
 
@@ -251,7 +252,7 @@ void Updater::Net_OnUpdateFilesResponse()
         auto reader = DataReader(data);
 
         for (uint file_index = 0;; file_index++) {
-            const auto name_len = reader.Read<short>();
+            const auto name_len = reader.Read<int16>();
             if (name_len == -1) {
                 break;
             }
@@ -299,10 +300,8 @@ void Updater::Net_OnUpdateFileData()
 {
     STACK_TRACE_ENTRY();
 
-    uint msg_len;
-    uint data_size;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> data_size;
+    [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
+    const auto data_size = _conn.InBuf.Read<uint>();
 
     _updateFileBuf.resize(data_size);
     _conn.InBuf.Pop(_updateFileBuf.data(), data_size);
@@ -321,7 +320,8 @@ void Updater::Net_OnUpdateFileData()
     RUNTIME_ASSERT(update_file.RemaningSize >= data_size);
     update_file.RemaningSize -= data_size;
     if (update_file.RemaningSize > 0u) {
-        _conn.OutBuf << NETMSG_GET_UPDATE_FILE_DATA;
+        _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE_DATA);
+        _conn.OutBuf.EndMsg();
         _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
     }
     else {
@@ -353,8 +353,9 @@ void Updater::GetNextFile()
     if (!_filesToUpdate.empty()) {
         const auto& next_update_file = _filesToUpdate.front();
 
-        _conn.OutBuf << NETMSG_GET_UPDATE_FILE;
-        _conn.OutBuf << next_update_file.Index;
+        _conn.OutBuf.StartMsg(NETMSG_GET_UPDATE_FILE);
+        _conn.OutBuf.Write(next_update_file.Index);
+        _conn.OutBuf.EndMsg();
 
         DiskFileSystem::DeleteFile(MakeWritePath(_str("~{}", next_update_file.Name)));
         _tempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(MakeWritePath(_str("~{}", next_update_file.Name)), true));

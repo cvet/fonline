@@ -61,26 +61,26 @@ private:
 
     struct FrameShot
     {
-        ushort Width {};
-        ushort Height {};
-        short NextX {};
-        short NextY {};
-        vector<uchar> Data {};
+        uint16 Width {};
+        uint16 Height {};
+        int16 NextX {};
+        int16 NextY {};
+        vector<uint8> Data {};
         bool Shared {};
-        ushort SharedIndex {};
+        uint16 SharedIndex {};
     };
 
     struct FrameSequence
     {
-        short OffsX {};
-        short OffsY {};
+        int16 OffsX {};
+        int16 OffsY {};
         FrameShot Frames[MAX_FRAME_SEQUENCE] {};
     };
 
     struct FrameCollection
     {
-        ushort SequenceSize {};
-        ushort AnimTicks {};
+        uint16 SequenceSize {};
+        uint16 AnimTicks {};
         FrameSequence Main {};
         bool HaveDirs {};
         FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};

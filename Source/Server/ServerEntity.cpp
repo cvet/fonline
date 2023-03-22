@@ -36,40 +36,19 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
+ServerEntity::ServerEntity(FOServer* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props) :
+    Entity(registrator, props),
+    _engine {engine},
+    _id {id}
 {
     STACK_TRACE_ENTRY();
 
-    _name = _str("{}_{}", GetClassName(), _id);
+    _name = GetClassName();
 }
 
-auto ServerEntity::GetId() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return _id;
-}
-
-void ServerEntity::SetId(uint id)
+void ServerEntity::SetId(ident_t id)
 {
     STACK_TRACE_ENTRY();
 
     _id = id;
-    _name = _str("{}", _id);
-}
-
-auto ServerEntity::GetEngine() -> FOServer*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine;
-}
-
-auto ServerEntity::GetName() const -> string_view
-{
-    STACK_TRACE_ENTRY();
-
-    return _name;
 }

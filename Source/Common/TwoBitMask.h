@@ -39,7 +39,7 @@ class TwoBitMask final
 {
 public:
     TwoBitMask() = default;
-    TwoBitMask(uint width, uint height, uchar* ptr);
+    TwoBitMask(uint width, uint height, uint8* ptr);
     TwoBitMask(const TwoBitMask&) = delete;
     TwoBitMask(TwoBitMask&&) = default;
     auto operator=(const TwoBitMask&) = delete;
@@ -47,14 +47,14 @@ public:
     ~TwoBitMask();
 
     [[nodiscard]] auto Get2Bit(uint x, uint y) const -> int;
-    [[nodiscard]] auto GetData() -> uchar*;
+    [[nodiscard]] auto GetData() -> uint8*;
 
     void Fill(int fill);
     void Set2Bit(uint x, uint y, int val);
 
 private:
     bool _isAlloc {};
-    uchar* _data {};
+    uint8* _data {};
     uint _width {};
     uint _height {};
     uint _widthBytes {};

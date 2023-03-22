@@ -50,7 +50,7 @@ asCGlobalProperty::asCGlobalProperty()
 
 asCGlobalProperty::~asCGlobalProperty()
 { 
-#ifndef WIP_16BYTE_ALIGNED
+#ifndef WIP_16BYTE_ALIGN
 	if( memoryAllocated ) { asDELETEARRAY(memory); } 
 #else
 	if( memoryAllocated ) { asDELETEARRAYALIGNED(memory); } 
@@ -93,7 +93,7 @@ void asCGlobalProperty::AllocateMemory()
 { 
 	if( type.GetSizeOnStackDWords() > 2 ) 
 	{ 
-#ifndef WIP_16BYTE_ALIGNED
+#ifndef WIP_16BYTE_ALIGN
 		memory = asNEWARRAY(asDWORD, type.GetSizeOnStackDWords()); 
 #else
 		// TODO: Avoid aligned allocation if not needed to reduce the waste of memory for the alignment

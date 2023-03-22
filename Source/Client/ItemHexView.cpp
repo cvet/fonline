@@ -40,58 +40,29 @@
 #include "Sprites.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto), _map {map}
+ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
+    ItemView(map->GetEngine(), id, proto, props),
+    _map {map}
+{
+    STACK_TRACE_ENTRY();
+}
+
+void ItemHexView::Init()
 {
     STACK_TRACE_ENTRY();
 
     DrawEffect = _engine->EffectMngr.Effects.Generic;
-}
-
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(map, id, proto)
-{
-    STACK_TRACE_ENTRY();
-
-    SetProperties(props);
-
-    AfterConstruction();
-}
-
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(props_data);
-    RestoreData(*props_data);
-
-    AfterConstruction();
-}
-
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const vector<vector<uchar>>* props_data, ushort hx, ushort hy) : ItemHexView(map, id, proto)
-{
-    STACK_TRACE_ENTRY();
-
-    if (props_data != nullptr) {
-        RestoreData(*props_data);
-    }
-
-    SetHexX(hx);
-    SetHexY(hy);
-
-    AfterConstruction();
-}
-
-void ItemHexView::AfterConstruction()
-{
-    STACK_TRACE_ENTRY();
-
-    SetOwnership(ItemOwnership::MapHex);
 
     RefreshAnim();
     RefreshAlpha();
 
     if (GetIsShowAnim()) {
-        _isShowAnim = true;
-        _animNextTick = _engine->GameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+        _isAnimLooped = true;
+
+        const auto next_anim_wait = GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+        if (next_anim_wait != 0) {
+            _animStartTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {next_anim_wait};
+        }
     }
 
     SetFade(true);
@@ -104,10 +75,10 @@ void ItemHexView::Finish()
     SetFade(false);
 
     _finishing = true;
-    _finishingTime = _fadingEndTick;
+    _finishingTime = _fadingEndTime;
 
     if (_isEffect) {
-        _finishingTime = _engine->GameTime.GameTick();
+        _finishingTime = _engine->GameTime.GameplayTime();
     }
 }
 
@@ -115,7 +86,7 @@ auto ItemHexView::IsFinished() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _finishing && _engine->GameTime.GameTick() >= _finishingTime;
+    return _finishing && _engine->GameTime.GameplayTime() >= _finishingTime;
 }
 
 void ItemHexView::StopFinishing()
@@ -133,39 +104,56 @@ void ItemHexView::Process()
 
     // Animation
     if (_begFrm != _endFrm) {
-        const auto anim_proc = GenericUtils::Percent(_anim->Ticks, _engine->GameTime.GameTick() - _animTick);
-        if (anim_proc >= 100) {
-            _begFrm = _animEndFrm;
-            SetSpr(_endFrm);
-            _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+        const auto time = _engine->GameTime.GameplayTime();
+
+        if (_animStartTime != time_point {}) {
+            if (time >= _animStartTime) {
+                PlayStayAnim();
+                _animStartTime = time_point {};
+            }
         }
-        else {
-            const auto cur_spr = lerp(_begFrm, _endFrm, static_cast<float>(anim_proc) / 100.0f);
-            RUNTIME_ASSERT((cur_spr >= _begFrm && cur_spr <= _endFrm) || (cur_spr >= _endFrm && cur_spr <= _begFrm));
-            if (_curFrm != cur_spr) {
-                SetSpr(cur_spr);
+
+        if (_animStartTime == time_point {}) {
+            const auto anim_proc = GenericUtils::Percent(_anim->Ticks, time_duration_to_ms<uint>(time - _animTime));
+            if (anim_proc >= 100) {
+                SetCurSpr(_endFrm);
+
+                if (_isAnimLooped) {
+                    const auto next_anim_wait = GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+                    if (next_anim_wait != 0) {
+                        _animStartTime = time + std::chrono::milliseconds {next_anim_wait};
+                    }
+                    else {
+                        PlayStayAnim();
+                    }
+                }
+                else {
+                    _begFrm = _endFrm;
+                }
+            }
+            else {
+                const auto cur_spr = lerp(_begFrm, _endFrm, static_cast<float>(anim_proc) / 100.0f);
+                RUNTIME_ASSERT((cur_spr >= _begFrm && cur_spr <= _endFrm) || (cur_spr >= _endFrm && cur_spr <= _begFrm));
+
+                if (_curFrm != cur_spr) {
+                    SetCurSpr(cur_spr);
+                }
             }
         }
     }
     else if (_isEffect && !_finishing) {
         if (_isDynamicEffect) {
-            SetAnimFromStart();
+            PlayAnimFromStart();
         }
         else {
             Finish();
         }
     }
-    else if (_isShowAnim) {
-        if (_engine->GameTime.GameTick() >= _animNextTick) {
-            _isShowAnim = false;
-            SetStayAnim();
-        }
-    }
 
     // Effect
     if (_isDynamicEffect && !_finishing) {
-        const auto dt = static_cast<float>(_engine->GameTime.GameTick() - _effLastTick);
-        if (dt > 0) {
+        const auto dt = time_duration_to_ms<float>(_engine->GameTime.GameplayTime() - _effUpdateLastTime);
+        if (dt > 0.0f) {
             auto speed = GetFlyEffectSpeed();
             if (speed == 0.0f) {
                 speed = 1.0f;
@@ -176,7 +164,7 @@ void ItemHexView::Process()
 
             RefreshOffs();
 
-            _effLastTick = _engine->GameTime.GameTick();
+            _effUpdateLastTime = _engine->GameTime.GameplayTime();
 
             if (GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY) >= _effDist) {
                 Finish();
@@ -213,8 +201,8 @@ void ItemHexView::Process()
     if (_fading) {
         uint fading_proc;
 
-        if (const auto tick = _engine->GameTime.GameTick(); tick < _fadingEndTick) {
-            fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, _fadingEndTick - tick);
+        if (const auto tick = _engine->GameTime.GameplayTime(); tick < _fadingEndTime) {
+            fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, time_duration_to_ms<uint>(_fadingEndTime - tick));
         }
         else {
             fading_proc = 100u;
@@ -224,14 +212,14 @@ void ItemHexView::Process()
             _fading = false;
         }
 
-        Alpha = static_cast<uchar>(_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
+        Alpha = static_cast<uint8>(_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
         if (Alpha > _maxAlpha) {
             Alpha = _maxAlpha;
         }
     }
 }
 
-void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
+void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -261,7 +249,7 @@ void ItemHexView::SetEffect(ushort to_hx, ushort to_hy)
     _effCurX = static_cast<float>(ScrX);
     _effCurY = static_cast<float>(ScrY);
     _effDir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
-    _effLastTick = _engine->GameTime.GameTick();
+    _effUpdateLastTime = _engine->GameTime.GameplayTime();
 
     // Check off fade
     _fading = false;
@@ -274,8 +262,9 @@ void ItemHexView::SetFade(bool fade_up)
 {
     STACK_TRACE_ENTRY();
 
-    const auto tick = _engine->GameTime.GameTick();
-    _fadingEndTick = tick + _engine->Settings.FadingDuration - (_fadingEndTick > tick ? _fadingEndTick - tick : 0);
+    const auto time = _engine->GameTime.GameplayTime();
+
+    _fadingEndTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (_fadingEndTime > time ? _fadingEndTime - time : time_duration {});
     _fadeUp = fade_up;
     _fading = true;
 }
@@ -311,18 +300,18 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.ItemHexDefaultAnim;
     }
 
-    SetStayAnim();
+    PlayStayAnim();
     _animBegFrm = _begFrm;
     _animEndFrm = _endFrm;
 
     if (GetIsCanOpen()) {
         if (GetOpened()) {
-            SetSpr(_animEndFrm);
+            SetCurSpr(_animEndFrm);
             _begFrm = _curFrm;
             _endFrm = _curFrm;
         }
         else {
-            SetSpr(_animBegFrm);
+            SetCurSpr(_animBegFrm);
             _begFrm = _curFrm;
             _endFrm = _curFrm;
         }
@@ -338,12 +327,26 @@ void ItemHexView::SetSprite(Sprite* spr)
     }
 
     if (SprDrawValid) {
-        SprDraw->SetColor(IsColorize() ? GetColor() : 0);
+        SprDraw->SetColor(GetIsColorize() ? GetLightColor() & 0xFFFFFF : 0);
         SprDraw->SetEggAppearence(GetEggType());
         if (GetIsBadItem()) {
             SprDraw->SetContour(ContourType::Red);
         }
     }
+}
+
+void ItemHexView::RestoreAlpha()
+{
+    STACK_TRACE_ENTRY();
+
+    Alpha = _maxAlpha;
+}
+
+void ItemHexView::RefreshAlpha()
+{
+    STACK_TRACE_ENTRY();
+
+    _maxAlpha = GetIsColorize() ? GetLightColor() >> 24 : 0xFF;
 }
 
 auto ItemHexView::GetEggType() const -> EggAppearenceType
@@ -367,44 +370,84 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
     }
 }
 
-void ItemHexView::SetAnimFromEnd()
+void ItemHexView::PlayAnimFromEnd()
 {
     STACK_TRACE_ENTRY();
 
     _begFrm = _animEndFrm;
     _endFrm = _animBegFrm;
-    SetSpr(_begFrm);
-    _animTick = _engine->GameTime.GameTick();
+    SetCurSpr(_begFrm);
+    _animTime = _engine->GameTime.GameplayTime();
 }
 
-void ItemHexView::SetAnimFromStart()
+void ItemHexView::PlayAnimFromStart()
 {
     STACK_TRACE_ENTRY();
 
     _begFrm = _animBegFrm;
     _endFrm = _animEndFrm;
-    SetSpr(_begFrm);
-    _animTick = _engine->GameTime.GameTick();
+    SetCurSpr(_begFrm);
+    _animTime = _engine->GameTime.GameplayTime();
 }
 
-void ItemHexView::SetAnim(uint beg, uint end)
+void ItemHexView::PlayAnim(uint beg, uint end)
 {
     STACK_TRACE_ENTRY();
 
-    if (beg > _anim->CntFrm - 1) {
+    if (beg >= _anim->CntFrm) {
         beg = _anim->CntFrm - 1;
     }
-    if (end > _anim->CntFrm - 1) {
+    if (end >= _anim->CntFrm) {
         end = _anim->CntFrm - 1;
     }
 
     _begFrm = beg;
     _endFrm = end;
-    SetSpr(_begFrm);
-    _animTick = _engine->GameTime.GameTick();
+    SetCurSpr(_begFrm);
+    _animTime = _engine->GameTime.GameplayTime();
 }
 
-void ItemHexView::SetSpr(uint num_spr)
+void ItemHexView::PlayStayAnim()
+{
+    STACK_TRACE_ENTRY();
+
+    if (GetIsShowAnimExt()) {
+        PlayAnim(GetAnimStay0(), GetAnimStay1());
+    }
+    else {
+        PlayAnim(0, _anim->CntFrm - 1);
+    }
+}
+
+void ItemHexView::PlayShowAnim()
+{
+    STACK_TRACE_ENTRY();
+
+    if (GetIsShowAnimExt()) {
+        PlayAnim(GetAnimShow0(), GetAnimShow1());
+    }
+    else {
+        PlayAnim(0, _anim->CntFrm - 1);
+    }
+}
+
+void ItemHexView::PlayHideAnim()
+{
+    STACK_TRACE_ENTRY();
+
+    if (GetIsShowAnimExt()) {
+        PlayAnim(GetAnimHide0(), GetAnimHide1());
+        _animBegFrm = GetAnimHide1();
+        _animEndFrm = GetAnimHide1();
+    }
+    else {
+        PlayAnim(0, _anim->CntFrm - 1);
+        _animBegFrm = _anim->CntFrm - 1;
+        _animEndFrm = _anim->CntFrm - 1;
+    }
+}
+
+void ItemHexView::SetCurSpr(uint num_spr)
 {
     STACK_TRACE_ENTRY();
 
@@ -429,45 +472,5 @@ void ItemHexView::RefreshOffs()
     if (_isDynamicEffect) {
         ScrX += iround(_effCurX);
         ScrY += iround(_effCurY);
-    }
-}
-
-void ItemHexView::SetStayAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        SetAnim(GetAnimStay0(), GetAnimStay1());
-    }
-    else {
-        SetAnim(0, _anim->CntFrm - 1);
-    }
-}
-
-void ItemHexView::SetShowAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        SetAnim(GetAnimShow0(), GetAnimShow1());
-    }
-    else {
-        SetAnim(0, _anim->CntFrm - 1);
-    }
-}
-
-void ItemHexView::SetHideAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        SetAnim(GetAnimHide0(), GetAnimHide1());
-        _animBegFrm = GetAnimHide1();
-        _animEndFrm = GetAnimHide1();
-    }
-    else {
-        SetAnim(0, _anim->CntFrm - 1);
-        _animBegFrm = _anim->CntFrm - 1;
-        _animEndFrm = _anim->CntFrm - 1;
     }
 }

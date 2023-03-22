@@ -55,14 +55,14 @@ static void SetEntry(string& entry, string_view value, bool append)
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
     entry += std::get<AnyData::STRING_VALUE>(any_value);
 }
-static void SetEntry(uchar& entry, string_view value, bool append)
+static void SetEntry(uint8& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
 
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry += static_cast<uchar>(std::get<AnyData::INT_VALUE>(any_value));
+    entry += static_cast<uint8>(std::get<AnyData::INT_VALUE>(any_value));
 }
-static void SetEntry(short& entry, string_view value, bool append)
+static void SetEntry(int16& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
 
@@ -70,7 +70,7 @@ static void SetEntry(short& entry, string_view value, bool append)
         entry = 0;
     }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = static_cast<short>(entry + std::get<AnyData::INT_VALUE>(any_value));
+    entry = static_cast<int16>(entry + std::get<AnyData::INT_VALUE>(any_value));
 }
 static void SetEntry(int& entry, string_view value, bool append)
 {
@@ -184,13 +184,13 @@ static void DrawEntry(string_view name, string_view entry)
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEntry(string_view name, const uchar& entry)
+static void DrawEntry(string_view name, const uint8& entry)
 {
     STACK_TRACE_ENTRY();
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEntry(string_view name, const short& entry)
+static void DrawEntry(string_view name, const int16& entry)
 {
     STACK_TRACE_ENTRY();
 
@@ -277,13 +277,13 @@ static void DrawEditableEntry(string_view name, string& entry)
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEditableEntry(string_view name, uchar& entry)
+static void DrawEditableEntry(string_view name, uint8& entry)
 {
     STACK_TRACE_ENTRY();
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
-static void DrawEditableEntry(string_view name, short& entry)
+static void DrawEditableEntry(string_view name, int16& entry)
 {
     STACK_TRACE_ENTRY();
 
@@ -356,7 +356,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     const_cast<bool&>(ClientMode) = client_mode;
 
-    const auto volatile_char_to_string = [](volatile const char* str, size_t len) -> string {
+    const auto volatile_char_to_string = [](const volatile char* str, size_t len) -> string {
         string result;
         result.resize(len);
         for (size_t i = 0; i < len; i++) {
@@ -367,7 +367,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Debugging config
     if (IsRunInDebugger()) {
-        static volatile const char DEBUG_CONFIG[] =
+        static const volatile char DEBUG_CONFIG[] =
 #include "DebugSettings-Include.h"
             ;
 
@@ -379,7 +379,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv, bool client_mode)
 
     // Injected config
     {
-        static volatile const char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
+        static const volatile char INTERNAL_CONFIG[5022] = {"###InternalConfig###\0"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                                             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
@@ -587,13 +587,75 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 {
     STACK_TRACE_ENTRY();
 
+    const bool append = !setting_value.empty() && setting_value[0] == '+';
+    string_view value = append ? string_view(setting_value).substr(1) : setting_value;
+
+    // Resolve environment variables and files
+    string resolved_value;
+    size_t prev_pos = 0;
+    size_t pos = setting_value.find('$');
+
+    if (pos != string::npos) {
+        while (pos != string::npos) {
+            const bool is_env = setting_value.compare(pos + 1, "ENV{"_len, "ENV{") == 0;
+            const bool is_file = setting_value.compare(pos + 1, "FILE{"_len, "FILE{") == 0;
+
+            if (is_env || is_file) {
+                pos += is_env ? "$ENV{"_len : "$FILE{"_len;
+                size_t end_pos = setting_value.find('}', pos);
+
+                if (end_pos != string::npos) {
+                    const string name = setting_value.substr(pos, end_pos - pos);
+
+                    if (is_env) {
+                        const char* env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+                        if (env != nullptr) {
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - "$ENV{"_len) + string(env);
+                            end_pos++;
+                        }
+                        else {
+                            WriteLog(LogType::Warning, "Environment variable $ENV{{{}}} for setting {} is not found", name, setting_name);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
+                        }
+                    }
+                    else {
+                        auto file = DiskFileSystem::OpenFile(name, false);
+                        if (file) {
+                            string file_content;
+                            file_content.resize(file.GetSize());
+                            file.Read(file_content.data(), file_content.size());
+                            file_content = _str(file_content).trim();
+
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - "$FILE{"_len) + string(file_content);
+                            end_pos++;
+                        }
+                        else {
+                            WriteLog(LogType::Warning, "File $FILE{{{}}} for setting {} is not found", name, setting_name);
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
+                        }
+                    }
+
+                    prev_pos = end_pos;
+                    pos = setting_value.find('$', end_pos);
+                }
+                else {
+                    WriteLog(LogType::Warning, "Not closed $ tag in setting {}: {}", setting_name, setting_value);
+                }
+            }
+            else {
+                pos = setting_value.find('$', pos + 1);
+            }
+        }
+
+        if (prev_pos != string::npos) {
+            resolved_value += setting_value.substr(prev_pos);
+        }
+
+        value = resolved_value;
+    }
+
 #define SET_SETTING(sett) \
-    if (!setting_value.empty() && setting_value[0] == '+') { \
-        SetEntry(sett, setting_value.substr(1), true); \
-    } \
-    else { \
-        SetEntry(sett, setting_value, false); \
-    } \
+    SetEntry(sett, value, append); \
     return
 #define FIXED_SETTING(type, name, ...) \
     case const_hash(#name): \

@@ -39,4 +39,4 @@
 
 class FOServer;
 
-extern void InitAdminManager(FOServer* server, ushort port);
+extern void InitAdminManager(FOServer* server, uint16 port);

@@ -70,7 +70,7 @@
     string pass;
     const auto allow = self->GetEngine()->OnPlayerGetAccess.Fire(self, access, pass);
     if (allow) {
-        self->Access = static_cast<uchar>(access);
+        self->Access = static_cast<uint8>(access);
     }
 
     return allow;
@@ -88,7 +88,7 @@
 ///# param textMsg ...
 ///# param numStr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, ushort textMsg, uint numStr)
+[[maybe_unused]] void Server_Player_Message(Player* self, uint16 textMsg, uint numStr)
 {
     self->Send_TextMsg(nullptr, numStr, SAY_NETMSG, textMsg);
 }
@@ -98,7 +98,7 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Player_Message(Player* self, ushort textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Player_Message(Player* self, uint16 textMsg, uint numStr, string_view lexems)
 {
     self->Send_TextMsgLex(nullptr, numStr, SAY_NETMSG, textMsg, lexems);
 }

@@ -52,7 +52,11 @@ static auto ApplyColorBrightness(uint color, int brightness) -> uint
     }
 }
 
-TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) : PosX {x}, PosY {y}, Width {width}, Height {height}
+TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) :
+    PosX {x},
+    PosY {y},
+    Width {width},
+    Height {height}
 {
     STACK_TRACE_ENTRY();
 }
@@ -98,18 +102,20 @@ auto AnyFrames::GetSprId(uint num_frm) const -> uint
     return Ind[num_frm % CntFrm];
 }
 
-auto AnyFrames::GetCurSprId(uint tick) const -> uint
+auto AnyFrames::GetCurSprId(time_point time) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return CntFrm > 1 ? Ind[tick % Ticks * 100 / Ticks * CntFrm / 100] : Ind[0];
+    const auto ticks = time_duration_to_ms<size_t>(time.time_since_epoch());
+    return CntFrm > 1 ? Ind[ticks % Ticks * 100 / Ticks * CntFrm / 100] : Ind[0];
 }
 
-auto AnyFrames::GetCurSprIndex(uint tick) const -> uint
+auto AnyFrames::GetCurSprIndex(time_point time) const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return CntFrm > 1 ? tick % Ticks * 100 / Ticks * CntFrm / 100 : 0;
+    const auto ticks = time_duration_to_ms<size_t>(time.time_since_epoch());
+    return CntFrm > 1 ? ticks % Ticks * 100 / Ticks * CntFrm / 100 : 0;
 }
 
 auto AnyFrames::GetDir(uint dir) -> AnyFrames*
@@ -119,7 +125,11 @@ auto AnyFrames::GetDir(uint dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _resources {resources}, _effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) :
+    _settings {settings},
+    _window {window},
+    _resources {resources},
+    _effectMngr {effect_mngr}
 {
     STACK_TRACE_ENTRY();
 
@@ -149,7 +159,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     DummyAnimation->CntFrm = 1;
     DummyAnimation->Ticks = 100;
 
-    _eventUnsubscriber += _window->OnWindowSizeChanged += [this] { OnWindowSizeChanged(); };
+    _eventUnsubscriber += _window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
 SpriteManager::~SpriteManager()
@@ -181,20 +191,53 @@ void SpriteManager::SetWindowSize(int w, int h)
     _window->SetSize(w, h);
 }
 
-auto SpriteManager::GetWindowPosition() const -> tuple<int, int>
+auto SpriteManager::GetScreenSize() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();
 
-    return _window->GetPosition();
+    return _window->GetScreenSize();
 }
 
-void SpriteManager::SetWindowPosition(int x, int y)
+void SpriteManager::SetScreenSize(int w, int h)
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    const auto diff_w = w - App->Settings.ScreenWidth;
+    const auto diff_h = h - App->Settings.ScreenHeight;
 
-    _window->SetPosition(x, y);
+    if (!App->Settings.Fullscreen) {
+        const auto [x, y] = _window->GetPosition();
+        _window->SetPosition(x - diff_w / 2, y - diff_h / 2);
+    }
+    else {
+        _windowSizeDiffX += diff_w / 2;
+        _windowSizeDiffY += diff_h / 2;
+    }
+
+    _window->SetScreenSize(w, h);
+}
+
+void SpriteManager::SwitchFullscreen()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!App->Settings.Fullscreen) {
+        if (_window->ToggleFullscreen(true)) {
+            App->Settings.Fullscreen = true;
+        }
+    }
+    else {
+        if (_window->ToggleFullscreen(false)) {
+            App->Settings.Fullscreen = false;
+
+            if (_windowSizeDiffX != 0 || _windowSizeDiffY != 0) {
+                const auto [x, y] = _window->GetPosition();
+                _window->SetPosition(x - _windowSizeDiffX, y - _windowSizeDiffY);
+                _windowSizeDiffX = 0;
+                _windowSizeDiffY = 0;
+            }
+        }
+    }
 }
 
 void SpriteManager::SetMousePosition(int x, int y)
@@ -291,7 +334,7 @@ void SpriteManager::EndScene()
     }
 }
 
-void SpriteManager::OnWindowSizeChanged()
+void SpriteManager::OnScreenSizeChanged()
 {
     STACK_TRACE_ENTRY();
 
@@ -806,9 +849,9 @@ static void WriteSimpleTga(string_view fname, int width, int height, vector<uint
     auto file = DiskFileSystem::OpenFile(fname, true);
     RUNTIME_ASSERT(file);
 
-    const uchar header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        static_cast<uchar>(width % 256), static_cast<uchar>(width / 256), //
-        static_cast<uchar>(height % 256), static_cast<uchar>(height / 256), 4 * 8, 0x20};
+    const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
+        static_cast<uint8>(width % 256), static_cast<uint8>(width / 256), //
+        static_cast<uint8>(height % 256), static_cast<uint8>(height / 256), 4 * 8, 0x20};
     file.Write(header);
 
     for (auto& c : data) {
@@ -1041,11 +1084,11 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
         CreateAnyFramesDirAnims(anim, dirs);
     }
 
-    for (ushort dir = 0; dir < dirs; dir++) {
+    for (uint16 dir = 0; dir < dirs; dir++) {
         auto* dir_anim = anim->GetDir(dir);
         const auto ox = file.GetLEShort();
         const auto oy = file.GetLEShort();
-        for (ushort i = 0; i < frames_count; i++) {
+        for (uint16 i = 0; i < frames_count; i++) {
             if (file.GetUChar() == 0u) {
                 auto* si = new SpriteInfo();
                 si->OffsX = ox;
@@ -1161,7 +1204,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
         model->SetMoveDirAngle(-dir, false);
     }
     else {
-        model->SetDir(static_cast<uchar>(dir), false);
+        model->SetDir(static_cast<uint8>(dir), false);
     }
 
     // Calculate needed information
@@ -1349,7 +1392,7 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
         PopAtlasType();
 
         auto* si = _sprData[index];
-        si->OffsY = static_cast<short>(draw_height / 4);
+        si->OffsY = static_cast<int16>(draw_height / 4);
         si->UsedForModel = true;
     }
 
@@ -1778,7 +1821,7 @@ void SpriteManager::InitializeEgg(string_view egg_name)
     _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _sprEgg->Width, _sprEgg->Height);
 }
 
-auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool
+auto SpriteManager::CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1821,7 +1864,7 @@ auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType e
     return false;
 }
 
-void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
+void SpriteManager::SetEgg(uint16 hx, uint16 hy, Sprite* spr)
 {
     STACK_TRACE_ENTRY();
 
@@ -1899,22 +1942,22 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Light
         if (spr->Light != nullptr) {
-            static auto light_func = [](uint& c, const uchar* l, const uchar* l2) {
+            static auto light_func = [](uint& c, const uint8* l, const uint8* l2) {
                 const int lr = *l;
                 const int lg = *(l + 1);
                 const int lb = *(l + 2);
                 const int lr2 = *l2;
                 const int lg2 = *(l2 + 1);
                 const int lb2 = *(l2 + 2);
-                auto& r = reinterpret_cast<uchar*>(&c)[2];
-                auto& g = reinterpret_cast<uchar*>(&c)[1];
-                auto& b = reinterpret_cast<uchar*>(&c)[0];
+                auto& r = reinterpret_cast<uint8*>(&c)[2];
+                auto& g = reinterpret_cast<uint8*>(&c)[1];
+                auto& b = reinterpret_cast<uint8*>(&c)[0];
                 const auto ir = static_cast<int>(r) + (lr + lr2) / 2;
                 const auto ig = static_cast<int>(g) + (lg + lg2) / 2;
                 const auto ib = static_cast<int>(b) + (lb + lb2) / 2;
-                r = static_cast<uchar>(std::min(ir, 255));
-                g = static_cast<uchar>(std::min(ig, 255));
-                b = static_cast<uchar>(std::min(ib, 255));
+                r = static_cast<uint8>(std::min(ir, 255));
+                g = static_cast<uint8>(std::min(ig, 255));
+                b = static_cast<uint8>(std::min(ib, 255));
             };
             light_func(color_r, spr->Light, spr->LightRight);
             light_func(color_l, spr->Light, spr->LightLeft);
@@ -1922,8 +1965,8 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Alpha
         if (spr->Alpha != nullptr) {
-            reinterpret_cast<uchar*>(&color_r)[3] = *spr->Alpha;
-            reinterpret_cast<uchar*>(&color_l)[3] = *spr->Alpha;
+            reinterpret_cast<uint8*>(&color_r)[3] = *spr->Alpha;
+            reinterpret_cast<uint8*>(&color_l)[3] = *spr->Alpha;
         }
 
         // Fix color
@@ -2259,7 +2302,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     _primitiveDrawBuf->PrimType = prim;
     _primitiveDrawBuf->PrimZoomed = _spritesZoom != 1.0f;
 
-    _primitiveDrawBuf->Upload(effect->Usage);
+    _primitiveDrawBuf->Upload(effect->Usage, count, count);
     EnableScissor();
     effect->DrawBuffer(_primitiveDrawBuf, 0, count);
     DisableScissor();
@@ -2550,7 +2593,7 @@ void SpriteManager::BuildFont(int index)
     if (font.MakeGray) {
         for (auto y = 0; y < si->Height; y++) {
             for (auto x = 0; x < si->Width; x++) {
-                const auto a = reinterpret_cast<uchar*>(&PIXEL_AT(data_normal, si->Width, x, y))[3];
+                const auto a = reinterpret_cast<uint8*>(&PIXEL_AT(data_normal, si->Width, x, y))[3];
                 if (a != 0u) {
                     PIXEL_AT(data_normal, si->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
                     if (si_bordered != nullptr) {
@@ -2759,7 +2802,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
     return true;
 }
 
-static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
@@ -2838,13 +2881,13 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 
         // Fill data
         auto& let = font.Letters[id];
-        let.PosX = static_cast<short>(x + 1);
-        let.PosY = static_cast<short>(y + 1);
-        let.Width = static_cast<short>(w - 2);
-        let.Height = static_cast<short>(h - 2);
-        let.OffsX = static_cast<short>(-static_cast<int>(ox));
-        let.OffsY = static_cast<short>(-static_cast<int>(oy) + (line_height - base_height));
-        let.XAdvance = static_cast<short>(xa + 1);
+        let.PosX = static_cast<int16>(x + 1);
+        let.PosY = static_cast<int16>(y + 1);
+        let.Width = static_cast<int16>(w - 2);
+        let.Height = static_cast<int16>(h - 2);
+        let.OffsX = static_cast<int16>(-static_cast<int>(ox));
+        let.OffsY = static_cast<int16>(-static_cast<int>(oy) + (line_height - base_height));
+        let.XAdvance = static_cast<int16>(xa + 1);
     }
 
     font.LineHeight = font.Letters.count('W') != 0u ? font.Letters['W'].Height : base_height;
@@ -3296,7 +3339,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     cury = r.Top;
 
     for (const auto i : xrange(fi.LinesAll)) {
-        fi.LineWidth[i] = static_cast<short>(curx);
+        fi.LineWidth[i] = static_cast<int16>(curx);
     }
 
     auto can_count = false;
@@ -3319,7 +3362,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             break;
         case 0:
         case '\n':
-            fi.LineWidth[curstr] = static_cast<short>(curx);
+            fi.LineWidth[curstr] = static_cast<int16>(curx);
             cury += font->LineHeight + font->YAdvance;
             curx = r.Left;
 

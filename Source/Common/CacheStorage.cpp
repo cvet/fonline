@@ -52,10 +52,10 @@ public:
 
     [[nodiscard]] virtual auto HasEntry(string_view entry_name) const -> bool = 0;
     [[nodiscard]] virtual auto GetString(string_view entry_name) const -> string = 0;
-    [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uchar> = 0;
+    [[nodiscard]] virtual auto GetData(string_view entry_name) const -> vector<uint8> = 0;
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
-    virtual void SetData(string_view entry_name, const_span<uchar> data) = 0;
+    virtual void SetData(string_view entry_name, const_span<uint8> data) = 0;
     virtual void EraseEntry(string_view entry_name) = 0;
 };
 
@@ -71,10 +71,10 @@ public:
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uchar> override;
+    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
 
     void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, const_span<uchar> data) override;
+    void SetData(string_view entry_name, const_span<uint8> data) override;
     void EraseEntry(string_view entry_name) override;
 
 private:
@@ -96,10 +96,10 @@ public:
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool override;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string override;
-    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uchar> override;
+    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uint8> override;
 
     void SetString(string_view entry_name, string_view str) override;
-    void SetData(string_view entry_name, const_span<uchar> data) override;
+    void SetData(string_view entry_name, const_span<uint8> data) override;
     void EraseEntry(string_view entry_name) override;
 
 private:
@@ -136,7 +136,7 @@ auto CacheStorage::GetString(string_view entry_name) const -> string
 
     return _impl->GetString(entry_name);
 }
-auto CacheStorage::GetData(string_view entry_name) const -> vector<uchar>
+auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -152,7 +152,7 @@ void CacheStorage::SetString(string_view entry_name, string_view str)
     _impl->SetString(entry_name, str);
 }
 
-void CacheStorage::SetData(string_view entry_name, const_span<uchar> data)
+void CacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     STACK_TRACE_ENTRY();
 
@@ -174,10 +174,11 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
 {
     STACK_TRACE_ENTRY();
 
-    return _str("{}/{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
+    return _str(work_path).combinePath(_str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
-FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real_path).eraseFileExtension()}
+FileCacheStorage::FileCacheStorage(string_view real_path) :
+    _workPath {_str(real_path).eraseFileExtension()}
 {
     STACK_TRACE_ENTRY();
 
@@ -200,7 +201,6 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
     if (!file) {
-        WriteLog(LogType::Warning, "Can't open read cache at '{}'", path);
         return {};
     }
 
@@ -215,18 +215,17 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
     return str;
 }
 
-auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
+auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
     if (!file) {
-        WriteLog(LogType::Warning, "Can't open read cache at '{}'", path);
         return {};
     }
 
-    vector<uchar> data(file.GetSize());
+    vector<uint8> data(file.GetSize());
 
     if (!file.Read(data.data(), data.size())) {
         WriteLog(LogType::Warning, "Can't read cache at '{}'", path);
@@ -253,7 +252,7 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
     }
 }
 
-void FileCacheStorage::SetData(string_view entry_name, const_span<uchar> data)
+void FileCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     STACK_TRACE_ENTRY();
 
@@ -367,7 +366,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     return str;
 }
 
-auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
+auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
@@ -385,7 +384,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
         return {};
     }
 
-    vector<uchar> data;
+    vector<uint8> data;
     data.resize(static_cast<size_t>(size));
 
     r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), data.data(), &size);
@@ -417,7 +416,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
     }
 }
 
-void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uchar> data)
+void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8> data)
 {
     STACK_TRACE_ENTRY();
 

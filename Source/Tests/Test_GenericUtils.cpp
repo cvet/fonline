@@ -35,23 +35,9 @@
 
 #include "GenericUtils.h"
 
-TEST_CASE("Dummy 1")
-{
-    REQUIRE(1 == 1);
-
-    SECTION("2") { REQUIRE(2 == 2); }
-}
-
-TEST_CASE("Dummy 2")
-{
-    REQUIRE(1 == 1);
-
-    SECTION("2") { REQUIRE(2 == 2); }
-}
-
 TEST_CASE("MurmurHash2")
 {
-    const auto* data = reinterpret_cast<const uchar*>("abcdefg");
+    const auto* data = reinterpret_cast<const uint8*>("abcdefg");
     REQUIRE(Hashing::MurmurHash2(data, 4) == 646393889U);
     REQUIRE(Hashing::MurmurHash2(data, 5) == 1594468574U);
     REQUIRE(Hashing::MurmurHash2(data, 6) == 1271458169U);
@@ -114,4 +100,12 @@ TEST_CASE("lerp")
     REQUIRE(lerp(7u, 5u, 0.51f) == 5);
     REQUIRE(lerp(7u, 5u, 1.0f) == 5);
     REQUIRE(lerp(7u, 5u, 2.0f) == 5);
+}
+
+TEST_CASE("FloatCompare")
+{
+    REQUIRE(Math::FloatCompare(0.111f, 0.111f));
+    REQUIRE(Math::FloatCompare(-110.95667f, -110.95667f));
+    REQUIRE(Math::FloatCompare(0.95667f, 0.95667f));
+    REQUIRE(!Math::FloatCompare(1.0f, -1.0f));
 }

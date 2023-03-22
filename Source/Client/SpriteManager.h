@@ -73,13 +73,19 @@ static constexpr auto FT_SKIPLINES_END(uint l) -> uint
 
 // Colors
 static constexpr auto COLOR_SPRITE = COLOR_RGB(128, 128, 128);
-static constexpr auto COLOR_SPRITE_RED = static_cast<uint>(COLOR_SPRITE | (255 << 16));
+static constexpr auto COLOR_SPRITE_RED = COLOR_SPRITE | 255 << 16;
 static constexpr auto COLOR_TEXT = COLOR_RGB(60, 248, 0);
 static constexpr auto COLOR_TEXT_WHITE = COLOR_RGB(255, 255, 255);
 static constexpr auto COLOR_TEXT_DWHITE = COLOR_RGB(191, 191, 191);
 static constexpr auto COLOR_TEXT_RED = COLOR_RGB(200, 0, 0);
-#define COLOR_SCRIPT_SPRITE(c) ((c) != 0u ? (c) : COLOR_SPRITE)
-#define COLOR_SCRIPT_TEXT(c) ((c) != 0u ? (c) : COLOR_TEXT)
+static constexpr auto COLOR_SCRIPT_SPRITE(uint color) -> uint
+{
+    return color != 0 ? color : COLOR_SPRITE;
+}
+static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> uint
+{
+    return color != 0 ? color : COLOR_TEXT;
+}
 
 enum class AtlasType
 {
@@ -155,9 +161,9 @@ struct SpriteInfo
 
 struct AnyFrames
 {
-    [[nodiscard]] auto GetSprId(uint num_frm = 0u) const -> uint;
-    [[nodiscard]] auto GetCurSprId(uint tick) const -> uint;
-    [[nodiscard]] auto GetCurSprIndex(uint tick) const -> uint;
+    [[nodiscard]] auto GetSprId(uint num_frm = 0) const -> uint;
+    [[nodiscard]] auto GetCurSprId(time_point time) const -> uint;
+    [[nodiscard]] auto GetCurSprIndex(time_point time) const -> uint;
     [[nodiscard]] auto GetDir(uint dir) -> AnyFrames*;
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids
@@ -202,7 +208,7 @@ public:
 
     [[nodiscard]] auto GetWindow() { NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
-    [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
+    [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
@@ -213,7 +219,7 @@ public:
     [[nodiscard]] auto GetViewRect(const Sprite* spr) const -> IRect;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
-    [[nodiscard]] auto CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool;
+    [[nodiscard]] auto CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool;
     [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
     [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*;
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
@@ -223,7 +229,8 @@ public:
 #endif
 
     void SetWindowSize(int w, int h);
-    void SetWindowPosition(int x, int y);
+    void SetScreenSize(int w, int h);
+    void SwitchFullscreen();
     void SetMousePosition(int x, int y);
     void MinimizeWindow();
     auto EnableFullscreen() -> bool;
@@ -261,7 +268,7 @@ public:
 
     void DrawContours();
     void InitializeEgg(string_view egg_name);
-    void SetEgg(ushort hx, ushort hy, Sprite* spr);
+    void SetEgg(uint16 hx, uint16 hy, Sprite* spr);
     void EggNotValid() { _eggValid = false; }
 
 #if FO_ENABLE_3D
@@ -292,7 +299,7 @@ private:
     void RenderModel(ModelInstance* model);
 #endif
 
-    void OnWindowSizeChanged();
+    void OnScreenSizeChanged();
 
     RenderSettings& _settings;
     AppWindow* _window;
@@ -324,14 +331,16 @@ private:
     bool _contoursAdded {};
     bool _contourClearMid {};
     bool _eggValid {};
-    ushort _eggHx {};
-    ushort _eggHy {};
+    uint16 _eggHx {};
+    uint16 _eggHy {};
     int _eggX {};
     int _eggY {};
     const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
     vector<uint> _borderBuf {};
     float _spritesZoom {1.0f};
+    int _windowSizeDiffX {};
+    int _windowSizeDiffY {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};
@@ -367,13 +376,13 @@ private:
     {
         struct Letter
         {
-            short PosX {};
-            short PosY {};
-            short Width {};
-            short Height {};
-            short OffsX {};
-            short OffsY {};
-            short XAdvance {};
+            int16 PosX {};
+            int16 PosY {};
+            int16 Width {};
+            int16 Height {};
+            int16 OffsX {};
+            int16 OffsY {};
+            int16 XAdvance {};
             FRect TexUV {};
             FRect TexBorderedUV {};
         };

@@ -37,7 +37,8 @@
 
 constexpr auto BIAS_FLOAT = 0.02f;
 
-LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _geometry {geometry}
+LineTracer::LineTracer(GeometryHelper& geometry, uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint16 maxhx, uint16 maxhy, float angle) :
+    _geometry {geometry}
 {
     STACK_TRACE_ENTRY();
 
@@ -118,7 +119,7 @@ LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx
     }
 }
 
-auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
+auto LineTracer::GetNextHex(uint16& cx, uint16& cy) const -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -148,15 +149,15 @@ auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
     return _dir2;
 }
 
-void LineTracer::GetNextSquare(ushort& cx, ushort& cy)
+void LineTracer::GetNextSquare(uint16& cx, uint16& cy)
 {
     STACK_TRACE_ENTRY();
 
     _x1 += _dx;
     _y1 += _dy;
 
-    cx = static_cast<ushort>(floor(_x1));
-    cy = static_cast<ushort>(floor(_y1));
+    cx = static_cast<uint16>(floor(_x1));
+    cy = static_cast<uint16>(floor(_y1));
 
     if (cx >= _maxHx) {
         cx = _maxHx - 1;

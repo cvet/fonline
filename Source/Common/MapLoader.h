@@ -42,11 +42,11 @@ DECLARE_EXCEPTION(MapLoaderException);
 struct MapTile
 {
     hstring::hash_t NameHash {};
-    ushort HexX {};
-    ushort HexY {};
-    short OffsX {};
-    short OffsY {};
-    uchar Layer {};
+    uint16 HexX {};
+    uint16 HexY {};
+    int16 OffsX {};
+    int16 OffsY {};
+    uint8 Layer {};
     bool IsRoof {};
     bool IsSelected {}; // Todo: remove mapper specific IsSelected from MapTile
 };
@@ -55,8 +55,8 @@ static_assert(std::is_standard_layout_v<MapTile>);
 class MapLoader final
 {
 public:
-    using CrLoadFunc = std::function<bool(uint id, const ProtoCritter* proto, const map<string, string>& kv)>;
-    using ItemLoadFunc = std::function<bool(uint id, const ProtoItem* proto, const map<string, string>& kv)>;
+    using CrLoadFunc = std::function<bool(ident_t id, const ProtoCritter* proto, const map<string, string>& kv)>;
+    using ItemLoadFunc = std::function<bool(ident_t id, const ProtoItem* proto, const map<string, string>& kv)>;
     using TileLoadFunc = std::function<bool(MapTile&& tile)>;
 
     MapLoader() = delete;

@@ -41,7 +41,11 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef()), _player {owner}
+Critter::Critter(FOServer* engine, ident_t id, Player* owner, const ProtoCritter* proto, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
+    CritterProperties(GetInitRef()),
+    _player {owner}
 {
     STACK_TRACE_ENTRY();
 
@@ -64,11 +68,11 @@ Critter::~Critter()
     }
 }
 
-auto Critter::GetOfflineTime() const -> uint
+auto Critter::GetOfflineTime() const -> time_duration
 {
     STACK_TRACE_ENTRY();
 
-    return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;
+    return _playerDetached ? _engine->GameTime.FrameTime() - _playerDetachTime : time_duration {};
 }
 
 auto Critter::IsAlive() const -> bool
@@ -124,7 +128,7 @@ void Critter::DetachPlayer()
     _player->Release();
     _player = nullptr;
     _playerDetached = true;
-    _playerDetachTick = _engine->GameTime.FrameTick();
+    _playerDetachTime = _engine->GameTime.FrameTime();
 }
 
 void Critter::AttachPlayer(Player* owner)
@@ -146,7 +150,7 @@ void Critter::ClearMove()
     Moving.Uid++;
     Moving.Steps = {};
     Moving.ControlSteps = {};
-    Moving.StartTick = {};
+    Moving.StartTime = {};
     Moving.Speed = {};
     Moving.StartHexX = {};
     Moving.StartHexY = {};
@@ -192,11 +196,11 @@ void Critter::ClearVisible()
     VisItem.clear();
 }
 
-auto Critter::GetCrSelf(uint crid) -> Critter*
+auto Critter::GetCrSelf(ident_t cr_id) -> Critter*
 {
     STACK_TRACE_ENTRY();
 
-    const auto it = VisCrSelfMap.find(crid);
+    const auto it = VisCrSelfMap.find(cr_id);
     return it != VisCrSelfMap.end() ? it->second : nullptr;
 }
 
@@ -217,12 +221,12 @@ auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vec
     return critters;
 }
 
-auto Critter::GetGlobalMapCritter(uint cr_id) const -> Critter*
+auto Critter::GetGlobalMapCritter(ident_t cr_id) const -> Critter*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(GlobalMapGroup);
-    const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](Critter* other) { return other->GetId() == cr_id; });
+    const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](const Critter* other) { return other->GetId() == cr_id; });
     return it != GlobalMapGroup->end() ? *it : nullptr;
 }
 
@@ -262,74 +266,74 @@ auto Critter::DelCrFromVisVec(Critter* del_cr) -> bool
     return true;
 }
 
-auto Critter::AddCrIntoVisSet1(uint crid) -> bool
+auto Critter::AddCrIntoVisSet1(ident_t cr_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return VisCr1.insert(crid).second;
+    return VisCr1.insert(cr_id).second;
 }
 
-auto Critter::AddCrIntoVisSet2(uint crid) -> bool
+auto Critter::AddCrIntoVisSet2(ident_t cr_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return VisCr2.insert(crid).second;
+    return VisCr2.insert(cr_id).second;
 }
 
-auto Critter::AddCrIntoVisSet3(uint crid) -> bool
+auto Critter::AddCrIntoVisSet3(ident_t cr_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return VisCr3.insert(crid).second;
+    return VisCr3.insert(cr_id).second;
 }
 
-auto Critter::DelCrFromVisSet1(uint crid) -> bool
+auto Critter::DelCrFromVisSet1(ident_t cr_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return VisCr1.erase(crid) != 0;
+    return VisCr1.erase(cr_id) != 0;
 }
 
-auto Critter::DelCrFromVisSet2(uint crid) -> bool
+auto Critter::DelCrFromVisSet2(ident_t cr_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return VisCr2.erase(crid) != 0;
+    return VisCr2.erase(cr_id) != 0;
 }
 
-auto Critter::DelCrFromVisSet3(uint crid) -> bool
+auto Critter::DelCrFromVisSet3(ident_t cr_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return VisCr3.erase(crid) != 0;
+    return VisCr3.erase(cr_id) != 0;
 }
 
-auto Critter::AddIdVisItem(uint item_id) -> bool
+auto Critter::AddIdVisItem(ident_t item_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
     return VisItem.insert(item_id).second;
 }
 
-auto Critter::DelIdVisItem(uint item_id) -> bool
+auto Critter::DelIdVisItem(ident_t item_id) -> bool
 {
     STACK_TRACE_ENTRY();
 
     return VisItem.erase(item_id) != 0;
 }
 
-auto Critter::CountIdVisItem(uint item_id) const -> bool
+auto Critter::CountIdVisItem(ident_t item_id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return VisItem.count(item_id) != 0;
 }
 
-void Critter::ChangeDir(uchar dir)
+void Critter::ChangeDir(uint8 dir)
 {
     STACK_TRACE_ENTRY();
 
-    const auto normalized_dir = static_cast<uchar>(dir % GameSettings::MAP_DIR_COUNT);
+    const auto normalized_dir = static_cast<uint8>(dir % GameSettings::MAP_DIR_COUNT);
 
     if (normalized_dir == GetDir()) {
         return;
@@ -343,7 +347,7 @@ void Critter::ChangeDirAngle(int dir_angle)
 {
     STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
+    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<int16>(dir_angle));
 
     if (normalized_dir_angle == GetDirAngle()) {
         return;
@@ -369,13 +373,13 @@ void Critter::SetItem(Item* item)
     item->SetCritterId(GetId());
 }
 
-auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
+auto Critter::GetInvItem(ident_t item_id, bool skip_hide) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (item_id == 0u) {
+    if (!item_id) {
         return nullptr;
     }
 
@@ -390,7 +394,7 @@ auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPid(hstring item_pid) -> Item*
+auto Critter::GetInvItemByPid(hstring item_pid) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -404,7 +408,7 @@ auto Critter::GetItemByPid(hstring item_pid) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
+auto Critter::GetInvItemByPidSlot(hstring item_pid, int slot) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -418,7 +422,7 @@ auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemSlot(int slot) -> Item*
+auto Critter::GetInvItemSlot(int slot) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -432,7 +436,7 @@ auto Critter::GetItemSlot(int slot) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemsSlot(int slot) -> vector<Item*>
+auto Critter::GetInvItemsSlot(int slot) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -449,7 +453,7 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     return items;
 }
 
-auto Critter::CountItemPid(hstring pid) const -> uint
+auto Critter::CountInvItemPid(hstring pid) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -462,7 +466,7 @@ auto Critter::CountItemPid(hstring pid) const -> uint
     return res;
 }
 
-auto Critter::CountItems() const -> uint
+auto Critter::CountInvItems() const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -471,13 +475,6 @@ auto Critter::CountItems() const -> uint
         count += item->GetCount();
     }
     return count;
-}
-
-auto Critter::GetInventory() -> vector<Item*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _invItems;
 }
 
 auto Critter::IsHaveGeckItem() const -> bool
@@ -492,7 +489,7 @@ auto Critter::IsHaveGeckItem() const -> bool
     return false;
 }
 
-void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity)
+void Critter::Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
 {
     STACK_TRACE_ENTRY();
 
@@ -511,6 +508,8 @@ void Critter::Broadcast_Move()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }
@@ -524,6 +523,8 @@ void Critter::Broadcast_Position()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }
@@ -533,9 +534,11 @@ void Critter::Broadcast_Position()
     }
 }
 
-void Critter::Broadcast_Action(int action, int action_ext, Item* item)
+void Critter::Broadcast_Action(int action, int action_ext, const Item* item)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (VisCr.empty()) {
         return;
@@ -550,6 +553,8 @@ void Critter::Broadcast_Dir()
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }
@@ -559,9 +564,11 @@ void Critter::Broadcast_Dir()
     }
 }
 
-void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
+void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     if (VisCr.empty()) {
         return;
@@ -572,7 +579,7 @@ void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
     }
 }
 
-void Critter::SendAndBroadcast_Action(int action, int action_ext, Item* item)
+void Critter::SendAndBroadcast_Action(int action, int action_ext, const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -587,7 +594,7 @@ void Critter::SendAndBroadcast_Action(int action, int action_ext, Item* item)
     }
 }
 
-void Critter::SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot)
+void Critter::SendAndBroadcast_MoveItem(const Item* item, uint8 action, uint8 prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -602,7 +609,7 @@ void Critter::SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slo
     }
 }
 
-void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
+void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
@@ -632,7 +639,7 @@ void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint 
     }
 }
 
-void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text)
+void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -671,11 +678,11 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
     }
 }
 
-void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg)
+void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
-    Send_TextMsg(this, num_str, how_say, num_msg);
+    Send_TextMsg(this, str_num, how_say, msg_num);
 
     if (to_cr.empty()) {
         return;
@@ -696,19 +703,19 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         }
 
         if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsg(this, num_str, how_say, num_msg);
+            cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsg(this, num_str, how_say, num_msg);
+            cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
     }
 }
 
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
-    Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
+    Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
 
     if (to_cr.empty()) {
         return;
@@ -729,31 +736,12 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         }
 
         if (dist == static_cast<uint>(-1)) {
-            cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
+            cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
-            cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
+            cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
     }
-}
-
-auto Critter::IsTransferTimeouts(bool send) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetTimeoutTransfer() > _engine->GameTime.GetFullSecond()) {
-        if (send) {
-            Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
-        }
-        return true;
-    }
-    if (GetTimeoutBattle() > _engine->GameTime.GetFullSecond()) {
-        if (send) {
-            Send_TextMsg(this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME);
-        }
-        return true;
-    }
-    return false;
 }
 
 auto Critter::IsTalking() const -> bool
@@ -813,7 +801,7 @@ auto Critter::IsFreeToTalk() const -> bool
     return GetTalkedPlayers() < max_talkers;
 }
 
-void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity* entity)
+void Critter::Send_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
 {
     STACK_TRACE_ENTRY();
 
@@ -824,7 +812,7 @@ void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity
     }
 }
 
-void Critter::Send_Move(Critter* from_cr)
+void Critter::Send_Move(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -835,7 +823,7 @@ void Critter::Send_Move(Critter* from_cr)
     }
 }
 
-void Critter::Send_Dir(Critter* from_cr)
+void Critter::Send_Dir(const Critter* from_cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -846,7 +834,7 @@ void Critter::Send_Dir(Critter* from_cr)
     }
 }
 
-void Critter::Send_AddCritter(Critter* cr)
+void Critter::Send_AddCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -857,7 +845,7 @@ void Critter::Send_AddCritter(Critter* cr)
     }
 }
 
-void Critter::Send_RemoveCritter(Critter* cr)
+void Critter::Send_RemoveCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -868,7 +856,7 @@ void Critter::Send_RemoveCritter(Critter* cr)
     }
 }
 
-void Critter::Send_LoadMap(Map* map)
+void Critter::Send_LoadMap(const Map* map)
 {
     STACK_TRACE_ENTRY();
 
@@ -879,7 +867,7 @@ void Critter::Send_LoadMap(Map* map)
     }
 }
 
-void Critter::Send_Position(Critter* cr)
+void Critter::Send_Position(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
@@ -890,7 +878,7 @@ void Critter::Send_Position(Critter* cr)
     }
 }
 
-void Critter::Send_AddItemOnMap(Item* item)
+void Critter::Send_AddItemOnMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -901,7 +889,7 @@ void Critter::Send_AddItemOnMap(Item* item)
     }
 }
 
-void Critter::Send_EraseItemFromMap(Item* item)
+void Critter::Send_EraseItemFromMap(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -912,7 +900,7 @@ void Critter::Send_EraseItemFromMap(Item* item)
     }
 }
 
-void Critter::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
+void Critter::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
 {
     STACK_TRACE_ENTRY();
 
@@ -923,7 +911,7 @@ void Critter::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
     }
 }
 
-void Critter::Send_AddItem(Item* item)
+void Critter::Send_AddItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -934,7 +922,7 @@ void Critter::Send_AddItem(Item* item)
     }
 }
 
-void Critter::Send_EraseItem(Item* item)
+void Critter::Send_EraseItem(const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -945,7 +933,7 @@ void Critter::Send_EraseItem(Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo(uchar flags)
+void Critter::Send_GlobalInfo(uint8 flags)
 {
     STACK_TRACE_ENTRY();
 
@@ -956,7 +944,7 @@ void Critter::Send_GlobalInfo(uchar flags)
     }
 }
 
-void Critter::Send_GlobalLocation(Location* loc, bool add)
+void Critter::Send_GlobalLocation(const Location* loc, bool add)
 {
     STACK_TRACE_ENTRY();
 
@@ -967,7 +955,7 @@ void Critter::Send_GlobalLocation(Location* loc, bool add)
     }
 }
 
-void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
+void Critter::Send_GlobalMapFog(uint16 zx, uint16 zy, uint8 fog)
 {
     STACK_TRACE_ENTRY();
 
@@ -978,7 +966,7 @@ void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
     }
 }
 
-void Critter::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
+void Critter::Send_Teleport(const Critter* cr, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -1022,7 +1010,7 @@ void Critter::Send_TimeSync()
     }
 }
 
-void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
+void Critter::Send_Text(const Critter* from_cr, string_view text, uint8 how_say)
 {
     STACK_TRACE_ENTRY();
 
@@ -1033,7 +1021,7 @@ void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
     }
 }
 
-void Critter::Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text)
+void Critter::Send_TextEx(ident_t from_id, string_view text, uint8 how_say, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1044,51 +1032,51 @@ void Critter::Send_TextEx(uint from_id, string_view text, uchar how_say, bool un
     }
 }
 
-void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg)
+void Critter::Send_TextMsg(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsg(from_cr, str_num, how_say, num_msg);
+        _player->Send_TextMsg(from_cr, str_num, how_say, msg_num);
     }
 }
 
-void Critter::Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg)
+void Critter::Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsg(from_id, str_num, how_say, num_msg);
+        _player->Send_TextMsg(from_id, str_num, how_say, msg_num);
     }
 }
 
-void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Critter::Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_cr, num_str, how_say, num_msg, lexems);
+        _player->Send_TextMsgLex(from_cr, str_num, how_say, msg_num, lexems);
     }
 }
 
-void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
+void Critter::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_TextMsgLex(from_id, num_str, how_say, num_msg, lexems);
+        _player->Send_TextMsgLex(from_id, str_num, how_say, msg_num, lexems);
     }
 }
 
-void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item)
+void Critter::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -1099,7 +1087,7 @@ void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* it
     }
 }
 
-void Critter::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
+void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -1110,7 +1098,7 @@ void Critter::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pr
     }
 }
 
-void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
+void Critter::Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
@@ -1121,7 +1109,7 @@ void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item,
     }
 }
 
-void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
+void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
     STACK_TRACE_ENTRY();
 
@@ -1132,7 +1120,7 @@ void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1,
     }
 }
 
-void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
+void Critter::Send_AutomapsInfo(const void* locs_vec, const Location* loc)
 {
     STACK_TRACE_ENTRY();
 
@@ -1143,7 +1131,7 @@ void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
     }
 }
 
-void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
+void Critter::Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
 {
     STACK_TRACE_ENTRY();
 
@@ -1154,29 +1142,29 @@ void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Critter::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Critter::Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
+        _player->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hx, from_hy, to_hx, to_hy);
     }
 }
 
-void Critter::Send_PlaySound(uint crid_synchronize, string_view sound_name)
+void Critter::Send_PlaySound(ident_t cr_id_synchronize, string_view sound_name)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_PlaySound(crid_synchronize, sound_name);
+        _player->Send_PlaySound(cr_id_synchronize, sound_name);
     }
 }
 
-void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
+void Critter::Send_MapText(uint16 hx, uint16 hy, uint color, string_view text, bool unsafe_text)
 {
     STACK_TRACE_ENTRY();
 
@@ -1187,25 +1175,25 @@ void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, b
     }
 }
 
-void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str)
+void Critter::Send_MapTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsg(hx, hy, color, num_msg, num_str);
+        _player->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
     }
 }
 
-void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
+void Critter::Send_MapTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_num, string_view lexems)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsgLex(hx, hy, color, num_msg, num_str, lexems);
+        _player->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
     }
 }
 
@@ -1264,7 +1252,7 @@ void Critter::Send_SomeItems(const vector<Item*>* items, int param)
     }
 }
 
-void Critter::AddTimeEvent(hstring func_name, uint rate, uint duration, int identifier)
+void Critter::AddTimeEvent(hstring func_name, uint rate, tick_t duration, int identifier)
 {
     STACK_TRACE_ENTRY();
 
@@ -1276,12 +1264,12 @@ void Critter::AddTimeEvent(hstring func_name, uint rate, uint duration, int iden
     RUNTIME_ASSERT(te_identifiers.size() == te_func_names.size());
     RUNTIME_ASSERT(te_identifiers.size() == te_rates.size());
 
-    const auto fire_time = duration + _engine->GameTime.GetFullSecond();
+    const auto fire_time = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + duration.underlying_value()};
 
     size_t index = 0;
 
     for ([[maybe_unused]] const auto te_identifier : te_identifiers) {
-        if (fire_time < te_fire_times[index]) {
+        if (fire_time.underlying_value() < te_fire_times[index].underlying_value()) {
             break;
         }
 
@@ -1334,9 +1322,9 @@ void Critter::ProcessTimeEvents()
         return;
     }
 
-    const auto& near_fire_time = *reinterpret_cast<const uint*>(data);
+    const auto& near_fire_time = *reinterpret_cast<const tick_t*>(data);
     const auto full_second = _engine->GameTime.GetFullSecond();
-    if (full_second < near_fire_time) {
+    if (full_second.underlying_value() < near_fire_time.underlying_value()) {
         return;
     }
 
@@ -1366,6 +1354,13 @@ void Critter::ProcessTimeEvents()
     if (auto func = _engine->ScriptSys->FindFunc<uint, Critter*, int, uint*>(func_name)) {
         if (func(this, identifier, &rate)) {
             if (const auto next_call_duration = func.GetResult(); next_call_duration > 0) {
+                AddTimeEvent(func_name, rate, tick_t {next_call_duration}, identifier);
+            }
+        }
+    }
+    else if (auto func2 = _engine->ScriptSys->FindFunc<tick_t, Critter*, int, uint*>(func_name)) {
+        if (func2(this, identifier, &rate)) {
+            if (const auto next_call_duration = func2.GetResult(); next_call_duration.underlying_value() > 0) {
                 AddTimeEvent(func_name, rate, next_call_duration, identifier);
             }
         }

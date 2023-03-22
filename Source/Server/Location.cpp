@@ -37,7 +37,10 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), LocationProperties(GetInitRef())
+Location::Location(FOServer* engine, ident_t id, const ProtoLocation* proto, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
+    LocationProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
@@ -214,7 +217,7 @@ auto Location::IsCanDelete() const -> bool
 
     // Check for npc
     for (auto* map : _locMaps) {
-        for (const auto* npc : map->GetNpcs()) {
+        for (const auto* npc : map->GetNonPlayerCritters()) {
             if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) || npc->IsHaveGeckItem()) {
                 return false;
             }

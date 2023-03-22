@@ -43,8 +43,8 @@ DECLARE_EXCEPTION(DeferredCallException);
 
 struct DeferredCall
 {
-    uint Id {};
-    uint FireFullSecond {};
+    ident_t Id {};
+    tick_t FireFullSecond {};
     ScriptFunc<void> EmptyFunc {};
     ScriptFunc<void, int> SignedIntFunc {};
     ScriptFunc<void, uint> UnsignedIntFunc {};
@@ -64,26 +64,26 @@ public:
     auto operator=(DeferredCallManager&&) noexcept = delete;
     virtual ~DeferredCallManager() = default;
 
-    [[nodiscard]] auto IsDeferredCallPending(uint id) const -> bool;
+    [[nodiscard]] auto IsDeferredCallPending(ident_t id) const -> bool;
 
-    auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint;
-    auto CancelDeferredCall(uint id) -> bool;
+    auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t;
+    auto CancelDeferredCall(ident_t id) -> bool;
     void Process();
 
 protected:
-    virtual auto GetNextCallId() -> uint;
+    virtual auto GetNextCallId() -> ident_t;
     virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
 
     FOEngineBase* _engine;
     list<DeferredCall> _deferredCalls {};
 
 private:
-    auto AddDeferredCall(uint delay, DeferredCall& call) -> uint;
+    auto AddDeferredCall(uint delay, DeferredCall& call) -> ident_t;
     auto RunDeferredCall(DeferredCall& call) const -> bool;
 
-    uint _idCounter {};
+    uint64 _idCounter {};
 };

@@ -32,22 +32,525 @@
 //
 
 #include "EntityManager.h"
+#include "CritterManager.h"
+#include "ItemManager.h"
 #include "Log.h"
+#include "MapManager.h"
 #include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "StringUtils.h"
 
-EntityManager::EntityManager(FOServer* engine) : _engine {engine}
+EntityManager::EntityManager(FOServer* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 }
 
-void EntityManager::RegisterEntity(Player* entity, uint id)
+auto EntityManager::GetPlayer(ident_t id) -> Player*
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(id != 0u);
+    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetPlayers() -> const unordered_map<ident_t, Player*>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _allPlayers;
+}
+
+auto EntityManager::GetLocation(ident_t id) -> Location*
+{
+    STACK_TRACE_ENTRY();
+
+    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
+{
+    STACK_TRACE_ENTRY();
+
+    for (auto&& [id, loc] : _allLocations) {
+        if (loc->GetProtoId() == pid) {
+            if (skip_count == 0u) {
+                return loc;
+            }
+            skip_count--;
+        }
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetLocations() -> const unordered_map<ident_t, Location*>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _allLocations;
+}
+
+auto EntityManager::GetMap(ident_t id) -> Map*
+{
+    STACK_TRACE_ENTRY();
+
+    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
+{
+    STACK_TRACE_ENTRY();
+
+    for (auto&& [id, map] : _allMaps) {
+        if (map->GetProtoId() == pid) {
+            if (skip_count == 0u) {
+                return map;
+            }
+            skip_count--;
+        }
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetMaps() -> const unordered_map<ident_t, Map*>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _allMaps;
+}
+
+auto EntityManager::GetCritter(ident_t id) -> Critter*
+{
+    STACK_TRACE_ENTRY();
+
+    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetCritters() -> const unordered_map<ident_t, Critter*>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _allCritters;
+}
+
+auto EntityManager::GetItem(ident_t id) -> Item*
+{
+    STACK_TRACE_ENTRY();
+
+    if (const auto it = _allItems.find(id); it != _allItems.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetItems() -> const unordered_map<ident_t, Item*>&
+{
+    STACK_TRACE_ENTRY();
+
+    return _allItems;
+}
+
+void EntityManager::LoadEntities()
+{
+    STACK_TRACE_ENTRY();
+
+    WriteLog("Load entities");
+
+    bool is_error = false;
+
+    const auto loc_ids = _engine->DbStorage.GetAllIds("Locations");
+    for (const auto loc_id : loc_ids) {
+        LoadLocation(ident_t {loc_id}, is_error);
+    }
+
+    // Todo: load global map critters
+
+    if (is_error) {
+        throw ServerInitException("Load entities failed");
+    }
+
+    WriteLog("Loaded {} locations", _allLocations.size());
+    WriteLog("Loaded {} maps", _allMaps.size());
+    WriteLog("Loaded {} critters", _allCritters.size());
+    WriteLog("Loaded {} items", _allItems.size());
+
+    WriteLog("Init entities");
+
+    for (auto* loc : copy_hold_ref(_allLocations)) {
+        if (!loc->IsDestroyed()) {
+            CallInit(loc, false);
+        }
+    }
+
+    for (auto* cr : copy_hold_ref(_allCritters)) {
+        if (!cr->IsDestroyed()) {
+            _engine->MapMngr.ProcessVisibleCritters(cr);
+        }
+        if (!cr->IsDestroyed()) {
+            _engine->MapMngr.ProcessVisibleItems(cr);
+        }
+    }
+}
+
+auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
+{
+    STACK_TRACE_ENTRY();
+
+    auto&& [loc_doc, loc_pid] = LoadEntityDoc("Locations", loc_id, is_error);
+    if (!loc_pid) {
+        return {};
+    }
+
+    const auto* loc_proto = _engine->ProtoMngr.GetProtoLocation(loc_pid);
+    if (loc_proto == nullptr) {
+        WriteLog("Location proto {} not found", loc_pid);
+        is_error = true;
+        return {};
+    }
+
+    auto* loc = new Location(_engine, loc_id, loc_proto);
+    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine)) {
+        WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
+        is_error = true;
+        return {};
+    }
+
+    loc->BindScript();
+
+    RegisterEntity(loc);
+
+    const auto map_ids = loc->GetMapIds();
+    for (const auto& map_id : map_ids) {
+        auto* map = LoadMap(map_id, is_error);
+        if (map != nullptr) {
+            const auto loc_map_index = map->GetLocMapIndex();
+
+            auto& loc_maps = loc->GetMapsRaw();
+            if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
+                loc_maps.resize(loc_map_index + 1);
+            }
+
+            loc_maps[loc_map_index] = map;
+
+            map->SetLocation(loc);
+        }
+    }
+
+    return loc;
+}
+
+auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
+{
+    STACK_TRACE_ENTRY();
+
+    auto&& [map_doc, map_pid] = LoadEntityDoc("Maps", map_id, is_error);
+    if (!map_pid) {
+        return {};
+    }
+
+    const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
+    if (map_proto == nullptr) {
+        WriteLog("Map proto {} not found", map_pid);
+        is_error = true;
+        return {};
+    }
+
+    const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
+
+    auto* map = new Map(_engine, map_id, map_proto, nullptr, static_map);
+    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine)) {
+        WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
+        is_error = true;
+        return {};
+    }
+
+    RegisterEntity(map);
+
+    const auto cr_ids = map->GetCritterIds();
+    for (const auto& cr_id : cr_ids) {
+        auto* cr = LoadCritter(cr_id, nullptr, is_error);
+        if (cr != nullptr) {
+            if (!_engine->MapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), ident_t {})) {
+                WriteLog("Error set critter {} {} to map {} {} at hex {} {}", cr->GetName(), cr->GetId(), map->GetName(), map->GetId(), cr->GetHexX(), cr->GetHexY());
+                is_error = true;
+                continue;
+            }
+
+            map->AddCritter(cr);
+        }
+    }
+
+    const auto item_ids = map->GetItemIds();
+    for (const auto& item_id : item_ids) {
+        auto* item = LoadItem(item_id, is_error);
+        if (item != nullptr) {
+            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
+                WriteLog("Invalid item {} {} map {} {} hex pos {} {}", item->GetName(), item->GetId(), map_pid, map_id, item->GetHexX(), item->GetHexY());
+                is_error = true;
+                continue;
+            }
+
+            map->SetItem(item, item->GetHexX(), item->GetHexY());
+        }
+    }
+
+    return map;
+}
+
+auto EntityManager::LoadCritter(ident_t cr_id, Player* owner, bool& is_error) -> Critter*
+{
+    STACK_TRACE_ENTRY();
+
+    auto&& [cr_doc, cr_pid] = LoadEntityDoc("Critters", cr_id, is_error);
+    if (!cr_pid) {
+        return {};
+    }
+
+    const auto* proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
+    if (proto == nullptr) {
+        WriteLog("Proto critter {} not found", cr_pid);
+        is_error = true;
+        return {};
+    }
+
+    auto* cr = new Critter(_engine, cr_id, owner, proto);
+    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine)) {
+        WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
+        is_error = true;
+        return {};
+    }
+
+    RegisterEntity(cr);
+
+    const auto item_ids = cr->GetItemIds();
+    for (const auto& item_id : item_ids) {
+        auto* inv_item = LoadItem(item_id, is_error);
+        if (inv_item != nullptr) {
+            cr->SetItem(inv_item);
+        }
+    }
+
+    return cr;
+}
+
+auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
+{
+    STACK_TRACE_ENTRY();
+
+    auto&& [item_doc, item_pid] = LoadEntityDoc("Items", item_id, is_error);
+    if (!item_pid) {
+        return {};
+    }
+
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+    if (proto == nullptr) {
+        WriteLog("Proto item {} is not loaded", item_pid);
+        is_error = true;
+        return {};
+    }
+
+    auto* item = new Item(_engine, item_id, proto);
+    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine)) {
+        WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
+        is_error = true;
+        return {};
+    }
+
+    if (item->GetIsRadio()) {
+        _engine->ItemMngr.RegisterRadio(item);
+    }
+
+    RegisterEntity(item);
+
+    const auto inner_item_ids = item->GetInnerItemIds();
+    for (const auto& inner_item_id : inner_item_ids) {
+        auto* inner_item = LoadItem(inner_item_id, is_error);
+        if (inner_item != nullptr) {
+            _engine->ItemMngr.SetItemToContainer(item, inner_item); // NOLINT(readability-suspicious-call-argument)
+        }
+    }
+
+    return item;
+}
+
+auto EntityManager::LoadEntityDoc(string_view collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>
+{
+    STACK_TRACE_ENTRY();
+
+    auto doc = _engine->DbStorage.Get(collection_name, id);
+
+    const auto proto_it = doc.find("_Proto");
+    if (proto_it == doc.end()) {
+        WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
+        is_error = true;
+        return {};
+    }
+    if (proto_it->second.index() != AnyData::STRING_VALUE) {
+        WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.index());
+        is_error = true;
+        return {};
+    }
+
+    const auto& proto_name = std::get<string>(proto_it->second);
+    if (proto_name.empty()) {
+        WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
+        is_error = true;
+        return {};
+    }
+
+    auto proto_id = _engine->ToHashedString(proto_name);
+
+    return {doc, proto_id};
+}
+
+void EntityManager::CallInit(Location* loc, bool first_time)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!loc->IsDestroyed());
+
+    if (loc->IsInitCalled()) {
+        return;
+    }
+
+    auto loc_holder = RefCountHolder(loc);
+
+    loc->SetInitCalled();
+
+    _engine->OnLocationInit.Fire(loc, first_time);
+
+    if (!loc->IsDestroyed()) {
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, loc, loc->GetInitScript(), first_time);
+    }
+
+    if (!loc->IsDestroyed()) {
+        for (auto* map : copy_hold_ref(loc->GetMaps())) {
+            if (!map->IsDestroyed()) {
+                CallInit(map, first_time);
+            }
+        }
+    }
+}
+
+void EntityManager::CallInit(Map* map, bool first_time)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!map->IsDestroyed());
+
+    if (map->IsInitCalled()) {
+        return;
+    }
+
+    auto map_holder = RefCountHolder(map);
+
+    map->SetInitCalled();
+
+    _engine->OnMapInit.Fire(map, first_time);
+
+    if (!map->IsDestroyed()) {
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), first_time);
+    }
+
+    if (!map->IsDestroyed()) {
+        for (auto* cr : copy_hold_ref(map->GetCritters())) {
+            if (!cr->IsDestroyed()) {
+                CallInit(cr, first_time);
+            }
+        }
+    }
+
+    if (!map->IsDestroyed()) {
+        for (auto* item : copy_hold_ref(map->GetItems())) {
+            if (!item->IsDestroyed()) {
+                CallInit(item, first_time);
+            }
+        }
+    }
+}
+
+void EntityManager::CallInit(Critter* cr, bool first_time)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!cr->IsDestroyed());
+
+    if (cr->IsInitCalled()) {
+        return;
+    }
+
+    auto cr_holder = RefCountHolder(cr);
+
+    cr->SetInitCalled();
+
+    _engine->OnCritterInit.Fire(cr, first_time);
+
+    if (!cr->IsDestroyed()) {
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), first_time);
+    }
+
+    if (!cr->IsDestroyed()) {
+        for (auto* item : copy_hold_ref(cr->GetRawInvItems())) {
+            if (!item->IsDestroyed()) {
+                CallInit(item, first_time);
+            }
+        }
+    }
+}
+
+void EntityManager::CallInit(Item* item, bool first_time)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!item->IsDestroyed());
+
+    if (item->IsInitCalled()) {
+        return;
+    }
+
+    auto item_holder = RefCountHolder(item);
+
+    item->SetInitCalled();
+
+    _engine->OnItemInit.Fire(item, first_time);
+
+    if (!item->IsDestroyed()) {
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), first_time);
+    }
+
+    if (!item->IsDestroyed() && item->IsInnerItems()) {
+        for (auto* inner_item : copy_hold_ref(item->GetRawInnerItems())) {
+            if (!inner_item->IsDestroyed()) {
+                CallInit(inner_item, first_time);
+            }
+        }
+    }
+}
+
+void EntityManager::RegisterEntity(Player* entity, ident_t id)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(id);
     entity->SetId(id);
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allPlayers.emplace(entity->GetId(), entity);
@@ -130,14 +633,14 @@ void EntityManager::RegisterEntity(Item* entity)
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Item* entity)
+void EntityManager::UnregisterEntity(Item* entity, bool delete_from_db)
 {
     STACK_TRACE_ENTRY();
 
     const auto it = _allItems.find(entity->GetId());
     RUNTIME_ASSERT(it != _allItems.end());
     _allItems.erase(it);
-    UnregisterEntityEx(entity, true);
+    UnregisterEntityEx(entity, delete_from_db);
 }
 
 void EntityManager::RegisterEntityEx(ServerEntity* entity)
@@ -146,9 +649,10 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
     NON_CONST_METHOD_HINT();
 
-    if (entity->GetId() == 0u) {
-        auto id = _engine->GetLastEntityId() + 1;
-        id = std::max(id, 2u);
+    if (!entity->GetId()) {
+        const auto id_num = std::max(_engine->GetLastEntityId().underlying_value() + 1, static_cast<ident_t::underlying_type>(2));
+        const auto id = ident_t {id_num};
+
         _engine->SetLastEntityId(id);
 
         entity->SetId(id);
@@ -172,405 +676,13 @@ void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db
 
     NON_CONST_METHOD_HINT();
 
-    RUNTIME_ASSERT(entity->GetId() != 0u);
+    RUNTIME_ASSERT(entity->GetId());
 
     if (delete_from_db) {
         _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
     }
 
-    entity->SetId(0);
-}
-
-auto EntityManager::GetPlayer(uint id) -> Player*
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetPlayers() -> const unordered_map<uint, Player*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allPlayers;
-}
-
-auto EntityManager::GetLocation(uint id) -> Location*
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto&& [id, loc] : _allLocations) {
-        if (loc->GetProtoId() == pid) {
-            if (skip_count == 0u) {
-                return loc;
-            }
-            skip_count--;
-        }
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetLocations() -> const unordered_map<uint, Location*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allLocations;
-}
-
-auto EntityManager::GetMap(uint id) -> Map*
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto&& [id, map] : _allMaps) {
-        if (map->GetProtoId() == pid) {
-            if (skip_count == 0u) {
-                return map;
-            }
-            skip_count--;
-        }
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetMaps() -> const unordered_map<uint, Map*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allMaps;
-}
-
-auto EntityManager::GetCritter(uint id) -> Critter*
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetCritters() -> const unordered_map<uint, Critter*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allCritters;
-}
-
-auto EntityManager::GetItem(uint id) -> Item*
-{
-    STACK_TRACE_ENTRY();
-
-    if (const auto it = _allItems.find(id); it != _allItems.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetItems() -> const unordered_map<uint, Item*>&
-{
-    STACK_TRACE_ENTRY();
-
-    return _allItems;
-}
-
-auto EntityManager::GetCritterItems(uint cr_id) -> vector<Item*>
-{
-    STACK_TRACE_ENTRY();
-
-    vector<Item*> items;
-
-    for (auto&& [id, item] : _allItems) {
-        if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == cr_id) {
-            items.push_back(item);
-        }
-    }
-
-    return items;
-}
-
-void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
-{
-    STACK_TRACE_ENTRY();
-
-    WriteLog("Load entities");
-
-    int errors = 0;
-
-    size_t loaded_locs = 0;
-    size_t loaded_maps = 0;
-    size_t loaded_crs = 0;
-    size_t loaded_items = 0;
-
-    const auto get_entity_doc = [&, this](string_view collection_name, uint id) -> tuple<AnyData::Document, hstring> {
-        auto doc = _engine->DbStorage.Get(collection_name, id);
-
-        const auto proto_it = doc.find("_Proto");
-        if (proto_it == doc.end()) {
-            WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
-            errors++;
-            return {};
-        }
-        if (proto_it->second.index() != AnyData::STRING_VALUE) {
-            WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.index());
-            errors++;
-            return {};
-        }
-
-        const auto& proto_name = std::get<string>(proto_it->second);
-        if (proto_name.empty()) {
-            WriteLog("{} '_Proto' section of entity {} is empty", collection_name, id);
-            errors++;
-            return {};
-        }
-
-        auto proto_id = _engine->ToHashedString(proto_name);
-
-        return {doc, proto_id};
-    };
-
-    std::function<void(uint)> load_item;
-    load_item = [&, this](uint item_id) {
-        auto&& [item_doc, item_pid] = get_entity_doc("Items", item_id);
-        if (!item_pid) {
-            return;
-        }
-
-        const auto* proto = _engine->ProtoMngr.GetProtoItem(item_pid);
-        if (proto == nullptr) {
-            WriteLog("Proto item {} is not loaded", item_pid);
-            errors++;
-            return;
-        }
-
-        auto* item = item_fabric(item_id, proto);
-        if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine)) {
-            WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
-            errors++;
-            return;
-        }
-
-        loaded_items++;
-        RegisterEntity(item);
-
-        const auto sub_item_ids = item->GetSubItemIds();
-        for (const auto& sub_item_id : sub_item_ids) {
-            load_item(sub_item_id);
-        }
-    };
-
-    const auto load_cr = [&, this](uint cr_id) {
-        auto&& [cr_doc, cr_pid] = get_entity_doc("Critters", cr_id);
-        if (!cr_pid) {
-            return;
-        }
-
-        const auto* proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
-        if (proto == nullptr) {
-            WriteLog("Proto critter {} not found", cr_pid);
-            errors++;
-            return;
-        }
-
-        auto* npc = npc_fabric(cr_id, proto);
-        if (!PropertiesSerializator::LoadFromDocument(&npc->GetPropertiesForEdit(), cr_doc, *_engine)) {
-            WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
-            errors++;
-            return;
-        }
-
-        loaded_crs++;
-        RegisterEntity(npc);
-
-        const auto item_ids = npc->GetItemIds();
-        for (const auto& item_id : item_ids) {
-            load_item(item_id);
-        }
-    };
-
-    const auto load_map = [&, this](uint map_id) {
-        auto&& [map_doc, map_pid] = get_entity_doc("Maps", map_id);
-        if (!map_pid) {
-            return;
-        }
-
-        const auto* map_proto = _engine->ProtoMngr.GetProtoMap(map_pid);
-        if (map_proto == nullptr) {
-            WriteLog("Map proto {} not found", map_pid);
-            errors++;
-            return;
-        }
-
-        auto* map = map_fabric(map_id, map_proto);
-        if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine)) {
-            WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
-            errors++;
-            return;
-        }
-
-        loaded_maps++;
-        RegisterEntity(map);
-
-        const auto cr_ids = map->GetCritterIds();
-        for (const auto& cr_id : cr_ids) {
-            load_cr(cr_id);
-        }
-
-        const auto item_ids = map->GetItemIds();
-        for (const auto& item_id : item_ids) {
-            load_item(item_id);
-        }
-    };
-
-    const auto load_loc = [&, this](uint loc_id) {
-        auto&& [loc_doc, loc_pid] = get_entity_doc("Locations", loc_id);
-        if (!loc_pid) {
-            return;
-        }
-
-        const auto* loc_proto = _engine->ProtoMngr.GetProtoLocation(loc_pid);
-        if (loc_proto == nullptr) {
-            WriteLog("Location proto {} not found", loc_pid);
-            errors++;
-            return;
-        }
-
-        auto* loc = loc_fabric(loc_id, loc_proto);
-        if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine)) {
-            WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
-            errors++;
-            return;
-        }
-
-        loc->BindScript();
-
-        loaded_locs++;
-        RegisterEntity(loc);
-
-        const auto map_ids = loc->GetMapIds();
-        for (const auto& map_id : map_ids) {
-            load_map(map_id);
-        }
-    };
-
-    const auto loc_ids = _engine->DbStorage.GetAllIds("Locations");
-    for (const auto loc_id : loc_ids) {
-        load_loc(loc_id);
-    }
-
-    if (errors != 0) {
-        throw ServerInitException("Load entities failed");
-    }
-
-    WriteLog("Loaded {} locations", loaded_locs);
-    WriteLog("Loaded {} maps", loaded_maps);
-    WriteLog("Loaded {} critters", loaded_crs);
-    WriteLog("Loaded {} items", loaded_items);
-}
-
-void EntityManager::InitAfterLoad()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    WriteLog("Init entities after link");
-
-    auto locs = copy(_allLocations);
-    auto maps = copy(_allMaps);
-    auto critters = copy(_allCritters);
-    auto items = copy(_allItems);
-
-    for (auto&& [id, loc] : locs) {
-        loc->AddRef();
-    }
-    for (auto&& [id, map] : maps) {
-        map->AddRef();
-    }
-    for (auto&& [id, cr] : critters) {
-        cr->AddRef();
-    }
-    for (auto&& [id, item] : items) {
-        item->AddRef();
-    }
-
-    for (auto&& [id, loc] : locs) {
-        if (!loc->IsDestroyed()) {
-            _engine->OnLocationInit.Fire(loc, false);
-            if (!loc->IsDestroyed()) {
-                ScriptHelpers::CallInitScript(_engine->ScriptSys, loc, loc->GetInitScript(), false);
-            }
-        }
-    }
-
-    for (auto&& [id, map] : maps) {
-        if (!map->IsDestroyed()) {
-            _engine->OnMapInit.Fire(map, false);
-            if (!map->IsDestroyed()) {
-                ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), false);
-            }
-        }
-    }
-
-    for (auto&& [id, cr] : critters) {
-        if (!cr->IsDestroyed()) {
-            _engine->OnCritterInit.Fire(cr, false);
-            if (!cr->IsDestroyed()) {
-                ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), false);
-            }
-        }
-    }
-
-    for (auto&& [id, item] : items) {
-        if (!item->IsDestroyed()) {
-            _engine->OnItemInit.Fire(item, false);
-            if (!item->IsDestroyed()) {
-                ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
-            }
-        }
-    }
-
-    for (auto&& [id, loc] : locs) {
-        loc->Release();
-    }
-    for (auto&& [id, map] : maps) {
-        map->Release();
-    }
-    for (auto&& [id, cr] : critters) {
-        cr->Release();
-    }
-    for (auto&& [id, item] : items) {
-        item->Release();
-    }
+    entity->SetId(ident_t {});
 }
 
 void EntityManager::FinalizeEntities()
@@ -604,7 +716,7 @@ void EntityManager::FinalizeEntities()
     }
 }
 
-auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*
+auto EntityManager::GetCustomEntity(string_view entity_class_name, ident_t id) -> ServerEntity*
 {
     STACK_TRACE_ENTRY();
 
@@ -624,8 +736,7 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> S
             return nullptr;
         }
 
-        auto* entity = new ServerEntity(_engine, id, registrator);
-        entity->SetProperties(props);
+        auto* entity = new ServerEntity(_engine, id, registrator, &props);
 
         RegisterEntityEx(entity);
         all_entities.emplace(id, entity);
@@ -640,7 +751,7 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
     STACK_TRACE_ENTRY();
 
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
-    auto* entity = new ServerEntity(_engine, 0u, registrator);
+    auto* entity = new ServerEntity(_engine, ident_t {}, registrator, nullptr);
 
     RegisterEntityEx(entity);
     auto& all_entities = _allCustomEntities[string(entity_class_name)];
@@ -650,7 +761,7 @@ auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerE
     return entity;
 }
 
-void EntityManager::DeleteCustomEntity(string_view entity_class_name, uint id)
+void EntityManager::DeleteCustomEntity(string_view entity_class_name, ident_t id)
 {
     STACK_TRACE_ENTRY();
 

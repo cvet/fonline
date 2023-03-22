@@ -45,25 +45,28 @@
 
 struct SoundManager::Sound
 {
-    vector<uchar> BaseBuf {};
+    vector<uint8> BaseBuf {};
     size_t BaseBufLen {};
-    vector<uchar> ConvertedBuf {};
+    vector<uint8> ConvertedBuf {};
     size_t ConvertedBufCur {};
     int OriginalFormat {};
     int OriginalChannels {};
     int OriginalRate {};
     bool IsMusic {};
-    uint NextPlay {};
-    uint RepeatTime {};
+    time_point NextPlayTime {};
+    time_duration RepeatTime {};
     unique_del_ptr<OggVorbis_File> OggStream {};
 };
 
-static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> uint
+static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> uint
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}, _playingSounds {}
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) :
+    _settings {settings},
+    _resources {resources},
+    _playingSounds {}
 {
     STACK_TRACE_ENTRY();
 
@@ -86,7 +89,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources) : _se
 #endif
 
     _outputBuf.resize(App->Audio.GetStreamSize());
-    App->Audio.SetSource([this](uchar* output) { ProcessSounds(output); });
+    App->Audio.SetSource([this](uint8* output) { ProcessSounds(output); });
     _isActive = true;
 }
 
@@ -103,7 +106,7 @@ SoundManager::~SoundManager()
     }
 }
 
-void SoundManager::ProcessSounds(uchar* output)
+void SoundManager::ProcessSounds(uint8* output)
 {
     STACK_TRACE_ENTRY();
 
@@ -120,7 +123,7 @@ void SoundManager::ProcessSounds(uchar* output)
     }
 }
 
-auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
+auto SoundManager::ProcessSound(Sound* sound, uint8* output) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -165,13 +168,12 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
     }
 
     // Repeat
-    if (sound->RepeatTime != 0u) {
-        if (sound->NextPlay == 0u) {
-            // Set next playing time
-            sound->NextPlay = static_cast<uint>(Timer::RealtimeTick()) + (sound->RepeatTime > 1 ? sound->RepeatTime : 0);
+    if (sound->RepeatTime != time_duration {}) {
+        if (sound->NextPlayTime == time_point {}) {
+            sound->NextPlayTime = Timer::CurTime() + (sound->RepeatTime > std::chrono::milliseconds {1} ? sound->RepeatTime : time_duration {});
         }
 
-        if (static_cast<uint>(Timer::RealtimeTick()) >= sound->NextPlay) {
+        if (Timer::CurTime() >= sound->NextPlayTime) {
             // Set buffer to beginning
             sound->ConvertedBufCur = 0;
             if (sound->OggStream) {
@@ -179,7 +181,7 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
             }
 
             // Drop timer
-            sound->NextPlay = 0;
+            sound->NextPlayTime = time_point {};
 
             // Process without silent
             return ProcessSound(sound, output);
@@ -195,7 +197,7 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
     return false;
 }
 
-auto SoundManager::Load(string_view fname, bool is_music, uint repeat_time) -> bool
+auto SoundManager::Load(string_view fname, bool is_music, time_duration repeat_time) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -269,13 +271,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     struct WaveFormatEx
     {
-        ushort WFormatTag; // Integer identifier of the format
-        ushort NChannels; // Number of audio channels
+        uint16 WFormatTag; // Integer identifier of the format
+        uint16 NChannels; // Number of audio channels
         uint NSamplesPerSec; // Audio sample rate
         uint NAvgBytesPerSec; // Bytes per second (possibly approximate)
-        ushort NBlockAlign; // Size in bytes of a sample block (all channels)
-        ushort WBitsPerSample; // Size in bits of a single per-channel sample
-        ushort CbSize; // Bytes of extra data appended to this struct
+        uint16 NBlockAlign; // Size in bytes of a sample block (all channels)
+        uint16 WBitsPerSample; // Size in bits of a single per-channel sample
+        uint16 CbSize; // Bytes of extra data appended to this struct
     } waveformatex {};
 
     file.CopyData(&waveformatex, 16);
@@ -338,7 +340,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -347,7 +349,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    auto* buf = reinterpret_cast<unsigned short*>(sound->BaseBuf.data());
+    auto* buf = reinterpret_cast<uint16*>(sound->BaseBuf.data());
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");
@@ -536,7 +538,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     // Find base
     const auto it = sound_names.find(sound_name);
     if (it != sound_names.end()) {
-        return Load(it->second, false, 0);
+        return Load(it->second, false, time_duration {});
     }
 
     // Check random pattern 'NAME_X'
@@ -546,13 +548,13 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
     }
 
     if (count != 0u) {
-        return Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false, 0);
+        return Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1u, count)))->second, false, time_duration {});
     }
 
     return false;
 }
 
-auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
+auto SoundManager::PlayMusic(string_view fname, time_duration repeat_time) -> bool
 {
     STACK_TRACE_ENTRY();
 

@@ -46,14 +46,29 @@
 ///@ ExportEntity Location Location LocationView HasProto
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
-    inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndexFast(prop##_RegIndex); } \
-    inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop(prop_type value) { _propsRef.SetValue(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; } \
-    static ushort prop##_RegIndex
+    inline auto GetProperty##prop() const->const Property* \
+    { \
+        return _propsRef.GetRegistrator()->GetByIndexFast(prop##_RegIndex); \
+    } \
+    inline prop_type Get##prop() const \
+    { \
+        return _propsRef.GetValue<prop_type>(GetProperty##prop()); \
+    } \
+    inline void Set##prop(prop_type value) \
+    { \
+        _propsRef.SetValue(GetProperty##prop(), value); \
+    } \
+    inline bool IsNonEmpty##prop() const \
+    { \
+        return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; \
+    } \
+    static uint16 prop##_RegIndex
 
 #define ENTITY_EVENT(event_name, ...) \
-    EntityEvent<__VA_ARGS__> event_name { this, #event_name }
+    EntityEvent<__VA_ARGS__> event_name \
+    { \
+        this, #event_name \
+    }
 
 class EntityProperties
 {
@@ -117,11 +132,8 @@ public:
     [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
     [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
 
-    void SetProperties(const Properties& props);
-    auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
-    void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
-    void RestoreData(const vector<vector<uchar>>& properties_data);
-    auto LoadFromText(const map<string, string>& key_values) -> bool;
+    void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
+    void RestoreData(const vector<vector<uint8>>& props_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
@@ -139,7 +151,7 @@ public:
     virtual void MarkAsDestroyed();
 
 protected:
-    explicit Entity(const PropertyRegistrator* registrator);
+    Entity(const PropertyRegistrator* registrator, const Properties* props);
     virtual ~Entity() = default;
 
     auto GetInitRef() -> Properties& { return _props; }
@@ -153,7 +165,7 @@ private:
     auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
 
     Properties _props;
-    map<string, vector<EventCallbackData>> _events;
+    unordered_map<string, vector<EventCallbackData>> _events {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};
@@ -175,7 +187,7 @@ public:
     string CollectionName {};
 
 protected:
-    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator);
+    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props);
 
     const hstring _protoId;
     unordered_set<hstring> _components {};
@@ -195,7 +207,7 @@ public:
     [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
 
 protected:
-    EntityWithProto(Entity* owner, const ProtoEntity* proto);
+    explicit EntityWithProto(const ProtoEntity* proto);
     virtual ~EntityWithProto();
 
     const ProtoEntity* _proto;
@@ -222,7 +234,10 @@ template<typename... Args>
 class EntityEvent final : public EntityEventBase
 {
 public:
-    EntityEvent(Entity* entity, const char* callback_name) : EntityEventBase(entity, callback_name) { }
+    EntityEvent(Entity* entity, const char* callback_name) :
+        EntityEventBase(entity, callback_name)
+    {
+    }
 
     auto Fire(Args... args) -> bool
     {

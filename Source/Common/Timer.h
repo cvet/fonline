@@ -39,14 +39,14 @@
 
 struct DateTimeStamp
 {
-    ushort Year {}; // 1601 .. 30827
-    ushort Month {}; // 1 .. 12
-    ushort DayOfWeek {}; // 0 .. 6
-    ushort Day {}; // 1 .. 31
-    ushort Hour {}; // 0 .. 23
-    ushort Minute {}; // 0 .. 59
-    ushort Second {}; // 0 .. 59
-    ushort Milliseconds {}; // 0 .. 999
+    uint16 Year {}; // 1601 .. 30827
+    uint16 Month {}; // 1 .. 12
+    uint16 DayOfWeek {}; // 0 .. 6
+    uint16 Day {}; // 1 .. 31
+    uint16 Hour {}; // 0 .. 23
+    uint16 Minute {}; // 0 .. 59
+    uint16 Second {}; // 0 .. 59
+    uint16 Milliseconds {}; // 0 .. 999
 };
 
 class GameTimer final
@@ -60,33 +60,39 @@ public:
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
 
-    [[nodiscard]] auto FrameTick() const -> uint;
-    [[nodiscard]] auto GameTick() const -> uint;
-    [[nodiscard]] auto GetFullSecond() const -> uint;
-    [[nodiscard]] auto EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second) const -> uint;
-    [[nodiscard]] auto GetGameTime(uint full_second) const -> DateTimeStamp;
-    [[nodiscard]] auto GameTimeMonthDay(ushort year, ushort month) const -> uint;
+    [[nodiscard]] auto FrameTime() const -> time_point;
+    [[nodiscard]] auto GameplayTime() const -> time_point;
+
+    [[nodiscard]] auto GetFullSecond() const -> tick_t;
+    [[nodiscard]] auto EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) const -> tick_t;
+    [[nodiscard]] auto EvaluateGameTime(tick_t full_second) const -> DateTimeStamp;
+    [[nodiscard]] auto GameTimeMonthDays(uint16 year, uint16 month) const -> uint16;
+
 #if FO_SINGLEPLAYER
-    [[nodiscard]] auto IsGamePaused() const -> bool;
+    [[nodiscard]] auto IsGameplayPaused() const -> bool;
 #endif
 
-    void Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier);
+    void Reset(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second, int multiplier);
     auto FrameAdvance() -> bool;
 #if FO_SINGLEPLAYER
-    void SetGamePause(bool pause);
+    void SetGameplayPause(bool pause);
 #endif
 
 private:
     TimerSettings& _settings;
-    uint _timerTick {};
+
+    time_point _frameTime {};
+    time_point _gameplayTimeBase {};
+    time_point _gameplayTimeFrame {};
+    time_duration _debuggingOffset {};
+
     uint64 _yearStartFullTime {};
     int _gameTimeMultiplier {};
-    uint _gameTickBase {};
-    uint _gameTickFast {};
-    uint _fullSecondBase {};
-    uint _fullSecond {};
+    tick_t _fullSecondBase {};
+    tick_t _fullSecond {};
+
 #if FO_SINGLEPLAYER
-    bool _isPaused {};
+    bool _isGameplayPaused {};
 #endif
 };
 
@@ -95,7 +101,7 @@ class Timer final
 public:
     Timer() = delete;
 
-    [[nodiscard]] static auto RealtimeTick() -> double;
+    [[nodiscard]] static auto CurTime() -> time_point;
     [[nodiscard]] static auto GetCurrentDateTime() -> DateTimeStamp;
     [[nodiscard]] static auto DateTimeToFullTime(const DateTimeStamp& dt) -> uint64;
     [[nodiscard]] static auto FullTimeToDateTime(uint64 ft) -> DateTimeStamp;

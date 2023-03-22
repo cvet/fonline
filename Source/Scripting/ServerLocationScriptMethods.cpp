@@ -42,7 +42,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Location_SetupScript(Location* self, InitFunc<Map*> initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -51,7 +54,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 

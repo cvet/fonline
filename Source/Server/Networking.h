@@ -52,7 +52,7 @@ public:
 
     [[nodiscard]] virtual auto GetIp() const -> uint = 0;
     [[nodiscard]] virtual auto GetHost() const -> string_view = 0;
-    [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
+    [[nodiscard]] virtual auto GetPort() const -> uint16 = 0;
     [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
     [[nodiscard]] virtual auto IsWebConnection() const -> bool = 0;
     [[nodiscard]] virtual auto IsInterthreadConnection() const -> bool = 0;
@@ -64,10 +64,10 @@ public:
     void AddRef() const;
     void Release() const;
 
-    NetInBuffer Bin;
-    std::mutex BinLocker {};
-    NetOutBuffer Bout;
-    std::mutex BoutLocker {};
+    NetInBuffer InBuf;
+    std::mutex InBufLocker {};
+    NetOutBuffer OutBuf;
+    std::mutex OutBufLocker {};
 
 private:
     mutable std::atomic_int _refCount {1};
@@ -76,7 +76,10 @@ private:
 class DummyNetConnection : public NetConnection
 {
 public:
-    explicit DummyNetConnection(ServerNetworkSettings& settings) : NetConnection(settings) { }
+    explicit DummyNetConnection(ServerNetworkSettings& settings) :
+        NetConnection(settings)
+    {
+    }
     DummyNetConnection(const DummyNetConnection&) = delete;
     DummyNetConnection(DummyNetConnection&&) noexcept = delete;
     auto operator=(const DummyNetConnection&) = delete;
@@ -85,7 +88,7 @@ public:
 
     auto GetIp() const -> uint override { return 0; }
     auto GetHost() const -> string_view override { return "Dummy"; }
-    auto GetPort() const -> ushort override { return 0; }
+    auto GetPort() const -> uint16 override { return 0; }
     auto IsDisconnected() const -> bool override { return false; }
     auto IsWebConnection() const -> bool override { return false; }
     auto IsInterthreadConnection() const -> bool override { return false; }

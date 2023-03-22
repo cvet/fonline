@@ -59,8 +59,9 @@ class FixedDropMenu : Gui::IDropMenu
     Entity get_SafeSelectedEntity()
     {
         // Simulate entity weak reference
-        if (SelectedEntity != null && SelectedEntity.IsDestroyed)
+        if (SelectedEntity != null && SelectedEntity.IsDestroyed) {
             SelectedEntity = null;
+        }
         return SelectedEntity;
     }
 
@@ -94,8 +95,9 @@ class FixedDropMenu : Gui::IDropMenu
         if (MouseBtn == button && SafeSelectedEntity != null) {
             Pressed = false;
 
-            if (ShowButtons.length() == 0)
+            if (ShowButtons.length() == 0) {
                 CollectShowButtons(true);
+            }
 
             int activeIndex = PressedOffsetY / ButtonHeight;
             activeIndex = Math::Clamp(activeIndex, 0, int(ShowButtons.length()) - 1);
@@ -108,8 +110,9 @@ class FixedDropMenu : Gui::IDropMenu
             if (!entity.IsDestroyed) {
                 Critter cr = cast<Critter>(entity);
                 Item item = cast<Item>(entity);
-                if (dropButton.NeedShow(cr, item))
+                if (dropButton.NeedShow(cr, item)) {
                     dropButton.Action(cr, item);
+                }
             }
         }
     }
@@ -135,13 +138,15 @@ class FixedDropMenu : Gui::IDropMenu
             Gui::Object hoveredObj = Gui::GetHoveredObject();
             Gui::Screen screen = Gui::GetActiveScreen();
             if (hoveredObj != null) {
-                if (hoveredObj.Grid != null && cast<Gui::ItemView>(hoveredObj.Grid) != null)
+                if (hoveredObj.Grid != null && cast<Gui::ItemView>(hoveredObj.Grid) != null) {
                     SelectedEntity = cast<Gui::ItemView>(hoveredObj.Grid).GetItem(hoveredObj.CellIndex);
+                }
             }
             else if (CurMap != null && (screen == null || !screen.IsModal)) {
                 Entity entity = CurMap.GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
-                if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null))
+                if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null)) {
                     SelectedEntity = entity;
+                }
             }
 
             if (prevEntity !is SafeSelectedEntity || offsetX != 0 || offsetY != 0) {
@@ -188,8 +193,9 @@ class FixedDropMenu : Gui::IDropMenu
         for (uint i = 0; i < Buttons.length(); i++) {
             if (Buttons[i].NeedShow(cr, item)) {
                 ShowButtons.insertLast(Buttons[i]);
-                if (onlyFirst)
+                if (onlyFirst) {
                     break;
+                }
             }
         }
     }

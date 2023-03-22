@@ -797,7 +797,7 @@ auto DiskFile::Write(string_view str) -> bool
     return true;
 }
 
-auto DiskFile::Write(const_span<uchar> data) -> bool
+auto DiskFile::Write(const_span<uint8> data) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -828,7 +828,7 @@ auto DiskFileSystem::IsExists(string_view path) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return !std::filesystem::exists(path, ec) && !ec;
+    return !std::filesystem::exists(std::filesystem::u8path(path), ec) && !ec;
 }
 
 auto DiskFileSystem::IsDir(string_view path) -> bool
@@ -836,7 +836,7 @@ auto DiskFileSystem::IsDir(string_view path) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::is_directory(path, ec) && !ec;
+    return std::filesystem::is_directory(std::filesystem::u8path(path), ec) && !ec;
 }
 
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
@@ -844,8 +844,8 @@ auto DiskFileSystem::DeleteFile(string_view fname) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    std::filesystem::remove(fname, ec);
-    return !std::filesystem::exists(fname, ec) && !ec;
+    std::filesystem::remove(std::filesystem::u8path(fname), ec);
+    return !std::filesystem::exists(std::filesystem::u8path(fname), ec) && !ec;
 }
 
 auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
@@ -853,7 +853,7 @@ auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::copy_file(fname, copy_fname, ec);
+    return std::filesystem::copy_file(std::filesystem::u8path(fname), copy_fname, ec);
 }
 
 auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
@@ -861,7 +861,7 @@ auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> boo
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    std::filesystem::rename(fname, new_fname, ec);
+    std::filesystem::rename(std::filesystem::u8path(fname), new_fname, ec);
     return !ec;
 }
 
@@ -870,7 +870,7 @@ void DiskFileSystem::ResolvePath(string& path)
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    const auto resolved = std::filesystem::absolute(path, ec);
+    const auto resolved = std::filesystem::absolute(std::filesystem::u8path(path), ec);
     if (!ec) {
 #if FO_WINDOWS
         path = WinWideCharToMultiByte(resolved.native().c_str());
@@ -885,7 +885,7 @@ void DiskFileSystem::MakeDirTree(string_view path)
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    std::filesystem::create_directories(path, ec);
+    std::filesystem::create_directories(std::filesystem::u8path(path), ec);
 }
 
 auto DiskFileSystem::DeleteDir(string_view dir) -> bool
@@ -893,8 +893,8 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
     STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    std::filesystem::remove_all(dir, ec);
-    return !std::filesystem::exists(dir, ec) && !ec;
+    std::filesystem::remove_all(std::filesystem::u8path(dir), ec);
+    return !std::filesystem::exists(std::filesystem::u8path(dir), ec) && !ec;
 }
 
 #else

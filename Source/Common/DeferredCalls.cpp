@@ -33,14 +33,15 @@
 
 #include "DeferredCalls.h"
 
-DeferredCallManager::DeferredCallManager(FOEngineBase* engine) : _engine {engine}
+DeferredCallManager::DeferredCallManager(FOEngineBase* engine) :
+    _engine {engine}
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_engine);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -51,7 +52,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> 
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -63,7 +64,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -75,7 +76,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> fun
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -87,7 +88,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<in
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -99,7 +100,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<ui
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -107,7 +108,9 @@ auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> uin
 
     if (delay > 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+        if (time_mul != 0) {
+            call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
+        }
     }
 
     _deferredCalls.emplace_back(std::move(call));
@@ -115,7 +118,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> uin
     return _deferredCalls.back().Id;
 }
 
-auto DeferredCallManager::IsDeferredCallPending(uint id) const -> bool
+auto DeferredCallManager::IsDeferredCallPending(ident_t id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -128,7 +131,7 @@ auto DeferredCallManager::IsDeferredCallPending(uint id) const -> bool
     return false;
 }
 
-auto DeferredCallManager::CancelDeferredCall(uint id) -> bool
+auto DeferredCallManager::CancelDeferredCall(ident_t id) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -158,7 +161,7 @@ void DeferredCallManager::Process()
         done = true;
 
         for (auto it = _deferredCalls.begin(); it != _deferredCalls.end(); ++it) {
-            if (full_second >= it->FireFullSecond) {
+            if (full_second.underlying_value() >= it->FireFullSecond.underlying_value()) {
                 DeferredCall call = copy(*it);
                 it = _deferredCalls.erase(it);
                 OnDeferredCallRemoved(call);
@@ -172,11 +175,11 @@ void DeferredCallManager::Process()
     }
 }
 
-auto DeferredCallManager::GetNextCallId() -> uint
+auto DeferredCallManager::GetNextCallId() -> ident_t
 {
     STACK_TRACE_ENTRY();
 
-    return ++_idCounter;
+    return ident_t {static_cast<ident_t::underlying_type>(++_idCounter)};
 }
 
 auto DeferredCallManager::RunDeferredCall(DeferredCall& call) const -> bool

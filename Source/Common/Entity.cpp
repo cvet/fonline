@@ -35,11 +35,16 @@
 #include "Application.h"
 #include "Log.h"
 
-Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
+Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) :
+    _props {registrator}
 {
     STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
+
+    if (props != nullptr) {
+        _props = *props;
+    }
 }
 
 void Entity::AddRef() const noexcept
@@ -122,7 +127,7 @@ auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& 
     if (const auto it = _events.find(event_name); it != _events.end()) {
         return FireEvent(&it->second, args);
     }
-    return false;
+    return true;
 }
 
 void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback)
@@ -149,11 +154,17 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* 
     }
 }
 
+// Param callbacks mutable beacuse callbacks may change it, so make it explicit
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
 auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(callbacks);
+
+    if (callbacks->empty()) {
+        return true;
+    }
 
     for (const auto& cb : copy(*callbacks)) {
         const auto ex_policy = cb.ExPolicy;
@@ -216,39 +227,18 @@ void Entity::MarkAsDestroyed()
     _isDestroyed = true;
 }
 
-void Entity::SetProperties(const Properties& props)
+void Entity::StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const
 {
     STACK_TRACE_ENTRY();
 
-    _props = props;
+    _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
-auto Entity::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
+void Entity::RestoreData(const vector<vector<uint8>>& props_data)
 {
     STACK_TRACE_ENTRY();
 
-    return _props.StoreData(with_protected, all_data, all_data_sizes);
-}
-
-void Entity::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
-{
-    STACK_TRACE_ENTRY();
-
-    _props.RestoreData(all_data, all_data_sizes);
-}
-
-void Entity::RestoreData(const vector<vector<uchar>>& properties_data)
-{
-    STACK_TRACE_ENTRY();
-
-    _props.RestoreData(properties_data);
-}
-
-auto Entity::LoadFromText(const map<string, string>& key_values) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _props.LoadFromText(key_values);
+    _props.RestoreData(props_data);
 }
 
 void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
@@ -314,7 +304,9 @@ void Entity::SetValueAsFloat(int prop_index, float value)
     _props.SetValueAsFloat(prop_index, value);
 }
 
-ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}
+ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :
+    Entity(registrator, props),
+    _protoId {proto_id}
 {
     STACK_TRACE_ENTRY();
 
@@ -357,14 +349,14 @@ auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
     return _componentHashes.count(hash) != 0u;
 }
 
-EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) : _proto {proto}
+EntityWithProto::EntityWithProto(const ProtoEntity* proto) :
+    _proto {proto}
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_proto);
 
     _proto->AddRef();
-    owner->SetProperties(_proto->GetProperties());
 }
 
 EntityWithProto::~EntityWithProto()
@@ -388,7 +380,9 @@ auto EntityWithProto::GetProto() const -> const ProtoEntity*
     return _proto;
 }
 
-EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) : _entity {entity}, _callbackName {callback_name}
+EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) :
+    _entity {entity},
+    _callbackName {callback_name}
 {
     STACK_TRACE_ENTRY();
 }

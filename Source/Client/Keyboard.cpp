@@ -34,7 +34,9 @@
 #include "Keyboard.h"
 #include "StringUtils.h"
 
-Keyboard::Keyboard(InputSettings& settings, SpriteManager& spr_mngr) : _settings {settings}, _sprMngr {spr_mngr}
+Keyboard::Keyboard(InputSettings& settings, SpriteManager& spr_mngr) :
+    _settings {settings},
+    _sprMngr {spr_mngr}
 {
     STACK_TRACE_ENTRY();
 

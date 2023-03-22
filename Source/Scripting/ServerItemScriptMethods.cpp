@@ -43,7 +43,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -52,7 +55,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 {
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    if (!ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true)) {
+        throw ScriptException("Call init failed", initFunc);
+    }
+
     self->SetInitScript(initFunc);
 }
 
@@ -77,7 +83,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, uint stackId)
 {
-    return self->ContGetItems(stackId);
+    return self->GetInnerItems(stackId);
 }
 
 ///# ...
@@ -85,7 +91,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, ushort& hx, ushort& hy)
+[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, uint16& hx, uint16& hy)
 {
     Map* map;
 
@@ -96,7 +102,7 @@
             throw ScriptException("Critter accessory, critter not found");
         }
 
-        if (cr->GetMapId() == 0u) {
+        if (cr->GetMapId() == ident_t {}) {
             hx = cr->GetWorldX();
             hy = cr->GetWorldY();
             return nullptr;
@@ -142,7 +148,7 @@
 ///# param fromFrm ...
 ///# param toFrm ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Server_Item_Animate(Item* self, uchar fromFrm, uchar toFrm)
+[[maybe_unused]] void Server_Item_Animate(Item* self, uint8 fromFrm, uint8 toFrm)
 {
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {

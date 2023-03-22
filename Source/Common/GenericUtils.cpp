@@ -66,7 +66,7 @@ auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
     constexpr uint seed = 0;
     const uint m = 0x5BD1E995;
     const auto r = 24;
-    const auto* pdata = static_cast<const uchar*>(data);
+    const auto* pdata = static_cast<const uint8*>(data);
     auto h = seed ^ static_cast<uint>(len);
 
     while (len >= 4) {
@@ -118,7 +118,7 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
     constexpr uint seed = 0;
     const auto m = 0xc6a4a7935bd1e995ULL;
     const auto r = 47;
-    const auto* pdata = static_cast<const uchar*>(data);
+    const auto* pdata = static_cast<const uint8*>(data);
     const auto* pdata2 = reinterpret_cast<const uint64*>(pdata);
     const auto* end = pdata2 + len / 8;
     auto h = seed ^ len * m;
@@ -134,7 +134,7 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
         h *= m;
     }
 
-    const auto* data3 = reinterpret_cast<const uchar*>(pdata2);
+    const auto* data3 = reinterpret_cast<const uint8*>(pdata2);
 
     switch (len & 7) {
     case 7:
@@ -169,12 +169,12 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
     return h;
 }
 
-auto Compressor::Compress(const_span<uchar> data) -> vector<uchar>
+auto Compressor::Compress(const_span<uint8> data) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
     auto buf_len = static_cast<uLongf>(data.size() * 110 / 100 + 12);
-    auto buf = vector<uchar>(buf_len);
+    auto buf = vector<uint8>(buf_len);
 
     if (compress2(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()), Z_BEST_SPEED) != Z_OK) {
         return {};
@@ -184,12 +184,12 @@ auto Compressor::Compress(const_span<uchar> data) -> vector<uchar>
     return buf;
 }
 
-auto Compressor::Uncompress(const_span<uchar> data, size_t mul_approx) -> vector<uchar>
+auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector<uint8>
 {
     STACK_TRACE_ENTRY();
 
     auto buf_len = static_cast<uLongf>(data.size() * mul_approx);
-    auto buf = vector<uchar>(buf_len);
+    auto buf = vector<uint8>(buf_len);
 
     while (true) {
         const auto result = uncompress(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()));
@@ -318,14 +318,14 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uchar>& colors, int game_time, int* light) -> uint
+auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> uint
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(day_time.size() == 4);
     RUNTIME_ASSERT(colors.size() == 12);
 
-    uchar result[3];
+    uint8 result[3];
     const int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
     const int color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
     const int color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
@@ -363,9 +363,9 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uchar>&
         duration = 1;
     }
 
-    result[0] = static_cast<uchar>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
-    result[1] = static_cast<uchar>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
-    result[2] = static_cast<uchar>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
+    result[0] = static_cast<uint8>(color_r[time] + (color_r[time < 3 ? time + 1 : 0] - color_r[time]) * game_time / duration);
+    result[1] = static_cast<uint8>(color_g[time] + (color_g[time < 3 ? time + 1 : 0] - color_g[time]) * game_time / duration);
+    result[2] = static_cast<uint8>(color_b[time] + (color_b[time < 3 ? time + 1 : 0] - color_b[time]) * game_time / duration);
 
     if (light != nullptr) {
         const auto max_light = (std::max(std::max(std::max(color_r[0], color_r[1]), color_r[2]), color_r[3]) + std::max(std::max(std::max(color_g[0], color_g[1]), color_g[2]), color_g[3]) + std::max(std::max(std::max(color_b[0], color_b[1]), color_b[2]), color_b[3])) / 3;

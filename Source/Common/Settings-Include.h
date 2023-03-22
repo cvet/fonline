@@ -64,10 +64,6 @@ FIXED_SETTING(uint, MinNameLength, 4);
 FIXED_SETTING(uint, MaxNameLength, 12);
 FIXED_SETTING(vector<string>, Languages, "engl");
 FIXED_SETTING(uint, TalkDistance, 3);
-FIXED_SETTING(bool, RunOnCombat, false);
-FIXED_SETTING(bool, RunOnTransfer, false);
-FIXED_SETTING(uint, TimeoutTransfer, 3);
-FIXED_SETTING(uint, TimeoutBattle, 10);
 FIXED_SETTING(uint, GlobalMapWidth, 28);
 FIXED_SETTING(uint, GlobalMapHeight, 30);
 FIXED_SETTING(uint, GlobalMapZoneLength, 50);
@@ -99,6 +95,7 @@ FIXED_SETTING(bool, SecuredWebSockets, false);
 FIXED_SETTING(bool, DisableTcpNagle, true);
 FIXED_SETTING(bool, DisableZlibCompression, false);
 FIXED_SETTING(uint, FloodSize, 2048);
+FIXED_SETTING(uint, ArtificalLags, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -202,6 +199,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(TimerSettings, virtual DummySettings);
 FIXED_SETTING(int, StartYear, 2000);
+FIXED_SETTING(uint, DebuggingDeltaTimeCap, 100);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -226,10 +224,11 @@ FIXED_SETTING(uint, Anim2CombatBegin, 0);
 FIXED_SETTING(uint, Anim2CombatIdle, 0);
 FIXED_SETTING(uint, Anim2CombatEnd, 0);
 FIXED_SETTING(string, PlayerOffAppendix, "_off");
-VARIABLE_SETTING(bool, ShowPlayerNames, false);
-VARIABLE_SETTING(bool, ShowNpcNames, false);
-VARIABLE_SETTING(bool, ShowCritId, false);
-VARIABLE_SETTING(bool, ShowGroups, true);
+VARIABLE_SETTING(bool, ShowCritterName, true);
+VARIABLE_SETTING(bool, ShowCritterHeadText, true);
+VARIABLE_SETTING(bool, ShowPlayerName, true);
+VARIABLE_SETTING(bool, ShowNpcName, true);
+VARIABLE_SETTING(bool, ShowDeadNpcName, true);
 FIXED_SETTING(int, NameOffset, 0);
 SETTING_GROUP_END();
 
@@ -240,12 +239,12 @@ FIXED_SETTING(float, SpritesZoomMin, MIN_ZOOM);
 FIXED_SETTING(uint, ScrollDelay, 10);
 FIXED_SETTING(int, ScrollStep, 12);
 FIXED_SETTING(uint, RainTick, 60);
-FIXED_SETTING(short, RainSpeedX, 0);
-FIXED_SETTING(short, RainSpeedY, 15);
+FIXED_SETTING(int16, RainSpeedX, 0);
+FIXED_SETTING(int16, RainSpeedY, 15);
 FIXED_SETTING(uint, ChosenLightColor, 0);
-FIXED_SETTING(uchar, ChosenLightDistance, 4);
+FIXED_SETTING(uint8, ChosenLightDistance, 4);
 FIXED_SETTING(int, ChosenLightIntensity, 2500);
-FIXED_SETTING(uchar, ChosenLightFlags, 0);
+FIXED_SETTING(uint8, ChosenLightFlags, 0);
 VARIABLE_SETTING(bool, FullscreenMouseScroll, true);
 VARIABLE_SETTING(bool, WindowedMouseScroll, false);
 VARIABLE_SETTING(bool, ScrollCheck, true);
@@ -257,7 +256,7 @@ VARIABLE_SETTING(bool, ScrollMouseLeft, false);
 VARIABLE_SETTING(bool, ScrollMouseRight, false);
 VARIABLE_SETTING(bool, ScrollMouseUp, false);
 VARIABLE_SETTING(bool, ScrollMouseDown, false);
-VARIABLE_SETTING(uchar, RoofAlpha, 200);
+VARIABLE_SETTING(uint8, RoofAlpha, 200);
 VARIABLE_SETTING(bool, ShowTile, true);
 VARIABLE_SETTING(bool, ShowRoof, true);
 VARIABLE_SETTING(bool, ShowItem, true);

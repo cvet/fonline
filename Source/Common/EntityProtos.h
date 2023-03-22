@@ -37,16 +37,12 @@
 
 #include "Entity.h"
 #include "EntityProperties.h"
+#include "Properties.h"
 
 class ProtoItem final : public ProtoEntity, public ItemProperties
 {
 public:
-    ProtoItem(hstring proto_id, const PropertyRegistrator* registrator);
-
-    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
-    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
-    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
-    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
+    ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
 
     mutable int64 InstanceCount {};
 };
@@ -54,17 +50,17 @@ public:
 class ProtoCritter final : public ProtoEntity, public CritterProperties
 {
 public:
-    ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator);
+    ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
 };
 
 class ProtoMap final : public ProtoEntity, public MapProperties
 {
 public:
-    ProtoMap(hstring proto_id, const PropertyRegistrator* registrator);
+    ProtoMap(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
 };
 
 class ProtoLocation final : public ProtoEntity, public LocationProperties
 {
 public:
-    ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator);
+    ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props = nullptr);
 };

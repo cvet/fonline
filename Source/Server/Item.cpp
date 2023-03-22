@@ -37,7 +37,10 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), ItemProperties(GetInitRef())
+Item::Item(FOServer* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
+    EntityWithProto(proto),
+    ItemProperties(GetInitRef())
 {
     STACK_TRACE_ENTRY();
 
@@ -48,21 +51,21 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
 {
     STACK_TRACE_ENTRY();
 
-    short sort_value = 0;
+    int16 sort_value = 0;
     for (const auto* item : items) {
         if (item == this) {
             continue;
         }
 
         if (sort_value >= item->GetSortValue()) {
-            sort_value = static_cast<short>(item->GetSortValue() - 1);
+            sort_value = static_cast<int16>(item->GetSortValue() - 1);
         }
     }
 
     SetSortValue(sort_value);
 }
 
-auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
+auto Item::GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -70,11 +73,11 @@ auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
 
     RUNTIME_ASSERT(item_id);
 
-    if (_childItems == nullptr) {
+    if (!_innerItems) {
         return nullptr;
     }
 
-    for (auto* item : *_childItems) {
+    for (auto* item : *_innerItems) {
         if (item->GetId() == item_id) {
             if (skip_hidden && item->GetIsHidden()) {
                 return nullptr;
@@ -85,20 +88,20 @@ auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
     return nullptr;
 }
 
-auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
+auto Item::GetAllInnerItems(bool skip_hidden) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (_childItems == nullptr) {
+    if (!_innerItems) {
         return {};
     }
 
     vector<Item*> items;
-    items.reserve(_childItems->size());
+    items.reserve(_innerItems->size());
 
-    for (auto* item : *_childItems) {
+    for (auto* item : *_innerItems) {
         if (!skip_hidden || !item->GetIsHidden()) {
             items.push_back(item);
         }
@@ -106,17 +109,17 @@ auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
     return items;
 }
 
-auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
+auto Item::GetInnerItemByPid(hstring pid, uint stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (_childItems == nullptr) {
+    if (!_innerItems) {
         return nullptr;
     }
 
-    for (auto* item : *_childItems) {
+    for (auto* item : *_innerItems) {
         if (item->GetProtoId() == pid && (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id)) {
             return item;
         }
@@ -124,18 +127,18 @@ auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
     return nullptr;
 }
 
-auto Item::ContGetItems(uint stack_id) -> vector<Item*>
+auto Item::GetInnerItems(uint stack_id) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
-    if (_childItems == nullptr) {
+    if (!_innerItems) {
         return {};
     }
 
     vector<Item*> items;
-    for (auto* item : *_childItems) {
+    for (auto* item : *_innerItems) {
         if (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id) {
             items.push_back(item);
         }
@@ -143,9 +146,20 @@ auto Item::ContGetItems(uint stack_id) -> vector<Item*>
     return items;
 }
 
-auto Item::ContIsItems() const -> bool
+auto Item::IsInnerItems() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _childItems != nullptr && !_childItems->empty();
+    return _innerItems && !_innerItems->empty();
+}
+
+auto Item::GetRawInnerItems() -> vector<Item*>&
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_innerItems);
+
+    return *_innerItems;
 }

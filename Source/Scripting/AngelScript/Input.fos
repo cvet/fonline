@@ -63,16 +63,20 @@ void ModuleInit()
 
 void ReleaseKeys()
 {
-    for (uint i = 0; i < KeyPressed.length(); i++)
-        if (KeyPressed[i])
+    for (uint i = 0; i < KeyPressed.length(); i++) {
+        if (KeyPressed[i]) {
             OnKeyUp(KeyCode(i));
+        }
+    }
 }
 
 void ReleaseMouse()
 {
-    for (uint i = 0; i < MousePressed.length(); i++)
-        if (MousePressed[i])
+    for (uint i = 0; i < MousePressed.length(); i++) {
+        if (MousePressed[i]) {
             OnMouseUp(MouseButton(i));
+        }
+    }
 }
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,8 +84,9 @@ void ReleaseMouse()
 // Return true to disable engine events.
 void OnMouseDown(MouseButton button) // Engine callback
 {
-    if (Game.IsConnecting())
+    if (Game.IsConnecting()) {
         return;
+    }
 
     MousePressed[button] = true;
 
@@ -90,8 +95,9 @@ void OnMouseDown(MouseButton button) // Engine callback
 
 void OnMouseUp(MouseButton button) // Engine callback
 {
-    if (MousePressed[button])
+    if (MousePressed[button]) {
         Gui::EngineCallback_MouseUp(button);
+    }
 
     MousePressed[button] = false;
 }
@@ -108,29 +114,34 @@ void OnKeyDown(KeyCode key, string text) // Engine callback
 {
     // Avoid repeating
     if (KeyPressed[key]) {
-        if (key != KeyCode::Text && key != KeyCode::Space && key != KeyCode::Back && key != KeyCode::Delete && key != KeyCode::Left && key != KeyCode::Right)
+        if (key != KeyCode::Text && key != KeyCode::Space && key != KeyCode::Back && key != KeyCode::Delete && key != KeyCode::Left && key != KeyCode::Right) {
             return;
+        }
     }
     KeyPressed[key] = true;
 
     // Handlers
     bool handled = false;
-    for (uint i = 0; !handled && i < KeyDownCallbacks.length(); i++)
+    for (uint i = 0; !handled && i < KeyDownCallbacks.length(); i++) {
         handled = KeyDownCallbacks[i](key, text);
-    if (!handled)
+    }
+    if (!handled) {
         Gui::EngineCallback_KeyDown(key, text);
+    }
 }
 
 void OnKeyUp(KeyCode key) // Engine callback
 {
     // Avoid repeating
-    if (!KeyPressed[key])
+    if (!KeyPressed[key]) {
         return;
+    }
     KeyPressed[key] = false;
 
     // Handlers
-    for (uint i = 0; i < KeyUpCallbacks.length(); i++)
+    for (uint i = 0; i < KeyUpCallbacks.length(); i++) {
         KeyUpCallbacks[i](key);
+    }
     Gui::EngineCallback_KeyUp(key);
 }
 

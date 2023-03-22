@@ -35,7 +35,9 @@
 #include "GenericUtils.h"
 #include "Log.h"
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) : _settings {settings}, _resources {resources}
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources) :
+    _settings {settings},
+    _resources {resources}
 {
     STACK_TRACE_ENTRY();
 }
@@ -81,8 +83,8 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     if (effect->NeedTimeBuf) {
         auto&& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
-        time_buf->FrameTime[0] = static_cast<float>(game_time.FrameTick()) / 1000.0f;
-        time_buf->GameTime[0] = static_cast<float>(game_time.GameTick()) / 1000.0f;
+        time_buf->FrameTime[0] = time_duration_to_ms<float>(game_time.FrameTime().time_since_epoch()) / 1000.0f;
+        time_buf->GameTime[0] = time_duration_to_ms<float>(game_time.GameplayTime().time_since_epoch()) / 1000.0f;
     }
 
     if (effect->NeedRandomValueBuf) {

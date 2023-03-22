@@ -35,9 +35,7 @@
 
 #include "Common.h"
 
-#include "CacheStorage.h"
 #include "FileSystem.h"
-#include "MsgStr-Include.h"
 
 DECLARE_EXCEPTION(LanguagePackException);
 
@@ -73,17 +71,17 @@ public:
     [[nodiscard]] auto GetStrNumUpper(uint num) const -> uint;
     [[nodiscard]] auto GetStrNumLower(uint num) const -> uint;
     [[nodiscard]] auto GetInt(uint num) const -> int;
-    [[nodiscard]] auto GetBinary(uint num) const -> vector<uchar>;
+    [[nodiscard]] auto GetBinary(uint num) const -> vector<uint8>;
     [[nodiscard]] auto Count(uint num) const -> uint;
     [[nodiscard]] auto GetSize() const -> uint;
     [[nodiscard]] auto IsIntersects(const FOMsg& other) const -> bool;
-    [[nodiscard]] auto GetBinaryData() const -> vector<uchar>;
+    [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
-    auto LoadFromBinaryData(const vector<uchar>& data) -> bool;
+    auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
     auto LoadFromString(string_view str, NameResolver& name_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(uint num, string_view str);
-    void AddBinary(uint num, const uchar* binary, uint len);
+    void AddBinary(uint num, const uint8* binary, uint len);
     void EraseStr(uint num);
     void Clear();
 

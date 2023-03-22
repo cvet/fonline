@@ -55,12 +55,12 @@ namespace SPK::FO
         indices.resize(vertices / 4 * 6);
         RUNTIME_ASSERT(indices.size() <= 0xFFFF);
         for (size_t i = 0; i < indices.size() / 6; i++) {
-            indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
-            indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
-            indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 2);
-            indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 2);
-            indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 3);
-            indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 0);
+            indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
+            indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
+            indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 2);
+            indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 2);
+            indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 3);
+            indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 0);
         }
     }
 
@@ -110,7 +110,11 @@ namespace SPK::FO
         effect->DrawBuffer(_renderBuf.get(), 0, vertices / 4 * 6);
     }
 
-    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) : Renderer(needs_dataset) { STACK_TRACE_ENTRY(); }
+    SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) :
+        Renderer(needs_dataset)
+    {
+        STACK_TRACE_ENTRY();
+    }
 
     auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer>
     {

@@ -41,7 +41,7 @@
 DECLARE_EXCEPTION(AppInitException);
 
 ///@ ExportEnum
-enum class KeyCode : uchar
+enum class KeyCode : uint8
 {
     None = 0x00,
     Escape = 0x01,
@@ -213,12 +213,36 @@ struct InputEvent
     } KeyUp {};
 
     InputEvent() = default;
-    explicit InputEvent(MouseMoveEvent ev) : Type {EventType::MouseMoveEvent}, MouseMove {ev} { }
-    explicit InputEvent(MouseDownEvent ev) : Type {EventType::MouseDownEvent}, MouseDown {ev} { }
-    explicit InputEvent(MouseUpEvent ev) : Type {EventType::MouseUpEvent}, MouseUp {ev} { }
-    explicit InputEvent(MouseWheelEvent ev) : Type {EventType::MouseWheelEvent}, MouseWheel {ev} { }
-    explicit InputEvent(KeyDownEvent ev) : Type {EventType::KeyDownEvent}, KeyDown {std::move(ev)} { }
-    explicit InputEvent(KeyUpEvent ev) : Type {EventType::KeyUpEvent}, KeyUp {ev} { }
+    explicit InputEvent(MouseMoveEvent ev) :
+        Type {EventType::MouseMoveEvent},
+        MouseMove {ev}
+    {
+    }
+    explicit InputEvent(MouseDownEvent ev) :
+        Type {EventType::MouseDownEvent},
+        MouseDown {ev}
+    {
+    }
+    explicit InputEvent(MouseUpEvent ev) :
+        Type {EventType::MouseUpEvent},
+        MouseUp {ev}
+    {
+    }
+    explicit InputEvent(MouseWheelEvent ev) :
+        Type {EventType::MouseWheelEvent},
+        MouseWheel {ev}
+    {
+    }
+    explicit InputEvent(KeyDownEvent ev) :
+        Type {EventType::KeyDownEvent},
+        KeyDown {std::move(ev)}
+    {
+    }
+    explicit InputEvent(KeyUpEvent ev) :
+        Type {EventType::KeyUpEvent},
+        KeyUp {ev}
+    {
+    }
 };
 
 class AppWindow final
@@ -228,12 +252,14 @@ class AppWindow final
 
 public:
     [[nodiscard]] auto GetSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsFocused() const -> bool;
     [[nodiscard]] auto IsFullscreen() const -> bool;
 
     void GrabInput(bool enable);
     void SetSize(int w, int h);
+    void SetScreenSize(int w, int h);
     void SetPosition(int x, int y);
     void Minimize();
     auto ToggleFullscreen(bool enable) -> bool;
@@ -242,14 +268,16 @@ public:
     void Destroy();
 
     EventObserver<> OnWindowSizeChanged {};
+    EventObserver<> OnScreenSizeChanged {};
 
 private:
     AppWindow() = default;
 
     WindowInternalHandle* _windowHandle {};
     bool _grabbed {};
-    int _nonConstHelper {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
+    EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
+    int _nonConstHelper {};
 };
 
 class AppRender final
@@ -309,16 +337,16 @@ public:
     static const int AUDIO_FORMAT_U8;
     static const int AUDIO_FORMAT_S16;
 
-    using AudioStreamCallback = std::function<void(uchar*)>;
+    using AudioStreamCallback = std::function<void(uint8*)>;
 
     [[nodiscard]] auto IsEnabled() -> bool;
     [[nodiscard]] auto GetStreamSize() -> uint;
-    [[nodiscard]] auto GetSilence() -> uchar;
+    [[nodiscard]] auto GetSilence() -> uint8;
 
-    [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
+    [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool;
 
     void SetSource(AudioStreamCallback stream_callback);
-    void MixAudio(uchar* output, uchar* buf, int volume);
+    void MixAudio(uint8* output, uint8* buf, int volume);
     void LockDevice();
     void UnlockDevice();
 

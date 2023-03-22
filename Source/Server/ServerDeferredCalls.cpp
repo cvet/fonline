@@ -36,12 +36,14 @@
 #include "DataBase.h"
 #include "Server.h"
 
-ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) : DeferredCallManager(engine), _serverEngine {engine}
+ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) :
+    DeferredCallManager(engine),
+    _serverEngine {engine}
 {
     STACK_TRACE_ENTRY();
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -53,7 +55,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -66,7 +68,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -79,7 +81,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -92,7 +94,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -105,7 +107,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& call) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& call) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -113,7 +115,9 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     if (delay > 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+        if (time_mul != 0) {
+            call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
+        }
     }
 
     _savedCalls.emplace(call.Id);
@@ -150,7 +154,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     RUNTIME_ASSERT(call_doc.count("Script") && !std::get<string>(call_doc["Script"]).empty());
 
-    call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond);
+    call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond.underlying_value());
 
     _serverEngine->DbStorage.Insert("DeferredCalls", call.Id, call_doc);
 
@@ -159,12 +163,15 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
     return _deferredCalls.back().Id;
 }
 
-auto ServerDeferredCallManager::GetNextCallId() -> uint
+auto ServerDeferredCallManager::GetNextCallId() -> ident_t
 {
     STACK_TRACE_ENTRY();
 
-    const auto next_id = _serverEngine->GetLastDeferredCallId() + 1;
+    const auto next_id_num = _serverEngine->GetLastDeferredCallId().underlying_value() + 1;
+    const auto next_id = ident_t {next_id_num};
+
     _serverEngine->SetLastDeferredCallId(next_id);
+
     return next_id;
 }
 
@@ -193,7 +200,7 @@ void ServerDeferredCallManager::LoadDeferredCalls()
         DeferredCall call;
 
         call.Id = call_id;
-        call.FireFullSecond = static_cast<uint>(std::get<int64>(call_doc["FireFullSecond"]));
+        call.FireFullSecond = tick_t {static_cast<tick_t::underlying_type>(std::get<int64>(call_doc["FireFullSecond"]))};
 
         const auto func_name = _serverEngine->ToHashedString(std::get<string>(call_doc["Script"]));
         call.EmptyFunc = _serverEngine->ScriptSys->FindFunc<void>(func_name);

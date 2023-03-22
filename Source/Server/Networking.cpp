@@ -69,7 +69,9 @@ using ssl_context = asio::ssl::context;
 #include "WinApi-Include.h" // After all because ASIO using WinAPI
 #endif
 
-NetConnection::NetConnection(ServerNetworkSettings& settings) : Bin(settings.NetBufferSize), Bout(settings.NetBufferSize)
+NetConnection::NetConnection(ServerNetworkSettings& settings) :
+    InBuf(settings.NetBufferSize),
+    OutBuf(settings.NetBufferSize)
 {
     STACK_TRACE_ENTRY();
 }
@@ -93,7 +95,9 @@ void NetConnection::Release() const
 class NetConnectionImpl : public NetConnection
 {
 public:
-    explicit NetConnectionImpl(ServerNetworkSettings& settings) : NetConnection(settings), _settings {settings}
+    explicit NetConnectionImpl(ServerNetworkSettings& settings) :
+        NetConnection(settings),
+        _settings {settings}
     {
         STACK_TRACE_ENTRY();
 
@@ -140,7 +144,7 @@ public:
         return _host;
     }
 
-    [[nodiscard]] auto GetPort() const -> ushort override
+    [[nodiscard]] auto GetPort() const -> uint16 override
     {
         STACK_TRACE_ENTRY();
 
@@ -174,8 +178,8 @@ public:
 
         // Nothing to send
         {
-            std::lock_guard locker(BoutLocker);
-            if (Bout.IsEmpty()) {
+            std::lock_guard locker(OutBufLocker);
+            if (OutBuf.IsEmpty()) {
                 return;
             }
         }
@@ -197,19 +201,19 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback(size_t& out_len) -> const uchar*
+    auto SendCallback(size_t& out_len) -> const uint8*
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(BoutLocker);
+        std::lock_guard locker(OutBufLocker);
 
-        if (Bout.IsEmpty()) {
+        if (OutBuf.IsEmpty()) {
             return nullptr;
         }
 
         // Compress
         if (_zStreamActive) {
-            const auto to_compr = Bout.GetEndPos();
+            const auto to_compr = OutBuf.GetEndPos();
 
             _outBuf.resize(to_compr + 32);
 
@@ -217,7 +221,7 @@ protected:
                 _outBuf.shrink_to_fit();
             }
 
-            _zStream.next_in = static_cast<Bytef*>(Bout.GetData());
+            _zStream.next_in = static_cast<Bytef*>(OutBuf.GetData());
             _zStream.avail_in = static_cast<uInt>(to_compr);
             _zStream.next_out = static_cast<Bytef*>(_outBuf.data());
             _zStream.avail_out = static_cast<uInt>(_outBuf.size());
@@ -226,14 +230,14 @@ protected:
             RUNTIME_ASSERT(result == Z_OK);
 
             const auto compr = static_cast<size_t>(_zStream.next_out - _outBuf.data());
-            const auto real = static_cast<size_t>(_zStream.next_in - Bout.GetData());
+            const auto real = static_cast<size_t>(_zStream.next_in - OutBuf.GetData());
             out_len = compr;
 
-            Bout.Cut(real);
+            OutBuf.Cut(real);
         }
         // Without compressing
         else {
-            const auto len = Bout.GetEndPos();
+            const auto len = OutBuf.GetEndPos();
 
             _outBuf.resize(len);
 
@@ -241,32 +245,32 @@ protected:
                 _outBuf.shrink_to_fit();
             }
 
-            std::memcpy(_outBuf.data(), Bout.GetData(), len);
+            std::memcpy(_outBuf.data(), OutBuf.GetData(), len);
             out_len = len;
 
-            Bout.Cut(len);
+            OutBuf.Cut(len);
         }
 
         // Normalize buffer size
-        if (Bout.IsEmpty()) {
-            Bout.ResetBuf();
+        if (OutBuf.IsEmpty()) {
+            OutBuf.ResetBuf();
         }
 
         RUNTIME_ASSERT(out_len > 0);
         return _outBuf.data();
     }
 
-    void ReceiveCallback(const uchar* buf, size_t len)
+    void ReceiveCallback(const uint8* buf, size_t len)
     {
         STACK_TRACE_ENTRY();
 
-        std::lock_guard locker(BinLocker);
+        std::lock_guard locker(InBufLocker);
 
-        if (Bin.GetReadPos() + len < _settings.FloodSize) {
-            Bin.AddData(buf, len);
+        if (InBuf.GetReadPos() + len < _settings.FloodSize) {
+            InBuf.AddData(buf, len);
         }
         else {
-            Bin.ResetBuf();
+            InBuf.ResetBuf();
             Disconnect();
         }
     }
@@ -274,13 +278,13 @@ protected:
     ServerNetworkSettings& _settings;
     uint _ip {};
     string _host {};
-    ushort _port {};
+    uint16 _port {};
     std::atomic_bool _isDisconnected {};
 
 private:
     bool _zStreamActive {};
     z_stream _zStream {};
-    vector<uchar> _outBuf {};
+    vector<uint8> _outBuf {};
 };
 
 #if FO_HAVE_ASIO
@@ -361,7 +365,9 @@ private:
 class NetConnectionAsio final : public NetConnectionImpl
 {
 public:
-    NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) : NetConnectionImpl(settings), _socket {socket}
+    NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) :
+        NetConnectionImpl(settings),
+        _socket {socket}
     {
         STACK_TRACE_ENTRY();
 
@@ -481,7 +487,7 @@ private:
 
     asio::ip::tcp::socket* _socket {};
     std::atomic_bool _writePending {};
-    vector<uchar> _inBuf {};
+    vector<uint8> _inBuf {};
     asio::error_code _dummyError {};
 };
 
@@ -492,7 +498,10 @@ class NetConnectionWebSocket final : public NetConnectionImpl
     using message_ptr = typename WebSockets::message_ptr;
 
 public:
-    NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) : NetConnectionImpl(settings), _server {server}, _connection {connection}
+    NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) :
+        NetConnectionImpl(settings),
+        _server {server},
+        _connection {connection}
     {
         STACK_TRACE_ENTRY();
 
@@ -549,7 +558,7 @@ private:
 
         const auto& payload = msg->get_payload();
         RUNTIME_ASSERT(!payload.empty());
-        ReceiveCallback(reinterpret_cast<const uchar*>(payload.data()), payload.length());
+        ReceiveCallback(reinterpret_cast<const uint8*>(payload.data()), payload.length());
     }
 
     void OnFail()
@@ -604,7 +613,9 @@ private:
     connection_ptr _connection {};
 };
 
-NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}, _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
+NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+    _settings {settings},
+    _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort)))
 {
     STACK_TRACE_ENTRY();
 
@@ -656,7 +667,8 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
     AcceptNext();
 }
 
-NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
+NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 
@@ -665,7 +677,7 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
     _server.init_asio();
     _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
     _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetNoTlsWebSocketsServer::Run, this);
@@ -709,7 +721,8 @@ auto NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bo
     return !error;
 }
 
-NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}
+NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+    _settings {settings}
 {
     STACK_TRACE_ENTRY();
 
@@ -726,7 +739,7 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
     _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
     _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
     _server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) { return OnTlsInit(hdl); });
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetTlsWebSocketsServer::Run, this);
@@ -820,7 +833,9 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, Conne
 class InterthreadConnection : public NetConnectionImpl
 {
 public:
-    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) : NetConnectionImpl(settings), _send {std::move(send)}
+    InterthreadConnection(ServerNetworkSettings& settings, InterthreadDataCallback send) :
+        NetConnectionImpl(settings),
+        _send {std::move(send)}
     {
         STACK_TRACE_ENTRY();
 
@@ -847,7 +862,7 @@ public:
         return true;
     }
 
-    void Receive(const_span<uchar> buf)
+    void Receive(const_span<uint8> buf)
     {
         STACK_TRACE_ENTRY();
 
@@ -895,7 +910,8 @@ public:
     auto operator=(InterthreadServer&&) noexcept = delete;
     ~InterthreadServer() override = default;
 
-    InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _virtualPort {static_cast<ushort>(settings.ServerPort)}
+    InterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) :
+        _virtualPort {static_cast<uint16>(settings.ServerPort)}
     {
         STACK_TRACE_ENTRY();
 
@@ -906,7 +922,7 @@ public:
         InterthreadListeners.emplace(_virtualPort, [&settings, callback = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback {
             auto* conn = new InterthreadConnection(settings, std::move(client_send));
             callback(conn);
-            return [conn](const_span<uchar> buf) { conn->Receive(buf); };
+            return [conn](const_span<uint8> buf) { conn->Receive(buf); };
         });
     }
 
@@ -919,7 +935,7 @@ public:
     }
 
 private:
-    ushort _virtualPort;
+    uint16 _virtualPort;
 };
 
 auto NetServerBase::StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*

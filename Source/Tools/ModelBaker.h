@@ -63,7 +63,7 @@ public:
     void AutoBake() override;
 
 private:
-    [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;
+    [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uint8>;
 
     int _errors {};
 #if FO_HAVE_FBXSDK

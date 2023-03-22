@@ -87,6 +87,26 @@ const int& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 
+static auto WindowPosToScreenPos(int x, int y) -> tuple<int, int>
+{
+    const auto vp = ActiveRenderer->GetViewPort();
+
+    const auto screen_x = iround(static_cast<float>(x - vp.Left) / static_cast<float>(vp.Width()) * static_cast<float>(App->Settings.ScreenWidth));
+    const auto screen_y = iround(static_cast<float>(y - vp.Top) / static_cast<float>(vp.Height()) * static_cast<float>(App->Settings.ScreenHeight));
+
+    return {screen_x, screen_y};
+}
+
+static auto ScreenPosToWindowPos(int x, int y) -> tuple<int, int>
+{
+    const auto vp = ActiveRenderer->GetViewPort();
+
+    const auto win_x = vp.Left + iround(static_cast<float>(x) / static_cast<float>(App->Settings.ScreenWidth) * static_cast<float>(vp.Width()));
+    const auto win_y = vp.Top + iround(static_cast<float>(y) / static_cast<float>(App->Settings.ScreenHeight) * static_cast<float>(vp.Height()));
+
+    return {win_x, win_y};
+}
+
 void InitApp(int argc, char** argv, bool client_mode)
 {
     STACK_TRACE_ENTRY();
@@ -168,7 +188,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv, bool client_mode) : Settings(argc, argv, client_mode)
+Application::Application(int argc, char** argv, bool client_mode) :
+    Settings(argc, argv, client_mode)
 {
     STACK_TRACE_ENTRY();
 
@@ -702,13 +723,15 @@ void Application::BeginFrame()
         switch (sdl_event.type) {
         case SDL_MOUSEMOTION: {
             InputEvent::MouseMoveEvent ev;
-            ev.MouseX = sdl_event.motion.x;
-            ev.MouseY = sdl_event.motion.y;
-            ev.DeltaX = sdl_event.motion.xrel;
-            ev.DeltaY = sdl_event.motion.yrel;
+            std::tie(ev.MouseX, ev.MouseY) = WindowPosToScreenPos(sdl_event.motion.x, sdl_event.motion.y);
+            const auto vp = ActiveRenderer->GetViewPort();
+            const auto x_ratio = static_cast<float>(App->Settings.ScreenWidth) / static_cast<float>(vp.Width());
+            const auto y_ratio = static_cast<float>(App->Settings.ScreenHeight) / static_cast<float>(vp.Height());
+            ev.DeltaX = iround(static_cast<float>(sdl_event.motion.xrel) * x_ratio);
+            ev.DeltaY = iround(static_cast<float>(sdl_event.motion.yrel) * y_ratio);
             EventsQueue->emplace_back(ev);
 
-            io.AddMousePosEvent(static_cast<float>(sdl_event.motion.x), static_cast<float>(sdl_event.motion.y));
+            io.AddMousePosEvent(static_cast<float>(ev.MouseX), static_cast<float>(ev.MouseY));
         } break;
         case SDL_MOUSEBUTTONUP:
             [[fallthrough]];
@@ -870,8 +893,13 @@ void Application::BeginFrame()
                 auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
                 RUNTIME_ASSERT(resized_window);
 
+                int width = 0;
+                int height = 0;
+                SDL_GetWindowSizeInPixels(resized_window, &width, &height);
+                ActiveRenderer->OnResizeWindow(width, height);
+
                 for (auto* window : copy(_allWindows)) {
-                    if (window != &MainWindow && static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
+                    if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
                         window->_onWindowSizeChangedDispatcher();
                     }
                 }
@@ -897,35 +925,8 @@ void Application::BeginFrame()
     }
 
     // Setup display size
-    bool call_window_size_changed = false;
-
     if (ActiveRendererType != RenderType::Null) {
-        int w;
-        int h;
-        SDL_GetWindowSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &w, &h);
-
-        if ((SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_MINIMIZED) != 0u) {
-            w = h = 0;
-        }
-
-        int screen_w;
-        int screen_h;
-        SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &screen_w, &screen_h);
-
-        io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
-        if (w > 0 && h > 0) {
-            io.DisplayFramebufferScale = ImVec2(static_cast<float>(screen_w) / static_cast<float>(w), static_cast<float>(screen_h) / static_cast<float>(h));
-        }
-
-        if (screen_w != Settings.ScreenWidth || screen_h != Settings.ScreenHeight) {
-            Settings.ScreenWidth = screen_w;
-            Settings.ScreenHeight = screen_h;
-
-            // Refresh viewport
-            Render.SetRenderTarget(nullptr);
-
-            call_window_size_changed = true;
-        }
+        io.DisplaySize = ImVec2(static_cast<float>(App->Settings.ScreenWidth), static_cast<float>(App->Settings.ScreenHeight));
     }
 
     // Setup time step
@@ -959,7 +960,8 @@ void Application::BeginFrame()
                 int window_x;
                 int window_y;
                 SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
-                io.AddMousePosEvent(static_cast<float>(mouse_x_global - window_x), static_cast<float>(mouse_y_global - window_y));
+                auto&& [screen_x, screen_y] = WindowPosToScreenPos(mouse_x_global - window_x, mouse_y_global - window_y);
+                io.AddMousePosEvent(static_cast<float>(screen_x), static_cast<float>(screen_y));
             }
         }
     }
@@ -967,10 +969,6 @@ void Application::BeginFrame()
     ImGui::NewFrame();
 
     _onFrameBeginDispatcher();
-
-    if (call_window_size_changed) {
-        MainWindow._onWindowSizeChangedDispatcher();
-    }
 }
 
 void Application::EndFrame()
@@ -1052,7 +1050,7 @@ auto AppWindow::GetSize() const -> tuple<int, int>
     auto w = 1000;
     auto h = 1000;
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowSize(static_cast<SDL_Window*>(_windowHandle), &w, &h);
+        SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(_windowHandle), &w, &h);
     }
     return {w, h};
 }
@@ -1065,6 +1063,25 @@ void AppWindow::SetSize(int w, int h)
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), w, h);
+    }
+}
+
+auto AppWindow::GetScreenSize() const -> tuple<int, int>
+{
+    STACK_TRACE_ENTRY();
+
+    return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
+}
+
+void AppWindow::SetScreenSize(int w, int h)
+{
+    STACK_TRACE_ENTRY();
+
+    if (w != App->Settings.ScreenWidth || h != App->Settings.ScreenHeight) {
+        App->Settings.ScreenWidth = w;
+        App->Settings.ScreenHeight = h;
+
+        _onScreenSizeChangedDispatcher();
     }
 }
 
@@ -1285,6 +1302,9 @@ auto AppInput::GetMousePosition() const -> tuple<int, int>
     if (ActiveRendererType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
+
+    std::tie(x, y) = WindowPosToScreenPos(x, y);
+
     return {x, y};
 }
 
@@ -1299,6 +1319,8 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
         SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
 
         if (relative_to != nullptr) {
+            std::tie(x, y) = ScreenPosToWindowPos(x, y);
+
             SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), x, y);
         }
         else {
@@ -1366,7 +1388,7 @@ auto AppAudio::GetStreamSize() -> uint
     return AudioSpec.size;
 }
 
-auto AppAudio::GetSilence() -> uchar
+auto AppAudio::GetSilence() -> uint8
 {
     STACK_TRACE_ENTRY();
 
@@ -1395,7 +1417,7 @@ struct AppAudio::AudioConverter
     bool NeedConvert {};
 };
 
-auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
+auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uint8>& buf) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1438,7 +1460,7 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
     return true;
 }
 
-void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
+void AppAudio::MixAudio(uint8* output, uint8* buf, int volume)
 {
     STACK_TRACE_ENTRY();
 

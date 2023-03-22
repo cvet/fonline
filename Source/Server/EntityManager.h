@@ -46,11 +46,6 @@
 class EntityManager final
 {
 public:
-    using LocationFabric = std::function<Location*(uint, const ProtoLocation*)>;
-    using MapFabric = std::function<Map*(uint, const ProtoMap*)>;
-    using NpcFabric = std::function<Critter*(uint, const ProtoCritter*)>;
-    using ItemFabric = std::function<Item*(uint, const ProtoItem*)>;
-
     static constexpr auto ENTITIES_FINALIZATION_FUSE_VALUE = 10000;
 
     EntityManager() = delete;
@@ -61,25 +56,33 @@ public:
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
-    [[nodiscard]] auto GetPlayer(uint id) -> Player*;
-    [[nodiscard]] auto GetPlayers() -> const unordered_map<uint, Player*>&;
-    [[nodiscard]] auto GetLocation(uint id) -> Location*;
+    [[nodiscard]] auto GetPlayer(ident_t id) -> Player*;
+    [[nodiscard]] auto GetPlayers() -> const unordered_map<ident_t, Player*>&;
+    [[nodiscard]] auto GetLocation(ident_t id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> const unordered_map<uint, Location*>&;
-    [[nodiscard]] auto GetMap(uint id) -> Map*;
+    [[nodiscard]] auto GetLocations() -> const unordered_map<ident_t, Location*>&;
+    [[nodiscard]] auto GetMap(ident_t id) -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> const unordered_map<uint, Map*>&;
-    [[nodiscard]] auto GetCritter(uint id) -> Critter*;
-    [[nodiscard]] auto GetCritters() -> const unordered_map<uint, Critter*>&;
-    [[nodiscard]] auto GetItem(uint id) -> Item*;
-    [[nodiscard]] auto GetItems() -> const unordered_map<uint, Item*>&;
-    [[nodiscard]] auto GetCritterItems(uint cr_id) -> vector<Item*>;
+    [[nodiscard]] auto GetMaps() -> const unordered_map<ident_t, Map*>&;
+    [[nodiscard]] auto GetCritter(ident_t id) -> Critter*;
+    [[nodiscard]] auto GetCritters() -> const unordered_map<ident_t, Critter*>&;
+    [[nodiscard]] auto GetItem(ident_t id) -> Item*;
+    [[nodiscard]] auto GetItems() -> const unordered_map<ident_t, Item*>&;
 
-    void LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric);
-    void InitAfterLoad();
+    void LoadEntities();
     void FinalizeEntities();
 
-    void RegisterEntity(Player* entity, uint id);
+    auto LoadLocation(ident_t loc_id, bool& is_error) -> Location*;
+    auto LoadMap(ident_t map_id, bool& is_error) -> Map*;
+    auto LoadCritter(ident_t cr_id, Player* owner, bool& is_error) -> Critter*;
+    auto LoadItem(ident_t item_id, bool& is_error) -> Item*;
+
+    void CallInit(Location* loc, bool first_time);
+    void CallInit(Map* map, bool first_time);
+    void CallInit(Critter* cr, bool first_time);
+    void CallInit(Item* item, bool first_time);
+
+    void RegisterEntity(Player* entity, ident_t id);
     void UnregisterEntity(Player* entity);
     void RegisterEntity(Location* entity);
     void UnregisterEntity(Location* entity);
@@ -88,22 +91,24 @@ public:
     void RegisterEntity(Critter* entity);
     void UnregisterEntity(Critter* entity);
     void RegisterEntity(Item* entity);
-    void UnregisterEntity(Item* entity);
+    void UnregisterEntity(Item* entity, bool delete_from_db);
 
-    auto GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*;
+    auto GetCustomEntity(string_view entity_class_name, ident_t id) -> ServerEntity*;
     auto CreateCustomEntity(string_view entity_class_name) -> ServerEntity*;
-    void DeleteCustomEntity(string_view entity_class_name, uint id);
+    void DeleteCustomEntity(string_view entity_class_name, ident_t id);
 
 private:
+    auto LoadEntityDoc(string_view collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+
     void RegisterEntityEx(ServerEntity* entity);
     void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
 
     FOServer* _engine;
-    unordered_map<uint, Player*> _allPlayers {};
-    unordered_map<uint, Location*> _allLocations {};
-    unordered_map<uint, Map*> _allMaps {};
-    unordered_map<uint, Critter*> _allCritters {};
-    unordered_map<uint, Item*> _allItems {};
-    unordered_map<string, unordered_map<uint, ServerEntity*>> _allCustomEntities {};
+    unordered_map<ident_t, Player*> _allPlayers {};
+    unordered_map<ident_t, Location*> _allLocations {};
+    unordered_map<ident_t, Map*> _allMaps {};
+    unordered_map<ident_t, Critter*> _allCritters {};
+    unordered_map<ident_t, Item*> _allItems {};
+    unordered_map<string, unordered_map<ident_t, ServerEntity*>> _allCustomEntities {};
     bool _nonConstHelper {};
 };

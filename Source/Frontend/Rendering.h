@@ -187,7 +187,7 @@ public:
     const bool IsStatic;
 
     vector<Vertex2D> Vertices2D {};
-    vector<ushort> Indices {};
+    vector<uint16> Indices {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
     bool PrimZoomed {};
@@ -357,6 +357,7 @@ public:
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 = 0;
+    [[nodiscard]] virtual auto GetViewPort() -> IRect = 0;
 
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
@@ -364,6 +365,7 @@ public:
     virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(int x, int y, int width, int height) = 0;
     virtual void DisableScissor() = 0;
+    virtual void OnResizeWindow(int width, int height) = 0;
 };
 
 class Null_Renderer final : public Renderer
@@ -373,6 +375,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override { return {}; }
+    [[nodiscard]] auto GetViewPort() -> IRect override { return {}; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
     void Present() override { }
@@ -380,6 +383,7 @@ public:
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override { }
     void EnableScissor(int x, int y, int width, int height) override { }
     void DisableScissor() override { }
+    void OnResizeWindow(int width, int height) override { }
 };
 
 #if FO_HAVE_OPENGL
@@ -393,6 +397,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
+    [[nodiscard]] auto GetViewPort() -> IRect override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -400,6 +405,7 @@ public:
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
+    void OnResizeWindow(int width, int height) override;
 };
 
 #endif
@@ -413,6 +419,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
+    [[nodiscard]] auto GetViewPort() -> IRect override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -420,6 +427,7 @@ public:
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
+    void OnResizeWindow(int width, int height) override;
 };
 
 #endif

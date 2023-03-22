@@ -42,7 +42,10 @@ class FOMapper;
 class MapperScriptSystem : public ScriptSystem
 {
 public:
-    explicit MapperScriptSystem(FOMapper* engine) : _engine {engine} { }
+    explicit MapperScriptSystem(FOMapper* engine) :
+        _engine {engine}
+    {
+    }
 
     struct NativeImpl;
     shared_ptr<NativeImpl> NativeData {};

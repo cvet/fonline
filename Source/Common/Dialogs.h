@@ -46,37 +46,37 @@ enum class TalkType
 };
 
 // Answers
-static constexpr ushort DIALOG_END = 0;
-static constexpr ushort DIALOG_BACK = 0xFFE1;
-static constexpr ushort DIALOG_BARTER = 0xFFE2;
+static constexpr uint16 DIALOG_END = 0;
+static constexpr uint16 DIALOG_BACK = 0xFFE1;
+static constexpr uint16 DIALOG_BARTER = 0xFFE2;
 
 // Types
-static constexpr uchar DR_NONE = 0;
-static constexpr uchar DR_PROP_GLOBAL = 1;
-static constexpr uchar DR_PROP_CRITTER = 2;
-static constexpr uchar DR_PROP_ITEM = 4;
-static constexpr uchar DR_PROP_LOCATION = 5;
-static constexpr uchar DR_PROP_MAP = 6;
-static constexpr uchar DR_ITEM = 7;
-static constexpr uchar DR_SCRIPT = 8;
-static constexpr uchar DR_NO_RECHECK = 9;
-static constexpr uchar DR_OR = 10;
+static constexpr uint8 DR_NONE = 0;
+static constexpr uint8 DR_PROP_GLOBAL = 1;
+static constexpr uint8 DR_PROP_CRITTER = 2;
+static constexpr uint8 DR_PROP_ITEM = 4;
+static constexpr uint8 DR_PROP_LOCATION = 5;
+static constexpr uint8 DR_PROP_MAP = 6;
+static constexpr uint8 DR_ITEM = 7;
+static constexpr uint8 DR_SCRIPT = 8;
+static constexpr uint8 DR_NO_RECHECK = 9;
+static constexpr uint8 DR_OR = 10;
 
 // Who types
-static constexpr uchar DR_WHO_NONE = 0;
-static constexpr uchar DR_WHO_PLAYER = 1;
-static constexpr uchar DR_WHO_NPC = 2;
+static constexpr uint8 DR_WHO_NONE = 0;
+static constexpr uint8 DR_WHO_PLAYER = 1;
+static constexpr uint8 DR_WHO_NPC = 2;
 
 struct DialogAnswerReq
 {
-    uchar Type {DR_NONE};
-    uchar Who {DR_WHO_NONE};
+    uint8 Type {DR_NONE};
+    uint8 Who {DR_WHO_NONE};
     uint ParamIndex {};
     hstring ParamHash {};
     hstring AnswerScriptFuncName {};
     bool NoRecheck {};
     char Op {};
-    uchar ValuesCount {};
+    uint8 ValuesCount {};
     int Value {};
     int ValueExt[5] {};
 };
@@ -111,15 +111,15 @@ struct DialogPack
 struct TalkData
 {
     TalkType Type {};
-    uint CritterId {};
-    uint TalkHexMap {};
-    ushort TalkHexX {};
-    ushort TalkHexY {};
+    ident_t CritterId {};
+    ident_t TalkHexMap {};
+    uint16 TalkHexX {};
+    uint16 TalkHexY {};
     hstring DialogPackId {};
     Dialog CurDialog {};
     uint LastDialogId {};
-    uint StartTick {};
-    uint TalkTime {};
+    time_point StartTime {};
+    time_duration TalkTime {};
     bool Barter {};
     bool IgnoreDistance {};
     string Lexems {};
@@ -146,8 +146,8 @@ public:
     void LoadFromResources();
 
 private:
-    [[nodiscard]] auto GetDrType(string_view str) -> uchar;
-    [[nodiscard]] auto GetWho(char who) -> uchar;
+    [[nodiscard]] auto GetDrType(string_view str) -> uint8;
+    [[nodiscard]] auto GetWho(char who) -> uint8;
     [[nodiscard]] auto CheckOper(char oper) -> bool;
 
     auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;

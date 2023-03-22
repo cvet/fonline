@@ -50,19 +50,19 @@ public:
     ~SoundManager();
 
     auto PlaySound(const map<string, string>& sound_names, string_view name) -> bool;
-    auto PlayMusic(string_view fname, uint repeat_time) -> bool;
+    auto PlayMusic(string_view fname, time_duration repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
 
 private:
     struct Sound;
 
-    auto Load(string_view fname, bool is_music, uint repeat_time) -> bool;
+    auto Load(string_view fname, bool is_music, time_duration repeat_time) -> bool;
     auto LoadWav(Sound* sound, string_view fname) -> bool;
     auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
     auto LoadOgg(Sound* sound, string_view fname) -> bool;
-    void ProcessSounds(uchar* output);
-    auto ProcessSound(Sound* sound, uchar* output) -> bool;
+    void ProcessSounds(uint8* output);
+    auto ProcessSound(Sound* sound, uint8* output) -> bool;
     auto StreamOgg(Sound* sound) -> bool;
     auto ConvertData(Sound* sound) -> bool;
 
@@ -71,6 +71,6 @@ private:
     bool _isActive {};
     uint _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;
-    vector<uchar> _outputBuf {};
+    vector<uint8> _outputBuf {};
     bool _nonConstHelper {};
 };

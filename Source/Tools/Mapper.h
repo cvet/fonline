@@ -83,15 +83,15 @@ public:
 
     struct SelMapTile
     {
-        ushort HexX {};
-        ushort HexY {};
+        uint16 HexX {};
+        uint16 HexY {};
         bool IsRoof {};
     };
 
     struct EntityBuf
     {
-        ushort HexX {};
-        ushort HexY {};
+        uint16 HexX {};
+        uint16 HexY {};
         bool IsCritter {};
         bool IsItem {};
         const ProtoEntity* Proto {};
@@ -102,11 +102,11 @@ public:
     struct TileBuf
     {
         hstring Name {};
-        ushort HexX {};
-        ushort HexY {};
-        short OffsX {};
-        short OffsY {};
-        uchar Layer {};
+        uint16 HexX {};
+        uint16 HexY {};
+        int16 OffsX {};
+        int16 OffsY {};
+        uint8 Layer {};
         bool IsRoof {};
     };
 
@@ -185,7 +185,7 @@ public:
     auto IsCurInRect(const IRect& rect) const -> bool;
     auto IsCurInRectNoTransp(uint spr_id, const IRect& rect, int ax, int ay) const -> bool;
     auto IsCurInInterface() const -> bool;
-    auto GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool;
+    auto GetCurHex(uint16& hx, uint16& hy, bool ignore_interface) -> bool;
 
     void IntDraw();
     void IntLMouseDown();
@@ -200,26 +200,27 @@ public:
     auto IsTileMode() const -> bool { return CurTileNames != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
 
-    void MoveEntity(ClientEntity* entity, ushort hx, ushort hy);
+    void MoveEntity(ClientEntity* entity, uint16 hx, uint16 hy);
     void DeleteEntity(ClientEntity* entity);
     void SelectClear();
     void SelectAddItem(ItemHexView* item);
     void SelectAddCrit(CritterView* npc);
-    void SelectAddTile(ushort hx, ushort hy, bool is_roof);
+    void SelectAddTile(uint16 hx, uint16 hy, bool is_roof);
     void SelectAdd(ClientEntity* entity);
     void SelectErase(ClientEntity* entity);
     void SelectAll();
     auto SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool;
     void SelectDelete();
 
-    auto AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*;
-    auto AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*;
-    void AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof);
+    auto CreateCritter(hstring pid, uint16 hx, uint16 hy) -> CritterView*;
+    auto CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> ItemView*;
+    void CreateTile(hstring name, uint16 hx, uint16 hy, int16 ox, int16 oy, uint8 layer, bool is_roof);
     auto CloneEntity(Entity* entity) -> Entity*;
+    void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
 
     void BufferCopy();
     void BufferCut();
-    void BufferPaste(int hx, int hy);
+    void BufferPaste();
 
     void ObjDraw();
     void DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r);
@@ -237,7 +238,7 @@ public:
     void ShowMap(MapView* map);
     void SaveMap(MapView* map, string_view custom_name);
     void UnloadMap(MapView* map);
-    void ResizeMap(MapView* map, ushort width, ushort height);
+    void ResizeMap(MapView* map, uint16 width, uint16 height);
 
     void AddMess(string_view message_text);
     void MessBoxDraw();
@@ -273,10 +274,10 @@ public:
     int IntY {};
     int IntVectX {};
     int IntVectY {};
-    ushort SelectHexX1 {};
-    ushort SelectHexY1 {};
-    ushort SelectHexX2 {};
-    ushort SelectHexY2 {};
+    uint16 SelectHexX1 {};
+    uint16 SelectHexY1 {};
+    uint16 SelectHexX2 {};
+    uint16 SelectHexY2 {};
     int SelectX {};
     int SelectY {};
     int SelectType {};
@@ -319,7 +320,7 @@ public:
     vector<const ProtoItem*>* CurItemProtos {};
     vector<hstring>* CurTileNames {};
     vector<const ProtoCritter*>* CurNpcProtos {};
-    uchar NpcDir {};
+    uint8 NpcDir {};
     int* CurProtoScroll {};
     uint ProtoWidth {};
     uint ProtosOnScreen {};
@@ -341,6 +342,8 @@ public:
     bool IsSelectCrit {};
     bool IsSelectTile {};
     bool IsSelectRoof {};
+    int BefferHexX {};
+    int BefferHexY {};
     vector<ClientEntity*> SelectedEntities {};
     vector<SelMapTile> SelectedTile {};
     vector<EntityBuf> EntitiesBuffer {};
@@ -374,7 +377,7 @@ public:
     int ConsoleHistoryCur {};
     KeyCode ConsoleLastKey {};
     string ConsoleLastKeyText {};
-    uint ConsoleKeyTick {};
+    time_point ConsoleKeyTime {};
     int ConsoleAccelerate {};
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};
