@@ -860,16 +860,16 @@ target_compile_definitions( Vorbis PRIVATE "_CRT_SECURE_NO_WARNINGS" )
 DisableLibWarnings( Vorbis )
 
 # Theora
-# StatusMessage( "+ Theora" )
-# set( FO_THEORA_DIR "ThirdParty/Theora" )
-# file( GLOB FO_THEORA_SOURCE "${FO_THEORA_DIR}/lib/*.c" )
-# list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c" )
-# list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c" )
-# list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c" )
-# include_directories( "${FO_THEORA_DIR}/include" )
-# add_library( Theora ${FO_THEORA_SOURCE} )
-# list( APPEND FO_CLIENT_LIBS "Theora" )
-# DisableLibWarnings( Theora )
+StatusMessage( "+ Theora" )
+set( FO_THEORA_DIR "ThirdParty/Theora" )
+file( GLOB FO_THEORA_SOURCE "${FO_THEORA_DIR}/lib/*.c" )
+list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c" )
+list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c" )
+list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c" )
+include_directories( "${FO_THEORA_DIR}/include" )
+add_library( Theora ${FO_THEORA_SOURCE} )
+list( APPEND FO_CLIENT_LIBS "Theora" )
+DisableLibWarnings( Theora )
 
 # Acm
 StatusMessage( "+ Acm" )
@@ -1385,6 +1385,8 @@ list( APPEND FO_CLIENT_BASE_SOURCE
 	"Source/Client/Sprites.h"
 	"Source/Client/Updater.cpp"
 	"Source/Client/Updater.h"
+	"Source/Client/VideoClip.cpp"
+	"Source/Client/VideoClip.h"
 	"Source/Client/VisualParticles.cpp"
 	"Source/Client/VisualParticles.h"
 	"Source/Client/SparkExtension.cpp"

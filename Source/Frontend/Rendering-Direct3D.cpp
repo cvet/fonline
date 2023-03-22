@@ -53,8 +53,8 @@ public:
     }
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override;
+    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> uint override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> override;
     void UpdateTextureRegion(const IRect& r, const uint* data) override;
 
     ID3D11Texture2D* TexHandle {};
@@ -917,7 +917,7 @@ Direct3D_Texture::~Direct3D_Texture()
     }
 }
 
-auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
+auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -947,7 +947,7 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) -> vector<uint>
+auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<uint>
 {
     STACK_TRACE_ENTRY();
 

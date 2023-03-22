@@ -141,8 +141,8 @@ public:
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override;
+    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> uint override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> override;
     void UpdateTextureRegion(const IRect& r, const uint* data) override;
 
     GLuint FramebufObj {};
@@ -757,7 +757,7 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(int x, int y) -> uint
+auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -779,7 +779,7 @@ auto OpenGL_Texture::GetTexturePixel(int x, int y) -> uint
     return result;
 }
 
-auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) -> vector<uint>
+auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<uint>
 {
     STACK_TRACE_ENTRY();
 

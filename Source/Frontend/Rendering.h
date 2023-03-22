@@ -157,8 +157,8 @@ public:
     auto operator=(RenderTexture&&) noexcept = delete;
     virtual ~RenderTexture() = default;
 
-    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) -> uint = 0;
-    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> = 0;
+    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) const -> uint = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> = 0;
 
     virtual void UpdateTextureRegion(const IRect& r, const uint* data) = 0;
 
