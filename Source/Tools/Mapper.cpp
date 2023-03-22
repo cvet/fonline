@@ -735,7 +735,7 @@ void FOMapper::MapperMainLoop()
     OnLoop.Fire();
     ConsoleProcess();
     ProcessMapperInput();
-    AnimProcess();
+    ProcessAnim();
 
     if (CurMap != nullptr) {
         CurMap->Process();

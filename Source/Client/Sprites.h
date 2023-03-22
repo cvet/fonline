@@ -88,6 +88,7 @@ enum class EggAppearenceType : uint8
 struct MapSprite
 {
     SCRIPTABLE_OBJECT();
+
     bool Valid {};
     uint SprId {};
     uint16 HexX {};

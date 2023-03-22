@@ -242,6 +242,7 @@ public:
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
     void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
+    void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void ClearCurrentRenderTarget(uint color, bool with_depth = false);
     void DeleteRenderTarget(RenderTarget* rt);
     void PushAtlasType(AtlasType atlas_type);

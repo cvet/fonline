@@ -48,13 +48,13 @@ class Direct3D_Texture : public RenderTexture
 {
 public:
     Direct3D_Texture(int width, int height, bool linear_filtered, bool with_depth) :
-        RenderTexture(width, height, linear_filtered, with_depth, false)
+        RenderTexture(width, height, linear_filtered, with_depth)
     {
     }
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> override;
+    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> uint override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> override;
     void UpdateTextureRegion(const IRect& r, const uint* data) override;
 
     ID3D11Texture2D* TexHandle {};
@@ -917,7 +917,7 @@ Direct3D_Texture::~Direct3D_Texture()
     }
 }
 
-auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
+auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> uint
 {
     STACK_TRACE_ENTRY();
 
@@ -947,7 +947,7 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) -> uint
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) -> vector<uint>
+auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<uint>
 {
     STACK_TRACE_ENTRY();
 
@@ -1228,9 +1228,9 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
     const auto* d3d_dbuf = static_cast<Direct3D_DrawBuffer*>(dbuf);
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
 #else
-    const auto* main_tex = static_cast<Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
+    const auto* main_tex = static_cast<const Direct3D_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
 #endif
 
     auto draw_mode = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1316,7 +1316,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #endif
 #undef CBUF_UPLOAD_BUFFER
 
-    const auto* egg_tex = static_cast<Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
+    const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
     const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->Indices.size() : indices_to_draw);
 
     for (size_t pass = 0; pass < _passCount; pass++) {

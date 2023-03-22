@@ -394,6 +394,8 @@ void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_fi
 
     rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(tex_width, tex_height, linear_filtered, with_depth));
 
+    rt->MainTex->FlippedHeight = App->Render.IsRenderTargetFlipped();
+
     auto* prev_tex = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(rt->MainTex.get());
     App->Render.ClearRenderTarget(0, with_depth);
@@ -438,11 +440,18 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
 {
     STACK_TRACE_ENTRY();
 
+    DrawTexture(rt->MainTex.get(), alpha_blend, region_from, region_to, rt->CustomDrawEffect);
+}
+
+void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from, const IRect* region_to, RenderEffect* custom_effect)
+{
+    STACK_TRACE_ENTRY();
+
     Flush();
 
-    const auto flipped_height = rt->MainTex->FlippedHeight;
-    const auto width_from_i = rt->MainTex->Width;
-    const auto height_from_i = rt->MainTex->Height;
+    const auto flipped_height = tex->FlippedHeight;
+    const auto width_from_i = tex->Width;
+    const auto height_from_i = tex->Height;
     const auto width_to_i = _rtStack.empty() ? _settings.ScreenWidth : _rtStack.back()->MainTex->Width;
     const auto height_to_i = _rtStack.empty() ? _settings.ScreenHeight : _rtStack.back()->MainTex->Height;
     const auto width_from_f = static_cast<float>(width_from_i);
@@ -502,9 +511,9 @@ void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, c
         vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
     }
 
-    auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
+    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.FlushRenderTarget;
 
-    effect->MainTex = rt->MainTex.get();
+    effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
     _flushDrawBuf->Upload(effect->Usage);
     effect->DrawBuffer(_flushDrawBuf);
@@ -729,6 +738,7 @@ auto SpriteManager::CreateAtlas(int request_width, int request_height) -> Textur
     atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, true);
     atlas->RTarg->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
     atlas->MainTex = atlas->RTarg->MainTex.get();
+    atlas->MainTex->FlippedHeight = false;
     atlas->Width = result_width;
     atlas->Height = result_height;
     atlas->RootNode = _accumulatorActive ? std::make_unique<TextureAtlas::SpaceNode>(0, 0, result_width, result_height) : nullptr;
@@ -2388,6 +2398,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
         borders = {zoomed_x, zoomed_y, zoomed_x2, zoomed_y2};
         const auto bordersf = FRect(borders);
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
+        const auto flipped_height = _rtContoursMid->MainTex->FlippedHeight;
 
         PushRenderTarget(_rtContoursMid);
         _contourClearMid = true;
@@ -2396,22 +2407,22 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
         auto pos = 0;
 
         vbuf[pos].PosX = bordersf.Left;
-        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Bottom : bordersf.Bottom;
+        vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Left;
         vbuf[pos++].TexV = sr.Bottom;
 
         vbuf[pos].PosX = bordersf.Left;
-        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Top : bordersf.Top;
+        vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Left;
         vbuf[pos++].TexV = sr.Top;
 
         vbuf[pos].PosX = bordersf.Right;
-        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Top : bordersf.Top;
+        vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos++].TexV = sr.Top;
 
         vbuf[pos].PosX = bordersf.Right;
-        vbuf[pos].PosY = _rtContoursMid->MainTex->FlippedHeight ? mid_height - bordersf.Bottom : bordersf.Bottom;
+        vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos].TexV = sr.Bottom;
 

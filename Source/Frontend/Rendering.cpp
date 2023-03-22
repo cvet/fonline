@@ -35,13 +35,12 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth, bool flipped_height) :
+RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth) :
     Width {width}, //
     Height {height},
     SizeData {static_cast<float>(width), static_cast<float>(height), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height)},
     LinearFiltered {linear_filtered},
-    WithDepth {with_depth},
-    FlippedHeight {flipped_height}
+    WithDepth {with_depth}
 {
     STACK_TRACE_ENTRY();
 

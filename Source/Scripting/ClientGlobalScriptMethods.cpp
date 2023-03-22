@@ -367,13 +367,74 @@
 
 ///# ...
 ///# param videoName ...
-///# param canStop ...
+///# param canInterrupt ...
+///# param enqueue
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canStop)
+[[maybe_unused]] void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canInterrupt, bool enqueue)
 {
-    // client->SndMngr.StopMusic();
-    // client->AddVideo(videoName, canStop, true);
-    return false;
+    client->PlayVideo(videoName, canInterrupt, enqueue);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Game_IsVideoPlaying(FOClient* client)
+{
+    return client->IsVideoPlaying();
+}
+
+///# ...
+///# param videoName ...
+///# param looped ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] VideoPlayback* Client_Game_CreateVideoPlayback(FOClient* client, string_view videoName, bool looped)
+{
+    const auto file = client->Resources.ReadFile(videoName);
+    if (!file) {
+        throw ScriptException("Video file not found", videoName);
+    }
+
+    auto&& clip = std::make_unique<VideoClip>(file.GetData());
+    auto&& tex = unique_ptr<RenderTexture> {App->Render.CreateTexture(std::get<0>(clip->GetSize()), std::get<1>(clip->GetSize()), true, false)};
+
+    clip->SetLooped(looped);
+
+    auto* video = new VideoPlayback();
+    video->Clip = std::move(clip);
+    video->Tex = std::move(tex);
+    return video;
+}
+
+///# ...
+///# param video ...
+///# param x ...
+///# param y ...
+///# param width ...
+///# param height ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_DrawVideoPlayback(FOClient* client, VideoPlayback* video, int x, int y, int width, int height)
+{
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    if (video == nullptr || !video->Clip) {
+        return;
+    }
+
+    if (width > 0 && height > 0) {
+        video->Tex->UpdateTextureRegion({0, 0, video->Tex->Width, video->Tex->Height}, video->Clip->RenderFrame().data());
+
+        const auto r = IRect {x, y, x + width, y + height};
+        client->SprMngr.DrawTexture(video->Tex.get(), false, nullptr, &r);
+    }
+
+    if (video->Clip->IsStopped()) {
+        video->Clip.reset();
+        video->Tex.reset();
+        video->Stopped = true;
+    }
 }
 
 ///# ...
@@ -1723,8 +1784,19 @@
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
+///# ...
+///# param x ...
+///# param y ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, int x, int y)
 {
     client->SprMngr.SetMousePosition(x, y);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] string Client_Game_GetCurLang(FOClient* client)
+{
+    return client->GetCurLang().Name;
 }

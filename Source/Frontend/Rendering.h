@@ -157,8 +157,8 @@ public:
     auto operator=(RenderTexture&&) noexcept = delete;
     virtual ~RenderTexture() = default;
 
-    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) -> uint = 0;
-    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) -> vector<uint> = 0;
+    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) const -> uint = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> = 0;
 
     virtual void UpdateTextureRegion(const IRect& r, const uint* data) = 0;
 
@@ -167,10 +167,11 @@ public:
     const float SizeData[4]; // Width, Height, TexelWidth, TexelHeight
     const bool LinearFiltered;
     const bool WithDepth;
-    const bool FlippedHeight;
+
+    bool FlippedHeight {};
 
 protected:
-    RenderTexture(int width, int height, bool linear_filtered, bool with_depth, bool flipped_height);
+    RenderTexture(int width, int height, bool linear_filtered, bool with_depth);
 };
 
 class RenderDrawBuffer
@@ -278,8 +279,8 @@ public:
 
     const string Name;
     const EffectUsage Usage;
-    RenderTexture* MainTex {};
-    RenderTexture* EggTex {};
+    const RenderTexture* MainTex {};
+    const RenderTexture* EggTex {};
     bool DisableBlending {};
 #if FO_ENABLE_3D
     RenderTexture* ModelTex[MODEL_MAX_TEXTURES] {};
@@ -358,6 +359,7 @@ public:
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
     [[nodiscard]] virtual auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 = 0;
     [[nodiscard]] virtual auto GetViewPort() -> IRect = 0;
+    [[nodiscard]] virtual auto IsRenderTargetFlipped() -> bool = 0;
 
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
@@ -376,6 +378,7 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override { return {}; }
     [[nodiscard]] auto GetViewPort() -> IRect override { return {}; }
+    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
     void Present() override { }
@@ -398,6 +401,7 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
+    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return true; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -420,6 +424,7 @@ public:
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
     [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> IRect override;
+    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;

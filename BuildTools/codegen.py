@@ -142,7 +142,7 @@ codeGenTags = {
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
-        'ExportObject': [], # (target, name, [(type, name, [comment])], [flags], [comment])
+        'ExportObject': [], # (target, name, [(type, name, [comment])], [(name, ret, [(type, name)], [comment])], [flags], [comment])
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
         'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
         'Entity': [], # (target, name, [flags], [comment])
@@ -577,8 +577,8 @@ def parseTags():
                 
                 firstLine = tagContext[0]
                 firstLineTok = tokenize(firstLine)
-                assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in struct'
-                assert firstLineTok[0] == 'struct', 'Expected struct type'
+                assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in first line'
+                assert firstLineTok[0] in ['class', 'struct'], 'Expected class/struct'
                 
                 objName = firstLineTok[1]
                 assert objName not in validTypes
@@ -588,16 +588,32 @@ def parseTags():
                 thirdLine = tagContext[2].strip()
                 assert thirdLine.startswith('SCRIPTABLE_OBJECT('), 'Expected SCRIPTABLE_OBJECT as first line inside class definition'
                 
-                fields = []
-                for l in tagContext[3:]:
-                    l = l.lstrip()
-                    sep = l.find(' ')
-                    assert sep != -1
-                    lTok = tokenize(l)
-                    assert len(lTok) >= 2
-                    fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
+                publicLines = firstLineTok[0] == 'struct'
                 
-                codeGenTags['ExportObject'].append((target, objName, fields, exportFlags, comment))
+                fields = []
+                methods = []
+                for line in tagContext[3:]:
+                    line = line.lstrip()
+                    if 'private:' in line or 'protected:' in line:
+                        publicLines = False
+                    elif 'public:' in line in line:
+                        publicLines = True
+                    elif publicLines:
+                        commPos = line.find('//')
+                        if commPos != -1:
+                            line = line[:commPos]
+                        if not line:
+                            continue
+                        sep = line.find(' ')
+                        assert sep != -1
+                        lTok = tokenize(line)
+                        assert len(lTok) >= 2
+                        if lTok[0] != 'void':
+                            fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
+                        else:
+                            methods.append((lTok[1], 'void', [], []))
+                
+                codeGenTags['ExportObject'].append((target, objName, fields, methods, exportFlags, comment))
                 
                 validTypes.add(objName)
                 userObjects.add(objName)
@@ -1819,7 +1835,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             
             globalLines.append('// Scriptable objects')
             for eo in codeGenTags['ExportObject']:
-                targ, objName, fields, _, _ = eo
+                targ, objName, fields, methods, _, _ = eo
                 if targ in allowedTargets:
                     globalLines.append('struct ' + objName)
                     globalLines.append('{')
@@ -1828,6 +1844,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    int RefCounter;')
                     for f in fields:
                         globalLines.append('    ' + metaTypeToASEngineType(f[0]) + ' ' + f[1] + ';')
+                    for m in methods:
+                        globalLines.append('    ' + metaTypeToASEngineType(m[1]) + ' ' + m[0] + '() { }')
                     globalLines.append('};')
                     globalLines.append('')
             
@@ -2202,9 +2220,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         # Register exported objects
         registerLines.append('// Exported objects')
         for eo in codeGenTags['ExportObject']:
-            targ, objName, fields, _, _ = eo
+            targ, objName, fields, methods, _, _ = eo
             if targ in allowedTargets:
-                registerLines.append('static_assert(std::is_standard_layout_v<' + objName + '>, "' + objName + ' is not standart layout type");')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectType("' + objName + '", sizeof(' + objName + '), asOBJ_REF));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + objName + ', AddRef), SCRIPT_METHOD_CONV));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(' + objName + ', Release), SCRIPT_METHOD_CONV));')
@@ -2212,6 +2229,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "const int RefCounter", offsetof(' + objName + ', RefCounter)));')
                 for f in fields:
                     registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + objName + ', ' + f[1] + ')));')
+                for m in methods:
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + objName + '", "' + metaTypeToASType(m[1], isRet=True) + ' ' + m[0] + '()", SCRIPT_METHOD(' + objName + ', ' + m[0] + '), SCRIPT_METHOD_CONV));')
                 registerLines.append('')
         
         # Register entities
