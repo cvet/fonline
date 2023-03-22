@@ -67,6 +67,19 @@
 DECLARE_EXCEPTION(EngineDataNotFoundException);
 DECLARE_EXCEPTION(ResourcesOutdatedException);
 
+///@ ExportObject Client
+struct VideoPlayback
+{
+    SCRIPTABLE_OBJECT();
+
+    bool Stopped {};
+
+    // Next line is special comment for code generation, to strip fields below
+    // private:
+    unique_ptr<VideoClip> Clip {};
+    unique_ptr<RenderTexture> Tex {};
+};
+
 // Screens
 constexpr auto SCREEN_NONE = 0;
 constexpr auto SCREEN_LOGIN = 1; // Primary screens
@@ -111,6 +124,7 @@ public:
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
+    [[nodiscard]] auto IsVideoPlaying() const -> bool { return !!_video || !_videoQueue.empty(); }
 
     void Shutdown();
     void MainLoop();

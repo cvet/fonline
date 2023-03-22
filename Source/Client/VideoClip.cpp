@@ -120,7 +120,16 @@ VideoClip::VideoClip(vector<uint8> video_data) :
     _impl->StartTime = Timer::CurTime();
 }
 
-VideoClip::~VideoClip() = default;
+VideoClip::~VideoClip()
+{
+    if (_impl) {
+        th_info_clear(&_impl->VideoInfo);
+        th_comment_clear(&_impl->Comment);
+        ogg_sync_clear(&_impl->SyncState);
+        th_setup_free(_impl->SetupInfo);
+        th_decode_free(_impl->DecoderContext);
+    }
+}
 
 auto VideoClip::IsPlaying() const -> bool
 {
@@ -441,98 +450,3 @@ int VideoClip::DecodePacket()
 
     return rv;
 }
-
-/*void VideoClip::AddVideo(const char* video_name, bool can_stop, bool clear_sequence)
-{
-    // Stop current
-    if (clear_sequence && ShowVideos.size()) {
-        StopVideo();
-    }
-
-    // Show parameters
-    ShowVideo sw;
-
-    // Paths
-    string str = video_name;
-    size_t sound_pos = str.find('|');
-    if (sound_pos != string::npos) {
-        sw.SoundName += str.substr(sound_pos + 1);
-        str.erase(sound_pos);
-    }
-    sw.FileName += str;
-
-    // Add video in sequence
-    sw.CanStop = can_stop;
-    ShowVideos.push_back(sw);
-
-    // Instant play
-    if (ShowVideos.size() == 1) {
-        // Clear screen
-        SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
-        SprMngr.EndScene();
-
-        // Play
-        PlayVideo();
-    }
-}
-
-void VideoClip::PlayVideo()
-{
-    // Start new context
-    ShowVideo& video = ShowVideos[0];
-    _impl = new VideoContext();
-
-    _impl->CurFrame = 0;
-    _impl->StartTime = Timer::AccurateTick();
-    _impl->AverageRenderTime = 0.0;
-
-    // Open file
-    if (!_impl->RawVideoData.LoadFile(video.FileName.c_str())) {
-        WriteLog("Video file '{}' not found", video.FileName);
-        SAFEDEL(_impl);
-        NextVideo();
-        return;
-    }
-}*/
-
-/*void VideoClip::NextVideo()
-{
-    if (ShowVideos.size()) {
-        // Clear screen
-        SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
-        SprMngr.EndScene();
-
-        // Stop current
-        StopVideo();
-        ShowVideos.erase(ShowVideos.begin());
-
-        // Manage next
-        if (ShowVideos.size()) {
-            PlayVideo();
-        }
-        else {
-            ScreenFadeOut();
-        }
-    }
-}
-
-void VideoClip::StopVideo()
-{
-    // Video
-    if (_impl) {
-        ogg_sync_clear(&_impl->SyncState);
-        th_info_clear(&_impl->VideoInfo);
-        th_setup_free(_impl->SetupInfo);
-        th_decode_free(_impl->DecoderContext);
-        SprMngr.DeleteRenderTarget(_impl->RT);
-        SAFEDELA(_impl->TextureData);
-        SAFEDEL(_impl);
-    }
-
-    // Music
-    SndMngr.StopMusic();
-    if (MusicVolumeRestore != -1) {
-        GameOpt.MusicVolume = MusicVolumeRestore;
-        MusicVolumeRestore = -1;
-    }
-}*/
