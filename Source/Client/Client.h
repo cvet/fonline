@@ -62,6 +62,7 @@
 #include "SpriteManager.h"
 #include "StringUtils.h"
 #include "TwoBitMask.h"
+#include "VideoClip.h"
 
 DECLARE_EXCEPTION(EngineDataNotFoundException);
 DECLARE_EXCEPTION(ResourcesOutdatedException);
@@ -141,6 +142,7 @@ public:
 
     void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
+    void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnStart);
@@ -263,7 +265,7 @@ protected:
         uint CurSpr {};
     };
 
-    struct ScreenEffect
+    struct ScreenFadingData
     {
         time_point BeginTime {};
         time_duration Duration {};
@@ -290,11 +292,16 @@ protected:
         uint CurMap {};
     };
 
-    void ProcessAutoLogin();
-    void ProcessInputEvents();
+    void TryAutoLogin();
     void TryExit();
     void FlashGameWindow();
     void WaitDraw();
+
+    void ProcessInputEvents();
+    void ProcessAnim();
+    void ProcessScreenEffectFading();
+    void ProcessScreenEffectQuake();
+    void ProcessVideo();
 
     void LmapPrepareMap();
     void GmapNullParams();
@@ -372,58 +379,71 @@ protected:
     void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
     void OnSetItemOpened(Entity* entity, const Property* prop);
 
-    void AnimProcess();
-
-    void ProcessScreenEffectFading();
-    void ProcessScreenEffectQuake();
-
     ServerConnection _conn;
+
     EventUnsubscriber _eventUnsubscriber {};
-    hstring _curMapLocPid {};
-    uint _curMapIndexInLoc {};
+
+    time_point _fpsTime {};
+    uint _fpsCounter {};
+
+    LanguagePack _curLang {};
+
     string _loginName {};
     string _loginPassword {};
     bool _isAutoLogin {};
+
     PlayerView* _curPlayer {};
     LocationView* _curLocation {};
-    time_point _fpsTime {};
-    uint _fpsCounter {};
-    int _screenModeMain {SCREEN_WAIT};
-    ItemView* _someItem {};
+    CritterView* _chosen {};
+    hstring _curMapLocPid {};
+    uint _curMapIndexInLoc {};
+
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};
+    ItemView* _someItem {};
+
+    const Entity* _sendIgnoreEntity {};
+    const Property* _sendIgnoreProperty {};
+
     vector<vector<uint8>> _globalsPropertiesData {};
     vector<vector<uint8>> _playerPropertiesData {};
     vector<vector<uint8>> _tempPropertiesData {};
     vector<vector<uint8>> _tempPropertiesDataExt {};
-    LanguagePack _curLang {};
+
     vector<IfaceAnim*> _ifaceAnimations {};
-    vector<ScreenEffect> _screenEffects {};
-    int _screenOffsX {};
-    int _screenOffsY {};
-    float _screenOffsXf {};
-    float _screenOffsYf {};
-    float _screenOffsStep {};
-    time_point _screenOffsNextTime {};
-    uint _gameMouseStay {};
-    uint _daySumRGB {};
-    CritterView* _chosen {};
+
+    vector<ScreenFadingData> _screenFadingEffects {};
+
+    float _quakeScreenOffsX {};
+    float _quakeScreenOffsY {};
+    float _quakeScreenOffsStep {};
+    time_point _quakeScreenOffsNextTime {};
+
+    int _screenModeMain {SCREEN_WAIT};
+
     AnyFrames* _waitPic {};
+
     uint8 _pupTransferType {};
     uint _pupContId {};
     hstring _pupContPid {};
+
     uint _holoInfo[MAX_HOLO_INFO] {};
     vector<Automap> _automaps {};
+
     vector<CritterView*> _worldmapCritters {};
     TwoBitMask _worldmapFog {};
     vector<PrimitivePoint> _worldmapFogPix {};
     vector<GmapLocation> _worldmapLoc {};
     GmapLocation _worldmapTownLoc {};
+
     vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};
     time_point _lmapPrepareNextTime {};
-    const Entity* _sendIgnoreEntity {};
-    const Property* _sendIgnoreProperty {};
+
+    unique_ptr<VideoClip> _video {};
+    unique_ptr<RenderTexture> _videoTex {};
+    bool _videoCanInterrupt {};
+    vector<tuple<string, bool>> _videoQueue {};
 };

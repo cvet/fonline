@@ -40,28 +40,22 @@ DECLARE_EXCEPTION(VideoClipException);
 class VideoClip
 {
 public:
-    struct Frame
-    {
-        int Width {};
-        int Height {};
-        vector<uint> Colors {};
-    };
-
     explicit VideoClip(vector<uint8> video_data);
+    ~VideoClip();
 
     [[nodiscard]] auto IsPlaying() const -> bool;
     [[nodiscard]] auto IsStopped() const -> bool;
     [[nodiscard]] auto IsPaused() const -> bool;
     [[nodiscard]] auto IsLooped() const -> bool;
     [[nodiscard]] auto GetTime() const -> time_duration;
-    [[nodiscard]] auto GetRenderedFrame() const -> const Frame&;
+    [[nodiscard]] auto GetSize() const -> tuple<int, int>;
 
     void Stop();
     void Pause();
     void Resume();
     void SetLooped(bool enabled);
     void SetTime(time_duration time);
-    void RenderFrame();
+    auto RenderFrame() -> const vector<uint>&;
 
 private:
     struct Impl;

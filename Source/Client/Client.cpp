@@ -265,7 +265,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ScreenFadeOut();
 
     // Auto login
-    ProcessAutoLogin();
+    TryAutoLogin();
 }
 
 FOClient::~FOClient()
@@ -347,7 +347,7 @@ auto FOClient::GetWorldmapCritter(ident_t cr_id) -> CritterView*
     return it != _worldmapCritters.end() ? *it : nullptr;
 }
 
-void FOClient::ProcessAutoLogin()
+void FOClient::TryAutoLogin()
 {
     STACK_TRACE_ENTRY();
 
@@ -427,7 +427,7 @@ void FOClient::MainLoop()
     ProcessInputEvents();
 
     // Process
-    AnimProcess();
+    ProcessAnim();
 
     // Game time
     if (time_changed) {
@@ -484,6 +484,7 @@ void FOClient::MainLoop()
         OnRenderIface.Fire();
         CanDrawInScripts = false;
 
+        ProcessVideo();
         ProcessScreenEffectFading();
     }
     SprMngr.EndScene();
@@ -493,34 +494,18 @@ void FOClient::ScreenFade(time_duration time, uint from_color, uint to_color, bo
 {
     STACK_TRACE_ENTRY();
 
-    if (!push_back || _screenEffects.empty()) {
-        _screenEffects.push_back({GameTime.FrameTime(), time, from_color, to_color});
+    if (!push_back || _screenFadingEffects.empty()) {
+        _screenFadingEffects.push_back({GameTime.FrameTime(), time, from_color, to_color});
     }
     else {
         time_point last_tick;
-        for (const auto& e : _screenEffects) {
+        for (const auto& e : _screenFadingEffects) {
             if (e.BeginTime + e.Duration > last_tick) {
                 last_tick = e.BeginTime + e.Duration;
             }
         }
-        _screenEffects.push_back({last_tick, time, from_color, to_color});
+        _screenFadingEffects.push_back({last_tick, time, from_color, to_color});
     }
-}
-
-void FOClient::ScreenQuake(int noise, time_duration time)
-{
-    STACK_TRACE_ENTRY();
-
-    Settings.ScrOx -= _screenOffsX;
-    Settings.ScrOy -= _screenOffsY;
-    _screenOffsX = (GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _screenOffsY = (GenericUtils::Random(0, 1) != 0 ? noise : -noise);
-    _screenOffsXf = static_cast<float>(_screenOffsX);
-    _screenOffsYf = static_cast<float>(_screenOffsY);
-    _screenOffsStep = std::fabs(_screenOffsXf) / (time_duration_to_ms<float>(time) / 30.0f);
-    Settings.ScrOx += _screenOffsX;
-    Settings.ScrOy += _screenOffsY;
-    _screenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
 }
 
 void FOClient::ProcessScreenEffectFading()
@@ -532,11 +517,11 @@ void FOClient::ProcessScreenEffectFading()
     vector<PrimitivePoint> full_screen_quad;
     SprMngr.PrepareSquare(full_screen_quad, IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), 0);
 
-    for (auto it = _screenEffects.begin(); it != _screenEffects.end();) {
+    for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
         auto& screen_effect = *it;
 
         if (GameTime.FrameTime() >= screen_effect.BeginTime + screen_effect.Duration) {
-            it = _screenEffects.erase(it);
+            it = _screenFadingEffects.erase(it);
             continue;
         }
 
@@ -563,37 +548,52 @@ void FOClient::ProcessScreenEffectFading()
     }
 }
 
+void FOClient::ScreenQuake(int noise, time_duration time)
+{
+    STACK_TRACE_ENTRY();
+
+    Settings.ScrOx -= iround(_quakeScreenOffsX);
+    Settings.ScrOy -= iround(_quakeScreenOffsY);
+
+    _quakeScreenOffsX = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsY = static_cast<float>(GenericUtils::Random(0, 1) != 0 ? noise : -noise);
+    _quakeScreenOffsStep = std::fabs(_quakeScreenOffsX) / (time_duration_to_ms<float>(time) / 30.0f);
+
+    Settings.ScrOx += iround(_quakeScreenOffsX);
+    Settings.ScrOy += iround(_quakeScreenOffsY);
+
+    _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
+}
+
 void FOClient::ProcessScreenEffectQuake()
 {
     STACK_TRACE_ENTRY();
 
-    if ((_screenOffsX != 0 || _screenOffsY != 0) && GameTime.GameplayTime() >= _screenOffsNextTime) {
-        Settings.ScrOx -= _screenOffsX;
-        Settings.ScrOy -= _screenOffsY;
+    if ((_quakeScreenOffsX != 0.0f || _quakeScreenOffsY != 0.0f) && GameTime.GameplayTime() >= _quakeScreenOffsNextTime) {
+        Settings.ScrOx -= iround(_quakeScreenOffsX);
+        Settings.ScrOy -= iround(_quakeScreenOffsY);
 
-        if (_screenOffsXf < 0.0f) {
-            _screenOffsXf += _screenOffsStep;
+        if (_quakeScreenOffsX < 0.0f) {
+            _quakeScreenOffsX += _quakeScreenOffsStep;
         }
-        else if (_screenOffsXf > 0.0f) {
-            _screenOffsXf -= _screenOffsStep;
-        }
-
-        if (_screenOffsYf < 0.0f) {
-            _screenOffsYf += _screenOffsStep;
-        }
-        else if (_screenOffsYf > 0.0f) {
-            _screenOffsYf -= _screenOffsStep;
+        else if (_quakeScreenOffsX > 0.0f) {
+            _quakeScreenOffsX -= _quakeScreenOffsStep;
         }
 
-        _screenOffsXf = -_screenOffsXf;
-        _screenOffsYf = -_screenOffsYf;
-        _screenOffsX = static_cast<int>(_screenOffsXf);
-        _screenOffsY = static_cast<int>(_screenOffsYf);
+        if (_quakeScreenOffsY < 0.0f) {
+            _quakeScreenOffsY += _quakeScreenOffsStep;
+        }
+        else if (_quakeScreenOffsY > 0.0f) {
+            _quakeScreenOffsY -= _quakeScreenOffsStep;
+        }
 
-        Settings.ScrOx += _screenOffsX;
-        Settings.ScrOy += _screenOffsY;
+        _quakeScreenOffsX = -_quakeScreenOffsX;
+        _quakeScreenOffsY = -_quakeScreenOffsY;
 
-        _screenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
+        Settings.ScrOx += iround(_quakeScreenOffsX);
+        Settings.ScrOy += iround(_quakeScreenOffsY);
+
+        _quakeScreenOffsNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {30};
     }
 }
 
@@ -618,6 +618,12 @@ void FOClient::ProcessInputEvents()
 void FOClient::ProcessInputEvent(const InputEvent& ev)
 {
     STACK_TRACE_ENTRY();
+
+    if (_video && !_video->IsStopped() && _videoCanInterrupt) {
+        if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent) {
+            _video->Stop();
+        }
+    }
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         const auto key_code = ev.KeyDown.Code;
@@ -727,7 +733,7 @@ void FOClient::Net_OnDisconnect()
         _curPlayer = nullptr;
     }
 
-    ProcessAutoLogin();
+    TryAutoLogin();
 }
 
 void FOClient::Net_SendLogIn()
@@ -2855,7 +2861,7 @@ void FOClient::AnimRun(uint anim_id, uint flags)
     }
 }
 
-void FOClient::AnimProcess()
+void FOClient::ProcessAnim()
 {
     STACK_TRACE_ENTRY();
 
@@ -3311,7 +3317,7 @@ void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
         break;
     case SCREEN_WAIT:
         if (prev_main_screen != SCREEN_WAIT) {
-            _screenEffects.clear();
+            _screenFadingEffects.clear();
             _waitPic = ResMngr.GetRandomSplash();
         }
         break;
@@ -3933,4 +3939,67 @@ void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_an
     }
 
     Net_SendDir(cr);
+}
+
+void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueue)
+{
+    STACK_TRACE_ENTRY();
+
+    if (_video && enqueue) {
+        _videoQueue.emplace_back(string(video_name), can_interrupt);
+        return;
+    }
+
+    _video.reset();
+    _videoTex.reset();
+    _videoQueue.clear();
+    _videoCanInterrupt = can_interrupt;
+
+    if (video_name.empty()) {
+        return;
+    }
+
+    const auto names = _str(video_name).split('|');
+
+    const auto file = Resources.ReadFile(names[0]);
+    if (!file) {
+        return;
+    }
+
+    _video = std::make_unique<VideoClip>(file.GetData());
+    _videoTex = unique_ptr<RenderTexture> {App->Render.CreateTexture(std::get<0>(_video->GetSize()), std::get<1>(_video->GetSize()), true, false)};
+
+    if (names.size() > 1) {
+        SndMngr.StopMusic();
+
+        if (!names[1].empty()) {
+            SndMngr.PlayMusic(names[1], std::chrono::milliseconds {0});
+        }
+    }
+}
+
+void FOClient::ProcessVideo()
+{
+    STACK_TRACE_ENTRY();
+
+    if (_video) {
+        _videoTex->UpdateTextureRegion({0, 0, _videoTex->Width, _videoTex->Height}, _video->RenderFrame().data());
+        SprMngr.DrawTexture(_videoTex.get(), false);
+
+        if (_video->IsStopped()) {
+            _video.reset();
+            _videoTex.reset();
+            SndMngr.StopMusic();
+            ScreenFadeOut();
+        }
+    }
+
+    if (!_video && !_videoQueue.empty()) {
+        auto queue = copy(_videoQueue);
+
+        PlayVideo(std::get<0>(queue.front()), std::get<1>(queue.front()), false);
+
+        queue.erase(queue.begin());
+        _videoQueue = queue;
+    }
 }

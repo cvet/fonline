@@ -433,6 +433,13 @@ auto AppRender::CreateOrthoMatrix(float left, float right, float bottom, float t
     return {};
 }
 
+auto AppRender::IsRenderTargetFlipped() -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return false;
+}
+
 auto AppInput::GetMousePosition() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();

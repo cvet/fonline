@@ -136,7 +136,7 @@ class OpenGL_Texture final : public RenderTexture
 {
 public:
     OpenGL_Texture(int width, int height, bool linear_filtered, bool with_depth) :
-        RenderTexture(width, height, linear_filtered, with_depth, true)
+        RenderTexture(width, height, linear_filtered, with_depth)
     {
     }
     ~OpenGL_Texture() override;
@@ -1080,9 +1080,9 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
 #if FO_ENABLE_3D
-    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
+    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (ModelTex[0] != nullptr ? ModelTex[0] : (MainTex != nullptr ? MainTex : DummyTexture)));
 #else
-    const auto* main_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
+    const auto* main_tex = static_cast<const OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : (MainTex != nullptr ? MainTex : DummyTexture));
 #endif
 
     GLenum draw_mode = GL_TRIANGLES;
@@ -1177,7 +1177,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 #undef UBO_UPLOAD_BUFFER
     }
 
-    const auto* egg_tex = static_cast<OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
+    const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(uint16));
 

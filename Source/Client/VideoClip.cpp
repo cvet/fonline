@@ -61,7 +61,7 @@ struct VideoClip::Impl
     ogg_sync_state SyncState {};
     ogg_packet Packet {};
     StreamStates Streams {};
-    Frame RenderedFrame {};
+    vector<uint> RenderedTextureData {};
     int CurFrame {};
     time_duration AverageRenderTime {};
     time_point StartTime {};
@@ -115,12 +115,12 @@ VideoClip::VideoClip(vector<uint8> video_data) :
 
     _impl->DecoderContext = th_decode_alloc(&_impl->VideoInfo, _impl->SetupInfo);
 
-    _impl->RenderedFrame.Width = static_cast<int>(_impl->VideoInfo.pic_width);
-    _impl->RenderedFrame.Height = static_cast<int>(_impl->VideoInfo.pic_height);
-    _impl->RenderedFrame.Colors.resize(static_cast<size_t>(_impl->RenderedFrame.Width * _impl->RenderedFrame.Height));
+    _impl->RenderedTextureData.resize(_impl->VideoInfo.pic_width * _impl->VideoInfo.pic_height);
 
     _impl->StartTime = Timer::CurTime();
 }
+
+VideoClip::~VideoClip() = default;
 
 auto VideoClip::IsPlaying() const -> bool
 {
@@ -165,11 +165,9 @@ auto VideoClip::GetTime() const -> time_duration
     }
 }
 
-auto VideoClip::GetRenderedFrame() const -> const Frame&
+auto VideoClip::GetSize() const -> tuple<int, int>
 {
-    STACK_TRACE_ENTRY();
-
-    return _impl->RenderedFrame;
+    return {static_cast<int>(_impl->VideoInfo.pic_width), static_cast<int>(_impl->VideoInfo.pic_height)};
 }
 
 void VideoClip::Stop()
@@ -226,12 +224,12 @@ void VideoClip::SetTime(time_duration time)
     _impl->StartTime = Timer::CurTime() - time;
 }
 
-void VideoClip::RenderFrame()
+auto VideoClip::RenderFrame() -> const vector<uint>&
 {
     STACK_TRACE_ENTRY();
 
     if (_impl->Stopped) {
-        return;
+        return _impl->RenderedTextureData;
     }
 
     const auto start_frame_render = Timer::CurTime();
@@ -249,7 +247,7 @@ void VideoClip::RenderFrame()
     const int next_frame_diff = new_frame - _impl->CurFrame;
 
     if (next_frame_diff == 0) {
-        return;
+        return _impl->RenderedTextureData;
     }
 
     // Todo: allow video playing in back direction
@@ -269,7 +267,7 @@ void VideoClip::RenderFrame()
             if (r != 0) {
                 WriteLog("Frame does not contain encoded video data, error {}", r);
                 Stop();
-                return;
+                return _impl->RenderedTextureData;
             }
 
             // Decode color
@@ -277,7 +275,7 @@ void VideoClip::RenderFrame()
             if (r != 0) {
                 WriteLog("th_decode_ycbcr_out() failed, error {}", r);
                 Stop();
-                return;
+                return _impl->RenderedTextureData;
             }
         }
 
@@ -315,7 +313,7 @@ void VideoClip::RenderFrame()
     default:
         WriteLog("Wrong pixel format {}", _impl->VideoInfo.pixel_fmt);
         Stop();
-        return;
+        return _impl->RenderedTextureData;
     }
 
     // Fill texture data
@@ -334,7 +332,7 @@ void VideoClip::RenderFrame()
             const float cg = static_cast<float>(cy) - 0.344f * static_cast<float>(cu - 127) - 0.714f * static_cast<float>(cv - 127);
             const float cb = static_cast<float>(cy) + 1.722f * static_cast<float>(cu - 127);
 
-            auto* data = reinterpret_cast<uint8*>(_impl->RenderedFrame.Colors.data()) + ((h - y - 1) * w * 4 + x * 4);
+            auto* data = reinterpret_cast<uint8*>(_impl->RenderedTextureData.data()) + (y * w * 4 + x * 4);
             data[0] = static_cast<uint8>(cr);
             data[1] = static_cast<uint8>(cg);
             data[2] = static_cast<uint8>(cb);
@@ -360,6 +358,8 @@ void VideoClip::RenderFrame()
             Resume();
         }
     }
+
+    return _impl->RenderedTextureData;
 }
 
 int VideoClip::DecodePacket()

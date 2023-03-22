@@ -367,13 +367,12 @@
 
 ///# ...
 ///# param videoName ...
-///# param canStop ...
+///# param canInterrupt ...
+///# param enqueue
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canStop)
+[[maybe_unused]] void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canInterrupt, bool enqueue)
 {
-    // client->SndMngr.StopMusic();
-    // client->AddVideo(videoName, canStop, true);
-    return false;
+    client->PlayVideo(videoName, canInterrupt, enqueue);
 }
 
 ///# ...
@@ -1723,8 +1722,19 @@
     client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
+///# ...
+///# param x ...
+///# param y ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetMousePos(FOClient* client, int x, int y)
 {
     client->SprMngr.SetMousePosition(x, y);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] string Client_Game_GetCurLang(FOClient* client)
+{
+    return client->GetCurLang().Name;
 }
