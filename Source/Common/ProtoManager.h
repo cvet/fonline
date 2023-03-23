@@ -35,11 +35,12 @@
 
 #include "Common.h"
 
-#include "EngineBase.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(ProtoManagerException);
+
+class FOEngineBase;
 
 class ProtoManager final
 {

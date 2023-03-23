@@ -51,7 +51,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
-    ProtoMngr(this),
     ServerDeferredCalls(this),
     EntityMngr(this),
     MapMngr(this),

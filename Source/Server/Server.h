@@ -166,7 +166,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnItemStackChanged, Item* /*item*/, int /*countDiff*/);
 
-    ProtoManager ProtoMngr;
     ServerDeferredCallManager ServerDeferredCalls;
 
     EntityManager EntityMngr;

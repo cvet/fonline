@@ -42,6 +42,7 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     Settings {settings},
     Geometry(settings),
     GameTime(settings),
+    ProtoMngr(this),
     _propsRelation {props_relation}
 {
     STACK_TRACE_ENTRY();

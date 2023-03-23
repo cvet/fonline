@@ -38,6 +38,7 @@
 #include "EntityProperties.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
+#include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "Timer.h"
@@ -76,6 +77,7 @@ public:
     GlobalSettings& Settings;
     GeometryHelper Geometry;
     GameTimer GameTime;
+    ProtoManager ProtoMngr;
     ScriptSystem* ScriptSys {};
     FileSystem Resources {};
 

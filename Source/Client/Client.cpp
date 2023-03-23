@@ -46,7 +46,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
-    ProtoMngr(this),
     EffectMngr(Settings, Resources),
     SprMngr(Settings, window, Resources, EffectMngr),
     ResMngr(Resources, SprMngr, *this),

@@ -243,7 +243,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenSizeChanged);
 
-    ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     ResourceManager ResMngr;
