@@ -1321,3 +1321,20 @@
 
     return staticItem->SceneryScriptFunc(cr, staticItem, usedItem, param) && staticItem->SceneryScriptFunc.GetResult();
 }
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<hstring> Server_Game_GetDialogs(FOServer* server)
+{
+    const auto& dlg_packs = server->DlgMngr.GetDialogs();
+
+    vector<hstring> result;
+    result.reserve(dlg_packs.size());
+
+    for (const auto* dlg_pack : dlg_packs) {
+        result.emplace_back(dlg_pack->PackId);
+    }
+
+    return result;
+}
