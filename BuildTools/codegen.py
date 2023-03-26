@@ -997,7 +997,12 @@ def parseTags():
                 target = tok[0]
                 assert target in ['Server', 'Client', 'Common'], 'Invalid target ' + target
                 stype = unifiedTypeToMetaType(tok[1])
+                isArr = tok[2] == '[' and tok[3] == ']'
                 assert stype in ['int', 'uint', 'int8', 'uint8', 'int16', 'uint16', 'int64', 'uint64', 'float', 'double', 'bool', 'string'] + list(scriptEnums) + list(engineEnums), 'Invalid setting type ' + stype
+                if isArr:
+                    assert False, 'Arrays not implemented yet'
+                    stype = 'arr.' + stype
+                    tok = tok[:1] + [stype] + tok[4:]
                 name = tok[2]
                 value = tok[4] if len(tok) > 4 and tok[3] == '=' else None
                 flags = tok[3 if len(tok) < 4 or tok[3] != '=' else 5:]
