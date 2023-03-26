@@ -618,10 +618,11 @@ static CScriptArray* ScriptString_SplitExt(const string& str, const string& deli
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
             static_cast<string*>(array->At(count))->assign(&str[prev], pos - prev);
+
+            count++;
         }
 
         // Find the next part
-        count++;
         prev = pos + static_cast<int>(delim.length());
     }
 
