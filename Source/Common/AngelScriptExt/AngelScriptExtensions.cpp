@@ -627,8 +627,10 @@ static CScriptArray* ScriptString_SplitExt(const string& str, const string& deli
     }
 
     // Add the remaining part
-    array->Resize(array->GetSize() + 1);
-    static_cast<string*>(array->At(count))->assign(&str[prev]);
+    if (str.size() - prev > 0 || !remove_empty_entries) {
+        array->Resize(array->GetSize() + 1);
+        static_cast<string*>(array->At(count))->assign(&str[prev]);
+    }
 
     return array;
 }
