@@ -306,6 +306,7 @@ struct ASContextExtendedData
     std::string Info {};
     asIScriptContext* Parent {};
     time_point SuspendEndTime {};
+    Entity* ValidCheck {};
 #ifdef TRACY_ENABLE
     vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
@@ -389,6 +390,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         ctx_ext.Parent = nullptr;
         ctx_ext.Info.clear();
         ctx_ext.SuspendEndTime = {};
+        ctx_ext.ValidCheck = {};
     }
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
@@ -487,12 +489,18 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         }
 
         vector<asIScriptContext*> resume_contexts;
+        vector<asIScriptContext*> finish_contexts;
         const auto time = GameEngine->GameTime.FrameTime();
 
         for (auto* ctx : BusyContexts) {
             auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
             if ((ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED) && time >= ctx_ext.SuspendEndTime) {
-                resume_contexts.push_back(ctx);
+                if (ctx_ext.ValidCheck != nullptr && ctx_ext.ValidCheck->IsDestroyed()) {
+                    finish_contexts.emplace_back(ctx);
+                }
+                else {
+                    resume_contexts.emplace_back(ctx);
+                }
             }
         }
 
@@ -505,6 +513,10 @@ struct SCRIPTING_CLASS::AngelScriptImpl
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
             }
+        }
+
+        for (auto* ctx : finish_contexts) {
+            ReturnContext(ctx);
         }
     }
 
@@ -2371,6 +2383,9 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         ENTITY_VERIFY(entity);
 
         auto* ctx = script_sys->PrepareContext(func);
+        auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
+
+        ctx_ext.ValidCheck = entity;
 
         if constexpr (std::is_standard_layout_v<T>) {
             auto* actual_entity = dynamic_cast<BaseEntity*>(entity);
