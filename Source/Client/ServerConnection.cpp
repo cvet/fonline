@@ -812,13 +812,17 @@ auto ServerConnection::Impl::GetLastSocketError() -> string
 #if FO_WINDOWS
     const auto error_code = ::WSAGetLastError();
     wchar_t* ws = nullptr;
-    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
-    const string error_str = _str().parseWideChar(ws);
+    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
+        nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
+    const string error_str = _str().parseWideChar(ws).trim();
     ::LocalFree(ws);
 
     return _str("{} ({})", error_str, error_code);
+
 #else
-    return _str("{} ({})", strerror(errno), errno);
+    const string error_str = _str(::strerror(errno)).trim();
+
+    return _str("{} ({})", error_str, errno);
 #endif
 }
 
