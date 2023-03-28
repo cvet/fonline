@@ -106,13 +106,13 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
         // Find property
         const auto* prop = props->_registrator->Find(key);
 
-        if (prop != nullptr) {
+        if (prop != nullptr && !prop->IsDisabled() && !prop->IsTemporary()) {
             if (!LoadPropertyFromValue(props, prop, value, name_resolver)) {
                 is_error = true;
             }
         }
         else {
-            // Todo: maybe need some optional warning for unknown properties
+            // Todo: maybe need some optional warning for unknown/wrong properties
             // WriteLog("Skip unknown property {}", key);
         }
     }
