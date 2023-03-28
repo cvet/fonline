@@ -3930,6 +3930,8 @@ void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_an
 {
     STACK_TRACE_ENTRY();
 
+    const auto prev_dir_angle = cr->GetDirAngle();
+
     if (dir_or_angle.index() == 0) {
         cr->ChangeDir(std::get<0>(dir_or_angle));
     }
@@ -3937,7 +3939,9 @@ void FOClient::CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_an
         cr->ChangeLookDirAngle(std::get<1>(dir_or_angle));
     }
 
-    Net_SendDir(cr);
+    if (cr->GetDirAngle() != prev_dir_angle) {
+        Net_SendDir(cr);
+    }
 }
 
 void FOClient::PlayVideo(string_view video_name, bool can_interrupt, bool enqueue)
