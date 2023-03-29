@@ -1245,7 +1245,7 @@ void ModelInstance::SetMoveDirAngle(int dir_angle, bool smooth_rotation)
 
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
-    if (!Math::FloatCompare(new_angle, _targetMoveDirAngle)) {
+    if (!Math::FloatCompare(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !Math::FloatCompare(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
 
         if (!smooth_rotation) {
