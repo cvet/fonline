@@ -398,12 +398,19 @@ auto EntityManager::LoadEntityDoc(string_view collection_name, ident_t id, bool&
 
     auto doc = _engine->DbStorage.Get(collection_name, id);
 
+    if (doc.empty()) {
+        WriteLog("{} doesn't contains entity {}", collection_name, id);
+        is_error = true;
+        return {};
+    }
+
     const auto proto_it = doc.find("_Proto");
     if (proto_it == doc.end()) {
         WriteLog("{} '_Proto' section not found in entity {}", collection_name, id);
         is_error = true;
         return {};
     }
+
     if (proto_it->second.index() != AnyData::STRING_VALUE) {
         WriteLog("{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_it->second.index());
         is_error = true;
