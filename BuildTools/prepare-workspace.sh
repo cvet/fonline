@@ -142,19 +142,21 @@ function verify_workspace_part()
     fi
 }
 
-verify_workspace_part common-packages 7 install_common_packages
-wait_jobs
-if [ ! -z `check_arg linux all` ]; then
-    verify_workspace_part linux-packages 6 install_linux_packages
+if [ ! -z `check_arg packages all` ]; then
+    verify_workspace_part common-packages 7 install_common_packages
     wait_jobs
-fi
-if [ ! -z `check_arg web all` ]; then
-    verify_workspace_part web-packages 2 install_web_packages
-    wait_jobs
-fi
-if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
-    verify_workspace_part android-packages 2 install_android_packages
-    wait_jobs
+    if [ ! -z `check_arg linux all` ]; then
+        verify_workspace_part linux-packages 6 install_linux_packages
+        wait_jobs
+    fi
+    if [ ! -z `check_arg web all` ]; then
+        verify_workspace_part web-packages 2 install_web_packages
+        wait_jobs
+    fi
+    if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
+        verify_workspace_part android-packages 2 install_android_packages
+        wait_jobs
+    fi
 fi
 
 if [ ! -z `check_arg toolset all` ]; then
