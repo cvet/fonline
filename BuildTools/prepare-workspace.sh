@@ -12,7 +12,7 @@ source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
 # All packages:
-# clang clang-format-15 build-essential git cmake python3 wget unzip binutils-dev libc++-dev libc++abi-dev libx11-dev freeglut3-dev libssl-dev libevent-dev libxi-dev nodejs default-jre android-sdk openjdk-8-jdk ant
+# clang clang-format build-essential git cmake python3 wget unzip binutils-dev libc++-dev libc++abi-dev libx11-dev freeglut3-dev libssl-dev libevent-dev libxi-dev nodejs default-jre android-sdk openjdk-8-jdk ant
 
 PACKAGE_MANAGER="sudo apt-get -qq -y -o DPkg::Lock::Timeout=-1"
 
@@ -23,8 +23,8 @@ function install_common_packages()
 
     echo "Install clang"
     $PACKAGE_MANAGER install clang
-    echo "Install clang-format-15"
-    $PACKAGE_MANAGER install clang-format-15
+    echo "Install clang-format"
+    $PACKAGE_MANAGER install clang-format
     echo "Install build-essential"
     $PACKAGE_MANAGER install build-essential
     echo "Install git"
