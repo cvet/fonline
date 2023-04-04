@@ -1313,7 +1313,6 @@ static constexpr auto LOCAL_CONFIG_NAME = "LocalSettings.focfg";
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
-static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
 

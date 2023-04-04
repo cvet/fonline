@@ -50,9 +50,6 @@ CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* pro
 
     _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u)};
     DrawEffect = _engine->EffectMngr.Effects.Critter;
-    auto layers = GetModelLayers();
-    layers.resize(LAYERS3D_COUNT);
-    SetModelLayers(layers);
 }
 
 void CritterHexView::Init()

@@ -263,10 +263,10 @@ public:
 
 #if FO_ENABLE_3D
     vector<unique_del_ptr<ModelInstance>> DrawCritterModel {};
-#endif
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};
+#endif
 
 protected:
     struct IfaceAnim

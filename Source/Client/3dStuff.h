@@ -48,6 +48,8 @@
 
 // Todo: remove unnecessary allocations from 3d
 
+static constexpr size_t LAYERS3D_COUNT = 30;
+
 constexpr uint ANIMATION_STAY = 0x01;
 constexpr uint ANIMATION_ONE_TIME = 0x02;
 constexpr auto ANIMATION_PERIOD(uint proc) -> uint
