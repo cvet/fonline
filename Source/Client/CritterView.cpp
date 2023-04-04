@@ -46,8 +46,8 @@ CritterView::CritterView(FOClient* engine, ident_t id, const ProtoCritter* proto
     _name = _str("{}_{}", proto->GetName(), id);
 
 #if FO_ENABLE_3D
-    if (auto layers = GetModelLayers(); layers.size() != LAYERS3D_COUNT) {
-        layers.resize(LAYERS3D_COUNT);
+    if (auto layers = GetModelLayers(); layers.size() != MODEL_LAYERS_COUNT) {
+        layers.resize(MODEL_LAYERS_COUNT);
         SetModelLayers(layers);
     }
 #endif

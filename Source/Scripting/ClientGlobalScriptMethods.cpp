@@ -1434,7 +1434,7 @@
     }
 
     std::memset(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
-    for (uint i = 0, j = static_cast<uint>(layers.size()); i < j && i < LAYERS3D_COUNT; i++) {
+    for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
         client->DrawCritterModelLayers[i] = layers[i];
     }
 

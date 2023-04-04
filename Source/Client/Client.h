@@ -265,7 +265,7 @@ public:
     vector<unique_del_ptr<ModelInstance>> DrawCritterModel {};
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
-    int DrawCritterModelLayers[LAYERS3D_COUNT] {};
+    int DrawCritterModelLayers[MODEL_LAYERS_COUNT] {};
 #endif
 
 protected:

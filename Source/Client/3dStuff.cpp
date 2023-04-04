@@ -494,12 +494,12 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     period_proc = std::clamp(period_proc, 0.0f, 99.9f);
 
     // Check animation changes
-    int new_layers[LAYERS3D_COUNT];
+    int new_layers[MODEL_LAYERS_COUNT];
     if (layers != nullptr) {
-        std::memcpy(new_layers, layers, sizeof(int) * LAYERS3D_COUNT);
+        std::memcpy(new_layers, layers, sizeof(int) * MODEL_LAYERS_COUNT);
     }
     else {
-        std::memcpy(new_layers, _currentLayers, sizeof(int) * LAYERS3D_COUNT);
+        std::memcpy(new_layers, _currentLayers, sizeof(int) * MODEL_LAYERS_COUNT);
     }
 
     // Animation layers
@@ -512,7 +512,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     // Check for change
     auto layer_changed = IsBitSet(flags, ANIMATION_INIT);
     if (!layer_changed) {
-        for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
             if (new_layers[i] != _currentLayers[i]) {
                 layer_changed = true;
                 break;
@@ -521,12 +521,12 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     }
 
     // Is not one time play and same anim
-    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && _currentLayers[LAYERS3D_COUNT] == anim_pair && !layer_changed) {
+    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && _currentLayers[MODEL_LAYERS_COUNT] == anim_pair && !layer_changed) {
         return false;
     }
 
-    std::memcpy(_currentLayers, new_layers, sizeof(int) * LAYERS3D_COUNT);
-    _currentLayers[LAYERS3D_COUNT] = anim_pair;
+    std::memcpy(_currentLayers, new_layers, sizeof(int) * MODEL_LAYERS_COUNT);
+    _currentLayers[MODEL_LAYERS_COUNT] = anim_pair;
 
     auto mesh_changed = false;
     vector<hstring> fast_transition_bones;
@@ -554,8 +554,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         // Get unused layers and meshes
-        bool unused_layers[LAYERS3D_COUNT] = {};
-        for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+        bool unused_layers[MODEL_LAYERS_COUNT] = {};
+        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
             if (new_layers[i] == 0) {
                 continue;
             }
@@ -592,7 +592,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         // Append animations
         set<uint> keep_alive_particles;
 
-        for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
             if (unused_layers[i] || new_layers[i] == 0) {
                 continue;
             }
@@ -986,14 +986,14 @@ auto ModelInstance::GetAnim1() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return _currentLayers[LAYERS3D_COUNT] >> 16;
+    return _currentLayers[MODEL_LAYERS_COUNT] >> 16;
 }
 
 auto ModelInstance::GetAnim2() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
+    return _currentLayers[MODEL_LAYERS_COUNT] & 0xFFFF;
 }
 
 auto ModelInstance::GetMovingAnim2() const -> uint
@@ -2309,7 +2309,7 @@ auto ModelInformation::Load(string_view name) -> bool
                             cut->Layers.push_back(cut_layer);
                         }
                         else {
-                            for (auto i = 0; i < LAYERS3D_COUNT; i++) {
+                            for (auto i = 0; i < MODEL_LAYERS_COUNT; i++) {
                                 if (i != layer) {
                                     cut->Layers.push_back(i);
                                 }
@@ -2496,7 +2496,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 for (const auto& disabled_layer_name : disabled_layers) {
                     const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
-                    if (disabled_layer >= 0 && disabled_layer < LAYERS3D_COUNT) {
+                    if (disabled_layer >= 0 && disabled_layer < MODEL_LAYERS_COUNT) {
                         link->DisabledLayer.push_back(disabled_layer);
                     }
                 }

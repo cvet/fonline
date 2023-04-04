@@ -494,7 +494,7 @@ auto CritterHexView::GetModelLayersData() const -> const int*
 
     uint data_size;
     const auto* data = GetProperties().GetRawData(GetPropertyModelLayers(), data_size);
-    RUNTIME_ASSERT(data_size == sizeof(int) * LAYERS3D_COUNT);
+    RUNTIME_ASSERT(data_size == sizeof(int) * MODEL_LAYERS_COUNT);
     return reinterpret_cast<const int*>(data);
 }
 

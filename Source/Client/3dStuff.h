@@ -48,7 +48,7 @@
 
 // Todo: remove unnecessary allocations from 3d
 
-static constexpr size_t LAYERS3D_COUNT = 30;
+static constexpr size_t MODEL_LAYERS_COUNT = 30;
 
 constexpr uint ANIMATION_STAY = 0x01;
 constexpr uint ANIMATION_ONE_TIME = 0x02;
@@ -328,7 +328,7 @@ private:
     ModelInformation* _modelInfo {};
     ModelAnimationController* _bodyAnimController {};
     ModelAnimationController* _moveAnimController {};
-    int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
+    int _currentLayers[MODEL_LAYERS_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
     time_point _lastDrawTime {};
     time_point _endTime {};
