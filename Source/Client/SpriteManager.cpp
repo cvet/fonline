@@ -735,7 +735,7 @@ auto SpriteManager::CreateAtlas(int request_width, int request_height) -> Textur
         }
     }
 
-    atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, true);
+    atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, _settings.AtlasLinearFiltration);
     atlas->RTarg->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
     atlas->MainTex = atlas->RTarg->MainTex.get();
     atlas->MainTex->FlippedHeight = false;

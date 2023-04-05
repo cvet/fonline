@@ -194,6 +194,7 @@ FIXED_SETTING(int, DefaultModelDrawHeight, 128);
 FIXED_SETTING(uint, AnimWalkSpeed, 80);
 FIXED_SETTING(uint, AnimRunSpeed, 160);
 FIXED_SETTING(float, ModelProjFactor, 40.0f);
+FIXED_SETTING(bool, AtlasLinearFiltration, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
