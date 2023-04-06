@@ -829,13 +829,13 @@ public:
             }
             else {
                 prop->_dictKeyTypeName = "int";
-                if (sizeof(key_type) == 1u) {
+                if constexpr (sizeof(key_type) == 1u) {
                     prop->_dictKeyTypeName += "8";
                 }
-                else if (sizeof(key_type) == 2u) {
+                else if constexpr (sizeof(key_type) == 2u) {
                     prop->_dictKeyTypeName += "16";
                 }
-                else if (sizeof(key_type) == 8u) {
+                else if constexpr (sizeof(key_type) == 8u) {
                     prop->_dictKeyTypeName += "64";
                 }
                 if (std::is_unsigned_v<key_type>) {

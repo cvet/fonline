@@ -2657,6 +2657,8 @@ void FOClient::Net_OnAutomapsInfo()
                 const auto map_pid = _conn.InBuf.Read<hstring>(*this);
                 const auto map_index_in_loc = _conn.InBuf.Read<uint8>();
 
+                UNUSED_VARIABLE(map_index_in_loc);
+
                 amap.MapPids.push_back(map_pid);
             }
 

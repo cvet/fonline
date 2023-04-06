@@ -96,6 +96,8 @@ EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_v
     _assetPath {asset_path}
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(view_name);
 }
 
 auto EditorAssetView::GetAssetPath() const -> const string&

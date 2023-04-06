@@ -105,7 +105,7 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, con
 {
     STACK_TRACE_ENTRY();
 
-    auto* item = new ItemView(_engine, id, proto);
+    auto* item = new ItemView(_engine, id, proto, props);
 
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
@@ -134,6 +134,8 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, con
 void CritterView::DeleteInvItem(ItemView* item, bool animate)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(animate);
 
     const auto it = std::find(_invItems.begin(), _invItems.end(), item);
     RUNTIME_ASSERT(it != _invItems.end());

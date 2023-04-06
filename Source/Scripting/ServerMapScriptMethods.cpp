@@ -829,6 +829,8 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, CritterFindType findType)
 {
+    UNUSED_VARIABLE(self);
+
     vector<Critter*> result_critters;
     for (auto* cr : critters) {
         for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {

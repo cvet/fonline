@@ -41,10 +41,7 @@
 #include "Timer.h"
 
 #if FO_HAVE_ASIO
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wreorder-ctor"
-#pragma clang diagnostic ignored "-Wunused-local-typedef"
-#endif
+DISABLE_WARNINGS_PUSH()
 #define ASIO_STANDALONE 1
 #define _WIN32_WINNT 0x0601
 #include "asio.hpp"
@@ -61,6 +58,7 @@
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
+DISABLE_WARNINGS_POP()
 #endif
 
 #include "zlib.h"

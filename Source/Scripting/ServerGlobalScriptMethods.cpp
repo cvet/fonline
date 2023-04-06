@@ -788,8 +788,8 @@
             cr->Send_AutomapsInfo(nullptr, loc);
         }
 
-        const uint16 zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
-        const uint16 zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
+        const auto zx = static_cast<uint16>(loc->GetWorldX() / server->Settings.GlobalMapZoneLength);
+        const auto zy = static_cast<uint16>(loc->GetWorldY() / server->Settings.GlobalMapZoneLength);
 
         auto gmap_fog = cr->GetGlobalMapFog();
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
@@ -1124,6 +1124,14 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFunc<void, Critter*, string> func)
 {
+    UNUSED_VARIABLE(server);
+    UNUSED_VARIABLE(sayType);
+    UNUSED_VARIABLE(firstStr);
+    UNUSED_VARIABLE(parameter);
+    UNUSED_VARIABLE(func);
+
+    throw NotImplementedException(LINE_STR);
+
     /*uint func_id = server->ScriptSys.BindByFunc(func, false);
     if (!func_id)
         throw ScriptException("Unable to bind script function");
@@ -1144,6 +1152,13 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_EraseTextListener(FOServer* server, int sayType, string_view firstStr, int parameter)
 {
+    UNUSED_VARIABLE(server);
+    UNUSED_VARIABLE(sayType);
+    UNUSED_VARIABLE(firstStr);
+    UNUSED_VARIABLE(parameter);
+
+    throw NotImplementedException(LINE_STR);
+
     /*for (auto it = server->TextListeners.begin(), end = server->TextListeners.end(); it != end; ++it)
     {
         TextListener& tl = *it;
@@ -1281,6 +1296,8 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_GetTime(FOServer* server, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
+    UNUSED_VARIABLE(server);
+
     const auto cur_time = Timer::GetCurrentDateTime();
     year = cur_time.Year;
     month = cur_time.Month;
@@ -1315,6 +1332,8 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, Item* usedItem, int param)
 {
+    UNUSED_VARIABLE(server);
+
     if (!staticItem->SceneryScriptFunc) {
         return false;
     }

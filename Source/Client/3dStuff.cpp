@@ -504,8 +504,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
     // Animation layers
     if (auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
-        for (auto&& [index, value] : it->second) {
-            new_layers[index] = value;
+        for (auto&& [layer_index, value] : it->second) {
+            new_layers[layer_index] = value;
         }
     }
 

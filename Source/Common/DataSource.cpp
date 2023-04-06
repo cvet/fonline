@@ -78,11 +78,11 @@ public:
     auto operator=(DummySpace&&) noexcept = delete;
     ~DummySpace() override = default;
 
-    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return "Dummy"; }
-    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override { return false; }
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override { return nullptr; }
-    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return {}; }
+    [[nodiscard]] auto IsDiskDir() const -> bool override;
+    [[nodiscard]] auto GetPackName() const -> string_view override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8> override;
+    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 };
 
 class NonCachedDir final : public DataSource
@@ -303,6 +303,53 @@ auto DataSource::Create(string_view path, DataSourceType type) -> unique_ptr<Dat
     else {
         throw DataSourceException("Data pack not found", path, type);
     }
+}
+
+auto DummySpace::IsDiskDir() const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return false;
+}
+
+auto DummySpace::GetPackName() const -> string_view
+{
+    STACK_TRACE_ENTRY();
+
+    return "Dummy";
+}
+
+auto DummySpace::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(write_time);
+
+    return false;
+}
+
+auto DummySpace::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<const uint8>
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(write_time);
+
+    return nullptr;
+}
+
+auto DummySpace::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(include_subdirs);
+    UNUSED_VARIABLE(ext);
+
+    return {};
 }
 
 NonCachedDir::NonCachedDir(string_view fname)

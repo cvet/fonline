@@ -1282,9 +1282,9 @@ void FOMapper::ObjDraw()
         SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true, 0);
 
         if (item->GetPicInv()) {
-            auto* anim = ResMngr.GetInvAnim(item->GetPicInv());
-            if (anim != nullptr) {
-                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameplayTime()), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, 0);
+            auto* inv_anim = ResMngr.GetInvAnim(item->GetPicInv());
+            if (inv_anim != nullptr) {
+                SprMngr.DrawSpriteSize(inv_anim->GetCurSprId(GameTime.GameplayTime()), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, 0);
             }
         }
     }
@@ -2068,8 +2068,8 @@ void FOMapper::IntMouseMove()
             auto offs_x = Settings.MouseX - SelectX;
             auto offs_y = Settings.MouseY - SelectY;
             if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
-                SelectHexX1 += offs_hx;
-                SelectHexY1 += offs_hy;
+                SelectHexX1 = static_cast<uint16>(SelectHexX1 + offs_hx);
+                SelectHexY1 = static_cast<uint16>(SelectHexY1 + offs_hy);
                 SelectX += offs_x;
                 SelectY += offs_y;
                 CurMap->RefreshMap();
@@ -2472,8 +2472,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     else {
         // Objects
         for (auto* entity : SelectedEntities) {
-            int hx;
-            int hy;
+            int hx = -1;
+            int hy = -1;
             if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 hx = cr->GetHexX();
                 hy = cr->GetHexY();
@@ -2598,11 +2598,11 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                         ox = oy = 0;
                     }
 
-                    tiles[k].OffsX = ox;
-                    tiles[k].OffsY = oy;
+                    tiles[k].OffsX = static_cast<int16>(ox);
+                    tiles[k].OffsY = static_cast<int16>(oy);
                     auto ftile = f.GetTile(k, stile.IsRoof);
                     f.EraseTile(k, stile.IsRoof);
-                    f.AddTile(ftile.Anim, ox, oy, ftile.Layer, stile.IsRoof);
+                    f.AddTile(ftile.Anim, static_cast<int16>(ox), static_cast<int16>(oy), ftile.Layer, stile.IsRoof);
                 }
             }
         }
@@ -2629,24 +2629,24 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 continue;
             }
 
-            auto& f = CurMap->GetField(stile.HexX, stile.HexY);
+            auto& field = CurMap->GetField(stile.HexX, stile.HexY);
             auto& tiles = CurMap->GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
 
             for (uint k = 0; k < tiles.size();) {
                 if (tiles[k].IsSelected) {
-                    tiles[k].HexX = hx;
-                    tiles[k].HexY = hy;
-                    auto& ftile = f.GetTile(k, stile.IsRoof);
-                    tiles_to_move.push_back({&CurMap->GetField(hx, hy), ftile, &CurMap->GetTiles(hx, hy, stile.IsRoof), tiles[k], stile.IsRoof});
+                    tiles[k].HexX = static_cast<uint16>(hx);
+                    tiles[k].HexY = static_cast<uint16>(hy);
+                    auto& ftile = field.GetTile(k, stile.IsRoof);
+                    tiles_to_move.push_back({&CurMap->GetField(static_cast<uint16>(hx), static_cast<uint16>(hy)), ftile, &CurMap->GetTiles(static_cast<uint16>(hx), static_cast<uint16>(hy), stile.IsRoof), tiles[k], stile.IsRoof});
                     tiles.erase(tiles.begin() + k);
-                    f.EraseTile(k, stile.IsRoof);
+                    field.EraseTile(k, stile.IsRoof);
                 }
                 else {
                     k++;
                 }
             }
-            stile.HexX = hx;
-            stile.HexY = hy;
+            stile.HexX = static_cast<uint16>(hx);
+            stile.HexY = static_cast<uint16>(hy);
         }
     }
 
@@ -3208,7 +3208,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
             else {
                 // Modify console history
                 ConsoleHistory.push_back(ConsoleStr);
-                for (uint i = 0; i < ConsoleHistory.size() - 1; i++) {
+                for (int i = 0; i < static_cast<int>(ConsoleHistory.size()) - 1; i++) {
                     if (ConsoleHistory[i] == ConsoleHistory[ConsoleHistory.size() - 1]) {
                         ConsoleHistory.erase(ConsoleHistory.begin() + i);
                         i = -1;
@@ -3692,6 +3692,8 @@ void FOMapper::MessBoxDraw()
 void FOMapper::DrawIfaceLayer(uint layer)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(layer);
 
     SpritesCanDraw = true;
     OnRenderIface.Fire(); // Todo: mapper render iface layer

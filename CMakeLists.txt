@@ -1032,7 +1032,7 @@ if( FONLINE_BUILD_SERVER OR FONLINE_BUILD_EDITOR OR FONLINE_UNIT_TESTS OR FONLIN
 		target_compile_definitions( mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
 		list( APPEND FO_SERVER_LIBS "mongoc_static" )
 		list( APPEND FO_DUMMY_TRAGETS "mongoc-cxx-check" "dist" "distcheck" )
-		DisableLibWarnings( mongoc_static )
+		DisableLibWarnings( mongoc_static mongoc-cxx-check )
 	endif()
 endif()
 

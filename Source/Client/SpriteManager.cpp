@@ -1817,7 +1817,8 @@ void SpriteManager::InitializeEgg(string_view egg_name)
     STACK_TRACE_ENTRY();
 
     _eggValid = false;
-    _eggHx = _eggHy = _eggX = _eggY = 0;
+    _eggHx = _eggHy = 0;
+    _eggX = _eggY = 0;
 
     auto* egg_frames = LoadAnimation(egg_name, true);
     RUNTIME_ASSERT(egg_frames != nullptr);
@@ -2561,7 +2562,7 @@ void SpriteManager::BuildFont(int index)
     auto image_x = tex_w * si->SprRect.Left;
     auto image_y = tex_h * si->SprRect.Top;
     auto max_h = 0;
-    for (auto& [index, letter] : font.Letters) {
+    for (auto& [letter_index, letter] : font.Letters) {
         const auto x = static_cast<float>(letter.PosX);
         const auto y = static_cast<float>(letter.PosY);
         const auto w = static_cast<float>(letter.Width);
@@ -2650,7 +2651,7 @@ void SpriteManager::BuildFont(int index)
         tex_h = static_cast<float>(si_bordered->Atlas->Height);
         image_x = tex_w * si_bordered->SprRect.Left;
         image_y = tex_h * si_bordered->SprRect.Top;
-        for (auto&& [index, letter] : font.Letters) {
+        for (auto&& [letter_index, letter] : font.Letters) {
             const auto x = static_cast<float>(letter.PosX);
             const auto y = static_cast<float>(letter.PosY);
             const auto w = static_cast<float>(letter.Width);

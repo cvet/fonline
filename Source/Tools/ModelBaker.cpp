@@ -40,13 +40,9 @@
 #include "StringUtils.h"
 
 #if FO_HAVE_FBXSDK
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wunknown-warning-option"
-#pragma clang diagnostic ignored "-Wnull-dereference"
-#pragma clang diagnostic ignored "-Wuninitialized-const-reference"
-#pragma clang diagnostic ignored "-Wdeprecated-builtins"
-#endif
+DISABLE_WARNINGS_PUSH()
 #include "fbxsdk.h"
+DISABLE_WARNINGS_POP()
 #endif
 
 // Linker errors workaround

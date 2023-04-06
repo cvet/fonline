@@ -76,7 +76,7 @@ public:
 
 protected:
     virtual auto GetNextCallId() -> ident_t;
-    virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
+    virtual void OnDeferredCallRemoved(const DeferredCall& call);
 
     FOEngineBase* _engine;
     list<DeferredCall> _deferredCalls {};

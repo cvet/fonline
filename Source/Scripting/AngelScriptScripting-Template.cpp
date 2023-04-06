@@ -682,6 +682,8 @@ template<typename T, typename T2 = T>
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(as_engine);
+
     as_array->Resize(0);
 
     if (!vec.empty()) {
@@ -733,6 +735,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(as_engine);
+
     static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
     static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
 
@@ -758,6 +762,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, CScriptDict* as_dict)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(as_engine);
 
     static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
     static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
@@ -1843,6 +1849,7 @@ static void Global_Assert_0(bool condition)
         throw ScriptException("Assertion failed");
     }
 #else
+    UNUSED_VARIABLE(condition);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1857,6 +1864,9 @@ static void Global_Assert_1(bool condition, void* obj1Ptr, int obj1)
         throw ScriptException("Assertion failed", obj_info1);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1872,6 +1882,11 @@ static void Global_Assert_2(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1888,6 +1903,13 @@ static void Global_Assert_3(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1905,6 +1927,15 @@ static void Global_Assert_4(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1923,6 +1954,17 @@ static void Global_Assert_5(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1942,6 +1984,19 @@ static void Global_Assert_6(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1962,6 +2017,21 @@ static void Global_Assert_7(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -1983,6 +2053,23 @@ static void Global_Assert_8(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2005,6 +2092,25 @@ static void Global_Assert_9(bool condition, void* obj1Ptr, int obj1, void* obj2P
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2028,6 +2134,27 @@ static void Global_Assert_10(bool condition, void* obj1Ptr, int obj1, void* obj2
         throw ScriptException("Assertion failed", obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
     }
 #else
+    UNUSED_VARIABLE(condition);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
+    UNUSED_VARIABLE(obj10Ptr);
+    UNUSED_VARIABLE(obj10);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2039,6 +2166,7 @@ static void Global_ThrowException_0(string message)
 #if !COMPILER_MODE
     throw ScriptException(message);
 #else
+    UNUSED_VARIABLE(message);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2051,6 +2179,9 @@ static void Global_ThrowException_1(string message, void* obj1Ptr, int obj1)
     auto&& obj_info1 = GetASObjectInfo(obj1Ptr, obj1);
     throw ScriptException(message, obj_info1);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2064,6 +2195,11 @@ static void Global_ThrowException_2(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info2 = GetASObjectInfo(obj2Ptr, obj2);
     throw ScriptException(message, obj_info1, obj_info2);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2078,6 +2214,13 @@ static void Global_ThrowException_3(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info3 = GetASObjectInfo(obj3Ptr, obj3);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2093,6 +2236,15 @@ static void Global_ThrowException_4(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info4 = GetASObjectInfo(obj4Ptr, obj4);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2109,6 +2261,17 @@ static void Global_ThrowException_5(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info5 = GetASObjectInfo(obj5Ptr, obj5);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2126,6 +2289,19 @@ static void Global_ThrowException_6(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info6 = GetASObjectInfo(obj6Ptr, obj6);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2144,6 +2320,21 @@ static void Global_ThrowException_7(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info7 = GetASObjectInfo(obj7Ptr, obj7);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2163,6 +2354,23 @@ static void Global_ThrowException_8(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info8 = GetASObjectInfo(obj8Ptr, obj8);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2183,6 +2391,25 @@ static void Global_ThrowException_9(string message, void* obj1Ptr, int obj1, voi
     auto&& obj_info9 = GetASObjectInfo(obj9Ptr, obj9);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2204,6 +2431,27 @@ static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, vo
     auto&& obj_info10 = GetASObjectInfo(obj10Ptr, obj10);
     throw ScriptException(message, obj_info1, obj_info2, obj_info3, obj_info4, obj_info5, obj_info6, obj_info7, obj_info8, obj_info9, obj_info10);
 #else
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(obj1Ptr);
+    UNUSED_VARIABLE(obj1);
+    UNUSED_VARIABLE(obj2Ptr);
+    UNUSED_VARIABLE(obj2);
+    UNUSED_VARIABLE(obj3Ptr);
+    UNUSED_VARIABLE(obj3);
+    UNUSED_VARIABLE(obj4Ptr);
+    UNUSED_VARIABLE(obj4);
+    UNUSED_VARIABLE(obj5Ptr);
+    UNUSED_VARIABLE(obj5);
+    UNUSED_VARIABLE(obj6Ptr);
+    UNUSED_VARIABLE(obj6);
+    UNUSED_VARIABLE(obj7Ptr);
+    UNUSED_VARIABLE(obj7);
+    UNUSED_VARIABLE(obj8Ptr);
+    UNUSED_VARIABLE(obj8);
+    UNUSED_VARIABLE(obj9Ptr);
+    UNUSED_VARIABLE(obj9);
+    UNUSED_VARIABLE(obj10Ptr);
+    UNUSED_VARIABLE(obj10);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2220,6 +2468,7 @@ static void Global_Yield(uint time)
     ctx_ext.SuspendEndTime = game_engine->GameTime.FrameTime() + std::chrono::milliseconds {time};
     ctx->Suspend();
 #else
+    UNUSED_VARIABLE(time);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2302,6 +2551,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
         return prop_data;
     });
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2427,9 +2677,11 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         else {
             // Will be run from scheduler
             UNUSED_VARIABLE(has_value_ref);
+            UNUSED_VARIABLE(prop_data);
         }
     });
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2443,6 +2695,7 @@ static void Global_Get(asIScriptGeneric* gen)
     auto* ptr = *static_cast<T**>(gen->GetAuxiliary());
     *(T**)gen->GetAddressOfReturnLocation() = ptr;
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2457,6 +2710,7 @@ static auto Entity_GetSelfForEvent(T* entity) -> T*
     ENTITY_VERIFY_NULL(entity);
     return entity;
 #else
+    UNUSED_VARIABLE(entity);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2733,6 +2987,8 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ToHashedString(*str);
     new (gen->GetObject()) hstring(hstr);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2745,6 +3001,8 @@ static void HashedString_CreateFromString(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ToHashedString(*str);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2757,6 +3015,8 @@ static void HashedString_CreateFromHash(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     auto hstr = engine->ResolveHash(hash);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2888,6 +3148,8 @@ static void CustomEntity_Create(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     T* entity = engine->EntityMngr.CreateCustomEntity(U::ENTITY_CLASS_NAME);
     new (gen->GetAddressOfReturnLocation()) T*(entity);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2902,6 +3164,8 @@ static void CustomEntity_Get(asIScriptGeneric* gen)
     T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
     ENTITY_VERIFY(entity);
     new (gen->GetAddressOfReturnLocation()) T*(entity);
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2914,6 +3178,8 @@ static void CustomEntity_DeleteById(asIScriptGeneric* gen)
     auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
     const auto& entity_id = *static_cast<ident_t::underlying_type*>(gen->GetAddressOfArg(0));
     engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, ident_t {entity_id});
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2929,6 +3195,8 @@ static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
     if (entity != nullptr) {
         engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, entity->GetId());
     }
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -2954,6 +3222,7 @@ static void Enum_Parse(asIScriptGeneric* gen)
 
     new (gen->GetAddressOfReturnLocation()) int(enum_value);
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -2980,6 +3249,7 @@ static void Enum_ToString(asIScriptGeneric* gen)
 
     new (gen->GetAddressOfReturnLocation()) string(enum_value_name);
 #else
+    UNUSED_VARIABLE(gen);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -3022,6 +3292,10 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uint8> script_
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
     STACK_TRACE_ENTRY();
+
+#if COMPILER_VALIDATION_MODE
+    UNUSED_VARIABLE(resources);
+#endif
 
 #if !COMPILER_MODE
     FOEngine* game_engine = _engine;

@@ -882,7 +882,7 @@
         gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
         self->SetGlobalMapFog(gmap_fog);
         if (!self->GetMapId()) {
-            self->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
+            self->Send_GlobalMapFog(static_cast<uint16>(zx), static_cast<uint16>(zy), GM_FOG_HALF);
         }
     }
 }
@@ -937,7 +937,7 @@
         gmap_mask.Set2Bit(zoneX, zoneY, fog);
         self->SetGlobalMapFog(gmap_fog);
         if (!self->GetMapId()) {
-            self->Send_GlobalMapFog(zoneX, zoneY, fog);
+            self->Send_GlobalMapFog(zoneX, zoneY, static_cast<uint8>(fog));
         }
     }
 }
@@ -1023,7 +1023,7 @@
     self->TargetMoving.HexX = target->GetHexX();
     self->TargetMoving.HexY = target->GetHexY();
     self->TargetMoving.Cut = cut;
-    self->TargetMoving.Speed = speed;
+    self->TargetMoving.Speed = static_cast<uint16>(speed);
 }
 
 ///# ...
@@ -1039,7 +1039,7 @@
     self->TargetMoving.HexX = hx;
     self->TargetMoving.HexY = hy;
     self->TargetMoving.Cut = cut;
-    self->TargetMoving.Speed = speed;
+    self->TargetMoving.Speed = static_cast<uint16>(speed);
 }
 
 ///# ...

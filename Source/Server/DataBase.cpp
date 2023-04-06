@@ -43,10 +43,13 @@
 #if FO_HAVE_UNQLITE
 #include "unqlite.h"
 #endif
+
+DISABLE_WARNINGS_PUSH()
 #if FO_HAVE_MONGO && !FO_SINGLEPLAYER
 #include "mongoc/mongoc.h"
 #endif
 #include "bson/bson.h"
+DISABLE_WARNINGS_POP()
 
 #include "WinApi-Include.h"
 
@@ -251,40 +254,40 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         }
 
         const auto& dict = std::get<AnyData::DICT_VALUE>(value);
-        for (auto&& [key, value] : dict) {
-            const auto dict_value_index = value.index();
+        for (auto&& [dict_key, dict_value] : dict) {
+            const auto dict_value_index = dict_value.index();
             if (dict_value_index == AnyData::INT_VALUE) {
-                if (!bson_append_int32(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::INT_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_int32", key, std::get<AnyData::INT_VALUE>(value));
+                if (!bson_append_int32(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::INT_VALUE>(dict_value))) {
+                    throw DataBaseException("ValueToBson bson_append_int32", dict_key, std::get<AnyData::INT_VALUE>(dict_value));
                 }
             }
             else if (dict_value_index == AnyData::INT64_VALUE) {
-                if (!bson_append_int64(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::INT64_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_int64", key, std::get<AnyData::INT64_VALUE>(value));
+                if (!bson_append_int64(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::INT64_VALUE>(dict_value))) {
+                    throw DataBaseException("ValueToBson bson_append_int64", dict_key, std::get<AnyData::INT64_VALUE>(dict_value));
                 }
             }
             else if (dict_value_index == AnyData::DOUBLE_VALUE) {
-                if (!bson_append_double(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::DOUBLE_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::DOUBLE_VALUE>(value));
+                if (!bson_append_double(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::DOUBLE_VALUE>(dict_value))) {
+                    throw DataBaseException("ValueToBson bson_append_double", dict_key, std::get<AnyData::DOUBLE_VALUE>(dict_value));
                 }
             }
             else if (dict_value_index == AnyData::BOOL_VALUE) {
-                if (!bson_append_bool(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::BOOL_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_bool", key, std::get<AnyData::BOOL_VALUE>(value));
+                if (!bson_append_bool(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::BOOL_VALUE>(dict_value))) {
+                    throw DataBaseException("ValueToBson bson_append_bool", dict_key, std::get<AnyData::BOOL_VALUE>(dict_value));
                 }
             }
             else if (dict_value_index == AnyData::STRING_VALUE) {
-                if (!bson_append_utf8(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(value).length()))) {
-                    throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<AnyData::STRING_VALUE>(value));
+                if (!bson_append_utf8(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), std::get<AnyData::STRING_VALUE>(dict_value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(dict_value).length()))) {
+                    throw DataBaseException("ValueToBson bson_append_utf8", dict_key, std::get<AnyData::STRING_VALUE>(dict_value));
                 }
             }
             else if (dict_value_index == AnyData::ARRAY_VALUE) {
                 bson_t bson_arr;
-                if (!bson_append_array_begin(&bson_doc, key.c_str(), static_cast<int>(key.length()), &bson_arr)) {
-                    throw DataBaseException("ValueToBson bson_append_array_begin", key);
+                if (!bson_append_array_begin(&bson_doc, dict_key.c_str(), static_cast<int>(dict_key.length()), &bson_arr)) {
+                    throw DataBaseException("ValueToBson bson_append_array_begin", dict_key);
                 }
 
-                const auto& arr = std::get<AnyData::ARRAY_VALUE>(value);
+                const auto& arr = std::get<AnyData::ARRAY_VALUE>(dict_value);
                 auto arr_key_index = 0;
                 for (const auto& arr_value : arr) {
                     string arr_key = _str("{}", arr_key_index);

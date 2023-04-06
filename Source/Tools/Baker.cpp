@@ -1217,7 +1217,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
     if (const auto* file = FindFile(string(path)); file != nullptr) {
         size = file->GetSize();
         write_time = file->GetWriteTime();
-        return {file->GetBuf(), [](auto* p) {}};
+        return {file->GetBuf(), [](auto* p) { UNUSED_VARIABLE(p); }};
     }
     return nullptr;
 }
@@ -1225,6 +1225,10 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64& write_tim
 auto BakerDataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(path);
+    UNUSED_VARIABLE(include_subdirs);
+    UNUSED_VARIABLE(ext);
 
     throw NotImplementedException(LINE_STR);
 }

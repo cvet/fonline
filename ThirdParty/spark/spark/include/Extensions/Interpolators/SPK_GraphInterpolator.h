@@ -596,7 +596,7 @@ namespace SPK
 				validGraph = false;
 		}
 
-		if (validGraph && (attrib = descriptor.getAttributeWithValue("graph values")))
+		if (validGraph && (attrib = descriptor.getAttributeWithValue("graph values")) != nullptr)
 		{
 			std::vector<T> values0 = attrib->getValues<T>();
 			if (values0.size() == nbEntries)
@@ -605,7 +605,7 @@ namespace SPK
 				validGraph = false;
 		}
 
-		if (validGraph && (attrib = descriptor.getAttributeWithValue("graph values 2")))
+		if (validGraph && (attrib = descriptor.getAttributeWithValue("graph values 2")) != nullptr)
 		{
 			std::vector<T> values1 = attrib->getValues<T>();
 			if (values1.size() == nbEntries)

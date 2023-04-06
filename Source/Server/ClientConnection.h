@@ -48,7 +48,7 @@
 
 #define CONNECTION_OUTPUT_BEGIN(conn) \
     { \
-        std::lock_guard locker((conn)->OutBufLocker)
+        std::lock_guard conn_locker__((conn)->OutBufLocker)
 #define CONNECTION_OUTPUT_END(conn) \
     } \
     (conn)->Dispatch()

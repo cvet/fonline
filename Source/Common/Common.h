@@ -114,8 +114,22 @@
 #include <emscripten/html5.h>
 #endif
 
+// Compiler warnings disable helper
+#if defined(_MSC_VER)
+#define DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0))
+#define DISABLE_WARNINGS_POP() __pragma(warning(pop))
+#elif defined(__clang__)
+#define DISABLE_WARNINGS_PUSH() _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")
+#define DISABLE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#else
+#define DISABLE_WARNINGS_PUSH()
+#define DISABLE_WARNINGS_POP()
+#endif
+
 // String formatting lib
+DISABLE_WARNINGS_PUSH()
 #include "fmt/format.h"
+DISABLE_WARNINGS_POP()
 
 // Todo: improve named enums
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
@@ -758,6 +772,7 @@ constexpr uint const_hash(const char* input)
 
 auto constexpr operator""_hash(const char* str, size_t size) -> uint
 {
+    (void)size;
     return const_hash(str);
 }
 

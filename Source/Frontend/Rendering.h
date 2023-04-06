@@ -373,20 +373,20 @@ public:
 class Null_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
-    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override { return {}; }
-    [[nodiscard]] auto GetViewPort() -> IRect override { return {}; }
-    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override { return false; }
+    [[nodiscard]] auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44 override;
+    [[nodiscard]] auto GetViewPort() -> IRect override;
+    [[nodiscard]] auto IsRenderTargetFlipped() -> bool override;
 
-    void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
-    void Present() override { }
-    void SetRenderTarget(RenderTexture* tex) override { }
-    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override { }
-    void EnableScissor(int x, int y, int width, int height) override { }
-    void DisableScissor() override { }
-    void OnResizeWindow(int width, int height) override { }
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
+    void Present() override;
+    void SetRenderTarget(RenderTexture* tex) override;
+    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(int x, int y, int width, int height) override;
+    void DisableScissor() override;
+    void OnResizeWindow(int width, int height) override;
 };
 
 #if FO_HAVE_OPENGL

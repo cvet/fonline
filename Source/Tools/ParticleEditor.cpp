@@ -799,16 +799,16 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
             if (ImGui::TreeNodeEx(_str("{}", static_cast<const void*>(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
                 ImGui::InputInt4("Start", c1);
-                const_cast<unsigned char&>(entry.y0.r) = c1[0];
-                const_cast<unsigned char&>(entry.y0.g) = c1[1];
-                const_cast<unsigned char&>(entry.y0.b) = c1[2];
-                const_cast<unsigned char&>(entry.y0.a) = c1[3];
+                const_cast<unsigned char&>(entry.y0.r) = static_cast<unsigned char>(c1[0]);
+                const_cast<unsigned char&>(entry.y0.g) = static_cast<unsigned char>(c1[1]);
+                const_cast<unsigned char&>(entry.y0.b) = static_cast<unsigned char>(c1[2]);
+                const_cast<unsigned char&>(entry.y0.a) = static_cast<unsigned char>(c1[3]);
                 int c2[] = {entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a};
                 ImGui::InputInt4("End", c2);
-                const_cast<unsigned char&>(entry.y1.r) = c2[0];
-                const_cast<unsigned char&>(entry.y1.g) = c2[1];
-                const_cast<unsigned char&>(entry.y1.b) = c2[2];
-                const_cast<unsigned char&>(entry.y1.a) = c2[3];
+                const_cast<unsigned char&>(entry.y1.r) = static_cast<unsigned char>(c2[0]);
+                const_cast<unsigned char&>(entry.y1.g) = static_cast<unsigned char>(c2[1]);
+                const_cast<unsigned char&>(entry.y1.b) = static_cast<unsigned char>(c2[2]);
+                const_cast<unsigned char&>(entry.y1.a) = static_cast<unsigned char>(c2[3]);
 
                 ImGui::TreePop();
             }

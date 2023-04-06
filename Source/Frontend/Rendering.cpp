@@ -35,6 +35,118 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
+auto Null_Renderer::CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture*
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(linear_filtered);
+    UNUSED_VARIABLE(with_depth);
+
+    return nullptr;
+}
+
+auto Null_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(is_static);
+
+    return nullptr;
+}
+
+auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(usage);
+    UNUSED_VARIABLE(name);
+    UNUSED_VARIABLE(loader);
+
+    return nullptr;
+}
+
+auto Null_Renderer::CreateOrthoMatrix(float left, float right, float bottom, float top, float nearp, float farp) -> mat44
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(left);
+    UNUSED_VARIABLE(right);
+    UNUSED_VARIABLE(bottom);
+    UNUSED_VARIABLE(top);
+    UNUSED_VARIABLE(nearp);
+    UNUSED_VARIABLE(farp);
+
+    return {};
+}
+
+auto Null_Renderer::GetViewPort() -> IRect
+{
+    STACK_TRACE_ENTRY();
+
+    return {};
+}
+
+auto Null_Renderer::IsRenderTargetFlipped() -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return false;
+}
+
+void Null_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(settings);
+    UNUSED_VARIABLE(window);
+}
+
+void Null_Renderer::Present()
+{
+    STACK_TRACE_ENTRY();
+}
+
+void Null_Renderer::SetRenderTarget(RenderTexture* tex)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(tex);
+}
+
+void Null_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(color);
+    UNUSED_VARIABLE(depth);
+    UNUSED_VARIABLE(stencil);
+}
+
+void Null_Renderer::EnableScissor(int x, int y, int width, int height)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+}
+
+void Null_Renderer::DisableScissor()
+{
+    STACK_TRACE_ENTRY();
+}
+
+void Null_Renderer::OnResizeWindow(int width, int height)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+}
+
 RenderTexture::RenderTexture(int width, int height, bool linear_filtered, bool with_depth) :
     Width {width}, //
     Height {height},

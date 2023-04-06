@@ -616,13 +616,16 @@ auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+
     throw NotImplementedException(LINE_STR);
 
-    auto* sdl_window = CreateInternalWindow(width, height);
+    /*auto* sdl_window = CreateInternalWindow(width, height);
     auto* window = new AppWindow();
     window->_windowHandle = sdl_window;
     _allWindows.emplace_back(window);
-    return window;
+    return window;*/
 }
 
 auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*

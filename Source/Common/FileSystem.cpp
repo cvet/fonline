@@ -134,7 +134,7 @@ File::File(string_view name, string_view path, uint64 write_time, DataSource* ds
         _fileBuf = {buf_copy, [](auto* p) { delete[] p; }};
     }
     else {
-        _fileBuf = {buf.data(), [](auto* p) {}};
+        _fileBuf = {buf.data(), [](auto* p) { UNUSED_VARIABLE(p); }};
     }
 }
 

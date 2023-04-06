@@ -455,6 +455,7 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
 
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(relative_to);
 }
 
 auto AppInput::PollEvent(InputEvent& ev) -> bool

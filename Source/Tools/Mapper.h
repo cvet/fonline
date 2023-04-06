@@ -322,7 +322,7 @@ public:
     vector<const ProtoCritter*>* CurNpcProtos {};
     uint8 NpcDir {};
     int* CurProtoScroll {};
-    uint ProtoWidth {};
+    int ProtoWidth {};
     uint ProtosOnScreen {};
     uint TabIndex[INT_MODE_COUNT] {};
     int InContScroll {};

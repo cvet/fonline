@@ -566,6 +566,8 @@
 ///@ ExportMethod
 [[maybe_unused]] string Client_Game_ReplaceText(FOClient* client, string_view text, string_view replace, ObjInfo<1> obj1)
 {
+    UNUSED_VARIABLE(client);
+
     const auto pos = text.find(replace, 0);
     if (pos == std::string::npos) {
         return string(text);
@@ -846,6 +848,13 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, int x, int y, MouseButton button)
 {
+    UNUSED_VARIABLE(client);
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(button);
+
+    throw NotImplementedException(LINE_STR);
+
     /*App->Input.PushEvent({InputEvent::MouseDown({(MouseButton)button})});
 
     IntVec prev_events = client->Settings.MainWindowMouseEvents;
@@ -906,6 +915,8 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Game_GetTime(FOClient* client, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)
 {
+    UNUSED_VARIABLE(client);
+
     const auto cur_time = Timer::GetCurrentDateTime();
     year = cur_time.Year;
     month = cur_time.Month;
@@ -1663,6 +1674,11 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SaveScreenshot(FOClient* client, string_view filePath)
 {
+    UNUSED_VARIABLE(client);
+    UNUSED_VARIABLE(filePath);
+
+    throw NotImplementedException(LINE_STR);
+
     // client->SprMngr.SaveTexture(nullptr, _str(filePath).formatPath(), true);
 }
 
@@ -1673,6 +1689,8 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
 {
+    UNUSED_VARIABLE(client);
+
     auto file = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);

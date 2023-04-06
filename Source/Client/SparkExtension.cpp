@@ -154,6 +154,8 @@ namespace SPK::FO
     {
         STACK_TRACE_ENTRY();
 
+        UNUSED_VARIABLE(particle);
+
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 1.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 0.0f * _textureAtlasOffsets[3]);
         render_buffer.SetNextTexCoord(_textureAtlasOffsets[0] + 0.0f * _textureAtlasOffsets[2], _textureAtlasOffsets[1] + 1.0f * _textureAtlasOffsets[3]);
@@ -182,6 +184,8 @@ namespace SPK::FO
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
     {
         STACK_TRACE_ENTRY();
+
+        UNUSED_VARIABLE(dataSet);
 
         RUNTIME_ASSERT(_particleMngr);
 
@@ -243,6 +247,8 @@ namespace SPK::FO
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
     {
         STACK_TRACE_ENTRY();
+
+        UNUSED_VARIABLE(dataSet);
 
         const float diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
         const Vector3D diag_v(diagonal, diagonal, diagonal);
@@ -307,11 +313,11 @@ namespace SPK::FO
         return _effectName;
     }
 
-    void SparkQuadRenderer::SetEffectName(const string& name)
+    void SparkQuadRenderer::SetEffectName(const string& effect_name)
     {
         STACK_TRACE_ENTRY();
 
-        _effectName = name;
+        _effectName = effect_name;
 
         if (!_effectName.empty() && _particleMngr != nullptr) {
 #if FO_ENABLE_3D
@@ -330,11 +336,11 @@ namespace SPK::FO
         return _textureName;
     }
 
-    void SparkQuadRenderer::SetTextureName(const string& name)
+    void SparkQuadRenderer::SetTextureName(const string& tex_name)
     {
         STACK_TRACE_ENTRY();
 
-        _textureName = name;
+        _textureName = tex_name;
 
         if (!_textureName.empty() && _particleMngr != nullptr) {
             const auto tex_path = _str(_path).extractDir().combinePath(_textureName);

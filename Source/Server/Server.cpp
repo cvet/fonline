@@ -1473,15 +1473,15 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     RUNTIME_ASSERT(minute >= 0 && minute <= 59);
     RUNTIME_ASSERT(second >= 0 && second <= 59);
 
-    SetTimeMultiplier(multiplier);
-    SetYear(year);
-    SetMonth(month);
-    SetDay(day);
-    SetHour(hour);
-    SetMinute(minute);
-    SetSecond(second);
+    SetTimeMultiplier(static_cast<uint16>(multiplier));
+    SetYear(static_cast<uint16>(year));
+    SetMonth(static_cast<uint16>(month));
+    SetDay(static_cast<uint16>(day));
+    SetHour(static_cast<uint16>(hour));
+    SetMinute(static_cast<uint16>(minute));
+    SetSecond(static_cast<uint16>(second));
 
-    GameTime.Reset(year, month, day, hour, minute, second, multiplier);
+    GameTime.Reset(static_cast<uint16>(year), static_cast<uint16>(month), static_cast<uint16>(day), static_cast<uint16>(hour), static_cast<uint16>(minute), static_cast<uint16>(second), multiplier);
 
     for (auto&& [id, player] : EntityMngr.GetPlayers()) {
         player->Send_TimeSync();
@@ -2528,9 +2528,9 @@ void FOServer::Process_Property(Player* player, uint data_size)
         is_public = true;
         prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            auto* cr = CrMngr.GetCritter(cr_id);
-            if (cr != nullptr) {
-                entity = cr->GetInvItem(item_id, true);
+            auto* cr_ = CrMngr.GetCritter(cr_id);
+            if (cr_ != nullptr) {
+                entity = cr_->GetInvItem(item_id, true);
             }
         }
         break;
@@ -2666,6 +2666,8 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(entity);
 
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto&& [id, player] : EntityMngr.GetPlayers()) {
@@ -2836,6 +2838,8 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(prop);
+
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2851,6 +2855,8 @@ void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(prop);
+
     const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2865,6 +2871,8 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(prop);
+
     auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetIsRadio()) {
@@ -2878,6 +2886,8 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop)
 void FOServer::OnSetItemOpened(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
 

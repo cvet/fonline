@@ -59,6 +59,8 @@ static void SetEntry(uint8& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(append);
+
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
     entry += static_cast<uint8>(std::get<AnyData::INT_VALUE>(any_value));
 }

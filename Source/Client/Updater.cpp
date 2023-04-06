@@ -199,6 +199,8 @@ void Updater::AddText(uint str_num, string_view num_str_str)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(str_num);
+
     _messages.emplace_back(num_str_str);
 }
 

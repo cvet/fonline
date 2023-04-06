@@ -1958,6 +1958,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    STACK_TRACE_ENTRY();')
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY_RETURN(self, true);')
+                        globalLines.append('    UNUSED_VARIABLE(args);')
                         argIndex = 0
                         for p in evArgs:
                             argType = metaTypeToEngineType(p[0], target, False)
@@ -2207,6 +2208,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    }')
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
+                        globalLines.append('    UNUSED_VARIABLE(func);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')

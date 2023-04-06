@@ -251,6 +251,8 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(opt);
+
     FrameCollection collection;
 
     // Load ini parser
@@ -853,7 +855,9 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, File& file) -> Fram
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
+
     UNUSED_VARIABLE(fname);
+    UNUSED_VARIABLE(opt);
 
     file.SetCurPos(0x4);
     uint16 w = 0;
@@ -1575,6 +1579,8 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(opt);
+
     // Read header
     char head[6];
     file.CopyData(head, 6);
@@ -1667,6 +1673,8 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> Fram
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
+
+    UNUSED_VARIABLE(opt);
 
     // Read header
     char head[7];
@@ -1791,6 +1799,8 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
+
+    UNUSED_VARIABLE(opt);
 
     // Read signature
     char head[8];
@@ -2043,6 +2053,8 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
 
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(opt);
+
     uint w = 0;
     uint h = 0;
     const auto* png_data = PngLoad(file.GetBuf(), w, h);
@@ -2067,6 +2079,8 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
+
+    UNUSED_VARIABLE(opt);
 
     uint w = 0;
     uint h = 0;

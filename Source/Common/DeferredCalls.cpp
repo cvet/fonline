@@ -182,6 +182,13 @@ auto DeferredCallManager::GetNextCallId() -> ident_t
     return ident_t {static_cast<ident_t::underlying_type>(++_idCounter)};
 }
 
+void DeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(call);
+}
+
 auto DeferredCallManager::RunDeferredCall(DeferredCall& call) const -> bool
 {
     STACK_TRACE_ENTRY();

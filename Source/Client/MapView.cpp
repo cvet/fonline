@@ -1860,44 +1860,44 @@ void MapView::TraceLight(uint16 from_hx, uint16 from_hy, uint16& hx, uint16& hy,
         if (ox != 0) {
             // Left side
             ox = old_curx1_i + ox;
-            if (ox < 0 || ox >= _width || GetField(ox, old_cury1_i).Flags.IsLightBlocked) {
-                hx = (ox < 0 || ox >= _width ? old_curx1_i : ox);
-                hy = old_cury1_i;
+            if (ox < 0 || ox >= _width || GetField(static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i)).Flags.IsLightBlocked) {
+                hx = static_cast<uint16>(ox < 0 || ox >= _width ? old_curx1_i : ox);
+                hy = static_cast<uint16>(old_cury1_i);
                 if (can_mark) {
-                    MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
+                    MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, inten);
                 }
                 break;
             }
             if (can_mark) {
-                MarkLightStep(old_curx1_i, old_cury1_i, ox, old_cury1_i, inten);
+                MarkLightStep(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(ox), static_cast<uint16>(old_cury1_i), inten);
             }
 
             // Right side
             oy = old_cury1_i + oy;
-            if (oy < 0 || oy >= _height || GetField(old_curx1_i, oy).Flags.IsLightBlocked) {
-                hx = old_curx1_i;
-                hy = (oy < 0 || oy >= _height ? old_cury1_i : oy);
+            if (oy < 0 || oy >= _height || GetField(static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy)).Flags.IsLightBlocked) {
+                hx = static_cast<uint16>(old_curx1_i);
+                hy = static_cast<uint16>(oy < 0 || oy >= _height ? old_cury1_i : oy);
                 if (can_mark) {
-                    MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
+                    MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, inten);
                 }
                 break;
             }
             if (can_mark) {
-                MarkLightStep(old_curx1_i, old_cury1_i, old_curx1_i, oy, inten);
+                MarkLightStep(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(old_curx1_i), static_cast<uint16>(oy), inten);
             }
         }
 
         // Main trace
-        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || GetField(curx1_i, cury1_i).Flags.IsLightBlocked) {
-            hx = (curx1_i < 0 || curx1_i >= _width ? old_curx1_i : curx1_i);
-            hy = (cury1_i < 0 || cury1_i >= _height ? old_cury1_i : cury1_i);
+        if (curx1_i < 0 || curx1_i >= _width || cury1_i < 0 || cury1_i >= _height || GetField(static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i)).Flags.IsLightBlocked) {
+            hx = static_cast<uint16>(curx1_i < 0 || curx1_i >= _width ? old_curx1_i : curx1_i);
+            hy = static_cast<uint16>(cury1_i < 0 || cury1_i >= _height ? old_cury1_i : cury1_i);
             if (can_mark) {
-                MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
+                MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), hx, hy, inten);
             }
             break;
         }
         if (can_mark) {
-            MarkLightEnd(old_curx1_i, old_cury1_i, curx1_i, cury1_i, inten);
+            MarkLightEnd(static_cast<uint16>(old_curx1_i), static_cast<uint16>(old_cury1_i), static_cast<uint16>(curx1_i), static_cast<uint16>(cury1_i), inten);
         }
         if (curx1_i == hx && cury1_i == hy) {
             break;
@@ -1977,8 +1977,8 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
     int hx_far = hx;
     int hy_far = hy;
     auto seek_start = true;
-    uint16 last_hx = -1;
-    uint16 last_hy = -1;
+    uint16 last_hx = static_cast<uint16>(-1);
+    uint16 last_hy = static_cast<uint16>(-1);
 
     for (auto i = 0, ii = (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i < ii; i++) {
         const auto dir = static_cast<uint8>(GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
@@ -2862,7 +2862,7 @@ void MapView::PrepareFogToDraw()
             for (auto i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
                 const auto dir = (GameSettings::HEXAGONAL_GEOMETRY ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
-                for (uint j = 0, jj = (GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2); j < jj; j++) {
+                for (int j = 0, jj = static_cast<int>(GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2); j < jj; j++) {
                     if (seek_start) {
                         // Move to start position
                         for (uint l = 0; l < dist; l++) {
@@ -2882,7 +2882,7 @@ void MapView::PrepareFogToDraw()
                         const int dir_ = _engine->Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
                         auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
                         if (ii > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
-                            ii = GameSettings::MAP_DIR_COUNT - ii;
+                            ii = static_cast<int>(GameSettings::MAP_DIR_COUNT - ii);
                         }
                         const auto dist_ = dist - dist * _engine->Settings.LookDir[ii] / 100;
                         pair<uint16, uint16> block = {};
@@ -3191,13 +3191,13 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
         auto hx = static_cast<uint16>(_viewField[pos].HexX);
         auto hy = static_cast<uint16>(_viewField[pos].HexY);
 
-        _engine->Geometry.MoveHexByDir(hx, hy, dir1, _width, _height);
+        _engine->Geometry.MoveHexByDir(hx, hy, static_cast<uint8>(dir1), _width, _height);
         if (GetField(hx, hy).Flags.ScrollBlock) {
             return true;
         }
 
         if (dir2 >= 0) {
-            _engine->Geometry.MoveHexByDir(hx, hy, dir2, _width, _height);
+            _engine->Geometry.MoveHexByDir(hx, hy, static_cast<uint8>(dir2), _width, _height);
             if (GetField(hx, hy).Flags.ScrollBlock) {
                 return true;
             }
@@ -4220,7 +4220,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
     ox = 0;
     oy = 0;
 
-    const auto try_move = [this, &hx, &hy, &steps](uint8 dir, bool check_only = false) {
+    const auto try_move = [this, &hx, &hy, &steps](uint8 dir) {
         auto check_hx = hx;
         auto check_hy = hy;
 

@@ -219,6 +219,8 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
         // Todo: convert argv from wchar_t** to char**
+        UNUSED_VARIABLE(argc);
+        UNUSED_VARIABLE(argv);
         InitApp(0, nullptr);
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);

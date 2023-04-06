@@ -37,7 +37,9 @@
 
 #include "Rendering.h"
 
+DISABLE_WARNINGS_PUSH()
 #include "SPARK.h"
+DISABLE_WARNINGS_POP()
 
 class ParticleManager;
 
@@ -84,10 +86,10 @@ namespace SPK::FO
         void Setup(string_view path, ParticleManager& particle_mngr);
 
         auto GetEffectName() const -> const string&;
-        void SetEffectName(const string& name);
+        void SetEffectName(const string& effect_name);
 
         auto GetTextureName() const -> const string&;
-        void SetTextureName(const string& name);
+        void SetTextureName(const string& tex_name);
 
     private:
         SparkQuadRenderer() :
