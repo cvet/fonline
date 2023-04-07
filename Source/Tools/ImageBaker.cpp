@@ -2133,6 +2133,7 @@ static auto PngLoad(const uint8* data, uint& result_width, uint& result_height) 
         return nullptr;
     }
 
+    // Todo: move png lib setjmp to exceptions
     if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
         return nullptr;

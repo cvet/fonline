@@ -244,6 +244,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Sprites: : incapsulate all sprite data
 * Updater: support restoring file downloading from interrupted position
 * Updater: add update file files checking by hashes
+* VideoClip: allow video playing in back direction
 * VisualParticles: improve particles in 2D
 * AngelScriptScriptDict: rework objects in dict comparing (detect opLess/opEqual automatically)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
@@ -266,7 +267,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
-* PropertiesSerializator: maybe need some optional warning for unknown properties
+* PropertiesSerializator: maybe need some optional warning for unknown/wrong properties
 * Settings-Include: rework global Quit setting
 * Settings-Include: remove hardcoded ResourcesDir in package.py
 * Settings-Include: move HeadBone to fo3d settings
@@ -309,6 +310,7 @@ Please follow these instructions to understand how to use this engine by design:
 * EffectBaker: pre-compile HLSH shaders with D3DCompile
 * EffectBaker: enable auto map bindings
 * ImageBaker: swap colors of fo palette once in header
+* ImageBaker: move png lib setjmp to exceptions
 * Mapper: mapper render iface layer
 * ParticleEditor: improve EmitterAttacher (2)
 * ParticleEditor: improve ActionSet
