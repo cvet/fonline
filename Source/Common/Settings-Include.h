@@ -151,7 +151,6 @@ FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
 FIXED_SETTING(int, MapHexLineHeight, 12); // hex/square line height
 FIXED_SETTING(int, MapTileOffsX, -8); // tile default offsets
 FIXED_SETTING(int, MapTileOffsY, 32); // tile default offsets
-FIXED_SETTING(int, MapTileStep, 2);
 FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
 FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
 FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of roof tiles

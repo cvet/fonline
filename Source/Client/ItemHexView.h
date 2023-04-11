@@ -53,7 +53,7 @@ public:
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    [[nodiscard]] auto IsDrawContour() const -> bool { return !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
@@ -70,7 +70,9 @@ public:
     void StopFinishing();
     void Process();
     void SetEffect(uint16 to_hx, uint16 to_hy);
-    void SkipFade();
+    auto StoreFading() -> tuple<bool, bool, time_point> { return {_fading, _fadeUp, _fadingTime}; }
+    void RestoreFading(tuple<bool, bool, time_point> data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
+    void FadeUp();
     void PlayAnimFromEnd();
     void PlayAnimFromStart();
     void PlayAnim(uint beg, uint end);
@@ -82,7 +84,7 @@ public:
     uint SprId {};
     int ScrX {};
     int ScrY {};
-    uint8 Alpha {};
+    uint8 Alpha {0xFF};
 
     RenderEffect* DrawEffect {};
     Sprite* SprDraw {};
@@ -90,6 +92,7 @@ public:
 
 private:
     void SetFade(bool fade_up);
+    auto EvaluateFadeAlpha() -> uint8;
     void SetCurSpr(uint num_spr);
 
     MapView* _map;
@@ -119,8 +122,8 @@ private:
     vector<pair<uint16, uint16>> _effSteps {};
 
     bool _fading {};
-    time_point _fadingEndTime {};
     bool _fadeUp {};
+    time_point _fadingTime {};
 
     bool _finishing {};
     time_point _finishingTime {};

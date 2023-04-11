@@ -235,84 +235,13 @@
 ///# ...
 ///# param hx ...
 ///# param hy ...
-///# param roof ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uint Mapper_Game_GetTilesCount(FOMapper* mapper, uint16 hx, uint16 hy, bool roof)
-{
-    if (mapper->CurMap == nullptr) {
-        throw ScriptException("Map not loaded");
-    }
-    if (hx >= mapper->CurMap->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= mapper->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
-    }
-
-    const auto& tiles = mapper->CurMap->GetTiles(hx, hy, roof);
-    return static_cast<uint>(tiles.size());
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# param roof ...
-///# param layer ...
-///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_DeleteTile(FOMapper* mapper, uint16 hx, uint16 hy, bool roof, int layer)
-{
-    if (mapper->CurMap == nullptr) {
-        throw ScriptException("Map not loaded");
-    }
-    if (hx >= mapper->CurMap->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= mapper->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
-    }
-
-    auto deleted = false;
-    auto& tiles = mapper->CurMap->GetTiles(hx, hy, roof);
-    auto& f = mapper->CurMap->GetField(hx, hy);
-    if (layer < 0) {
-        deleted = !tiles.empty();
-        tiles.clear();
-        while (f.GetTilesCount(roof)) {
-            f.EraseTile(0, roof);
-        }
-    }
-    else {
-        for (size_t i = 0, j = tiles.size(); i < j; i++) {
-            if (tiles[i].Layer == layer) {
-                tiles.erase(tiles.begin() + i);
-                f.EraseTile(static_cast<uint>(i), roof);
-                deleted = true;
-                break;
-            }
-        }
-    }
-
-    if (deleted) {
-        if (roof) {
-            mapper->CurMap->RebuildRoof();
-        }
-        else {
-            mapper->CurMap->RebuildTiles();
-        }
-    }
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
 ///# param ox ...
 ///# param oy ...
 ///# param layer ...
 ///# param roof ...
 ///# param picHash ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, uint16 hx, uint16 hy, int ox, int oy, int layer, bool roof, hstring picHash)
+[[maybe_unused]] ItemView* Mapper_Game_AddTile(FOMapper* mapper, hstring pid, uint16 hx, uint16 hy, int layer, bool roof)
 {
     if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
@@ -322,77 +251,12 @@
     }
     if (hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
-    }
-
-    if (!picHash) {
-        return;
     }
 
     auto layer_ = layer;
     layer_ = std::clamp(layer_, 0, 4);
 
-    mapper->CurMap->SetTile(picHash, hx, hy, static_cast<int16>(ox), static_cast<int16>(oy), static_cast<uint8>(layer_), roof, false);
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# param roof ...
-///# param layer ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] hstring Mapper_Game_GetTileNameEx(FOMapper* mapper, uint16 hx, uint16 hy, bool roof, int layer)
-{
-    if (mapper->CurMap == nullptr) {
-        throw ScriptException("Map not loaded");
-    }
-    if (hx >= mapper->CurMap->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= mapper->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
-    }
-
-    const auto& tiles = mapper->CurMap->GetTiles(hx, hy, roof);
-    for (const auto i : xrange(tiles)) {
-        if (tiles[i].Layer == layer) {
-            return mapper->ResolveHash(tiles[i].NameHash);
-        }
-    }
-
-    return hstring();
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# param ox ...
-///# param oy ...
-///# param layer ...
-///# param roof ...
-///# param picName ...
-///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_AddTileName(FOMapper* mapper, uint16 hx, uint16 hy, int ox, int oy, int layer, bool roof, string_view picName)
-{
-    if (mapper->CurMap == nullptr) {
-        throw ScriptException("Map not loaded");
-    }
-    if (hx >= mapper->CurMap->GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= mapper->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
-    }
-
-    if (picName.empty()) {
-        return;
-    }
-
-    auto layer_ = layer;
-    layer_ = std::clamp(layer_, 0, 4);
-
-    const auto pic_hash = mapper->ToHashedString(picName);
-    mapper->CurMap->SetTile(pic_hash, hx, hy, static_cast<int16>(ox), static_cast<int16>(oy), static_cast<uint8>(layer_), roof, false);
+    return mapper->CurMap->AddMapperTile(pid, hx, hy, static_cast<uint8>(layer_), roof);
 }
 
 ///# ...
@@ -479,20 +343,6 @@
 
 ///# ...
 ///# param tab ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<string> Mapper_Game_TabGetTileDirs(FOMapper* mapper, int tab)
-{
-    if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
-        throw ScriptException("Wrong tab arg");
-    }
-
-    auto& ttab = mapper->TabsTiles[tab];
-    return ttab.TileDirs;
-}
-
-///# ...
-///# param tab ...
 ///# param subTab ...
 ///# return ...
 ///@ ExportMethod
@@ -533,31 +383,6 @@
         pids.push_back(proto->GetProtoId());
     }
     return pids;
-}
-
-///# ...
-///# param tab ...
-///# param dirNames ...
-///# param includeSubdirs ...
-///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSetTileDirs(FOMapper* mapper, int tab, const vector<string>& dirNames, const vector<bool>& includeSubdirs)
-{
-    if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
-        throw ScriptException("Wrong tab arg");
-    }
-
-    auto& ttab = mapper->TabsTiles[tab];
-    ttab.TileDirs.clear();
-    ttab.TileSubDirs.clear();
-
-    for (size_t i = 0; i < dirNames.size(); i++) {
-        if (!dirNames[i].empty()) {
-            ttab.TileDirs.push_back(dirNames[i]);
-            ttab.TileSubDirs.push_back(i < includeSubdirs.size() ? includeSubdirs[i] : false);
-        }
-    }
-
-    mapper->RefreshTiles(tab);
 }
 
 ///# ...

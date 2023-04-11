@@ -235,7 +235,7 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(!item->IsStatic());
+    RUNTIME_ASSERT(!item->GetIsStatic());
 
     if (hx >= GetWidth() || hy >= GetHeight()) {
         return false;

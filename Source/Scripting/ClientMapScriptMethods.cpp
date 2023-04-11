@@ -100,7 +100,7 @@
         contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
     }
 
-    auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
+    const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
     auto& tree = self->GetDrawTree();
     auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
         (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
@@ -195,7 +195,7 @@
     items.reserve(all_items.size());
 
     for (auto* item : all_items) {
-        if (!item->IsFinishing()) {
+        if (!item->IsFinishing() && !item->GetIsTile()) {
             items.emplace_back(item);
         }
     }
@@ -654,10 +654,9 @@
 ///# param hx ...
 ///# param hy ...
 ///# param roof ...
-///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hstring Client_Map_GetTileName(MapView* self, uint16 hx, uint16 hy, bool roof, int layer)
+[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, uint16 hx, uint16 hy, bool roof)
 {
     if (hx >= self->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
@@ -666,22 +665,44 @@
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto* simply_tile = self->GetField(hx, hy).SimpleTile[roof ? 1 : 0];
-    if (simply_tile != nullptr && layer == 0) {
-        return simply_tile->Name;
+    return self->GetTile(hx, hy, roof, -1);
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param roof ...
+///# param layer ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] ItemView* Client_Map_GetTile(MapView* self, uint16 hx, uint16 hy, bool roof, uint8 layer)
+{
+    if (hx >= self->GetWidth()) {
+        throw ScriptException("Invalid hex x arg");
+    }
+    if (hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hex y arg");
     }
 
-    const auto* tiles = self->GetField(hx, hy).Tiles[roof ? 1 : 0];
-    if (tiles == nullptr || tiles->empty()) {
-        return {};
+    return self->GetTile(hx, hy, roof, layer);
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param roof ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<ItemView*> Client_Map_GetTiles(MapView* self, uint16 hx, uint16 hy, bool roof)
+{
+    if (hx >= self->GetWidth()) {
+        throw ScriptException("Invalid hex x arg");
+    }
+    if (hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hex y arg");
     }
 
-    for (const auto& tile : *tiles) {
-        if (tile.Layer == layer) {
-            return tile.Anim->Name;
-        }
-    }
-    return {};
+    return vec_cast<ItemView*>(self->GetTiles(hx, hy, roof));
 }
 
 ///# ...

@@ -1020,7 +1020,7 @@ def parseTags():
             
             try:
                 name = tokenize(tagContext)[1]
-                assert name in ['ConfigEntryParseHook'], 'Invalid engine hook ' + name
+                assert name in ['ConfigSectionParseHook', 'ConfigEntryParseHook'], 'Invalid engine hook ' + name
                 
                 codeGenTags['EngineHook'].append((name, [], comment))
             

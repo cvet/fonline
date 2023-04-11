@@ -275,8 +275,9 @@ void Sprite::SetFixedAlpha(uint8 alpha)
 
     Valid = false;
 
-    Alpha = reinterpret_cast<uint8*>(&Color) + 3;
-    *Alpha = alpha;
+    auto* color_alpha = reinterpret_cast<uint8*>(&Color) + 3;
+    *color_alpha = alpha;
+    Alpha = color_alpha;
 
     if (Parent != nullptr) {
         Parent->SetFixedAlpha(alpha);
@@ -310,7 +311,7 @@ auto Sprites::RootSprite() -> Sprite*
     return _rootSprite;
 }
 
-auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     STACK_TRACE_ENTRY();
 
@@ -417,14 +418,14 @@ auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint
     return *spr;
 }
 
-auto Sprites::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     STACK_TRACE_ENTRY();
 
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-auto Sprites::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, int* ox, int* oy, uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     STACK_TRACE_ENTRY();
 

@@ -42,7 +42,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* 
     STACK_TRACE_ENTRY();
 
     map<string, string>* cur_section;
-    string cur_section_name;
+    string section_name_hint;
 
     auto it_section = _sectionKeyValues.find(_emptyStr);
     if (it_section == _sectionKeyValues.end()) {
@@ -100,16 +100,30 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* 
                 continue;
             }
 
+            section_name_hint = section_name;
+            map<string, string> section_kv;
+
+            extern void ConfigSectionParseHook(const string& fname, string& section, map<string, string>& init_section_kv);
+            ConfigSectionParseHook(_fileNameHint, section_name, section_kv);
+            if (section_name.empty()) {
+                continue;
+            }
+
             // Store current section content
             if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
                 (*cur_section)[_emptyStr] = section_content;
                 section_content.clear();
+
+                if (!section_kv.empty()) {
+                    for (auto&& [key, value] : section_kv) {
+                        section_content += _str("{} = {}\n", key, value);
+                    }
+                }
             }
 
             // Add new section
-            auto it = _sectionKeyValues.emplace(section_name, map<string, string>());
+            auto it = _sectionKeyValues.emplace(section_name, std::move(section_kv));
             cur_section = &it->second;
-            cur_section_name = section_name;
         }
         // Section content
         else {
@@ -164,7 +178,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* 
                         string key = _str(line.substr(0, separator - 1)).trim();
                         string value = _str(line.substr(separator + 1)).trim();
 
-                        ConfigEntryParseHook(_fileNameHint, cur_section_name, key, value);
+                        ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
 
                         if (!key.empty()) {
                             if (cur_section->count(key) != 0u) {
@@ -182,7 +196,7 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* 
                         string key = _str(line.substr(0, separator)).trim();
                         string value = _str(line.substr(separator + 1)).trim();
 
-                        ConfigEntryParseHook(_fileNameHint, cur_section_name, key, value);
+                        ConfigEntryParseHook(_fileNameHint, section_name_hint, key, value);
 
                         if (!key.empty()) {
                             (*cur_section)[key] = value;

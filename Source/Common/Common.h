@@ -1508,10 +1508,10 @@ enum class EffectType : uint
 ///@ ExportEnum
 enum class ItemOwnership : uint8
 {
-    Nowhere = 0,
+    MapHex = 0,
     CritterInventory = 1,
-    MapHex = 2,
-    ItemContainer = 3,
+    ItemContainer = 2,
+    Nowhere = 3,
 };
 
 ///@ ExportEnum

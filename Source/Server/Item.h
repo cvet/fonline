@@ -58,8 +58,6 @@ public:
     auto operator=(Item&&) noexcept = delete;
     ~Item() override = default;
 
-    // Todo: make possible create static/dynamic items from any proto (and leave IsStatic flag as prereq for initial creation)
-    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }

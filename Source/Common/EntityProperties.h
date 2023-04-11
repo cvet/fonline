@@ -176,6 +176,12 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsWall);
     ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsTile);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, bool, IsRoofTile);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, uint8, TileLayer);
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsCanOpen);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, IsScrollBlock);

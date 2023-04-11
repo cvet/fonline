@@ -50,7 +50,6 @@ public:
     auto operator=(ItemView&&) noexcept = delete;
     ~ItemView() override = default;
 
-    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
     [[nodiscard]] auto EvaluateLightHash() const -> uint;
     [[nodiscard]] auto GetInnerItems() -> const vector<ItemView*>&;
     [[nodiscard]] auto GetConstInnerItems() const -> vector<const ItemView*>;

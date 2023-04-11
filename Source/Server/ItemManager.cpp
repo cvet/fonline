@@ -214,12 +214,12 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     }
 
     auto* item = new Item(_engine, ident_t {}, proto, props);
+    auto self_destroy_fuse = RefCountHolder(item);
 
-    auto item_holder = RefCountHolder(item);
+    item->SetOwnership(ItemOwnership::Nowhere);
 
     // Reset ownership properties
     if (props != nullptr) {
-        item->SetOwnership(ItemOwnership::Nowhere);
         item->SetMapId(ident_t {});
         item->SetHexX(0);
         item->SetHexY(0);

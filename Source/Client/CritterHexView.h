@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishingTime != time_point {}; }
+    [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
@@ -75,6 +75,9 @@ public:
 
     void Init() override;
     void Finish() override;
+    auto StoreFading() -> tuple<bool, bool, time_point> { return {_fading, _fadeUp, _fadingTime}; }
+    void RestoreFading(tuple<bool, bool, time_point> data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
+    void FadeUp();
     auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView* override;
     auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
@@ -102,13 +105,12 @@ public:
     uint SprId {};
     int SprOx {};
     int SprOy {};
-    uint8 Alpha {};
+    uint8 Alpha {0xFF};
 
     RenderEffect* DrawEffect {};
     bool Visible {true};
     Sprite* SprDraw {};
     bool SprDrawValid {};
-    time_point FadingTime {};
 
     struct
     {
@@ -146,10 +148,10 @@ private:
 #if FO_ENABLE_3D
     [[nodiscard]] auto GetModelLayersData() const -> const int*;
 #endif
-    [[nodiscard]] auto GetFadeAlpha() -> uint8;
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
     void SetFade(bool fade_up);
+    auto EvaluateFadeAlpha() -> uint8;
     void ProcessMoving();
     void NextAnim(bool erase_front);
     void SetAnimSpr(const AnyFrames* anim, uint frm_index);
@@ -164,9 +166,12 @@ private:
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
 
-    time_point _finishingTime {};
-    bool _fadingEnabled {};
+    bool _fading {};
     bool _fadeUp {};
+    time_point _fadingTime {};
+
+    bool _finishing {};
+    time_point _finishingTime {};
 
     time_point _fidgetTime {};
 

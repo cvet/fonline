@@ -64,7 +64,6 @@ void CritterHexView::Init()
 
     AnimateStay();
     RefreshOffs();
-    SetFade(true);
 }
 
 void CritterHexView::Finish()
@@ -74,14 +73,23 @@ void CritterHexView::Finish()
     CritterView::Finish();
 
     SetFade(false);
-    _finishingTime = FadingTime;
+
+    _finishing = true;
+    _finishingTime = _fadingTime;
 }
 
 auto CritterHexView::IsFinished() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _finishingTime != time_point {} && _engine->GameTime.GameplayTime() >= _finishingTime;
+    return _finishing && _engine->GameTime.GameplayTime() >= _finishingTime;
+}
+
+void CritterHexView::FadeUp()
+{
+    STACK_TRACE_ENTRY();
+
+    SetFade(true);
 }
 
 void CritterHexView::SetFade(bool fade_up)
@@ -89,22 +97,26 @@ void CritterHexView::SetFade(bool fade_up)
     STACK_TRACE_ENTRY();
 
     const auto time = _engine->GameTime.GameplayTime();
-    FadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (FadingTime > time ? FadingTime - time : time_duration {0});
+
+    _fadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration {0});
     _fadeUp = fade_up;
-    _fadingEnabled = true;
+    _fading = true;
+
+    Alpha = EvaluateFadeAlpha();
 }
 
-auto CritterHexView::GetFadeAlpha() -> uint8
+auto CritterHexView::EvaluateFadeAlpha() -> uint8
 {
     STACK_TRACE_ENTRY();
 
     const auto time = _engine->GameTime.GameplayTime();
-    const auto fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, FadingTime > time ? time_duration_to_ms<uint>(FadingTime - time) : 0);
+    const auto fading_proc = 100 - GenericUtils::Percent(_engine->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
+
     if (fading_proc == 100) {
-        _fadingEnabled = false;
+        _fading = false;
     }
 
-    const auto alpha = (_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
+    const auto alpha = _fadeUp ? fading_proc * 255 / 100 : (100 - fading_proc) * 255 / 100;
     return static_cast<uint8>(alpha);
 }
 
@@ -220,7 +232,6 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
         break;
     case ACTION_RESPAWN:
         SetCond(CritterCondition::Alive);
-        Alpha = 0;
         SetFade(true);
         AnimateStay();
         _needReset = true;
@@ -593,11 +604,8 @@ void CritterHexView::Process()
         ProcessMoving();
     }
 
-    if (_fadingEnabled) {
-        Alpha = GetFadeAlpha();
-    }
-    else {
-        Alpha = 0xFF;
+    if (_fading) {
+        Alpha = EvaluateFadeAlpha();
     }
 
     // Extra offsets

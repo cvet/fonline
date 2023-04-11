@@ -1079,8 +1079,13 @@ void FOClient::Net_OnAddCritter()
     CritterView* cr;
 
     if (CurMap != nullptr) {
-        cr = CurMap->AddReceivedCritter(cr_id, pid, hx, hy, dir_angle, _tempPropertiesData);
-        RUNTIME_ASSERT(cr);
+        auto* hex_cr = CurMap->AddReceivedCritter(cr_id, pid, hx, hy, dir_angle, _tempPropertiesData);
+        RUNTIME_ASSERT(hex_cr);
+        cr = hex_cr;
+
+        if (_screenModeMain != SCREEN_WAIT) {
+            hex_cr->FadeUp();
+        }
     }
     else {
         const auto* proto = ProtoMngr.GetProtoCritter(pid);
@@ -2053,16 +2058,15 @@ void FOClient::Net_OnAddItemOnMap()
     auto* item = CurMap->AddReceivedItem(item_id, pid, hx, hy, _tempPropertiesData);
 
     if (item != nullptr) {
+        if (_screenModeMain != SCREEN_WAIT) {
+            item->FadeUp();
+        }
+
         if (is_added) {
             item->PlayShowAnim();
         }
 
         OnItemMapIn.Fire(item);
-
-        // Refresh borders
-        if (!item->GetIsShootThru()) {
-            CurMap->RebuildFog();
-        }
     }
 }
 
@@ -2214,7 +2218,6 @@ void FOClient::Net_OnPlaceToGameComplete()
     ScreenFadeOut();
 
     if (CurMap != nullptr) {
-        CurMap->SkipItemsFade();
         CurMap->FindSetCenter(chosen->GetHexX(), chosen->GetHexY());
         dynamic_cast<CritterHexView*>(chosen)->AnimateStay();
         ShowMainScreen(SCREEN_GAME, {});
@@ -2962,7 +2965,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
-    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->IsStatic() && item->GetId()) {
+    if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->IsChosen()) {
@@ -3070,7 +3073,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
         }
 
         if (rebuild_cache) {
-            item->GetMap()->GetField(item->GetHexX(), item->GetHexY()).ProcessCache();
+            item->GetMap()->EvaluateFieldFlags(item->GetHexX(), item->GetHexY());
         }
     }
 }
@@ -3422,22 +3425,22 @@ void FOClient::LmapPrepareMap()
                 is_far = true;
             }
 
-            auto& f = CurMap->GetField(static_cast<uint16>(i1), static_cast<uint16>(i2));
+            const auto& field = CurMap->GetField(static_cast<uint16>(i1), static_cast<uint16>(i2));
             uint cur_color;
 
-            if (const auto* cr = f.GetActiveCritter(); cr != nullptr) {
+            if (const auto* cr = CurMap->GetActiveCritter(static_cast<uint16>(i1), static_cast<uint16>(i2)); cr != nullptr) {
                 cur_color = (cr == chosen ? 0xFF0000FF : 0xFFFF0000);
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
-            else if (f.Flags.IsWall || f.Flags.IsScen) {
-                if (f.Flags.ScrollBlock) {
+            else if (field.Flags.IsWall || field.Flags.IsScen) {
+                if (field.Flags.ScrollBlock) {
                     continue;
                 }
-                if (!_lmapSwitchHi && !f.Flags.IsWall) {
+                if (!_lmapSwitchHi && !field.Flags.IsWall) {
                     continue;
                 }
-                cur_color = (f.Flags.IsWall ? 0xFF00FF00 : 0x7F00FF00);
+                cur_color = (field.Flags.IsWall ? 0xFF00FF00 : 0x7F00FF00);
             }
             else {
                 continue;

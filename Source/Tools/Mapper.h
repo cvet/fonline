@@ -70,22 +70,8 @@ public:
     {
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
-        vector<hstring> TileNames {};
         uint Index {};
         int Scroll {};
-    };
-
-    struct TileTab
-    {
-        vector<string> TileDirs {};
-        vector<bool> TileSubDirs {};
-    };
-
-    struct SelMapTile
-    {
-        uint16 HexX {};
-        uint16 HexY {};
-        bool IsRoof {};
     };
 
     struct EntityBuf
@@ -97,17 +83,6 @@ public:
         const ProtoEntity* Proto {};
         Properties* Props {};
         vector<EntityBuf*> Children {};
-    };
-
-    struct TileBuf
-    {
-        hstring Name {};
-        uint16 HexX {};
-        uint16 HexY {};
-        int16 OffsX {};
-        int16 OffsY {};
-        uint8 Layer {};
-        bool IsRoof {};
     };
 
     struct MessBoxMessage
@@ -173,7 +148,6 @@ public:
     void InitIface();
     auto IfaceLoadRect(IRect& comp, string_view name) const -> bool;
     void MapperMainLoop();
-    void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ProcessMapperInput();
 
@@ -196,8 +170,7 @@ public:
     auto GetTabIndex() const -> uint;
     void SetTabIndex(uint index);
     void RefreshCurProtos();
-    auto IsObjectMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
-    auto IsTileMode() const -> bool { return CurTileNames != nullptr && CurProtoScroll != nullptr; }
+    auto IsItemMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
 
     void MoveEntity(ClientEntity* entity, uint16 hx, uint16 hy);
@@ -308,7 +281,6 @@ public:
     IRect IntBShowFast {};
     map<string, SubTab> Tabs[TAB_COUNT] {};
     SubTab* TabsActive[TAB_COUNT] {};
-    TileTab TabsTiles[TAB_COUNT] {};
     string TabsName[INT_MODE_COUNT] {};
     int TabsScroll[INT_MODE_COUNT] {};
     bool SubTabsActive {};
@@ -318,7 +290,6 @@ public:
     int SubTabsX {};
     int SubTabsY {};
     vector<const ProtoItem*>* CurItemProtos {};
-    vector<hstring>* CurTileNames {};
     vector<const ProtoCritter*>* CurNpcProtos {};
     uint8 NpcDir {};
     int* CurProtoScroll {};
@@ -345,9 +316,7 @@ public:
     int BefferHexX {};
     int BefferHexY {};
     vector<ClientEntity*> SelectedEntities {};
-    vector<SelMapTile> SelectedTile {};
     vector<EntityBuf> EntitiesBuffer {};
-    vector<TileBuf> TilesBuffer {};
     AnyFrames* ObjWMainPic {};
     AnyFrames* ObjPbToAllDn {};
     IRect ObjWMain {};
@@ -383,4 +352,5 @@ public:
     string MessBoxCurText {};
     int MessBoxScroll {};
     bool SpritesCanDraw {};
+    uint8 SelectAlpha {100};
 };

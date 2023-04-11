@@ -51,7 +51,12 @@ void ItemHexView::Init()
 {
     STACK_TRACE_ENTRY();
 
-    DrawEffect = _engine->EffectMngr.Effects.Generic;
+    if (GetIsTile()) {
+        DrawEffect = GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile;
+    }
+    else {
+        DrawEffect = _engine->EffectMngr.Effects.Generic;
+    }
 
     RefreshAnim();
     RefreshAlpha();
@@ -64,8 +69,6 @@ void ItemHexView::Init()
             _animStartTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {next_anim_wait};
         }
     }
-
-    SetFade(true);
 }
 
 void ItemHexView::Finish()
@@ -75,7 +78,7 @@ void ItemHexView::Finish()
     SetFade(false);
 
     _finishing = true;
-    _finishingTime = _fadingEndTime;
+    _finishingTime = _fadingTime;
 
     if (_isEffect) {
         _finishingTime = _engine->GameTime.GameplayTime();
@@ -199,20 +202,8 @@ void ItemHexView::Process()
 
     // Fading
     if (_fading) {
-        uint fading_proc;
+        Alpha = EvaluateFadeAlpha();
 
-        if (const auto tick = _engine->GameTime.GameplayTime(); tick < _fadingEndTime) {
-            fading_proc = 100u - GenericUtils::Percent(_engine->Settings.FadingDuration, time_duration_to_ms<uint>(_fadingEndTime - tick));
-        }
-        else {
-            fading_proc = 100u;
-        }
-
-        if (fading_proc == 100u) {
-            _fading = false;
-        }
-
-        Alpha = static_cast<uint8>(_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
         if (Alpha > _maxAlpha) {
             Alpha = _maxAlpha;
         }
@@ -258,25 +249,39 @@ void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
     RefreshAnim();
 }
 
+void ItemHexView::FadeUp()
+{
+    STACK_TRACE_ENTRY();
+
+    SetFade(true);
+}
+
 void ItemHexView::SetFade(bool fade_up)
 {
     STACK_TRACE_ENTRY();
 
     const auto time = _engine->GameTime.GameplayTime();
 
-    _fadingEndTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (_fadingEndTime > time ? _fadingEndTime - time : time_duration {});
+    _fadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration {0});
     _fadeUp = fade_up;
     _fading = true;
+
+    Alpha = EvaluateFadeAlpha();
 }
 
-void ItemHexView::SkipFade()
+auto ItemHexView::EvaluateFadeAlpha() -> uint8
 {
     STACK_TRACE_ENTRY();
 
-    if (_fading) {
+    const auto time = _engine->GameTime.GameplayTime();
+    const auto fading_proc = 100 - GenericUtils::Percent(_engine->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
+
+    if (fading_proc == 100) {
         _fading = false;
-        Alpha = _fadeUp ? _maxAlpha : 0;
     }
+
+    const auto alpha = _fadeUp ? fading_proc * 255 / 100 : (100 - fading_proc) * 255 / 100;
+    return static_cast<uint8>(alpha);
 }
 
 void ItemHexView::RefreshAnim()
@@ -463,6 +468,17 @@ void ItemHexView::RefreshOffs()
 
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
+
+    if (GetIsTile()) {
+        if (GetIsRoofTile()) {
+            ScrX += _engine->Settings.MapRoofOffsX;
+            ScrY += _engine->Settings.MapRoofOffsY;
+        }
+        else {
+            ScrX += _engine->Settings.MapTileOffsX;
+            ScrY += _engine->Settings.MapTileOffsY;
+        }
+    }
 
     for (const auto i : xrange(_curFrm + 1u)) {
         ScrX += _anim->NextX[i];
