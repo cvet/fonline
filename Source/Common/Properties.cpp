@@ -212,7 +212,7 @@ void Properties::AllocData()
     _complexDataSizes.resize(_registrator->_complexProperties.size());
 }
 
-void Properties::StoreAllData(vector<uint8>& all_data) const
+void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const
 {
     STACK_TRACE_ENTRY();
 
@@ -221,7 +221,38 @@ void Properties::StoreAllData(vector<uint8>& all_data) const
 
     // Store plain properties data
     writer.Write<uint>(_registrator->_wholePodDataSize);
-    writer.WritePtr(_podData, _registrator->_wholePodDataSize);
+
+    int start_pos = -1;
+
+    for (uint i = 0; i < _registrator->_wholePodDataSize; i++) {
+        if (_podData[i] != 0) {
+            if (start_pos == -1) {
+                start_pos = static_cast<int>(i);
+            }
+
+            i += 3;
+        }
+        else {
+            if (start_pos != -1) {
+                const auto len = i - start_pos;
+                writer.Write<uint>(start_pos);
+                writer.Write<uint>(len);
+                writer.WritePtr(_podData + start_pos, len);
+
+                start_pos = -1;
+            }
+        }
+    }
+
+    if (start_pos != -1) {
+        const auto len = _registrator->_wholePodDataSize - start_pos;
+        writer.Write<uint>(start_pos);
+        writer.Write<uint>(len);
+        writer.WritePtr(_podData + start_pos, len);
+    }
+
+    writer.Write<uint>(0);
+    writer.Write<uint>(0);
 
     // Store complex properties
     writer.Write<uint>(static_cast<uint>(_registrator->_complexProperties.size()));
@@ -232,11 +263,10 @@ void Properties::StoreAllData(vector<uint8>& all_data) const
     }
 
     // Store hashes
-    vector<string> str_hashes;
-    str_hashes.reserve(64);
-    const auto add_hash = [&str_hashes](const string& str) {
+    const auto add_hash = [&str_hashes, this](const string& str) {
         if (!str.empty()) {
-            str_hashes.emplace_back(str);
+            const auto hstr = _registrator->_nameResolver.ToHashedString(str);
+            str_hashes.emplace(hstr);
         }
     };
 
@@ -281,12 +311,6 @@ void Properties::StoreAllData(vector<uint8>& all_data) const
             }
         }
     }
-
-    writer.Write<uint>(static_cast<uint>(str_hashes.size()));
-    for (const auto& str : str_hashes) {
-        writer.Write<uint>(static_cast<uint>(str.length()));
-        writer.WritePtr(str.data(), str.size());
-    }
 }
 
 void Properties::RestoreAllData(const vector<uint8>& all_data)
@@ -296,9 +320,18 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
     auto reader = DataReader(all_data);
 
     // Read plain properties data
-    const auto pod_data_size = reader.Read<uint>();
-    RUNTIME_ASSERT(pod_data_size == _registrator->_wholePodDataSize);
-    std::memcpy(_podData, reader.ReadPtr<uint8>(pod_data_size), pod_data_size);
+    const auto whole_pod_data_size = reader.Read<uint>();
+    RUNTIME_ASSERT(whole_pod_data_size == _registrator->_wholePodDataSize);
+
+    while (true) {
+        const auto start_pos = reader.Read<uint>();
+        const auto len = reader.Read<uint>();
+        if (start_pos == 0 && len == 0) {
+            break;
+        }
+
+        std::memcpy(_podData + start_pos, reader.ReadPtr<uint8>(len), len);
+    }
 
     // Read complex properties
     const auto complex_props_count = reader.Read<uint>();
@@ -307,16 +340,6 @@ void Properties::RestoreAllData(const vector<uint8>& all_data)
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         const auto data_size = reader.Read<uint>();
         SetRawData(prop, reader.ReadPtr<uint8>(data_size), data_size);
-    }
-
-    // Read hashes
-    const auto str_hashes_count = reader.Read<uint>();
-    for (const auto i : xrange(str_hashes_count)) {
-        UNUSED_VARIABLE(i);
-        const auto str_size = reader.Read<uint>();
-        const auto str = string(reader.ReadPtr<char>(str_size), str_size);
-        const auto hstr = _registrator->_nameResolver.ToHashedString(str);
-        UNUSED_VARIABLE(hstr);
     }
 
     reader.VerifyEnd();

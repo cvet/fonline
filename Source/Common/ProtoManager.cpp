@@ -42,9 +42,10 @@ static void WriteProtosToBinary(vector<uint8>& data, const unordered_map<hstring
 {
     STACK_TRACE_ENTRY();
 
-    auto writer = DataWriter(data);
-    writer.Write<uint>(static_cast<uint>(protos.size()));
+    vector<uint8> protos_data;
+    auto writer = DataWriter(protos_data);
 
+    set<hstring> str_hashes;
     vector<uint8> props_data;
 
     for (auto& kv : protos) {
@@ -61,16 +62,37 @@ static void WriteProtosToBinary(vector<uint8>& data, const unordered_map<hstring
             writer.WritePtr(component_str.data(), component_str.length());
         }
 
-        proto_item->GetProperties().StoreAllData(props_data);
+        proto_item->GetProperties().StoreAllData(props_data, str_hashes);
         writer.Write<uint>(static_cast<uint>(props_data.size()));
         writer.WritePtr(props_data.data(), props_data.size());
     }
+
+    auto final_writer = DataWriter(data);
+    final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+    for (const auto& hstr : str_hashes) {
+        const auto& str = hstr.as_str();
+        final_writer.Write<uint>(static_cast<uint>(str.length()));
+        final_writer.WritePtr(str.c_str(), str.length());
+    }
+    final_writer.Write<uint>(static_cast<uint>(protos.size()));
+    final_writer.WritePtr(protos_data.data(), protos_data.size());
 }
 
 template<class T>
 static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, unordered_map<hstring, const T*>& protos)
 {
     STACK_TRACE_ENTRY();
+
+    const auto hashes_count = reader.Read<uint>();
+
+    string str;
+    for (uint i = 0; i < hashes_count; i++) {
+        const auto str_len = reader.Read<uint>();
+        str.resize(str_len);
+        reader.ReadPtr(str.data(), str.length());
+        const auto hstr = name_resolver.ToHashedString(str);
+        UNUSED_VARIABLE(hstr);
+    }
 
     vector<uint8> props_data;
 

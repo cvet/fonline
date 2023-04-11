@@ -260,6 +260,20 @@ void MapView::LoadStaticData()
 
     auto reader = DataReader({file.GetBuf(), file.GetSize()});
 
+    // Hashes
+    {
+        const auto hashes_count = reader.Read<uint>();
+
+        string str;
+        for (uint i = 0; i < hashes_count; i++) {
+            const auto str_len = reader.Read<uint>();
+            str.resize(str_len);
+            reader.ReadPtr(str.data(), str.length());
+            const auto hstr = _engine->ToHashedString(str);
+            UNUSED_VARIABLE(hstr);
+        }
+    }
+
     // Read static items
     {
         _mapLoading = true;

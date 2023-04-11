@@ -687,6 +687,8 @@ void Baker::BakeAll()
                     auto map_cr_data_writer = DataWriter(map_cr_data);
                     auto map_item_data_writer = DataWriter(map_item_data);
                     auto map_client_item_data_writer = DataWriter(map_client_item_data);
+                    set<hstring> str_hashes;
+                    set<hstring> client_str_hashes;
                     auto map_errors = 0;
 
                     try {
@@ -701,7 +703,7 @@ void Baker::BakeAll()
                                     map_cr_count++;
                                     map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                     map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                    props.StoreAllData(props_data);
+                                    props.StoreAllData(props_data, str_hashes);
                                     map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                     map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
                                 }
@@ -721,7 +723,7 @@ void Baker::BakeAll()
                                     map_item_count++;
                                     map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                     map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-                                    props.StoreAllData(props_data);
+                                    props.StoreAllData(props_data, str_hashes);
                                     map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                     map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
@@ -733,7 +735,7 @@ void Baker::BakeAll()
                                             map_client_item_count++;
                                             map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                                             map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
-                                            client_props.StoreAllData(props_data);
+                                            client_props.StoreAllData(props_data, client_str_hashes);
                                             map_client_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                             map_client_item_data_writer.WritePtr(props_data.data(), props_data.size());
                                         }
@@ -762,6 +764,12 @@ void Baker::BakeAll()
                         {
                             vector<uint8> map_data;
                             auto final_writer = DataWriter(map_data);
+                            final_writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+                            for (const auto& hstr : str_hashes) {
+                                const auto& str = hstr.as_str();
+                                final_writer.Write<uint>(static_cast<uint>(str.length()));
+                                final_writer.WritePtr(str.c_str(), str.length());
+                            }
                             final_writer.Write<uint>(map_cr_count);
                             final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
                             final_writer.Write<uint>(map_item_count);
@@ -776,6 +784,12 @@ void Baker::BakeAll()
                         {
                             vector<uint8> map_data;
                             auto final_writer = DataWriter(map_data);
+                            final_writer.Write<uint>(static_cast<uint>(client_str_hashes.size()));
+                            for (const auto& hstr : client_str_hashes) {
+                                const auto& str = hstr.as_str();
+                                final_writer.Write<uint>(static_cast<uint>(str.length()));
+                                final_writer.WritePtr(str.c_str(), str.length());
+                            }
                             final_writer.Write<uint>(map_client_item_count);
                             final_writer.WritePtr(map_client_item_data.data(), map_client_item_data.size());
 

@@ -297,7 +297,7 @@ public:
     void SetEntity(Entity* entity) { _entity = entity; }
     auto ApplyFromText(const map<string, string>& key_values) -> bool;
     auto ApplyPropertyFromText(const Property* prop, string_view text) -> bool;
-    void StoreAllData(vector<uint8>& all_data) const;
+    void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);
     void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
