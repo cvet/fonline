@@ -1335,6 +1335,8 @@ def genGenericCode():
         return False
     
     globalLines.append('// Engine hooks')
+    if not isHookEnabled('ConfigSectionParseHook'):
+        globalLines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
     if not isHookEnabled('ConfigEntryParseHook'):
         globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
     globalLines.append('')
