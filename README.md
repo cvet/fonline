@@ -82,8 +82,7 @@ Reference project:
 
 ### Package dependencies
 
-Following Linux packages will help us build our game for target platforms.  
-These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
+Following Linux packages will help us build game for target platforms.  
 * Common:  
 `clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
 * Building for Linux:  
@@ -93,7 +92,7 @@ These packages will automatically installed during workspace preparing (i.e. `pr
 * Building for Android:  
 `android-sdk` `openjdk-8-jdk` `ant`
 
-Also our build scripts download and install following packages:
+Build scripts download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
@@ -162,26 +161,22 @@ Please follow these instructions to understand how to use this engine by design:
 
 ### Roadmap
 
-**Near releases:**
-
-* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game
-* Code refactoring
+* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game [done]
+* Code refactoring [85%]
   + Clean up errors handling (error code based + exception based)
   + Preprocessor defines to constants and enums
   + Eliminate raw pointers, use raii and smart pointers for control objects lifetime
   + Fix all warnings from PVS Studio and other static analyzer tools
-* Native C++ and AngelScript scripting layers
-* Documentation for public API
-* API freezing and continuing development with it's backward compatibility
-
-**Futher releases:**
-
-* Improve more unit tests and gain code coverage to at least 80%
-* C#/Mono scripting layer
-* DirectX rendering with Universal Windows Platform
-* Singleplayer mode
-* Particle system
-* Metal rendering for macOS/iOS
+* AngelScript scripting layer [done]
+* Documentation for public API [10%]
+* API freezing and continuing development with it's backward compatibility [80%]
+* Native C++ scripting layer [20%]
+* Improve more unit tests and gain code coverage to at least 80% [10%]
+* C#/Mono scripting layer [10%]
+* DirectX rendering [done]
+* Singleplayer mode [70%]
+* Particle system [done]
+* Metal rendering for macOS/iOS [1%]
 
 ### Todo list *(generated from source code)*
 
@@ -230,7 +225,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: fix soft scroll if critter teleports
 * CritterHexView: fidget animation to scripts
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
-* MapView: rework smooth item re-appearing before same item still on map
 * ResourceManager: why I disable offset adding?
 * ServerConnection: automatically reconnect on network failtures
 * SparkExtension: improve particles in 2D
@@ -260,7 +254,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Log: add timestamps and process id and thread id to file logs
 * Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
-* MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
 * Properties: validate property name identifier
 * Properties: restore quest variables
@@ -286,7 +279,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * EntityManager: load global map critters
-* Item: make possible create static/dynamic items from any proto (and leave IsStatic flag as prereq for initial creation)
 * Location: EntranceScriptBindId
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
