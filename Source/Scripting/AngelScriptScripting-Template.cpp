@@ -3635,7 +3635,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         }
 
         for (const auto i : xrange(registrator->GetCount())) {
-            const auto* prop = registrator->GetByIndex(i);
+            const auto* prop = registrator->GetByIndex(static_cast<int>(i));
             const auto component = prop->GetComponent();
             const auto is_handle = (prop->IsArray() || prop->IsDict());
 

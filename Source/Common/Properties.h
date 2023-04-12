@@ -693,7 +693,7 @@ public:
     ~PropertyRegistrator();
 
     [[nodiscard]] auto GetClassName() const -> const string&;
-    [[nodiscard]] auto GetCount() const -> uint;
+    [[nodiscard]] auto GetCount() const -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
     [[nodiscard]] auto GetByIndexFast(size_t property_index) const -> const Property* { return _registeredProperties[property_index]; }

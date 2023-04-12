@@ -55,13 +55,18 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
 
     // Automatic id fixier
     unordered_set<ident_t::underlying_type> busy_ids;
-    const auto process_id = [&busy_ids](ident_t::underlying_type id) -> ident_t {
-        if (id < std::numeric_limits<ident_t::underlying_type>::max() / 2 || !busy_ids.insert(id).second) {
-            auto new_id = std::numeric_limits<ident_t::underlying_type>::max();
-            while (!busy_ids.insert(new_id).second) {
+    ident_t::underlying_type last_lowest_id = std::numeric_limits<ident_t::underlying_type>::max();
+    const auto process_id = [&busy_ids, &last_lowest_id](ident_t::underlying_type id) -> ident_t {
+        if (id < std::numeric_limits<ident_t::underlying_type>::max() / 2 || !busy_ids.emplace(id).second) {
+            auto new_id = last_lowest_id - 1;
+            while (!busy_ids.emplace(new_id).second) {
                 new_id--;
             }
+            last_lowest_id = new_id;
             return ident_t {new_id};
+        }
+        if (id < last_lowest_id) {
+            last_lowest_id = id;
         }
         return ident_t {id};
     };

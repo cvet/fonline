@@ -282,7 +282,7 @@ void Baker::BakeAll()
                 DiskFileSystem::IterateDir(MakeOutputPath(pack_name), "", true, [this, &pack_name, &pack_resource_names, &exclude_all_ext](string_view path, size_t size, uint64 write_time) {
                     UNUSED_VARIABLE(size);
                     UNUSED_VARIABLE(write_time);
-                    if (pack_resource_names.count(exclude_all_ext(path)) == 0u) {
+                    if (pack_resource_names.count(exclude_all_ext(path)) == 0) {
                         const auto path_in_pack = _str(pack_name).combinePath(path).str();
                         DiskFileSystem::DeleteFile(MakeOutputPath(path_in_pack));
                         WriteLog("Delete outdated file {}", path_in_pack);
@@ -514,8 +514,8 @@ void Baker::BakeAll()
                         config_content += _str("{}={}\n", key, resolved_value);
 
 #if !FO_SINGLEPLAYER
-                        const auto is_server_setting = server_settings.count(key) != 0u;
-                        const auto is_client_setting = client_settings.count(key) != 0u;
+                        const auto is_server_setting = server_settings.count(key) != 0;
+                        const auto is_client_setting = client_settings.count(key) != 0;
                         if (is_server_setting) {
                             server_settings.erase(key);
                         }
@@ -630,7 +630,7 @@ void Baker::BakeAll()
                     const auto& map_protos = proto_mngr.GetProtoMaps();
                     for (auto&& [pid, proto] : loc_protos) {
                         for (auto map_pid : proto->GetMapProtos()) {
-                            if (map_protos.count(map_pid) == 0u) {
+                            if (map_protos.count(map_pid) == 0) {
                                 WriteLog("Proto map {} not found for proto location {}", map_pid, proto->GetName());
                                 proto_errors++;
                             }
@@ -1060,39 +1060,49 @@ void Baker::BakeAll()
     }
 }
 
+static unordered_map<string, std::function<bool(hstring, ScriptSystem*)>> ScriptFuncVerify = {
+    {"ItemInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
+    {"ItemScenery", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
+    {"ItemTrigger", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
+    {"CritterInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
+    {"MapInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
+    {"LocationInit", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
+    {"LocationEntrance", [](hstring func_name, ScriptSystem* script_sys) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
+};
+
 auto Baker::ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
 {
     STACK_TRACE_ENTRY();
-
-    unordered_map<string, std::function<bool(hstring)>> script_func_verify = {
-        {"ItemInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
-        {"ItemScenery", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
-        {"ItemTrigger", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uint8>(func_name); }},
-        {"CritterInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
-        {"MapInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
-        {"LocationInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
-        {"LocationEntrance", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uint8>(func_name); }},
-    };
 
     int errors = 0;
 
     const auto* registrator = props.GetRegistrator();
 
-    for (uint i = 0; i < registrator->GetCount(); i++) {
-        const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+    for (size_t i = 0; i < registrator->GetCount(); i++) {
+        const auto* prop = registrator->GetByIndexFast(static_cast<int>(i));
 
         if (prop->IsBaseTypeResource()) {
             if (prop->IsPlainData()) {
+                uint hash_data_size;
+                const auto* hash_data = props.GetRawData(prop, hash_data_size);
+                if (*reinterpret_cast<const hstring::hash_t*>(hash_data) == 0) {
+                    continue;
+                }
+
                 const auto h = props.GetValue<hstring>(prop);
-                if (h && resource_hashes.count(h) == 0u) {
+                if (h && resource_hashes.count(h) == 0) {
                     WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
                     errors++;
                 }
             }
             else if (prop->IsArray()) {
+                if (props.GetRawDataSize(prop) == 0) {
+                    continue;
+                }
+
                 const auto hashes = props.GetValue<vector<hstring>>(prop);
                 for (const auto h : hashes) {
-                    if (h && resource_hashes.count(h) == 0u) {
+                    if (h && resource_hashes.count(h) == 0) {
                         WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
                         errors++;
                     }
@@ -1106,12 +1116,18 @@ auto Baker::ValidateProperties(const Properties& props, string_view context_str,
 
         if (prop->IsBaseScriptFuncType()) {
             if (prop->IsPlainData()) {
+                uint hash_data_size;
+                const auto* hash_data = props.GetRawData(prop, hash_data_size);
+                if (*reinterpret_cast<const hstring::hash_t*>(hash_data) == 0) {
+                    continue;
+                }
+
                 const auto func_name = props.GetValue<hstring>(prop);
-                if (script_func_verify.count(prop->GetBaseScriptFuncType()) == 0u) {
+                if (ScriptFuncVerify.count(prop->GetBaseScriptFuncType()) == 0) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
-                else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name)) {
+                else if (func_name && !ScriptFuncVerify[prop->GetBaseScriptFuncType()](func_name, script_sys)) {
                     WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }

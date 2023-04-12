@@ -582,7 +582,7 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
 
 auto Properties::GetRawDataSize(const Property* prop) const -> uint
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     uint data_size = 0;
     const auto* data = GetRawData(prop, data_size);
@@ -592,7 +592,7 @@ auto Properties::GetRawDataSize(const Property* prop) const -> uint
 
 auto Properties::GetRawData(const Property* prop, uint& data_size) const -> const uint8*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (prop->_dataType == Property::DataType::PlainData) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -607,14 +607,14 @@ auto Properties::GetRawData(const Property* prop, uint& data_size) const -> cons
 
 auto Properties::GetRawData(const Property* prop, uint& data_size) -> uint8*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return const_cast<uint8*>(const_cast<const Properties*>(this)->GetRawData(prop, data_size));
 }
 
 void Properties::SetRawData(const Property* prop, const uint8* data, uint data_size)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (prop->IsPlainData()) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -1065,13 +1065,6 @@ auto PropertyRegistrator::GetClassName() const -> const string&
     STACK_TRACE_ENTRY();
 
     return _className;
-}
-
-auto PropertyRegistrator::GetCount() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return static_cast<uint>(_registeredProperties.size());
 }
 
 auto PropertyRegistrator::GetByIndex(int property_index) const -> const Property*

@@ -9,7 +9,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 
-set(CMAKE_CONFIGURATION_TYPES "Release;Debug;MinSizeRel;RelWithDebInfo")
+#! set(CMAKE_CONFIGURATION_TYPES "Release;Debug;MinSizeRel;RelWithDebInfo")
 
 project(libpng C)
 enable_testing()

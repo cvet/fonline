@@ -114,9 +114,8 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Properties that saving to data base
     for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
-        const auto count = static_cast<int>(registrator->GetCount());
-        for (auto i = 0; i < count; i++) {
-            const auto* prop = registrator->GetByIndex(i);
+        for (size_t i = 0; i < registrator->GetCount(); i++) {
+            const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
             if (prop->IsDisabled()) {
                 continue;
@@ -151,9 +150,8 @@ FOServer::FOServer(GlobalSettings& settings) :
     // Properties that sending to clients
     {
         const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
-            const auto count = static_cast<int>(registrator->GetCount());
-            for (auto i = 0; i < count; i++) {
-                const auto* prop = registrator->GetByIndex(i);
+            for (auto i = 0; i < registrator->GetCount(); i++) {
+                const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
                 if (prop->IsDisabled()) {
                     continue;
