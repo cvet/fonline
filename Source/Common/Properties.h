@@ -279,7 +279,7 @@ public:
     Properties(Properties&&) noexcept = default;
     auto operator=(const Properties& other) -> Properties&;
     auto operator=(Properties&&) noexcept = delete;
-    ~Properties();
+    ~Properties() = default;
 
     [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
     [[nodiscard]] auto GetEntity() -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
@@ -387,8 +387,8 @@ public:
         }
 
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-        const auto data_size = _complexDataSizes[prop->_complexDataIndex];
-        auto result = data_size != 0u ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
+        const auto& complex_data = _complexData[prop->_complexDataIndex];
+        auto result = !complex_data.empty() ? string(reinterpret_cast<const char*>(complex_data.data()), complex_data.size()) : string();
         return result;
     }
 
@@ -408,7 +408,8 @@ public:
         }
         else {
             RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-            prop_data.Pass(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
+            const auto& complex_data = _complexData[prop->_complexDataIndex];
+            prop_data.Pass(complex_data.data(), complex_data.size());
         }
 
         const auto* data = prop_data.GetPtrAs<uint8>();
@@ -668,8 +669,7 @@ public:
 private:
     const PropertyRegistrator* _registrator;
     vector<uint8> _podData {};
-    vector<uint8*> _complexData {};
-    vector<uint> _complexDataSizes {};
+    vector<vector<uint8>> _complexData {};
     mutable vector<const uint8*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
     mutable vector<uint16> _storeDataComplexIndices {};

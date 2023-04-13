@@ -57,15 +57,18 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
         // Skip same as in base
         if (base != nullptr) {
             if (prop->_podDataOffset != static_cast<uint>(-1)) {
-                if (memcmp(&props->_podData[prop->_podDataOffset], &base->_podData[prop->_podDataOffset], prop->_baseSize) == 0) {
+                if (std::memcmp(&props->_podData[prop->_podDataOffset], &base->_podData[prop->_podDataOffset], prop->_baseSize) == 0) {
                     continue;
                 }
             }
             else {
-                if (props->_complexDataSizes[prop->_complexDataIndex] == 0u && base->_complexDataSizes[prop->_complexDataIndex] == 0u) {
+                const auto& complex_data = props->_complexData[prop->_complexDataIndex];
+                const auto& base_complex_data = base->_complexData[prop->_complexDataIndex];
+
+                if (complex_data.empty() && base_complex_data.empty()) {
                     continue;
                 }
-                if (props->_complexDataSizes[prop->_complexDataIndex] == base->_complexDataSizes[prop->_complexDataIndex] && memcmp(props->_complexData[prop->_complexDataIndex], base->_complexData[prop->_complexDataIndex], props->_complexDataSizes[prop->_complexDataIndex]) == 0) {
+                if (complex_data.size() == base_complex_data.size() && std::memcmp(complex_data.data(), base_complex_data.data(), complex_data.size()) == 0) {
                     continue;
                 }
             }
@@ -74,12 +77,12 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             if (prop->_podDataOffset != static_cast<uint>(-1)) {
                 uint64 pod_zero = 0;
                 RUNTIME_ASSERT(prop->_baseSize <= sizeof(pod_zero));
-                if (memcmp(&props->_podData[prop->_podDataOffset], &pod_zero, prop->_baseSize) == 0) {
+                if (std::memcmp(&props->_podData[prop->_podDataOffset], &pod_zero, prop->_baseSize) == 0) {
                     continue;
                 }
             }
             else {
-                if (props->_complexDataSizes[prop->_complexDataIndex] == 0u) {
+                if (props->_complexData[prop->_complexDataIndex].empty()) {
                     continue;
                 }
             }
@@ -167,7 +170,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     else if (prop->_dataType == Property::DataType::String) {
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
 
-        if (data_size > 0u) {
+        if (data_size > 0) {
             return string(reinterpret_cast<const char*>(data), data_size);
         }
 
@@ -175,7 +178,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     }
     else if (prop->_dataType == Property::DataType::Array) {
         if (prop->_isArrayOfString) {
-            if (data_size > 0u) {
+            if (data_size > 0) {
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(uint);
@@ -263,7 +266,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     else if (prop->_dataType == Property::DataType::Dict) {
         AnyData::Dict dict;
 
-        if (data_size > 0u) {
+        if (data_size > 0) {
             const auto get_key_string = [prop, &name_resolver](const uint8* p) -> string {
                 if (prop->_isDictKeyHash) {
                     return string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(p)));
@@ -302,7 +305,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     AnyData::Array arr;
                     arr.reserve(arr_size);
 
-                    if (arr_size > 0u) {
+                    if (arr_size > 0) {
                         if (prop->_isDictOfArrayOfString) {
                             for (uint i = 0; i < arr_size; i++) {
                                 uint str_size;
@@ -590,7 +593,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         const auto& arr = std::get<AnyData::Array>(value);
 
         if (arr.empty()) {
-            props->SetRawData(prop, nullptr, 0u);
+            props->SetRawData(prop, nullptr, 0);
             return true;
         }
 
@@ -750,7 +753,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         const auto& dict = std::get<AnyData::Dict>(value);
 
         if (dict.empty()) {
-            props->SetRawData(prop, nullptr, 0u);
+            props->SetRawData(prop, nullptr, 0);
             return true;
         }
 
