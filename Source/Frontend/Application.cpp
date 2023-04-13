@@ -808,10 +808,10 @@ void Application::BeginFrame()
             }
 
             const auto sdl_key_mods = static_cast<SDL_Keymod>(sdl_event.key.keysym.mod);
-            io.AddKeyEvent(ImGuiKey_ModCtrl, (sdl_key_mods & KMOD_CTRL) != 0);
-            io.AddKeyEvent(ImGuiKey_ModShift, (sdl_key_mods & KMOD_SHIFT) != 0);
-            io.AddKeyEvent(ImGuiKey_ModAlt, (sdl_key_mods & KMOD_ALT) != 0);
-            io.AddKeyEvent(ImGuiKey_ModSuper, (sdl_key_mods & KMOD_GUI) != 0);
+            io.AddKeyEvent(ImGuiMod_Ctrl, (sdl_key_mods & KMOD_CTRL) != 0);
+            io.AddKeyEvent(ImGuiMod_Shift, (sdl_key_mods & KMOD_SHIFT) != 0);
+            io.AddKeyEvent(ImGuiMod_Alt, (sdl_key_mods & KMOD_ALT) != 0);
+            io.AddKeyEvent(ImGuiMod_Super, (sdl_key_mods & KMOD_GUI) != 0);
 
             ImGuiKey key = KeycodeToImGuiKey(sdl_event.key.keysym.sym);
             io.AddKeyEvent(key, sdl_event.type == SDL_KEYDOWN);
