@@ -211,25 +211,25 @@ void FOEditor::MainLoop()
     }
     _newViews.clear();
 
-    for (auto&& view : _views) {
-        try {
-            view->Draw();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-    }
-
     for (auto it = _views.begin(); it != _views.end();) {
         if (const auto* asset_view = dynamic_cast<EditorAssetView*>(it->get()); asset_view != nullptr && asset_view->IsChanged()) {
             (*it)->_requestClose = false;
         }
 
         if ((*it)->_requestClose) {
-            it = _views.erase(it);
+            it = _views.erase(it); // Free view resources
         }
         else {
             ++it;
+        }
+    }
+
+    for (auto&& view : _views) {
+        try {
+            view->Draw();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
         }
     }
 }
