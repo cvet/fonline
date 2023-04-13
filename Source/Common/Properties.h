@@ -299,7 +299,7 @@ public:
     auto ApplyPropertyFromText(const Property* prop, string_view text) -> bool;
     void StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8>& all_data);
-    void StoreData(bool with_protected, vector<uint8*>** all_data, vector<uint>** all_data_sizes) const;
+    void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uint8*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uint8>>& all_data);
     void SetRawData(const Property* prop, const uint8* data, uint data_size);
@@ -331,7 +331,7 @@ public:
         }
 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
-        auto result = *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
+        auto result = *reinterpret_cast<const T*>(&_podData[prop->_podDataOffset]);
         return result;
     }
 
@@ -363,7 +363,7 @@ public:
         }
 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
-        const auto hash = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         auto result = ResolveHash(hash);
         return result;
     }
@@ -667,10 +667,10 @@ public:
 
 private:
     const PropertyRegistrator* _registrator;
-    uint8* _podData {};
+    vector<uint8> _podData {};
     vector<uint8*> _complexData {};
     vector<uint> _complexDataSizes {};
-    mutable vector<uint8*> _storeData {};
+    mutable vector<const uint8*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
     mutable vector<uint16> _storeDataComplexIndices {};
     Entity* _entity {};

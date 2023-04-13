@@ -99,7 +99,7 @@ void Player::Send_AddCritter(const Critter* cr)
 {
     STACK_TRACE_ENTRY();
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     const auto is_chosen = cr == GetOwnedCritter();
     cr->StoreData(is_chosen, &data, &data_sizes);
@@ -175,9 +175,9 @@ void Player::Send_LoadMap(const Map* map)
         map_index_in_loc = static_cast<uint8>(loc->GetMapIndex(pid_map));
     }
 
-    vector<uint8*>* map_data = nullptr;
+    vector<const uint8*>* map_data = nullptr;
     vector<uint>* map_data_sizes = nullptr;
-    vector<uint8*>* loc_data = nullptr;
+    vector<const uint8*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
     if (map != nullptr) {
         map->StoreData(false, &map_data, &map_data_sizes);
@@ -362,7 +362,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     }
 
     vector<const Item*> items;
-    vector<vector<uint8*>*> items_data;
+    vector<vector<const uint8*>*> items_data;
     vector<vector<uint>*> items_data_sizes;
 
     if (!is_chosen) {
@@ -448,7 +448,7 @@ void Player::Send_AddItemOnMap(const Item* item)
 
     const auto is_added = item->ViewPlaceOnMap;
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(false, &data, &data_sizes);
 
@@ -503,7 +503,7 @@ void Player::Send_AddItem(const Item* item)
         return;
     }
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(true, &data, &data_sizes);
 
@@ -663,7 +663,7 @@ void Player::Send_AllProperties()
 
     NON_CONST_METHOD_HINT();
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     StoreData(true, &data, &data_sizes);
 
@@ -1075,7 +1075,7 @@ void Player::Send_SomeItem(const Item* item)
 
     NON_CONST_METHOD_HINT();
 
-    vector<uint8*>* data = nullptr;
+    vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(false, &data, &data_sizes);
 
@@ -1146,7 +1146,7 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
 
     NON_CONST_METHOD_HINT();
 
-    vector<vector<uint8*>*> items_data(items != nullptr ? items->size() : 0);
+    vector<vector<const uint8*>*> items_data(items != nullptr ? items->size() : 0);
     vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
     for (size_t i = 0; i < items_data.size(); i++) {
         items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);

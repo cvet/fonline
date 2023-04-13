@@ -1731,7 +1731,7 @@ void FOServer::Process_Handshake(ClientConnection* connection)
     connection->InBuf.SetEncryptKey(encrypt_key);
     connection->OutBuf.SetEncryptKey(encrypt_key);
 
-    vector<uint8*>* global_vars_data = nullptr;
+    vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
         StoreData(false, &global_vars_data, &global_vars_data_sizes);
@@ -2068,11 +2068,11 @@ void FOServer::Process_Login(Player* unlogined_player)
     // Login ok
     const auto encrypt_key = NetBuffer::GenerateEncryptKey();
 
-    vector<uint8*>* global_vars_data = nullptr;
+    vector<const uint8*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
-    vector<uint8*>* player_data = nullptr;
+    vector<const uint8*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
     player->StoreData(true, &player_data, &player_data_sizes);
 

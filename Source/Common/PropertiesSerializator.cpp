@@ -134,7 +134,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
 
         if (prop->_isHashBase) {
-            return string(name_resolver.ResolveHash(*reinterpret_cast<hstring::hash_t*>(&props->_podData[prop->_podDataOffset])));
+            return string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(&props->_podData[prop->_podDataOffset])));
         }
         else if (prop->_isEnumBase) {
             int enum_value = 0;
@@ -145,7 +145,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 #define PARSE_VALUE(is, t, ret_t) \
     do { \
         if (prop->is) { \
-            return static_cast<ret_t>(*static_cast<t*>(reinterpret_cast<void*>(&props->_podData[prop->_podDataOffset]))); \
+            return static_cast<ret_t>(*static_cast<const t*>(reinterpret_cast<const void*>(&props->_podData[prop->_podDataOffset]))); \
         } \
     } while (false)
 
