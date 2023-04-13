@@ -719,7 +719,6 @@ private:
     vector<bool> _publicPodDataSpace {};
     vector<bool> _protectedPodDataSpace {};
     vector<bool> _privatePodDataSpace {};
-    mutable vector<uint8*> _podDataPool {};
 
     // Complex types info
     vector<Property*> _complexProperties {};

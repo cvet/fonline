@@ -136,7 +136,7 @@ Properties::Properties(const Properties& other) :
 {
     STACK_TRACE_ENTRY();
 
-    // Copy PlainData data
+    // Copy plain data
     std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
     // Copy complex data
@@ -154,12 +154,7 @@ Properties::~Properties()
 {
     STACK_TRACE_ENTRY();
 
-    // Hide warning about throwing desctructor
-    try {
-        _registrator->_podDataPool.push_back(_podData);
-    }
-    catch (...) {
-    }
+    delete[] _podData;
 
     for (const auto* cd : _complexData) {
         delete[] cd;
@@ -197,14 +192,7 @@ void Properties::AllocData()
     RUNTIME_ASSERT(!_registrator->_registeredProperties.empty());
 
     // Allocate plain data
-    if (!_registrator->_podDataPool.empty()) {
-        _podData = _registrator->_podDataPool.back();
-        _registrator->_podDataPool.pop_back();
-    }
-    else {
-        _podData = new uint8[_registrator->_wholePodDataSize];
-    }
-
+    _podData = new uint8[_registrator->_wholePodDataSize];
     std::memset(_podData, 0, _registrator->_wholePodDataSize);
 
     // Complex data
@@ -1044,9 +1032,6 @@ PropertyRegistrator::~PropertyRegistrator()
 
     for (const auto* prop : _registeredProperties) {
         delete prop;
-    }
-    for (const auto* data : _podDataPool) {
-        delete[] data;
     }
 }
 
