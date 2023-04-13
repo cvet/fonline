@@ -241,7 +241,7 @@ void ParticleEditor::OnDraw()
     const auto proj_height = frame_height * (1.0f / _projFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f).Transpose();
 
     mat44 world;
     mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
@@ -270,7 +270,12 @@ void ParticleEditor::OnDraw()
 
     draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
     draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
-    draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
+    if (App->Render.IsRenderTargetFlipped()) {
+        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
+    }
+    else {
+        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
+    }
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
     if (!_impl->Particles->IsActive() && _autoReplay) {
