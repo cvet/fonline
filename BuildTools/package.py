@@ -222,11 +222,16 @@ def build():
 			for binType in [''] + \
 					(['Headless'] if 'Headless' in args.pack else []) + \
 					(['Service'] if 'Service' in args.pack else []) + \
+					(['Profiling'] if 'Profiling' in args.pack else []) + \
 					(['OGL'] if 'OGL' in args.pack else []):
 				binName = args.devname + '_' + args.target + (binType if binType in ['Headless', 'Service'] else '')
-				binOutName = (binName if args.target != 'Client' else args.nicename) + ('_OpenGL' if binType == 'OGL' else '')
+				binOutName = (binName if args.target != 'Client' else args.nicename) + \
+						('_Profiling' if binType == 'Profiling' else '') + \
+						('_OpenGL' if binType == 'OGL' else '')
 				log('Setup', arch, binName)
-				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
+				binEntry = args.target + '-' + args.platform + '-' + arch + \
+						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binOutName + '.exe'))
@@ -325,11 +330,17 @@ def build():
 	elif args.platform == 'Linux':
 		# Raw files
 		for arch in args.arch.split('+'):
-			for binType in [''] + (['Headless'] if 'Headless' in args.pack else []) + (['Daemon'] if 'Daemon' in args.pack else []):
+			for binType in [''] + \
+					(['Headless'] if 'Headless' in args.pack else []) + \
+					(['Daemon'] if 'Daemon' in args.pack else []) + \
+					(['Profiling'] if 'Profiling' in args.pack else []):
 				binName = args.devname + '_' + args.target + binType
-				binOutName = binName if args.target != 'Client' else args.nicename
+				binOutName = (binName if args.target != 'Client' else args.nicename) + \
+						('_Profiling' if binType == 'Profiling' else '')
 				log('Setup', arch, binName)
-				binEntry = args.target + '-' + args.platform + '-' + arch + ('-Debug' if 'Debug' in args.pack else '')
+				binEntry = args.target + '-' + args.platform + '-' + arch + \
+						('-Profiling' if binType == 'Profiling' else '') + \
+						('-Debug' if 'Debug' in args.pack else '')
 				binPath = getInput(os.path.join('Binaries', binEntry), binName)
 				log('Binary input', binPath)
 				shutil.copy(os.path.join(binPath, binName), os.path.join(targetOutputPath, binOutName))
