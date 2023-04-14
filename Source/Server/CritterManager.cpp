@@ -349,25 +349,6 @@ auto CritterManager::GetCritter(ident_t cr_id) const -> const Critter*
     return const_cast<CritterManager*>(this)->GetCritter(cr_id);
 }
 
-auto CritterManager::GetPlayerById(ident_t id) -> Player*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _engine->EntityMngr.GetPlayer(id);
-}
-
-auto CritterManager::GetPlayerByName(string_view name) -> Player*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    const auto player_id = _engine->MakePlayerId(name);
-    return _engine->EntityMngr.GetPlayer(player_id);
-}
-
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
 {
     STACK_TRACE_ENTRY();

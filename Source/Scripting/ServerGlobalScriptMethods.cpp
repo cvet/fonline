@@ -47,6 +47,10 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
 {
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+
     const auto player_id = server->MakePlayerId(name);
     if (!server->DbStorage.Get("Players", player_id).empty()) {
         throw ScriptException("Player already registered", name);
@@ -849,6 +853,10 @@
 ///@ ExportMethod ExcludeInSingleplayer PassOwnership
 [[maybe_unused]] Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 {
+    if (name.empty()) {
+        throw ScriptException("Empty player name");
+    }
+
     // Check existence
     const auto id = server->MakePlayerId(name);
     const auto doc = server->DbStorage.Get("Players", id);
@@ -857,7 +865,7 @@
     }
 
     // Find online
-    auto* player = server->CrMngr.GetPlayerById(id);
+    auto* player = server->EntityMngr.GetPlayer(id);
     if (player != nullptr) {
         player->AddRef();
         return player;
