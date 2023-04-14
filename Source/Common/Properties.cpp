@@ -590,15 +590,10 @@ void Properties::SetRawData(const Property* prop, const uint8* data, uint data_s
 {
     NO_STACK_TRACE_ENTRY();
 
-    if (prop->IsPlainData()) {
-        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
-        RUNTIME_ASSERT(prop->_baseSize == data_size);
-
-        std::memcpy(&_podData[prop->_podDataOffset], data, data_size);
+    if (prop->_dataType == Property::DataType::PlainData) {
+        std::memcpy(_podData.data() + prop->_podDataOffset, data, data_size);
     }
     else {
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-
         auto& complex_data = _complexData[prop->_complexDataIndex];
         complex_data.resize(data_size); // Todo: add shrink_to_fit complex data for all entities to get some free space on OnLowMemory callback
         std::memcpy(complex_data.data(), data, data_size);

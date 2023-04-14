@@ -62,9 +62,11 @@ void MapManager::LoadFromResources()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_staticMaps.empty());
-
     auto map_files = _engine->Resources.FilterFiles("fomapb");
+
+    RUNTIME_ASSERT(_staticMaps.empty());
+    _staticMaps.reserve(map_files.GetFilesCount());
+
     while (map_files.MoveNext()) {
         auto map_file = map_files.GetCurFile();
         auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
@@ -78,27 +80,28 @@ void MapManager::LoadFromResources()
         const auto maxhx = pmap->GetWidth();
         const auto maxhy = pmap->GetHeight();
 
+        // Read hashes
+        {
+            const auto hashes_count = reader.Read<uint>();
+
+            string str;
+            for (uint i = 0; i < hashes_count; i++) {
+                const auto str_len = reader.Read<uint>();
+                str.resize(str_len);
+                reader.ReadPtr(str.data(), str.length());
+                const auto hstr = _engine->ToHashedString(str);
+                UNUSED_VARIABLE(hstr);
+            }
+        }
+
         // Read entities
         {
             vector<uint8> props_data;
 
-            // Read hashes
-            {
-                const auto hashes_count = reader.Read<uint>();
-
-                string str;
-                for (uint i = 0; i < hashes_count; i++) {
-                    const auto str_len = reader.Read<uint>();
-                    str.resize(str_len);
-                    reader.ReadPtr(str.data(), str.length());
-                    const auto hstr = _engine->ToHashedString(str);
-                    UNUSED_VARIABLE(hstr);
-                }
-            }
-
             // Read critters
             {
                 const auto cr_count = reader.Read<uint>();
+
                 static_map.CritterBillets.reserve(cr_count);
 
                 for (const auto i : xrange(cr_count)) {
@@ -132,7 +135,12 @@ void MapManager::LoadFromResources()
             // Read items
             {
                 const auto item_count = reader.Read<uint>();
+
                 static_map.ItemBillets.reserve(item_count);
+                static_map.HexItemBillets.reserve(item_count);
+                static_map.ChildItemBillets.reserve(item_count);
+                static_map.StaticItems.reserve(item_count);
+                static_map.TriggerItems.reserve(item_count);
 
                 for (const auto i : xrange(item_count)) {
                     UNUSED_VARIABLE(i);
@@ -207,7 +215,7 @@ void MapManager::LoadFromResources()
         static_map.HexFlags.resize(static_cast<size_t>(maxhx * maxhy), 0);
 
         for (auto&& [item_id, item] : static_map.ItemBillets) {
-            if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetIsStatic()) {
+            if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetIsStatic() || item->GetIsTile()) {
                 continue;
             }
 
