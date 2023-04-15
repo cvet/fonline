@@ -2451,7 +2451,7 @@ if args.angelscript and args.ascontentoutput:
 # Markdown
 def genApiMarkdown(target):
     createFile('SCRIPT_API.md', args.mdpath)
-    writeFile('# ' + args.gamename + ' Script API')
+    writeFile('# ' + args.devname + ' Script API')
     writeFile('')
     writeFile('## Table of Content')
     writeFile('')
