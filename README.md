@@ -319,8 +319,7 @@ Please follow these instructions to understand how to use this engine by design:
 
 ## Frequently Asked Questions
 
-Following document contains some issues thats give additional information about this engine:
-* [FAQ document](https://fonline.ru/FAQ)
+*Todo: write FAQ*
 
 ## About
 

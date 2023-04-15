@@ -18,7 +18,6 @@ parser.add_argument('-gameversion', dest='gameversion', required=True, help='gam
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
 parser.add_argument('-singleplayer', dest='singleplayer', action='store_true', help='generate singleplayer api')
-parser.add_argument('-mapper', dest='mapper', action='store_true', help='generate mapper api')
 parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
 parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
 parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
@@ -640,7 +639,7 @@ def parseTags():
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
                         'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags,
-                        'HasAbstract': 'HasAbstract' in exportFlags, 'Exported': True}
+                        'HasAbstract': 'HasAbstract' in exportFlags, 'Exported': True, 'Comment': comment}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -691,7 +690,7 @@ def parseTags():
                 gameEntitiesInfo[name] = {'Server': 'ServerEntity' if target in ['Common', 'Server'] else None,
                         'Client': 'ClientEntity' if target in ['Common', 'Client'] else None,
                         'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags,
-                        'HasAbstract': 'HasAbstract' in flags, 'Exported': False}
+                        'HasAbstract': 'HasAbstract' in flags, 'Exported': False, 'Comment': comment}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -1272,6 +1271,40 @@ def getEntityFromTarget(target):
     if target in ['Client', 'Mapper']:
         return 'ClientEntity*'
     return 'Entity*'
+
+def metaTypeToUnifiedType(t):
+    tt = t.split('.')
+    if tt[0] == 'dict':
+        d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+        r = metaTypeToUnifiedType(tt[1]) + '=>' + metaTypeToUnifiedType(d2)
+    elif tt[0] == 'arr':
+        r = '' + metaTypeToUnifiedType(tt[1]) + '[]'
+    elif tt[0] == 'init':
+        r = 'init-' + metaTypeToUnifiedType(tt[1])
+    elif tt[0] == 'callback':
+        r = 'callback-' + metaTypeToUnifiedType(tt[1])
+    elif tt[0] == 'predicate':
+        r = 'predicate-' + metaTypeToUnifiedType(tt[1])
+    elif tt[0] == 'ObjInfo':
+        return 'ObjInfo-' + tt[1]
+    elif tt[0] == 'ScriptFunc':
+        return 'ScriptFunc-' + ', '.join([metaTypeToUnifiedType(a) for a in '.'.join(tt[1:]).split('|') if a])
+    elif tt[0] == 'Entity':
+        r = tt[0]
+    elif tt[0] in gameEntities:
+        r = tt[0]
+    elif tt[0] in scriptEnums:
+        r = tt[0]
+    elif tt[0] in userObjects or tt[0] in entityRelatives:
+        r = tt[0]
+    else:
+        def mapType(mt):
+            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64'}
+            return typeMap[mt] if mt in typeMap else mt
+        r = mapType(tt[0])
+    if tt[-1] == 'ref':
+        r += '&'
+    return r
 
 def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
     tt = t.split('.')
@@ -2417,284 +2450,197 @@ if args.angelscript and args.ascontentoutput:
 
 # Markdown
 def genApiMarkdown(target):
-    createFile(target.upper() + '_SCRIPT_API.md', args.mdpath)
-    writeFile('# FOnline Engine ' + target + ' Script API')
-    writeFile('')
-    writeFile('> Document under development, do not rely on this API before the global refactoring complete.  ')
-    writeFile('> Estimated finishing date is middle of 2021.')
+    createFile('SCRIPT_API.md', args.mdpath)
+    writeFile('# ' + args.gamename + ' Script API')
     writeFile('')
     writeFile('## Table of Content')
     writeFile('')
-    writeFile('- [General information](#general-information)')
-    if target == 'Multiplayer':
-        writeFile('- [Common global methods](#common-global-methods)')
-        writeFile('- [Server global methods](#server-global-methods)')
-        writeFile('- [Client global methods](#client-global-methods)')
-    elif target == 'Singleplayer':
-        writeFile('- [Global methods](#global-methods)')
-    elif target == 'Mapper':
-        writeFile('- [Global methods](#global-methods)')
-    writeFile('- [Global properties](#global-properties)')
-    writeFile('- [Entities](#entities)')
-    writeFile('  * [Player properties](#player-properties)')
-    if target == 'Multiplayer':
-        writeFile('  * [Player server methods](#player-server-methods)')
-        writeFile('  * [Player client methods](#player-client-methods)')
-    elif target == 'Singleplayer':
-        writeFile('  * [Player methods](#player-methods)')
-    writeFile('  * [Item properties](#item-properties)')
-    if target == 'Multiplayer':
-        writeFile('  * [Item server methods](#item-server-methods)')
-        writeFile('  * [Item client methods](#item-client-methods)')
-    elif target == 'Singleplayer':
-        writeFile('  * [Item methods](#item-methods)')
-    writeFile('  * [Critter properties](#critter-properties)')
-    if target == 'Multiplayer':
-        writeFile('  * [Critter server methods](#critter-server-methods)')
-        writeFile('  * [Critter client methods](#critter-client-methods)')
-    elif target == 'Singleplayer':
-        writeFile('  * [Critter methods](#critter-methods)')
-    writeFile('  * [Map properties](#map-properties)')
-    if target == 'Multiplayer':
-        writeFile('  * [Map server methods](#map-server-methods)')
-        writeFile('  * [Map client methods](#map-client-methods)')
-    elif target == 'Singleplayer':
-        writeFile('  * [Map methods](#map-methods)')
-    writeFile('  * [Location properties](#location-properties)')
-    if target == 'Multiplayer':
-        writeFile('  * [Location server methods](#location-server-methods)')
-        writeFile('  * [Location client methods](#location-client-methods)')
-    elif target == 'Singleplayer':
-        writeFile('  * [Location methods](#location-methods)')
-    writeFile('- [Events](#events)')
-    if target == 'Multiplayer':
-        writeFile('  * [Server events](#server-events)')
-        writeFile('  * [Client events](#client-events)')
-    writeFile('- [Settings](#settings)')
-    writeFile('- [Enums](#enums)')
-    writeFile('  * [MessageBoxTextType](#messageboxtexttype)')
-    writeFile('  * [MouseButton](#mousebutton)')
-    writeFile('  * [KeyCode](#keycode)')
-    writeFile('  * [CornerType](#cornertype)')
-    writeFile('  * [MovingState](#movingstate)')
-    writeFile('  * [CritterCondition](#crittercondition)')
-    writeFile('  * [ItemOwnership](#itemownership)')
-    writeFile('  * [Anim1](#anim1)')
-    writeFile('  * [CursorType](#cursortype)')
-    writeFile('- [Content](#content)')
-    writeFile('  * [Item pids](#item-pids)')
-    writeFile('  * [Critter pids](#critter-pids)')
-    writeFile('  * [Map pids](#map-pids)')
-    writeFile('  * [Location pids](#location-pids)')
+    writeFile('GNEREATE AUTOMATICALLY')
     writeFile('')
-    writeFile('## General infomation')
-    writeFile('')
-    writeFile('This document automatically generated from engine provided script API so any change in API will reflect to this document and all scripting layers (C++, C#, AngelScript).  ')
-    writeFile('You can easily contribute to this API using provided by engine functionality.  ')
-    writeFile('...write about FO_API* macro usage...')
-    writeFile('')
-
+    
     # Generate source
-    def parseType(t):
-        def mapType(t):
-            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                    'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
-            return typeMap[t] if t in typeMap else t
-        tt = t.split('.')
-        if tt[0] == 'dict':
-            r = mapType(tt[1]) + '->' + mapType(tt[2])
-        elif tt[0] == 'callback':
-            r = 'callback-' + mapType(tt[1])
-        elif tt[0] == 'predicate':
-            r = 'predicate-' + mapType(tt[1])
-        else:
-            r = mapType(tt[0])
-        if 'arr' in tt:
-            r += '[]'
-        if 'ref' in tt:
-            r = 'ref ' + r
-        return r
-    def parseArgs(args):
-        return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
-    def writeDoc(doc):
-        if doc:
-            pass
-    def writeMethod(tok, entity, usage):
-        writeFile('* ' + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ')' + usage)
-        writeDoc(tok[3])
-    def writeProp(tok, entity):
-        rw, name, access, ret, mods, comms = tok
-        if not (target == 'Mapper' and 'Virtual' in access):
-            if target == 'Multiplayer':
-                writeFile('* ' + access + ' ' + ('const ' if rw == 'ro' else '') + parseType(ret) + ' ' + name)
+    def writeComm(comm, ident):
+        if not comm:
+            comm = ['...']
+        writeFile('')
+        index = 0
+        for c in comm:
+            if c.startswith('param'):
+                pass
+            elif c.startswith('return'):
+                pass
             else:
-                writeFile('* ' + ('const ' if rw == 'ro' else '')  + parseType(ret) + ' ' + name)
-        writeDoc(comms)
-    def getUsage(value, section, subsection):
-        usage = []
-        if value in nativeMeta.__dict__[section][subsection]:
-            usage.append('Native')
-        if value in angelScriptMeta.__dict__[section][subsection]:
-            usage.append('AngelScript')
-        if value in monoMeta.__dict__[section][subsection]:
-            usage.append('Mono')
-        assert usage, usage
-        if len(usage) == 3:
-            return ''
-        return ' *(' + 'and '.join(usage) + ' only)*'
-
-    # Global methods
-    if target == 'Multiplayer':
-        writeFile('## Common global methods')
+                pass
+            writeFile(''.center(ident * 2 + 2) + '' + c + '' + ('  ' if index < len(comm) - 1 else ''))
+            index += 1
         writeFile('')
-        for i in globalMeta.methods['globalcommon']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalcommon'))
-        writeFile('')
-        writeFile('## Server global methods')
-        writeFile('')
-        for i in globalMeta.methods['globalserver']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalserver'))
-        writeFile('')
-        writeFile('## Client global methods')
-        writeFile('')
-        for i in globalMeta.methods['globalclient']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalclient'))
-        writeFile('')
-    elif target == 'Singleplayer':
-        writeFile('## Global methods')
-        writeFile('')
-        for i in globalMeta.methods['globalcommon']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalcommon'))
-        for i in globalMeta.methods['globalserver']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalserver'))
-        for i in globalMeta.methods['globalclient']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalclient'))
-        writeFile('')
-    elif target == 'Mapper':
-        writeFile('## Global methods')
-        writeFile('')
-        for i in globalMeta.methods['globalcommon']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalcommon'))
-        for i in globalMeta.methods['globalmapper']:
-            writeMethod(i, None, getUsage(i, 'methods', 'globalmapper'))
-        writeFile('')
-
-    # Global properties
-    writeFile('## Global properties')
-    writeFile('')
-    for i in globalMeta.properties['global']:
-        writeProp(i, None)
-    writeFile('')
-
-    # Entities
-    writeFile('## Entities')
-    writeFile('')
-    for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
-        writeFile('### ' + entity + ' properties')
-        writeFile('')
-        for i in globalMeta.properties[entity.lower()]:
-            writeProp(i, entity)
-        writeFile('')
-        if target == 'Multiplayer':
-            writeFile('### ' + entity + ' server methods')
-            writeFile('')
-            for i in globalMeta.methods[entity.lower()]:
-                writeMethod(i, entity, getUsage(i, 'methods', entity.lower()))
-            writeFile('')
-            writeFile('### ' + entity + ' client methods')
-            writeFile('')
-            for i in globalMeta.methods[entity.lower() + 'view']:
-                writeMethod(i, entity, getUsage(i, 'methods', entity.lower() + 'view'))
-            writeFile('')
-        elif target == 'Singleplayer':
-            writeFile('### ' + entity + ' methods')
-            writeFile('')
-            for i in globalMeta.methods[entity.lower()]:
-                writeMethod(i, entity, getUsage(i, 'methods', entity.lower()))
-            for i in globalMeta.methods[entity.lower() + 'view']:
-                writeMethod(i, entity, getUsage(i, 'methods', entity.lower() + 'view'))
-            writeFile('')
-
-    # Events
-    writeFile('## Events')
-    writeFile('')
-    if target == 'Multiplayer':
-        writeFile('### Server events')
-        writeFile('')
-        for e in globalMeta.events['server']:
-            name, eargs, doc = e
-            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
-            writeDoc(doc)
-        writeFile('')
-        writeFile('### Client events')
-        writeFile('')
-        for e in globalMeta.events['client']:
-            name, eargs, doc = e
-            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
-            writeDoc(doc)
-        writeFile('')
-    elif target == 'Singleplayer':
-        for e in globalMeta.events['server']:
-            name, eargs, doc = e
-            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
-            writeDoc(doc)
-        for e in globalMeta.events['client']:
-            name, eargs, doc = e
-            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
-            writeDoc(doc)
-        writeFile('')
-    elif target == 'Mapper':
-        for e in globalMeta.events['mapper']:
-            name, eargs, doc = e
-            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
-            writeDoc(doc)
-        writeFile('')
-
-    # Settings
+    
     writeFile('## Settings')
     writeFile('')
-    for i in globalMeta.settings:
-        ret, name, init, doc = i
-        writeFile('* ' + parseType(ret) + ' ' + name)
-        writeDoc(doc)
+    writeFile('### General')
     writeFile('')
-
-    # Enums
+    for settTag in codeGenTags['Setting']:
+        targ, type, name, initValue, flags, comm = settTag
+        writeFile('* `' + metaTypeToUnifiedType(type) + ' ' + name + (' = ' + initValue if initValue is not None else '') + (' ' + ', '.join(flags) if flags else '') + (' (' + targ.lower() + ' only)' if targ != 'Common' else '') + '`')
+        writeComm(comm, 0)
+    writeFile('')
+    for settTag in codeGenTags['ExportSettings']:
+        grName, targ, settings, flags, comm = settTag
+        writeFile('### ' + grName + (' ' + ', '.join(flags) if flags else ''))
+        writeComm(comm, 0)
+        for sett in settings:
+            fixOrVar, keyType, keyName, initValues, comm2 = sett
+            writeFile('* `' + ('const ' if fixOrVar == 'fix' else '')  + metaTypeToUnifiedType(keyType) + ' ' + keyName + ' = ' + ', '.join(initValues) + '`')
+            writeComm(comm2, 0)
+        writeFile('')
+    
+    for entity in gameEntities:
+        entityInfo = gameEntitiesInfo[entity]
+        writeFile('## ' + entity + ' entity')
+        writeComm(entityInfo['Comment'], 0)
+        writeFile('* `Target: ' + ('Server/Client' if entityInfo['Server'] and entityInfo['Client'] else ('Server' if entityInfo['Server'] else ('Client' if entityInfo['Client'] else '?'))) + '`')
+        writeFile('* `Built-in: ' + ('Yes' if entityInfo['Exported'] else 'No') + '`')
+        writeFile('* `Singleton: ' + ('Yes' if entityInfo['IsGlobal'] else 'No') + '`')
+        writeFile('* `Has proto: ' + ('Yes' if entityInfo['HasProto'] else 'No') + '`')
+        writeFile('* `Has statics: ' + ('Yes' if entityInfo['HasStatics'] else 'No') + '`')
+        writeFile('* `Has abstract: ' + ('Yes' if entityInfo['HasAbstract'] else 'No') + '`')
+        writeFile('')
+        writeFile('### ' + entity + ' properties')
+        writeFile('')
+        for propTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
+            ent, access, type, name, flags, comm = propTag
+            if ent == entity:
+                if target == 'Multiplayer':
+                    writeFile('* `' + access + ' ' + metaTypeToUnifiedType(type) + ' ' + name + (' ' + ' '.join(flags) if flags else '') + '`')
+                else:
+                    writeFile('* `' + metaTypeToUnifiedType(type) + ' ' + name + (' ' + ' '.join(flags) if flags else '') + '`')
+                writeComm(comm, 0)
+        if target == 'Multiplayer':
+            writeFile('### ' + entity + ' server events')
+            writeFile('')
+            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+                targ, ent, evName, evArgs, evFlags, comm = evTag
+                if ent == entity and targ == 'Server':
+                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
+                    writeComm(comm, 0)
+            writeFile('### ' + entity + ' client events')
+            writeFile('')
+            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+                targ, ent, evName, evArgs, evFlags, comm = evTag
+                if ent == entity and targ == 'Client':
+                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
+                    writeComm(comm, 0)
+            writeFile('### ' + entity + ' common methods')
+            writeFile('')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comm = methodTag
+                if ent == entity and targ == 'Common':
+                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                    writeComm(comm, 0)
+            writeFile('### ' + entity + ' server methods')
+            writeFile('')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comm = methodTag
+                if ent == entity and targ == 'Server':
+                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                    writeComm(comm, 0)
+            writeFile('### ' + entity + ' client methods')
+            writeFile('')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comm = methodTag
+                if ent == entity and targ == 'Client':
+                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                    writeComm(comm, 0)
+        elif target == 'Singleplayer':
+            writeFile('### ' + entity + ' events')
+            writeFile('')
+            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+                targ, ent, evName, evArgs, evFlags, comm = evTag
+                if ent == entity:
+                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
+                    writeComm(comm, 0)
+            writeFile('### ' + entity + ' methods')
+            writeFile('')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comm = methodTag
+                if ent == entity and targ != 'Mapper':
+                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                    writeComm(comm, 0)
+        if entity == 'Game':
+            writeFile('### ' + entity + ' mapper events')
+            writeFile('')
+            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+                targ, ent, evName, evArgs, evFlags, comm = evTag
+                if ent == entity and targ == 'Mapper':
+                    writeFile('* `' + evName + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in evArgs]) + ')' + (' ' + ' '.join(evFlags) if evFlags else '') + '`')
+                    writeComm(comm, 0)
+            writeFile('### ' + entity + ' mapper methods')
+            writeFile('')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comm = methodTag
+                if ent == entity and targ == 'Mapper':
+                    writeFile('* `' + metaTypeToUnifiedType(ret) + ' ' + name + '(' + ', '.join([metaTypeToUnifiedType(a[0]) + ' ' + a[1] for a in params]) + ')' + (' ' + ' '.join(exportFlags) if exportFlags else '') + '`')
+                    writeComm(comm, 0)
+    
+    writeFile('## Types')
+    writeFile('')
+    for eoTag in codeGenTags['ExportObject']:
+        targ, objName, fields, methods, flags, comm = eoTag
+        writeFile('### ' + objName + ' (ref object)')
+        writeComm(comm, 0)
+        for f in fields:
+            writeFile('* `' + metaTypeToUnifiedType(f[0]) + ' ' + f[1] + '`')
+            writeComm(f[2], 0)
+        for m in methods:
+            writeFile('* `' + metaTypeToUnifiedType(m[1]) + ' ' + m[0] + '()' + '`')
+            writeComm(m[2], 0)
+    for etTag in codeGenTags['ExportType']:
+        name, utype, rtype, flags, comm = etTag
+        writeFile('### ' + name + ' (value object)')
+        writeComm(comm, 0)
+        writeFile('* `Alias to: ' + metaTypeToUnifiedType(utype) + '`')
+        writeFile('* `Type: ' + rtype + '`')
+        if flags:
+            writeFile('* `Flags: ' + ', '.join(flags) + '`')
+        writeFile('')
+    
     writeFile('## Enums')
     writeFile('')
-    for i in globalMeta.enums:
-        group, entries, doc = i
-        writeFile('### ' + group)
-        writeDoc(doc)
-        writeFile('')
-        for e in entries:
-            name, val, edoc = e
-            writeFile('* ' + name + ' = ' + val)
-            writeDoc(edoc)
-        writeFile('')
+    for eTag in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
+        gname, utype, keyValues, flags, comm = eTag
+        writeFile('* `' + gname + (' ' + ' '.join(flags) if flags else '') + '`')
+        writeComm(comm, 0)
+        for kv in keyValues:
+            writeFile('  - `' + kv[0] + ' = ' + kv[1] + '`')
+            if kv[2]:
+                writeComm(kv[2], 1)
+            else:
+                writeFile('')
+    
+    # Cleanup empty sections and generate Table of content
+    global lastFile
+    filteredLines = []
+    tableOfContent = []
+    i = 0
+    while i < len(lastFile):
+        if i < len(lastFile) - 2 and lastFile[i].startswith('### ') and lastFile[i + 2].startswith('#'):
+            i += 2
+            continue
+        if lastFile[i].startswith('## '):
+            tableOfContent.append('* [' + lastFile[i][3:] + '](#' + lastFile[i][3:].lower().replace(' ', '-') + ')')
+        elif lastFile[i].startswith('### '):
+            tableOfContent.append('  - [' + lastFile[i][4:] + '](#' + lastFile[i][4:].lower().replace(' ', '-') + ')')
+        filteredLines.append(lastFile[i])
+        i += 1
+    lastFile.clear()
+    lastFile.extend(filteredLines[:4] + tableOfContent + filteredLines[5:])
 
-    # Content pids
-    writeFile('## Content')
-    writeFile('')
-    def writeEnums(name, lst):
-        writeFile('### ' + name + ' pids')
-        writeFile('')
-        for i in lst:
-            writeFile('* ' +  i)
-        writeFile('')
-    writeEnums('Item', content['foitem'])
-    writeEnums('Critter', content['focr'])
-    writeEnums('Map', content['fomap'])
-    writeEnums('Location', content['foloc'])
-
-if args.markdown and False:
+if args.markdown:
     try:
         if args.multiplayer:
             genApiMarkdown('Multiplayer')
         if args.singleplayer:
             genApiMarkdown('Singleplayer')
-        if args.mapper:
-            genApiMarkdown('Mapper')
     
     except Exception as ex:
         showError('Can\'t generate markdown representation', ex)
