@@ -2586,7 +2586,7 @@ def genApiMarkdown(target):
     writeFile('')
     for eoTag in codeGenTags['ExportObject']:
         targ, objName, fields, methods, flags, comm = eoTag
-        writeFile('### ' + objName + ' (ref object)')
+        writeFile('### ' + objName + ' reference object')
         writeComm(comm, 0)
         for f in fields:
             writeFile('* `' + metaTypeToUnifiedType(f[0]) + ' ' + f[1] + '`')
@@ -2596,7 +2596,7 @@ def genApiMarkdown(target):
             writeComm(m[2], 0)
     for etTag in codeGenTags['ExportType']:
         name, utype, rtype, flags, comm = etTag
-        writeFile('### ' + name + ' (value object)')
+        writeFile('### ' + name + ' value object')
         writeComm(comm, 0)
         writeFile('* `Alias to: ' + metaTypeToUnifiedType(utype) + '`')
         writeFile('* `Type: ' + rtype + '`')
