@@ -81,6 +81,10 @@ namespace SPK::FO
 
         v.Position = vec3(pos.x, pos.y, pos.z);
         v.Color = COLOR_RGBA(color.a, color.b, color.g, color.r);
+
+#else
+        UNUSED_VARIABLE(pos);
+        UNUSED_VARIABLE(color);
 #endif
     }
 
@@ -93,6 +97,10 @@ namespace SPK::FO
 
         v.TexCoord[0] = tu;
         v.TexCoord[1] = tv;
+
+#else
+        UNUSED_VARIABLE(tu);
+        UNUSED_VARIABLE(tv);
 #endif
     }
 

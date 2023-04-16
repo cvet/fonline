@@ -1463,6 +1463,15 @@
     }
 
 #else
+    UNUSED_VARIABLE(client);
+    UNUSED_VARIABLE(instance);
+    UNUSED_VARIABLE(modelName);
+    UNUSED_VARIABLE(anim1);
+    UNUSED_VARIABLE(anim2);
+    UNUSED_VARIABLE(layers);
+    UNUSED_VARIABLE(position);
+    UNUSED_VARIABLE(color);
+
     throw NotEnabled3DException("3D submodule not enabled");
 #endif
 }

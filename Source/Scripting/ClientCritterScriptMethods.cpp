@@ -438,6 +438,11 @@
 #endif
     {
         // Todo: improve run particles for 2D animations
+        UNUSED_VARIABLE(particlesName);
+        UNUSED_VARIABLE(boneName);
+        UNUSED_VARIABLE(moveX);
+        UNUSED_VARIABLE(moveY);
+        UNUSED_VARIABLE(moveZ);
     }
 }
 
@@ -468,6 +473,10 @@
 #endif
     {
         // Todo: improve animation callbacks for 2D animations
+        UNUSED_VARIABLE(anim1);
+        UNUSED_VARIABLE(anim2);
+        UNUSED_VARIABLE(normalizedTime);
+        UNUSED_VARIABLE(animCallback);
     }
 }
 
@@ -499,6 +508,11 @@
     return true;
 
 #else
+    UNUSED_VARIABLE(self);
+    UNUSED_VARIABLE(boneName);
+    UNUSED_VARIABLE(boneX);
+    UNUSED_VARIABLE(boneY);
+
     throw NotEnabled3DException("3D submodule not enabled");
 #endif
 }

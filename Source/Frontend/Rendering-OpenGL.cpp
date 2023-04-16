@@ -824,6 +824,8 @@ static void EnableVertAtribs(EffectUsage usage)
 {
     STACK_TRACE_ENTRY();
 
+    UNUSED_VARIABLE(usage);
+
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         GL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Position))));
@@ -855,6 +857,8 @@ static void EnableVertAtribs(EffectUsage usage)
 static void DisableVertAtribs(EffectUsage usage)
 {
     STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(usage);
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {

@@ -541,10 +541,11 @@ auto _str::parseWideChar(const wchar_t* str) -> _str&
     const auto len = static_cast<int>(wcslen(str));
 
     if (len != 0) {
-        auto* buf = static_cast<char*>(alloca(len * 4));
+        auto* buf = static_cast<char*>(_malloca(len * 4));
         const auto r = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
         _s += string(buf, r);
+        _freea(buf);
     }
     return *this;
 }
@@ -555,10 +556,12 @@ auto _str::toWideChar() const -> std::wstring
         return L"";
     }
 
-    auto* buf = static_cast<wchar_t*>(alloca(_s.length() * sizeof(wchar_t) * 2));
+    auto* buf = static_cast<wchar_t*>(_malloca(_s.length() * sizeof(wchar_t) * 2));
     const auto len = MultiByteToWideChar(CP_UTF8, 0, _s.c_str(), static_cast<int>(_s.length()), buf, static_cast<int>(_s.length()));
 
-    return std::wstring(buf, len);
+    auto result = std::wstring(buf, len);
+    _freea(buf);
+    return result;
 }
 #endif
 

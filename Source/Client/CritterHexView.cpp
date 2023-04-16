@@ -593,7 +593,11 @@ void CritterHexView::ChangeMoveDirAngle(int dir_angle)
     if (_model != nullptr) {
         _model->SetMoveDirAngle(dir_angle, true);
     }
+    else
 #endif
+    {
+        UNUSED_VARIABLE(dir_angle);
+    }
 }
 
 void CritterHexView::Process()
