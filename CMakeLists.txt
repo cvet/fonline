@@ -10,8 +10,8 @@ set(FO_ANGELSCRIPT_SCRIPTING YES)
 set(FO_GEOMETRY HEXAGONAL)
 set(FO_APP_ICON "Resources/Radiation.ico")
 
-set(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-set(FO_UNIT_TESTS ON)
+option(FO_UNIT_TESTS "" ON)
+option(FO_OUTPUT_PATH "" ${CMAKE_BINARY_DIR})
 
 include(BuildTools/Init.cmake)
 include(BuildTools/Finalize.cmake)

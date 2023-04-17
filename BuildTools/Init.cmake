@@ -1,34 +1,35 @@
 cmake_minimum_required(VERSION 3.16.3)
 
 # Options
-option(FO_DEV_NAME "Short name for project") # Required
-option(FO_NICE_NAME "More readable name for project") # Required
-option(FO_AUTHOR_NAME "Author(s) name") # Required
-option(FO_GAME_VERSION "Version in any format") # Required
-option(FO_SINGLEPLAYER "Singleplayer mode")
-option(FO_ENABLE_3D "Supporting of 3d models")
-option(FO_NATIVE_SCRIPTING "Supporting of Native scripting")
-option(FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting")
-option(FO_MONO_SCRIPTING "Supporting of Mono scripting")
-option(FO_DEFAULT_CONFIG "Name of default config file")
-option(FO_DEBUGGING_CONFIG "Name of debugging config file (using during debugging)")
-option(FO_MAPPER_CONFIG "Name of mapper config file (embed in mapper)")
-option(FO_GENERATE_ANGELSCRIPT_CONTENT "Content.fos file destination")
-option(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode") # Required
-option(FO_APP_ICON "Executable file icon") # Required
-option(FO_VERBOSE_BUILD "Verbose build mode")
-option(FO_OUTPUT_PATH "Common output path") # Required
-option(FO_BUILD_CLIENT "Build Multiplayer client binaries")
-option(FO_BUILD_SERVER "Build Multiplayer server binaries")
-option(FO_BUILD_SINGLE "Build Singleplayer binaries")
-option(FO_BUILD_EDITOR "Build Editor binaries")
-option(FO_BUILD_MAPPER "Build Mapper binaries")
-option(FO_BUILD_ASCOMPILER "Build AngelScript compiler")
-option(FO_BUILD_BAKER "Build Baker binaries")
-option(FO_UNIT_TESTS "Build only binaries for Unit Testing")
-option(FO_CODE_COVERAGE "Build only binaries for Code Coverage reports")
-option(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner")
-option(FO_INFO_MARKDOWN_OUTPUT "Path where information markdown files will be stored")
+option(FO_DEV_NAME "Short name for project" OFF) # Required
+option(FO_NICE_NAME "More readable name for project" OFF) # Required
+option(FO_AUTHOR_NAME "Author(s) name" OFF) # Required
+option(FO_GAME_VERSION "Version in any format" OFF) # Required
+option(FO_SINGLEPLAYER "Singleplayer mode" OFF)
+option(FO_ENABLE_3D "Supporting of 3d models" OFF)
+option(FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF)
+option(FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF)
+option(FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF)
+option(FO_DEFAULT_CONFIG "Name of default config file" "")
+option(FO_DEBUGGING_CONFIG "Name of debugging config file (using during debugging)" "")
+option(FO_MAPPER_CONFIG "Name of mapper config file (embed in mapper)" "")
+option(FO_GENERATE_ANGELSCRIPT_CONTENT "Content.fos file destination" "")
+option(FO_GEOMETRY "HEXAGONAL or SQUARE gemetry mode" "") # Required
+option(FO_APP_ICON "Executable file icon" "") # Required
+option(FO_MAKE_EXTERNAL_COMMANDS "Create shortcuts for working outside CMake runner" "")
+option(FO_INFO_MARKDOWN_OUTPUT "Path where information markdown files will be stored" "")
+
+option(FO_VERBOSE_BUILD "Verbose build mode" OFF)
+option(FO_BUILD_CLIENT "Build Multiplayer client binaries" OFF)
+option(FO_BUILD_SERVER "Build Multiplayer server binaries" OFF)
+option(FO_BUILD_SINGLE "Build Singleplayer binaries" OFF)
+option(FO_BUILD_EDITOR "Build Editor binaries" OFF)
+option(FO_BUILD_MAPPER "Build Mapper binaries" OFF)
+option(FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF)
+option(FO_BUILD_BAKER "Build Baker binaries" OFF)
+option(FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF)
+option(FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF)
+option(FO_OUTPUT_PATH "Common output path" "") # Required
 
 # Quiet all non-error messages instead ourself
 function(message mode)
@@ -191,9 +192,7 @@ set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(requiredOptions "FO_DEV_NAME" "FO_NICE_NAME" "FO_AUTHOR_NAME" "FO_GAME_VERSION" "FO_GEOMETRY" "FO_APP_ICON" "FO_OUTPUT_PATH")
 
 foreach(opt ${requiredOptions})
-	list(FIND requiredOptions ${opt} optIndex)
-
-	if(optIndex EQUAL -1)
+	if("${${opt}}" STREQUAL "")
 		AbortMessage("${opt} not specified")
 	endif()
 endforeach()
