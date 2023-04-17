@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(FOnlineTest)
 
-include(Engine/BuildTools/Init.cmake)
+include(BuildTools/Init.cmake)
 
 SetOption(FO_DEV_NAME "FOTEST")
 SetOption(FO_NICE_NAME "FOnlineTest")
