@@ -123,7 +123,7 @@ function setup_toolset()
     mkdir build-linux-toolset
     cd build-linux-toolset
 
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" -DCMAKE_BUILD_TYPE=Release -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -DFO_OUTPUT_PATH="$FO_OUTPUT" -DCMAKE_BUILD_TYPE=Release -DFO_BUILD_BAKER=1 -DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0 "$FO_PROJECT_ROOT"
 }
 
 function verify_workspace_part()

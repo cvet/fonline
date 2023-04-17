@@ -1,10 +1,10 @@
 # CMake initial cache
 
-if( NOT DEFINED "ENV{FO_ROOT}" )
-	message( FATAL_ERROR "Define FO_ROOT" )
+if( NOT DEFINED "ENV{FO_ENGINE_ROOT}" )
+	message( FATAL_ERROR "Define FO_ENGINE_ROOT" )
 endif()
 
-set( CMAKE_TOOLCHAIN_FILE "$ENV{FO_ROOT}/BuildTools/ios.toolchain.cmake" CACHE PATH "Forced by FOnline" FORCE )
+set( CMAKE_TOOLCHAIN_FILE "$ENV{FO_ENGINE_ROOT}/BuildTools/ios.toolchain.cmake" CACHE PATH "Forced by FOnline" FORCE )
 set( PLATFORM "SIMULATOR64" CACHE STRING "Forced by FOnline" FORCE )
 set( DEPLOYMENT_TARGET "12.0" CACHE STRING "Forced by FOnline" FORCE )
 set( ENABLE_BITCODE OFF CACHE BOOL "Forced by FOnline" FORCE )

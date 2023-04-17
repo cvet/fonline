@@ -38,7 +38,7 @@ parser.add_argument('-respack', dest='respack', required=True, action='append', 
 parser.add_argument('-config', dest='config', required=True, help='config name')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
-parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FONLINE_OUTPUT_PATH)')
+parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 parser.add_argument('-output', dest='output', required=True, help='output dir')
 parser.add_argument('-compresslevel', dest='compresslevel', required=True, help='compress level 0-9')
 args = parser.parse_args()

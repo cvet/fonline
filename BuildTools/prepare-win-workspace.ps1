@@ -39,9 +39,14 @@ Function Test-BuildTools {
 
 Write-Host "Prepare workspace"
 
-$FO_ROOT = $Env:FO_ROOT
-if ($FO_ROOT -eq "") {
-    $FO_ROOT = Resolve-Path "$PSScriptRoot/../"
+$FO_PROJECT_ROOT = $Env:FO_PROJECT_ROOT
+if ($FO_PROJECT_ROOT -eq "") {
+    $FO_PROJECT_ROOT = Resolve-Path "."
+}
+
+$FO_ENGINE_ROOT = $Env:FO_ENGINE_ROOT
+if ($FO_ENGINE_ROOT -eq "") {
+    $FO_ENGINE_ROOT = Resolve-Path "$PSScriptRoot/.."
 }
 
 $FO_WORKSPACE = $Env:FO_WORKSPACE
@@ -49,11 +54,9 @@ if ($FO_WORKSPACE -eq "") {
     $FO_WORKSPACE = "$pwd\Workspace"
 }
 
-$FO_CMAKE_CONTRIBUTION = $Env:FO_CMAKE_CONTRIBUTION
-
-Write-Host "- FO_ROOT=$FO_ROOT"
+Write-Host "- FO_PROJECT_ROOT=$FO_PROJECT_ROOT"
+Write-Host "- FO_ENGINE_ROOT=$FO_ENGINE_ROOT"
 Write-Host "- FO_WORKSPACE=$FO_WORKSPACE"
-Write-Host "- FO_CMAKE_CONTRIBUTION=$FO_CMAKE_CONTRIBUTION"
 
 if (!(Test-Path $FO_WORKSPACE)) {
     New-Item -Path "$FO_WORKSPACE" -ItemType Directory | Out-Null
@@ -95,7 +98,7 @@ while ($True) {
             $OUTPUT_PATH = "$FO_WORKSPACE/output"
             mkdir $toolsetDir
             cd $toolsetDir
-            cmake -G "Visual Studio 16 2019" -A x64 -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+            cmake -G "Visual Studio 16 2019" -A x64 -DFO_OUTPUT_PATH="$OUTPUT_PATH" -DFO_BUILD_BAKER=1 -DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0 "$FO_PROJECT_ROOT"
         }
     }
 

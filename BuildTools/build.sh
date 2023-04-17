@@ -10,27 +10,27 @@ source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
 if [ "$2" = "client" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_CLIENT=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "server" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_SERVER=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_SERVER=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "single" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_SINGLE=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "editor" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_EDITOR=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_EDITOR=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "mapper" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_MAPPER=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_MAPPER=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "ascompiler" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "baker" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_BAKER=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_BAKER=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "unit-tests" ]; then
-    BUILD_TARGET="-DFONLINE_UNIT_TESTS=1"
+    BUILD_TARGET="-DFO_UNIT_TESTS=1"
 elif [ "$2" = "code-coverage" ]; then
-    BUILD_TARGET="--DFONLINE_CODE_COVERAGE=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="--DFO_CODE_COVERAGE=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "toolset" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_BAKER=1 -DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0"
 elif [ "$2" = "full" ]; then
-    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLE=1 -DFONLINE_BUILD_EDITOR=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
+    BUILD_TARGET="-DFO_BUILD_CLIENT=1 -DFO_BUILD_SERVER=1 -DFO_BUILD_SINGLE=1 -DFO_BUILD_EDITOR=1 -DFO_BUILD_MAPPER=1 -DFO_BUILD_BAKER=1 -DFO_BUILD_ASCOMPILER=1 -DFO_UNIT_TESTS=0"
 else
     echo "Invalid second command arg"
     exit 1
@@ -53,13 +53,13 @@ if [ "$1" = "linux" ]; then
     export CC=/usr/bin/clang
     export CXX=/usr/bin/clang++
 
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/web.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
@@ -73,7 +73,7 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86
         export ANDROID_ABI=x86
     fi
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -C "$FO_ENGINE_ROOT/BuildTools/android.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
@@ -84,15 +84,15 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     fi
 
     if [ "$1" = "mac" ]; then
-        $CMAKE -G "Xcode" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        $CMAKE -G "Xcode" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
         $CMAKE --build . --config $CONFIG
     else
-        $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        $CMAKE -G "Xcode" -C "$FO_ENGINE_ROOT/BuildTools/ios.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET "$FO_PROJECT_ROOT"
         $CMAKE --build . --config $CONFIG
     fi
 
 elif [ "$1" = "ps4" ]; then
-    cmake.exe -G "Unix Makefiles" -A x64 -C "$FO_ROOT/BuildTools/ps4.cache.cmake" -DFONLINE_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake.exe -G "Unix Makefiles" -A x64 -C "$FO_ENGINE_ROOT/BuildTools/ps4.cache.cmake" -DFO_OUTPUT_PATH="$FO_OUTPUT" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG "$FO_PROJECT_ROOT"
     cmake.exe --build . --config $CONFIG --parallel
 
 else
