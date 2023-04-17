@@ -10,8 +10,18 @@ set(FO_ANGELSCRIPT_SCRIPTING YES)
 set(FO_GEOMETRY HEXAGONAL)
 set(FO_APP_ICON "Resources/Radiation.ico")
 
+option(FO_BUILD_CLIENT "" OFF)
+option(FO_BUILD_SERVER "" OFF)
+option(FO_BUILD_SINGLE "" OFF)
+option(FO_BUILD_EDITOR "" OFF)
+option(FO_BUILD_MAPPER "" OFF)
+option(FO_BUILD_ASCOMPILER "" OFF)
+option(FO_BUILD_BAKER "" OFF)
 option(FO_UNIT_TESTS "" ON)
+option(FO_CODE_COVERAGE "" OFF)
 option(FO_OUTPUT_PATH "" ${CMAKE_BINARY_DIR})
+
+set(FO_SINGLEPLAYER ${FO_BUILD_SINGLE})
 
 include(BuildTools/Init.cmake)
 include(BuildTools/Finalize.cmake)

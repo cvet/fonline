@@ -32,7 +32,7 @@ jobs:
     - run: BuildTools/validate.sh code-coverage
     - uses: codecov/codecov-action@v3
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
         gcov: true
   windows:
@@ -52,7 +52,7 @@ jobs:
         - win64-baker
     steps:
     - uses: actions/checkout@v3
-    - run: BuildTools/validate.bat ${{ matrix.app }}
+    - run: BuildTools/validate.bat ${{matrix.app}}
   ubuntu:
     runs-on: ubuntu-20.04
     strategy:
@@ -81,17 +81,17 @@ jobs:
         - linux-gcc-baker
     steps:
     - uses: actions/checkout@v3
-    - if: ${{ startsWith(matrix.app, 'linux-') }}
+    - if: ${{startsWith(matrix.app, 'linux-')}}
       run: BuildTools/prepare-workspace.sh packages linux
-    - if: ${{ startsWith(matrix.app, 'web-') }}
+    - if: ${{startsWith(matrix.app, 'web-')}}
       run: BuildTools/prepare-workspace.sh packages web
-    - if: ${{ startsWith(matrix.app, 'android-arm-') }}
+    - if: ${{startsWith(matrix.app, 'android-arm-')}}
       run: BuildTools/prepare-workspace.sh packages android
-    - if: ${{ startsWith(matrix.app, 'android-arm64-') }}
+    - if: ${{startsWith(matrix.app, 'android-arm64-')}}
       run: BuildTools/prepare-workspace.sh packages android-arm64
-    - if: ${{ startsWith(matrix.app, 'android-x86-') }}
+    - if: ${{startsWith(matrix.app, 'android-x86-')}}
       run: BuildTools/prepare-workspace.sh packages android-x86
-    - run: BuildTools/validate.sh ${{ matrix.app }}
+    - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
     runs-on: macos-11
     strategy:
@@ -104,4 +104,4 @@ jobs:
         - ios-single
     steps:
     - uses: actions/checkout@v3
-    - run: BuildTools/validate.sh ${{ matrix.app }}
+    - run: BuildTools/validate.sh ${{matrix.app}}
