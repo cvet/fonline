@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.16.3)
 
 # Option setter
-macro(SetOption var value)
+function(SetOption var value)
 	if("${${var}}" STREQUAL "")
-		set(${var} ${value})
+		set(${var} ${value} PARENT_SCOPE)
 	endif()
-endmacro()
+endfunction()
 
 # Quiet all non-error messages instead ourself
 function(message mode)

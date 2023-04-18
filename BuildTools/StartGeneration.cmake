@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.16.3)
 
 # Options
-macro(DeclareOption opt desc defaultValue)
-	SetOption(${opt} "${defaultValue}") # Prevent moving to cache
-	option(${opt} ${desc} ${defaultValue})
-endmacro()
+function(DeclareOption var desc value)
+	if("${${var}}" STREQUAL "") # Prevent moving to cache
+		set(${var} ${value} PARENT_SCOPE)
+	endif()
+
+	option(${var} ${desc} ${value})
+endfunction()
 
 DeclareOption(FO_DEV_NAME "Short name for project" "") # Required
 DeclareOption(FO_NICE_NAME "More readable name for project" "") # Required
