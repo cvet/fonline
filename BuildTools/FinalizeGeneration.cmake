@@ -1485,10 +1485,10 @@ if(FO_MAKE_EXTERNAL_COMMANDS)
         set(pause "read -p \"Press enter to continue\"")
     endif()
 
-    cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE engineDir)
+    cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE rootDir)
     cmake_path(RELATIVE_PATH FO_BACKED_RESOURCES_OUTPUT BASE_DIRECTORY ${FO_OUTPUT_PATH} OUTPUT_VARIABLE resourcesDir)
 
-    set(FO_GEN_FILE_CONTENT "${prolog}${start}python \"${engineDir}/BuildTools/starter.py\"")
+    set(FO_GEN_FILE_CONTENT "${prolog}${start}python \"${rootDir}/${FO_ENGINE_ROOT}/BuildTools/starter.py\"")
 
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-devname \"${FO_DEV_NAME}\"")
     set(FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n-buildhash \"${FO_BUILD_HASH}\"")
