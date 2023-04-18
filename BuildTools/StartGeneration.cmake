@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16.3)
 
+StatusMessage("Start project generation")
+
 # Options
 function(DeclareOption var desc value)
 	if("${${var}}" STREQUAL "") # Prevent moving to cache
@@ -7,6 +9,8 @@ function(DeclareOption var desc value)
 	endif()
 
 	option(${var} ${desc} ${value})
+
+	StatusMessage("${var} = ${${var}}")
 endfunction()
 
 DeclareOption(FO_DEV_NAME "Short name for project" "") # Required
@@ -48,7 +52,6 @@ else()
 endif()
 
 # Global options
-StatusMessage("Start project generation")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE) # Generate compile_commands.json
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE)
