@@ -153,9 +153,9 @@ DisableLibWarnings(Ogg)
 StatusMessage("+ Vorbis")
 set(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
 file(GLOB FO_VORBIS_SOURCE "${FO_VORBIS_DIR}/lib/*.c")
-list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/barkmel.c")
-list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/psytune.c")
-list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/tone.c")
+list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/barkmel.c")
+list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/psytune.c")
+list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/tone.c")
 include_directories("${FO_VORBIS_DIR}/include")
 include_directories("${FO_VORBIS_DIR}/lib")
 add_library(Vorbis ${FO_VORBIS_SOURCE})
@@ -168,9 +168,9 @@ DisableLibWarnings(Vorbis)
 StatusMessage("+ Theora")
 set(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
 file(GLOB FO_THEORA_SOURCE "${FO_THEORA_DIR}/lib/*.c")
-list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c")
-list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c")
-list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c")
+list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c")
+list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c")
+list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c")
 include_directories("${FO_THEORA_DIR}/include")
 add_library(Theora ${FO_THEORA_SOURCE})
 list(APPEND FO_CLIENT_LIBS "Theora")
@@ -1024,7 +1024,7 @@ foreach(entry ${FO_CODEGEN_COMMAND_ARGS})
     file(APPEND "${CMAKE_BINARY_DIR}/codegen-args.txt" "${entry}\n")
 endforeach()
 
-set(FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${FO_ENGINE_ROOT}/BuildTools/codegen.py" "@${CMAKE_BINARY_DIR}/codegen-args.txt")
+set(FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py" "@${CMAKE_BINARY_DIR}/codegen-args.txt")
 
 add_custom_command(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
@@ -1371,7 +1371,7 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING)
             list(APPEND monoCompileCommands -assembly ${entry})
         endforeach()
 
-        set(compileMonoScripts ${Python3_EXECUTABLE} "${FO_ENGINE_ROOT}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands})
+        set(compileMonoScripts ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands})
 
         add_custom_target(CompileMonoScripts
             COMMAND ${compileMonoScripts}
@@ -1418,7 +1418,7 @@ foreach(package ${FO_PACKAGES})
     list(APPEND FO_COMMANDS_GROUP "MakePackage-${package}")
 
     foreach(entry ${Package_${package}_Parts})
-        set(packageCommands ${Python3_EXECUTABLE} "${FO_ENGINE_ROOT}/BuildTools/package.py")
+        set(packageCommands ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/package.py")
 
         list(APPEND packageCommands -buildhash "${FO_BUILD_HASH}")
         list(APPEND packageCommands -devname "${FO_DEV_NAME}")
