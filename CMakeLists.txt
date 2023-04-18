@@ -15,7 +15,9 @@ SetOption(FO_APP_ICON "Resources/Radiation.ico")
 SetOption(FO_UNIT_TESTS ON)
 SetOption(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
-SetOption(FO_SINGLEPLAYER ${FO_BUILD_SINGLE})
+if(FO_BUILD_SINGLE)
+    SetOption(FO_SINGLEPLAYER ON)
+endif()
 
 include(BuildTools/StartGeneration.cmake)
 include(BuildTools/FinalizeGeneration.cmake)
