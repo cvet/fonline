@@ -74,7 +74,7 @@ include_directories("${FO_ENGINE_ROOT}/Source/Tools")
 include_directories("${FO_ENGINE_ROOT}/Source/Scripting")
 include_directories("${FO_ENGINE_ROOT}/Source/Frontend")
 include_directories("${FO_ENGINE_ROOT}/Source/Singleplayer")
-include_directories("${CMAKE_BINARY_DIR}/GeneratedSource")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Third-party libs
 StatusMessage("Third-party libs:")
@@ -121,7 +121,7 @@ DisableLibWarnings(TracyClient)
 StatusMessage("+ Zlib")
 set(FO_ZLIB_DIR "${FO_ENGINE_ROOT}/ThirdParty/zlib")
 add_subdirectory("${FO_ZLIB_DIR}")
-include_directories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${FO_ZLIB_DIR}")
+include_directories("${FO_ZLIB_DIR}" "${FO_ZLIB_DIR}/contrib" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
 list(APPEND FO_COMMON_LIBS "zlibstatic")
 DisableLibWarnings(zlibstatic)
 
@@ -131,11 +131,11 @@ if(FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     set(FO_PNG_DIR "${FO_ENGINE_ROOT}/ThirdParty/PNG")
     set(SKIP_INSTALL_ALL ON CACHE BOOL "Forced by FOnline" FORCE)
     set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "Forced by FOnline" FORCE)
-    set(ZLIB_INCLUDE_DIR "../${FO_ZLIB_DIR}" "${CMAKE_BINARY_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
+    set(ZLIB_INCLUDE_DIR "../${FO_ZLIB_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}" CACHE STRING "Forced by FOnline" FORCE)
     set(PNG_SHARED OFF CACHE BOOL "Forced by FOnline" FORCE)
     set(PNG_STATIC ON CACHE BOOL "Forced by FOnline" FORCE)
     add_subdirectory("${FO_PNG_DIR}")
-    include_directories("${FO_PNG_DIR}" "${CMAKE_BINARY_DIR}/${FO_PNG_DIR}")
+    include_directories("${FO_PNG_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${FO_PNG_DIR}")
     list(APPEND FO_BAKER_LIBS "png16_static")
     DisableLibWarnings(png16_static)
 endif()
@@ -271,8 +271,8 @@ if((FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND
     add_subdirectory("${FO_LIBRESSL_DIR}")
     include_directories("${FO_LIBRESSL_DIR}")
     include_directories("${FO_LIBRESSL_DIR}/include")
-    include_directories("${CMAKE_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto")
-    include_directories("${CMAKE_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl")
+    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto")
+    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl")
     set(LIBRESSL_FOUND YES CACHE BOOL "Forced by FOnline" FORCE)
     set(LIBRESSL_LIBRARIES "ssl;crypto;tls" CACHE STRING "Forced by FOnline" FORCE)
     set(LIBRESSL_INCLUDE_DIRS "" CACHE STRING "Forced by FOnline" FORCE)
@@ -324,7 +324,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
 
     add_subdirectory("${FO_MONGODB_DIR}")
 
-    include_directories("${CMAKE_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src/bson")
+    include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libbson/src/bson")
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libbson/src")
     target_compile_definitions(bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
     add_compile_definitions(BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN)
@@ -332,7 +332,7 @@ if(FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE OR FO
     DisableLibWarnings(bson_static)
 
     if(ENABLE_MONGOC)
-        include_directories("${CMAKE_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src/mongoc")
+        include_directories("${CMAKE_CURRENT_BINARY_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src/mongoc")
         include_directories("${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/libmongoc/src")
         target_compile_definitions(mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
         list(APPEND FO_SERVER_LIBS "mongoc_static")
@@ -556,7 +556,7 @@ if(FO_MONO_SCRIPTING)
 endif()
 
 # App icon
-set(FO_RC_FILE "${CMAKE_BINARY_DIR}/${FO_DEV_NAME}.rc")
+set(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
 get_filename_component(FO_APP_ICON ${FO_APP_ICON} REALPATH)
 set(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
 configure_file("${FO_ENGINE_ROOT}/BuildTools/blank.cmake" ${FO_RC_FILE} FILE_PERMISSIONS OWNER_WRITE OWNER_READ)
@@ -625,10 +625,10 @@ list(APPEND FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/UcsTables-Include.h"
     "${FO_ENGINE_ROOT}/Source/Common/WinApi-Include.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
 
 list(APPEND FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/AdminPanel.cpp"
@@ -726,18 +726,18 @@ if(NOT FO_SINGLEPLAYER)
     list(APPEND FO_SERVER_SOURCE
         ${FO_SERVER_BASE_SOURCE}
         "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp")
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp")
 
     list(APPEND FO_CLIENT_SOURCE
         ${FO_CLIENT_BASE_SOURCE}
         "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp")
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp")
 
 else()
     list(APPEND FO_SINGLE_SOURCE
@@ -746,10 +746,10 @@ else()
         "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.cpp"
         "${FO_ENGINE_ROOT}/Source/Singleplayer/Single.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.h"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp")
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp")
 endif()
 
 list(APPEND FO_EDITOR_SOURCE
@@ -776,10 +776,10 @@ list(APPEND FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp")
 
 list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
@@ -791,29 +791,29 @@ list(APPEND FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ModelBaker.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp")
 
 if(FO_ANGELSCRIPT_SCRIPTING)
     list(APPEND FO_ASCOMPILER_SOURCE
         "${FO_ENGINE_ROOT}/Source/Scripting/MapperScripting.h"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
-        "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp")
 
     if(NOT FO_SINGLEPLAYER)
         list(APPEND FO_ASCOMPILER_SOURCE
             "${FO_ENGINE_ROOT}/Source/Scripting/ServerScripting.h"
             "${FO_ENGINE_ROOT}/Source/Scripting/ClientScripting.h"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp")
     else()
         list(APPEND FO_ASCOMPILER_SOURCE
             "${FO_ENGINE_ROOT}/Source/Scripting/SingleScripting.h"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
-            "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp")
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp")
     endif()
 endif()
 
@@ -863,7 +863,7 @@ include(FindPython3)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 list(APPEND FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
-list(APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource")
+list(APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -gamename "${FO_NICE_NAME} ${FO_GAME_VERSION}")
 list(APPEND FO_CODEGEN_COMMAND_ARGS -gameversion "${FO_GAME_VERSION}")
@@ -985,50 +985,50 @@ foreach(entry ${FO_CODEGEN_META_SOURCE})
 endforeach()
 
 list(APPEND FO_CODEGEN_OUTPUT
-    "${CMAKE_BINARY_DIR}/GeneratedSource/CodeGenTouch"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
-    "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Single.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp")
 
-file(WRITE "${CMAKE_BINARY_DIR}/codegen-args.txt" "")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
 
 foreach(entry ${FO_CODEGEN_COMMAND_ARGS})
-    file(APPEND "${CMAKE_BINARY_DIR}/codegen-args.txt" "${entry}\n")
+    file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "${entry}\n")
 endforeach()
 
-set(FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py" "@${CMAKE_BINARY_DIR}/codegen-args.txt")
+set(FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py" "@${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
 
 add_custom_command(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
-    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/GeneratedSource/CodeGenTouch"
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     DEPENDS ${FO_CODEGEN_META_SOURCE}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
