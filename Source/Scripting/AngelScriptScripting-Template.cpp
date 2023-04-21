@@ -84,7 +84,6 @@
 #include "as_context.h"
 #include "datetime/datetime.h"
 #include "preprocessor.h"
-#include "scriptany/scriptany.h"
 #include "scriptarray.h"
 #include "scriptarray/scriptarray.h"
 #include "scriptdictionary/scriptdictionary.h"
@@ -938,6 +937,8 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(vector<uint64>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
         {type_index(typeid(vector<float>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
         {type_index(typeid(vector<double>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
+        {type_index(typeid(vector<string>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "string[]", *static_cast<vector<string>*>(ptr))); }},
+        {type_index(typeid(vector<hstring>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "hstring[]", *static_cast<vector<hstring>*>(ptr))); }},
     };
 
     static unordered_map<type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
@@ -3083,6 +3084,95 @@ static auto HashedString_GetUHash(const hstring& self) -> uint
     return self.as_uint();
 }
 
+static auto HashedString_AnyConv(const hstring& self) -> ScriptAny
+{
+    STACK_TRACE_ENTRY();
+
+    return _str("{}", self).str();
+}
+
+static void Any_Construct(ScriptAny* self)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    new (self) ScriptAny();
+}
+
+static void Any_Destruct(ScriptAny* self)
+{
+    NO_STACK_TRACE_ENTRY();
+
+    self->~ScriptAny();
+}
+
+template<typename T>
+static void Any_ConstructFrom(ScriptAny* self, const T& other)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) ScriptAny(_str("{}", other));
+}
+
+static void Any_ConstructCopy(ScriptAny* self, const ScriptAny& other)
+{
+    STACK_TRACE_ENTRY();
+
+    new (self) ScriptAny(other);
+}
+
+static void Any_Assign(ScriptAny& self, const ScriptAny& other)
+{
+    STACK_TRACE_ENTRY();
+
+    self = other;
+}
+
+static auto Any_Equals(const ScriptAny& self, const ScriptAny& other) -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return self == other;
+}
+
+template<typename T>
+static auto Any_Conv(const ScriptAny& self) -> T
+{
+    STACK_TRACE_ENTRY();
+
+    if constexpr (std::is_same_v<T, bool>) {
+        return _str(self).toBool();
+    }
+    else if constexpr (is_strong_type<T>::value) {
+        return T {static_cast<T::underlying_type>(_str(self).toInt64())};
+    }
+    else if constexpr (std::is_integral_v<T>) {
+        return static_cast<T>(_str(self).toInt64());
+    }
+    else if constexpr (std::is_floating_point_v<T>) {
+        return static_cast<T>(_str(self).toDouble());
+    }
+    else if constexpr (std::is_same_v<T, string>) {
+        return self;
+    }
+}
+
+template<typename T>
+static void Any_ConvGen(asIScriptGeneric* gen)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    if constexpr (std::is_same_v<T, hstring>) {
+        auto* self = static_cast<ScriptAny*>(gen->GetObject());
+        auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+        auto hstr = engine->ToHashedString(*self);
+        new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+    }
+#else
+    UNUSED_VARIABLE(gen);
+#endif
+}
+
 template<typename T>
 static void StrongType_Construct(T* self)
 {
@@ -3137,6 +3227,14 @@ static auto StrongType_GetUnderlying(const T& self) -> typename T::underlying_ty
     STACK_TRACE_ENTRY();
 
     return self.underlying_value();
+}
+
+template<typename T>
+static auto StrongType_AnyConv(const T& self) -> ScriptAny
+{
+    STACK_TRACE_ENTRY();
+
+    return _str("{}", self).str();
 }
 
 template<typename T, typename U>
@@ -3341,7 +3439,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     ScriptExtensions::RegisterScriptArrayExtensions(engine);
     RegisterStdString(engine);
     ScriptExtensions::RegisterScriptStdStringExtensions(engine);
-    RegisterScriptAny(engine);
     RegisterScriptDictionary(engine);
     RegisterScriptDict(engine);
     ScriptExtensions::RegisterScriptDictExtensions(engine);
@@ -3393,6 +3490,40 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
 
+    // Register any
+    AS_VERIFY(engine->RegisterObjectType("any", sizeof(ScriptAny), asOBJ_VALUE | asGetTypeTraits<string>()));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Construct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const any &in)", SCRIPT_FUNC_THIS(Any_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const bool &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint8 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint16 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const int64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<int64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "bool opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<bool>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint8 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint8>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint16 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint16>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "int64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<int64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "uint64 opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<uint64>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "float opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<float>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, game_engine));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(HashedString_AnyConv), SCRIPT_FUNC_THIS_CONV));
+
     // Global functions
     AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_FUNC(Global_Assert_0), SCRIPT_FUNC_CONV));
     AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition, ?&in obj1)", SCRIPT_FUNC(Global_Assert_1), SCRIPT_FUNC_CONV));
@@ -3425,7 +3556,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #type " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #underlying_type " &in) const", SCRIPT_FUNC_THIS((StrongType_EqualsUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " get_value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("any", #type " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_RELAXED_STRONG_TYPE(type, underlying_type) \
     REGISTER_HARD_STRONG_TYPE(type, underlying_type); \

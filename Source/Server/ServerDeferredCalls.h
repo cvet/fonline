@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "DeferredCalls.h"
+#include "ScriptSystem.h"
 
 DECLARE_EXCEPTION(DeferredCallsLoadException);
 
@@ -56,10 +57,8 @@ public:
 
     void LoadDeferredCalls();
     auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t;
 
 private:
     auto GetNextCallId() -> ident_t override;

@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
+#include "ScriptSystem.h"
 
 DECLARE_EXCEPTION(DeferredCallException);
 
@@ -46,11 +47,9 @@ struct DeferredCall
     ident_t Id {};
     tick_t FireFullSecond {};
     ScriptFunc<void> EmptyFunc {};
-    ScriptFunc<void, int> SignedIntFunc {};
-    ScriptFunc<void, uint> UnsignedIntFunc {};
-    ScriptFunc<void, vector<int>> SignedIntArrayFunc {};
-    ScriptFunc<void, vector<uint>> UnsignedIntArrayFunc {};
-    variant<int, uint, vector<int>, vector<uint>> FuncValue {};
+    ScriptFunc<void, ScriptAny> AnyFunc {};
+    ScriptFunc<void, vector<ScriptAny>> AnyArrayFunc {};
+    vector<ScriptAny> FuncValue {};
 };
 
 class DeferredCallManager
@@ -67,10 +66,8 @@ public:
     [[nodiscard]] auto IsDeferredCallPending(ident_t id) const -> bool;
 
     auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t;
     auto CancelDeferredCall(ident_t id) -> bool;
     void Process();
 

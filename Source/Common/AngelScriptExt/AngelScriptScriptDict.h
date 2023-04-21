@@ -55,40 +55,40 @@ public:
     static CScriptDict* Create(asITypeInfo* ot, void* listBuffer);
 
     // Memory management
-    virtual void AddRef() const;
-    virtual void Release() const;
+    void AddRef() const;
+    void Release() const;
 
     // Type information
     asITypeInfo* GetDictObjectType() const;
     int GetDictTypeId() const;
 
     // Copy the contents of one dict to another (only if the types are the same)
-    virtual CScriptDict& operator=(const CScriptDict& other);
+    CScriptDict& operator=(const CScriptDict& other);
 
     // Compare two dicts
-    virtual bool operator==(const CScriptDict&) const;
+    bool operator==(const CScriptDict&) const;
 
     // Dict manipulation
-    virtual asUINT GetSize() const;
-    virtual bool IsEmpty() const;
-    virtual void Set(void* key, void* value);
-    virtual void SetIfNotExist(void* key, void* value);
-    virtual bool Remove(void* key);
-    virtual asUINT RemoveValues(void* value);
-    virtual void Clear();
-    virtual void* Get(void* key);
-    virtual void* GetDefault(void* key, void* defaultValue);
-    virtual void* GetKey(asUINT index);
-    virtual void* GetValue(asUINT index);
-    virtual bool Exists(void* key) const;
-    virtual void GetMap(std::vector<std::pair<void*, void*>>& data) const;
+    asUINT GetSize() const;
+    bool IsEmpty() const;
+    void Set(void* key, void* value);
+    void SetIfNotExist(void* key, void* value);
+    bool Remove(void* key);
+    asUINT RemoveValues(void* value);
+    void Clear();
+    void* Get(void* key);
+    void* GetDefault(void* key, void* defaultValue);
+    void* GetKey(asUINT index);
+    void* GetValue(asUINT index);
+    bool Exists(void* key) const;
+    void GetMap(std::vector<std::pair<void*, void*>>& data) const;
 
     // GC methods
-    virtual int GetRefCount();
-    virtual void SetFlag();
-    virtual bool GetFlag();
-    virtual void EnumReferences(asIScriptEngine* engine);
-    virtual void ReleaseAllHandles(asIScriptEngine* engine);
+    int GetRefCount();
+    void SetFlag();
+    bool GetFlag();
+    void EnumReferences(asIScriptEngine* engine);
+    void ReleaseAllHandles(asIScriptEngine* engine);
 
 protected:
     mutable int refCount;
@@ -102,7 +102,7 @@ protected:
     CScriptDict(asITypeInfo* ot);
     CScriptDict(asITypeInfo* ot, void* initBuf);
     CScriptDict(const CScriptDict& other);
-    virtual ~CScriptDict();
+    ~CScriptDict();
 };
 
 void RegisterScriptDict(asIScriptEngine* engine);

@@ -4,7 +4,7 @@ StatusMessage("Start project generation")
 
 # Options
 function(DeclareOption var desc value)
-	if("${${var}}" STREQUAL "") # Prevent moving to cache
+	if(NOT DEFINED ${var}) # Prevent moving to cache
 		set(${var} ${value} PARENT_SCOPE)
 	endif()
 

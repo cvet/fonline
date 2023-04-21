@@ -357,7 +357,7 @@ def tokenize(text, specialBehForProp=False):
 def parseTags():
     validTypes = set()
     validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64',
-            'float', 'double', 'string', 'bool', 'Entity', 'void', 'hstring'])
+            'float', 'double', 'string', 'bool', 'Entity', 'void', 'hstring', 'any'])
     
     def unifiedTypeToMetaType(t):
         if t.startswith('init-'):
@@ -393,7 +393,8 @@ def parseTags():
             'int8*': 'int8&', 'uint8*': 'uint8&', 'int16*': 'int16&', 'uint16*': 'uint16&',
             'int*': 'int&', 'uint*': 'uint&', 'int64*': 'int64&', 'uint64*': 'uint64&',
             'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'string*': 'string&',
-            'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&'}
+            'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&',
+            'ScriptAny': 'any', 'ScriptAny&': 'any&', 'ScriptAny*': 'any*'}
         if t.startswith('InitFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'init-' + r
@@ -1344,7 +1345,9 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
         r = tt[0] + '*'
     else:
         def mapType(mt):
-            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64'}
+            typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
+                       'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
+                       'any': 'ScriptAny'}
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
@@ -1705,7 +1708,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'asIScriptFunction*'
             else:
                 def mapType(t):
-                    typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16', 'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64'}
+                    typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
+                               'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
+                               'any': 'ScriptAny'}
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':
@@ -2647,6 +2652,7 @@ if args.markdown:
     
     checkErrors()
 
+"""
 def genApi(target):
     # C++ projects
     if args.native:
@@ -2801,7 +2807,7 @@ def genApi(target):
             writeFile('')
 
         # Events
-        """
+        " ""
         writeFile('## Events')
         writeFile('')
         for ename in ['server', 'client', 'mapper']:
@@ -2812,10 +2818,10 @@ def genApi(target):
                 writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
                 writeDoc(doc)
             writeFile('')
-        """
+        " ""
 
         # Settings
-        """
+        " ""
         writeFile('## Settings')
         writeFile('')
         for i in nativeMeta.settings:
@@ -2823,10 +2829,10 @@ def genApi(target):
             writeFile('* ' + parseType(ret) + ' ' + name + ' = ' + init)
             writeDoc(doc)
             writeFile('')
-        """
+        " ""
 
         # Content pids
-        """
+        " ""
         writeFile('## Content')
         writeFile('')
         def writeEnums(name, lst):
@@ -2839,7 +2845,7 @@ def genApi(target):
         writeEnums('Critter', content['focr'])
         writeEnums('Map', content['fomap'])
         writeEnums('Location', content['foloc'])
-        """
+        " ""
         
         # Namespace end
         writeFile('} // namespace FOnline')
@@ -3264,6 +3270,7 @@ def genApi(target):
 
             writeFile('  <Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />')
             writeFile('</Project>')
+"""
 
 csprojects = []
 """

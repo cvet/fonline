@@ -55,7 +55,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -63,12 +63,12 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     RUNTIME_ASSERT(!func.IsDelegate());
 
     auto call = DeferredCall();
-    call.SignedIntFunc = func;
-    call.FuncValue = value;
+    call.AnyFunc = func;
+    call.FuncValue = {std::move(value)};
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -76,33 +76,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     RUNTIME_ASSERT(!func.IsDelegate());
 
     auto call = DeferredCall();
-    call.UnsignedIntFunc = func;
-    call.FuncValue = value;
-    return AddSavedDeferredCall(delay, call);
-}
-
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(func);
-    RUNTIME_ASSERT(!func.IsDelegate());
-
-    auto call = DeferredCall();
-    call.SignedIntArrayFunc = func;
-    call.FuncValue = values;
-    return AddSavedDeferredCall(delay, call);
-}
-
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(func);
-    RUNTIME_ASSERT(!func.IsDelegate());
-
-    auto call = DeferredCall();
-    call.UnsignedIntArrayFunc = func;
+    call.AnyArrayFunc = func;
     call.FuncValue = values;
     return AddSavedDeferredCall(delay, call);
 }
@@ -127,27 +101,15 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
     if (call.EmptyFunc) {
         call_doc["Script"] = string(call.EmptyFunc.GetName());
     }
-    else if (call.SignedIntFunc) {
-        call_doc["Script"] = string(call.SignedIntFunc.GetName());
-        call_doc["Value"] = static_cast<int64>(std::get<int>(call.FuncValue));
+    else if (call.AnyFunc) {
+        call_doc["Script"] = string(call.AnyFunc.GetName());
+        call_doc["Value"] = string(call.FuncValue.front());
     }
-    else if (call.UnsignedIntFunc) {
-        call_doc["Script"] = string(call.UnsignedIntFunc.GetName());
-        call_doc["Value"] = static_cast<int64>(std::get<uint>(call.FuncValue));
-    }
-    else if (call.SignedIntArrayFunc) {
-        call_doc["Script"] = string(call.SignedIntArrayFunc.GetName());
+    else if (call.AnyArrayFunc) {
+        call_doc["Script"] = string(call.AnyArrayFunc.GetName());
         AnyData::Array values;
-        for (const auto i : std::get<vector<int>>(call.FuncValue)) {
-            values.push_back(static_cast<int64>(i));
-        }
-        call_doc["Values"] = values;
-    }
-    else if (call.UnsignedIntArrayFunc) {
-        call_doc["Script"] = string(call.UnsignedIntArrayFunc.GetName());
-        AnyData::Array values;
-        for (const auto i : std::get<vector<uint>>(call.FuncValue)) {
-            values.push_back(static_cast<int64>(i));
+        for (const auto& str : call.FuncValue) {
+            values.push_back(string(str));
         }
         call_doc["Values"] = values;
     }
@@ -204,14 +166,10 @@ void ServerDeferredCallManager::LoadDeferredCalls()
 
         const auto func_name = _serverEngine->ToHashedString(std::get<string>(call_doc["Script"]));
         call.EmptyFunc = _serverEngine->ScriptSys->FindFunc<void>(func_name);
-        call.SignedIntFunc = _serverEngine->ScriptSys->FindFunc<void, int>(func_name);
-        call.UnsignedIntFunc = _serverEngine->ScriptSys->FindFunc<void, uint>(func_name);
-        call.SignedIntArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<int>>(func_name);
-        call.UnsignedIntArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<uint>>(func_name);
+        call.AnyFunc = _serverEngine->ScriptSys->FindFunc<void, ScriptAny>(func_name);
+        call.AnyArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<ScriptAny>>(func_name);
 
-        const auto func_count = static_cast<int>(!!call.EmptyFunc) + //
-            static_cast<int>(!!call.SignedIntFunc) + static_cast<int>(!!call.UnsignedIntFunc) + //
-            static_cast<int>(!!call.SignedIntArrayFunc) + static_cast<int>(!!call.UnsignedIntArrayFunc);
+        const auto func_count = static_cast<int>(!!call.EmptyFunc) + static_cast<int>(!!call.AnyFunc) + static_cast<int>(!!call.AnyArrayFunc);
 
         if (func_count != 1) {
             WriteLog("Unable to find function {} for deferred call {}", func_name, call.Id);
@@ -220,17 +178,8 @@ void ServerDeferredCallManager::LoadDeferredCalls()
         }
 
         if (call_doc.count("Value") != 0) {
-            if (call.SignedIntFunc) {
-                call.FuncValue = static_cast<int>(std::get<int64>(call_doc["Value"]));
-            }
-            else if (call.UnsignedIntFunc) {
-                call.FuncValue = static_cast<uint>(std::get<int64>(call_doc["Value"]));
-            }
-            else if (call.SignedIntArrayFunc) {
-                call.FuncValue = vector {static_cast<int>(std::get<int64>(call_doc["Value"]))};
-            }
-            else if (call.UnsignedIntArrayFunc) {
-                call.FuncValue = vector {static_cast<uint>(std::get<int64>(call_doc["Value"]))};
+            if (call.AnyFunc || call.AnyArrayFunc) {
+                call.FuncValue = {std::get<string>(call_doc["Value"])};
             }
             else {
                 WriteLog("Value present for empty func {} in deferred call {}", func_name, call.Id);
@@ -239,17 +188,10 @@ void ServerDeferredCallManager::LoadDeferredCalls()
             }
         }
         else if (call_doc.count("Values") != 0) {
-            if (call.SignedIntArrayFunc) {
-                vector<int> values;
+            if (call.AnyArrayFunc) {
+                vector<ScriptAny> values;
                 for (auto&& arr_value : std::get<AnyData::Array>(call_doc["Values"])) {
-                    values.push_back(static_cast<int>(std::get<int64>(arr_value)));
-                }
-                call.FuncValue = values;
-            }
-            else if (call.UnsignedIntArrayFunc) {
-                vector<uint> values;
-                for (auto&& arr_value : std::get<AnyData::Array>(call_doc["Values"])) {
-                    values.push_back(static_cast<uint>(std::get<int64>(arr_value)));
+                    values.push_back(std::get<string>(arr_value));
                 }
                 call.FuncValue = values;
             }
@@ -260,17 +202,8 @@ void ServerDeferredCallManager::LoadDeferredCalls()
             }
         }
         else {
-            if (call.SignedIntFunc) {
-                call.FuncValue = static_cast<int>(0);
-            }
-            else if (call.UnsignedIntFunc) {
-                call.FuncValue = static_cast<uint>(0);
-            }
-            else if (call.SignedIntArrayFunc) {
-                call.FuncValue = vector<int>();
-            }
-            else if (call.UnsignedIntArrayFunc) {
-                call.FuncValue = vector<uint>();
+            if (call.AnyFunc) {
+                call.FuncValue.resize(1);
             }
         }
 

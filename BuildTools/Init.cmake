@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16.3)
 
 # Option setter
 function(SetOption var value)
-	if("${${var}}" STREQUAL "")
+	if(NOT DEFINED ${var})
 		set(${var} ${value} PARENT_SCOPE)
 	endif()
 endfunction()

@@ -68,25 +68,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
-{
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
-}
-
-///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
-{
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
-}
-
-///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
 }
@@ -102,7 +90,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, int> func, int value)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -112,27 +100,7 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, uint> func, uint value)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, value);
-}
-
-///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values)
-{
-    if (func.IsDelegate()) {
-        throw ScriptException("Function must be global (not delegate)");
-    }
-
-    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, values);
-}
-
-///@ ExportMethod
-[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] ident_t Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");

@@ -143,7 +143,9 @@ endif()
 # Ogg
 StatusMessage("+ Ogg")
 set(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
-file(GLOB FO_OGG_SOURCE "${FO_OGG_DIR}/src/*.c")
+set(FO_OGG_SOURCE
+    "${FO_OGG_DIR}/src/bitwise.c"
+    "${FO_OGG_DIR}/src/framing.c")
 include_directories("${FO_OGG_DIR}/include")
 add_library(Ogg ${FO_OGG_SOURCE})
 list(APPEND FO_CLIENT_LIBS "Ogg")
@@ -152,10 +154,29 @@ DisableLibWarnings(Ogg)
 # Vorbis
 StatusMessage("+ Vorbis")
 set(FO_VORBIS_DIR "${FO_ENGINE_ROOT}/ThirdParty/Vorbis")
-file(GLOB FO_VORBIS_SOURCE "${FO_VORBIS_DIR}/lib/*.c")
-list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/barkmel.c")
-list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/psytune.c")
-list(REMOVE_ITEM FO_VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_VORBIS_DIR}/lib/tone.c")
+set(FO_VORBIS_SOURCE
+    "${FO_VORBIS_DIR}/lib/analysis.c"
+    "${FO_VORBIS_DIR}/lib/bitrate.c"
+    "${FO_VORBIS_DIR}/lib/block.c"
+    "${FO_VORBIS_DIR}/lib/codebook.c"
+    "${FO_VORBIS_DIR}/lib/envelope.c"
+    "${FO_VORBIS_DIR}/lib/floor0.c"
+    "${FO_VORBIS_DIR}/lib/floor1.c"
+    "${FO_VORBIS_DIR}/lib/info.c"
+    "${FO_VORBIS_DIR}/lib/lookup.c"
+    "${FO_VORBIS_DIR}/lib/lpc.c"
+    "${FO_VORBIS_DIR}/lib/lsp.c"
+    "${FO_VORBIS_DIR}/lib/mapping0.c"
+    "${FO_VORBIS_DIR}/lib/mdct.c"
+    "${FO_VORBIS_DIR}/lib/psy.c"
+    "${FO_VORBIS_DIR}/lib/registry.c"
+    "${FO_VORBIS_DIR}/lib/res0.c"
+    "${FO_VORBIS_DIR}/lib/sharedbook.c"
+    "${FO_VORBIS_DIR}/lib/smallft.c"
+    "${FO_VORBIS_DIR}/lib/synthesis.c"
+    "${FO_VORBIS_DIR}/lib/vorbisenc.c"
+    "${FO_VORBIS_DIR}/lib/vorbisfile.c"
+    "${FO_VORBIS_DIR}/lib/window.c")
 include_directories("${FO_VORBIS_DIR}/include")
 include_directories("${FO_VORBIS_DIR}/lib")
 add_library(Vorbis ${FO_VORBIS_SOURCE})
@@ -167,10 +188,31 @@ DisableLibWarnings(Vorbis)
 # Theora
 StatusMessage("+ Theora")
 set(FO_THEORA_DIR "${FO_ENGINE_ROOT}/ThirdParty/Theora")
-file(GLOB FO_THEORA_SOURCE "${FO_THEORA_DIR}/lib/*.c")
-list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c")
-list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c")
-list(REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c")
+set(FO_THEORA_SOURCE
+    "${FO_THEORA_DIR}/lib/apiwrapper.c"
+    "${FO_THEORA_DIR}/lib/bitpack.c"
+    "${FO_THEORA_DIR}/lib/cpu.c"
+    "${FO_THEORA_DIR}/lib/decapiwrapper.c"
+    "${FO_THEORA_DIR}/lib/decinfo.c"
+    "${FO_THEORA_DIR}/lib/decode.c"
+    "${FO_THEORA_DIR}/lib/dequant.c"
+    "${FO_THEORA_DIR}/lib/encfrag.c"
+    "${FO_THEORA_DIR}/lib/encinfo.c"
+    "${FO_THEORA_DIR}/lib/encoder_disabled.c"
+    "${FO_THEORA_DIR}/lib/enquant.c"
+    "${FO_THEORA_DIR}/lib/fdct.c"
+    "${FO_THEORA_DIR}/lib/fragment.c"
+    "${FO_THEORA_DIR}/lib/huffdec.c"
+    "${FO_THEORA_DIR}/lib/huffenc.c"
+    "${FO_THEORA_DIR}/lib/idct.c"
+    "${FO_THEORA_DIR}/lib/info.c"
+    "${FO_THEORA_DIR}/lib/internal.c"
+    "${FO_THEORA_DIR}/lib/mathops.c"
+    "${FO_THEORA_DIR}/lib/mcenc.c"
+    "${FO_THEORA_DIR}/lib/quant.c"
+    "${FO_THEORA_DIR}/lib/rate.c"
+    "${FO_THEORA_DIR}/lib/state.c"
+    "${FO_THEORA_DIR}/lib/tokenize.c")
 include_directories("${FO_THEORA_DIR}/include")
 add_library(Theora ${FO_THEORA_SOURCE})
 list(APPEND FO_CLIENT_LIBS "Theora")
@@ -196,7 +238,11 @@ DisableLibWarnings(SHA)
 if(FO_USE_GLEW)
     StatusMessage("+ GLEW")
     set(FO_GLEW_DIR "${FO_ENGINE_ROOT}/ThirdParty/GLEW")
-    file(GLOB FO_GLEW_SOURCE "${FO_GLEW_DIR}/GL/*.*")
+    set(FO_GLEW_SOURCE
+        "${FO_GLEW_DIR}/GL/glew.c"
+        "${FO_GLEW_DIR}/GL/glew.h"
+        "${FO_GLEW_DIR}/GL/glxew.h"
+        "${FO_GLEW_DIR}/GL/wglew.h")
     include_directories("${FO_GLEW_DIR}")
     add_library(GLEW ${FO_GLEW_SOURCE})
     add_compile_definitions(GLEW_STATIC)
@@ -358,7 +404,18 @@ endif()
 # Dear ImGui
 StatusMessage("+ Dear ImGui")
 set(FO_DEAR_IMGUI_DIR "${FO_ENGINE_ROOT}/ThirdParty/imgui")
-file(GLOB FO_IMGUI_SOURCE "${FO_DEAR_IMGUI_DIR}/*.cpp" "${FO_DEAR_IMGUI_DIR}/*.h")
+set(FO_IMGUI_SOURCE
+    "${FO_DEAR_IMGUI_DIR}/imconfig.h"
+    "${FO_DEAR_IMGUI_DIR}/imgui.cpp"
+    "${FO_DEAR_IMGUI_DIR}/imgui.h"
+    "${FO_DEAR_IMGUI_DIR}/imgui_demo.cpp"
+    "${FO_DEAR_IMGUI_DIR}/imgui_draw.cpp"
+    "${FO_DEAR_IMGUI_DIR}/imgui_internal.h"
+    "${FO_DEAR_IMGUI_DIR}/imgui_tables.cpp"
+    "${FO_DEAR_IMGUI_DIR}/imgui_widgets.cpp"
+    "${FO_DEAR_IMGUI_DIR}/imstb_rectpack.h"
+    "${FO_DEAR_IMGUI_DIR}/imstb_textedit.h"
+    "${FO_DEAR_IMGUI_DIR}/imstb_truetype.h")
 include_directories("${FO_DEAR_IMGUI_DIR}")
 add_library(ImGui ${FO_IMGUI_SOURCE})
 target_compile_definitions(ImGui PRIVATE "IMGUI_DISABLE_OBSOLETE_FUNCTIONS" "IMGUI_DISABLE_DEMO_WINDOWS" "IMGUI_DISABLE_DEBUG_TOOLS")
@@ -499,23 +556,38 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray")
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary")
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile")
-    include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptany")
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime")
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath")
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref")
     include_directories("${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper")
-    file(GLOB FO_ANGELSCRIPT_EXT_SOURCE
-        "${FO_ANGELSCRIPT_EXT_DIR}/*.*"
-        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptany/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref/*.*"
-        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/*.*")
+    set(FO_ANGELSCRIPT_EXT_SOURCE
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptExtensions.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptExtensions.h"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptReflection.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptReflection.h"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptScriptDict.cpp"
+        "${FO_ANGELSCRIPT_EXT_DIR}/AngelScriptScriptDict.h"
+        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.cpp"
+        "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/preprocessor.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/scriptstdstring.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/scriptstdstring.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/scriptstdstring_utils.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray/scriptarray.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray/scriptarray.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary/scriptdictionary.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary/scriptdictionary.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfile.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfile.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfilesystem.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/scriptfilesystem.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime/datetime.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime/datetime.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath/scriptmath.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath/scriptmath.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref/weakref.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref/weakref.h"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/scripthelper.cpp"
+        "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/scripthelper.h")
     add_library(AngelscriptExt ${FO_ANGELSCRIPT_EXT_SOURCE})
     target_link_libraries(AngelscriptExt Angelscript)
     list(APPEND FO_COMMON_LIBS "AngelscriptExt")

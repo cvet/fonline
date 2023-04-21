@@ -52,50 +52,26 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> 
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, int> func, int value) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(func);
 
     auto call = DeferredCall();
-    call.SignedIntFunc = func;
-    call.FuncValue = value;
+    call.AnyFunc = func;
+    call.FuncValue = {std::move(value)};
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, uint> func, uint value) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(func);
 
     auto call = DeferredCall();
-    call.UnsignedIntFunc = func;
-    call.FuncValue = value;
-    return AddDeferredCall(delay, call);
-}
-
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<int>> func, const vector<int>& values) -> ident_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(func);
-
-    auto call = DeferredCall();
-    call.SignedIntArrayFunc = func;
-    call.FuncValue = values;
-    return AddDeferredCall(delay, call);
-}
-
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<uint>> func, const vector<uint>& values) -> ident_t
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(func);
-
-    auto call = DeferredCall();
-    call.UnsignedIntArrayFunc = func;
+    call.AnyArrayFunc = func;
     call.FuncValue = values;
     return AddDeferredCall(delay, call);
 }
@@ -193,17 +169,11 @@ auto DeferredCallManager::RunDeferredCall(DeferredCall& call) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (call.SignedIntFunc) {
-        return call.SignedIntFunc(std::get<int>(call.FuncValue));
+    if (call.AnyFunc) {
+        return call.AnyFunc(call.FuncValue.front());
     }
-    else if (call.UnsignedIntFunc) {
-        return call.UnsignedIntFunc(std::get<uint>(call.FuncValue));
-    }
-    else if (call.SignedIntArrayFunc) {
-        return call.SignedIntArrayFunc(std::get<vector<int>>(call.FuncValue));
-    }
-    else if (call.UnsignedIntArrayFunc) {
-        return call.UnsignedIntArrayFunc(std::get<vector<uint>>(call.FuncValue));
+    else if (call.AnyArrayFunc) {
+        return call.AnyArrayFunc(call.FuncValue);
     }
     else {
         return call.EmptyFunc();

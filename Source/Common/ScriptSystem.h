@@ -87,6 +87,8 @@ class ProtoLocation;
 
 using AbstractItem = Entity;
 
+using ScriptAny = string;
+
 struct ScriptFuncDesc
 {
     hstring Name {};
