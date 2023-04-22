@@ -3143,7 +3143,7 @@ static auto Any_Conv(const ScriptAny& self) -> T
         return _str(self).toBool();
     }
     else if constexpr (is_strong_type<T>::value) {
-        return T {static_cast<T::underlying_type>(_str(self).toInt64())};
+        return T {static_cast<typename T::underlying_type>(_str(self).toInt64())};
     }
     else if constexpr (std::is_integral_v<T>) {
         return static_cast<T>(_str(self).toInt64());
