@@ -1078,7 +1078,7 @@
 ///# param duration ...
 ///# param identifier ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, tick_t duration, int identifier)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, any_t, uint*> func, tick_t duration, any_t identifier)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -1093,7 +1093,7 @@
 ///# param identifier ...
 ///# param rate ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, int, uint*> func, tick_t duration, int identifier, uint rate)
+[[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, ScriptFunc<uint, Critter*, any_t, uint*> func, tick_t duration, any_t identifier, uint rate)
 {
     if (func.IsDelegate()) {
         throw ScriptException("Function must be global (not delegate)");
@@ -1106,7 +1106,7 @@
 ///# param identifier ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, int identifier)
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, any_t identifier)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
 
@@ -1128,7 +1128,7 @@
 ///# param rates ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, int identifier, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, any_t identifier, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
     auto&& te_fire_times = self->GetTE_FireTime();
@@ -1143,7 +1143,7 @@
     for (size_t i = 0; i < te_identifiers.size(); i++) {
         if (te_identifiers[i] == identifier) {
             indexes.push_back(static_cast<uint>(i));
-            durations.push_back(tick_t {te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0});
+            durations.emplace_back(te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0);
             rates.push_back(te_rates[i]);
             count++;
         }
@@ -1160,7 +1160,7 @@
 ///# param rates ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, const vector<int>& findIdentifiers, vector<int>& identifiers, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, const vector<any_t>& findIdentifiers, vector<any_t>& identifiers, vector<uint>& indexes, vector<tick_t>& durations, vector<uint>& rates)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
     auto&& te_fire_times = self->GetTE_FireTime();
@@ -1172,12 +1172,12 @@
 
     uint count = 0;
 
-    for (const auto identifier : findIdentifiers) {
+    for (const auto& identifier : findIdentifiers) {
         for (size_t i = 0; i < te_identifiers.size(); i++) {
             if (te_identifiers[i] == identifier) {
                 identifiers.push_back(te_identifiers[i]);
                 indexes.push_back(static_cast<uint>(i));
-                durations.push_back(tick_t {te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0});
+                durations.emplace_back(te_fire_times[i].underlying_value() > full_second.underlying_value() ? te_fire_times[i].underlying_value() - full_second.underlying_value() : 0);
                 rates.push_back(te_rates[i]);
                 count++;
             }
@@ -1228,14 +1228,14 @@
 ///# param identifier ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, int identifier)
+[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, any_t identifier)
 {
     auto&& te_identifiers = self->GetTE_Identifier();
 
     uint count = 0;
     size_t index = 0;
 
-    for (const auto te_identifier : te_identifiers) {
+    for (const auto& te_identifier : te_identifiers) {
         if (te_identifier == identifier) {
             self->EraseTimeEvent(index);
             count++;
@@ -1252,15 +1252,15 @@
 ///# param identifiers ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, const vector<int>& identifiers)
+[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, const vector<any_t>& identifiers)
 {
     uint count = 0;
 
-    for (const auto identifier : identifiers) {
+    for (const auto& identifier : identifiers) {
         auto&& te_identifiers = self->GetTE_Identifier();
         size_t index = 0;
 
-        for (const auto te_identifier : te_identifiers) {
+        for (const auto& te_identifier : te_identifiers) {
             if (te_identifier == identifier) {
                 self->EraseTimeEvent(index);
                 count++;

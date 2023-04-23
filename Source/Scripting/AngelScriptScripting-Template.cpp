@@ -659,7 +659,7 @@ template<typename T, typename T2 = T>
 
     UNUSED_VARIABLE(as_engine);
 
-    if (as_array == nullptr || as_array->GetSize() == 0u) {
+    if (as_array == nullptr || as_array->GetSize() == 0) {
         return {};
     }
 
@@ -736,10 +736,10 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     UNUSED_VARIABLE(as_engine);
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
 
-    if (as_dict == nullptr || as_dict->GetSize() == 0u) {
+    if (as_dict == nullptr || as_dict->GetSize() == 0) {
         return {};
     }
 
@@ -764,8 +764,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     UNUSED_VARIABLE(as_engine);
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
 
     as_dict->Clear();
 
@@ -783,8 +783,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 {
     STACK_TRACE_ENTRY();
 
-    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_same_v<T, any_t> || is_strong_type_v<T>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_same_v<U, any_t> || is_strong_type_v<U>);
 
     auto* as_dict = CreateASDict(as_engine, type);
 
@@ -841,6 +841,15 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     }
     if (type_name == "hstring") {
         return _str("{}", *static_cast<hstring*>(ptr));
+    }
+    if (type_name == "any") {
+        return _str("{}", *static_cast<any_t*>(ptr));
+    }
+    if (type_name == "ident_t") {
+        return _str("{}", *static_cast<ident_t*>(ptr));
+    }
+    if (type_name == "tick_t") {
+        return _str("{}", *static_cast<tick_t*>(ptr));
     }
     return _str("{}", type_name);
 }
@@ -899,8 +908,14 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(double*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<double*>(ptr)); }},
         {type_index(typeid(hstring)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<hstring*>(ptr)); }},
         {type_index(typeid(string)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<string*>(ptr)); }},
+        {type_index(typeid(any_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<any_t*>(ptr)); }},
+        {type_index(typeid(ident_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<ident_t*>(ptr)); }},
+        {type_index(typeid(tick_t)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, static_cast<tick_t*>(ptr)); }},
         {type_index(typeid(hstring*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<hstring*>(ptr)); }},
         {type_index(typeid(string*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<string*>(ptr)); }},
+        {type_index(typeid(any_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<any_t*>(ptr)); }},
+        {type_index(typeid(ident_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<ident_t*>(ptr)); }},
+        {type_index(typeid(tick_t*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgAddress(index, static_cast<tick_t*>(ptr)); }},
 #if SERVER_SCRIPTING
         {type_index(typeid(Player*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
         {type_index(typeid(Item*)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
@@ -939,6 +954,9 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(vector<double>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
         {type_index(typeid(vector<string>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "string[]", *static_cast<vector<string>*>(ptr))); }},
         {type_index(typeid(vector<hstring>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "hstring[]", *static_cast<vector<hstring>*>(ptr))); }},
+        {type_index(typeid(vector<any_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "any[]", *static_cast<vector<any_t>*>(ptr))); }},
+        {type_index(typeid(vector<ident_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "ident_t[]", *static_cast<vector<ident_t>*>(ptr))); }},
+        {type_index(typeid(vector<tick_t>)), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "tick_t[]", *static_cast<vector<tick_t>*>(ptr))); }},
     };
 
     static unordered_map<type_index, std::function<void(asIScriptContext*, void*)>> CtxReturnValueMap = {
@@ -953,6 +971,11 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
         {type_index(typeid(uint64)), [](asIScriptContext* ctx, void* ptr) { *static_cast<uint64*>(ptr) = static_cast<uint64>(ctx->GetReturnQWord()); }},
         {type_index(typeid(float)), [](asIScriptContext* ctx, void* ptr) { *static_cast<float*>(ptr) = ctx->GetReturnFloat(); }},
         {type_index(typeid(double)), [](asIScriptContext* ctx, void* ptr) { *static_cast<double*>(ptr) = ctx->GetReturnDouble(); }},
+        {type_index(typeid(string)), [](asIScriptContext* ctx, void* ptr) { *static_cast<string*>(ptr) = *static_cast<string*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(hstring)), [](asIScriptContext* ctx, void* ptr) { *static_cast<hstring*>(ptr) = *static_cast<hstring*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(any_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<any_t*>(ptr) = *static_cast<any_t*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(ident_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<ident_t*>(ptr) = *static_cast<ident_t*>(ctx->GetReturnObject()); }},
+        {type_index(typeid(tick_t)), [](asIScriptContext* ctx, void* ptr) { *static_cast<tick_t*>(ptr) = *static_cast<tick_t*>(ctx->GetReturnObject()); }},
     };
 
     try {
@@ -972,7 +995,7 @@ static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, Scrip
 
         auto* ctx = script_sys->PrepareContext(func);
 
-        if (args.size() != 0u) {
+        if (args.size() != 0) {
             auto it = args.begin();
             for (asUINT i = 0; i < args.size(); i++, it++) {
                 CtxSetValueMap[type_index(*func_desc->ArgsType[i])](ctx, i, *it);
@@ -1107,7 +1130,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
         auto* arr = CreateASArray(as_engine, prop->GetFullTypeName().c_str());
 
         if (prop->IsArrayOfString()) {
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
@@ -1127,13 +1150,13 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
         else if (prop->IsBaseTypeHash()) {
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
 
-                for (const auto i : xrange(count)) {
+                for (uint i = 0; i < arr_size; i++) {
                     const auto hvalue = resolve_hash(data);
                     arr->SetValue(i, (void*)&hvalue);
 
@@ -1142,25 +1165,36 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
             }
         }
         else if (prop->IsBaseTypeEnum()) {
-            if (data_size != 0u) {
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
+            if (data_size != 0) {
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
 
                 if (prop->GetBaseSize() == 4) {
                     std::memcpy(arr->At(0), data, data_size);
                 }
                 else {
                     auto* dest = static_cast<int*>(arr->At(0));
-                    for (const auto i : xrange(count)) {
+                    for (uint i = 0; i < arr_size; i++) {
                         std::memcpy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                     }
                 }
             }
         }
+        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+            if (data_size != 0) {
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
+
+                for (uint i = 0; i < arr_size; i++) {
+                    std::memcpy(arr->At(i), data, prop->GetBaseSize());
+                    data += prop->GetBaseSize();
+                }
+            }
+        }
         else {
-            if (data_size != 0u) {
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
+            if (data_size != 0) {
+                const auto arr_size = data_size / prop->GetBaseSize();
+                arr->Resize(arr_size);
 
                 std::memcpy(arr->At(0), data, data_size);
             }
@@ -1171,7 +1205,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
     else if (prop->IsDict()) {
         CScriptDict* dict = CreateASDict(as_engine, prop->GetFullTypeName().c_str());
 
-        if (data_size != 0u) {
+        if (data_size != 0) {
             if (prop->IsDictOfArray()) {
                 const auto* data_end = data + data_size;
 
@@ -1185,7 +1219,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                     auto* arr = CreateASArray(as_engine, _str("{}[]", prop->GetBaseTypeName()).c_str());
 
-                    if (arr_size != 0u) {
+                    if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
                             arr->Resize(arr_size);
 
@@ -1204,7 +1238,7 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
                             arr->Resize(arr_size);
 
-                            for (const auto i : xrange(arr_size)) {
+                            for (uint i = 0; i < arr_size; i++) {
                                 const auto hvalue = resolve_hash(data);
                                 arr->SetValue(i, (void*)&hvalue);
 
@@ -1219,12 +1253,20 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
                             }
                             else {
                                 auto* dest = static_cast<int*>(arr->At(0));
-                                for (const auto i : xrange(arr_size)) {
+                                for (uint i = 0; i < arr_size; i++) {
                                     std::memcpy(dest + i, data + i * prop->GetBaseSize(), prop->GetBaseSize());
                                 }
                             }
 
                             data += arr_size * prop->GetBaseSize();
+                        }
+                        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                            arr->Resize(arr_size);
+
+                            for (uint i = 0; i < arr_size; i++) {
+                                std::memcpy(arr->At(i), data, prop->GetBaseSize());
+                                data += prop->GetBaseSize();
+                            }
                         }
                         else {
                             arr->Resize(arr_size);
@@ -1351,7 +1393,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
         if (prop->IsArrayOfString()) {
             const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
 
-            if (arr_size != 0u) {
+            if (arr_size != 0) {
                 // Calculate size
                 size_t data_size = sizeof(uint);
 
@@ -1366,14 +1408,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                 std::memcpy(buf, &arr_size, sizeof(arr_size));
                 buf += sizeof(uint);
 
-                for (const auto i : xrange(arr_size)) {
+                for (uint i = 0; i < arr_size; i++) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
 
                     uint str_size = static_cast<uint>(str.length());
                     std::memcpy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
-                    if (str_size != 0u) {
+                    if (str_size != 0) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -1381,13 +1423,14 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             }
         }
         else {
-            size_t data_size = (arr != nullptr ? arr->GetSize() * prop->GetBaseSize() : 0u);
+            const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
+            const size_t data_size = (arr != nullptr ? arr_size * prop->GetBaseSize() : 0);
 
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 if (prop->IsBaseTypeHash()) {
                     auto* buf = prop_data.Alloc(data_size);
 
-                    for (const auto i : xrange(arr->GetSize())) {
+                    for (uint i = 0; i < arr_size; i++) {
                         const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
                         std::memcpy(buf, &hash, sizeof(hstring::hash_t));
                         buf += prop->GetBaseSize();
@@ -1400,11 +1443,19 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     else {
                         auto* buf = prop_data.Alloc(data_size);
 
-                        for (const auto i : xrange(arr->GetSize())) {
+                        for (uint i = 0; i < arr_size; i++) {
                             const auto e = *static_cast<const int*>(arr->At(i));
                             std::memcpy(buf, &e, prop->GetBaseSize());
                             buf += prop->GetBaseSize();
                         }
+                    }
+                }
+                else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                    auto* buf = prop_data.Alloc(data_size);
+
+                    for (uint i = 0; i < arr_size; i++) {
+                        std::memcpy(buf, arr->At(i), prop->GetBaseSize());
+                        buf += prop->GetBaseSize();
                     }
                 }
                 else {
@@ -1416,15 +1467,15 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     else if (prop->IsDict()) {
         const auto* dict = *static_cast<CScriptDict**>(as_obj);
         if (prop->IsDictOfArray()) {
-            if (dict != nullptr && dict->GetSize() != 0u) {
+            if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
-                size_t data_size = 0u;
+                size_t data_size = 0;
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
                 for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     data_size += prop->GetDictKeySize() + sizeof(arr_size);
 
                     if (prop->IsDictOfArrayOfString()) {
@@ -1456,11 +1507,11 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     }
                     buf += prop->GetDictKeySize();
 
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0);
                     std::memcpy(buf, &arr_size, sizeof(uint));
                     buf += sizeof(arr_size);
 
-                    if (arr_size != 0u) {
+                    if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
                             for (uint i = 0; i < arr_size; i++) {
                                 const auto& str = *static_cast<const string*>(arr->At(i));
@@ -1469,7 +1520,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 std::memcpy(buf, &str_size, sizeof(uint));
                                 buf += sizeof(str_size);
 
-                                if (str_size != 0u) {
+                                if (str_size != 0) {
                                     std::memcpy(buf, str.c_str(), str_size);
                                     buf += arr_size;
                                 }
@@ -1495,6 +1546,12 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                                 }
                             }
                         }
+                        else if ((arr->GetElementTypeId() & asTYPEID_MASK_OBJECT) != 0) {
+                            for (uint i = 0; i < arr_size; i++) {
+                                std::memcpy(buf, arr->At(i), prop->GetBaseSize());
+                                buf += prop->GetBaseSize();
+                            }
+                        }
                         else {
                             std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
                             buf += arr_size * prop->GetBaseSize();
@@ -1504,9 +1561,9 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             }
         }
         else if (prop->IsDictOfString()) {
-            if (dict != nullptr && dict->GetSize() != 0u) {
+            if (dict != nullptr && dict->GetSize() != 0) {
                 // Calculate size
-                size_t data_size = 0u;
+                size_t data_size = 0;
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
@@ -1539,7 +1596,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
                     std::memcpy(buf, &str_size, sizeof(uint));
                     buf += sizeof(str_size);
 
-                    if (str_size != 0u) {
+                    if (str_size != 0) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -1552,7 +1609,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
             const auto whole_element_size = key_element_size + value_element_size;
             const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
 
-            if (data_size != 0u) {
+            if (data_size != 0) {
                 auto* buf = prop_data.Alloc(data_size);
 
                 vector<pair<void*, void*>> dict_map;
@@ -1591,12 +1648,12 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
     return prop_data;
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_same_v<T, string>) {
+    if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
         RUNTIME_ASSERT(value.length() <= 0xFFFF);
         out_buf.Write(static_cast<uint16>(value.length()));
         out_buf.Push(value.data(), value.length());
@@ -1607,9 +1664,12 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
     else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
         out_buf.Write(value);
     }
+    else if constexpr (is_strong_type_v<T>) {
+        out_buf.Write(value.underlying_value());
+    }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>, int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 {
     STACK_TRACE_ENTRY();
@@ -1623,8 +1683,8 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>) && //
+            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
 static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 {
@@ -1639,12 +1699,12 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
     }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolver)
 {
     STACK_TRACE_ENTRY();
 
-    if constexpr (std::is_same_v<T, string>) {
+    if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
         const auto len = in_buf.Read<uint16>();
         value.resize(len);
         in_buf.Pop(value.data(), len);
@@ -1655,9 +1715,12 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
     else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
         value = in_buf.Read<T>();
     }
+    else if constexpr (is_strong_type_v<T>) {
+        value = T {in_buf.Read<typename T::underlying_type>()};
+    }
 }
 
-template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>, int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name_resolver)
 {
     STACK_TRACE_ENTRY();
@@ -1673,8 +1736,8 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name
 }
 
 template<typename T, typename U,
-    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
-        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>) && //
+            (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
 static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name_resolver)
 {
@@ -2785,7 +2848,7 @@ static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 }
 
 template<typename T>
-static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
+static auto Property_GetValueAsAny(const T* entity, int prop_index) -> any_t
 {
     STACK_TRACE_ENTRY();
 
@@ -2807,7 +2870,7 @@ static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
         throw ScriptException("Property is disabled");
     }
 
-    return entity->GetValueAsFloat(prop);
+    return entity->GetValueAsAny(prop);
 
 #else
     UNUSED_VARIABLE(entity);
@@ -2817,7 +2880,7 @@ static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
 }
 
 template<typename T>
-static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
+static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
 {
     STACK_TRACE_ENTRY();
 
@@ -2842,7 +2905,7 @@ static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
         throw ScriptException("Property is read only");
     }
 
-    entity->SetValueAsFloat(prop, value);
+    entity->SetValueAsAny(prop, value);
 
 #else
     UNUSED_VARIABLE(entity);
@@ -3084,50 +3147,43 @@ static auto HashedString_GetUHash(const hstring& self) -> uint
     return self.as_uint();
 }
 
-static auto HashedString_AnyConv(const hstring& self) -> ScriptAny
-{
-    STACK_TRACE_ENTRY();
-
-    return _str("{}", self).str();
-}
-
-static void Any_Construct(ScriptAny* self)
+static void Any_Construct(any_t* self)
 {
     NO_STACK_TRACE_ENTRY();
 
-    new (self) ScriptAny();
+    new (self) any_t();
 }
 
-static void Any_Destruct(ScriptAny* self)
+static void Any_Destruct(any_t* self)
 {
     NO_STACK_TRACE_ENTRY();
 
-    self->~ScriptAny();
+    self->~any_t();
 }
 
 template<typename T>
-static void Any_ConstructFrom(ScriptAny* self, const T& other)
+static void Any_ConstructFrom(any_t* self, const T& other)
 {
     STACK_TRACE_ENTRY();
 
-    new (self) ScriptAny(_str("{}", other));
+    new (self) any_t {_str("{}", other).str()};
 }
 
-static void Any_ConstructCopy(ScriptAny* self, const ScriptAny& other)
+static void Any_ConstructCopy(any_t* self, const any_t& other)
 {
     STACK_TRACE_ENTRY();
 
-    new (self) ScriptAny(other);
+    new (self) any_t(other);
 }
 
-static void Any_Assign(ScriptAny& self, const ScriptAny& other)
+static void Any_Assign(any_t& self, const any_t& other)
 {
     STACK_TRACE_ENTRY();
 
     self = other;
 }
 
-static auto Any_Equals(const ScriptAny& self, const ScriptAny& other) -> bool
+static auto Any_Equals(const any_t& self, const any_t& other) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -3135,14 +3191,14 @@ static auto Any_Equals(const ScriptAny& self, const ScriptAny& other) -> bool
 }
 
 template<typename T>
-static auto Any_Conv(const ScriptAny& self) -> T
+static auto Any_Conv(const any_t& self) -> T
 {
     STACK_TRACE_ENTRY();
 
     if constexpr (std::is_same_v<T, bool>) {
         return _str(self).toBool();
     }
-    else if constexpr (is_strong_type<T>::value) {
+    else if constexpr (is_strong_type_v<T>) {
         return T {static_cast<typename T::underlying_type>(_str(self).toInt64())};
     }
     else if constexpr (std::is_integral_v<T>) {
@@ -3163,7 +3219,7 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 
 #if !COMPILER_MODE
     if constexpr (std::is_same_v<T, hstring>) {
-        auto* self = static_cast<ScriptAny*>(gen->GetObject());
+        auto* self = static_cast<any_t*>(gen->GetObject());
         auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
         auto hstr = engine->ToHashedString(*self);
         new (gen->GetAddressOfReturnLocation()) hstring(hstr);
@@ -3171,6 +3227,14 @@ static void Any_ConvGen(asIScriptGeneric* gen)
 #else
     UNUSED_VARIABLE(gen);
 #endif
+}
+
+template<typename T>
+static auto Any_ConvFrom(const T& self) -> any_t
+{
+    STACK_TRACE_ENTRY();
+
+    return any_t {_str("{}", self).str()};
 }
 
 template<typename T>
@@ -3222,7 +3286,7 @@ static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_t
 }
 
 template<typename T>
-static auto StrongType_GetUnderlying(const T& self) -> typename T::underlying_type
+static auto StrongType_GetUnderlying(T& self) -> typename T::underlying_type&
 {
     STACK_TRACE_ENTRY();
 
@@ -3230,11 +3294,19 @@ static auto StrongType_GetUnderlying(const T& self) -> typename T::underlying_ty
 }
 
 template<typename T>
-static auto StrongType_AnyConv(const T& self) -> ScriptAny
+static auto StrongType_GetStr(const T& self) -> string
 {
     STACK_TRACE_ENTRY();
 
     return _str("{}", self).str();
+}
+
+template<typename T>
+static auto StrongType_AnyConv(const T& self) -> any_t
+{
+    STACK_TRACE_ENTRY();
+
+    return any_t {_str("{}", self).str()};
 }
 
 template<typename T, typename U>
@@ -3370,7 +3442,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 
 #if COMPILER_MODE
     extern unordered_set<string> CompilerPassedMessages;
-    if (CompilerPassedMessages.count(formatted_message) == 0u) {
+    if (CompilerPassedMessages.count(formatted_message) == 0) {
         CompilerPassedMessages.insert(formatted_message);
     }
     else {
@@ -3480,7 +3552,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_GENERIC(HashedString_ConstructFromString), SCRIPT_GENERIC_CONV, game_engine));
     AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromString(const string &in)", SCRIPT_GENERIC(HashedString_CreateFromString), SCRIPT_GENERIC_CONV, game_engine));
     AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(uint h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, game_engine));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
@@ -3491,7 +3562,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
 
     // Register any
-    AS_VERIFY(engine->RegisterObjectType("any", sizeof(ScriptAny), asOBJ_VALUE | asGetTypeTraits<string>()));
+    AS_VERIFY(engine->RegisterObjectType("any", sizeof(any_t), asOBJ_VALUE | asGetTypeTraits<string>()));
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const any &in)", SCRIPT_FUNC_THIS(Any_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const bool &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<bool>), SCRIPT_FUNC_THIS_CONV));
@@ -3505,7 +3576,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const uint64 &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<uint64>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const float &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<float>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const double &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<double>), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_FUNC_THIS(Any_ConstructFrom<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("any", asBEHAVE_DESTRUCT, "void f()", SCRIPT_FUNC_THIS(Any_Destruct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("any", "any &opAssign(const any &in)", SCRIPT_FUNC_THIS(Any_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("any", "bool opEquals(const any &in) const", SCRIPT_FUNC_THIS(Any_Equals), SCRIPT_FUNC_THIS_CONV));
@@ -3522,7 +3592,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("any", "double opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<double>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("any", "string opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<string>), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("any", "hstring opImplConv() const", SCRIPT_GENERIC(Any_ConvGen<hstring>), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(HashedString_AnyConv), SCRIPT_FUNC_THIS_CONV));
+
+    AS_VERIFY(engine->RegisterObjectMethod("string", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<string>), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "any opImplConv() const", SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), SCRIPT_FUNC_THIS_CONV));
+    ScriptExtensions::RegisterScriptStdStringAnyExtensions(engine);
 
     // Global functions
     AS_VERIFY(engine->RegisterGlobalFunction("void Assert(bool condition)", SCRIPT_FUNC(Global_Assert_0), SCRIPT_FUNC_CONV));
@@ -3556,7 +3629,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour(#type, asBEHAVE_CONSTRUCT, "void f(const " #type " &in)", SCRIPT_FUNC_THIS((StrongType_ConstructCopy<type>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #type " &in) const", SCRIPT_FUNC_THIS((StrongType_Equals<type>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, "bool opEquals(const " #underlying_type " &in) const", SCRIPT_FUNC_THIS((StrongType_EqualsUnderlying<type>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type " get_value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, "const " #underlying_type "& get_value() const", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, #underlying_type "& get_value()", SCRIPT_FUNC_THIS(StrongType_GetUnderlying<type>), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(#type, "string get_str() const", SCRIPT_FUNC_THIS(StrongType_GetStr<type>), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(#type, "any opImplConv() const", SCRIPT_FUNC_THIS(StrongType_AnyConv<type>), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("any", #type " opImplConv() const", SCRIPT_FUNC_THIS(Any_Conv<type>), SCRIPT_FUNC_THIS_CONV))
 
@@ -3586,8 +3661,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define REGISTER_GETSET_ENTITY(class_name, prop_class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" prop_class_name "Property prop, int value)", SCRIPT_FUNC_THIS((Property_SetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsFloat(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" prop_class_name "Property prop, float value)", SCRIPT_FUNC_THIS((Property_SetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV))
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "any GetAsAny(" prop_class_name "Property prop) const", SCRIPT_FUNC_THIS((Property_GetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsAny(" prop_class_name "Property prop, any value)", SCRIPT_FUNC_THIS((Property_SetValueAsAny<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_PROPS(class_name, real_class) \
     AS_VERIFY(engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, game_engine)); \
@@ -3640,7 +3715,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Proto" class_name, proto_real_class); \
     REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Proto" class_name, class_name, proto_real_class); \
-    if (entity_has_abstract.count(class_name) != 0u) { \
+    if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Abstract" class_name); \
     } \
     AS_VERIFY(engine->RegisterObjectMethod("Proto" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
@@ -3654,10 +3729,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    if (entity_has_abstract.count(class_name) != 0u) { \
+    if (entity_has_abstract.count(class_name) != 0) { \
         REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     } \
-    if (entity_has_protos.count(class_name) != 0u) { \
+    if (entity_has_protos.count(class_name) != 0) { \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
@@ -3713,7 +3788,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
-    RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0u); \
+    RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0); \
     if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
         _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)](Entity* entity) { func_entry(static_cast<PLAYER_ENTITY*>(entity), func.get()); }); \
     } \
@@ -3726,10 +3801,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     // Register properties
     for (auto&& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
-        const auto is_global = entity_is_global.count(reg_name) != 0u;
-        const auto is_has_abstract = entity_has_abstract.count(reg_name) != 0u;
-        const auto is_has_protos = entity_has_protos.count(reg_name) != 0u;
-        const auto is_has_statics = entity_has_statics.count(reg_name) != 0u;
+        const auto is_global = entity_is_global.count(reg_name) != 0;
+        const auto is_has_abstract = entity_has_abstract.count(reg_name) != 0;
+        const auto is_has_protos = entity_has_protos.count(reg_name) != 0;
+        const auto is_has_statics = entity_has_statics.count(reg_name) != 0;
         const auto class_name = is_global ? reg_name + "Singleton" : reg_name;
         const auto abstract_class_name = "Abstract" + class_name;
         const auto proto_class_name = "Proto" + class_name;
@@ -3912,6 +3987,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
                 CHECK_CLASS("string", string*);
                 CHECK_CLASS("hstring", hstring*);
+                CHECK_CLASS("any", any_t*);
+                CHECK_CLASS("ident_t", ident_t*);
+                CHECK_CLASS("tick_t", tick_t*);
 
                 return nullptr;
             }
@@ -3948,6 +4026,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             CHECK_CLASS("string", string);
             CHECK_CLASS("hstring", hstring);
+            CHECK_CLASS("any", any_t);
+            CHECK_CLASS("ident_t", ident_t);
+            CHECK_CLASS("tick_t", tick_t);
 
             if ((type_id & asTYPEID_OBJHANDLE) != 0) {
 #if SERVER_SCRIPTING
@@ -4051,7 +4132,7 @@ public:
 
     void Write(const void* ptr, asUINT size) override
     {
-        if (!ptr || size == 0u) {
+        if (!ptr || size == 0) {
             return;
         }
 
@@ -4062,7 +4143,7 @@ public:
 
     void Read(void* ptr, asUINT size) override
     {
-        if (!ptr || size == 0u) {
+        if (!ptr || size == 0) {
             return;
         }
 

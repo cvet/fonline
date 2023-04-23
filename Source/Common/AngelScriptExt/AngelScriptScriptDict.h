@@ -44,6 +44,8 @@
 
 BEGIN_AS_NAMESPACE
 
+struct SDictCache;
+
 class CScriptDict
 {
 public:
@@ -97,6 +99,7 @@ protected:
     int keyTypeId;
     int valueTypeId;
     void* dictMap;
+    SDictCache* cache;
 
     CScriptDict();
     CScriptDict(asITypeInfo* ot);

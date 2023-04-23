@@ -2414,12 +2414,12 @@ void FOClient::Net_OnChosenTalk()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    map<string, string> params;
-    params["TalkerIsNpc"] = _str("{}", is_npc ? 1 : 0);
-    params["TalkerId"] = _str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint());
-    params["Text"] = _str("{}", text_to_script);
-    params["Answers"] = _str("{}", answers_to_script);
-    params["TalkTime"] = _str("{}", talk_time);
+    map<string, any_t> params;
+    params["TalkerIsNpc"] = any_t {_str("{}", is_npc ? 1 : 0).str()};
+    params["TalkerId"] = any_t {_str("{}", is_npc ? talk_cr_id.underlying_value() : talk_dlg_id.as_uint()).str()};
+    params["Text"] = any_t {_str("{}", text_to_script).str()};
+    params["Answers"] = any_t {_str("{}", answers_to_script).str()};
+    params["TalkTime"] = any_t {_str("{}", talk_time).str()};
     ShowScreen(SCREEN_DIALOG, params);
 }
 
@@ -2697,9 +2697,9 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
     CurMap->RebuildLight();
 
-    map<string, string> params;
-    params["LocationId"] = _str("{}", loc_id);
-    params["LocationEntrance"] = _str("{}", loc_ent);
+    map<string, any_t> params;
+    params["LocationId"] = any_t {_str("{}", loc_id).str()};
+    params["LocationEntrance"] = any_t {_str("{}", loc_ent).str()};
     ShowScreen(SCREEN_TOWN_VIEW, params);
 }
 
@@ -3287,7 +3287,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     text = dialogs[GenericUtils::Random(0u, static_cast<uint>(dialogs.size()) - 1u)];
 }
 
-void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
+void FOClient::ShowMainScreen(int new_screen, map<string, any_t> params)
 {
     STACK_TRACE_ENTRY();
 
@@ -3356,7 +3356,7 @@ auto FOClient::IsScreenPresent(int screen) -> bool
     return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
 }
 
-void FOClient::ShowScreen(int screen, map<string, string> params)
+void FOClient::ShowScreen(int screen, map<string, any_t> params)
 {
     STACK_TRACE_ENTRY();
 
@@ -3377,7 +3377,7 @@ void FOClient::HideScreen(int screen)
     RunScreenScript(false, screen, {});
 }
 
-void FOClient::RunScreenScript(bool show, int screen, map<string, string> params)
+void FOClient::RunScreenScript(bool show, int screen, map<string, any_t> params)
 {
     STACK_TRACE_ENTRY();
 

@@ -69,44 +69,6 @@ void Server_RegisterData(FOEngineBase* engine)
 
 #elif CLIENT_REGISTRATION
 
-static void RestoreProperty(PropertyRegistrator* registrator, string_view access, string_view type, const string& name, const vector<string_view>& flags)
-{
-    STACK_TRACE_ENTRY();
-
-#define RESTORE_ARGS PropertyRegistrator *registrator, Property::AccessType access, string_view name, const vector<string_view>&flags
-#define RESTORE_ARGS_PASS access, name, flags
-
-    static unordered_map<string_view, std::function<void(PropertyRegistrator*, Property::AccessType, string_view, const vector<string_view>&)>> call_map = {
-        ///@ CodeGen PropertyMap
-    };
-
-    static unordered_map<string_view, Property::AccessType> access_map = {
-        {"PrivateCommon", Property::AccessType::PrivateCommon},
-        {"PrivateClient", Property::AccessType::PrivateClient},
-        {"PrivateServer", Property::AccessType::PrivateServer},
-        {"Public", Property::AccessType::Public},
-        {"PublicModifiable", Property::AccessType::PublicModifiable},
-        {"PublicFullModifiable", Property::AccessType::PublicFullModifiable},
-        {"Protected", Property::AccessType::Protected},
-        {"ProtectedModifiable", Property::AccessType::ProtectedModifiable},
-        {"VirtualPrivateCommon", Property::AccessType::VirtualPrivateCommon},
-        {"VirtualPrivateClient", Property::AccessType::VirtualPrivateClient},
-        {"VirtualPrivateServer", Property::AccessType::VirtualPrivateServer},
-        {"VirtualPublic", Property::AccessType::VirtualPublic},
-        {"VirtualProtected", Property::AccessType::VirtualProtected},
-    };
-
-    const auto it = call_map.find(type);
-    if (it == call_map.end()) {
-        throw DataRegistrationException("Invalid property for restoring", type);
-    }
-
-    it->second(registrator, access_map[access], name, flags);
-
-#undef RESTORE_ARGS
-#undef RESTORE_ARGS_PASS
-}
-
 void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info_bin)
 {
     STACK_TRACE_ENTRY();
@@ -182,16 +144,16 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uint8>& restore_info
 
     // Restore properties
     for (const auto& info : restoreInfo["Properties"]) {
-        const auto tokens = _str(info).split(' ');
+        auto tokens = _str(info).split(' ');
         auto* prop_registrator = engine->GetOrCreatePropertyRegistrator(tokens[0]);
 
         vector<string_view> flags;
-        flags.reserve(tokens.size() - 4);
-        for (size_t i = 4; i < tokens.size(); i++) {
+        flags.reserve(tokens.size() - 1);
+        for (size_t i = 1; i < tokens.size(); i++) {
             flags.emplace_back(tokens[i]);
         }
 
-        RestoreProperty(prop_registrator, tokens[1], tokens[2], tokens[3], flags);
+        prop_registrator->RegisterProperty(flags);
     }
 
     engine->FinalizeDataRegistration();

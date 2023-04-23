@@ -54,6 +54,7 @@ struct StaticMap
     vector<pair<uint, const Item*>> HexItemBillets {};
     vector<pair<uint, const Item*>> ChildItemBillets {};
     vector<StaticItem*> StaticItems {};
+    unordered_map<ident_t, StaticItem*> StaticItemsById {};
     vector<StaticItem*> TriggerItems {};
     vector<uint8> HexFlags {};
 };
@@ -108,6 +109,7 @@ public:
     [[nodiscard]] auto GetCrittersCount() const -> uint;
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
+    [[nodiscard]] auto GetStaticItem(ident_t id) -> StaticItem*;
     [[nodiscard]] auto GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*;
     [[nodiscard]] auto GetStaticItemsHex(uint16 hx, uint16 hy) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vector<StaticItem*>;

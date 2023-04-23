@@ -3,7 +3,7 @@
 ///@ Enum CursorType Default = 0
 
 ///@ Setting Client CursorType Cursor
-///@ Setting Client uint CursorData
+///@ Setting Client any CursorData
 ///@ Setting Client CursorType DraggableCursor
 ///@ Setting Client bool MsgboxInvert
 
@@ -40,7 +40,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void OnConstruct()
 //   void OnInit()
 //   void OnShow()
-//   void OnShow( dict<string, string> params )
+//   void OnShow( dict<string, any> params )
 //   void OnHide()
 //   void OnAppear()
 //   void OnDisappear()
@@ -383,7 +383,7 @@ class Object
     void OnShow()
     {
     }
-    void OnShow(dict<string, string> params)
+    void OnShow(dict<string, any> params)
     {
     }
     void OnHide()
@@ -530,7 +530,7 @@ class Object
         _RefreshPosition();
     }
 
-    void _Show(dict<string, string> params)
+    void _Show(dict<string, any> params)
     {
         OnShow();
         OnShow(params);
@@ -2040,7 +2040,7 @@ class Screen : Panel
         Panel::_FixClone();
     }
 
-    void _Show(dict<string, string> params) override
+    void _Show(dict<string, any> params) override
     {
         // Make screen active
         _ActiveSelf = true;
@@ -2477,7 +2477,7 @@ class MessageBox : Text
         Text::_FixClone();
     }
 
-    void _Show(dict<string, string> params) override
+    void _Show(dict<string, any> params) override
     {
         Text::_Show(params);
 
@@ -2786,7 +2786,7 @@ class Console : TextInput
         TextInput::_FixClone();
     }
 
-    void _Show(dict<string, string> params) override
+    void _Show(dict<string, any> params) override
     {
         CurConsole = this;
 
@@ -3425,7 +3425,7 @@ void EngineCallback_Start()
     CreateHardcodedScreen(CLIENT_SCREEN_TOWN_VIEW);
 }
 
-void EngineCallback_ShowScreen(int screenIndex, dict<string, string> params)
+void EngineCallback_ShowScreen(int screenIndex, dict<string, any> params)
 {
     Settings.ScrollMouseUp = false;
     Settings.ScrollMouseRight = false;
@@ -3858,7 +3858,7 @@ void UnregisterScreen(int screenIndex)
     }
 }
 
-void ShowHideScreen(Screen screen, dict<string, string> params, bool show, Screen appearScreen = null)
+void ShowHideScreen(Screen screen, dict<string, any> params, bool show, Screen appearScreen = null)
 {
     // Clean hovered/focused/pressed objects
     if (HoveredObject != null) {

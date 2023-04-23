@@ -68,13 +68,13 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values)
+[[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
     return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
 }
@@ -1638,7 +1638,7 @@
 ///# param screen ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, string>& data)
+[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, any_t>& data)
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
         client->ShowMainScreen(screen, data);

@@ -392,7 +392,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, uint, ContourColor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier);
+    ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Identifier);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<tick_t>, TE_FireTime);
     ///@ ExportProperty

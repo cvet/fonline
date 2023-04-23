@@ -84,7 +84,7 @@ class Serializator
         dataSize = 0;
     }
 
-    Serializator SetcurPos(uint pos)
+    Serializator SetCurPos(uint pos)
     {
         GrowBuffer(pos);
         curPos = pos;
@@ -235,6 +235,16 @@ class Serializator
     Serializator Set(const hstring& value)
     {
         return Set(value.str);
+    }
+
+    Serializator Set(const ident_t& value)
+    {
+        return Set(value.value);
+    }
+
+    Serializator Set(const tick_t& value)
+    {
+        return Set(value.value);
     }
 
     Serializator Set(const int64[] values)
@@ -546,6 +556,18 @@ class Serializator
         string str;
         Get(str);
         hstr = hstring(str);
+        return this;
+    }
+
+    Serializator Get(ident_t& value)
+    {
+        Get(value.value);
+        return this;
+    }
+
+    Serializator Get(tick_t& value)
+    {
+        Get(value.value);
         return this;
     }
 

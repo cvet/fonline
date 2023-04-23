@@ -45,4 +45,5 @@ public:
     static void RegisterScriptArrayExtensions(asIScriptEngine* engine);
     static void RegisterScriptDictExtensions(asIScriptEngine* engine);
     static void RegisterScriptStdStringExtensions(asIScriptEngine* engine);
+    static void RegisterScriptStdStringAnyExtensions(asIScriptEngine* engine);
 };

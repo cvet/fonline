@@ -394,7 +394,7 @@ def parseTags():
             'int*': 'int&', 'uint*': 'uint&', 'int64*': 'int64&', 'uint64*': 'uint64&',
             'float*': 'float&', 'double*': 'double&', 'bool*': 'bool&', 'string*': 'string&',
             'hstring': 'hstring', 'hstring&': 'hstring&', 'hstring*': 'hstring&',
-            'ScriptAny': 'any', 'ScriptAny&': 'any&', 'ScriptAny*': 'any*'}
+            'any_t': 'any', 'any_t&': 'any&', 'any_t*': 'any*'}
         if t.startswith('InitFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'init-' + r
@@ -998,7 +998,7 @@ def parseTags():
                 assert target in ['Server', 'Client', 'Common'], 'Invalid target ' + target
                 stype = unifiedTypeToMetaType(tok[1])
                 isArr = tok[2] == '[' and tok[3] == ']'
-                assert stype in ['int', 'uint', 'int8', 'uint8', 'int16', 'uint16', 'int64', 'uint64', 'float', 'double', 'bool', 'string'] + list(scriptEnums) + list(engineEnums), 'Invalid setting type ' + stype
+                assert stype in ['int', 'uint', 'int8', 'uint8', 'int16', 'uint16', 'int64', 'uint64', 'float', 'double', 'bool', 'string', 'any'] + list(scriptEnums) + list(engineEnums), 'Invalid setting type ' + stype
                 if isArr:
                     assert False, 'Arrays not implemented yet'
                     stype = 'arr.' + stype
@@ -1347,7 +1347,7 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
         def mapType(mt):
             typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
                        'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                       'any': 'ScriptAny'}
+                       'any': 'any_t'}
             return typeMap[mt] if mt in typeMap else mt
         r = mapType(tt[0])
     if tt[-1] == 'ref':
@@ -1427,7 +1427,6 @@ def genDataRegistration(target, isASCompiler):
     globalLines = []
     registerLines = []
     restoreLines = []
-    propertyMapLines = []
     
     def entityAllowed(entity, entityTarget):
         if entityTarget == 'Server':
@@ -1470,15 +1469,72 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('')
     
     # Properties
-    def getEnumFlags(t, ename = 'Enum'):
+    def getRegisterFlags(t, name, access, baseFlags):
+        def getUnderlyingType(t):
+            if t in engineEnums:
+                for e in codeGenTags['ExportEnum']:
+                    if e[0] == t:
+                        return e[1]
+                assert False, 'Invalid underlying type ' + t
+            if t in scriptEnums:
+                for e in codeGenTags['Enum']:
+                    if e[0] == t:
+                        return e[1]
+                assert False, 'Invalid underlying type ' + t
+            if t in customTypes:
+                for e in codeGenTags['ExportType']:
+                    if e[0] == t:
+                        return e[1]
+                assert False, 'Invalid underlying type ' + t
+            if t == 'hstring':
+                return 'uint'
+            return t if t in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'bool', 'float', 'double'] else None
+        def getTypeSize(t):
+            if t in ['int8', 'uint8', 'bool']:
+                return '1'
+            elif t in ['int16', 'uint16']:
+                return '2'
+            elif t in ['int', 'uint', 'float']:
+                return '4'
+            elif t in ['int64', 'uint64', 'double']:
+                return '8'
+            elif t is None:
+                return '0'
+            else:
+                assert False, 'Unknown type size ' + t
         tt = t.split('.')
+        bt = tt[-1]
         if tt[0] == 'dict':
-            return getEnumFlags(tt[1], 'KeyEnum') + getEnumFlags('.'.join(tt[2:]))
-        if tt[0] == 'arr':
-            return getEnumFlags(tt[1])
-        if tt[0] in scriptEnums or tt[0] in engineEnums:
-            return [ename, '=', tt[0]]
-        return []
+            dt = 'Dict'
+        elif tt[0] == 'arr':
+            dt = 'Array'
+        elif bt in ['string', 'any']:
+            dt = 'String'
+        else:
+            dt = 'PlainData'
+        ut = getUnderlyingType(bt)
+        r = [name, access, dt, bt]
+        r.append(getTypeSize(ut)) # type size
+        r.append('1' if bt == 'hstring' else '0') # is hash
+        r.append('1' if bt in scriptEnums | engineEnums else '0') # is enum
+        r.append('1' if ut in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64'] else '0') # is int
+        r.append('1' if ut in ['int8', 'int16', 'int', 'int64'] else '0') # is signed int
+        r.append('1' if ut in ['float', 'double'] else '0') # is float
+        r.append('1' if ut in ['bool'] else '0') # is bool
+        if dt == 'Array':
+            r.append('1' if bt in ['string', 'any'] else '0') # is array of string
+        elif dt == 'Dict':
+            btKey = tt[1]
+            isDictArr = tt[2] == 'arr'
+            r.append('1' if isDictArr else '0') # is dict of array
+            r.append('1' if not isDictArr and bt in ['string', 'any'] else '0') # is dict of string
+            r.append('1' if isDictArr and bt in ['string', 'any'] else '0') # is dict of array of string
+            utKey = getUnderlyingType(btKey)
+            r.append(btKey) # key type name
+            r.append(getTypeSize(utKey)) # key size
+            r.append('1' if btKey == 'hstring' else '0') # is key hash
+            r.append('1' if btKey in scriptEnums | engineEnums else '0') # is key enum
+        return r + baseFlags
     for entity in gameEntities:
         if not entityAllowed(entity, target):
             continue
@@ -1491,14 +1547,12 @@ def genDataRegistration(target, isASCompiler):
         for propTag in codeGenTags['ExportProperty']:
             ent, access, type, name, flags, _ = propTag
             if ent == entity:
-                registerLines.append('registrator->Register<' + metaTypeToEngineType(type, target, False) + '>(Property::AccessType::' +
-                        access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
+                registerLines.append('registrator->RegisterProperty({' + ', '.join(['"' + f + '"' for f in getRegisterFlags(type, name, access, flags)]) + '});')
         if target != 'Client' or isASCompiler:
             for propTag in codeGenTags['Property']:
                 ent, access, type, name, flags, _ = propTag
                 if ent == entity:
-                    registerLines.append('registrator->Register<' + metaTypeToEngineType(type, target, False) + '>(Property::AccessType::' +
-                            access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
+                    registerLines.append('registrator->RegisterProperty({' + ', '.join(['"' + f + '"' for f in getRegisterFlags(type, name, access, flags)]) + '});')
         registerLines.append('')
     
     # Restore enums info
@@ -1546,10 +1600,9 @@ def genDataRegistration(target, isASCompiler):
             if not entityAllowed(entity, 'Client'):
                 continue
             if access not in ['PrivateServer', 'VirtualPrivateServer']:
-                allFlags = flags + getEnumFlags(type)
-                restoreLines.append('    "' + entity + ' ' + access + ' ' + replaceFakedEnum(type) + ' ' + name + (' ' if allFlags else '') + ' '.join(allFlags) + '",')
+                restoreLines.append('    "' + entity + ' ' + ' '.join(getRegisterFlags(type, name, access, flags)) + '",')
             else:
-                restoreLines.append('    "' + entity + ' ' + access + ' int __dummy' + str(dummyIndex) + '",')
+                restoreLines.append('    "' + entity + ' ' + ' '.join(getRegisterFlags(type, '__dummy' + str(dummyIndex), access, flags)) + '",')
                 dummyIndex += 1
         restoreLines.append('};')
         restoreLines.append('')
@@ -1585,19 +1638,6 @@ def genDataRegistration(target, isASCompiler):
     #    restoreLines.append('};')
     #    restoreLines.append('')
     
-    # Property map
-    if target == 'Client' and not isASCompiler:
-        def addPropMapEntry(e):
-            propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { registrator->Register<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
-        fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
-        for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + list(customTypes) + fakedEnums:
-            addPropMapEntry(t)
-            addPropMapEntry('arr.' + t)
-        for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring'] + list(customTypes) + fakedEnums:
-            for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + list(customTypes) + fakedEnums:
-                addPropMapEntry('dict.' + tKey + '.' + t)
-                addPropMapEntry('dict.' + tKey + '.arr.' + t)
-    
     createFile('DataRegistration-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
     writeCodeGenTemplate('DataRegistration')
     
@@ -1607,11 +1647,9 @@ def genDataRegistration(target, isASCompiler):
             insertCodeGenLines(globalLines, 'Global')
         elif target == 'Client':
             insertCodeGenLines(registerLines, 'ClientRegister')
-            insertCodeGenLines(propertyMapLines, 'PropertyMap')
             insertCodeGenLines(globalLines, 'Global')
         elif target == 'Single':
             insertCodeGenLines(registerLines, 'SingleRegister')
-            insertCodeGenLines(propertyMapLines, 'PropertyMap')
             insertCodeGenLines(globalLines, 'Global')
         elif target == 'Mapper':
             insertCodeGenLines(registerLines, 'MapperRegister')
@@ -1710,7 +1748,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 def mapType(t):
                     typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
                                'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                               'any': 'ScriptAny'}
+                               'any': 'any_t'}
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':
@@ -2145,6 +2183,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 globalLines.append('    auto&& value = script_sys->GameEngine->Settings.Custom["' + name + '"];')
                 if type == 'string':
                     globalLines.append('    return value;')
+                elif type == 'any':
+                    globalLines.append('    return any_t {' + 'value};')
                 elif type == 'bool':
                     globalLines.append('    return _str(value).toBool();')
                 elif type in ['float', 'double']:

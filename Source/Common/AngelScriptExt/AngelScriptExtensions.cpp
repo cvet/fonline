@@ -739,3 +739,37 @@ void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine
     r = engine->RegisterGlobalFunction("string join(const array<string>@+, const string &in)", SCRIPT_FUNC(ScriptString_Join), SCRIPT_FUNC_CONV);
     RUNTIME_ASSERT(r >= 0);
 }
+
+static string& ScriptString_AssignAny(string& str, const any_t& other)
+{
+    str = other;
+    return str;
+}
+
+static string& ScriptString_AddAssignAny(string& str, const any_t& other)
+{
+    str += other;
+    return str;
+}
+
+static string ScriptString_AddAny(const string& str, const any_t& other)
+{
+    return str + other;
+}
+
+static string ScriptString_AddAnyR(const string& str, const any_t& other)
+{
+    return other + str;
+}
+
+void ScriptExtensions::RegisterScriptStdStringAnyExtensions(asIScriptEngine* engine)
+{
+    int r = engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AssignAny), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "string& opAddAssign(const any &in)", SCRIPT_FUNC_THIS(ScriptString_AddAssignAny), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "string opAdd(const any &in) const", SCRIPT_FUNC_THIS(ScriptString_AddAny), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "string opAdd_r(const any &in) const", SCRIPT_FUNC_THIS(ScriptString_AddAnyR), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+}

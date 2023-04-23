@@ -1252,7 +1252,7 @@ void Critter::Send_SomeItems(const vector<Item*>* items, int param)
     }
 }
 
-void Critter::AddTimeEvent(hstring func_name, uint rate, tick_t duration, int identifier)
+void Critter::AddTimeEvent(hstring func_name, uint rate, tick_t duration, const any_t& identifier)
 {
     STACK_TRACE_ENTRY();
 
@@ -1268,7 +1268,7 @@ void Critter::AddTimeEvent(hstring func_name, uint rate, tick_t duration, int id
 
     size_t index = 0;
 
-    for ([[maybe_unused]] const auto te_identifier : te_identifiers) {
+    for ([[maybe_unused]] const auto& te_identifier : te_identifiers) {
         if (fire_time.underlying_value() < te_fire_times[index].underlying_value()) {
             break;
         }
@@ -1351,14 +1351,14 @@ void Critter::ProcessTimeEvents()
     SetTE_FuncName(te_func_names);
     SetTE_Rate(te_rates);
 
-    if (auto func = _engine->ScriptSys->FindFunc<uint, Critter*, int, uint*>(func_name)) {
+    if (auto func = _engine->ScriptSys->FindFunc<uint, Critter*, any_t, uint*>(func_name)) {
         if (func(this, identifier, &rate)) {
             if (const auto next_call_duration = func.GetResult(); next_call_duration > 0) {
                 AddTimeEvent(func_name, rate, tick_t {next_call_duration}, identifier);
             }
         }
     }
-    else if (auto func2 = _engine->ScriptSys->FindFunc<tick_t, Critter*, int, uint*>(func_name)) {
+    else if (auto func2 = _engine->ScriptSys->FindFunc<tick_t, Critter*, any_t, uint*>(func_name)) {
         if (func2(this, identifier, &rate)) {
             if (const auto next_call_duration = func2.GetResult(); next_call_duration.underlying_value() > 0) {
                 AddTimeEvent(func_name, rate, next_call_duration, identifier);

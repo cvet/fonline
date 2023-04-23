@@ -57,8 +57,8 @@ public:
 
     void LoadDeferredCalls();
     auto AddSavedDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t;
-    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
+    auto AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
 
 private:
     auto GetNextCallId() -> ident_t override;

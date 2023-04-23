@@ -100,7 +100,7 @@ public:
         Push(&value, sizeof(T));
     }
 
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
     void Write(T value)
     {
         Push(&value.underlying_value(), sizeof(typename T::underlying_type));
@@ -163,7 +163,7 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<is_strong_type<T>::value, int> = 0>
+    template<typename T, std::enable_if_t<is_strong_type_v<T>, int> = 0>
     [[nodiscard]] auto Read() -> T
     {
         T result = {};

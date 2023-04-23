@@ -202,34 +202,35 @@ using const_span = span<const T>;
 template<typename T>
 struct strong_type
 {
-    using underlying_type = T;
+    using underlying_type = typename T::type;
+    static constexpr const char* type_name = T::name;
 
     constexpr strong_type() noexcept :
         _value {}
     {
     }
 
-    constexpr explicit strong_type(T v) noexcept :
+    constexpr explicit strong_type(underlying_type v) noexcept :
         _value {v}
     {
     }
 
-    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != T {}; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != underlying_type {}; }
 
     [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
     [[nodiscard]] constexpr auto operator!=(const strong_type& other) const noexcept -> bool { return _value != other._value; }
 
-    [[nodiscard]] constexpr auto underlying_value() noexcept -> T& { return _value; }
-    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const T& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return _value; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
 private:
-    T _value;
+    underlying_type _value;
 };
 
 template<typename T>
-struct std::hash<strong_type<T>>
+struct std::hash<strong_type<T>> // NOLINT(cert-dcl58-cpp)
 {
-    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<T>()(t.underlying_value()); }
+    size_t operator()(const strong_type<T>& t) const noexcept { return std::hash<typename strong_type<T>::underlying_type>()(t.underlying_value()); }
 };
 
 template<typename T>
@@ -249,7 +250,7 @@ struct fmt::formatter<strong_type<T>>
 };
 
 template<typename T>
-constexpr bool is_strong_type_func(const strong_type<T>*)
+constexpr bool is_strong_type_func(const strong_type<T>* /*unused*/)
 {
     return true;
 }
@@ -261,14 +262,32 @@ template<typename T>
 struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_cast<T*>(nullptr))>
 {
 };
+template<typename T>
+constexpr bool is_strong_type_v = is_strong_type<T>::value;
 
-///@ ExportType ident_t uint RelaxedStrong
-using ident_t = strong_type<uint>;
+struct ident_t_traits
+{
+    static constexpr const char* name = "ident_t";
+    using type = uint;
+};
+
+///@ ExportType ident_t uint HardStrong
+using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
 
+struct tick_t_traits
+{
+    static constexpr const char* name = "tick_t";
+    using type = uint;
+};
+
 ///@ ExportType tick_t uint RelaxedStrong
-using tick_t = strong_type<uint>;
+using tick_t = strong_type<tick_t_traits>;
 static_assert(sizeof(tick_t) == sizeof(uint));
+
+class any_t : public string
+{
+};
 
 // Game clock (since program start)
 struct steady_clock_since_program_start

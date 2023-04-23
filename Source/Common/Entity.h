@@ -129,16 +129,16 @@ public:
     [[nodiscard]] auto IsDestroyed() const -> bool;
     [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
-    [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
-    [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
+    [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
+    [[nodiscard]] auto GetValueAsAny(int prop_index) const -> any_t;
 
     void StoreData(bool with_protected, vector<const uint8*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<vector<uint8>>& props_data);
     void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
-    void SetValueAsFloat(const Property* prop, float value);
-    void SetValueAsFloat(int prop_index, float value);
+    void SetValueAsAny(const Property* prop, const any_t& value);
+    void SetValueAsAny(int prop_index, const any_t& value);
     void SubscribeEvent(const string& event_name, EventCallbackData callback);
     void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
     void UnsubscribeAllEvent(const string& event_name);

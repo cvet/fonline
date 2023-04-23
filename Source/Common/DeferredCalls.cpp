@@ -52,7 +52,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> 
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -64,7 +64,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, ScriptAny
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 

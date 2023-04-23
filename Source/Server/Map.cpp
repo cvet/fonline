@@ -1071,6 +1071,18 @@ void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint s
     }
 }
 
+auto Map::GetStaticItem(ident_t id) -> StaticItem*
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    if (const auto it = _staticMap->StaticItemsById.find(id); it != _staticMap->StaticItemsById.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
 auto Map::GetStaticItem(uint16 hx, uint16 hy, hstring pid) -> StaticItem*
 {
     STACK_TRACE_ENTRY();

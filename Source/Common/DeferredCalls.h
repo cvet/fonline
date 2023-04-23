@@ -47,9 +47,9 @@ struct DeferredCall
     ident_t Id {};
     tick_t FireFullSecond {};
     ScriptFunc<void> EmptyFunc {};
-    ScriptFunc<void, ScriptAny> AnyFunc {};
-    ScriptFunc<void, vector<ScriptAny>> AnyArrayFunc {};
-    vector<ScriptAny> FuncValue {};
+    ScriptFunc<void, any_t> AnyFunc {};
+    ScriptFunc<void, vector<any_t>> AnyArrayFunc {};
+    vector<any_t> FuncValue {};
 };
 
 class DeferredCallManager
@@ -66,8 +66,8 @@ public:
     [[nodiscard]] auto IsDeferredCallPending(ident_t id) const -> bool;
 
     auto AddDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t;
-    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
+    auto AddDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
     auto CancelDeferredCall(ident_t id) -> bool;
     void Process();
 

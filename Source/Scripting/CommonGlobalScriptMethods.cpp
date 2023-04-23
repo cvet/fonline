@@ -48,6 +48,13 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine)
+{
+    BreakIntoDebugger();
+}
+
+///# ...
 ///# param text ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)

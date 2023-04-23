@@ -140,6 +140,7 @@ void MapManager::LoadFromResources()
                 static_map.HexItemBillets.reserve(item_count);
                 static_map.ChildItemBillets.reserve(item_count);
                 static_map.StaticItems.reserve(item_count);
+                static_map.StaticItemsById.reserve(item_count);
                 static_map.TriggerItems.reserve(item_count);
 
                 for (const auto i : xrange(item_count)) {
@@ -191,6 +192,7 @@ void MapManager::LoadFromResources()
 
                         if (!item->GetIsHiddenInStatic()) {
                             static_map.StaticItems.emplace_back(item);
+                            static_map.StaticItemsById.emplace(item->GetId(), item);
                         }
                         if (item->GetIsTrigger() || item->GetIsTrap()) {
                             static_map.TriggerItems.emplace_back(item);

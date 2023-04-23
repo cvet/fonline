@@ -639,11 +639,11 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
     if (prop->_isBool) {
         return GetValue<bool>(prop) ? 1 : 0;
     }
-    if (prop->_isFloat) {
-        if (prop->_baseSize == 4) {
+    else if (prop->_isFloat) {
+        if (prop->_isSingleFloat) {
             return static_cast<int>(GetValue<float>(prop));
         }
-        if (prop->_baseSize == 8) {
+        if (prop->_isDoubleFloat) {
             return static_cast<int>(GetValue<double>(prop));
         }
     }
@@ -679,53 +679,53 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
     throw PropertiesException("Invalid property for get as int", prop->GetName());
 }
 
-auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
+auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
-        return GetValue<bool>(prop) ? 1.0f : 0.0f;
+        return any_t {_str("{}", GetValue<bool>(prop)).str()};
     }
-    if (prop->_isFloat) {
-        if (prop->_baseSize == 4) {
-            return GetValue<float>(prop);
+    else if (prop->_isFloat) {
+        if (prop->_isSingleFloat) {
+            return any_t {_str("{}", GetValue<float>(prop)).str()};
         }
-        if (prop->_baseSize == 8) {
-            return static_cast<float>(GetValue<double>(prop));
+        if (prop->_isDoubleFloat) {
+            return any_t {_str("{}", GetValue<double>(prop)).str()};
         }
     }
     else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
-            return static_cast<float>(GetValue<char>(prop));
+            return any_t {_str("{}", GetValue<char>(prop)).str()};
         }
         if (prop->_baseSize == 2) {
-            return static_cast<float>(GetValue<int16>(prop));
+            return any_t {_str("{}", GetValue<int16>(prop)).str()};
         }
         if (prop->_baseSize == 4) {
-            return static_cast<float>(GetValue<int>(prop));
+            return any_t {_str("{}", GetValue<int>(prop))};
         }
         if (prop->_baseSize == 8) {
-            return static_cast<float>(GetValue<int64>(prop));
+            return any_t {_str("{}", GetValue<int64>(prop)).str()};
         }
     }
     else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
-            return static_cast<float>(GetValue<uint8>(prop));
+            return any_t {_str("{}", GetValue<uint8>(prop)).str()};
         }
         if (prop->_baseSize == 2) {
-            return static_cast<float>(GetValue<uint16>(prop));
+            return any_t {_str("{}", GetValue<uint16>(prop)).str()};
         }
         if (prop->_baseSize == 4) {
-            return static_cast<float>(GetValue<uint>(prop));
+            return any_t {_str("{}", GetValue<uint>(prop)).str()};
         }
         if (prop->_baseSize == 8) {
-            return static_cast<float>(GetValue<uint64>(prop));
+            return any_t {_str("{}", GetValue<uint64>(prop)).str()};
         }
     }
 
-    throw PropertiesException("Invalid property for get as float", prop->GetName());
+    throw PropertiesException("Invalid property for get as any", prop->GetName());
 }
 
 void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
@@ -738,10 +738,10 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
         SetValue<bool>(prop, value != 0);
     }
     else if (prop->_isFloat) {
-        if (prop->_baseSize == 4) {
+        if (prop->_isSingleFloat) {
             SetValue<float>(prop, static_cast<float>(value));
         }
-        else if (prop->_baseSize == 8) {
+        else if (prop->_isDoubleFloat) {
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
@@ -778,53 +778,53 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
     }
 }
 
-void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
+void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBool) {
-        SetValue<bool>(prop, value != 0.0f);
+        SetValue<bool>(prop, _str(value).toBool());
     }
     else if (prop->_isFloat) {
-        if (prop->_baseSize == 4) {
-            SetValue<float>(prop, value);
+        if (prop->_isSingleFloat) {
+            SetValue<float>(prop, _str(value).toFloat());
         }
-        else if (prop->_baseSize == 8) {
-            SetValue<double>(prop, static_cast<double>(value));
+        else if (prop->_isDoubleFloat) {
+            SetValue<double>(prop, _str(value).toDouble());
         }
     }
     else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
-            SetValue<char>(prop, static_cast<char>(value));
+            SetValue<char>(prop, static_cast<char>(_str(value).toInt()));
         }
         else if (prop->_baseSize == 2) {
-            SetValue<int16>(prop, static_cast<int16>(value));
+            SetValue<int16>(prop, static_cast<int16>(_str(value).toInt()));
         }
         else if (prop->_baseSize == 4) {
-            SetValue<int>(prop, static_cast<int>(value));
+            SetValue<int>(prop, static_cast<int>(_str(value).toInt()));
         }
         else if (prop->_baseSize == 8) {
-            SetValue<int64>(prop, static_cast<int64>(value));
+            SetValue<int64>(prop, static_cast<int64>(_str(value).toInt64()));
         }
     }
     else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
-            SetValue<uint8>(prop, static_cast<uint8>(value));
+            SetValue<uint8>(prop, static_cast<uint8>(_str(value).toInt()));
         }
         else if (prop->_baseSize == 2) {
-            SetValue<uint16>(prop, static_cast<uint16>(value));
+            SetValue<uint16>(prop, static_cast<uint16>(_str(value).toInt()));
         }
         else if (prop->_baseSize == 4) {
-            SetValue<uint>(prop, static_cast<uint>(value));
+            SetValue<uint>(prop, static_cast<uint>(_str(value).toInt()));
         }
         else if (prop->_baseSize == 8) {
-            SetValue<uint64>(prop, static_cast<uint64>(value));
+            SetValue<uint64>(prop, static_cast<uint64>(_str(value).toUInt64()));
         }
     }
     else {
-        throw PropertiesException("Invalid property for set as float", prop->GetName());
+        throw PropertiesException("Invalid property for set as any", prop->GetName());
     }
 }
 
@@ -838,7 +838,7 @@ auto Properties::GetValueAsInt(int property_index) const -> int
         throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
+        throw PropertiesException("Can't retreive integer value from non plain data property", prop->GetName());
     }
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
@@ -847,7 +847,7 @@ auto Properties::GetValueAsInt(int property_index) const -> int
     return GetPlainDataValueAsInt(prop);
 }
 
-auto Properties::GetValueAsFloat(int property_index) const -> float
+auto Properties::GetValueAsAny(int property_index) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
@@ -857,13 +857,13 @@ auto Properties::GetValueAsFloat(int property_index) const -> float
         throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
+        throw PropertiesException("Can't retreive integer value from non plain data property", prop->GetName());
     }
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
 
-    return GetPlainDataValueAsFloat(prop);
+    return GetPlainDataValueAsAny(prop);
 }
 
 void Properties::SetValueAsInt(int property_index, int value)
@@ -876,7 +876,7 @@ void Properties::SetValueAsInt(int property_index, int value)
         throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
+        throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
     }
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
@@ -885,7 +885,7 @@ void Properties::SetValueAsInt(int property_index, int value)
     SetPlainDataValueAsInt(prop, value);
 }
 
-void Properties::SetValueAsFloat(int property_index, float value)
+void Properties::SetValueAsAny(int property_index, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
@@ -895,13 +895,13 @@ void Properties::SetValueAsFloat(int property_index, float value)
         throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
+        throw PropertiesException("Can't set any value to non plain data property", prop->GetName());
     }
     if (prop->IsDisabled()) {
-        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
+        throw PropertiesException("Can't set any value to disabled property", prop->GetName());
     }
 
-    SetPlainDataValueAsFloat(prop, value);
+    SetPlainDataValueAsAny(prop, value);
 }
 
 void Properties::SetValueAsIntProps(int property_index, int value)
@@ -914,7 +914,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
         throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
+        throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
     }
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
@@ -994,6 +994,29 @@ PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelat
     _nameResolver {name_resolver}
 {
     STACK_TRACE_ENTRY();
+
+    _accessMap = {
+        {"PrivateCommon", Property::AccessType::PrivateCommon},
+        {"PrivateClient", Property::AccessType::PrivateClient},
+        {"PrivateServer", Property::AccessType::PrivateServer},
+        {"Public", Property::AccessType::Public},
+        {"PublicModifiable", Property::AccessType::PublicModifiable},
+        {"PublicFullModifiable", Property::AccessType::PublicFullModifiable},
+        {"Protected", Property::AccessType::Protected},
+        {"ProtectedModifiable", Property::AccessType::ProtectedModifiable},
+        {"VirtualPrivateCommon", Property::AccessType::VirtualPrivateCommon},
+        {"VirtualPrivateClient", Property::AccessType::VirtualPrivateClient},
+        {"VirtualPrivateServer", Property::AccessType::VirtualPrivateServer},
+        {"VirtualPublic", Property::AccessType::VirtualPublic},
+        {"VirtualProtected", Property::AccessType::VirtualProtected},
+    };
+
+    _dataTypeMap = {
+        {"PlainData", Property::DataType::PlainData},
+        {"String", Property::DataType::String},
+        {"Array", Property::DataType::Array},
+        {"Dict", Property::DataType::Dict},
+    };
 }
 
 PropertyRegistrator::~PropertyRegistrator()
@@ -1076,11 +1099,69 @@ auto PropertyRegistrator::GetComponents() const -> const unordered_set<hstring>&
     return _registeredComponents;
 }
 
-void PropertyRegistrator::AppendProperty(Property* prop, const const_span<string_view>& flags)
+void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
 {
     STACK_TRACE_ENTRY();
 
     // Todo: validate property name identifier
+
+    auto* prop = new Property(this);
+
+    RUNTIME_ASSERT(flags.size() >= 11);
+
+    prop->_propName = flags[0];
+    RUNTIME_ASSERT(_accessMap.count(flags[1]) != 0);
+    prop->_accessType = _accessMap[flags[1]];
+    RUNTIME_ASSERT(_dataTypeMap.count(flags[2]) != 0);
+    prop->_dataType = _dataTypeMap[flags[2]];
+
+    prop->_baseTypeName = flags[3];
+    RUNTIME_ASSERT(!prop->_baseTypeName.empty());
+    prop->_baseSize = _str(flags[4]).toInt();
+    prop->_isHashBase = flags[5][0] == '1';
+    prop->_isEnumBase = flags[6][0] == '1';
+    prop->_isInt = flags[7][0] == '1';
+    prop->_isSignedInt = flags[8][0] == '1';
+    prop->_isFloat = flags[9][0] == '1';
+    prop->_isBool = flags[10][0] == '1';
+
+    prop->_isInt8 = prop->_isInt && prop->_isSignedInt && prop->_baseSize == 1;
+    prop->_isInt16 = prop->_isInt && prop->_isSignedInt && prop->_baseSize == 2;
+    prop->_isInt32 = prop->_isInt && prop->_isSignedInt && prop->_baseSize == 4;
+    prop->_isInt64 = prop->_isInt && prop->_isSignedInt && prop->_baseSize == 8;
+    prop->_isUInt8 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 1;
+    prop->_isUInt16 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 2;
+    prop->_isUInt32 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 4;
+    prop->_isUInt64 = prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8;
+
+    prop->_isSingleFloat = prop->_isFloat && prop->_baseSize == 4;
+    prop->_isDoubleFloat = prop->_isFloat && prop->_baseSize == 8;
+
+    size_t flags_start = 11;
+
+    if (prop->_dataType == Property::DataType::Array) {
+        RUNTIME_ASSERT(flags.size() >= 12);
+
+        prop->_isArrayOfString = flags[11][0] == '1';
+
+        flags_start = 12;
+    }
+    else if (prop->_dataType == Property::DataType::Dict) {
+        RUNTIME_ASSERT(flags.size() >= 18);
+
+        prop->_isDictOfArray = flags[11][0] == '1';
+        prop->_isDictOfString = flags[12][0] == '1';
+        prop->_isDictOfArrayOfString = flags[13][0] == '1';
+        prop->_dictKeyTypeName = flags[14];
+        RUNTIME_ASSERT(!prop->_dictKeyTypeName.empty());
+        prop->_dictKeySize = _str(flags[15]).toInt();
+        prop->_isDictKeyHash = flags[16][0] == '1';
+        prop->_isDictKeyEnum = flags[17][0] == '1';
+
+        flags_start = 18;
+    }
+
+    prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
 
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
         prop->_component = _nameResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
@@ -1101,43 +1182,18 @@ void PropertyRegistrator::AppendProperty(Property* prop, const const_span<string
         prop->_propNameWithoutComponent = prop->_propName;
     }
 
-    if (prop->_isEnumBase) {
-        prop->_baseTypeName = "";
-    }
-    if (prop->_dataType == Property::DataType::Dict && prop->_isDictKeyEnum) {
-        prop->_dictKeyTypeName = "";
-    }
-
     if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         prop->_isVirtual = true;
     }
 
-    for (size_t i = 0; i < flags.size(); i++) {
+    for (size_t i = flags_start; i < flags.size(); i++) {
         const auto check_next_param = [&flags, i, prop] {
             if (i + 2 >= flags.size() || flags[i + 1] != "=") {
                 throw PropertyRegistrationException("Expected property flag = value", prop->_propName, flags[i], i, flags.size());
             }
         };
 
-        if (flags[i] == "Enum") {
-            check_next_param();
-            if (!prop->_isEnumBase) {
-                throw PropertyRegistrationException("Expected hstring for Enum flag", prop->_propName);
-            }
-
-            prop->_baseTypeName = flags[i + 2];
-            i += 2;
-        }
-        else if (flags[i] == "KeyEnum") {
-            check_next_param();
-            if (prop->_dataType != Property::DataType::Dict) {
-                throw PropertyRegistrationException("Expected dict for KeyEnum flag", prop->_propName);
-            }
-
-            prop->_dictKeyTypeName = flags[i + 2];
-            i += 2;
-        }
-        else if (flags[i] == "Group") {
+        if (flags[i] == "Group") {
             check_next_param();
 
             const auto& group = flags[i + 2];
@@ -1241,11 +1297,6 @@ void PropertyRegistrator::AppendProperty(Property* prop, const const_span<string
     }
     else {
         prop->_fullTypeName = prop->_baseTypeName;
-    }
-
-    RUNTIME_ASSERT(!prop->_baseTypeName.empty());
-    if (prop->_dataType == Property::DataType::Dict) {
-        RUNTIME_ASSERT(!prop->_dictKeyTypeName.empty());
     }
 
     const auto reg_index = static_cast<uint16>(_registeredProperties.size());

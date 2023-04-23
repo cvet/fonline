@@ -145,14 +145,14 @@ public:
     auto AnimGetFrames(uint anim_id) -> AnyFrames*;
     void AnimRun(uint anim_id, uint flags);
 
-    void ShowMainScreen(int new_screen, map<string, string> params);
+    void ShowMainScreen(int new_screen, map<string, any_t> params);
     auto GetMainScreen() const -> int { return _screenModeMain; }
     auto IsMainScreen(int check_screen) const -> bool { return check_screen == _screenModeMain; }
-    void ShowScreen(int screen, map<string, string> params);
+    void ShowScreen(int screen, map<string, any_t> params);
     void HideScreen(int screen);
     auto GetActiveScreen(vector<int>* screens) -> int;
     auto IsScreenPresent(int screen) -> bool;
-    void RunScreenScript(bool show, int screen, map<string, string> params);
+    void RunScreenScript(bool show, int screen, map<string, any_t> params);
 
     void CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, int, int>, int> pos_or_dir, uint speed);
     void CritterLookTo(CritterHexView* cr, variant<uint8, int16> dir_or_angle);
@@ -173,7 +173,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnGetActiveScreens, vector<int>& /*screens*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
+    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, any_t> /*data*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnScreenScroll, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent

@@ -262,18 +262,18 @@ auto Entity::GetValueAsInt(int prop_index) const -> int
     return _props.GetValueAsInt(prop_index);
 }
 
-auto Entity::GetValueAsFloat(const Property* prop) const -> float
+auto Entity::GetValueAsAny(const Property* prop) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
-    return _props.GetPlainDataValueAsFloat(prop);
+    return _props.GetPlainDataValueAsAny(prop);
 }
 
-auto Entity::GetValueAsFloat(int prop_index) const -> float
+auto Entity::GetValueAsAny(int prop_index) const -> any_t
 {
     STACK_TRACE_ENTRY();
 
-    return _props.GetValueAsFloat(prop_index);
+    return _props.GetValueAsAny(prop_index);
 }
 
 void Entity::SetValueAsInt(const Property* prop, int value)
@@ -290,18 +290,18 @@ void Entity::SetValueAsInt(int prop_index, int value)
     _props.SetValueAsInt(prop_index, value);
 }
 
-void Entity::SetValueAsFloat(const Property* prop, float value)
+void Entity::SetValueAsAny(const Property* prop, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
-    _props.SetPlainDataValueAsFloat(prop, value);
+    _props.SetPlainDataValueAsAny(prop, value);
 }
 
-void Entity::SetValueAsFloat(int prop_index, float value)
+void Entity::SetValueAsAny(int prop_index, const any_t& value)
 {
     STACK_TRACE_ENTRY();
 
-    _props.SetValueAsFloat(prop_index, value);
+    _props.SetValueAsAny(prop_index, value);
 }
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :

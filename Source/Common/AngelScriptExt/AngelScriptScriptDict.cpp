@@ -47,6 +47,49 @@ using namespace std;
 
 BEGIN_AS_NAMESPACE
 
+static const asPWORD DICT_CACHE = 1010;
+
+// This cache holds the object type of the dictionary type and array type
+// so it isn't necessary to look this up each time the dictionary or array
+// is created.
+struct SDictCache
+{
+    int StringTypeId {};
+    int HStringTypeId {};
+    int IdentTypeId {};
+    int TickTypeId {};
+
+    // This is called from RegisterScriptDictionary
+    static SDictCache* GetOrCreate(asIScriptEngine* engine)
+    {
+        SDictCache* cache = reinterpret_cast<SDictCache*>(engine->GetUserData(DICT_CACHE));
+        if (cache == 0) {
+            cache = new SDictCache();
+            engine->SetUserData(cache, DICT_CACHE);
+            engine->SetEngineUserDataCleanupCallback(SDictCache::Cleanup, DICT_CACHE);
+
+            cache->StringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("string");
+            RUNTIME_ASSERT(cache->StringTypeId > 0);
+            cache->HStringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
+            RUNTIME_ASSERT(cache->HStringTypeId > 0);
+            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("ident_t");
+            RUNTIME_ASSERT(cache->IdentTypeId > 0);
+            cache->TickTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("tick_t");
+            RUNTIME_ASSERT(cache->TickTypeId > 0);
+        }
+        return cache;
+    }
+
+    // This is called from the engine when shutting down
+    static void Cleanup(asIScriptEngine* engine)
+    {
+        SDictCache* cache = reinterpret_cast<SDictCache*>(engine->GetUserData(DICT_CACHE));
+        if (cache) {
+            delete cache;
+        }
+    }
+};
+
 // This macro is used to avoid warnings about unused variables.
 // Usually where the variables are only used in debug mode.
 #define UNUSED_VAR(x) (void)(x)
@@ -68,20 +111,22 @@ static void RegisterScriptDict_Generic(asIScriptEngine* engine);
 
 static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value);
 static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value);
-static bool Less(int typeId, const void* a, const void* b);
-static bool Equals(int typeId, const void* a, const void* b);
+static bool Less(SDictCache* cache, int typeId, const void* a, const void* b);
+static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b);
 
 struct DictMapComparator
 {
-    DictMapComparator(int id) { typeId = id; }
+    DictMapComparator(SDictCache* cache, int id) :
+        Cache {cache},
+        TypeId {id}
+    {
+    }
 
-    bool operator()(const void* a, const void* b) const { return Less(typeId, a, b); }
+    bool operator()(const void* a, const void* b) const { return Less(Cache, TypeId, a, b); }
 
-    int typeId;
+    SDictCache* Cache;
+    int TypeId;
 };
-
-static int stringTypeId;
-static int hstringTypeId;
 
 typedef map<void*, void*, DictMapComparator> DictMap;
 
@@ -329,7 +374,8 @@ CScriptDict::CScriptDict(asITypeInfo* ot)
     objType->AddRef();
     keyTypeId = objType->GetSubTypeId(0);
     valueTypeId = objType->GetSubTypeId(1);
-    dictMap = new DictMap(DictMapComparator(keyTypeId));
+    cache = SDictCache::GetOrCreate(objType->GetEngine());
+    dictMap = new DictMap(DictMapComparator(cache, keyTypeId));
 
     // Notify the GC of the successful creation
     if (objType->GetFlags() & asOBJ_GC) {
@@ -345,7 +391,8 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     objType->AddRef();
     keyTypeId = objType->GetSubTypeId(0);
     valueTypeId = objType->GetSubTypeId(1);
-    dictMap = new DictMap(DictMapComparator(keyTypeId));
+    cache = SDictCache::GetOrCreate(objType->GetEngine());
+    dictMap = new DictMap(DictMapComparator(cache, keyTypeId));
 
     const asIScriptEngine* engine = ot->GetEngine();
     asBYTE* buffer = static_cast<asBYTE*>(listBuffer);
@@ -414,7 +461,8 @@ CScriptDict::CScriptDict(const CScriptDict& other)
     objType->AddRef();
     keyTypeId = objType->GetSubTypeId(0);
     valueTypeId = objType->GetSubTypeId(1);
-    dictMap = new DictMap(DictMapComparator(keyTypeId));
+    cache = SDictCache::GetOrCreate(objType->GetEngine());
+    dictMap = new DictMap(DictMapComparator(cache, keyTypeId));
 
     DictMap* dict = static_cast<DictMap*>(other.dictMap);
     for (auto it = dict->begin(); it != dict->end(); ++it) {
@@ -515,7 +563,7 @@ asUINT CScriptDict::RemoveValues(void* value)
     asUINT result = 0;
 
     for (auto it = dict->begin(); it != dict->end();) {
-        if (Equals(valueTypeId, it->second, value)) {
+        if (Equals(cache, valueTypeId, it->second, value)) {
             DestroyObject(objType, 0, it->first);
             DestroyObject(objType, 1, it->second);
             it = dict->erase(it);
@@ -634,7 +682,7 @@ bool CScriptDict::operator==(const CScriptDict& other) const
     const auto end2 = dict2->end();
 
     while (it1 != end1 && it2 != end2) {
-        if (!Equals(keyTypeId, (*it1).first, (*it2).first) || !Equals(valueTypeId, (*it1).second, (*it2).second)) {
+        if (!Equals(cache, keyTypeId, (*it1).first, (*it2).first) || !Equals(cache, valueTypeId, (*it1).second, (*it2).second)) {
             return false;
         }
         it1++;
@@ -793,29 +841,27 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 }
 
 // Todo: rework objects in dict comparing (detect opLess/opEqual automatically)
-static void InitTypeId()
+static bool Less(SDictCache* cache, int typeId, const void* a, const void* b)
 {
-    if (stringTypeId == 0) {
-        stringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("string");
-        RUNTIME_ASSERT(stringTypeId > 0);
-        hstringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
-        RUNTIME_ASSERT(hstringTypeId > 0);
-    }
-}
-
-static bool Less(int typeId, const void* a, const void* b)
-{
-    InitTypeId();
-
-    if (typeId == stringTypeId) {
+    if (typeId == cache->StringTypeId) {
         const std::string& aStr = *static_cast<const std::string*>(a);
         const std::string& bStr = *static_cast<const std::string*>(b);
         return aStr < bStr;
     }
-    if (typeId == hstringTypeId) {
+    if (typeId == cache->HStringTypeId) {
         const hstring& aStr = *static_cast<const hstring*>(a);
         const hstring& bStr = *static_cast<const hstring*>(b);
         return aStr < bStr;
+    }
+    if (typeId == cache->IdentTypeId) {
+        const ident_t& aStrong = *static_cast<const ident_t*>(a);
+        const ident_t& bStrong = *static_cast<const ident_t*>(b);
+        return aStrong.underlying_value() < bStrong.underlying_value();
+    }
+    if (typeId == cache->TickTypeId) {
+        const tick_t& aStrong = *static_cast<const tick_t*>(a);
+        const tick_t& bStrong = *static_cast<const tick_t*>(b);
+        return aStrong.underlying_value() < bStrong.underlying_value();
     }
 
     if (!(typeId & asTYPEID_MASK_OBJECT)) {
@@ -857,19 +903,27 @@ static bool Less(int typeId, const void* a, const void* b)
     throw UnreachablePlaceException(LINE_STR);
 }
 
-static bool Equals(int typeId, const void* a, const void* b)
+static bool Equals(SDictCache* cache, int typeId, const void* a, const void* b)
 {
-    InitTypeId();
-
-    if (typeId == stringTypeId) {
+    if (typeId == cache->StringTypeId) {
         const std::string& aStr = *static_cast<const std::string*>(a);
         const std::string& bStr = *static_cast<const std::string*>(b);
         return aStr == bStr;
     }
-    if (typeId == hstringTypeId) {
+    if (typeId == cache->HStringTypeId) {
         const hstring& aStr = *static_cast<const hstring*>(a);
         const hstring& bStr = *static_cast<const hstring*>(b);
         return aStr == bStr;
+    }
+    if (typeId == cache->IdentTypeId) {
+        const ident_t& aStrong = *static_cast<const ident_t*>(a);
+        const ident_t& bStrong = *static_cast<const ident_t*>(b);
+        return aStrong.underlying_value() == bStrong.underlying_value();
+    }
+    if (typeId == cache->TickTypeId) {
+        const tick_t& aStrong = *static_cast<const tick_t*>(a);
+        const tick_t& bStrong = *static_cast<const tick_t*>(b);
+        return aStrong.underlying_value() == bStrong.underlying_value();
     }
 
     if (!(typeId & asTYPEID_MASK_OBJECT)) {

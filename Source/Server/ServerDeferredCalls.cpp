@@ -55,7 +55,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, ScriptAny> func, ScriptAny value) -> ident_t
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -68,7 +68,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void
     return AddSavedDeferredCall(delay, call);
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<ScriptAny>> func, const vector<ScriptAny>& values) -> ident_t
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -166,8 +166,8 @@ void ServerDeferredCallManager::LoadDeferredCalls()
 
         const auto func_name = _serverEngine->ToHashedString(std::get<string>(call_doc["Script"]));
         call.EmptyFunc = _serverEngine->ScriptSys->FindFunc<void>(func_name);
-        call.AnyFunc = _serverEngine->ScriptSys->FindFunc<void, ScriptAny>(func_name);
-        call.AnyArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<ScriptAny>>(func_name);
+        call.AnyFunc = _serverEngine->ScriptSys->FindFunc<void, any_t>(func_name);
+        call.AnyArrayFunc = _serverEngine->ScriptSys->FindFunc<void, vector<any_t>>(func_name);
 
         const auto func_count = static_cast<int>(!!call.EmptyFunc) + static_cast<int>(!!call.AnyFunc) + static_cast<int>(!!call.AnyArrayFunc);
 
@@ -179,7 +179,7 @@ void ServerDeferredCallManager::LoadDeferredCalls()
 
         if (call_doc.count("Value") != 0) {
             if (call.AnyFunc || call.AnyArrayFunc) {
-                call.FuncValue = {std::get<string>(call_doc["Value"])};
+                call.FuncValue = {any_t {std::get<string>(call_doc["Value"])}};
             }
             else {
                 WriteLog("Value present for empty func {} in deferred call {}", func_name, call.Id);
@@ -189,9 +189,9 @@ void ServerDeferredCallManager::LoadDeferredCalls()
         }
         else if (call_doc.count("Values") != 0) {
             if (call.AnyArrayFunc) {
-                vector<ScriptAny> values;
+                vector<any_t> values;
                 for (auto&& arr_value : std::get<AnyData::Array>(call_doc["Values"])) {
-                    values.push_back(std::get<string>(arr_value));
+                    values.push_back(any_t {std::get<string>(arr_value)});
                 }
                 call.FuncValue = values;
             }
