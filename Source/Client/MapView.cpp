@@ -2455,7 +2455,7 @@ void MapView::AddSpriteToChain(Field& field, MapSprite* spr)
     }
 }
 
-void MapView::UnvalidateSpriteChain(Field& field)
+void MapView::InvalidateSpriteChain(Field& field)
 {
     STACK_TRACE_ENTRY();
 
