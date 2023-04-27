@@ -368,7 +368,7 @@ public:
         return result;
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -418,7 +418,7 @@ public:
         T result;
 
         if (data_size != 0u) {
-            if constexpr (std::is_same_v<T, vector<string>>) {
+            if constexpr (std::is_same_v<T, vector<string>> || std::is_same_v<T, vector<any_t>>) {
                 RUNTIME_ASSERT(prop->IsArrayOfString());
 
                 uint arr_size;
@@ -547,7 +547,7 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t>, int> = 0>
     void SetValue(const Property* prop, const T& new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
@@ -593,7 +593,7 @@ public:
 
         PropertyRawData prop_data;
 
-        if constexpr (std::is_same_v<T, string>) {
+        if constexpr (std::is_same_v<T, string> || std::is_same_v<T, any_t>) {
             if (!new_value.empty()) {
                 size_t data_size = sizeof(uint);
                 for (const auto& str : new_value) {
