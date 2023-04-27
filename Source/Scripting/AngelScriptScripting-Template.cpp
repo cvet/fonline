@@ -1522,7 +1522,7 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
                                 if (str_size != 0) {
                                     std::memcpy(buf, str.c_str(), str_size);
-                                    buf += arr_size;
+                                    buf += str_size;
                                 }
                             }
                         }
