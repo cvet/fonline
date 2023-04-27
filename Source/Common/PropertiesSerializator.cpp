@@ -479,6 +479,29 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         return false;
     }
 
+    // Implicit conversion to string
+    const auto can_read_to_string = [](const auto& some_value) -> bool {
+        return some_value.index() == AnyData::STRING_VALUE || some_value.index() == AnyData::INT_VALUE || //
+            some_value.index() == AnyData::INT64_VALUE || some_value.index() == AnyData::DOUBLE_VALUE || some_value.index() == AnyData::BOOL_VALUE;
+    };
+
+    const auto read_to_string = [tmp_str = string()](const auto& some_value) -> const string& {
+        switch (some_value.index()) {
+        case AnyData::STRING_VALUE:
+            return std::get<string>(some_value);
+        case AnyData::INT_VALUE:
+            return tmp_str = _str("{}", std::get<int>(some_value));
+        case AnyData::INT64_VALUE:
+            return tmp_str = _str("{}", std::get<int64>(some_value));
+        case AnyData::DOUBLE_VALUE:
+            return tmp_str = _str("{}", std::get<double>(some_value));
+        case AnyData::BOOL_VALUE:
+            return tmp_str = _str("{}", std::get<bool>(some_value));
+        default: 
+            throw UnreachablePlaceException(LINE_STR);
+        }
+    };
+
     // Parse value
     if (prop->_dataType == Property::DataType::PlainData) {
         if (prop->_isHashBase) {
@@ -575,12 +598,12 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
     }
     else if (prop->_dataType == Property::DataType::String) {
-        if (value.index() != AnyData::STRING_VALUE) {
+        if (!can_read_to_string(value)) {
             WriteLog("Wrong string value type, property {}", prop->GetName());
             return false;
         }
 
-        const auto& str = std::get<string>(value);
+        const auto& str = read_to_string(value);
 
         props->SetRawData(prop, reinterpret_cast<const uint8*>(str.c_str()), static_cast<uint>(str.length()));
     }
@@ -714,14 +737,14 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         else {
             RUNTIME_ASSERT(prop->_isArrayOfString);
 
-            if (arr[0].index() != AnyData::STRING_VALUE) {
+            if (!can_read_to_string(arr[0])) {
                 WriteLog("Wrong array element value type, property {}", prop->GetName());
                 return false;
             }
 
             uint data_size = sizeof(uint);
             for (size_t i = 0; i < arr.size(); i++) {
-                RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
+                RUNTIME_ASSERT(can_read_to_string(arr[i]));
 
                 string_view str = std::get<string>(arr[i]);
                 data_size += sizeof(uint) + static_cast<uint>(str.length());
@@ -732,7 +755,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
             size_t data_pos = sizeof(uint);
             for (size_t i = 0; i < arr.size(); i++) {
-                const auto& str = std::get<string>(arr[i]);
+                const auto& str = read_to_string(arr[i]);
                 *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
                 if (!str.empty()) {
                     std::memcpy(data.get() + data_pos + sizeof(uint), str.c_str(), str.length());
@@ -798,13 +821,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
                 else if (prop->_isDictOfArrayOfString) {
                     for (const auto& e : arr) {
-                        if (e.index() != AnyData::STRING_VALUE) {
+                        if (!can_read_to_string(e)) {
                             WriteLog("Wrong dict array element string value type, property {}", prop->GetName());
                             wrong_input = true;
                             break;
                         }
 
-                        data_size += sizeof(uint) + static_cast<uint>(std::get<string>(e).length());
+                        data_size += sizeof(uint) + static_cast<uint>(read_to_string(e).length());
                     }
                 }
                 else {
@@ -820,13 +843,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
             }
             else if (prop->_isDictOfString) {
-                if (value2.index() != AnyData::STRING_VALUE) {
+                if (!can_read_to_string(value2)) {
                     WriteLog("Wrong dict string element value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
                 }
 
-                data_size += static_cast<uint>(std::get<string>(value2).length());
+                data_size += static_cast<uint>(read_to_string(value2).length());
             }
             else if (prop->_isHashBase) {
                 if (value2.index() != AnyData::STRING_VALUE) {
@@ -928,7 +951,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
                 else if (prop->_isDictOfArrayOfString) {
                     for (const auto& e : arr) {
-                        const auto& str = std::get<string>(e);
+                        const auto& str = read_to_string(e);
                         *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
                         data_pos += sizeof(uint);
                         if (!str.empty()) {
@@ -1003,7 +1026,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
             }
             else if (prop->_isDictOfString) {
-                const auto& str = std::get<string>(value2);
+                const auto& str = read_to_string(value2);
 
                 *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
                 data_pos += sizeof(uint);
@@ -1089,10 +1112,6 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
                 data_pos += prop->_baseSize;
             }
-        }
-
-        if (data_pos != data_size) {
-            WriteLog("{} {}", data_pos, data_size);
         }
 
         RUNTIME_ASSERT(data_pos == data_size);
