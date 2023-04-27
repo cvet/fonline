@@ -373,7 +373,7 @@ void Critter::SetItem(Item* item)
     item->SetCritterId(GetId());
 }
 
-auto Critter::GetInvItem(ident_t item_id, bool skip_hide) -> Item*
+auto Critter::GetInvItem(ident_t item_id, bool skip_hidden) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -385,7 +385,7 @@ auto Critter::GetInvItem(ident_t item_id, bool skip_hide) -> Item*
 
     for (auto* item : _invItems) {
         if (item->GetId() == item_id) {
-            if (skip_hide && item->GetIsHidden()) {
+            if (skip_hidden && item->GetIsHidden()) {
                 return nullptr;
             }
             return item;

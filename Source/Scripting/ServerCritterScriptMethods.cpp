@@ -711,21 +711,34 @@
         throw ScriptException("Can't move item");
     }
 
-    auto* item_swap = slot != 0 ? self->GetInvItemSlot(slot) : nullptr;
-    const auto from_slot = item->GetCritterSlot();
+    const auto is_multi_item_allowed = slot == 0 || (slot < self->GetEngine()->Settings.CritterSlotMultiItem.size() && self->GetEngine()->Settings.CritterSlotMultiItem[slot]);
 
-    item->SetCritterSlot(slot);
-    if (item_swap != nullptr) {
-        item_swap->SetCritterSlot(from_slot);
+    if (is_multi_item_allowed) {
+        const auto from_slot = item->GetCritterSlot();
+
+        item->SetCritterSlot(slot);
+
+        self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
+
+        self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
     }
+    else {
+        auto* item_swap = self->GetInvItemSlot(slot);
+        const auto from_slot = item->GetCritterSlot();
 
-    self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
+        item->SetCritterSlot(slot);
+        if (item_swap != nullptr) {
+            item_swap->SetCritterSlot(from_slot);
+        }
 
-    if (item_swap != nullptr) {
-        self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
+        self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
+
+        if (item_swap != nullptr) {
+            self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
+        }
+
+        self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
     }
-
-    self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
 }
 
 ///# ...

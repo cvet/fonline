@@ -69,7 +69,7 @@ public:
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto GetInvItem(ident_t item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto GetRawInvItems() -> vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetConstRawInvItems() const -> const vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> Item*;
