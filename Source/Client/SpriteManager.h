@@ -42,8 +42,8 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "MapSprite.h"
 #include "Settings.h"
-#include "Sprites.h"
 
 static constexpr auto ANY_FRAMES_POOL_SIZE = 2000;
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
@@ -215,8 +215,8 @@ public:
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
     [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
-    [[nodiscard]] auto GetDrawRect(const Sprite* spr) const -> IRect;
-    [[nodiscard]] auto GetViewRect(const Sprite* spr) const -> IRect;
+    [[nodiscard]] auto GetDrawRect(const MapSprite* spr) const -> IRect;
+    [[nodiscard]] auto GetViewRect(const MapSprite* spr) const -> IRect;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool;
@@ -264,12 +264,12 @@ public:
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
+    void DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const FPoint* offset = nullptr, RenderEffect* custom_effect = nullptr);
 
     void DrawContours();
     void InitializeEgg(string_view egg_name);
-    void SetEgg(uint16 hx, uint16 hy, Sprite* spr);
+    void SetEgg(uint16 hx, uint16 hy, const MapSprite* spr);
     void EggNotValid() { _eggValid = false; }
 
 #if FO_ENABLE_3D

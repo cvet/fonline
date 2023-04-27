@@ -503,8 +503,8 @@
         return false;
     }
 
-    boneX = std::get<0>(*bone_pos) + hex_cr->SprOx;
-    boneY = std::get<1>(*bone_pos) + hex_cr->SprOy;
+    boneX = std::get<0>(*bone_pos) + hex_cr->ScrX;
+    boneY = std::get<1>(*bone_pos) + hex_cr->ScrY;
     return true;
 
 #else

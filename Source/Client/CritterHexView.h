@@ -36,15 +36,14 @@
 #include "Common.h"
 
 #include "3dStuff.h"
-#include "Application.h"
 #include "CritterView.h"
 #include "EntityProtos.h"
+#include "HexView.h"
 #include "SpriteManager.h"
 
-class MapView;
 class ItemView;
 
-class CritterHexView final : public CritterView
+class CritterHexView final : public CritterView, public HexView
 {
 public:
     CritterHexView() = delete;
@@ -55,16 +54,12 @@ public:
     auto operator=(CritterHexView&&) noexcept = delete;
     ~CritterHexView() override = default;
 
-    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
-    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
-    [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto IsNameVisible() const -> bool;
@@ -73,11 +68,7 @@ public:
     [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
 #endif
 
-    void Init() override;
-    void Finish() override;
-    auto StoreFading() -> tuple<bool, bool, time_point> { return {_fading, _fadeUp, _fadingTime}; }
-    void RestoreFading(tuple<bool, bool, time_point> data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
-    void FadeUp();
+    void Init();
     auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView* override;
     auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
@@ -101,16 +92,6 @@ public:
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
-
-    uint SprId {};
-    int SprOx {};
-    int SprOy {};
-    uint8 Alpha {0xFF};
-
-    RenderEffect* DrawEffect {};
-    bool Visible {true};
-    Sprite* SprDraw {};
-    bool SprDrawValid {};
 
     struct
     {
@@ -150,13 +131,10 @@ private:
 #endif
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
-    void SetFade(bool fade_up);
-    auto EvaluateFadeAlpha() -> uint8;
+    void SetupSprite(MapSprite* spr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
     void SetAnimSpr(const AnyFrames* anim, uint frm_index);
-
-    MapView* _map;
 
     bool _needReset {};
     time_point _resetTime {};
@@ -165,13 +143,6 @@ private:
     time_point _animStartTime {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
-
-    bool _fading {};
-    bool _fadeUp {};
-    time_point _fadingTime {};
-
-    bool _finishing {};
-    time_point _finishingTime {};
 
     time_point _fidgetTime {};
 

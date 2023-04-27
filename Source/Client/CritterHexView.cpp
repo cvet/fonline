@@ -44,19 +44,14 @@
 
 CritterHexView::CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props) :
     CritterView(map->GetEngine(), id, proto, props),
-    _map {map}
+    HexView(map)
 {
     STACK_TRACE_ENTRY();
-
-    _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u)};
-    DrawEffect = _engine->EffectMngr.Effects.Critter;
 }
 
 void CritterHexView::Init()
 {
     STACK_TRACE_ENTRY();
-
-    CritterView::Init();
 
 #if FO_ENABLE_3D
     RefreshModel();
@@ -64,60 +59,19 @@ void CritterHexView::Init()
 
     AnimateStay();
     RefreshOffs();
+
+    _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u)};
+
+    DrawEffect = _engine->EffectMngr.Effects.Critter;
 }
 
-void CritterHexView::Finish()
+void CritterHexView::SetupSprite(MapSprite* spr)
 {
     STACK_TRACE_ENTRY();
 
-    CritterView::Finish();
+    HexView::SetupSprite(spr);
 
-    SetFade(false);
-
-    _finishing = true;
-    _finishingTime = _fadingTime;
-}
-
-auto CritterHexView::IsFinished() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _finishing && _engine->GameTime.GameplayTime() >= _finishingTime;
-}
-
-void CritterHexView::FadeUp()
-{
-    STACK_TRACE_ENTRY();
-
-    SetFade(true);
-}
-
-void CritterHexView::SetFade(bool fade_up)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto time = _engine->GameTime.GameplayTime();
-
-    _fadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration {0});
-    _fadeUp = fade_up;
-    _fading = true;
-
-    Alpha = EvaluateFadeAlpha();
-}
-
-auto CritterHexView::EvaluateFadeAlpha() -> uint8
-{
-    STACK_TRACE_ENTRY();
-
-    const auto time = _engine->GameTime.GameplayTime();
-    const auto fading_proc = 100 - GenericUtils::Percent(_engine->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
-
-    if (fading_proc == 100) {
-        _fading = false;
-    }
-
-    const auto alpha = _fadeUp ? fading_proc * 255 / 100 : (100 - fading_proc) * 255 / 100;
-    return static_cast<uint8>(alpha);
+    spr->SetLight(CornerType::EastWest, _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
 }
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
@@ -232,7 +186,7 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
         break;
     case ACTION_RESPAWN:
         SetCond(CritterCondition::Alive);
-        SetFade(true);
+        FadeUp();
         AnimateStay();
         _needReset = true;
         _resetTime = _engine->GameTime.GameplayTime(); // Fast
@@ -604,12 +558,12 @@ void CritterHexView::Process()
 {
     STACK_TRACE_ENTRY();
 
-    if (IsMoving()) {
-        ProcessMoving();
+    if (IsFading()) {
+        ProcessFading();
     }
 
-    if (_fading) {
-        Alpha = EvaluateFadeAlpha();
+    if (IsMoving()) {
+        ProcessMoving();
     }
 
     // Extra offsets
@@ -874,9 +828,9 @@ auto CritterHexView::GetViewRect() const -> IRect
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(SprDrawValid);
+    RUNTIME_ASSERT(IsSpriteValid());
 
-    return _engine->SprMngr.GetViewRect(SprDraw);
+    return _engine->SprMngr.GetViewRect(GetSprite());
 }
 
 void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
@@ -923,12 +877,12 @@ void CritterHexView::RefreshOffs()
 {
     STACK_TRACE_ENTRY();
 
-    SprOx = GetHexOffsX() + iround(_oxExt) + _oxAnim;
-    SprOy = GetHexOffsY() + iround(_oyExt) + _oyAnim;
+    ScrX = GetHexOffsX() + iround(_oxExt) + _oxAnim;
+    ScrY = GetHexOffsY() + iround(_oyExt) + _oyAnim;
 
-    if (SprDrawValid) {
+    if (IsSpriteValid()) {
         if (IsChosen()) {
-            _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
+            _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), GetSprite());
         }
     }
 }
@@ -947,7 +901,7 @@ void CritterHexView::GetNameTextPos(int& x, int& y) const
 {
     STACK_TRACE_ENTRY();
 
-    if (SprDrawValid) {
+    if (IsSpriteValid()) {
         const auto rect = GetViewRect();
         const auto rect_half_width = rect.Width() / 2;
 
@@ -1013,7 +967,7 @@ void CritterHexView::DrawTextOnHead()
 
     NON_CONST_METHOD_HINT();
 
-    if (!SprDrawValid) {
+    if (!IsSpriteValid()) {
         return;
     }
 

@@ -3039,14 +3039,16 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
 
     UNUSED_VARIABLE(prop);
 
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->SprDrawValid) {
-        cr->SprDraw->SetContour(cr->SprDraw->Contour, cr->GetContourColor());
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
+        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
     }
 }
 
 void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
 
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
@@ -3057,7 +3059,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop)
             item->RefreshAlpha();
         }
         else if (prop == item->GetPropertyIsBadItem()) {
-            item->SetSprite(nullptr);
+            item->RefreshSprite();
         }
         else if (prop == item->GetPropertyIsShootThru()) {
             CurMap->RebuildFog();

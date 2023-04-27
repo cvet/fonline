@@ -36,13 +36,13 @@
 #include "EffectManager.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "MapSprite.h"
 #include "MapView.h"
-#include "Sprites.h"
 #include "Timer.h"
 
 ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
     ItemView(map->GetEngine(), id, proto, props),
-    _map {map}
+    HexView(map)
 {
     STACK_TRACE_ENTRY();
 }
@@ -71,39 +71,31 @@ void ItemHexView::Init()
     }
 }
 
-void ItemHexView::Finish()
+void ItemHexView::SetupSprite(MapSprite* spr)
 {
     STACK_TRACE_ENTRY();
 
-    SetFade(false);
+    HexView::SetupSprite(spr);
 
-    _finishing = true;
-    _finishingTime = _fadingTime;
+    spr->SetColor(GetIsColorize() ? GetLightColor() & 0xFFFFFF : 0);
+    spr->SetEggAppearence(GetEggType());
 
-    if (_isEffect) {
-        _finishingTime = _engine->GameTime.GameplayTime();
+    if (GetIsBadItem()) {
+        spr->SetContour(ContourType::Red);
     }
-}
 
-auto ItemHexView::IsFinished() const -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    return _finishing && _engine->GameTime.GameplayTime() >= _finishingTime;
-}
-
-void ItemHexView::StopFinishing()
-{
-    STACK_TRACE_ENTRY();
-
-    _finishing = false;
-    SetFade(true);
-    RefreshAnim();
+    if (!GetIsNoLightInfluence()) {
+        spr->SetLight(GetCorner(), _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
+    }
 }
 
 void ItemHexView::Process()
 {
     STACK_TRACE_ENTRY();
+
+    if (IsFading()) {
+        ProcessFading();
+    }
 
     // Animation
     if (_begFrm != _endFrm) {
@@ -144,7 +136,7 @@ void ItemHexView::Process()
             }
         }
     }
-    else if (_isEffect && !_finishing) {
+    else if (_isEffect && !IsFinishing()) {
         if (_isDynamicEffect) {
             PlayAnimFromStart();
         }
@@ -154,7 +146,7 @@ void ItemHexView::Process()
     }
 
     // Effect
-    if (_isDynamicEffect && !_finishing) {
+    if (_isDynamicEffect && !IsFinishing()) {
         const auto dt = time_duration_to_ms<float>(_engine->GameTime.GameplayTime() - _effUpdateLastTime);
         if (dt > 0.0f) {
             auto speed = GetFlyEffectSpeed();
@@ -199,18 +191,9 @@ void ItemHexView::Process()
             _map->MoveItem(this, step_hx, step_hy);
         }
     }
-
-    // Fading
-    if (_fading) {
-        Alpha = EvaluateFadeAlpha();
-
-        if (Alpha > _maxAlpha) {
-            Alpha = _maxAlpha;
-        }
-    }
 }
 
-void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
+void ItemHexView::SetFlyEffect(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
 
@@ -242,46 +225,14 @@ void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
     _effDir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
     _effUpdateLastTime = _engine->GameTime.GameplayTime();
 
-    // Check off fade
-    _fading = false;
-    Alpha = _maxAlpha;
-
     RefreshAnim();
 }
 
-void ItemHexView::FadeUp()
+void ItemHexView::RefreshAlpha()
 {
     STACK_TRACE_ENTRY();
 
-    SetFade(true);
-}
-
-void ItemHexView::SetFade(bool fade_up)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto time = _engine->GameTime.GameplayTime();
-
-    _fadingTime = time + std::chrono::milliseconds {_engine->Settings.FadingDuration} - (_fadingTime > time ? _fadingTime - time : time_duration {0});
-    _fadeUp = fade_up;
-    _fading = true;
-
-    Alpha = EvaluateFadeAlpha();
-}
-
-auto ItemHexView::EvaluateFadeAlpha() -> uint8
-{
-    STACK_TRACE_ENTRY();
-
-    const auto time = _engine->GameTime.GameplayTime();
-    const auto fading_proc = 100 - GenericUtils::Percent(_engine->Settings.FadingDuration, _fadingTime > time ? time_duration_to_ms<uint>(_fadingTime - time) : 0);
-
-    if (fading_proc == 100) {
-        _fading = false;
-    }
-
-    const auto alpha = _fadeUp ? fading_proc * 255 / 100 : (100 - fading_proc) * 255 / 100;
-    return static_cast<uint8>(alpha);
+    SetMaxAlpha(GetIsColorize() ? GetLightColor() >> 24 : 0xFF);
 }
 
 void ItemHexView::RefreshAnim()
@@ -321,37 +272,6 @@ void ItemHexView::RefreshAnim()
             _endFrm = _curFrm;
         }
     }
-}
-
-void ItemHexView::SetSprite(Sprite* spr)
-{
-    STACK_TRACE_ENTRY();
-
-    if (spr != nullptr) {
-        SprDraw = spr;
-    }
-
-    if (SprDrawValid) {
-        SprDraw->SetColor(GetIsColorize() ? GetLightColor() & 0xFFFFFF : 0);
-        SprDraw->SetEggAppearence(GetEggType());
-        if (GetIsBadItem()) {
-            SprDraw->SetContour(ContourType::Red);
-        }
-    }
-}
-
-void ItemHexView::RestoreAlpha()
-{
-    STACK_TRACE_ENTRY();
-
-    Alpha = _maxAlpha;
-}
-
-void ItemHexView::RefreshAlpha()
-{
-    STACK_TRACE_ENTRY();
-
-    _maxAlpha = GetIsColorize() ? GetLightColor() >> 24 : 0xFF;
 }
 
 auto ItemHexView::GetEggType() const -> EggAppearenceType

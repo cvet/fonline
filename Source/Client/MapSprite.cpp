@@ -31,10 +31,10 @@
 // SOFTWARE.
 //
 
-#include "Sprites.h"
+#include "MapSprite.h"
 #include "SpriteManager.h"
 
-void Sprite::Unvalidate()
+void MapSprite::Invalidate()
 {
     STACK_TRACE_ENTRY();
 
@@ -50,11 +50,11 @@ void Sprite::Unvalidate()
 
     if (Parent != nullptr) {
         Parent->Child = nullptr;
-        Parent->Unvalidate();
+        Parent->Invalidate();
     }
     if (Child != nullptr) {
         Child->Parent = nullptr;
-        Child->Unvalidate();
+        Child->Invalidate();
     }
 
     if (ExtraChainRoot != nullptr) {
@@ -79,7 +79,7 @@ void Sprite::Unvalidate()
         MapSpr = nullptr;
     }
 
-    Root->_unvalidatedSprites.push_back(this);
+    Root->_invalidatedSprites.push_back(this);
 
     if (ChainRoot != nullptr) {
         *ChainRoot = ChainChild;
@@ -107,18 +107,18 @@ void Sprite::Unvalidate()
     Root = nullptr;
 }
 
-auto Sprite::GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*
+auto MapSprite::CheckHit(int ox, int oy, bool check_transparent) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     if (ox < 0 || oy < 0) {
-        return nullptr;
+        return false;
     }
 
-    return !check_transparent || Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
+    return !check_transparent || Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true);
 }
 
-void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
+void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
     STACK_TRACE_ENTRY();
 
@@ -137,7 +137,7 @@ void Sprite::SetEggAppearence(EggAppearenceType egg_appearence)
     Valid = true;
 }
 
-void Sprite::SetContour(ContourType contour)
+void MapSprite::SetContour(ContourType contour)
 {
     STACK_TRACE_ENTRY();
 
@@ -156,7 +156,7 @@ void Sprite::SetContour(ContourType contour)
     Valid = true;
 }
 
-void Sprite::SetContour(ContourType contour, uint color)
+void MapSprite::SetContour(ContourType contour, uint color)
 {
     STACK_TRACE_ENTRY();
 
@@ -176,7 +176,7 @@ void Sprite::SetContour(ContourType contour, uint color)
     Valid = true;
 }
 
-void Sprite::SetColor(uint color)
+void MapSprite::SetColor(uint color)
 {
     STACK_TRACE_ENTRY();
 
@@ -195,7 +195,7 @@ void Sprite::SetColor(uint color)
     Valid = true;
 }
 
-void Sprite::SetAlpha(uint8* alpha)
+void MapSprite::SetAlpha(uint8* alpha)
 {
     STACK_TRACE_ENTRY();
 
@@ -214,7 +214,7 @@ void Sprite::SetAlpha(uint8* alpha)
     Valid = true;
 }
 
-void Sprite::SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxhy)
+void MapSprite::SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxhy)
 {
     STACK_TRACE_ENTRY();
 
@@ -265,7 +265,7 @@ void Sprite::SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxh
     Valid = true;
 }
 
-void Sprite::SetFixedAlpha(uint8 alpha)
+void MapSprite::SetFixedAlpha(uint8 alpha)
 {
     STACK_TRACE_ENTRY();
 
@@ -289,7 +289,14 @@ void Sprite::SetFixedAlpha(uint8 alpha)
     Valid = true;
 }
 
-void Sprites::GrowPool()
+MapSpriteList::MapSpriteList(SpriteManager& spr_mngr, vector<MapSprite*>& pool) :
+    _sprMngr {spr_mngr},
+    _spritesPool {pool}
+{
+    STACK_TRACE_ENTRY();
+}
+
+void MapSpriteList::GrowPool()
 {
     STACK_TRACE_ENTRY();
 
@@ -298,11 +305,11 @@ void Sprites::GrowPool()
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
     for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
-        _spritesPool.push_back(new Sprite());
+        _spritesPool.push_back(new MapSprite());
     }
 }
 
-auto Sprites::RootSprite() -> Sprite*
+auto MapSpriteList::RootSprite() -> MapSprite*
 {
     STACK_TRACE_ENTRY();
 
@@ -311,16 +318,16 @@ auto Sprites::RootSprite() -> Sprite*
     return _rootSprite;
 }
 
-auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
     _spriteCount++;
 
-    Sprite* spr;
-    if (!_unvalidatedSprites.empty()) {
-        spr = _unvalidatedSprites.back();
-        _unvalidatedSprites.pop_back();
+    MapSprite* spr;
+    if (!_invalidatedSprites.empty()) {
+        spr = _invalidatedSprites.back();
+        _invalidatedSprites.pop_back();
     }
     else {
         if (_spritesPool.empty()) {
@@ -418,14 +425,14 @@ auto Sprites::PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint
     return *spr;
 }
 
-auto Sprites::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
     return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-auto Sprites::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
@@ -452,17 +459,17 @@ auto Sprites::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x
     return PutSprite(parent, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-void Sprites::Unvalidate()
+void MapSpriteList::Invalidate()
 {
     STACK_TRACE_ENTRY();
 
     while (_rootSprite != nullptr) {
-        _rootSprite->Unvalidate();
+        _rootSprite->Invalidate();
     }
     _spriteCount = 0;
 }
 
-void Sprites::SortByMapPos()
+void MapSpriteList::SortByMapPos()
 {
     STACK_TRACE_ENTRY();
 
@@ -470,7 +477,7 @@ void Sprites::SortByMapPos()
         return;
     }
 
-    vector<Sprite*> sprites;
+    vector<MapSprite*> sprites;
     sprites.reserve(_spriteCount);
     auto* spr = _rootSprite;
     while (spr != nullptr) {
@@ -479,13 +486,13 @@ void Sprites::SortByMapPos()
     }
 
     auto& spr_infos = _sprMngr.GetSpritesInfo();
-    std::sort(sprites.begin(), sprites.end(), [&spr_infos](Sprite* spr1, Sprite* spr2) {
+    std::sort(sprites.begin(), sprites.end(), [&spr_infos](MapSprite* spr1, MapSprite* spr2) {
         const auto* si1 = spr_infos[spr1->PSprId != nullptr ? *spr1->PSprId : spr1->SprId];
         const auto* si2 = spr_infos[spr2->PSprId != nullptr ? *spr2->PSprId : spr2->SprId];
         return si1 != nullptr && si2 != nullptr && si1->Atlas != nullptr && si2->Atlas != nullptr && si1->Atlas->MainTex < si2->Atlas->MainTex;
     });
 
-    std::sort(sprites.begin(), sprites.end(), [](Sprite* spr1, Sprite* spr2) {
+    std::sort(sprites.begin(), sprites.end(), [](MapSprite* spr1, MapSprite* spr2) {
         if (spr1->DrawOrderPos == spr2->DrawOrderPos) {
             return spr1->TreeIndex < spr2->TreeIndex;
         }
@@ -510,21 +517,21 @@ void Sprites::SortByMapPos()
     _lastSprite->ChainLast = &_lastSprite;
 }
 
-auto Sprites::Size() const -> uint
+auto MapSpriteList::Size() const -> uint
 {
     STACK_TRACE_ENTRY();
 
     return _spriteCount;
 }
 
-void Sprites::Clear()
+void MapSpriteList::Clear()
 {
     STACK_TRACE_ENTRY();
 
-    Unvalidate();
+    Invalidate();
 
-    for (auto* spr : _unvalidatedSprites) {
+    for (auto* spr : _invalidatedSprites) {
         _spritesPool.push_back(spr);
     }
-    _unvalidatedSprites.clear();
+    _invalidatedSprites.clear();
 }

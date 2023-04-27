@@ -2121,11 +2121,8 @@ void FOMapper::SelectAdd(ClientEntity* entity)
     if (it == SelectedEntities.end()) {
         SelectedEntities.push_back(entity);
 
-        if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-            cr->Alpha = SelectAlpha;
-        }
-        else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-            item->Alpha = SelectAlpha;
+        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
+            hex_view->Alpha = SelectAlpha;
         }
     }
 }
@@ -2138,11 +2135,8 @@ void FOMapper::SelectErase(ClientEntity* entity)
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
 
-        if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-            cr->Alpha = 0xFF;
-        }
-        else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-            item->RestoreAlpha();
+        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
+            hex_view->RestoreAlpha();
         }
     }
 }

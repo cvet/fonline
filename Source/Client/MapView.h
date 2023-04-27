@@ -42,8 +42,8 @@
 #include "EntityProtos.h"
 #include "ItemHexView.h"
 #include "MapLoader.h"
+#include "MapSprite.h"
 #include "SpriteManager.h"
-#include "Sprites.h"
 
 DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -100,7 +100,7 @@ struct Field
     bool IsView {};
     int ScrX {};
     int ScrY {};
-    Sprite* SpriteChain {};
+    MapSprite* SpriteChain {};
     vector<CritterHexView*> Critters {};
     vector<ItemHexView*> Items {};
     vector<ItemHexView*> BlockLineItems {};
@@ -144,7 +144,7 @@ public:
     [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _width * 3 + hx * 3]; }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
-    [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
+    [[nodiscard]] auto GetDrawList() -> MapSpriteList& { return _mainList; }
     [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
     void MarkAsDestroyed() override;
@@ -287,8 +287,8 @@ private:
     void InitView(int screen_hx, int screen_hy);
     void ResizeView();
 
-    void AddSpriteToChain(Field& field, Sprite* spr);
-    void UnvalidateSpriteChain(Field& field);
+    void AddSpriteToChain(Field& field, MapSprite* spr);
+    void InvalidateSpriteChain(Field& field);
 
     // Lighting
     void PrepareLightToDraw();
@@ -321,13 +321,13 @@ private:
 
     vector<MapText> _mapTexts {};
 
-    vector<Sprite*> _spritesPool {};
+    vector<MapSprite*> _spritesPool {};
     vector<Field> _hexField {};
     vector<int16> _findPathGrid {};
 
-    Sprites _mainTree;
-    Sprites _tilesTree;
-    Sprites _roofTree;
+    MapSpriteList _mainList;
+    MapSpriteList _tilesList;
+    MapSpriteList _roofList;
 
     time_point _scrollLastTime {};
 

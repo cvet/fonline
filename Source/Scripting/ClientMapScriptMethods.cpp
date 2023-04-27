@@ -35,6 +35,7 @@
 
 #include "Client.h"
 #include "GenericUtils.h"
+#include "MapSprite.h"
 
 // ReSharper disable CppInconsistentNaming
 
@@ -56,7 +57,7 @@
 ///# ...
 ///# param mapSpr ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_DrawMapSprite(MapView* self, MapSprite* mapSpr)
+[[maybe_unused]] void Client_Map_DrawMapSprite(MapView* self, MapSpriteData* mapSpr)
 {
     if (mapSpr == nullptr) {
         throw ScriptException("Map sprite arg is null");
@@ -94,14 +95,14 @@
         const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
         no_light = (is_flat && !is_item);
         draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
-        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
+        draw_order_hy_offset = static_cast<int>(proto_item->GetDrawOrderOffsetHexY());
         corner = proto_item->GetCorner();
         disable_egg = proto_item->GetDisableEgg();
         contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
     }
 
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
-    auto& tree = self->GetDrawTree();
+    auto& tree = self->GetDrawList();
     auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
         (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
         mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //

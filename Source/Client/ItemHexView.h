@@ -35,12 +35,11 @@
 
 #include "Common.h"
 
+#include "HexView.h"
 #include "ItemView.h"
 #include "ResourceManager.h"
 
-class MapView;
-
-class ItemHexView final : public ItemView
+class ItemHexView final : public ItemView, public HexView
 {
 public:
     ItemHexView() = delete;
@@ -51,28 +50,15 @@ public:
     auto operator=(ItemHexView&&) noexcept = delete;
     ~ItemHexView() override = default;
 
-    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
-    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsDrawContour() const -> bool { return !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
-    [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
-    [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
-    [[nodiscard]] auto IsFinishing() const -> bool { return _finishing; }
-    [[nodiscard]] auto IsFinished() const -> bool;
-    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !_finishing) || _isAnimLooped || (_isDynamicEffect && !_finishing) || _fading; }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !IsFinishing()) || _isAnimLooped || (_isDynamicEffect && !IsFinishing()) || IsFading(); }
 
     void Init();
-    void RefreshAnim();
-    void RestoreAlpha();
-    void RefreshAlpha();
-    void SetSprite(Sprite* spr);
-    void Finish();
-    void StopFinishing();
     void Process();
-    void SetEffect(uint16 to_hx, uint16 to_hy);
-    auto StoreFading() -> tuple<bool, bool, time_point> { return {_fading, _fadeUp, _fadingTime}; }
-    void RestoreFading(tuple<bool, bool, time_point> data) { std::tie(_fading, _fadeUp, _fadingTime) = data; }
-    void FadeUp();
+    void RefreshAlpha();
+    void RefreshAnim();
+    void SetFlyEffect(uint16 to_hx, uint16 to_hy);
     void PlayAnimFromEnd();
     void PlayAnimFromStart();
     void PlayAnim(uint beg, uint end);
@@ -81,21 +67,9 @@ public:
     void PlayHideAnim();
     void RefreshOffs();
 
-    uint SprId {};
-    int ScrX {};
-    int ScrY {};
-    uint8 Alpha {0xFF};
-
-    RenderEffect* DrawEffect {};
-    Sprite* SprDraw {};
-    bool SprDrawValid {};
-
 private:
-    void SetFade(bool fade_up);
-    auto EvaluateFadeAlpha() -> uint8;
+    void SetupSprite(MapSprite* spr) override;
     void SetCurSpr(uint num_spr);
-
-    MapView* _map;
 
     AnyFrames* _anim {};
     uint _curFrm {};
@@ -104,7 +78,6 @@ private:
     uint _animBegFrm {};
     uint _animEndFrm {};
     time_point _animTime {};
-    uint8 _maxAlpha {0xFF};
     bool _isAnimLooped {};
     time_point _animStartTime {};
 
@@ -120,11 +93,4 @@ private:
     time_point _effUpdateLastTime {};
     int _effDir {};
     vector<pair<uint16, uint16>> _effSteps {};
-
-    bool _fading {};
-    bool _fadeUp {};
-    time_point _fadingTime {};
-
-    bool _finishing {};
-    time_point _finishingTime {};
 };

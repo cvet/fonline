@@ -1766,7 +1766,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(const Sprite* spr) const -> IRect
+auto SpriteManager::GetDrawRect(const MapSprite* spr) const -> IRect
 {
     STACK_TRACE_ENTRY();
 
@@ -1787,7 +1787,7 @@ auto SpriteManager::GetDrawRect(const Sprite* spr) const -> IRect
     return {x, y, x + si->Width, y + si->Height};
 }
 
-auto SpriteManager::GetViewRect(const Sprite* spr) const -> IRect
+auto SpriteManager::GetViewRect(const MapSprite* spr) const -> IRect
 {
     STACK_TRACE_ENTRY();
 
@@ -1875,7 +1875,7 @@ auto SpriteManager::CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType e
     return false;
 }
 
-void SpriteManager::SetEgg(uint16 hx, uint16 hy, Sprite* spr)
+void SpriteManager::SetEgg(uint16 hx, uint16 hy, const MapSprite* spr)
 {
     STACK_TRACE_ENTRY();
 
@@ -1892,11 +1892,11 @@ void SpriteManager::SetEgg(uint16 hx, uint16 hy, Sprite* spr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender, int prerender_ox, int prerender_oy)
+void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender, int prerender_ox, int prerender_oy)
 {
     STACK_TRACE_ENTRY();
 
-    if (dtree.Size() == 0u) {
+    if (list.Size() == 0) {
         return;
     }
 
@@ -1909,7 +1909,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
     const auto ex = _eggX + _settings.ScrOx;
     const auto ey = _eggY + _settings.ScrOy;
 
-    for (const auto* spr = dtree.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
+    for (const auto* spr = list.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
         RUNTIME_ASSERT(spr->Valid);
 
         if (spr->DrawOrder < draw_oder_from) {

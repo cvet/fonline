@@ -39,8 +39,8 @@ constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;
 class SpriteManager;
-class Sprites;
-class Sprite;
+class MapSpriteList;
+class MapSprite;
 
 ///@ ExportEnum
 enum class DrawOrderType : uint8
@@ -85,7 +85,7 @@ enum class EggAppearenceType : uint8
 };
 
 ///@ ExportObject Client
-struct MapSprite
+struct MapSpriteData
 {
     SCRIPTABLE_OBJECT();
 
@@ -112,19 +112,19 @@ struct MapSprite
     uint8 TweakAlpha {};
 };
 
-class Sprite
+class MapSprite final
 {
 public:
-    Sprite() = default;
-    Sprite(const Sprite&) = delete;
-    Sprite(Sprite&&) noexcept = delete;
-    auto operator=(const Sprite&) = delete;
-    auto operator=(Sprite&&) noexcept = delete;
-    ~Sprite() = default;
+    MapSprite() = default;
+    MapSprite(const MapSprite&) = delete;
+    MapSprite(MapSprite&&) noexcept = delete;
+    auto operator=(const MapSprite&) = delete;
+    auto operator=(MapSprite&&) noexcept = delete;
+    ~MapSprite() = default;
 
-    [[nodiscard]] auto GetIntersected(int ox, int oy, bool check_transparent) -> Sprite*;
+    [[nodiscard]] auto CheckHit(int ox, int oy, bool check_transparent) const -> bool;
 
-    void Unvalidate();
+    void Invalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);
     void SetContour(ContourType contour);
     void SetContour(ContourType contour, uint color);
@@ -134,7 +134,7 @@ public:
     void SetFixedAlpha(uint8 alpha);
 
     // Todo:: incapsulate all sprite data
-    Sprites* Root {};
+    MapSpriteList* Root {};
     DrawOrderType DrawOrder {};
     uint DrawOrderPos {};
     uint TreeIndex {};
@@ -148,8 +148,8 @@ public:
     const int* PScrY {};
     const int* OffsX {};
     const int* OffsY {};
-    Sprite* Parent {};
-    Sprite* Child {};
+    MapSprite* Parent {};
+    MapSprite* Child {};
     const uint8* Alpha {};
     const uint8* Light {};
     const uint8* LightRight {};
@@ -161,53 +161,47 @@ public:
     RenderEffect** DrawEffect {};
     bool* ValidCallback {};
     bool Valid {};
-    MapSprite* MapSpr {};
-    Sprite** ExtraChainRoot {};
-    Sprite* ExtraChainParent {};
-    Sprite* ExtraChainChild {};
-    Sprite** ChainRoot {};
-    Sprite** ChainLast {};
-    Sprite* ChainParent {};
-    Sprite* ChainChild {};
+    MapSpriteData* MapSpr {};
+    MapSprite** ExtraChainRoot {};
+    MapSprite* ExtraChainParent {};
+    MapSprite* ExtraChainChild {};
+    MapSprite** ChainRoot {};
+    MapSprite** ChainLast {};
+    MapSprite* ChainParent {};
+    MapSprite* ChainChild {};
 };
 
-class Sprites final
+class MapSpriteList final
 {
-    friend class Sprite;
+    friend class MapSprite;
 
 public:
-    Sprites() = delete;
-    Sprites(SpriteManager& spr_mngr, vector<Sprite*>& pool) :
-        _sprMngr {spr_mngr},
-        _spritesPool {pool}
-    {
-    }
-    Sprites(const Sprites&) = delete;
-    Sprites(Sprites&&) noexcept = delete;
-    auto operator=(const Sprites&) = delete;
-    auto operator=(Sprites&&) noexcept = delete;
-    ~Sprites() = default;
+    MapSpriteList() = delete;
+    MapSpriteList(SpriteManager& spr_mngr, vector<MapSprite*>& pool);
+    MapSpriteList(const MapSpriteList&) = delete;
+    MapSpriteList(MapSpriteList&&) noexcept = delete;
+    auto operator=(const MapSpriteList&) = delete;
+    auto operator=(MapSpriteList&&) noexcept = delete;
+    ~MapSpriteList() = default;
 
-    [[nodiscard]] auto RootSprite() -> Sprite*;
+    [[nodiscard]] auto RootSprite() -> MapSprite*;
     [[nodiscard]] auto Size() const -> uint;
 
-    [[nodiscard]] auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
-    [[nodiscard]] auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
-
-    void Unvalidate();
+    auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    void Invalidate();
     void SortByMapPos();
     void Clear();
 
 private:
-    [[nodiscard]] auto PutSprite(Sprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
-
+    auto PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void GrowPool();
 
     SpriteManager& _sprMngr;
-    vector<Sprite*>& _spritesPool;
-    Sprite* _rootSprite {};
-    Sprite* _lastSprite {};
+    vector<MapSprite*>& _spritesPool;
+    MapSprite* _rootSprite {};
+    MapSprite* _lastSprite {};
     uint _spriteCount {};
-    vector<Sprite*> _unvalidatedSprites {};
+    vector<MapSprite*> _invalidatedSprites {};
     bool _nonConstHelper {};
 };

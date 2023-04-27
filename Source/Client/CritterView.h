@@ -67,8 +67,6 @@ public:
     [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
     [[nodiscard]] auto GetAnim1() const -> uint;
 
-    virtual void Init();
-    virtual void Finish();
     void MarkAsDestroyed() override;
     virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*;
     virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*;
