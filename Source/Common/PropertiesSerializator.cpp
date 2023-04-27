@@ -480,12 +480,14 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     }
 
     // Implicit conversion to string
+    string tmp_str;
+
     const auto can_read_to_string = [](const auto& some_value) -> bool {
         return some_value.index() == AnyData::STRING_VALUE || some_value.index() == AnyData::INT_VALUE || //
             some_value.index() == AnyData::INT64_VALUE || some_value.index() == AnyData::DOUBLE_VALUE || some_value.index() == AnyData::BOOL_VALUE;
     };
 
-    const auto read_to_string = [tmp_str = string()](const auto& some_value) -> const string& {
+    const auto read_to_string = [&tmp_str](const auto& some_value) -> const string& {
         switch (some_value.index()) {
         case AnyData::STRING_VALUE:
             return std::get<string>(some_value);
@@ -497,7 +499,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             return tmp_str = _str("{}", std::get<double>(some_value));
         case AnyData::BOOL_VALUE:
             return tmp_str = _str("{}", std::get<bool>(some_value));
-        default: 
+        default:
             throw UnreachablePlaceException(LINE_STR);
         }
     };
