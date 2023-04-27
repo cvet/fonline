@@ -430,7 +430,12 @@ public:
                     uint str_size;
                     std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(str_size);
-                    result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                    if constexpr (std::is_same_v<T, vector<string>>) {
+                        result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                    }
+                    else {
+                        result[i] = any_t {string(reinterpret_cast<const char*>(data), str_size)};
+                    }
                     data += str_size;
                 }
             }
