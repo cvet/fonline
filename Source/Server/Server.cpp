@@ -1580,13 +1580,6 @@ void FOServer::ProcessCritter(Critter* cr)
         return;
     }
 
-    // Cache look distance
-    // Todo: disable look distance caching
-    if (GameTime.GameplayTime() >= cr->CacheValuesNextTime) {
-        cr->LookCacheValue = cr->GetLookDistance();
-        cr->CacheValuesNextTime = GameTime.GameplayTime() + std::chrono::milliseconds {3000};
-    }
-
     // Time events
     cr->ProcessTimeEvents();
 

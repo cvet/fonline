@@ -214,8 +214,6 @@ public:
     unordered_set<ident_t> VisItem {};
 
     time_point LastIdleCall {};
-    time_point CacheValuesNextTime {};
-    uint LookCacheValue {};
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
     TalkData Talk {}; // Todo: incapsulate Critter::Talk

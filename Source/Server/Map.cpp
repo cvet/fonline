@@ -1001,7 +1001,7 @@ void Map::SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->LookCacheValue + radius)) {
+        if (_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetLookDistance() + radius)) {
             cr->Send_Effect(eff_pid, hx, hy, radius);
         }
     }
@@ -1014,7 +1014,7 @@ void Map::SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, u
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->LookCacheValue, from_hx, from_hy, to_hx, to_hy)) {
+        if (GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->GetLookDistance(), from_hx, from_hy, to_hx, to_hy)) {
             cr->Send_FlyEffect(eff_pid, from_cr_id, to_cr_id, from_hx, from_hy, to_hx, to_hy);
         }
     }
@@ -1031,7 +1031,7 @@ void Map::SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsaf
     }
 
     for (auto* cr : _playerCritters) {
-        if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->GetLookDistance() >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapText(hx, hy, color, text, unsafe_text);
         }
     }
@@ -1048,7 +1048,7 @@ void Map::SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_
     }
 
     for (auto* cr : _playerCritters) {
-        if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->GetLookDistance() >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
         }
     }
@@ -1065,7 +1065,7 @@ void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint s
     }
 
     for (auto* cr : _playerCritters) {
-        if (cr->LookCacheValue >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->GetLookDistance() >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
         }
     }
