@@ -1547,13 +1547,33 @@ void FOServer::ProcessCritter(Critter* cr)
         return;
     }
 
-    // Idle functions
-    OnCritterIdle.Fire(cr);
-
-    if (cr->IsDestroyed()) {
-        return;
+    // Idling
+    auto idle_period = cr->GetIdlePeriod();
+    if (idle_period == 0) {
+        idle_period = Settings.CritterIdlePeriod;
     }
 
+    if (cr->LastIdleCall == time_point {}) {
+        cr->LastIdleCall = GameTime.GameplayTime() - std::chrono::milliseconds {GenericUtils::Random(0u, idle_period)};
+    }
+
+    if (GameTime.GameplayTime() - cr->LastIdleCall >= std::chrono::milliseconds {idle_period}) {
+        OnCritterIdle.Fire(cr);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
+        cr->OnIdle.Fire();
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
+        cr->LastIdleCall = GameTime.GameplayTime();
+    }
+
+    // Talking
     CrMngr.ProcessTalk(cr, false);
 
     if (cr->IsDestroyed()) {

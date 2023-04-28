@@ -213,6 +213,7 @@ public:
     unordered_set<ident_t> VisCr3 {};
     unordered_set<ident_t> VisItem {};
 
+    time_point LastIdleCall {};
     time_point CacheValuesNextTime {};
     uint LookCacheValue {};
     vector<Critter*>* GlobalMapGroup {};

@@ -403,6 +403,8 @@ public:
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsSexTagFemale);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateClient, bool, IsModelInCombatMode);
+    ///@ ExportProperty Temporary
+    ENTITY_PROPERTY(PrivateServer, uint, IdlePeriod);
 };
 
 class MapProperties : public EntityProperties
