@@ -3140,6 +3140,8 @@ void FOMapper::ShowMap(MapView* map)
         SetHour(12);
         SetMinute(0);
     }
+
+    RefreshCurProtos();
 }
 
 void FOMapper::SaveMap(MapView* map, string_view custom_name)
