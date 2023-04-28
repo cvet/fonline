@@ -559,23 +559,24 @@ void FOMapper::ProcessMapperInput()
                 }
                 else {
                     ConsoleKeyDown(dikdw, ev.KeyDown.Text);
-                    if (!ConsoleEdit) {
-                        switch (dikdw) {
-                        case KeyCode::Left:
-                            Settings.ScrollKeybLeft = true;
-                            break;
-                        case KeyCode::Right:
-                            Settings.ScrollKeybRight = true;
-                            break;
-                        case KeyCode::Up:
-                            Settings.ScrollKeybUp = true;
-                            break;
-                        case KeyCode::Down:
-                            Settings.ScrollKeybDown = true;
-                            break;
-                        default:
-                            break;
-                        }
+                }
+
+                if (!ConsoleEdit) {
+                    switch (dikdw) {
+                    case KeyCode::Left:
+                        Settings.ScrollKeybLeft = true;
+                        break;
+                    case KeyCode::Right:
+                        Settings.ScrollKeybRight = true;
+                        break;
+                    case KeyCode::Up:
+                        Settings.ScrollKeybUp = true;
+                        break;
+                    case KeyCode::Down:
+                        Settings.ScrollKeybDown = true;
+                        break;
+                    default:
+                        break;
                     }
                 }
             }
@@ -679,7 +680,7 @@ void FOMapper::ProcessMapperInput()
                 }
             }
             else {
-                if (ev.MouseWheel.Delta != 0) {
+                if (ev.MouseWheel.Delta != 0 && CurMap != nullptr) {
                     CurMap->ChangeZoom(ev.MouseWheel.Delta > 0 ? -1 : 1);
                 }
             }
@@ -1205,10 +1206,10 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
             CurMap->RebuildLight();
         }
     }
-    else if (dik == KeyCode::Up) {
+    else if (dik == KeyCode::Prior) {
         SelectEntityProp(ObjCurLine - 1);
     }
-    else if (dik == KeyCode::Down) {
+    else if (dik == KeyCode::Next) {
         SelectEntityProp(ObjCurLine + 1);
     }
     else if (dik == KeyCode::Escape) {
@@ -2074,14 +2075,25 @@ void FOMapper::SelectClear()
 {
     STACK_TRACE_ENTRY();
 
+    // Delete intersected tiles
     for (auto* entity : SelectedEntities) {
-        if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-            item->RestoreAlpha();
-        }
-        else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-            cr->Alpha = 0xFF;
+        if (const auto* tile = dynamic_cast<ItemHexView*>(entity); tile != nullptr && tile->GetIsTile()) {
+            for (auto* sibling_tile : copy(CurMap->GetTiles(tile->GetHexX(), tile->GetHexY(), tile->GetIsRoofTile()))) {
+                const auto is_sibling_selected = std::find(SelectedEntities.begin(), SelectedEntities.end(), sibling_tile) != SelectedEntities.end();
+                if (!is_sibling_selected && sibling_tile->GetTileLayer() == tile->GetTileLayer()) {
+                    CurMap->DestroyItem(sibling_tile);
+                }
+            }
         }
     }
+
+    // Restore alpha
+    for (auto* entity : SelectedEntities) {
+        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
+            hex_view->RestoreAlpha();
+        }
+    }
+
     SelectedEntities.clear();
 }
 
@@ -2182,20 +2194,37 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
 {
     STACK_TRACE_ENTRY();
 
-    if (!hex_move && ((offs_x == 0) && (offs_y == 0))) {
+    NON_CONST_METHOD_HINT();
+
+    if (!hex_move && offs_x == 0 && offs_y == 0) {
         return false;
     }
-    if (hex_move && ((offs_hx == 0) && (offs_hy == 0))) {
+    if (hex_move && offs_hx == 0 && offs_hy == 0) {
         return false;
+    }
+
+    // Tile step
+    const auto have_tiles = std::find_if(SelectedEntities.begin(), SelectedEntities.end(), [](auto&& entity) {
+        const auto* item = dynamic_cast<ItemHexView*>(entity);
+        return item != nullptr && item->GetIsTile();
+    }) != SelectedEntities.end();
+
+    if (hex_move && have_tiles) {
+        if (std::abs(offs_hx) < Settings.MapTileStep && std::abs(offs_hy) < Settings.MapTileStep) {
+            return false;
+        }
+
+        offs_hx -= offs_hx % Settings.MapTileStep;
+        offs_hy -= offs_hy % Settings.MapTileStep;
     }
 
     // Setup hex moving switcher
     auto switcher = 0;
     if (!SelectedEntities.empty()) {
-        if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
+        if (const auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
             switcher = cr->GetHexX() % 2;
         }
-        else if (auto* item = dynamic_cast<ItemHexView*>(SelectedEntities[0]); item != nullptr) {
+        else if (const auto* item = dynamic_cast<ItemHexView*>(SelectedEntities[0]); item != nullptr) {
             switcher = item->GetHexX() % 2;
         }
     }
@@ -2204,8 +2233,9 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        auto ox = static_cast<float>(offs_x) * CurMap->GetSpritesZoom() + small_ox;
-        auto oy = static_cast<float>(offs_y) * CurMap->GetSpritesZoom() + small_oy;
+        const auto ox = static_cast<float>(offs_x) * CurMap->GetSpritesZoom() + small_ox;
+        const auto oy = static_cast<float>(offs_y) * CurMap->GetSpritesZoom() + small_oy;
+
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
         }
@@ -2218,6 +2248,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         else {
             small_oy = 0.0f;
         }
+
         offs_x = static_cast<int>(ox);
         offs_y = static_cast<int>(oy);
     }
@@ -2225,21 +2256,22 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         for (auto* entity : SelectedEntities) {
             int hx = -1;
             int hy = -1;
-            if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+
+            if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 hx = cr->GetHexX();
                 hy = cr->GetHexY();
             }
-            else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+            else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                 hx = item->GetHexX();
                 hy = item->GetHexY();
             }
 
             if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                 auto sw = switcher;
-                for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
+                for (auto k = 0; k < std::abs(offs_hx); k++, sw++) {
                     Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
                 }
-                for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
+                for (auto k = 0; k < std::abs(offs_hy); k++) {
                     Geometry.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
                 }
             }
@@ -2275,11 +2307,12 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         else {
             int hx;
             int hy;
-            if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+
+            if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 hx = cr->GetHexX();
                 hy = cr->GetHexY();
             }
-            else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+            else if (const auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                 hx = item->GetHexX();
                 hy = item->GetHexY();
             }
@@ -2307,6 +2340,13 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 CurMap->MoveCritter(cr, static_cast<uint16>(hx), static_cast<uint16>(hy), false);
             }
+        }
+    }
+
+    // Restore alpha
+    for (auto* entity : SelectedEntities) {
+        if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
+            hex_view->RestoreAlpha();
         }
     }
 
@@ -2377,6 +2417,11 @@ auto FOMapper::CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> I
 
     if (owner == nullptr) {
         SelectClear();
+    }
+
+    if (proto->GetIsTile()) {
+        hx -= hx % Settings.MapTileStep;
+        hy -= hy % Settings.MapTileStep;
     }
 
     ItemView* item = nullptr;
@@ -2592,6 +2637,11 @@ void FOMapper::CurDraw()
                 break;
             }
 
+            if (proto_item->GetIsTile()) {
+                hx -= hx % Settings.MapTileStep;
+                hy -= hy % Settings.MapTileStep;
+            }
+
             const auto spr_id = GetProtoItemCurSprId(proto_item);
             const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
@@ -2599,7 +2649,7 @@ void FOMapper::CurDraw()
                 auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
 
                 if (proto_item->GetIsTile()) {
-                    if (proto_item->GetIsRoofTile()) {
+                    if (DrawRoof) {
                         x += Settings.MapRoofOffsX;
                         y += Settings.MapRoofOffsY;
                     }

@@ -149,11 +149,11 @@ FIXED_SETTING(int, MapDirCount);
 FIXED_SETTING(int, MapHexWidth, 32); // hex/square width
 FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
 FIXED_SETTING(int, MapHexLineHeight, 12); // hex/square line height
+FIXED_SETTING(int, MapTileStep, 2);
 FIXED_SETTING(int, MapTileOffsX, -8); // tile default offsets
 FIXED_SETTING(int, MapTileOffsY, 32); // tile default offsets
 FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
 FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
-FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of roof tiles
 FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
 FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing

@@ -2034,18 +2034,18 @@ void MapView::MarkRoofNum(int hxi, int hyi, int16 num)
         return;
     }
 
-    for (auto x = 0; x < _engine->Settings.MapRoofSkipSize; x++) {
-        for (auto y = 0; y < _engine->Settings.MapRoofSkipSize; y++) {
+    for (auto x = 0; x < _engine->Settings.MapTileStep; x++) {
+        for (auto y = 0; y < _engine->Settings.MapTileStep; y++) {
             if (hxi + x >= 0 && hxi + x < _width && hyi + y >= 0 && hyi + y < _height) {
                 FieldAt(static_cast<uint16>(hxi + x), static_cast<uint16>(hyi + y)).RoofNum = num;
             }
         }
     }
 
-    MarkRoofNum(hxi + _engine->Settings.MapRoofSkipSize, hy, num);
-    MarkRoofNum(hxi - _engine->Settings.MapRoofSkipSize, hy, num);
-    MarkRoofNum(hxi, hyi + _engine->Settings.MapRoofSkipSize, num);
-    MarkRoofNum(hxi, hyi - _engine->Settings.MapRoofSkipSize, num);
+    MarkRoofNum(hxi + _engine->Settings.MapTileStep, hy, num);
+    MarkRoofNum(hxi - _engine->Settings.MapTileStep, hy, num);
+    MarkRoofNum(hxi, hyi + _engine->Settings.MapTileStep, num);
+    MarkRoofNum(hxi, hyi - _engine->Settings.MapTileStep, num);
 }
 
 auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
@@ -3066,10 +3066,6 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
 auto MapView::ScrollCheck(int xmod, int ymod) -> bool
 {
     STACK_TRACE_ENTRY();
-
-    if (_mapperMode) {
-        return false;
-    }
 
     int positions_left[4] = {
         _hTop * _wVisible + _wRight + GetViewWidth(), // Left top
@@ -4373,18 +4369,18 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<uint16, uint1
 
         const auto dx = x / _engine->Settings.MapHexWidth;
         const auto dy = y / _engine->Settings.MapHexLineHeight;
-        const auto adx = abs(dx);
-        const auto ady = abs(dy);
+        const auto adx = std::abs(dx);
+        const auto ady = std::abs(dy);
 
         int hx;
         int hy;
-        for (auto j = 0; j <= ady; j++) {
+        for (auto j = 1; j <= ady; j++) {
             if (dy >= 0) {
-                hx = rect.Left + j / 2 + (j & 1);
+                hx = rect.Left + j / 2 + ((j % 2) != 0 ? 1 : 0);
                 hy = rect.Top + (j - (hx - rect.Left - ((rect.Left % 2) != 0 ? 1 : 0)) / 2);
             }
             else {
-                hx = rect.Left - j / 2 - (j & 1);
+                hx = rect.Left - j / 2 - ((j % 2) != 0 ? 1 : 0);
                 hy = rect.Top - (j - (rect.Left - hx - ((rect.Left % 2) != 0 ? 0 : 1)) / 2);
             }
 
