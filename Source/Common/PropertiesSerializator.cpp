@@ -504,6 +504,51 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
     };
 
+    // Implicit conversion to number
+    const auto can_convert_str_to_number = [](const auto& some_value) -> bool {
+        // Todo: check if converted value fits to target bounds
+        return _str(std::get<string>(some_value)).isNumber();
+    };
+
+    const auto convert_str_to_number = [prop](const auto& some_value, uint8* pod_data) {
+        if (prop->_isInt8) {
+            *static_cast<int8*>(reinterpret_cast<void*>(pod_data)) = static_cast<int8>(_str(std::get<string>(some_value)).toInt());
+        }
+        else if (prop->_isInt16) {
+            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(_str(std::get<string>(some_value)).toInt());
+        }
+        else if (prop->_isInt32) {
+            *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(_str(std::get<string>(some_value)).toInt());
+        }
+        else if (prop->_isInt64) {
+            *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(_str(std::get<string>(some_value)).toInt64());
+        }
+        else if (prop->_isUInt8) {
+            *static_cast<uint8*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint8>(_str(std::get<string>(some_value)).toUInt());
+        }
+        else if (prop->_isUInt16) {
+            *static_cast<int16*>(reinterpret_cast<void*>(pod_data)) = static_cast<int16>(_str(std::get<string>(some_value)).toUInt());
+        }
+        else if (prop->_isUInt32) {
+            *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(_str(std::get<string>(some_value)).toUInt());
+        }
+        else if (prop->_isUInt64) {
+            *static_cast<uint64*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint64>(_str(std::get<string>(some_value)).toUInt64());
+        }
+        else if (prop->_isSingleFloat) {
+            *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(_str(std::get<string>(some_value)).toFloat());
+        }
+        else if (prop->_isDoubleFloat) {
+            *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(_str(std::get<string>(some_value)).toDouble());
+        }
+        else if (prop->_isBool) {
+            *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = static_cast<bool>(_str(std::get<string>(some_value)).toBool());
+        }
+        else {
+            throw UnreachablePlaceException(LINE_STR);
+        }
+    };
+
     // Parse value
     if (prop->_dataType == Property::DataType::PlainData) {
         if (prop->_isHashBase) {
@@ -529,8 +574,13 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
-            if (value.index() == AnyData::STRING_VALUE || value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong integer value type, property {}", prop->GetName());
+            if (value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
+                WriteLog("Wrong integer value type (array or dict), property {}", prop->GetName());
+                return false;
+            }
+
+            if (value.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(value)) {
+                WriteLog("Wrong numeric string '{}', property {}", std::get<string>(value), prop->GetName());
                 return false;
             }
 
@@ -586,6 +636,9 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (value.index() == AnyData::BOOL_VALUE) {
                 PARSE_VALUE(bool);
+            }
+            else if (value.index() == AnyData::STRING_VALUE) {
+                convert_str_to_number(value, pod_data);
             }
             else {
                 throw UnreachablePlaceException(LINE_STR);
@@ -664,9 +717,19 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             props->SetRawData(prop, data.get(), data_size);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
-            if (arr[0].index() == AnyData::STRING_VALUE || arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong array element value type, property {}", prop->GetName());
+            if (arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
+                WriteLog("Wrong array element value type (array or dict), property {}", prop->GetName());
                 return false;
+            }
+
+            if (arr[0].index() == AnyData::STRING_VALUE) {
+                for (size_t i = 0; i < arr.size(); i++) {
+                    RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
+                    if (!can_convert_str_to_number(arr[i])) {
+                        WriteLog("Wrong array numeric string '{}' at index {}, property {}", std::get<string>(value), i, prop->GetName());
+                        return false;
+                    }
+                }
             }
 
             uint data_size = prop->_baseSize * static_cast<uint>(arr.size());
@@ -688,6 +751,9 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             } \
             else if (arr_element_index == AnyData::BOOL_VALUE) { \
                 *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->_baseSize)) = static_cast<t>(std::get<bool>(arr[i])); \
+            } \
+            else if (arr_element_index == AnyData::STRING_VALUE) { \
+                convert_str_to_number(arr[i], data.get() + i * prop->_baseSize); \
             } \
             else { \
                 throw UnreachablePlaceException(LINE_STR); \
@@ -834,8 +900,14 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
                 else {
                     for (const auto& e : arr) {
-                        if ((e.index() != AnyData::INT_VALUE && e.index() != AnyData::INT64_VALUE && e.index() != AnyData::DOUBLE_VALUE && e.index() != AnyData::BOOL_VALUE) || e.index() != arr[0].index()) {
+                        if (e.index() == AnyData::ARRAY_VALUE || e.index() == AnyData::DICT_VALUE || e.index() != arr[0].index()) {
                             WriteLog("Wrong dict array element value type, property {}", prop->GetName());
+                            wrong_input = true;
+                            break;
+                        }
+
+                        if (e.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(e)) {
+                            WriteLog("Wrong dict array string number element value '{}', property {}", std::get<string>(e), prop->GetName());
                             wrong_input = true;
                             break;
                         }
@@ -872,8 +944,14 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 data_size += prop->_baseSize;
             }
             else {
-                if (value2.index() != AnyData::INT_VALUE && value2.index() != AnyData::INT64_VALUE && value2.index() != AnyData::DOUBLE_VALUE && value2.index() != AnyData::BOOL_VALUE) {
-                    WriteLog("Wrong dict number element value type, property {}", prop->GetName());
+                if (value2.index() == AnyData::ARRAY_VALUE || value2.index() == AnyData::DICT_VALUE) {
+                    WriteLog("Wrong dict number element value type (array or dict), property {}", prop->GetName());
+                    wrong_input = true;
+                    break;
+                }
+
+                if (value2.index() == AnyData::STRING_VALUE && !can_convert_str_to_number(value2)) {
+                    WriteLog("Wrong dict string number element value '{}', property {}", std::get<string>(value2), prop->GetName());
                     wrong_input = true;
                     break;
                 }
@@ -979,6 +1057,9 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         else if (e.index() == AnyData::BOOL_VALUE) { \
             *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<bool>(e)); \
         } \
+        else if (e.index() == AnyData::STRING_VALUE) { \
+            convert_str_to_number(e, data.get() + data_pos); \
+        } \
         else { \
             throw UnreachablePlaceException(LINE_STR); \
         } \
@@ -1066,6 +1147,9 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         } \
         else if (value2.index() == AnyData::BOOL_VALUE) { \
             *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<bool>(value2)); \
+        } \
+        else if (value2.index() == AnyData::STRING_VALUE) { \
+            convert_str_to_number(value2, data.get() + data_pos); \
         } \
         else { \
             throw UnreachablePlaceException(LINE_STR); \
