@@ -34,6 +34,7 @@
 // Todo: improve particles in 2D
 
 #include "VisualParticles.h"
+#include "GenericUtils.h"
 #include "SparkExtension.h"
 
 #include "SPARK.h"
@@ -151,6 +152,21 @@ void ParticleSystem::SetBaseSystem(SPK::System* system)
     NON_CONST_METHOD_HINT();
 
     _impl->BaseSystem = system;
+}
+
+void ParticleSystem::Prewarm()
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    const float max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
+    const float init_time = static_cast<float>(GenericUtils::Random(0, static_cast<int>(max_lifetime * 1000.0f))) / 1000.0f;
+
+    for (float dt = 0.0f; dt < init_time;) {
+        _impl->System->updateParticles(0.1f);
+        dt += 0.1f;
+    }
 }
 
 void ParticleSystem::Respawn()

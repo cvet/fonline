@@ -586,6 +586,7 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
 
     model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
     model->SetDir(dir, false);
+    model->PrewarmParticles();
     model->StartMeshGeneration();
 
     _critterModels[model_name] = std::move(model);

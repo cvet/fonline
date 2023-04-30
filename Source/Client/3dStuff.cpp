@@ -453,6 +453,17 @@ void ModelInstance::StartMeshGeneration()
     }
 }
 
+void ModelInstance::PrewarmParticles()
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    for (auto&& particle_system : _particleSystems) {
+        particle_system.Particles->Prewarm();
+    }
+}
+
 auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool
 {
     STACK_TRACE_ENTRY();

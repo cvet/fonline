@@ -194,6 +194,7 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
     case ACTION_REFRESH:
 #if FO_ENABLE_3D
         if (_model != nullptr) {
+            _model->PrewarmParticles();
             _model->StartMeshGeneration();
         }
 #endif
@@ -484,6 +485,7 @@ void CritterHexView::RefreshModel()
             SprId = _model->SprId;
 
             _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetModelLayersData(), 0);
+            _model->PrewarmParticles();
 
             if (_map->IsMapperMode()) {
                 _model->StartMeshGeneration();

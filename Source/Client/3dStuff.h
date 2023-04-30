@@ -261,6 +261,7 @@ public:
 
     void SetupFrame();
     void StartMeshGeneration();
+    void PrewarmParticles();
     auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
     void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);

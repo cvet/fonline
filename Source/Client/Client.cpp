@@ -2027,6 +2027,7 @@ void FOClient::Net_OnAllItemsSend()
 
 #if FO_ENABLE_3D
     if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsModel()) {
+        hex_chosen->GetModel()->PrewarmParticles();
         hex_chosen->GetModel()->StartMeshGeneration();
     }
 #endif

@@ -1203,6 +1203,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
         return nullptr;
     }
 
+    model->PrewarmParticles();
     model->StartMeshGeneration();
 
     // Get animation data
@@ -1329,7 +1330,9 @@ void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
 
     RUNTIME_ASSERT(_modelMngr);
 
+    model->PrewarmParticles();
     model->StartMeshGeneration();
+
     RenderModel(model);
 
     const auto* si = _sprData[model->SprId];
