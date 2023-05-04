@@ -82,7 +82,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, true,  func);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func);
 }
 
 ///@ ExportMethod
