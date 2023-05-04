@@ -31,7 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: improve DirectX rendering
 // Todo: optimize sprite atlas filling
 
 #pragma once
@@ -44,6 +43,7 @@
 #include "FileSystem.h"
 #include "MapSprite.h"
 #include "Settings.h"
+#include "VisualParticles.h"
 
 static constexpr auto ANY_FRAMES_POOL_SIZE = 2000;
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
@@ -94,6 +94,8 @@ enum class AtlasType
     Splash,
     MeshTextures,
 };
+
+class GameTimer;
 
 struct RenderTarget
 {
@@ -153,8 +155,9 @@ struct SpriteInfo
     RenderEffect* DrawEffect {};
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
+    bool DynamicDraw {};
+    ParticleSystem* Particle {};
 #if FO_ENABLE_3D
-    bool UsedForModel {};
     ModelInstance* Model {};
 #endif
 };
@@ -224,8 +227,11 @@ public:
     [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*;
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
     [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
+    [[nodiscard]] auto LoadParticle(string_view name, bool auto_draw_to_atlas) -> unique_del_ptr<ParticleSystem>;
+    [[nodiscard]] auto GetParticleSprId(const ParticleSystem* particle) const -> uint;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto LoadModel(string_view fname, bool auto_redraw) -> unique_del_ptr<ModelInstance>;
+    [[nodiscard]] auto LoadModel(string_view fname, bool auto_draw_to_atlas) -> unique_del_ptr<ModelInstance>;
+    [[nodiscard]] auto GetModelSprId(const ModelInstance* model) const -> uint;
 #endif
 
     void SetWindowSize(int w, int h);
@@ -264,7 +270,7 @@ public:
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-    void DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
+    void DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const FPoint* offset = nullptr, RenderEffect* custom_effect = nullptr);
 
     void DrawContours();
@@ -272,32 +278,40 @@ public:
     void SetEgg(uint16 hx, uint16 hy, const MapSprite* spr);
     void EggNotValid() { _eggValid = false; }
 
+    void InitParticleSubsystem(GameTimer& game_time);
+    void DrawParticleToAtlas(ParticleSystem* particle);
+
 #if FO_ENABLE_3D
     void Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
     void Preload3dModel(string_view model_name);
-    void RefreshModelSprite(ModelInstance* model);
-    void Draw3d(int x, int y, ModelInstance* model, uint color);
+    void DrawModelToAtlas(ModelInstance* model);
+    void DrawModel(int x, int y, ModelInstance* model, uint color);
 #endif
-
-    AnyFrames* DummyAnimation {};
 
 private:
-    [[nodiscard]] auto CreateAtlas(int request_width, int request_height) -> TextureAtlas*;
-    [[nodiscard]] auto FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
-    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint;
-    [[nodiscard]] auto Load2dAnimation(string_view fname) -> AnyFrames*;
-#if FO_ENABLE_3D
-    [[nodiscard]] auto Load3dAnimation(string_view fname) -> AnyFrames*;
-#endif
-
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
+
+    auto CreateAtlas(int request_width, int request_height) -> TextureAtlas*;
+    auto FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
+    auto RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint;
     void FillAtlas(SpriteInfo* si, const uint* data);
+
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
+
     void CollectContour(int x, int y, const SpriteInfo* si, uint contour_color);
+
+    auto Load2dAnimation(string_view fname) -> AnyFrames*;
 #if FO_ENABLE_3D
-    void RenderModel(ModelInstance* model);
+    auto Load3dAnimation(string_view fname) -> AnyFrames*;
+#endif
+
+    auto LoadTexture(string_view path, unordered_map<string, const SpriteInfo*>& collection, AtlasType atlas) -> pair<RenderTexture*, FRect>;
+
+    void AddParticleToAtlas(ParticleSystem* particle);
+#if FO_ENABLE_3D
+    void AddModelToAtlas(ModelInstance* model);
 #endif
 
     void OnScreenSizeChanged();
@@ -307,30 +321,41 @@ private:
     FileSystem& _resources;
     EffectManager& _effectMngr;
     EventUnsubscriber _eventUnsubscriber {};
+
+    AnyFrames* _dummyAnim {};
+
     RenderTarget* _rtMain {};
     RenderTarget* _rtContours {};
     RenderTarget* _rtContoursMid {};
-    vector<RenderTarget*> _rtModels {};
+    vector<RenderTarget*> _rtIntermediate {};
     vector<RenderTarget*> _rtStack {};
     vector<unique_ptr<RenderTarget>> _rtAll {};
+
     vector<tuple<AtlasType, bool>> _targetAtlasStack {};
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
+
     bool _accumulatorActive {};
     vector<pair<SpriteInfo*, uint*>> _accumulatorSprInfo {};
+
     vector<SpriteInfo*> _sprData {};
+
     MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
-    unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};
+
     vector<DipData> _dipQueue {};
     RenderDrawBuffer* _spritesDrawBuf {};
     RenderDrawBuffer* _primitiveDrawBuf {};
     RenderDrawBuffer* _flushDrawBuf {};
     RenderDrawBuffer* _contourDrawBuf {};
+
     size_t _maxDrawQuad {};
     size_t _curDrawQuad {};
+
     vector<int> _scissorStack {};
     IRect _scissorRect {};
+
     bool _contoursAdded {};
     bool _contourClearMid {};
+
     bool _eggValid {};
     uint16 _eggHx {};
     uint16 _eggHy {};
@@ -338,15 +363,27 @@ private:
     int _eggY {};
     const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
+
     vector<uint> _borderBuf {};
+
     float _spritesZoom {1.0f};
+
     int _windowSizeDiffX {};
     int _windowSizeDiffY {};
-    bool _nonConstHelper {};
+
+    unique_ptr<ParticleManager> _particleMngr {};
+    unordered_map<string, const SpriteInfo*> _loadedParticleTextures {};
+    vector<ParticleSystem*> _autoDrawParticles {};
+    unordered_map<const ParticleSystem*, tuple<uint, AtlasType>> _particlesInfo {};
+
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};
-    vector<ModelInstance*> _autoRedrawModel {};
+    unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};
+    vector<ModelInstance*> _autoDrawModels {};
+    unordered_map<const ModelInstance*, tuple<uint, AtlasType>> _modelsInfo {};
 #endif
+
+    bool _nonConstHelper {};
 
     // Todo: move fonts stuff to separate module
 public:
@@ -356,14 +393,13 @@ public:
     [[nodiscard]] auto GetTextInfo(int width, int height, string_view str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool;
     [[nodiscard]] auto HaveLetter(int num_font, uint letter) -> bool;
 
-    [[nodiscard]] auto SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>;
-
     auto LoadFontFO(int index, string_view font_name, bool not_bordered, bool skip_if_loaded) -> bool;
     auto LoadFontBmf(int index, string_view font_name) -> bool;
     void SetDefaultFont(int index, uint color);
     void SetFontEffect(int index, RenderEffect* effect);
     void BuildFonts();
     void DrawStr(const IRect& r, string_view str, uint flags, uint color, int num_font);
+    auto SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>;
     void ClearFonts();
 
 private:

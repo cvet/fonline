@@ -120,29 +120,30 @@ enum class BlendEquationType
 
 struct Vertex2D
 {
-    float PosX;
-    float PosY;
-    uint Color;
-    float TexU;
-    float TexV;
-    float EggTexU;
-    float EggTexV;
+    float PosX {};
+    float PosY {};
+    float PosZ {};
+    uint Color {};
+    float TexU {};
+    float TexV {};
+    float EggTexU {};
+    float EggTexV {};
 };
 static_assert(std::is_standard_layout_v<Vertex2D>);
-static_assert(sizeof(Vertex2D) == 28);
+static_assert(sizeof(Vertex2D) == 32);
 
 #if FO_ENABLE_3D
 struct Vertex3D
 {
-    vec3 Position;
-    vec3 Normal;
-    float TexCoord[2];
-    float TexCoordBase[2];
-    vec3 Tangent;
-    vec3 Bitangent;
-    float BlendWeights[BONES_PER_VERTEX];
-    float BlendIndices[BONES_PER_VERTEX];
-    uint Color;
+    vec3 Position {};
+    vec3 Normal {};
+    float TexCoord[2] {};
+    float TexCoordBase[2] {};
+    vec3 Tangent {};
+    vec3 Bitangent {};
+    float BlendWeights[BONES_PER_VERTEX] {};
+    float BlendIndices[BONES_PER_VERTEX] {};
+    uint Color {};
 };
 static_assert(std::is_standard_layout_v<Vertex3D>);
 static_assert(sizeof(Vertex3D) == 100);

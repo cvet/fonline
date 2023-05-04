@@ -43,6 +43,7 @@
 #include "ItemHexView.h"
 #include "MapLoader.h"
 #include "MapSprite.h"
+#include "ScriptSystem.h"
 #include "SpriteManager.h"
 
 DECLARE_EXCEPTION(MapViewLoadException);
@@ -111,6 +112,30 @@ struct Field
     FieldFlags Flags {};
 };
 
+///@ ExportObject Client
+struct ParticlePattern
+{
+    SCRIPTABLE_OBJECT_BEGIN();
+
+    bool Finished {};
+    string ParticleName {};
+    uint ParticleCount {};
+    uint16 EveryHexX {1};
+    uint16 EveryHexY {1};
+    bool InteractWithRoof {};
+    bool CheckTileProperty {};
+    ItemProperty TileProperty {};
+    int ExpectedTilePropertyValue {};
+
+    void Finish() { NON_CONST_METHOD_HINT_ONELINE() FinishCallback ? FinishCallback() : (void)FinishCallback; }
+
+    SCRIPTABLE_OBJECT_END();
+
+    std::function<void()> FinishCallback {};
+    vector<unique_del_ptr<ParticleSystem>> Particles {};
+    vector<uint> ParticleSprIds {};
+};
+
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {
 public:
@@ -144,7 +169,7 @@ public:
     [[nodiscard]] auto GetLightHex(uint16 hx, uint16 hy) -> uint8* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _width * 3 + hx * 3]; }
     [[nodiscard]] auto GetGlobalDayTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() const -> int;
-    [[nodiscard]] auto GetDrawList() -> MapSpriteList& { return _mainList; }
+    [[nodiscard]] auto GetDrawList() -> MapSpriteList&;
     [[nodiscard]] auto IsScrollEnabled() const -> bool;
 
     void MarkAsDestroyed() override;
@@ -223,12 +248,12 @@ public:
 
     void RebuildLight() { _requestRebuildLight = _requestRenderLight = true; }
 
-    void RebuildTiles();
-    void RebuildRoof();
     void SetSkipRoof(uint16 hx, uint16 hy);
     void MarkRoofNum(int hxi, int hyi, int16 num);
 
     void RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
+
+    auto RunParticlePattern(string_view name, uint count) -> ParticlePattern*;
 
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);
@@ -321,13 +346,10 @@ private:
 
     vector<MapText> _mapTexts {};
 
-    vector<MapSprite*> _spritesPool {};
     vector<Field> _hexField {};
     vector<int16> _findPathGrid {};
 
-    MapSpriteList _mainList;
-    MapSpriteList _tilesList;
-    MapSpriteList _roofList;
+    MapSpriteList _mapSprites;
 
     time_point _scrollLastTime {};
 
@@ -413,4 +435,6 @@ private:
     set<hstring> _fastPids {};
     set<hstring> _ignorePids {};
     vector<char> _hexTrack {};
+
+    vector<unique_release_ptr<ParticlePattern>> _particlePatterns {};
 };

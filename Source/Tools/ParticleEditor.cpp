@@ -35,6 +35,7 @@
 #include "GenericUtils.h"
 #include "SparkExtension.h"
 #include "StringUtils.h"
+#include "Timer.h"
 #include "VisualParticles.h"
 
 #include "SPARK.h"
@@ -100,8 +101,9 @@ struct ParticleEditor::Impl
     void DrawSparkNullableField(const char* label, const std::function<SPK::Ref<SPK::SPKObject>()>& get, const std::function<void()>& del, const std::function<void()>& add_draw);
 
     unique_ptr<EffectManager> EffectMngr {};
+    unique_ptr<GameTimer> GameTime {};
     unique_ptr<ParticleManager> ParticleMngr {};
-    unique_ptr<ParticleSystem> Particles {};
+    unique_ptr<ParticleSystem> Particle {};
     SPK::Ref<SPK::System> SystemBackup {};
     bool AddingMode {true};
     bool RemovingMode {true};
@@ -121,7 +123,9 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
 
     _impl->EffectMngr = std::make_unique<EffectManager>(_editor.Settings, _editor.BakedResources);
 
-    _impl->ParticleMngr = std::make_unique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
+    _impl->GameTime = std::make_unique<GameTimer>(_editor.Settings);
+
+    _impl->ParticleMngr = std::make_unique<ParticleManager>(_editor.Settings, *_impl->EffectMngr, _editor.BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, FRect> {
         auto file = editor.BakedResources.ReadFile(path);
         RUNTIME_ASSERT(file);
 
@@ -149,8 +153,8 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
         return {tex, {0.0f, 0.0f, 1.0f, 1.0f}};
     });
 
-    _impl->Particles = _impl->ParticleMngr->CreateParticles(asset_path);
-    _impl->SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(_impl->Particles->GetBaseSystem()));
+    _impl->Particle = _impl->ParticleMngr->CreateParticle(asset_path);
+    _impl->SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(_impl->Particle->GetBaseSystem()));
 
     _impl->RenderTarget.reset(App->Render.CreateTexture(200, 200, true, true));
 
@@ -160,12 +164,6 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
     for (auto tex_files = _editor.InputResources.FilterFiles("tga", _str(asset_path).extractDir()); tex_files.MoveNext();) {
         _impl->AllTextures.emplace_back(tex_files.GetCurFileHeader().GetPath().substr(_str(asset_path).extractDir().length() + 1));
     }
-
-    _cameraAngle = _editor.Settings.MapCameraAngle;
-    _projFactor = _editor.Settings.ModelProjFactor;
-    _dirAngle = 0.0f;
-
-    _frameStart = std::chrono::high_resolution_clock::now();
 }
 
 ParticleEditor::~ParticleEditor() = default;
@@ -176,37 +174,33 @@ void ParticleEditor::OnDraw()
 
     EditorAssetView::OnDraw();
 
-    const auto dt = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - _frameStart).count() * _speed;
-    _frameStart = std::chrono::high_resolution_clock::now();
+    _impl->GameTime->FrameAdvance();
 
     _impl->Changed = false;
 
-    if (ImGui::BeginChild("Info", {0.0f, static_cast<float>(_frameHeight + 220)})) {
+    auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
+
+    if (ImGui::BeginChild("Info", {0.0f, static_cast<float>(draw_height + 120)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", static_cast<double>(_impl->Particles->GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", static_cast<double>(_impl->Particle->GetElapsedTime()));
         ImGui::SameLine();
-        ImGui::SliderFloat("##Speed", &_speed, 0.0f, 5.0f);
-        ImGui::SliderInt("Frame width", &_frameWidth, 1, 1000);
-        ImGui::SliderInt("Frame height", &_frameHeight, 1, 1000);
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
-        ImGui::SliderFloat("Camera angle", &_cameraAngle, 1.0f, 89.0f);
-        ImGui::SliderFloat("Proj factor", &_projFactor, 0.1f, 100.0f);
 
         if (ImGui::Button("Respawn")) {
-            _impl->Particles->Respawn();
+            _impl->Particle->Respawn();
         }
 
         if (_changed) {
             ImGui::SameLine();
             if (ImGui::Button("Discard")) {
                 _changed = _impl->Changed = false;
-                _impl->Particles->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
-                _impl->Particles->Respawn();
+                _impl->Particle->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
+                _impl->Particle->Respawn();
             }
 
             ImGui::SameLine();
@@ -214,10 +208,15 @@ void ParticleEditor::OnDraw()
                 const auto file = _editor.InputResources.ReadFileHeader(_assetPath);
                 RUNTIME_ASSERT(file);
 
-                if (SPK::IO::IOManager::get().save(file.GetFullPath(), _impl->Particles->GetBaseSystem())) {
+                const auto* saver = SPK::IO::IOManager::get().getSaver("xml");
+                RUNTIME_ASSERT(saver);
+
+                const auto path = file.GetFullPath();
+
+                if (saver->save(path, _impl->Particle->GetBaseSystem(), path)) {
                     _changed = _impl->Changed = false;
-                    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(_impl->Particles->GetBaseSystem()));
-                    _impl->Particles->Respawn();
+                    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(_impl->Particle->GetBaseSystem()));
+                    _impl->Particle->Respawn();
                 }
             }
         }
@@ -225,20 +224,20 @@ void ParticleEditor::OnDraw()
     ImGui::EndChild();
 
     if (ImGui::BeginChild("Hierarchy")) {
-        _impl->DrawGenericSparkObject(_impl->Particles->GetBaseSystem());
+        _impl->DrawGenericSparkObject(_impl->Particle->GetBaseSystem());
     }
     ImGui::EndChild();
 
     _changed |= _impl->Changed;
 
     if (_impl->Changed) {
-        _impl->Particles->Respawn();
+        _impl->Particle->Respawn();
     }
 
-    const auto frame_width = static_cast<float>(_frameWidth);
-    const auto frame_height = static_cast<float>(_frameHeight);
+    const auto frame_width = static_cast<float>(draw_width);
+    const auto frame_height = static_cast<float>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
-    const auto proj_height = frame_height * (1.0f / _projFactor);
+    const auto proj_height = frame_height * (1.0f / _editor.Settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f).Transpose();
@@ -252,19 +251,19 @@ void ParticleEditor::OnDraw()
     vec3 view_offset;
     view_offset = vec3();
 
-    _impl->Particles->Update(dt, world, pos_offest, _dirAngle, view_offset);
+    _impl->Particle->Setup(proj, world, pos_offest, _dirAngle, view_offset);
 
     auto* prev_rt = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(_impl->RenderTarget.get());
     App->Render.ClearRenderTarget(0, true);
-    _impl->Particles->Draw(proj, view_offset, _cameraAngle);
+    _impl->Particle->Draw();
     App->Render.SetRenderTarget(prev_rt);
 
     auto* draw_list = ImGui::GetWindowDrawList();
 
     auto pos = ImGui::GetWindowPos();
     pos.x += 120.0f;
-    pos.y += 240.0f;
+    pos.y += 140.0f;
 
     const auto border_col = ImGui::ColorConvertFloat4ToU32({1.0f, 0.0f, 0.0f, 1.0f});
 
@@ -278,8 +277,8 @@ void ParticleEditor::OnDraw()
     }
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
-    if (!_impl->Particles->IsActive() && _autoReplay) {
-        _impl->Particles->Respawn();
+    if (!_impl->Particle->IsActive() && _autoReplay) {
+        _impl->Particle->Respawn();
     }
 }
 
@@ -1204,6 +1203,8 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
     bool depth_write = obj->isRenderingOptionEnabled(SPK::RENDERING_OPTION_DEPTH_WRITE);
     Changed |= ImGui::Checkbox("DepthWrite", &depth_write);
     obj->enableRenderingOption(SPK::RENDERING_OPTION_DEPTH_WRITE, depth_write);
+
+    DRAW_SPK_INT_INT("DrawWidth", "DrawHeight", GetDrawWidth, GetDrawHeight, SetDrawSize);
 
     DRAW_SPK_FLOAT("AlphaThreshold", isActive, setActive);
 

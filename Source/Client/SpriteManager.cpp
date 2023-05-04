@@ -155,9 +155,9 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _rtContours = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
     _rtContoursMid = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
 
-    DummyAnimation = new AnyFrames();
-    DummyAnimation->CntFrm = 1;
-    DummyAnimation->Ticks = 100;
+    _dummyAnim = new AnyFrames();
+    _dummyAnim->CntFrm = 1;
+    _dummyAnim->Ticks = 100;
 
     _eventUnsubscriber += _window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
@@ -168,7 +168,7 @@ SpriteManager::~SpriteManager()
 
     _window->Destroy();
 
-    delete DummyAnimation;
+    delete _dummyAnim;
 
     for (const auto* it : _sprData) {
         delete it;
@@ -310,12 +310,21 @@ void SpriteManager::BeginScene(uint clear_color)
         ClearCurrentRenderTarget(clear_color);
     }
 
+    // Draw particles to atlas
+    if (!_autoDrawParticles.empty()) {
+        for (auto* particle : _autoDrawParticles) {
+            if (particle->NeedForceDraw() || particle->NeedDraw()) {
+                DrawParticleToAtlas(particle);
+            }
+        }
+    }
+
 #if FO_ENABLE_3D
-    // Render 3d animations
-    if (!_autoRedrawModel.empty()) {
-        for (auto* model : _autoRedrawModel) {
-            if (model->NeedDraw()) {
-                RenderModel(model);
+    // Draw models to atlas
+    if (!_autoDrawModels.empty()) {
+        for (auto* model : _autoDrawModels) {
+            if (model->NeedForceDraw() || model->NeedDraw()) {
+                DrawModelToAtlas(model);
             }
         }
     }
@@ -831,9 +840,12 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
         if (atlas->Type == atlas_type) {
             for (auto& si : _sprData) {
                 if (si != nullptr && si->Atlas == atlas.get()) {
+                    if (si->Particle != nullptr) {
+                        std::get<0>(_particlesInfo[si->Particle]) = 0;
+                    }
 #if FO_ENABLE_3D
                     if (si->Model != nullptr) {
-                        si->Model->SprId = 0;
+                        std::get<0>(_modelsInfo[si->Model]) = 0;
                     }
 #endif
 
@@ -923,7 +935,7 @@ void SpriteManager::DumpAtlases() const
 
 #if FO_ENABLE_3D
     cnt = 1;
-    for (const auto* rt : _rtModels) {
+    for (const auto* rt : _rtIntermediate) {
         write_rt(_str("Model{}", cnt), rt);
         cnt++;
     }
@@ -1047,7 +1059,7 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrame
 
     RUNTIME_ASSERT(!_targetAtlasStack.empty());
 
-    auto* dummy = use_dummy ? DummyAnimation : nullptr;
+    auto* dummy = use_dummy ? _dummyAnim : nullptr;
 
     if (fname.empty()) {
         return dummy;
@@ -1099,7 +1111,7 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
         const auto ox = file.GetLEShort();
         const auto oy = file.GetLEShort();
         for (uint16 i = 0; i < frames_count; i++) {
-            if (file.GetUChar() == 0u) {
+            if (file.GetUChar() == 0) {
                 auto* si = new SpriteInfo();
                 si->OffsX = ox;
                 si->OffsY = oy;
@@ -1146,6 +1158,217 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
     return LoadAnimation(fname, false);
 }
 
+auto SpriteManager::LoadTexture(string_view path, unordered_map<string, const SpriteInfo*>& collection, AtlasType atlas) -> pair<RenderTexture*, FRect>
+{
+    STACK_TRACE_ENTRY();
+
+    auto result = pair<RenderTexture*, FRect>();
+
+    if (const auto it = collection.find(string(path)); it == collection.end()) {
+        PushAtlasType(atlas);
+        auto* anim = LoadAnimation(path, false);
+        PopAtlasType();
+
+        if (anim != nullptr) {
+            const auto* si = GetSpriteInfo(anim->Ind[0]);
+            collection[string(path)] = si;
+            result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
+            DestroyAnyFrames(anim);
+        }
+        else {
+            BreakIntoDebugger();
+            WriteLog("Texture '{}' not found", path);
+            collection[string(path)] = nullptr;
+        }
+    }
+    else if (const auto* si = it->second; si != nullptr) {
+        result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
+    }
+
+    return result;
+}
+
+void SpriteManager::InitParticleSubsystem(GameTimer& game_time)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(!_particleMngr);
+
+    _particleMngr = std::make_unique<ParticleManager>(_settings, _effectMngr, _resources, game_time, //
+        [this](string_view path) { return LoadTexture(path, _loadedParticleTextures, AtlasType::Static); });
+}
+
+auto SpriteManager::LoadParticle(string_view name, bool auto_draw_to_atlas) -> unique_del_ptr<ParticleSystem>
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_particleMngr);
+
+    auto&& particle = _particleMngr->CreateParticle(name);
+    if (particle == nullptr) {
+        return nullptr;
+    }
+
+    auto&& [draw_width, draw_height] = particle->GetDrawSize();
+    const auto frame_ratio = static_cast<float>(draw_width) / static_cast<float>(draw_height);
+    const auto proj_height = static_cast<float>(draw_height) * (1.0f / _settings.ModelProjFactor);
+    const auto proj_width = proj_height * frame_ratio;
+    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f).Transpose();
+    mat44 world;
+    mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
+
+    particle->Setup(proj, world, {}, {}, {});
+
+    _particlesInfo[particle.get()] = std::make_tuple(0u, std::get<0>(_targetAtlasStack.back()));
+
+    if (auto_draw_to_atlas) {
+        AddParticleToAtlas(particle.get());
+        _autoDrawParticles.push_back(particle.get());
+    }
+
+    return {particle.release(), [this, auto_draw_to_atlas](auto* del_particle) {
+                {
+                    const auto it = _particlesInfo.find(del_particle);
+                    RUNTIME_ASSERT(it != _particlesInfo.end());
+                    if (std::get<0>(it->second) != 0) {
+                        _sprData[std::get<0>(it->second)]->Particle = nullptr;
+                    }
+                    _particlesInfo.erase(it);
+                }
+
+                if (auto_draw_to_atlas) {
+                    const auto it = std::find(_autoDrawParticles.begin(), _autoDrawParticles.end(), del_particle);
+                    RUNTIME_ASSERT(it != _autoDrawParticles.end());
+                    _autoDrawParticles.erase(it);
+                }
+
+                delete del_particle;
+            }};
+}
+
+auto SpriteManager::GetParticleSprId(const ParticleSystem* particle) const -> uint
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_particleMngr);
+
+    const auto it = _particlesInfo.find(particle);
+    RUNTIME_ASSERT(it != _particlesInfo.end());
+
+    return std::get<0>(it->second);
+}
+
+void SpriteManager::AddParticleToAtlas(ParticleSystem* particle)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_particleMngr);
+
+    auto& particle_info = _particlesInfo[particle];
+    auto& spr_id = std::get<0>(particle_info);
+    const auto atlas_type = std::get<1>(particle_info);
+
+    // Free old place
+    if (spr_id != 0) {
+        _sprData[spr_id]->Particle = nullptr;
+        spr_id = 0;
+    }
+
+    // Render size
+    auto&& [draw_width, draw_height] = particle->GetDrawSize();
+
+    // Find already created place for rendering
+    uint index = 0;
+    for (size_t i = 0; i < _sprData.size(); i++) {
+        const auto* si = _sprData[i];
+        if (si != nullptr && si->DynamicDraw && si->Model == nullptr && si->Particle == nullptr && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == atlas_type) {
+            index = static_cast<uint>(i);
+            break;
+        }
+    }
+
+    // Create new place for rendering
+    if (index == 0) {
+        PushAtlasType(atlas_type);
+        index = RequestFillAtlas(new SpriteInfo(), draw_width, draw_height, nullptr);
+        PopAtlasType();
+
+        auto* si = _sprData[index];
+        si->OffsY = static_cast<int16>(draw_height / 4);
+        si->DynamicDraw = true;
+    }
+
+    // Cross links
+    spr_id = index;
+    _sprData[index]->Particle = particle;
+}
+
+void SpriteManager::DrawParticleToAtlas(ParticleSystem* particle)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_particleMngr);
+
+    const auto& particle_info = _particlesInfo[particle];
+    const auto& spr_id = std::get<0>(particle_info);
+
+    // Find place for render
+    if (spr_id == 0) {
+        AddParticleToAtlas(particle);
+        RUNTIME_ASSERT(spr_id != 0);
+    }
+
+    // Find place for render
+    const auto* si = _sprData[spr_id];
+    const auto frame_width = si->Width;
+    const auto frame_height = si->Height;
+
+    RenderTarget* rt_intermediate = nullptr;
+    for (auto* rt : _rtIntermediate) {
+        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
+            rt_intermediate = rt;
+            break;
+        }
+    }
+    if (rt_intermediate == nullptr) {
+        rt_intermediate = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
+        _rtIntermediate.push_back(rt_intermediate);
+    }
+
+    PushRenderTarget(rt_intermediate);
+    ClearCurrentRenderTarget(0, true);
+
+    // Draw particles
+    particle->Draw();
+
+    // Restore render target
+    PopRenderTarget();
+
+    // Copy render
+    IRect region_to;
+
+    // Render to atlas
+    if (rt_intermediate->MainTex->FlippedHeight) {
+        // Preserve flip
+        const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
+        const auto t = iround((1.0f - si->SprRect.Top) * static_cast<float>(si->Atlas->Height));
+        const auto r = iround(si->SprRect.Right * static_cast<float>(si->Atlas->Width));
+        const auto b = iround((1.0f - si->SprRect.Bottom) * static_cast<float>(si->Atlas->Height));
+        region_to = IRect(l, t, r, b);
+    }
+    else {
+        const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
+        const auto t = iround(si->SprRect.Top * static_cast<float>(si->Atlas->Height));
+        const auto r = iround(si->SprRect.Right * static_cast<float>(si->Atlas->Width));
+        const auto b = iround(si->SprRect.Bottom * static_cast<float>(si->Atlas->Height));
+        region_to = IRect(l, t, r, b);
+    }
+
+    PushRenderTarget(si->Atlas->RTarg);
+    DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
+    PopRenderTarget();
+}
+
 #if FO_ENABLE_3D
 void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver)
 {
@@ -1153,32 +1376,8 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 
     RUNTIME_ASSERT(!_modelMngr);
 
-    _modelMngr = std::make_unique<ModelManager>(_settings, _resources, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](string_view path) {
-        auto result = pair<RenderTexture*, FRect>();
-
-        if (const auto it = _loadedMeshTextures.find(string(path)); it == _loadedMeshTextures.end()) {
-            PushAtlasType(AtlasType::MeshTextures);
-            auto* anim = LoadAnimation(path, false);
-            PopAtlasType();
-
-            if (anim != nullptr) {
-                const auto* si = GetSpriteInfo(anim->Ind[0]);
-                _loadedMeshTextures[string(path)] = si;
-                result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
-                DestroyAnyFrames(anim);
-            }
-            else {
-                BreakIntoDebugger();
-                WriteLog("Texture '{}' not found", path);
-                _loadedMeshTextures[string(path)] = nullptr;
-            }
-        }
-        else if (const auto* si = it->second; si != nullptr) {
-            result = pair {si->Atlas->MainTex, FRect {si->SprRect[0], si->SprRect[1], si->SprRect[2] - si->SprRect[0], si->SprRect[3] - si->SprRect[1]}};
-        }
-
-        return result;
-    });
+    _modelMngr = std::make_unique<ModelManager>(_settings, _resources, _effectMngr, game_time, name_resolver, anim_name_resolver, //
+        [this](string_view path) { return LoadTexture(path, _loadedMeshTextures, AtlasType::MeshTextures); });
 }
 
 void SpriteManager::Preload3dModel(string_view model_name)
@@ -1186,6 +1385,7 @@ void SpriteManager::Preload3dModel(string_view model_name)
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
+
     RUNTIME_ASSERT(_modelMngr);
 
     _modelMngr->PreloadModel(model_name);
@@ -1198,7 +1398,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     RUNTIME_ASSERT(_modelMngr);
 
     // Load 3d animation
-    auto&& model = unique_ptr<ModelInstance>(_modelMngr->CreateModel(fname));
+    auto&& model = LoadModel(fname, false);
     if (model == nullptr) {
         return nullptr;
     }
@@ -1219,7 +1419,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     }
 
     // Calculate needed information
-    const auto frame_time = 1.0f / static_cast<float>(_settings.Animation3dFPS != 0u ? _settings.Animation3dFPS : 10); // 1 second / fps
+    const auto frame_time = 1.0f / static_cast<float>(_settings.Animation3dFPS != 0 ? _settings.Animation3dFPS : 10); // 1 second / fps
     const auto period_from = period * static_cast<float>(proc_from) / 100.0f;
     const auto period_to = period * static_cast<float>(proc_to) / 100.0f;
     const auto period_len = fabs(period_to - period_from);
@@ -1229,10 +1429,10 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     // If no animations available than render just one
     if (period == 0.0f || proc_from == proc_to || frames_count <= 1) {
         model->SetAnimation(0, proc_from * 10, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
-        RenderModel(model.get());
+        DrawModelToAtlas(model.get());
 
         auto* anim = CreateAnyFrames(1, 100);
-        anim->Ind[0] = model->SprId;
+        anim->Ind[0] = GetModelSprId(model.get());
         return anim;
     }
 
@@ -1246,9 +1446,9 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
         // Previous frame is different
         if (cur_proci != prev_cur_proci) {
             model->SetAnimation(0, cur_proci, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
-            RenderModel(model.get());
+            DrawModelToAtlas(model.get());
 
-            anim->Ind[i] = model->SprId;
+            anim->Ind[i] = GetModelSprId(model.get());
         }
         // Previous frame is same
         else if (i > 0) {
@@ -1262,24 +1462,142 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     return anim;
 }
 
-void SpriteManager::RenderModel(ModelInstance* model)
+void SpriteManager::DrawModel(int x, int y, ModelInstance* model, uint color)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
+    model->PrewarmParticles();
+    model->StartMeshGeneration();
+
+    DrawModelToAtlas(model);
+
+    const auto& model_info = _modelsInfo[model];
+    const auto& spr_id = std::get<0>(model_info);
+
+    const auto* si = _sprData[spr_id];
+    DrawSprite(spr_id, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color);
+}
+
+auto SpriteManager::LoadModel(string_view fname, bool auto_draw_to_atlas) -> unique_del_ptr<ModelInstance>
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_modelMngr);
+
+    auto&& model = _modelMngr->CreateModel(fname);
+    if (model == nullptr) {
+        return nullptr;
+    }
+
+    _modelsInfo[model.get()] = std::make_tuple(0u, std::get<0>(_targetAtlasStack.back()));
+
+    if (auto_draw_to_atlas) {
+        AddModelToAtlas(model.get());
+        _autoDrawModels.push_back(model.get());
+    }
+
+    return {model.release(), [this, auto_draw_to_atlas](auto* del_model) {
+                {
+                    const auto it = _modelsInfo.find(del_model);
+                    RUNTIME_ASSERT(it != _modelsInfo.end());
+                    if (std::get<0>(it->second) != 0) {
+                        _sprData[std::get<0>(it->second)]->Model = nullptr;
+                    }
+                    _modelsInfo.erase(it);
+                }
+
+                if (auto_draw_to_atlas) {
+                    const auto it = std::find(_autoDrawModels.begin(), _autoDrawModels.end(), del_model);
+                    RUNTIME_ASSERT(it != _autoDrawModels.end());
+                    _autoDrawModels.erase(it);
+                }
+
+                delete del_model;
+            }};
+}
+
+auto SpriteManager::GetModelSprId(const ModelInstance* model) const -> uint
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_modelMngr);
+
+    const auto it = _modelsInfo.find(model);
+    RUNTIME_ASSERT(it != _modelsInfo.end());
+
+    return std::get<0>(it->second);
+}
+
+void SpriteManager::AddModelToAtlas(ModelInstance* model)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_modelMngr);
+
+    auto& model_info = _modelsInfo[model];
+    auto& spr_id = std::get<0>(model_info);
+    const auto atlas_type = std::get<1>(model_info);
+
+    // Free old place
+    if (spr_id != 0) {
+        _sprData[spr_id]->Model = nullptr;
+        spr_id = 0;
+    }
+
+    // Render size
+    model->SetupFrame();
+    auto&& [draw_width, draw_height] = model->GetDrawSize();
+
+    // Find already created place for rendering
+    uint index = 0;
+    for (size_t i = 0; i < _sprData.size(); i++) {
+        const auto* si = _sprData[i];
+        if (si != nullptr && si->DynamicDraw && si->Model == nullptr && si->Particle == nullptr && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == atlas_type) {
+            index = static_cast<uint>(i);
+            break;
+        }
+    }
+
+    // Create new place for rendering
+    if (index == 0) {
+        PushAtlasType(atlas_type);
+        index = RequestFillAtlas(new SpriteInfo(), draw_width, draw_height, nullptr);
+        PopAtlasType();
+
+        auto* si = _sprData[index];
+        si->OffsY = static_cast<int16>(draw_height / 4);
+        si->DynamicDraw = true;
+    }
+
+    // Cross links
+    spr_id = index;
+    _sprData[index]->Model = model;
+}
+
+void SpriteManager::DrawModelToAtlas(ModelInstance* model)
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(_modelMngr);
+
+    const auto& model_info = _modelsInfo[model];
+    const auto& spr_id = std::get<0>(model_info);
+
     // Find place for render
-    if (model->SprId == 0u) {
-        RefreshModelSprite(model);
+    if (spr_id == 0) {
+        AddModelToAtlas(model);
+        RUNTIME_ASSERT(spr_id != 0);
     }
 
     // Find place for render
-    const auto* si = _sprData[model->SprId];
+    const auto* si = _sprData[spr_id];
     const auto frame_width = si->Width * ModelInstance::FRAME_SCALE;
     const auto frame_height = si->Height * ModelInstance::FRAME_SCALE;
 
     RenderTarget* rt_model = nullptr;
-    for (auto* rt : _rtModels) {
+    for (auto* rt : _rtIntermediate) {
         if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
             rt_model = rt;
             break;
@@ -1287,7 +1605,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
     }
     if (rt_model == nullptr) {
         rt_model = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
-        _rtModels.push_back(rt_model);
+        _rtIntermediate.push_back(rt_model);
     }
 
     PushRenderTarget(rt_model);
@@ -1323,96 +1641,6 @@ void SpriteManager::RenderModel(ModelInstance* model)
     DrawRenderTarget(rt_model, false, nullptr, &region_to);
     PopRenderTarget();
 }
-
-void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    model->PrewarmParticles();
-    model->StartMeshGeneration();
-
-    RenderModel(model);
-
-    const auto* si = _sprData[model->SprId];
-    DrawSprite(model->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color);
-}
-
-auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> unique_del_ptr<ModelInstance>
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    auto* model = _modelMngr->CreateModel(fname);
-    if (model == nullptr) {
-        return nullptr;
-    }
-
-    model->SprId = 0;
-    model->SprAtlasType = static_cast<int>(std::get<0>(_targetAtlasStack.back()));
-
-    if (auto_redraw) {
-        RefreshModelSprite(model);
-        _autoRedrawModel.push_back(model);
-    }
-
-    return {model, [this](auto* del_model) {
-                const auto it = std::find(_autoRedrawModel.begin(), _autoRedrawModel.end(), del_model);
-                if (it != _autoRedrawModel.end()) {
-                    _autoRedrawModel.erase(it);
-                }
-
-                if (del_model->SprId != 0u) {
-                    _sprData[del_model->SprId]->Model = nullptr;
-                }
-
-                delete del_model;
-            }};
-}
-
-void SpriteManager::RefreshModelSprite(ModelInstance* model)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    // Free old place
-    if (model->SprId != 0u) {
-        _sprData[model->SprId]->Model = nullptr;
-        model->SprId = 0;
-    }
-
-    // Render size
-    model->SetupFrame();
-    auto&& [draw_width, draw_height] = model->GetDrawSize();
-
-    // Find already created place for rendering
-    uint index = 0;
-    for (size_t i = 0; i < _sprData.size(); i++) {
-        const auto* si = _sprData[i];
-        if (si != nullptr && si->UsedForModel && si->Model == nullptr && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == static_cast<AtlasType>(model->SprAtlasType)) {
-            index = static_cast<uint>(i);
-            break;
-        }
-    }
-
-    // Create new place for rendering
-    if (index == 0u) {
-        PushAtlasType(static_cast<AtlasType>(model->SprAtlasType));
-        index = RequestFillAtlas(new SpriteInfo(), draw_width, draw_height, nullptr);
-        PopAtlasType();
-
-        auto* si = _sprData[index];
-        si->OffsY = static_cast<int16>(draw_height / 4);
-        si->UsedForModel = true;
-    }
-
-    // Cross links
-    model->SprId = index;
-    _sprData[index]->Model = model;
-}
 #endif
 
 auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
@@ -1423,7 +1651,7 @@ auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
     auto* anim = _anyFramesPool.Get();
     *anim = {}; // Reset state
     anim->CntFrm = frames;
-    anim->Ticks = ticks != 0u ? ticks : frames * 100;
+    anim->Ticks = ticks != 0 ? ticks : frames * 100;
     return anim;
 }
 
@@ -1443,7 +1671,7 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
 {
     STACK_TRACE_ENTRY();
 
-    if (anim == nullptr || anim == DummyAnimation) {
+    if (anim == nullptr || anim == _dummyAnim) {
         return;
     }
 
@@ -1455,6 +1683,8 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
 
 void SpriteManager::SetSpritesZoom(float zoom) noexcept
 {
+    STACK_TRACE_ENTRY();
+
     _spritesZoom = zoom;
 }
 
@@ -1492,7 +1722,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (id == 0u) {
+    if (id == 0) {
         return;
     }
 
@@ -1511,7 +1741,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
         _dipQueue.back().SpritesCount++;
     }
 
-    if (color == 0u) {
+    if (color == 0) {
         color = COLOR_SPRITE;
     }
     color = ApplyColorBrightness(color, _settings.Brightness);
@@ -1560,7 +1790,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
 {
     STACK_TRACE_ENTRY();
 
-    if (id == 0u) {
+    if (id == 0) {
         return;
     }
 
@@ -1608,7 +1838,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
         _dipQueue.back().SpritesCount++;
     }
 
-    if (color == 0u) {
+    if (color == 0) {
         color = COLOR_SPRITE;
     }
     color = ApplyColorBrightness(color, _settings.Brightness);
@@ -1650,7 +1880,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
 {
     STACK_TRACE_ENTRY();
 
-    if (id == 0u) {
+    if (id == 0) {
         return;
     }
     if (w == 0 || h == 0) {
@@ -1680,7 +1910,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
         width *= ratio;
     }
 
-    if (color == 0u) {
+    if (color == 0) {
         color = COLOR_SPRITE;
     }
     color = ApplyColorBrightness(color, _settings.Brightness);
@@ -1895,11 +2125,11 @@ void SpriteManager::SetEgg(uint16 hx, uint16 hy, const MapSprite* spr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color, bool prerender, int prerender_ox, int prerender_oy)
+void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (list.Size() == 0) {
+    if (list.RootSprite() == nullptr) {
         return;
     }
 
@@ -1919,7 +2149,7 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
             continue;
         }
         if (spr->DrawOrder > draw_oder_to) {
-            break;
+            continue;
         }
 
         const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
@@ -1931,10 +2161,8 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         // Coords
         auto x = spr->ScrX - si->Width / 2 + si->OffsX + *spr->PScrX;
         auto y = spr->ScrY - si->Height + si->OffsY + *spr->PScrY;
-        if (!prerender) {
-            x += _settings.ScrOx;
-            y += _settings.ScrOy;
-        }
+        x += _settings.ScrOx;
+        y += _settings.ScrOy;
         if (spr->OffsX != nullptr) {
             x += *spr->OffsX;
         }
@@ -1947,7 +2175,7 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         // Base color
         uint color_r = 0;
         uint color_l = 0;
-        if (spr->Color != 0u) {
+        if (spr->Color != 0) {
             color_r = color_l = spr->Color | 0xFF000000;
         }
         else {
@@ -1990,11 +2218,9 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         color_l = COLOR_SWAP_RB(color_l);
 
         // Check borders
-        if (!prerender) {
-            if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + si->Width) / zoom < 0.0f || //
-                static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) || static_cast<float>(y + si->Height) / zoom < 0.0f) {
-                continue;
-            }
+        if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + si->Width) / zoom < 0.0f || //
+            static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) || static_cast<float>(y + si->Height) / zoom < 0.0f) {
+            continue;
         }
 
         // Egg process
@@ -2052,8 +2278,8 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         }
 
         // Casts
-        const auto xf = static_cast<float>(x) / zoom + (prerender ? static_cast<float>(prerender_ox) : 0.0f);
-        const auto yf = static_cast<float>(y) / zoom + (prerender ? static_cast<float>(prerender_oy) : 0.0f);
+        const auto xf = static_cast<float>(x) / zoom;
+        const auto yf = static_cast<float>(y) / zoom;
         const auto wf = static_cast<float>(si->Width) / zoom;
         const auto hf = static_cast<float>(si->Height) / zoom;
 
@@ -2133,7 +2359,7 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
             const auto x1 = iround(static_cast<float>(spr->ScrX + _settings.ScrOx) / zoom);
             auto y1 = iround(static_cast<float>(spr->ScrY + _settings.ScrOy) / zoom);
 
-            if (spr->DrawOrder < DrawOrderType::Normal) {
+            if (spr->DrawOrder < DrawOrderType::NormalBegin || spr->DrawOrder > DrawOrderType::NormalEnd) {
                 y1 -= iround(40.0f / zoom);
             }
 
@@ -2161,7 +2387,7 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
             CollectContour(x, y, si, contour_color);
         }
 
-        if (_settings.ShowSpriteBorders && spr->DrawOrder > DrawOrderType::TileEnd) {
+        if (_settings.ShowSpriteBorders && spr->DrawOrder > DrawOrderType::Tile4) {
             auto rect = GetViewRect(spr);
 
             rect.Left += _settings.ScrOx;
@@ -2352,7 +2578,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
     STACK_TRACE_ENTRY();
 
 #if FO_ENABLE_3D
-    auto* contour_effect = si->UsedForModel ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
+    auto* contour_effect = si->DynamicDraw ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
 #else
     auto* contour_effect = _effectMngr.Effects.ContourSprite;
 #endif
@@ -2374,7 +2600,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
 
     if (_spritesZoom == 1.0f) {
 #if FO_ENABLE_3D
-        if (si->UsedForModel) {
+        if (si->DynamicDraw) {
             const auto& sr = si->SprRect;
             textureuv = sr;
             sprite_border = sr;
@@ -2584,7 +2810,7 @@ void SpriteManager::BuildFont(int index)
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
     }
-    if (font.Letters.count(' ') != 0u) {
+    if (font.Letters.count(' ') != 0) {
         font.SpaceWidth = font.Letters[' '].XAdvance;
     }
 
@@ -2609,7 +2835,7 @@ void SpriteManager::BuildFont(int index)
         for (auto y = 0; y < si->Height; y++) {
             for (auto x = 0; x < si->Width; x++) {
                 const auto a = reinterpret_cast<uint8*>(&PIXEL_AT(data_normal, si->Width, x, y))[3];
-                if (a != 0u) {
+                if (a != 0) {
                     PIXEL_AT(data_normal, si->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
                     if (si_bordered != nullptr) {
                         PIXEL_AT(data_bordered, si_bordered->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
@@ -2881,7 +3107,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 
     // Chars
     file.SetCurPos(next_block);
-    const auto count = file.GetLEUInt() / 20u;
+    const auto count = file.GetLEUInt() / 20;
     for ([[maybe_unused]] const auto i : xrange(count)) {
         // Read data
         const auto id = file.GetLEUInt();
@@ -2905,7 +3131,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
         let.XAdvance = static_cast<int16>(xa + 1);
     }
 
-    font.LineHeight = font.Letters.count('W') != 0u ? font.Letters['W'].Height : base_height;
+    font.LineHeight = font.Letters.count('W') != 0 ? font.Letters['W'].Height : base_height;
     font.YAdvance = font.LineHeight / 2;
     font.MakeGray = true;
 
@@ -2941,7 +3167,7 @@ static void StrCopy(char* to, size_t size, string_view from)
     RUNTIME_ASSERT(to);
     RUNTIME_ASSERT(size > 0);
 
-    if (from.length() == 0u) {
+    if (from.length() == 0) {
         to[0] = 0;
         return;
     }
@@ -2977,7 +3203,7 @@ static void StrEraseInterval(char* str, uint len)
 {
     STACK_TRACE_ENTRY();
 
-    if (str == nullptr || len == 0u) {
+    if (str == nullptr || len == 0) {
         return;
     }
 
@@ -2999,10 +3225,10 @@ static void StrInsert(char* to, const char* from, uint from_len)
         return;
     }
 
-    if (from_len == 0u) {
+    if (from_len == 0) {
         from_len = static_cast<uint>(string_view(from).length());
     }
-    if (from_len == 0u) {
+    if (from_len == 0) {
         return;
     }
 
@@ -3015,7 +3241,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
         *(end_to + from_len) = *end_to;
     }
 
-    while (from_len-- != 0u) {
+    while (from_len-- != 0) {
         *to = *from;
         ++to;
         ++from;
@@ -3196,7 +3422,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                     }
                 }
 
-                if (IsBitSet(flags, FT_ALIGN) && skip_line == 0u) {
+                if (IsBitSet(flags, FT_ALIGN) && skip_line == 0) {
                     fi.LineSpaceWidth[fi.LinesAll - 1] = 1;
                     // Erase next first spaces
                     auto ii = i + i_advance;
@@ -3219,21 +3445,21 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
         switch (letter) {
         case '\n':
-            if (skip_line == 0u) {
+            if (skip_line == 0) {
                 cury += font->LineHeight + font->YAdvance;
-                if (!infinity_h && cury + font->LineHeight > r.Bottom && fi.LinesInRect == 0u) {
+                if (!infinity_h && cury + font->LineHeight > r.Bottom && fi.LinesInRect == 0) {
                     fi.LinesInRect = fi.LinesAll;
                 }
 
                 if (fmt_type == FORMAT_TYPE_DRAW) {
-                    if (fi.LinesInRect != 0u && !IsBitSet(flags, FT_UPPER)) {
+                    if (fi.LinesInRect != 0 && !IsBitSet(flags, FT_UPPER)) {
                         // fi.LinesAll++;
                         str[i] = 0;
                         break;
                     }
                 }
                 else if (fmt_type == FORMAT_TYPE_SPLIT) {
-                    if (fi.LinesInRect != 0u && fi.LinesAll % fi.LinesInRect == 0u) {
+                    if (fi.LinesInRect != 0 && fi.LinesAll % fi.LinesInRect == 0) {
                         str[i] = 0;
                         (*fi.StrLines).push_back(str);
                         str = &str[i + i_advance];
@@ -3275,32 +3501,32 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         fi.MaxCurX = curx;
     }
 
-    if (skip_line_end != 0u) {
+    if (skip_line_end != 0) {
         auto len = static_cast<int>(string_view(str).length());
         for (auto i = len - 2; i >= 0; i--) {
             if (str[i] == '\n') {
                 str[i] = 0;
                 fi.LinesAll--;
-                if (--skip_line_end == 0u) {
+                if (--skip_line_end == 0) {
                     break;
                 }
             }
         }
 
-        if (skip_line_end != 0u) {
+        if (skip_line_end != 0) {
             WriteLog("error3");
             fi.IsError = true;
             return;
         }
     }
 
-    if (skip_line != 0u) {
+    if (skip_line != 0) {
         WriteLog("error4");
         fi.IsError = true;
         return;
     }
 
-    if (fi.LinesInRect == 0u) {
+    if (fi.LinesInRect == 0) {
         fi.LinesInRect = fi.LinesAll;
     }
 
@@ -3331,14 +3557,14 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
             }
 
-            if (fi.ColorDots[j] != 0u) {
+            if (fi.ColorDots[j] != 0) {
                 last_col = fi.ColorDots[j];
             }
         }
 
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
             offs_col += j + 1;
-            if (last_col != 0u && fi.ColorDots[j + 1] == 0u) {
+            if (last_col != 0 && fi.ColorDots[j + 1] == 0) {
                 fi.ColorDots[j + 1] = last_col;
             }
         }
@@ -3457,7 +3683,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     }
 
     // FormatBuf
-    if (color == 0u && _defFontColor != 0u) {
+    if (color == 0 && _defFontColor != 0) {
         color = _defFontColor;
     }
     color = ApplyColorBrightness(color, _settings.Brightness);
@@ -3485,8 +3711,8 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
 
     if (!IsBitSet(flags, FT_NO_COLORIZE)) {
         for (auto i = offs_col; i >= 0; i--) {
-            if (fi.ColorDots[i] != 0u) {
-                if ((fi.ColorDots[i] & 0xFF000000) != 0u) {
+            if (fi.ColorDots[i] != 0) {
+                if ((fi.ColorDots[i] & 0xFF000000) != 0) {
                     color = fi.ColorDots[i]; // With alpha
                 }
                 else {
@@ -3504,8 +3730,8 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     for (auto i = 0; str_[i] != 0; i += i_advance) {
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
             const auto new_color = fi.ColorDots[i + offs_col];
-            if (new_color != 0u) {
-                if ((new_color & 0xFF000000) != 0u) {
+            if (new_color != 0) {
+                if ((new_color & 0xFF000000) != 0) {
                     color = new_color; // With alpha
                 }
                 else {

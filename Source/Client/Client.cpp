@@ -94,7 +94,9 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     // Language Packs
     _curLang.LoadTexts(Resources, Settings.Language);
 
-    // Init 3d subsystem
+    // Init sprite subsystems
+    SprMngr.InitParticleSubsystem(GameTime);
+
 #if FO_ENABLE_3D
     SprMngr.Init3dSubsystem(GameTime, *this, *this);
 

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: improve particles in 2D
-
 #include "VisualParticles.h"
 #include "GenericUtils.h"
 #include "SparkExtension.h"
@@ -50,10 +48,11 @@ struct ParticleSystem::Impl
     SPK::Ref<SPK::System> BaseSystem {};
 };
 
-ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, TextureLoader tex_loader) :
-    _settings {settings}, //
+ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader) :
+    _settings {settings},
     _effectMngr {effect_mngr},
     _resources {resources},
+    _gameTime {game_time},
     _textureLoader {std::move(tex_loader)}
 {
     STACK_TRACE_ENTRY();
@@ -62,6 +61,10 @@ ParticleManager::ParticleManager(RenderSettings& settings, EffectManager& effect
     std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
 
     _ipml = std::make_unique<Impl>();
+
+    if (_settings.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround(1000.0f / static_cast<float>(_settings.Animation3dFPS));
+    }
 }
 
 ParticleManager::~ParticleManager()
@@ -69,7 +72,7 @@ ParticleManager::~ParticleManager()
     STACK_TRACE_ENTRY();
 }
 
-auto ParticleManager::CreateParticles(string_view name) -> unique_ptr<ParticleSystem>
+auto ParticleManager::CreateParticle(string_view name) -> unique_ptr<ParticleSystem>
 {
     STACK_TRACE_ENTRY();
 
@@ -115,6 +118,9 @@ ParticleSystem::ParticleSystem(ParticleManager& particle_mngr) :
     STACK_TRACE_ENTRY();
 
     _impl = std::make_unique<Impl>();
+
+    _forceDraw = true;
+    _lastDrawTime = GetTime();
 }
 
 ParticleSystem::~ParticleSystem()
@@ -154,44 +160,51 @@ void ParticleSystem::SetBaseSystem(SPK::System* system)
     _impl->BaseSystem = system;
 }
 
-void ParticleSystem::Prewarm()
+auto ParticleSystem::GetDrawSize() const -> tuple<int, int>
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    int max_draw_width = 0;
+    int max_draw_height = 0;
 
-    const float max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
-    const float init_time = static_cast<float>(GenericUtils::Random(0, static_cast<int>(max_lifetime * 1000.0f))) / 1000.0f;
-
-    for (float dt = 0.0f; dt < init_time;) {
-        _impl->System->updateParticles(0.1f);
-        dt += 0.1f;
-    }
-}
-
-void ParticleSystem::Respawn()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    _impl->System = SPK::SPKObject::copy(_impl->BaseSystem);
-    _impl->System->initialize();
-
-    _elapsedTime = 0.0;
-}
-
-void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest, float look_dir, const vec3& view_offset)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (!_impl->System->isActive()) {
-        return;
+    for (size_t i = 0; i < _impl->System->getNbGroups(); i++) {
+        auto&& group = _impl->System->getGroup(i);
+        if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
+            max_draw_width = std::max(max_draw_width, renderer->GetDrawWidth());
+            max_draw_height = std::max(max_draw_height, renderer->GetDrawHeight());
+        }
     }
 
-    _elapsedTime += static_cast<double>(dt);
+    if (max_draw_width == 0) {
+        max_draw_width = _particleMngr._settings.DefaultParticleDrawWidth;
+    }
+    if (max_draw_height == 0) {
+        max_draw_height = _particleMngr._settings.DefaultParticleDrawHeight;
+    }
+
+    return {max_draw_width, max_draw_height};
+}
+
+auto ParticleSystem::GetTime() const -> time_point
+{
+    STACK_TRACE_ENTRY();
+
+    return _particleMngr._gameTime.GameplayTime();
+}
+
+auto ParticleSystem::NeedDraw() const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_particleMngr._animUpdateThreshold};
+}
+
+void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offest, float look_dir_angle, const vec3& view_offset)
+{
+    STACK_TRACE_ENTRY();
+
+    _projMat = proj;
+    _viewOffset = view_offset;
 
     mat44 pos_offset_mat;
     mat44::Translation(pos_offest, pos_offset_mat);
@@ -209,7 +222,7 @@ void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest
         mat44::Translation(result_pos_pos, result_pos_pos_mat);
 
         mat44 look_dir_mat;
-        mat44::RotationY((look_dir - 90.0f) * PI_FLOAT / 180.0f, look_dir_mat);
+        mat44::RotationY((look_dir_angle - 90.0f) * PI_FLOAT / 180.0f, look_dir_mat);
 
         mat44 result_pos_mat = result_pos_pos_mat * look_dir_mat;
 
@@ -226,27 +239,65 @@ void ParticleSystem::Update(float dt, const mat44& world, const vec3& pos_offest
     }
 
     _impl->System->updateTransform();
-    _impl->System->updateParticles(dt);
 }
 
-void ParticleSystem::Draw(const mat44& proj, const vec3& view_offset, float cam_rot) const
+void ParticleSystem::Prewarm()
 {
     STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    const float max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
+    const float init_time = static_cast<float>(GenericUtils::Random(0, static_cast<int>(max_lifetime * 1000.0f))) / 1000.0f;
+
+    for (float dt = 0.0f; dt < init_time;) {
+        _impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));
+        dt += PREWARM_STEP;
+    }
+
+    _elapsedTime += static_cast<double>(init_time);
+}
+
+void ParticleSystem::Respawn()
+{
+    STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    _impl->System = SPK::SPKObject::copy(_impl->BaseSystem);
+    _impl->System->initialize();
+
+    _elapsedTime = 0.0;
+}
+
+void ParticleSystem::Draw()
+{
+    STACK_TRACE_ENTRY();
+
+    const auto time = GetTime();
+    const auto dt = time_duration_to_ms<float>(time - _lastDrawTime) * 0.001f;
+
+    _lastDrawTime = time;
+    _forceDraw = false;
 
     if (!_impl->System->isActive()) {
         return;
     }
 
+    _elapsedTime += static_cast<double>(dt);
+
+    _impl->System->updateParticles(dt);
+
     mat44 view_offset_mat;
-    mat44::Translation({-view_offset.x, -view_offset.y, -view_offset.z}, view_offset_mat);
+    mat44::Translation({-_viewOffset.x, -_viewOffset.y, -_viewOffset.z}, view_offset_mat);
 
     mat44 cam_rot_mat;
-    mat44::RotationX(cam_rot * PI_FLOAT / 180.0f, cam_rot_mat);
+    mat44::RotationX(_particleMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, cam_rot_mat);
 
     mat44 view = view_offset_mat * cam_rot_mat;
     view.Transpose();
 
-    _particleMngr._projMat = view * proj;
+    _particleMngr._projMat = view * _projMat;
     _particleMngr._viewMat = view;
 
     _impl->System->renderParticles();

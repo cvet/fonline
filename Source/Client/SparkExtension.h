@@ -67,6 +67,7 @@ namespace SPK::FO
 
         SPK_START_DESCRIPTION
         SPK_PARENT_ATTRIBUTES(Renderer)
+        SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
         SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
@@ -84,6 +85,10 @@ namespace SPK::FO
         ~SparkQuadRenderer() override = default;
 
         void Setup(string_view path, ParticleManager& particle_mngr);
+
+        auto GetDrawWidth() const -> int;
+        auto GetDrawHeight() const -> int;
+        void SetDrawSize(int width, int height);
 
         auto GetEffectName() const -> const string&;
         void SetEffectName(const string& effect_name);
@@ -113,6 +118,9 @@ namespace SPK::FO
         RenderEffect* _effect {};
         RenderTexture* _texture {};
         FRect _textureAtlasOffsets {};
+
+        int _drawWidth {};
+        int _drawHeight {};
 
         string _effectName {};
         string _textureName {};

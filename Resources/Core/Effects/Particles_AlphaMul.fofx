@@ -1,5 +1,4 @@
 [Effect]
-Usage = Particles
 BlendFunc = SrcAlpha InvSrcAlpha
 DepthWrite = False
 
@@ -7,8 +6,8 @@ DepthWrite = False
 layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
 
 layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec4 InColor;
 layout(location = 2) in vec2 InTexCoord;
-layout(location = 8) in vec4 InColor;
 
 layout(location = 0) out vec4 Color;
 layout(location = 1) out vec2 TexCoord;

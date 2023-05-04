@@ -482,7 +482,7 @@ void CritterHexView::RefreshModel()
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
 
-            SprId = _model->SprId;
+            SprId = _engine->SprMngr.GetModelSprId(_model.get());
 
             _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetModelLayersData(), 0);
             _model->PrewarmParticles();

@@ -159,7 +159,7 @@ struct ModelAnimationData
 struct ModelParticleSystem
 {
     uint Id {};
-    unique_ptr<ParticleSystem> Particles {};
+    unique_ptr<ParticleSystem> Particle {};
     const ModelBone* Bone {};
     vec3 Move {};
     float Rot {};
@@ -192,7 +192,7 @@ public:
 
     [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
 
-    [[nodiscard]] auto CreateModel(string_view name) -> ModelInstance*;
+    [[nodiscard]] auto CreateModel(string_view name) -> unique_ptr<ModelInstance>;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
     [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) const -> MeshTexture*;
 
@@ -219,7 +219,7 @@ private:
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     float _moveTransitionTime {0.25f};
     float _globalSpeedAdjust {1.0f};
-    uint _animDelay {};
+    uint _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
@@ -249,6 +249,7 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto GetMovingAnim2() const -> uint;
     [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
+    [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
@@ -275,10 +276,9 @@ public:
     void MoveModel(int ox, int oy);
     void SetMoving(bool enabled, uint speed = 0);
     void SetCombatMode(bool enabled);
-    void RunParticles(string_view particles_name, hstring bone_name, vec3 move);
+    void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
-    uint SprId {};
-    int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
+    // Todo: incapsulate model animation callbacks
     vector<ModelAnimationCallback> AnimationCallbacks {};
 
 private:
@@ -363,12 +363,12 @@ private:
     bool _isRunning {};
     bool _noRotate {};
     float _deferredLookDirAngle {};
-    vector<ModelParticleSystem> _particleSystems {};
+    vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
-    bool _forceRedraw {};
+    bool _forceDraw {};
 
     // Derived animations
-    vector<ModelInstance*> _children {};
+    vector<unique_ptr<ModelInstance>> _children {};
     ModelInstance* _parent {};
     ModelBone* _parentBone {};
     mat44 _parentMatrix {};

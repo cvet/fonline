@@ -70,12 +70,12 @@ DECLARE_EXCEPTION(ResourcesOutdatedException);
 ///@ ExportObject Client
 struct VideoPlayback
 {
-    SCRIPTABLE_OBJECT();
+    SCRIPTABLE_OBJECT_BEGIN();
 
     bool Stopped {};
 
-    // Next line is special comment for code generation, to strip fields below
-    // private:
+    SCRIPTABLE_OBJECT_END();
+
     unique_ptr<VideoClip> Clip {};
     unique_ptr<RenderTexture> Tex {};
 };

@@ -289,11 +289,24 @@ void MapSprite::SetFixedAlpha(uint8 alpha)
     Valid = true;
 }
 
-MapSpriteList::MapSpriteList(SpriteManager& spr_mngr, vector<MapSprite*>& pool) :
-    _sprMngr {spr_mngr},
-    _spritesPool {pool}
+MapSpriteList::MapSpriteList(SpriteManager& spr_mngr) :
+    _sprMngr {spr_mngr}
 {
     STACK_TRACE_ENTRY();
+}
+
+MapSpriteList::~MapSpriteList()
+{
+    STACK_TRACE_ENTRY();
+
+    Invalidate();
+
+    for (const auto* spr : _invalidatedSprites) {
+        delete spr;
+    }
+    for (const auto* spr : _spritesPool) {
+        delete spr;
+    }
 }
 
 void MapSpriteList::GrowPool()
@@ -415,11 +428,11 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16
     // Draw order
     spr->DrawOrder = draw_order;
 
-    if (draw_order < DrawOrderType::Normal) {
-        spr->DrawOrderPos = spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order);
+    if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
+        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + spr->HexY * MAXHEX_MAX + spr->HexX;
     }
     else {
-        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::Normal) + spr->HexY * static_cast<int>(DrawOrderType::Normal) * MAXHEX_MAX + spr->HexX * static_cast<int>(DrawOrderType::Normal) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::Normal));
+        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + spr->HexY * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + spr->HexX * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
     }
 
     return *spr;
@@ -438,11 +451,11 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy,
 
     // Find place
     uint pos;
-    if (draw_order < DrawOrderType::Normal) {
-        pos = hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order);
+    if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
+        pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + hy * MAXHEX_MAX + hx;
     }
     else {
-        pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::Normal) + hy * static_cast<int>(DrawOrderType::Normal) * MAXHEX_MAX + hx * static_cast<int>(DrawOrderType::Normal) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::Normal));
+        pos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + hy * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + hx * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
     }
 
     auto* parent = _rootSprite;
@@ -466,6 +479,8 @@ void MapSpriteList::Invalidate()
     while (_rootSprite != nullptr) {
         _rootSprite->Invalidate();
     }
+
+    _lastSprite = nullptr;
     _spriteCount = 0;
 }
 
@@ -485,53 +500,29 @@ void MapSpriteList::SortByMapPos()
         spr = spr->ChainChild;
     }
 
-    auto& spr_infos = _sprMngr.GetSpritesInfo();
-    std::sort(sprites.begin(), sprites.end(), [&spr_infos](MapSprite* spr1, MapSprite* spr2) {
-        const auto* si1 = spr_infos[spr1->PSprId != nullptr ? *spr1->PSprId : spr1->SprId];
-        const auto* si2 = spr_infos[spr2->PSprId != nullptr ? *spr2->PSprId : spr2->SprId];
-        return si1 != nullptr && si2 != nullptr && si1->Atlas != nullptr && si2->Atlas != nullptr && si1->Atlas->MainTex < si2->Atlas->MainTex;
-    });
-
-    std::sort(sprites.begin(), sprites.end(), [](MapSprite* spr1, MapSprite* spr2) {
+    std::sort(sprites.begin(), sprites.end(), [](const MapSprite* spr1, const MapSprite* spr2) {
         if (spr1->DrawOrderPos == spr2->DrawOrderPos) {
             return spr1->TreeIndex < spr2->TreeIndex;
         }
         return spr1->DrawOrderPos < spr2->DrawOrderPos;
     });
 
-    for (auto* sprite : sprites) {
-        sprite->ChainParent = nullptr;
-        sprite->ChainChild = nullptr;
-        sprite->ChainRoot = nullptr;
-        sprite->ChainLast = nullptr;
-    }
-
-    for (size_t i = 1; i < sprites.size(); i++) {
-        sprites[i - 1]->ChainChild = sprites[i];
-        sprites[i]->ChainParent = sprites[i - 1];
-    }
-
     _rootSprite = sprites.front();
     _lastSprite = sprites.back();
-    _rootSprite->ChainRoot = &_rootSprite;
-    _lastSprite->ChainLast = &_lastSprite;
-}
 
-auto MapSpriteList::Size() const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    return _spriteCount;
-}
-
-void MapSpriteList::Clear()
-{
-    STACK_TRACE_ENTRY();
-
-    Invalidate();
-
-    for (auto* spr : _invalidatedSprites) {
-        _spritesPool.push_back(spr);
+    for (size_t i = 1; i < sprites.size(); i++) {
+        sprites[i]->TreeIndex = i;
+        sprites[i - 1]->ChainChild = sprites[i];
+        sprites[i]->ChainParent = sprites[i - 1];
+        sprites[i]->ChainRoot = nullptr;
+        sprites[i]->ChainLast = nullptr;
     }
-    _invalidatedSprites.clear();
+
+    _rootSprite->TreeIndex = 0;
+    _rootSprite->ChainParent = nullptr;
+    _rootSprite->ChainRoot = &_rootSprite;
+    _rootSprite->ChainLast = nullptr;
+
+    _lastSprite->ChainChild = nullptr;
+    _lastSprite->ChainLast = &_lastSprite;
 }

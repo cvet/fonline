@@ -417,13 +417,13 @@
 }
 
 ///# ...
-///# param particlesName ...
+///# param particleName ...
 ///# param boneName ...
 ///# param moveX ...
 ///# param moveY ...
 ///# param moveZ ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_RunParticles(CritterView* self, string_view particlesName, hstring boneName, float moveX, float moveY, float moveZ)
+[[maybe_unused]] void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float moveX, float moveY, float moveZ)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -432,13 +432,13 @@
 
 #if FO_ENABLE_3D
     if (hex_cr->IsModel()) {
-        hex_cr->GetModel()->RunParticles(particlesName, boneName, vec3(moveX, moveY, moveZ));
+        hex_cr->GetModel()->RunParticle(particleName, boneName, vec3(moveX, moveY, moveZ));
     }
     else
 #endif
     {
         // Todo: improve run particles for 2D animations
-        UNUSED_VARIABLE(particlesName);
+        UNUSED_VARIABLE(particleName);
         UNUSED_VARIABLE(boneName);
         UNUSED_VARIABLE(moveX);
         UNUSED_VARIABLE(moveY);

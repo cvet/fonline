@@ -49,18 +49,27 @@ enum class DrawOrderType : uint8
     Tile1 = 1,
     Tile2 = 2,
     Tile3 = 3,
-    TileEnd = 4,
+    Tile4 = 4,
     HexGrid = 5,
     FlatScenery = 8,
     Ligth = 9,
     DeadCritter = 10,
     FlatItem = 13,
     Track = 16,
-    Normal = 20,
+
+    NormalBegin = 20,
     Scenery = 23,
     Item = 26,
     Critter = 29,
-    Rain = 32,
+    Particles = 30,
+    NormalEnd = 32,
+
+    Roof = 33,
+    Roof1 = 34,
+    Roof2 = 35,
+    Roof3 = 36,
+    Roof4 = 37,
+    RoofParticles = 38,
     Last = 39,
 };
 
@@ -84,10 +93,10 @@ enum class EggAppearenceType : uint8
     ByXOrY,
 };
 
-///@ ExportObject Client
+///@ ExportObject Client HasFactory
 struct MapSpriteData
 {
-    SCRIPTABLE_OBJECT();
+    SCRIPTABLE_OBJECT_BEGIN();
 
     bool Valid {};
     uint SprId {};
@@ -110,6 +119,8 @@ struct MapSpriteData
     int TweakOffsY {};
     bool IsTweakAlpha {};
     uint8 TweakAlpha {};
+
+    SCRIPTABLE_OBJECT_END();
 };
 
 class MapSprite final
@@ -137,7 +148,7 @@ public:
     MapSpriteList* Root {};
     DrawOrderType DrawOrder {};
     uint DrawOrderPos {};
-    uint TreeIndex {};
+    size_t TreeIndex {};
     uint SprId {};
     const uint* PSprId {};
     uint16 HexX {};
@@ -162,6 +173,7 @@ public:
     bool* ValidCallback {};
     bool Valid {};
     MapSpriteData* MapSpr {};
+
     MapSprite** ExtraChainRoot {};
     MapSprite* ExtraChainParent {};
     MapSprite* ExtraChainChild {};
@@ -177,28 +189,26 @@ class MapSpriteList final
 
 public:
     MapSpriteList() = delete;
-    MapSpriteList(SpriteManager& spr_mngr, vector<MapSprite*>& pool);
+    explicit MapSpriteList(SpriteManager& spr_mngr);
     MapSpriteList(const MapSpriteList&) = delete;
     MapSpriteList(MapSpriteList&&) noexcept = delete;
     auto operator=(const MapSpriteList&) = delete;
     auto operator=(MapSpriteList&&) noexcept = delete;
-    ~MapSpriteList() = default;
+    ~MapSpriteList();
 
     [[nodiscard]] auto RootSprite() -> MapSprite*;
-    [[nodiscard]] auto Size() const -> uint;
 
     auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void Invalidate();
     void SortByMapPos();
-    void Clear();
 
 private:
     auto PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void GrowPool();
 
     SpriteManager& _sprMngr;
-    vector<MapSprite*>& _spritesPool;
+    vector<MapSprite*> _spritesPool {};
     MapSprite* _rootSprite {};
     MapSprite* _lastSprite {};
     uint _spriteCount {};

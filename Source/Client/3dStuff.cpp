@@ -145,7 +145,7 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _geometry(settings),
-    _particleMngr(settings, effect_mngr, resources, std::move(tex_loader))
+    _particleMngr(settings, effect_mngr, resources, game_time, std::move(tex_loader))
 {
     STACK_TRACE_ENTRY();
 
@@ -154,8 +154,8 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
         _moveTransitionTime = 0.001f;
     }
 
-    if (_settings.Animation3dFPS != 0u) {
-        _animDelay = 1000 / _settings.Animation3dFPS;
+    if (_settings.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround(1000.0f / static_cast<float>(_settings.Animation3dFPS));
     }
 
     _headBone = GetBoneHashedString(settings.HeadBone);
@@ -185,7 +185,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     }
 
     // Add to already processed
-    if (_processedFiles.count(name_hashed) != 0u) {
+    if (_processedFiles.count(name_hashed) != 0) {
         return nullptr;
     }
     _processedFiles.emplace(name_hashed);
@@ -234,7 +234,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     }
 
     // Check maybe file already processed and nothing founded
-    if (_processedFiles.count(name_hashed) != 0u) {
+    if (_processedFiles.count(name_hashed) != 0) {
         return nullptr;
     }
 
@@ -275,7 +275,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     return mesh_tex;
 }
 
-auto ModelManager::CreateModel(string_view name) -> ModelInstance*
+auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
 {
     STACK_TRACE_ENTRY();
 
@@ -296,14 +296,15 @@ auto ModelManager::CreateModel(string_view name) -> ModelInstance*
         auto* mesh_instance = model->_allMeshes[i] = new MeshInstance();
         auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
         mesh_instance->Mesh = mesh;
-        const auto* tex_name = (mesh->DiffuseTexture.length() != 0u ? mesh->DiffuseTexture.c_str() : nullptr);
+        const auto* tex_name = (mesh->DiffuseTexture.length() != 0 ? mesh->DiffuseTexture.c_str() : nullptr);
         mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? model_info->_hierarchy->GetTexture(tex_name) : nullptr);
         mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? model_info->_hierarchy->GetEffect(mesh->EffectName) : nullptr);
     }
 
     // Set default data
     model->SetAnimation(0, 0, nullptr, ANIMATION_INIT);
-    return model;
+
+    return unique_ptr<ModelInstance>(model);
 }
 
 void ModelManager::PreloadModel(string_view name)
@@ -375,6 +376,8 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) :
     _childChecker = true;
     _useGameplayTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
+    _forceDraw = true;
+    _lastDrawTime = GetTime();
 }
 
 ModelInstance::~ModelInstance()
@@ -384,9 +387,6 @@ ModelInstance::~ModelInstance()
     delete _bodyAnimController;
     delete _moveAnimController;
 
-    for (const auto* anim : _children) {
-        delete anim;
-    }
     for (const auto* mesh : _allMeshes) {
         delete mesh;
     }
@@ -459,8 +459,8 @@ void ModelInstance::PrewarmParticles()
 
     NON_CONST_METHOD_HINT();
 
-    for (auto&& particle_system : _particleSystems) {
-        particle_system.Particles->Prewarm();
+    for (auto&& model_particle : _modelParticles) {
+        model_particle.Particle->Prewarm();
     }
 }
 
@@ -490,7 +490,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     auto index = 0;
     auto period_proc = 0.0f;
     if (!IsBitSet(flags, ANIMATION_INIT)) {
-        if (anim1 == 0u) {
+        if (anim1 == 0) {
             index = _modelInfo->_renderAnim;
             period_proc = static_cast<float>(anim2) / 10.0f;
         }
@@ -560,13 +560,13 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         // Mark animations as unused
-        for (auto* child_anim : _children) {
-            child_anim->_childChecker = false;
+        for (auto&& child : _children) {
+            child->_childChecker = false;
         }
 
         // Get unused layers and meshes
         bool unused_layers[MODEL_LAYERS_COUNT] = {};
-        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
+        for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
             if (new_layers[i] == 0) {
                 continue;
             }
@@ -603,7 +603,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         // Append animations
         set<uint> keep_alive_particles;
 
-        for (size_t i = 0; i < MODEL_LAYERS_COUNT; i++) {
+        for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
             if (unused_layers[i] || new_layers[i] == 0) {
                 continue;
             }
@@ -618,8 +618,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
                     if (link.IsParticles) {
                         bool available = false;
 
-                        for (auto&& particle_system : _particleSystems) {
-                            if (particle_system.Id == link.Id) {
+                        for (auto&& model_particle : _modelParticles) {
+                            if (model_particle.Id == link.Id) {
                                 available = true;
                                 break;
                             }
@@ -627,8 +627,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
                         if (!available) {
                             if (const auto* to_bone = FindBone(link.LinkBone)) {
-                                if (auto&& particles = _modelMngr._particleMngr.CreateParticles(link.ChildName)) {
-                                    _particleSystems.push_back({link.Id, std::move(particles), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
+                                if (auto&& particle = _modelMngr._particleMngr.CreateParticle(link.ChildName)) {
+                                    _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                                 }
                             }
                         }
@@ -638,40 +638,38 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
                     else {
                         bool available = false;
 
-                        for (auto* model : _children) {
-                            if (model->_animLink.Id == link.Id) {
-                                model->_childChecker = true;
+                        for (auto&& child : _children) {
+                            if (child->_animLink.Id == link.Id) {
+                                child->_childChecker = true;
                                 available = true;
                                 break;
                             }
                         }
 
                         if (!available) {
-                            ModelInstance* model = nullptr;
-
                             // Link to main bone
                             if (link.LinkBone) {
                                 auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
                                 if (to_bone != nullptr) {
-                                    model = _modelMngr.CreateModel(link.ChildName);
-                                    if (model != nullptr) {
+                                    auto&& model = _modelMngr.CreateModel(link.ChildName);
+                                    if (model) {
                                         mesh_changed = true;
                                         model->_parent = this;
                                         model->_parentBone = to_bone;
                                         model->_animLink = link;
                                         model->SetAnimData(link, false);
-                                        _children.push_back(model);
+                                        _children.push_back(std::move(model));
                                     }
 
-                                    if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0u) {
+                                    if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0) {
                                         fast_transition_bones.push_back(link.LinkBone);
                                     }
                                 }
                             }
                             // Link all bones
                             else {
-                                model = _modelMngr.CreateModel(link.ChildName);
-                                if (model != nullptr) {
+                                auto&& model = _modelMngr.CreateModel(link.ChildName);
+                                if (model) {
                                     for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
                                         auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
                                         if (root_bone != nullptr) {
@@ -685,7 +683,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
                                     model->_parentBone = _modelInfo->_hierarchy->_rootBone;
                                     model->_animLink = link;
                                     model->SetAnimData(link, false);
-                                    _children.push_back(model);
+                                    _children.push_back(std::move(model));
                                 }
                             }
                         }
@@ -696,10 +694,9 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
         // Erase unused animations
         for (auto it = _children.begin(); it != _children.end();) {
-            auto* model = *it;
-            if (!model->_childChecker) {
+            auto&& child = *it;
+            if (!child->_childChecker) {
                 mesh_changed = true;
-                delete model;
                 it = _children.erase(it);
             }
             else {
@@ -707,9 +704,9 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
             }
         }
 
-        for (auto it = _particleSystems.begin(); it != _particleSystems.end();) {
-            if (it->Id != 0u && keep_alive_particles.count(it->Id) == 0u) {
-                _particleSystems.erase(it);
+        for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
+            if (it->Id != 0 && keep_alive_particles.count(it->Id) == 0) {
+                _modelParticles.erase(it);
             }
             else {
                 ++it;
@@ -812,11 +809,11 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         // Force redraw
-        _lastDrawTime = time_point {};
+        _forceDraw = true;
     }
 
     // Set animation for children
-    for (auto* child : _children) {
+    for (auto&& child : _children) {
         if (child->SetAnimation(anim1, anim2, layers, flags)) {
             mesh_changed = true;
         }
@@ -839,7 +836,7 @@ void ModelInstance::MoveModel(int ox, int oy)
     const vec3 diff = pos - pos_zero;
 
     _moveOffset += diff;
-    _forceRedraw = true;
+    _forceDraw = true;
 }
 
 void ModelInstance::SetMoving(bool enabled, uint speed)
@@ -1352,8 +1349,8 @@ void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
     }
 
     // Fill child
-    for (const auto* child_anim : cur->_children) {
-        FillCombinedMeshes(child_anim);
+    for (auto&& child : cur->_children) {
+        FillCombinedMeshes(child.get());
     }
 }
 
@@ -1493,8 +1490,8 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
     }
 
     // Fill child
-    for (const auto* child_anim : cur->_children) {
-        CutCombinedMeshes(child_anim);
+    for (auto&& child : cur->_children) {
+        CutCombinedMeshes(child.get());
     }
 }
 
@@ -1797,31 +1794,25 @@ auto ModelInstance::NeedDraw() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (_forceRedraw) {
-        return true;
-    }
-
-    return _combinedMeshesSize != 0 && (_lastDrawTime == time_point {} || GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animDelay});
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_modelMngr._animUpdateThreshold};
 }
 
 void ModelInstance::Draw()
 {
     STACK_TRACE_ENTRY();
 
-    _forceRedraw = false;
-
-    // Move timer
     const auto time = GetTime();
-    const auto elapsed = _lastDrawTime != time_point {} ? 0.001f * time_duration_to_ms<float>(time - _lastDrawTime) : 0.0f;
+    const auto dt = 0.001f * time_duration_to_ms<float>(time - _lastDrawTime);
 
     _lastDrawTime = time;
+    _forceDraw = false;
 
     // Move animation
     const auto w = _frameWidth / FRAME_SCALE;
     const auto h = _frameHeight / FRAME_SCALE;
-    ProcessAnimation(elapsed, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
+    ProcessAnimation(dt, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
 
-    if (_combinedMeshesSize != 0u) {
+    if (_combinedMeshesSize != 0) {
         for (size_t i = 0; i < _combinedMeshesSize; i++) {
             DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
         }
@@ -1897,24 +1888,24 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Update world matrices for children
-    for (auto* child : _children) {
+    for (auto&& child : _children) {
         child->_groundPos = _groundPos;
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
     // Particles
-    for (auto&& particle_system : _particleSystems) {
-        if (particle_system.Id == 0u) {
-            particle_system.Particles->Update(elapsed, particle_system.Bone->CombinedTransformationMatrix, particle_system.Move, particle_system.Rot, _moveOffset);
+    for (auto&& model_particle : _modelParticles) {
+        if (model_particle.Id == 0) {
+            model_particle.Particle->Setup(_frameProjColMaj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
         }
         else {
-            particle_system.Particles->Update(elapsed, particle_system.Bone->CombinedTransformationMatrix, particle_system.Move, particle_system.Rot + _lookDirAngle, _moveOffset);
+            model_particle.Particle->Setup(_frameProjColMaj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
         }
     }
 
-    for (auto it = _particleSystems.begin(); it != _particleSystems.end();) {
-        if (!it->Particles->IsActive()) {
-            it = _particleSystems.erase(it);
+    for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
+        if (!it->Particle->IsActive()) {
+            it = _modelParticles.erase(it);
         }
         else {
             ++it;
@@ -1922,14 +1913,14 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Move child animations
-    for (auto* child_anim : _children) {
-        child_anim->ProcessAnimation(elapsed, x, y, 1.0f);
+    for (auto&& child : _children) {
+        child->ProcessAnimation(elapsed, x, y, 1.0f);
     }
 
     // Animation callbacks
     if (_bodyAnimController != nullptr && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
         for (auto& callback : AnimationCallbacks) {
-            if (((callback.Anim1 == 0u) || callback.Anim1 == _curAnim1) && ((callback.Anim2 == 0u) || callback.Anim2 == _curAnim2)) {
+            if (((callback.Anim1 == 0) || callback.Anim1 == _curAnim1) && ((callback.Anim2 == 0) || callback.Anim2 == _curAnim2)) {
                 const auto fire_track_pos1 = floorf(prev_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
                 const auto fire_track_pos2 = floorf(new_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
                 if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
@@ -2027,11 +2018,11 @@ void ModelInstance::DrawAllParticles()
 
     NON_CONST_METHOD_HINT();
 
-    for (auto&& particle_system : _particleSystems) {
-        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset, _modelMngr._settings.MapCameraAngle);
+    for (auto&& model_particle : _modelParticles) {
+        model_particle.Particle->Draw();
     }
 
-    for (auto* child : _children) {
+    for (auto&& child : _children) {
         child->DrawAllParticles();
     }
 }
@@ -2042,7 +2033,7 @@ auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
 
     const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
-        for (const auto* child : _children) {
+        for (auto&& child : _children) {
             bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
             if (bone != nullptr) {
                 break;
@@ -2079,13 +2070,13 @@ auto ModelInstance::GetAnimDuration() const -> time_duration
     return std::chrono::milliseconds {static_cast<uint>(_animPosPeriod * 1000.0f)};
 }
 
-void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, vec3 move)
+void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
     STACK_TRACE_ENTRY();
 
     if (const auto* to_bone = FindBone(bone_name)) {
-        if (auto&& particles = _modelMngr._particleMngr.CreateParticles(particles_name)) {
-            _particleSystems.push_back({0u, std::move(particles), to_bone, move, _lookDirAngle});
+        if (auto&& particle = _modelMngr._particleMngr.CreateParticle(particle_name)) {
+            _modelParticles.push_back({0u, std::move(particle), to_bone, move, _lookDirAngle});
         }
     }
 }
@@ -2297,7 +2288,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Link") {
                 (*istr) >> buf;
-                if (link->Id != 0u) {
+                if (link->Id != 0) {
                     link->LinkBone = _modelMngr.GetBoneHashedString(buf);
                 }
             }
@@ -2586,7 +2577,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
-                if (_animLayerValues.count(index) == 0u) {
+                if (_animLayerValues.count(index) == 0) {
                     _animLayerValues.emplace(index, vector<pair<int, int>>());
                 }
                 _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);

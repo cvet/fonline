@@ -194,9 +194,25 @@ using std::vector;
 using tcb::span;
 
 template<typename T>
-using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
-template<typename T>
 using const_span = span<const T>;
+
+template<typename T>
+using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
+
+template<class T>
+struct release_delete
+{
+    constexpr release_delete() noexcept = default;
+    void operator()(T* p) const noexcept
+    {
+        if (p != nullptr) {
+            p->Release();
+        }
+    }
+};
+
+template<typename T>
+using unique_release_ptr = unique_ptr<T, release_delete<T>>;
 
 // Strong types
 template<typename T>
@@ -347,10 +363,14 @@ struct fmt::formatter<time_point>
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
 #include "assimp/types.h"
-using vec3 = aiVector3D;
-using mat44 = aiMatrix4x4;
-using quaternion = aiQuaternion;
-using color4 = aiColor4D;
+using vec3 = aiVector3t<float>;
+using dvec3 = aiVector3t<double>;
+using mat44 = aiMatrix4x4t<float>;
+using dmat44 = aiMatrix4x4t<double>;
+using quaternion = aiQuaterniont<float>;
+using dquaternion = aiQuaterniont<double>;
+using color4 = aiColor4t<float>;
+using dcolor4 = aiColor4t<double>;
 
 // Template helpers
 template<typename T>
@@ -802,7 +822,7 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 }
 
 // Scriptable object class decorator
-#define SCRIPTABLE_OBJECT() \
+#define SCRIPTABLE_OBJECT_BEGIN() \
     void AddRef() \
     { \
         ++RefCounter; \
@@ -816,6 +836,10 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
     int RefCounter \
     { \
         1 \
+    }
+#define SCRIPTABLE_OBJECT_END() \
+    bool _nonConstHelper \
+    { \
     }
 
 // Ref counted objects scope holder

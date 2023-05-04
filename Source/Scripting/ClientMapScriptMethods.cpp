@@ -102,8 +102,7 @@
     }
 
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
-    auto& tree = self->GetDrawList();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
+    auto& spr = self->GetDrawList().InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
         (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
         mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
@@ -707,24 +706,10 @@
 }
 
 ///# ...
-///# param onlyTiles ...
-///# param onlyRoof ...
-///# param onlyLight ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Map_RedrawMap(MapView* self, bool onlyTiles, bool onlyRoof, bool onlyLight)
+[[maybe_unused]] void Client_Map_RedrawMap(MapView* self)
 {
-    if (onlyTiles) {
-        self->RebuildTiles();
-    }
-    else if (onlyRoof) {
-        self->RebuildRoof();
-    }
-    else if (onlyLight) {
-        self->RebuildLight();
-    }
-    else {
-        self->RefreshMap();
-    }
+    self->RefreshMap();
 }
 
 ///# ...
@@ -915,4 +900,15 @@
 [[maybe_unused]] void Client_Map_SetShootBorders(MapView* self, bool enabled)
 {
     self->SetShootBorders(enabled);
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] ParticlePattern* Client_Map_RunParticlePattern(MapView* self, string_view particleName, uint particleCount)
+{
+    if (particleCount < 1) {
+        throw ScriptException("Invalid particle count");
+    }
+
+    return self->RunParticlePattern(particleName, particleCount);
 }

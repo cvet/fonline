@@ -39,6 +39,7 @@
 #include "FileSystem.h"
 #include "Rendering.h"
 #include "Settings.h"
+#include "Timer.h"
 
 namespace SPK
 {
@@ -60,14 +61,14 @@ class ParticleManager final
 public:
     using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
 
-    ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, TextureLoader tex_loader);
+    ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;
     auto operator=(ParticleManager&&) noexcept = delete;
     ~ParticleManager();
 
-    [[nodiscard]] auto CreateParticles(string_view name) -> unique_ptr<ParticleSystem>;
+    [[nodiscard]] auto CreateParticle(string_view name) -> unique_ptr<ParticleSystem>;
 
 private:
     struct Impl;
@@ -75,7 +76,9 @@ private:
     RenderSettings& _settings;
     EffectManager& _effectMngr;
     FileSystem& _resources;
+    GameTimer& _gameTime;
     TextureLoader _textureLoader;
+    uint _animUpdateThreshold {};
     mat44 _projMat {};
     mat44 _viewMat {};
 };
@@ -85,8 +88,10 @@ class ParticleSystem final
     friend class ParticleManager;
 
 public:
+    static constexpr float PREWARM_STEP = 0.5f;
+
     ParticleSystem(const ParticleSystem&) = delete;
-    ParticleSystem(ParticleSystem&&) noexcept = delete;
+    ParticleSystem(ParticleSystem&&) noexcept = default;
     auto operator=(const ParticleSystem&) = delete;
     auto operator=(ParticleSystem&&) noexcept = delete;
     ~ParticleSystem();
@@ -94,19 +99,28 @@ public:
     [[nodiscard]] auto IsActive() const -> bool;
     [[nodiscard]] auto GetElapsedTime() const -> float;
     [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
+    [[nodiscard]] auto GetDrawSize() const -> tuple<int, int>;
+    [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
+    [[nodiscard]] auto NeedDraw() const -> bool;
 
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offest, float look_dir_angle, const vec3& view_offset);
     void Prewarm();
     void Respawn();
-    void Update(float dt, const mat44& world, const vec3& pos_offest, float look_dir, const vec3& view_offset);
-    void Draw(const mat44& proj, const vec3& view_offset, float cam_rot) const;
+    void Draw();
     void SetBaseSystem(SPK::System* system);
 
 private:
     explicit ParticleSystem(ParticleManager& particle_mngr);
 
+    [[nodiscard]] auto GetTime() const -> time_point;
+
     struct Impl;
     unique_ptr<Impl> _impl {};
     ParticleManager& _particleMngr;
+    mat44 _projMat {};
+    vec3 _viewOffset {};
     double _elapsedTime {};
+    bool _forceDraw {};
+    time_point _lastDrawTime {};
     bool _nonConstHelper {};
 };

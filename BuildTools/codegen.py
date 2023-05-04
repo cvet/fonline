@@ -460,7 +460,7 @@ def parseTags():
         result.append(r.strip())
         return result
 
-    def parseTypeTags():
+    def parseTypeTags1():
         global codeGenTags
         
         for tagMeta in tagsMetas['ExportEnum']:
@@ -565,61 +565,6 @@ def parseTags():
                 
             except Exception as ex:
                 showError('Invalid tag Enum', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
-
-        for tagMeta in tagsMetas['ExportObject']:
-            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-            
-            try:
-                exportFlags = tokenize(tagInfo)
-                assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
-                target = exportFlags[0]
-                exportFlags = exportFlags[1:]
-                
-                firstLine = tagContext[0]
-                firstLineTok = tokenize(firstLine)
-                assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in first line'
-                assert firstLineTok[0] in ['class', 'struct'], 'Expected class/struct'
-                
-                objName = firstLineTok[1]
-                assert objName not in validTypes
-                
-                assert tagContext[1].startswith('{')
-                
-                thirdLine = tagContext[2].strip()
-                assert thirdLine.startswith('SCRIPTABLE_OBJECT('), 'Expected SCRIPTABLE_OBJECT as first line inside class definition'
-                
-                publicLines = firstLineTok[0] == 'struct'
-                
-                fields = []
-                methods = []
-                for line in tagContext[3:]:
-                    line = line.lstrip()
-                    if 'private:' in line or 'protected:' in line:
-                        publicLines = False
-                    elif 'public:' in line in line:
-                        publicLines = True
-                    elif publicLines:
-                        commPos = line.find('//')
-                        if commPos != -1:
-                            line = line[:commPos]
-                        if not line:
-                            continue
-                        sep = line.find(' ')
-                        assert sep != -1
-                        lTok = tokenize(line)
-                        assert len(lTok) >= 2
-                        if lTok[0] != 'void':
-                            fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
-                        else:
-                            methods.append((lTok[1], 'void', [], []))
-                
-                codeGenTags['ExportObject'].append((target, objName, fields, methods, exportFlags, comment))
-                
-                validTypes.add(objName)
-                userObjects.add(objName)
-                
-            except Exception as ex:
-                showError('Invalid tag ExportObject', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
         
         for tagMeta in tagsMetas['ExportEntity']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -730,7 +675,64 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag Entity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
                 
-    def parseOtherTags():
+    def parseTypeTags2():
+        global codeGenTags
+        
+        for tagMeta in tagsMetas['ExportObject']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+            
+            try:
+                exportFlags = tokenize(tagInfo)
+                assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
+                target = exportFlags[0]
+                exportFlags = exportFlags[1:]
+                
+                firstLine = tagContext[0]
+                firstLineTok = tokenize(firstLine)
+                assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in first line'
+                assert firstLineTok[0] in ['class', 'struct'], 'Expected class/struct'
+                
+                objName = firstLineTok[1]
+                assert objName not in validTypes
+                
+                assert tagContext[1].startswith('{')
+                
+                scriptableLines = False
+                fields = []
+                methods = []
+                for line in tagContext[2:]:
+                    line = line.lstrip()
+                    if 'SCRIPTABLE_OBJECT_BEGIN' in line:
+                        scriptableLines = True
+                    elif 'SCRIPTABLE_OBJECT_END' in line:
+                        scriptableLines = False
+                    elif scriptableLines:
+                        commPos = line.find('//')
+                        if commPos != -1:
+                            line = line[:commPos]
+                        if not line:
+                            continue
+                        sep = line.find(' ')
+                        assert sep != -1
+                        lTok = tokenize(line)
+                        assert len(lTok) >= 2
+                        if lTok[0] != 'void':
+                            if lTok[0] == 'vector':
+                                fields.append((engineTypeToMetaType(lTok[0] + lTok[1] + lTok[2] + lTok[3]), lTok[4], []))
+                            else:
+                                fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
+                        else:
+                            methods.append((lTok[1], 'void', [], []))
+                
+                codeGenTags['ExportObject'].append((target, objName, fields, methods, exportFlags, comment))
+                
+                validTypes.add(objName)
+                userObjects.add(objName)
+                
+            except Exception as ex:
+                showError('Invalid tag ExportObject', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
+    
+    def parseTypeTags3():
         global codeGenTags
         
         for tagMeta in tagsMetas['ExportProperty']:
@@ -1094,8 +1096,9 @@ def parseTags():
                 keys.add(kv[0])
                 values.add(int(kv[1], 0))
     
-    parseTypeTags()
-    parseOtherTags()
+    parseTypeTags1()
+    parseTypeTags2()
+    parseTypeTags3()
     postprocessTags()
 
 parseTags()
@@ -2307,12 +2310,13 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         # Register exported objects
         registerLines.append('// Exported objects')
         for eo in codeGenTags['ExportObject']:
-            targ, objName, fields, methods, _, _ = eo
+            targ, objName, fields, methods, flags, _ = eo
             if targ in allowedTargets:
                 registerLines.append('AS_VERIFY(engine->RegisterObjectType("' + objName + '", sizeof(' + objName + '), asOBJ_REF));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + objName + ', AddRef), SCRIPT_METHOD_CONV));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(' + objName + ', Release), SCRIPT_METHOD_CONV));')
-                registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_FACTORY, "' + objName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + objName + '>)), SCRIPT_FUNC_CONV));')
+                if 'HasFactory' in flags:
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_FACTORY, "' + objName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + objName + '>)), SCRIPT_FUNC_CONV));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "const int RefCounter", offsetof(' + objName + ', RefCounter)));')
                 for f in fields:
                     registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + objName + ', ' + f[1] + ')));')

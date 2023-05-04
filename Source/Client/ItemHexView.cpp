@@ -290,9 +290,12 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
     case CornerType::EastWest:
     case CornerType::West:
         return EggAppearenceType::ByY;
-    default:
+    case CornerType::East:
+    case CornerType::NorthSouth:
         return EggAppearenceType::ByX;
     }
+
+    return EggAppearenceType::None;
 }
 
 void ItemHexView::PlayAnimFromEnd()

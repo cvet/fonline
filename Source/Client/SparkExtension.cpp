@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: improve particles in 2D
-
 #include "SparkExtension.h"
 #include "StringUtils.h"
 #include "VisualParticles.h"
@@ -47,21 +45,7 @@ namespace SPK::FO
         RUNTIME_ASSERT(vertices % 4 == 0);
 
         _renderBuf.reset(App->Render.CreateDrawBuffer(false));
-#if FO_ENABLE_3D
-        _renderBuf->Vertices3D.resize(vertices);
-#endif
-
-        auto& indices = _renderBuf->Indices;
-        indices.resize(vertices / 4 * 6);
-        RUNTIME_ASSERT(indices.size() <= 0xFFFF);
-        for (size_t i = 0; i < indices.size() / 6; i++) {
-            indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
-            indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
-            indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 2);
-            indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 2);
-            indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 3);
-            indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 0);
-        }
+        _renderBuf->Vertices2D.resize(vertices);
     }
 
     void SparkRenderBuffer::PositionAtStart()
@@ -76,32 +60,22 @@ namespace SPK::FO
     {
         STACK_TRACE_ENTRY();
 
-#if FO_ENABLE_3D
-        auto& v = _renderBuf->Vertices3D[_curVertexIndex++];
+        auto& v = _renderBuf->Vertices2D[_curVertexIndex++];
 
-        v.Position = vec3(pos.x, pos.y, pos.z);
-        v.Color = COLOR_RGBA(color.a, color.b, color.g, color.r);
-
-#else
-        UNUSED_VARIABLE(pos);
-        UNUSED_VARIABLE(color);
-#endif
+        v.PosX = pos.x;
+        v.PosY = pos.y;
+        v.PosZ = pos.z;
+        v.Color = COLOR_RGBA(color.a, color.b, color.g, color.r); // Swapped R&B
     }
 
     void SparkRenderBuffer::SetNextTexCoord(float tu, float tv)
     {
         STACK_TRACE_ENTRY();
 
-#if FO_ENABLE_3D
-        auto& v = _renderBuf->Vertices3D[_curTexCoordIndex++];
+        auto& v = _renderBuf->Vertices2D[_curTexCoordIndex++];
 
-        v.TexCoord[0] = tu;
-        v.TexCoord[1] = tv;
-
-#else
-        UNUSED_VARIABLE(tu);
-        UNUSED_VARIABLE(tv);
-#endif
+        v.TexU = tu;
+        v.TexV = tv;
     }
 
     void SparkRenderBuffer::Render(size_t vertices, RenderEffect* effect) const
@@ -112,9 +86,7 @@ namespace SPK::FO
             return;
         }
 
-#if FO_ENABLE_3D
-        _renderBuf->Upload(EffectUsage::Model, vertices, vertices / 4 * 6);
-#endif
+        _renderBuf->Upload(EffectUsage::QuadSprite, vertices, vertices / 4 * 6);
         effect->DrawBuffer(_renderBuf.get(), 0, vertices / 4 * 6);
     }
 
@@ -314,6 +286,28 @@ namespace SPK::FO
         AddTexture2DAtlas(particle, render_buffer);
     }
 
+    auto SparkQuadRenderer::GetDrawWidth() const -> int
+    {
+        STACK_TRACE_ENTRY();
+
+        return _drawWidth;
+    }
+
+    auto SparkQuadRenderer::GetDrawHeight() const -> int
+    {
+        STACK_TRACE_ENTRY();
+
+        return _drawHeight;
+    }
+
+    void SparkQuadRenderer::SetDrawSize(int width, int height)
+    {
+        STACK_TRACE_ENTRY();
+
+        _drawWidth = width;
+        _drawHeight = height;
+    }
+
     auto SparkQuadRenderer::GetEffectName() const -> const string&
     {
         STACK_TRACE_ENTRY();
@@ -328,9 +322,7 @@ namespace SPK::FO
         _effectName = effect_name;
 
         if (!_effectName.empty() && _particleMngr != nullptr) {
-#if FO_ENABLE_3D
-            _effect = _particleMngr->_effectMngr.LoadEffect(EffectUsage::Model, _effectName);
-#endif
+            _effect = _particleMngr->_effectMngr.LoadEffect(EffectUsage::QuadSprite, _effectName);
         }
         else {
             _effect = nullptr;
@@ -367,6 +359,9 @@ namespace SPK::FO
 
         Renderer::innerImport(descriptor);
 
+        _drawWidth = 0;
+        _drawHeight = 0;
+
         _effectName = "";
         _textureName = "";
 
@@ -382,6 +377,21 @@ namespace SPK::FO
         lockedAxis = LOCK_UP;
         lookVector.set(0.0f, 0.0f, 1.0f);
         upVector.set(0.0f, 1.0f, 0.0f);
+
+        if (const auto* attrib = descriptor.getAttributeWithValue("draw size"); attrib != nullptr) {
+            const auto tmpSize = attrib->getValues<int>();
+            switch (tmpSize.size()) {
+            case 1:
+                _drawWidth = tmpSize[0];
+                break;
+            case 2:
+                _drawWidth = tmpSize[0];
+                _drawHeight = tmpSize[1];
+                break;
+            default:
+                break;
+            }
+        }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("effect"); attrib != nullptr) {
             SetEffectName(attrib->getValue<string>());
@@ -475,6 +485,11 @@ namespace SPK::FO
         STACK_TRACE_ENTRY();
 
         Renderer::innerExport(descriptor);
+
+        if (_drawWidth != 0 || _drawHeight != 0) {
+            const std::vector tmpSize = {_drawWidth, _drawHeight};
+            descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
+        }
 
         descriptor.getAttribute("effect")->setValue(_effectName);
 

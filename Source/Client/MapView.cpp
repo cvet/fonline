@@ -48,6 +48,9 @@ static auto EvaluateItemDrawOrder(const ItemHexView* item) -> DrawOrderType
     NO_STACK_TRACE_ENTRY();
 
     if (item->GetIsTile()) {
+        if (item->GetIsRoofTile()) {
+            return static_cast<DrawOrderType>(static_cast<int>(DrawOrderType::Roof) + item->GetTileLayer());
+        }
         return static_cast<DrawOrderType>(static_cast<int>(DrawOrderType::Tile) + item->GetTileLayer());
     }
 
@@ -66,12 +69,10 @@ static auto EvaluateCritterDrawOrder(const CritterHexView* cr) -> DrawOrderType
 }
 
 MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()), //
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), props != nullptr ? props : &proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(GetInitRef()),
-    _mainList(engine->SprMngr, _spritesPool),
-    _tilesList(engine->SprMngr, _spritesPool),
-    _roofList(engine->SprMngr, _spritesPool)
+    _mapSprites(engine->SprMngr)
 {
     STACK_TRACE_ENTRY();
 
@@ -137,12 +138,10 @@ MapView::~MapView()
     _engine->SprMngr.DeleteRenderTarget(_rtLight);
     _engine->SprMngr.DeleteRenderTarget(_rtFog);
 
-    _mainList.Clear();
-    _roofList.Clear();
-    _tilesList.Clear();
-
-    for (const auto* spr : _spritesPool) {
-        delete spr;
+    for (auto&& pattern : _particlePatterns) {
+        pattern->Particles.clear();
+        pattern->FinishCallback = nullptr;
+        pattern->Finished = true;
     }
 }
 
@@ -426,6 +425,7 @@ void MapView::Process()
         }
     }
 
+    // Scroll
     if (Scroll()) {
         RebuildFog();
     }
@@ -664,8 +664,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     if (!MeasureMapBorders(item->SprId, item->ScrX, item->ScrY) && !_mapLoading) {
         if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent() && item->IsVisible()) {
             auto& field = FieldAt(hx, hy);
-            auto& tree = item->GetIsTile() ? (item->GetIsRoofTile() ? _roofList : _tilesList) : _mainList;
-            auto* spr = item->InsertSprite(tree, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+            auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
             AddSpriteToChain(field, spr);
         }
 
@@ -694,8 +693,7 @@ void MapView::MoveItem(ItemHexView* item, uint16 hx, uint16 hy)
 
     if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
         auto& field = FieldAt(hx, hy);
-        auto& tree = item->GetIsTile() ? (item->GetIsRoofTile() ? _roofList : _tilesList) : _mainList;
-        auto* spr = item->InsertSprite(tree, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+        auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
         AddSpriteToChain(field, spr);
     }
 }
@@ -900,6 +898,52 @@ void MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uin
     effect_item->SetFlyEffect(to_hx, to_hy);
 }
 
+auto MapView::RunParticlePattern(string_view name, uint count) -> ParticlePattern*
+{
+    STACK_TRACE_ENTRY();
+
+    _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
+    auto&& particle = _engine->SprMngr.LoadParticle(name, true);
+    _engine->SprMngr.PopAtlasType();
+
+    if (!particle) {
+        BreakIntoDebugger();
+        return nullptr;
+    }
+
+    auto&& pattern = unique_release_ptr<ParticlePattern>(new ParticlePattern());
+
+    pattern->ParticleName = name;
+    pattern->ParticleCount = count;
+
+    particle->Prewarm();
+    pattern->ParticleSprIds.emplace_back(_engine->SprMngr.GetParticleSprId(particle.get()));
+    pattern->Particles.emplace_back(std::move(particle));
+
+    for (uint i = 1; i < count; i++) {
+        _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
+        auto&& next_particle = _engine->SprMngr.LoadParticle(name, true);
+        _engine->SprMngr.PopAtlasType();
+
+        next_particle->Prewarm();
+        pattern->ParticleSprIds.emplace_back(_engine->SprMngr.GetParticleSprId(next_particle.get()));
+        pattern->Particles.emplace_back(std::move(next_particle));
+    }
+
+    pattern->FinishCallback = [this, pattern = pattern.get()]() {
+        const auto it = std::find_if(_particlePatterns.begin(), _particlePatterns.end(), [pattern](auto&& p) { return p.get() == pattern; });
+        RUNTIME_ASSERT(it != _particlePatterns.end());
+        it->get()->Particles.clear();
+        _particlePatterns.erase(it);
+        pattern->FinishCallback = nullptr;
+        pattern->Finished = true;
+    };
+
+    _particlePatterns.emplace_back(std::move(pattern));
+
+    return _particlePatterns.back().get();
+}
+
 void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh)
 {
     STACK_TRACE_ENTRY();
@@ -1013,11 +1057,8 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
     _requestRebuildLight = false;
     _requestRenderLight = true;
 
-    // Erase old sprites
-    _mainList.Invalidate();
-    _tilesList.Invalidate();
-    _roofList.Invalidate();
-
+    // Invalidation
+    _mapSprites.Invalidate();
     _engine->SprMngr.EggNotValid();
 
     // Begin generate new sprites
@@ -1028,20 +1069,20 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
             continue;
         }
 
-        const auto nx = static_cast<uint16>(vf.HexX);
-        const auto ny = static_cast<uint16>(vf.HexY);
+        const auto hx = static_cast<uint16>(vf.HexX);
+        const auto hy = static_cast<uint16>(vf.HexY);
 
-        auto& field = FieldAt(nx, ny);
+        auto& field = FieldAt(hx, hy);
 
         field.IsView = true;
         field.ScrX = vf.ScrX;
         field.ScrY = vf.ScrY;
 
         // Track
-        if (_isShowTrack && GetHexTrack(nx, ny) != 0) {
-            const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSprId(_engine->GameTime.GameplayTime()));
+        if (_isShowTrack && GetHexTrack(hx, hy) != 0) {
+            const auto spr_id = (GetHexTrack(hx, hy) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSprId(_engine->GameTime.GameplayTime()));
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainList.AddSprite(DrawOrderType::Track, nx, ny, //
+            auto& spr = _mapSprites.AddSprite(DrawOrderType::Track, hx, hy, //
                 _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, //
                 spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &spr);
@@ -1051,7 +1092,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
         if (_isShowHex) {
             const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameplayTime());
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainList.AddSprite(DrawOrderType::HexGrid, nx, ny, //
+            auto& spr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hx, hy, //
                 si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, //
                 spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &spr);
@@ -1064,7 +1105,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                     continue;
                 }
 
-                auto* spr = tile->AddSprite(_tilesList, EvaluateItemDrawOrder(tile), nx, static_cast<uint16>(ny + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+                auto* spr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), hx, static_cast<uint16>(hy + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
                 AddSpriteToChain(field, spr);
             }
         }
@@ -1076,7 +1117,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                     continue;
                 }
 
-                auto* spr = tile->AddSprite(_roofList, EvaluateItemDrawOrder(tile), nx, static_cast<uint16>(ny + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+                auto* spr = tile->AddSprite(_mapSprites, EvaluateItemDrawOrder(tile), hx, static_cast<uint16>(hy + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
                 spr->SetEggAppearence(EggAppearenceType::Always);
                 AddSpriteToChain(field, spr);
             }
@@ -1122,7 +1163,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                     }
                 }
 
-                auto* spr = item->AddSprite(_mainList, EvaluateItemDrawOrder(item), nx, static_cast<uint16>(ny + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+                auto* spr = item->AddSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
                 AddSpriteToChain(field, spr);
             }
         }
@@ -1134,7 +1175,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                     continue;
                 }
 
-                auto* spr = cr->AddSprite(_mainList, EvaluateCritterDrawOrder(cr), nx, ny, &field.ScrX, &field.ScrY);
+                auto* spr = cr->AddSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hx, hy, &field.ScrX, &field.ScrY);
 
                 cr->RefreshOffs();
                 cr->ResetOk();
@@ -1151,11 +1192,43 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                 AddSpriteToChain(field, spr);
             }
         }
+
+        // Particles
+        if (!_particlePatterns.empty()) {
+            for (auto&& pattern : _particlePatterns) {
+                if ((hx % pattern->EveryHexX) != 0) {
+                    continue;
+                }
+                if ((hy % pattern->EveryHexY) != 0) {
+                    continue;
+                }
+
+                if (pattern->InteractWithRoof && _roofSkip != 0 && _roofSkip == field.RoofNum) {
+                    continue;
+                }
+
+                if (pattern->CheckTileProperty) {
+                    if (field.GroundTiles.empty()) {
+                        continue;
+                    }
+                    if (field.GroundTiles.front()->GetValueAsInt(static_cast<int>(pattern->TileProperty)) != pattern->ExpectedTilePropertyValue) {
+                        continue;
+                    }
+                }
+                else {
+                    continue;
+                }
+
+                const auto spr_id = pattern->ParticleSprIds[(hy * (pattern->ParticleSprIds.size() / 5) + hx) % pattern->ParticleSprIds.size()];
+                auto& spr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hx, hy, //
+                    _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0), &field.ScrX, &field.ScrY, //
+                    spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                AddSpriteToChain(field, &spr);
+            }
+        }
     }
 
-    _mainList.SortByMapPos();
-    _tilesList.SortByMapPos();
-    _roofList.SortByMapPos();
+    _mapSprites.SortByMapPos();
 
     _screenHexX = screen_hx;
     _screenHexY = screen_hy;
@@ -1171,20 +1244,20 @@ void MapView::RebuildMapOffset(int ox, int oy)
     RUNTIME_ASSERT(ox == 0 || ox == -1 || ox == 1);
     RUNTIME_ASSERT(oy == 0 || oy == -2 || oy == 2);
 
-    auto hide_hex = [this](ViewField& vf) {
-        const auto nxi = vf.HexX;
-        const auto nyi = vf.HexY;
-        if (nxi < 0 || nyi < 0 || nxi >= _width || nyi >= _height) {
+    auto hide_hex = [this](const ViewField& vf) {
+        const auto hxi = vf.HexX;
+        const auto hyi = vf.HexY;
+        if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
             return;
         }
 
-        const auto nx = static_cast<uint16>(nxi);
-        const auto ny = static_cast<uint16>(nyi);
-        if (!IsHexToDraw(nx, ny)) {
+        const auto hx = static_cast<uint16>(hxi);
+        const auto hy = static_cast<uint16>(hyi);
+        if (!IsHexToDraw(hx, hy)) {
             return;
         }
 
-        auto& field = FieldAt(nx, ny);
+        auto& field = FieldAt(hx, hy);
         field.IsView = false;
         InvalidateSpriteChain(field);
     };
@@ -1252,26 +1325,26 @@ void MapView::RebuildMapOffset(int ox, int oy)
         }
     }
 
-    auto show_hex = [this](ViewField& vf) {
+    auto show_hex = [this](const ViewField& vf) {
         if (vf.HexX < 0 || vf.HexY < 0 || vf.HexX >= _width || vf.HexY >= _height) {
             return;
         }
 
-        const auto nx = static_cast<uint16>(vf.HexX);
-        const auto ny = static_cast<uint16>(vf.HexY);
+        const auto hx = static_cast<uint16>(vf.HexX);
+        const auto hy = static_cast<uint16>(vf.HexY);
 
-        if (IsHexToDraw(nx, ny)) {
+        if (IsHexToDraw(hx, hy)) {
             return;
         }
 
-        auto& field = FieldAt(nx, ny);
+        auto& field = FieldAt(hx, hy);
         field.IsView = true;
 
         // Track
-        if (_isShowTrack && (GetHexTrack(nx, ny) != 0)) {
-            const auto spr_id = (GetHexTrack(nx, ny) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSprId(_engine->GameTime.GameplayTime()));
+        if (_isShowTrack && (GetHexTrack(hx, hy) != 0)) {
+            const auto spr_id = (GetHexTrack(hx, hy) == 1 ? _picTrack1->GetCurSprId(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSprId(_engine->GameTime.GameplayTime()));
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainList.InsertSprite(DrawOrderType::Track, nx, ny, //
+            auto& spr = _mapSprites.InsertSprite(DrawOrderType::Track, hx, hy, //
                 _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (si != nullptr ? si->Height / 2 : 0), &field.ScrX, &field.ScrY, //
                 spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &spr);
@@ -1281,7 +1354,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
         if (_isShowHex) {
             const auto spr_id = _picHex[0]->GetCurSprId(_engine->GameTime.GameplayTime());
             const auto* si = _engine->SprMngr.GetSpriteInfo(spr_id);
-            auto& spr = _mainList.InsertSprite(DrawOrderType::HexGrid, nx, ny, //
+            auto& spr = _mapSprites.InsertSprite(DrawOrderType::HexGrid, hx, hy, //
                 si != nullptr ? si->Width / 2 : 0, si != nullptr ? si->Height : 0, &field.ScrX, &field.ScrY, //
                 spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &spr);
@@ -1294,7 +1367,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     continue;
                 }
 
-                auto* spr = tile->InsertSprite(_tilesList, EvaluateItemDrawOrder(tile), nx, static_cast<uint16>(ny + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+                auto* spr = tile->InsertSprite(_mapSprites, EvaluateItemDrawOrder(tile), hx, static_cast<uint16>(hy + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
                 AddSpriteToChain(field, spr);
             }
         }
@@ -1306,7 +1379,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     continue;
                 }
 
-                auto* spr = tile->InsertSprite(_roofList, EvaluateItemDrawOrder(tile), nx, static_cast<uint16>(ny + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+                auto* spr = tile->InsertSprite(_mapSprites, EvaluateItemDrawOrder(tile), hx, static_cast<uint16>(hy + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
                 spr->SetEggAppearence(EggAppearenceType::Always);
                 AddSpriteToChain(field, spr);
             }
@@ -1352,7 +1425,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     }
                 }
 
-                auto* spr = item->InsertSprite(_mainList, EvaluateItemDrawOrder(item), nx, static_cast<uint16>(ny + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
+                auto* spr = item->InsertSprite(_mapSprites, EvaluateItemDrawOrder(item), hx, static_cast<uint16>(hy + item->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
                 AddSpriteToChain(field, spr);
             }
         }
@@ -1364,7 +1437,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     continue;
                 }
 
-                auto* spr = cr->InsertSprite(_mainList, EvaluateCritterDrawOrder(cr), nx, ny, &field.ScrX, &field.ScrY);
+                auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hx, hy, &field.ScrX, &field.ScrY);
 
                 cr->RefreshOffs();
                 cr->ResetOk();
@@ -1379,6 +1452,40 @@ void MapView::RebuildMapOffset(int ox, int oy)
                 spr->SetContour(contour, cr->GetContourColor());
 
                 AddSpriteToChain(field, spr);
+            }
+        }
+
+        // Particles
+        if (!_particlePatterns.empty()) {
+            for (auto&& pattern : _particlePatterns) {
+                if ((hx % pattern->EveryHexX) != 0) {
+                    continue;
+                }
+                if ((hy % pattern->EveryHexY) != 0) {
+                    continue;
+                }
+
+                if (pattern->InteractWithRoof && _roofSkip != 0 && _roofSkip == field.RoofNum) {
+                    continue;
+                }
+
+                if (pattern->CheckTileProperty) {
+                    if (field.GroundTiles.empty()) {
+                        continue;
+                    }
+                    if (field.GroundTiles.front()->GetValueAsInt(static_cast<int>(pattern->TileProperty)) != pattern->ExpectedTilePropertyValue) {
+                        continue;
+                    }
+                }
+                else {
+                    continue;
+                }
+
+                const auto spr_id = pattern->ParticleSprIds[(hy * (pattern->ParticleSprIds.size() / 5) + hx) % pattern->ParticleSprIds.size()];
+                auto& spr = _mapSprites.InsertSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hx, hy, //
+                    _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0), &field.ScrX, &field.ScrY, //
+                    spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                AddSpriteToChain(field, &spr);
             }
         }
     };
@@ -1927,93 +2034,13 @@ void MapView::CollectLightSources()
     }
 }
 
-void MapView::RebuildTiles()
-{
-    STACK_TRACE_ENTRY();
-
-    _tilesList.Invalidate();
-
-    if (!_engine->Settings.ShowTile) {
-        return;
-    }
-
-    auto y2 = 0;
-    for (auto ty = 0; ty < _hVisible; ty++) {
-        for (auto x = 0; x < _wVisible; x++) {
-            const auto vpos = y2 + x;
-            if (vpos < 0 || vpos >= _wVisible * _hVisible) {
-                continue;
-            }
-
-            const auto hxi = _viewField[vpos].HexX;
-            const auto hyi = _viewField[vpos].HexY;
-            if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
-                continue;
-            }
-
-            const auto hx = static_cast<uint16>(hxi);
-            const auto hy = static_cast<uint16>(hyi);
-
-            if (auto& field = FieldAt(hx, hy); !field.GroundTiles.empty()) {
-                for (auto* tile : field.GroundTiles) {
-                    auto* spr = tile->InsertSprite(_tilesList, EvaluateItemDrawOrder(tile), hx, static_cast<uint16>(hy + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
-                    AddSpriteToChain(field, spr);
-                }
-            }
-        }
-        y2 += _wVisible;
-    }
-
-    // Sort
-    _tilesList.SortByMapPos();
-}
-
-void MapView::RebuildRoof()
-{
-    STACK_TRACE_ENTRY();
-
-    _roofList.Invalidate();
-
-    if (!_engine->Settings.ShowRoof) {
-        return;
-    }
-
-    auto y2 = 0;
-    for (auto ty = 0; ty < _hVisible; ty++) {
-        for (auto x = 0; x < _wVisible; x++) {
-            const auto vpos = y2 + x;
-            const auto hxi = _viewField[vpos].HexX;
-            const auto hyi = _viewField[vpos].HexY;
-            if (hxi < 0 || hyi < 0 || hxi >= _width || hyi >= _height) {
-                continue;
-            }
-
-            const auto hx = static_cast<uint16>(hxi);
-            const auto hy = static_cast<uint16>(hyi);
-
-            if (auto& field = FieldAt(hx, hy); !field.RoofTiles.empty() && (_roofSkip == 0 || _roofSkip != field.RoofNum)) {
-                for (auto* tile : field.RoofTiles) {
-                    auto* spr = tile->InsertSprite(_roofList, EvaluateItemDrawOrder(tile), hx, static_cast<uint16>(hy + tile->GetDrawOrderOffsetHexY()), &field.ScrX, &field.ScrY);
-                    spr->SetEggAppearence(EggAppearenceType::Always);
-                    AddSpriteToChain(field, spr);
-                }
-            }
-        }
-
-        y2 += _wVisible;
-    }
-
-    // Sort
-    _roofList.SortByMapPos();
-}
-
 void MapView::SetSkipRoof(uint16 hx, uint16 hy)
 {
     STACK_TRACE_ENTRY();
 
     if (_roofSkip != FieldAt(hx, hy).RoofNum) {
         _roofSkip = FieldAt(hx, hy).RoofNum;
-        RebuildRoof();
+        RefreshMap();
     }
 }
 
@@ -2566,12 +2593,10 @@ void MapView::DrawMap()
     }
 
     // Tiles
-    if (_engine->Settings.ShowTile) {
-        _engine->SprMngr.DrawSprites(_tilesList, false, false, DrawOrderType::Tile, DrawOrderType::TileEnd, _mapDayColor);
-    }
+    _engine->SprMngr.DrawSprites(_mapSprites, false, false, DrawOrderType::Tile, DrawOrderType::Tile4, _mapDayColor);
 
     // Flat sprites
-    _engine->SprMngr.DrawSprites(_mainList, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
+    _engine->SprMngr.DrawSprites(_mapSprites, true, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, _mapDayColor);
 
     // Light
     if (_rtLight != nullptr) {
@@ -2584,12 +2609,7 @@ void MapView::DrawMap()
     }
 
     // Sprites
-    _engine->SprMngr.DrawSprites(_mainList, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
-
-    // Roof
-    if (_engine->Settings.ShowRoof) {
-        _engine->SprMngr.DrawSprites(_roofList, false, true, DrawOrderType::Tile, DrawOrderType::TileEnd, _mapDayColor);
-    }
+    _engine->SprMngr.DrawSprites(_mapSprites, true, true, DrawOrderType::Ligth, DrawOrderType::Last, _mapDayColor);
 
     // Contours
     _engine->SprMngr.DrawContours();
@@ -3212,7 +3232,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     }
 
     if (!_mapLoading && IsHexToDraw(hx, hy) && cr->IsVisible()) {
-        auto* spr = cr->InsertSprite(_mainList, EvaluateCritterDrawOrder(cr), hx, hy, &field.ScrX, &field.ScrY);
+        auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hx, hy, &field.ScrX, &field.ScrY);
 
         cr->RefreshOffs();
         cr->ResetOk();
@@ -4272,6 +4292,13 @@ auto MapView::GetMapDayTime() const -> int
     const auto map_time = GetCurDayTime();
 
     return map_time >= 0 ? map_time : GetGlobalDayTime();
+}
+
+auto MapView::GetDrawList() -> MapSpriteList&
+{
+    STACK_TRACE_ENTRY();
+
+    return _mapSprites;
 }
 
 void MapView::OnScreenSizeChanged()

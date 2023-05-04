@@ -606,7 +606,7 @@ auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2
     else {
 #if FO_ENABLE_3D
         const auto* model = GetCritterModel(model_name, anim1, anim2, dir, layers3d);
-        return model != nullptr ? model->SprId : 0u;
+        return model != nullptr ? _sprMngr.GetModelSprId(model) : 0;
 #else
         UNUSED_VARIABLE(layers3d);
         throw NotEnabled3DException("3D submodule not enabled");
