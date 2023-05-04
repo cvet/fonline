@@ -64,19 +64,37 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void> func)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, value);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func, value);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] ident_t Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
-    return server->ServerDeferredCalls.AddDeferredCall(delay, func, values);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, false, func, values);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void> func)
+{
+    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
+{
+    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func, value);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Server_Game_RepeatingDeferredCall(FOServer* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
+{
+    return client->ServerDeferredCalls.AddDeferredCall(delay, true, func, values);
 }
 
 ///@ ExportMethod
@@ -1216,6 +1234,21 @@
     }
 
     return npcs;
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server)
+{
+    vector<Map*> maps;
+    maps.reserve(server->MapMngr.GetLocationsCount());
+
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+        maps.push_back(map);
+    }
+
+    return maps;
 }
 
 ///# ...

@@ -64,19 +64,37 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, value);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, value);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, func, values);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, values);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void> func)
+{
+    return client->ClientDeferredCalls.AddDeferredCall(delay, true,  func);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
+{
+    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, value);
+}
+
+///@ ExportMethod
+[[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values)
+{
+    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, values);
 }
 
 ///@ ExportMethod

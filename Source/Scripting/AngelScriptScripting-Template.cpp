@@ -3895,8 +3895,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ServerCall", 0));
 #endif
 
-#if CLIENT_SCRIPTING
+#if CLIENT_SCRIPTING || MAPPER_SCRIPTING
     AS_VERIFY(engine->RegisterGlobalFunction("Map@+ get_CurMap()", SCRIPT_GENERIC((Global_Get<MapView>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->CurMap)));
+#endif
+#if CLIENT_SCRIPTING
     AS_VERIFY(engine->RegisterGlobalFunction("Location@+ get_CurLocation()", SCRIPT_GENERIC((Global_Get<LocationView>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curLocation)));
     AS_VERIFY(engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", SCRIPT_GENERIC((Global_Get<PlayerView>)), SCRIPT_GENERIC_CONV, PTR_OR_DUMMY(_engine->_curPlayer)));
 #endif

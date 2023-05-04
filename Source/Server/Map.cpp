@@ -367,7 +367,14 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
 {
     STACK_TRACE_ENTRY();
 
-    if (type == NetProperty::MapItem) {
+    if (type == NetProperty::Map) {
+        const auto* map = dynamic_cast<Map*>(entity);
+        RUNTIME_ASSERT(map == this);
+        for (auto* cr : GetCritters()) {
+            cr->Send_Property(type, prop, entity);
+        }
+    }
+    else if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
         for (auto* cr : GetCritters()) {
             if (cr->CountIdVisItem(item->GetId())) {

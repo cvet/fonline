@@ -41,7 +41,7 @@ DeferredCallManager::DeferredCallManager(FOEngineBase* engine) :
     RUNTIME_ASSERT(_engine);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, bool repeating, ScriptFunc<void> func) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -49,10 +49,11 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void> func) -> 
 
     auto call = DeferredCall();
     call.EmptyFunc = func;
+    call.Repeating = repeating;
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, any_t> func, any_t value) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, any_t> func, any_t value) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -61,10 +62,11 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, any_t> fu
     auto call = DeferredCall();
     call.AnyFunc = func;
     call.FuncValue = {std::move(value)};
+    call.Repeating = repeating;
     return AddDeferredCall(delay, call);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t
+auto DeferredCallManager::AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t
 {
     STACK_TRACE_ENTRY();
 
@@ -73,6 +75,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, ScriptFunc<void, vector<an
     auto call = DeferredCall();
     call.AnyArrayFunc = func;
     call.FuncValue = values;
+    call.Repeating = repeating;
     return AddDeferredCall(delay, call);
 }
 
@@ -80,13 +83,12 @@ auto DeferredCallManager::AddDeferredCall(uint delay, DeferredCall& call) -> ide
 {
     STACK_TRACE_ENTRY();
 
+    call.Delay = tick_t {delay};
     call.Id = GetNextCallId();
 
-    if (delay > 0) {
+    if (delay != 0) {
         const auto time_mul = _engine->GetTimeMultiplier();
-        if (time_mul != 0) {
-            call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
-        }
+        call.FireFullSecond = tick_t {_engine->GameTime.GetFullSecond().underlying_value() + delay * time_mul / 1000};
     }
 
     _deferredCalls.emplace_back(std::move(call));
@@ -131,16 +133,30 @@ void DeferredCallManager::Process()
     }
 
     const auto full_second = _engine->GameTime.GetFullSecond();
+    const auto time_mul = _engine->GetTimeMultiplier();
 
+    unordered_set<ident_t> skip_ids;
     bool done = false;
+
     while (!done) {
         done = true;
 
         for (auto it = _deferredCalls.begin(); it != _deferredCalls.end(); ++it) {
-            if (full_second.underlying_value() >= it->FireFullSecond.underlying_value()) {
+            if (full_second.underlying_value() >= it->FireFullSecond.underlying_value() && skip_ids.count(it->Id) == 0) {
                 DeferredCall call = copy(*it);
-                it = _deferredCalls.erase(it);
-                OnDeferredCallRemoved(call);
+
+                if (call.Repeating) {
+                    if (call.Delay.underlying_value() != 0) {
+                        it->FireFullSecond = tick_t {full_second.underlying_value() + call.Delay.underlying_value() * time_mul / 1000};
+                    }
+
+                    skip_ids.emplace(call.Id);
+                }
+                else {
+                    it = _deferredCalls.erase(it);
+
+                    OnDeferredCallRemoved(call);
+                }
 
                 RunDeferredCall(call);
 
