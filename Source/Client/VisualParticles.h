@@ -79,8 +79,8 @@ private:
     GameTimer& _gameTime;
     TextureLoader _textureLoader;
     uint _animUpdateThreshold {};
-    mat44 _projMat {};
-    mat44 _viewMat {};
+    mat44 _projMatColMaj {};
+    mat44 _viewMatColMaj {};
 };
 
 class ParticleSystem final
@@ -103,7 +103,7 @@ public:
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offest, float look_dir_angle, const vec3& view_offset);
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float look_dir_angle, const vec3& view_offset);
     void Prewarm();
     void Respawn();
     void Draw();

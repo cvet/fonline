@@ -173,8 +173,8 @@ namespace SPK::FO
         auto& buffer = static_cast<SparkRenderBuffer&>(*renderBuffer);
         buffer.PositionAtStart();
 
-        if (_modelView != _particleMngr->_viewMat) {
-            _modelView = _particleMngr->_viewMat;
+        if (_modelView != _particleMngr->_viewMatColMaj) {
+            _modelView = _particleMngr->_viewMatColMaj;
             _invModelView = _modelView;
             _invModelView.Inverse();
         }
@@ -218,7 +218,7 @@ namespace SPK::FO
         RUNTIME_ASSERT(_effect != nullptr);
         RUNTIME_ASSERT(_texture != nullptr);
         _effect->ProjBuf = RenderEffect::ProjBuffer();
-        std::memcpy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMat, sizeof(_effect->ProjBuf->ProjMatrix));
+        std::memcpy(_effect->ProjBuf->ProjMatrix, &_particleMngr->_projMatColMaj, sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
         buffer.Render(group.getNbParticles() << 2, _effect);

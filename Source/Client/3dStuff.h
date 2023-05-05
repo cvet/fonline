@@ -317,7 +317,7 @@ private:
     ModelManager& _modelMngr;
     int _frameWidth {};
     int _frameHeight {};
-    mat44 _frameProjRowMaj {};
+    mat44 _frameProj {};
     mat44 _frameProjColMaj {};
     uint _curAnim1 {};
     uint _curAnim2 {};

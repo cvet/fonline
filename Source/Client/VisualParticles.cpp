@@ -196,23 +196,29 @@ auto ParticleSystem::NeedDraw() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_particleMngr._animUpdateThreshold};
+    return GetTime() - _lastDrawTime >= std::chrono::milliseconds {_particleMngr._animUpdateThreshold} && _impl->System->isActive();
 }
 
-void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offest, float look_dir_angle, const vec3& view_offset)
+void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float look_dir_angle, const vec3& view_offset)
 {
     STACK_TRACE_ENTRY();
+
+    if (!_impl->System->isActive()) {
+        return;
+    }
 
     _projMat = proj;
     _viewOffset = view_offset;
 
     mat44 pos_offset_mat;
-    mat44::Translation(pos_offest, pos_offset_mat);
+    mat44::Translation(pos_offset, pos_offset_mat);
 
     mat44 view_offset_mat;
     mat44::Translation(view_offset, view_offset_mat);
 
-    if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
+    mat44 result_pos_mat;
+
+    if (_impl->BaseSystem->getTransform().isLocalIdentity()) {
         vec3 result_pos_rot;
         vec3 result_pos_pos;
         vec3 result_pos_scale;
@@ -224,15 +230,15 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         mat44 look_dir_mat;
         mat44::RotationY((look_dir_angle - 90.0f) * PI_FLOAT / 180.0f, look_dir_mat);
 
-        mat44 result_pos_mat = result_pos_pos_mat * look_dir_mat;
-
-        _impl->System->getTransform().set(result_pos_mat.Transpose()[0]);
+        result_pos_mat = result_pos_pos_mat * look_dir_mat;
     }
     else {
-        mat44 result_pos_mat = view_offset_mat * world * pos_offset_mat;
-
-        _impl->System->getTransform().set(result_pos_mat.Transpose()[0]);
+        result_pos_mat = view_offset_mat * world * pos_offset_mat;
     }
+
+    result_pos_mat.Transpose();
+
+    _impl->System->getTransform().set(result_pos_mat[0]);
 
     if (const auto local_pos = _impl->BaseSystem->getTransform().getLocalPos(); local_pos != SPK::Vector3D()) {
         _impl->System->getTransform().setPosition(_impl->System->getTransform().getLocalPos() + local_pos);
@@ -246,6 +252,10 @@ void ParticleSystem::Prewarm()
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
+
+    if (!_impl->System->isActive()) {
+        return;
+    }
 
     const float max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
     const float init_time = static_cast<float>(GenericUtils::Random(0, static_cast<int>(max_lifetime * 1000.0f))) / 1000.0f;
@@ -286,7 +296,9 @@ void ParticleSystem::Draw()
 
     _elapsedTime += static_cast<double>(dt);
 
-    _impl->System->updateParticles(dt);
+    if (dt > 0.0f) {
+        _impl->System->updateParticles(dt);
+    }
 
     mat44 view_offset_mat;
     mat44::Translation({-_viewOffset.x, -_viewOffset.y, -_viewOffset.z}, view_offset_mat);
@@ -297,8 +309,11 @@ void ParticleSystem::Draw()
     mat44 view = view_offset_mat * cam_rot_mat;
     view.Transpose();
 
-    _particleMngr._projMat = view * _projMat;
-    _particleMngr._viewMat = view;
+    mat44 proj = _projMat;
+    proj.Transpose();
+
+    _particleMngr._projMatColMaj = view * proj;
+    _particleMngr._viewMatColMaj = view;
 
     _impl->System->renderParticles();
 }

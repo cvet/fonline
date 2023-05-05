@@ -1213,7 +1213,7 @@ auto SpriteManager::LoadParticle(string_view name, bool auto_draw_to_atlas) -> u
     const auto frame_ratio = static_cast<float>(draw_width) / static_cast<float>(draw_height);
     const auto proj_height = static_cast<float>(draw_height) * (1.0f / _settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
-    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f).Transpose();
+    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     mat44 world;
     mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
 

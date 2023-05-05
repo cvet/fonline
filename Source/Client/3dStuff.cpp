@@ -415,8 +415,8 @@ void ModelInstance::SetupFrame()
     const auto proj_height = static_cast<float>(_frameHeight) * (1.0f / _modelMngr._settings.ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    _frameProjRowMaj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    _frameProjColMaj = _frameProjRowMaj;
+    _frameProj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    _frameProjColMaj = _frameProj;
     _frameProjColMaj.Transpose();
 }
 
@@ -1896,10 +1896,10 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     // Particles
     for (auto&& model_particle : _modelParticles) {
         if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(_frameProjColMaj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
+            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
         }
         else {
-            model_particle.Particle->Setup(_frameProjColMaj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
+            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
         }
     }
 
