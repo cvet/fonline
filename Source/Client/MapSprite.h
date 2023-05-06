@@ -140,9 +140,9 @@ public:
     void SetContour(ContourType contour);
     void SetContour(ContourType contour, uint color);
     void SetColor(uint color);
-    void SetAlpha(uint8* alpha);
-    void SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxhy);
+    void SetAlpha(const uint8* alpha);
     void SetFixedAlpha(uint8 alpha);
+    void SetLight(CornerType corner, const uint8* light, uint16 maxhx, uint16 maxhy);
 
     // Todo:: incapsulate all sprite data
     MapSpriteList* Root {};
@@ -159,8 +159,6 @@ public:
     const int* PScrY {};
     const int* OffsX {};
     const int* OffsY {};
-    MapSprite* Parent {};
-    MapSprite* Child {};
     const uint8* Alpha {};
     const uint8* Light {};
     const uint8* LightRight {};
@@ -201,7 +199,7 @@ public:
     auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void Invalidate();
-    void SortByMapPos();
+    void Sort();
 
 private:
     auto PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
@@ -212,6 +210,7 @@ private:
     MapSprite* _rootSprite {};
     MapSprite* _lastSprite {};
     uint _spriteCount {};
+    vector<MapSprite*> _sortSprites {};
     vector<MapSprite*> _invalidatedSprites {};
     bool _nonConstHelper {};
 };

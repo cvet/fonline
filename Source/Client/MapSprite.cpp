@@ -48,15 +48,6 @@ void MapSprite::Invalidate()
         ValidCallback = nullptr;
     }
 
-    if (Parent != nullptr) {
-        Parent->Child = nullptr;
-        Parent->Invalidate();
-    }
-    if (Child != nullptr) {
-        Child->Parent = nullptr;
-        Child->Invalidate();
-    }
-
     if (ExtraChainRoot != nullptr) {
         *ExtraChainRoot = ExtraChainChild;
     }
@@ -122,113 +113,55 @@ void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
 {
     STACK_TRACE_ENTRY();
 
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
     EggAppearence = egg_appearence;
-    if (Parent != nullptr) {
-        Parent->SetEggAppearence(egg_appearence);
-    }
-    if (Child != nullptr) {
-        Child->SetEggAppearence(egg_appearence);
-    }
-    Valid = true;
 }
 
 void MapSprite::SetContour(ContourType contour)
 {
     STACK_TRACE_ENTRY();
 
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
     Contour = contour;
-    if (Parent != nullptr) {
-        Parent->SetContour(contour);
-    }
-    if (Child != nullptr) {
-        Child->SetContour(contour);
-    }
-    Valid = true;
 }
 
 void MapSprite::SetContour(ContourType contour, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
     Contour = contour;
     ContourColor = color;
-    if (Parent != nullptr) {
-        Parent->SetContour(contour, color);
-    }
-    if (Child != nullptr) {
-        Child->SetContour(contour, color);
-    }
-    Valid = true;
 }
 
 void MapSprite::SetColor(uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
     Color = color;
-    if (Parent != nullptr) {
-        Parent->SetColor(color);
-    }
-    if (Child != nullptr) {
-        Child->SetColor(color);
-    }
-    Valid = true;
 }
 
-void MapSprite::SetAlpha(uint8* alpha)
+void MapSprite::SetAlpha(const uint8* alpha)
 {
     STACK_TRACE_ENTRY();
 
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
     Alpha = alpha;
-    if (Parent != nullptr) {
-        Parent->SetAlpha(alpha);
-    }
-    if (Child != nullptr) {
-        Child->SetAlpha(alpha);
-    }
-    Valid = true;
 }
 
-void MapSprite::SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 maxhy)
+void MapSprite::SetFixedAlpha(uint8 alpha)
 {
     STACK_TRACE_ENTRY();
 
-    if (!Valid) {
-        return;
-    }
+    auto* color_alpha = reinterpret_cast<uint8*>(&Color) + 3;
+    *color_alpha = alpha;
+    Alpha = color_alpha;
+}
 
-    Valid = false;
+void MapSprite::SetLight(CornerType corner, const uint8* light, uint16 maxhx, uint16 maxhy)
+{
+    STACK_TRACE_ENTRY();
 
     if (HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1) {
         Light = &light[HexY * maxhx * 3 + HexX * 3];
 
         switch (corner) {
-        default:
         case CornerType::EastWest:
         case CornerType::East:
             LightRight = Light - 3;
@@ -254,39 +187,6 @@ void MapSprite::SetLight(CornerType corner, uint8* light, uint16 maxhx, uint16 m
         LightRight = nullptr;
         LightLeft = nullptr;
     }
-
-    if (Parent != nullptr) {
-        Parent->SetLight(corner, light, maxhx, maxhy);
-    }
-    if (Child != nullptr) {
-        Child->SetLight(corner, light, maxhx, maxhy);
-    }
-
-    Valid = true;
-}
-
-void MapSprite::SetFixedAlpha(uint8 alpha)
-{
-    STACK_TRACE_ENTRY();
-
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
-
-    auto* color_alpha = reinterpret_cast<uint8*>(&Color) + 3;
-    *color_alpha = alpha;
-    Alpha = color_alpha;
-
-    if (Parent != nullptr) {
-        Parent->SetFixedAlpha(alpha);
-    }
-    if (Child != nullptr) {
-        Child->SetFixedAlpha(alpha);
-    }
-
-    Valid = true;
 }
 
 MapSpriteList::MapSpriteList(SpriteManager& spr_mngr) :
@@ -422,8 +322,6 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16
     spr->ContourColor = 0u;
     spr->Color = 0u;
     spr->DrawEffect = effect;
-    spr->Parent = nullptr;
-    spr->Child = nullptr;
 
     // Draw order
     spr->DrawOrder = draw_order;
@@ -484,7 +382,7 @@ void MapSpriteList::Invalidate()
     _spriteCount = 0;
 }
 
-void MapSpriteList::SortByMapPos()
+void MapSpriteList::Sort()
 {
     STACK_TRACE_ENTRY();
 
@@ -492,30 +390,30 @@ void MapSpriteList::SortByMapPos()
         return;
     }
 
-    vector<MapSprite*> sprites;
-    sprites.reserve(_spriteCount);
+    _sortSprites.reserve(_spriteCount);
+
     auto* spr = _rootSprite;
     while (spr != nullptr) {
-        sprites.push_back(spr);
+        _sortSprites.emplace_back(spr);
         spr = spr->ChainChild;
     }
 
-    std::sort(sprites.begin(), sprites.end(), [](const MapSprite* spr1, const MapSprite* spr2) {
+    std::sort(_sortSprites.begin(), _sortSprites.end(), [](const MapSprite* spr1, const MapSprite* spr2) {
         if (spr1->DrawOrderPos == spr2->DrawOrderPos) {
             return spr1->TreeIndex < spr2->TreeIndex;
         }
         return spr1->DrawOrderPos < spr2->DrawOrderPos;
     });
 
-    _rootSprite = sprites.front();
-    _lastSprite = sprites.back();
+    _rootSprite = _sortSprites.front();
+    _lastSprite = _sortSprites.back();
 
-    for (size_t i = 1; i < sprites.size(); i++) {
-        sprites[i]->TreeIndex = i;
-        sprites[i - 1]->ChainChild = sprites[i];
-        sprites[i]->ChainParent = sprites[i - 1];
-        sprites[i]->ChainRoot = nullptr;
-        sprites[i]->ChainLast = nullptr;
+    for (size_t i = 1; i < _sortSprites.size(); i++) {
+        _sortSprites[i]->TreeIndex = i;
+        _sortSprites[i - 1]->ChainChild = _sortSprites[i];
+        _sortSprites[i]->ChainParent = _sortSprites[i - 1];
+        _sortSprites[i]->ChainRoot = nullptr;
+        _sortSprites[i]->ChainLast = nullptr;
     }
 
     _rootSprite->TreeIndex = 0;
@@ -525,4 +423,6 @@ void MapSpriteList::SortByMapPos()
 
     _lastSprite->ChainChild = nullptr;
     _lastSprite->ChainLast = &_lastSprite;
+
+    _sortSprites.clear();
 }

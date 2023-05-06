@@ -1228,7 +1228,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
         }
     }
 
-    _mapSprites.SortByMapPos();
+    _mapSprites.Sort();
 
     _screenHexX = screen_hx;
     _screenHexY = screen_hy;
