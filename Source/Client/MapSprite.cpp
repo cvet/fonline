@@ -64,14 +64,6 @@ void MapSprite::Invalidate()
     ExtraChainParent = nullptr;
     ExtraChainChild = nullptr;
 
-    if (MapSpr != nullptr) {
-        // Todo: MapSprite releasing
-        // MapSpr->Release();
-        MapSpr = nullptr;
-    }
-
-    Root->_invalidatedSprites.push_back(this);
-
     if (ChainRoot != nullptr) {
         *ChainRoot = ChainChild;
     }
@@ -94,6 +86,13 @@ void MapSprite::Invalidate()
     ChainLast = nullptr;
     ChainParent = nullptr;
     ChainChild = nullptr;
+
+    if (MapSpr != nullptr) {
+        MapSpr->Release();
+        MapSpr = nullptr;
+    }
+
+    Root->_invalidatedSprites.push_back(this);
 
     Root = nullptr;
 }
