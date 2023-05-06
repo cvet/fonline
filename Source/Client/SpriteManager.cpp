@@ -2232,7 +2232,7 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
             auto x2 = x1 + si->Width;
             auto y2 = y1 + si->Height;
 
-            if (!(x1 >= _sprEgg->Width || y1 >= _sprEgg->Height || x2 < 0 || y2 < 0)) {
+            if (x1 < _sprEgg->Width - 100 && y1 < _sprEgg->Height - 100 && x2 >= 100 && y2 >= 100) {
                 x1 = std::max(x1, 0);
                 y1 = std::max(y1, 0);
                 x2 = std::min(x2, _sprEgg->Width);
@@ -2312,11 +2312,15 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         vbuf[pos++].Color = color_r;
 
         // Set default texture coordinates for egg texture
-        if (!egg_added && vbuf[pos - 1].EggTexU != -1.0f) {
-            vbuf[pos - 1].EggTexU = -1.0f;
-            vbuf[pos - 2].EggTexU = -1.0f;
-            vbuf[pos - 3].EggTexU = -1.0f;
-            vbuf[pos - 4].EggTexU = -1.0f;
+        if (!egg_added) {
+            vbuf[pos - 1].EggTexU = 0.0f;
+            vbuf[pos - 1].EggTexV = 0.0f;
+            vbuf[pos - 2].EggTexU = 0.0f;
+            vbuf[pos - 2].EggTexV = 0.0f;
+            vbuf[pos - 3].EggTexU = 0.0f;
+            vbuf[pos - 3].EggTexV = 0.0f;
+            vbuf[pos - 4].EggTexU = 0.0f;
+            vbuf[pos - 4].EggTexV = 0.0f;
         }
 
         // Draw
