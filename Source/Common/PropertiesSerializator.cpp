@@ -814,7 +814,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             for (size_t i = 0; i < arr.size(); i++) {
                 RUNTIME_ASSERT(can_read_to_string(arr[i]));
 
-                string_view str = std::get<string>(arr[i]);
+                string_view str = read_to_string(arr[i]);
                 data_size += sizeof(uint) + static_cast<uint>(str.length());
             }
 
