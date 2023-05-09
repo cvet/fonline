@@ -83,11 +83,6 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _rtScreenOx = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
-#if !FO_DIRECT_MAP_DRAW
-    _rtMap = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
-    _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
-#endif
-
     _rtLight = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
 
@@ -2587,7 +2582,13 @@ void MapView::DrawMap()
     const auto prerendered_rect = IRect(ox, oy, ox + _engine->Settings.ScreenWidth, oy + (_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight));
 
     // Separate render target
-    if (_rtMap != nullptr) {
+    if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
+        if (_rtMap == nullptr) {
+            _rtMap = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
+        }
+
+        _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
+
         _engine->SprMngr.PushRenderTarget(_rtMap);
         _engine->SprMngr.ClearCurrentRenderTarget(0);
     }
@@ -2633,11 +2634,8 @@ void MapView::DrawMap()
         }
     }
 
-    // Texts
-    DrawMapTexts();
-
     // Draw map from render target
-    if (_rtMap != nullptr) {
+    if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
         _engine->SprMngr.PopRenderTarget();
         _engine->SprMngr.DrawRenderTarget(_rtMap, false);
     }

@@ -41,7 +41,6 @@ add_compile_definitions(FO_NO_MANUAL_STACK_TRACE=$<CONFIG:Release_Ext>)
 add_compile_definitions(FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext>)
 add_compile_definitions(FO_NO_TEXTURE_LOOKUP=$<CONFIG:Release_Ext>)
 add_compile_definitions(FO_DIRECT_SPRITES_DRAW=$<CONFIG:Release_Ext>)
-add_compile_definitions(FO_DIRECT_MAP_DRAW=$<CONFIG:Release_Ext>)
 
 # Compiler options
 set(CMAKE_CXX_STANDARD 17)

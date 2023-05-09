@@ -40,6 +40,28 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_DrawMap(MapView* self)
+{
+    if (!self->GetEngine()->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    self->DrawMap();
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_DrawMapTexts(MapView* self)
+{
+    if (!self->GetEngine()->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    self->DrawMapTexts();
+}
+
+///# ...
 ///# param text ...
 ///# param hx ...
 ///# param hy ...
@@ -911,4 +933,15 @@
     }
 
     return self->RunParticlePattern(particleName, particleCount);
+}
+
+///@ ExportMethod
+[[maybe_unused]] void Client_Map_SetCursorPos(MapView* self, CritterView* cr, int mouseX, int mouseY, bool showSteps, bool forceRefresh)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->SetCursorPos(hex_cr, mouseX, mouseY, showSteps, forceRefresh);
 }

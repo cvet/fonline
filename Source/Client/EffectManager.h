@@ -75,7 +75,7 @@ struct EffectCollection
     RenderEffect* FlushPrimitive {};
     RenderEffect* FlushPrimitiveDefault {};
     RenderEffect* FlushMap {};
-    RenderEffect* FlushMapDefault {};
+    RenderEffect* FlushMapDefault {}; // Null by default
     RenderEffect* FlushLight {};
     RenderEffect* FlushLightDefault {};
     RenderEffect* FlushFog {};

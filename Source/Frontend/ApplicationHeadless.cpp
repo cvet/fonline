@@ -178,6 +178,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
     UNUSED_VARIABLE(_imguiEffect);
     UNUSED_VARIABLE(_nonConstHelper);
     UNUSED_VARIABLE(MainWindow._windowHandle);
+    UNUSED_VARIABLE(MainWindow._grabbed);
 
     // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG

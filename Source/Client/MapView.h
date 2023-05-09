@@ -177,7 +177,9 @@ public:
     void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
     void Process();
+
     void DrawMap();
+    void DrawMapTexts();
 
     void AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time_duration show_time, bool fade, int ox, int oy);
     auto GetRectForText(uint16 hx, uint16 hy) -> IRect;
@@ -305,8 +307,6 @@ private:
     auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
-
-    void DrawMapTexts();
 
     void PrepareFogToDraw();
     void InitView(int screen_hx, int screen_hy);

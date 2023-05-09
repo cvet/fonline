@@ -465,15 +465,6 @@ void FOClient::MainLoop()
         // Quake effect
         ProcessScreenEffectQuake();
 
-        // Render map
-        if (GetMainScreen() == SCREEN_GAME && CurMap != nullptr) {
-            if (Settings.ShowMoveCursor) {
-                CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
-            }
-
-            CurMap->DrawMap();
-        }
-
         // Make dirty offscreen surfaces
         if (!PreDirtyOffscreenSurfaces.empty()) {
             DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());

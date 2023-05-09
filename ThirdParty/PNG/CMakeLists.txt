@@ -24,7 +24,7 @@ set(PNGLIB_VERSION ${PNGLIB_MAJOR}.${PNGLIB_MINOR}.${PNGLIB_RELEASE})
 find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIR})
 
-if(NOT WIN32)
+if(NOT WIN32 AND NOT APPLE) #!
   find_library(M_LIBRARY
     NAMES m
     PATHS /usr/lib /usr/local/lib
