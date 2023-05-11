@@ -231,6 +231,8 @@ void CritterHexView::NextAnim(bool erase_front)
 
     const auto& cr_anim = _animSequence.front();
 
+    _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ContextItem);
+
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetModelLayersData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
@@ -238,8 +240,6 @@ void CritterHexView::NextAnim(bool erase_front)
     else
 #endif
     {
-        _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ContextItem);
-
         SetAnimSpr(cr_anim.Anim, cr_anim.BeginFrm);
     }
 }
