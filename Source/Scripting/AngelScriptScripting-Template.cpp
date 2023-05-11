@@ -3070,6 +3070,22 @@ static void HashedString_CreateFromString(asIScriptGeneric* gen)
 #endif
 }
 
+static void HashedString_IsValidHash(asIScriptGeneric* gen)
+{
+    STACK_TRACE_ENTRY();
+
+#if !COMPILER_MODE
+    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    bool failed = false;
+    auto hstr = engine->ResolveHash(hash, &failed);
+    UNUSED_VARIABLE(hstr);
+    new (gen->GetAddressOfReturnLocation()) bool(!failed);
+#else
+    UNUSED_VARIABLE(gen);
+#endif
+}
+
 static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 {
     STACK_TRACE_ENTRY();
@@ -3550,7 +3566,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", SCRIPT_GENERIC(HashedString_ConstructFromString), SCRIPT_GENERIC_CONV, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromString(const string &in)", SCRIPT_GENERIC(HashedString_CreateFromString), SCRIPT_GENERIC_CONV, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("bool hstring_isValidHash(int h)", SCRIPT_GENERIC(HashedString_IsValidHash), SCRIPT_GENERIC_CONV, game_engine));
     AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", SCRIPT_GENERIC(HashedString_CreateFromHash), SCRIPT_GENERIC_CONV, game_engine));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
