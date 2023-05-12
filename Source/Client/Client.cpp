@@ -836,10 +836,6 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(entity);
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
-        return;
-    }
-
     auto* client_entity = dynamic_cast<ClientEntity*>(entity);
     if (client_entity == nullptr) {
         return;
@@ -2917,6 +2913,10 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 
     RUNTIME_ASSERT(entity == this);
 
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
+
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Game, prop, this);
     }
@@ -2931,6 +2931,10 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 
     RUNTIME_ASSERT(entity == _curPlayer);
 
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
+
     if (!_curPlayer->GetId()) {
         throw ScriptException("Can't modify player public/protected property on unlogined player");
     }
@@ -2941,6 +2945,10 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
+
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
 
     auto* cr = dynamic_cast<CritterView*>(entity);
     if (cr->IsChosen()) {
@@ -2958,6 +2966,10 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
     STACK_TRACE_ENTRY();
 
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
+
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetIsStatic() && item->GetId()) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
@@ -2968,7 +2980,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
                 Net_SendProperty(NetProperty::CritterItem, prop, item);
             }
             else {
-                throw GenericException("Unable to send item (a critter) modifiable property", prop->GetName());
+                throw GenericException("Unable to send item (critter) modifiable property", prop->GetName());
             }
         }
         else if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2976,11 +2988,11 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
                 Net_SendProperty(NetProperty::MapItem, prop, item);
             }
             else {
-                throw GenericException("Unable to send item (a map) modifiable property", prop->GetName());
+                throw GenericException("Unable to send item (map) modifiable property", prop->GetName());
             }
         }
         else {
-            throw GenericException("Unable to send item (a container) modifiable property", prop->GetName());
+            throw GenericException("Unable to send item (container) modifiable property", prop->GetName());
         }
     }
 }
@@ -2990,6 +3002,10 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(entity == CurMap);
+
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Map, prop, CurMap);
@@ -3004,6 +3020,10 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(entity == _curLocation);
+
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Location, prop, _curLocation);
