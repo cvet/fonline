@@ -1754,24 +1754,28 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     vbuf[pos].PosY = static_cast<float>(y + si->Height);
     vbuf[pos].TexU = si->SprRect.Left;
     vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = color;
 
     vbuf[pos].PosX = static_cast<float>(x);
     vbuf[pos].PosY = static_cast<float>(y);
     vbuf[pos].TexU = si->SprRect.Left;
     vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = color;
 
     vbuf[pos].PosX = static_cast<float>(x + si->Width);
     vbuf[pos].PosY = static_cast<float>(y);
     vbuf[pos].TexU = si->SprRect.Right;
     vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = color;
 
     vbuf[pos].PosX = static_cast<float>(x + si->Width);
     vbuf[pos].PosY = static_cast<float>(y + si->Height);
     vbuf[pos].TexU = si->SprRect.Right;
     vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos].Color = color;
 
     if (++_curDrawQuad == _maxDrawQuad) {
@@ -1851,24 +1855,28 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     vbuf[pos].PosY = yf + hf;
     vbuf[pos].TexU = si->SprRect.Left;
     vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = color;
 
     vbuf[pos].PosX = xf;
     vbuf[pos].PosY = yf;
     vbuf[pos].TexU = si->SprRect.Left;
     vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = color;
 
     vbuf[pos].PosX = xf + wf;
     vbuf[pos].PosY = yf;
     vbuf[pos].TexU = si->SprRect.Right;
     vbuf[pos].TexV = si->SprRect.Top;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = color;
 
     vbuf[pos].PosX = xf + wf;
     vbuf[pos].PosY = yf + hf;
     vbuf[pos].TexU = si->SprRect.Right;
     vbuf[pos].TexV = si->SprRect.Bottom;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos].Color = color;
 
     if (++_curDrawQuad == _maxDrawQuad) {
@@ -1946,24 +1954,28 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
             vbuf[pos].PosY = yy + local_height;
             vbuf[pos].TexU = si->SprRect.Left;
             vbuf[pos].TexV = local_bottom;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos++].Color = color;
 
             vbuf[pos].PosX = xx;
             vbuf[pos].PosY = yy;
             vbuf[pos].TexU = si->SprRect.Left;
             vbuf[pos].TexV = si->SprRect.Top;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos++].Color = color;
 
             vbuf[pos].PosX = xx + local_width;
             vbuf[pos].PosY = yy;
             vbuf[pos].TexU = local_right;
             vbuf[pos].TexV = si->SprRect.Top;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos++].Color = color;
 
             vbuf[pos].PosX = xx + local_width;
             vbuf[pos].PosY = yy + local_height;
             vbuf[pos].TexU = local_right;
             vbuf[pos].TexV = local_bottom;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos].Color = color;
 
             if (++_curDrawQuad == _maxDrawQuad) {
@@ -2314,13 +2326,9 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         // Set default texture coordinates for egg texture
         if (!egg_added) {
             vbuf[pos - 1].EggTexU = 0.0f;
-            vbuf[pos - 1].EggTexV = 0.0f;
             vbuf[pos - 2].EggTexU = 0.0f;
-            vbuf[pos - 2].EggTexV = 0.0f;
             vbuf[pos - 3].EggTexU = 0.0f;
-            vbuf[pos - 3].EggTexV = 0.0f;
             vbuf[pos - 4].EggTexU = 0.0f;
-            vbuf[pos - 4].EggTexV = 0.0f;
         }
 
         // Draw
@@ -3797,24 +3805,28 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             vbuf[pos].PosY = static_cast<float>(y + h);
             vbuf[pos].TexU = x1;
             vbuf[pos].TexV = y2;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos++].Color = color;
 
             vbuf[pos].PosX = static_cast<float>(x);
             vbuf[pos].PosY = static_cast<float>(y);
             vbuf[pos].TexU = x1;
             vbuf[pos].TexV = y1;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos++].Color = color;
 
             vbuf[pos].PosX = static_cast<float>(x + w);
             vbuf[pos].PosY = static_cast<float>(y);
             vbuf[pos].TexU = x2;
             vbuf[pos].TexV = y1;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos++].Color = color;
 
             vbuf[pos].PosX = static_cast<float>(x + w);
             vbuf[pos].PosY = static_cast<float>(y + h);
             vbuf[pos].TexU = x2;
             vbuf[pos].TexV = y2;
+            vbuf[pos].EggTexU = 0.0f;
             vbuf[pos].Color = color;
 
             if (++_curDrawQuad == _maxDrawQuad) {
