@@ -3056,20 +3056,6 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 #endif
 }
 
-static void HashedString_CreateFromString(asIScriptGeneric* gen)
-{
-    STACK_TRACE_ENTRY();
-
-#if !COMPILER_MODE
-    const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
-    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
-    auto hstr = engine->ToHashedString(*str);
-    new (gen->GetAddressOfReturnLocation()) hstring(hstr);
-#else
-    UNUSED_VARIABLE(gen);
-#endif
-}
-
 static void HashedString_IsValidHash(asIScriptGeneric* gen)
 {
     STACK_TRACE_ENTRY();

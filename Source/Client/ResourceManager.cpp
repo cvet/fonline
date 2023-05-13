@@ -624,6 +624,7 @@ auto ResourceManager::GetRandomSplash() -> AnyFrames*
 
     const auto rnd = GenericUtils::Random(0, static_cast<int>(_splashNames.size()) - 1);
 
+    _sprMngr.DestroyAtlases(AtlasType::Splash);
     _sprMngr.PushAtlasType(AtlasType::Splash, true);
     _splash = _sprMngr.ReloadAnimation(_splash, _splashNames[rnd]);
     _sprMngr.PopAtlasType();

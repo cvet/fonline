@@ -45,7 +45,27 @@ namespace SPK::FO
         RUNTIME_ASSERT(vertices % 4 == 0);
 
         _renderBuf.reset(App->Render.CreateDrawBuffer(false));
-        _renderBuf->Vertices2D.resize(vertices);
+
+        auto& vbuf = _renderBuf->Vertices;
+        auto& vpos = _renderBuf->VertCount;
+        auto& ibuf = _renderBuf->Indices;
+        auto& ipos = _renderBuf->IndCount;
+
+        vpos = vertices;
+        ipos = vertices / 4 * 6;
+
+        vbuf.resize(vpos);
+        ibuf.resize(ipos);
+
+        RUNTIME_ASSERT(ibuf.size() <= 0xFFFF);
+        for (size_t i = 0; i < ibuf.size() / 6; i++) {
+            ibuf[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
+            ibuf[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
+            ibuf[i * 6 + 2] = static_cast<uint16>(i * 4 + 2);
+            ibuf[i * 6 + 3] = static_cast<uint16>(i * 4 + 2);
+            ibuf[i * 6 + 4] = static_cast<uint16>(i * 4 + 3);
+            ibuf[i * 6 + 5] = static_cast<uint16>(i * 4 + 0);
+        }
     }
 
     void SparkRenderBuffer::PositionAtStart()
@@ -60,7 +80,7 @@ namespace SPK::FO
     {
         STACK_TRACE_ENTRY();
 
-        auto& v = _renderBuf->Vertices2D[_curVertexIndex++];
+        auto& v = _renderBuf->Vertices[_curVertexIndex++];
 
         v.PosX = pos.x;
         v.PosY = pos.y;
@@ -72,7 +92,7 @@ namespace SPK::FO
     {
         STACK_TRACE_ENTRY();
 
-        auto& v = _renderBuf->Vertices2D[_curTexCoordIndex++];
+        auto& v = _renderBuf->Vertices[_curTexCoordIndex++];
 
         v.TexU = tu;
         v.TexV = tv;

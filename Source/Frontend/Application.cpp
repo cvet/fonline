@@ -1000,9 +1000,10 @@ void Application::EndFrame()
         for (int cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
             const auto* cmd_list = draw_data->CmdLists[cmd];
 
-            _imguiDrawBuf->Vertices2D.resize(cmd_list->VtxBuffer.Size);
+            _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
+            _imguiDrawBuf->VertCount = _imguiDrawBuf->Vertices.size();
             for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-                auto& v = _imguiDrawBuf->Vertices2D[i];
+                auto& v = _imguiDrawBuf->Vertices[i];
                 const auto& iv = cmd_list->VtxBuffer[i];
                 v.PosX = iv.pos.x;
                 v.PosY = iv.pos.y;
@@ -1012,6 +1013,7 @@ void Application::EndFrame()
             }
 
             _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
+            _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
             for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
                 _imguiDrawBuf->Indices[i] = cmd_list->IdxBuffer[i];
             }

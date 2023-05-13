@@ -1322,7 +1322,9 @@ void ModelInstance::GenerateCombinedMeshes()
         combined_mesh->MeshVertices.clear();
         combined_mesh->MeshAnimLayers.clear();
         combined_mesh->MeshBuf->Vertices3D.clear();
+        combined_mesh->MeshBuf->VertCount = 0;
         combined_mesh->MeshBuf->Indices.clear();
+        combined_mesh->MeshBuf->IndCount = 0;
     }
     _combinedMeshesSize = 0;
 
@@ -1473,6 +1475,9 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
     // Increment mesh count
     combined_mesh->EncapsulatedMeshCount++;
+
+    combined_mesh->MeshBuf->VertCount = combined_mesh->MeshBuf->Vertices3D.size();
+    combined_mesh->MeshBuf->IndCount = combined_mesh->MeshBuf->Indices.size();
 }
 
 void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
@@ -1561,6 +1566,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
+
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<uint16> result_indices;
@@ -1788,6 +1794,9 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
             }
         }
     }
+
+    combined_mesh->MeshBuf->VertCount = combined_mesh->MeshBuf->Vertices3D.size();
+    combined_mesh->MeshBuf->IndCount = combined_mesh->MeshBuf->Indices.size();
 }
 
 auto ModelInstance::NeedDraw() const -> bool

@@ -166,6 +166,17 @@ RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
     STACK_TRACE_ENTRY();
 }
 
+void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
+{
+    if (VertCount + vcount >= Vertices.size()) {
+        Vertices.resize(VertCount + std::max(vcount, static_cast<size_t>(1024)));
+        RUNTIME_ASSERT(Vertices.size() <= 0xFFFF);
+    }
+    if (IndCount + icount >= Indices.size()) {
+        Indices.resize(IndCount + std::max(icount, static_cast<size_t>(1024)));
+    }
+}
+
 RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
     Name {name},
     Usage {usage}

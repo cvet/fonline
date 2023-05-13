@@ -1052,17 +1052,17 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        RUNTIME_ASSERT(Vertices2D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices3D.size() : custom_vertices_size;
+        RUNTIME_ASSERT(Vertices.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         vert_size = sizeof(Vertex3D);
     }
     else {
         RUNTIME_ASSERT(Vertices3D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         vert_size = sizeof(Vertex2D);
     }
 #else
-    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
     vert_size = sizeof(Vertex2D);
 #endif
 
@@ -1094,98 +1094,43 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
         std::memcpy(vertices_resource.pData, Vertices3D.data(), upload_vertices * vert_size);
     }
     else {
-        std::memcpy(vertices_resource.pData, Vertices2D.data(), upload_vertices * vert_size);
+        std::memcpy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
     }
 #else
-    std::memcpy(vertices_resource.pData, Vertices2D.data(), upload_vertices * vert_size);
+    std::memcpy(vertices_resource.pData, Vertices.data(), upload_vertices * vert_size);
 #endif
 
     D3DDeviceContext->Unmap(VertexBuf, 0);
 
-    // Auto generate indices
-    bool need_upload_indices = false;
-    if (!IsStatic) {
-        switch (usage) {
-#if FO_ENABLE_3D
-        case EffectUsage::Model:
-#endif
-        case EffectUsage::ImGui: {
-            // Nothing, indices generated manually
-            need_upload_indices = true;
-        } break;
-        case EffectUsage::QuadSprite: {
-            // Sprite quad
-            RUNTIME_ASSERT(upload_vertices % 4 == 0);
-            auto& indices = Indices;
-            const auto need_size = upload_vertices / 4 * 6;
-            if (indices.size() < need_size) {
-                const auto prev_size = indices.size();
-                indices.resize(need_size);
-                for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
-                    indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
-                    indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
-                    indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 3);
-                    indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 1);
-                    indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 2);
-                    indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 3);
-                }
-
-                need_upload_indices = true;
-            }
-        } break;
-        case EffectUsage::Primitive: {
-            // One to one
-            auto& indices = Indices;
-            if (indices.size() < upload_vertices) {
-                const auto prev_size = indices.size();
-                indices.resize(upload_vertices);
-                for (size_t i = prev_size; i < indices.size(); i++) {
-                    indices[i] = static_cast<uint16>(i);
-                }
-
-                need_upload_indices = true;
-            }
-        } break;
-        }
-    }
-    else {
-        need_upload_indices = true;
-    }
-
     // Fill index buffer
-    if (need_upload_indices) {
-        const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? Indices.size() : custom_indices_size;
+    const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
 
-        if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
-            if (IndexBuf != nullptr) {
-                IndexBuf->Release();
-                IndexBuf = nullptr;
-            }
-
-            IndexBufSize = upload_indices + 1024;
-
-            D3D11_BUFFER_DESC ibuf_desc = {};
-            ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
-            ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(uint16));
-            ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-            ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            ibuf_desc.MiscFlags = 0;
-
-            const auto d3d_create_index_buffer = D3DDevice->CreateBuffer(&ibuf_desc, nullptr, &IndexBuf);
-            RUNTIME_ASSERT(SUCCEEDED(d3d_create_index_buffer));
+    if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
+        if (IndexBuf != nullptr) {
+            IndexBuf->Release();
+            IndexBuf = nullptr;
         }
 
-        D3D11_MAPPED_SUBRESOURCE indices_resource;
-        const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
-        RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
+        IndexBufSize = upload_indices + 1024;
 
-        std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(uint16));
+        D3D11_BUFFER_DESC ibuf_desc = {};
+        ibuf_desc.Usage = D3D11_USAGE_DYNAMIC;
+        ibuf_desc.ByteWidth = static_cast<UINT>(IndexBufSize * sizeof(uint16));
+        ibuf_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        ibuf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        ibuf_desc.MiscFlags = 0;
 
-        D3DDeviceContext->Unmap(IndexBuf, 0);
+        const auto d3d_create_index_buffer = D3DDevice->CreateBuffer(&ibuf_desc, nullptr, &IndexBuf);
+        RUNTIME_ASSERT(SUCCEEDED(d3d_create_index_buffer));
     }
-    else {
-        RUNTIME_ASSERT(IndexBuf);
-    }
+
+    D3D11_MAPPED_SUBRESOURCE indices_resource;
+    const auto d3d_map_index_buffer = D3DDeviceContext->Map(IndexBuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
+    RUNTIME_ASSERT(SUCCEEDED(d3d_map_index_buffer));
+
+    std::memcpy(indices_resource.pData, Indices.data(), upload_indices * sizeof(uint16));
+
+    D3DDeviceContext->Unmap(IndexBuf, 0);
 }
 
 Direct3D_Effect::~Direct3D_Effect()
@@ -1317,7 +1262,7 @@ void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, siz
 #undef CBUF_UPLOAD_BUFFER
 
     const auto* egg_tex = static_cast<const Direct3D_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
-    const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->Indices.size() : indices_to_draw);
+    const auto draw_count = static_cast<UINT>(indices_to_draw == static_cast<size_t>(-1) ? d3d_dbuf->IndCount : indices_to_draw);
 
     for (size_t pass = 0; pass < _passCount; pass++) {
 #if FO_ENABLE_3D

@@ -102,9 +102,9 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _engine->SprMngr.PopAtlasType();
 
     if (_picHexMask != nullptr) {
-        const auto* si = _engine->SprMngr.GetSpriteInfo(_picHexMask->Ind[0]);
-        const auto mask_x = iround(static_cast<float>(si->Atlas->MainTex->Width) * si->SprRect.Left);
-        const auto mask_y = iround(static_cast<float>(si->Atlas->MainTex->Height) * si->SprRect.Top);
+        const auto* si = dynamic_cast<const AtlasSprite*>(_engine->SprMngr.GetSpriteInfo(_picHexMask->Ind[0]));
+        const auto mask_x = iround(static_cast<float>(si->Atlas->MainTex->Width) * si->AtlasRect.Left);
+        const auto mask_y = iround(static_cast<float>(si->Atlas->MainTex->Height) * si->AtlasRect.Top);
         _picHexMaskData = si->Atlas->MainTex->GetTextureRegion(mask_x, mask_y, si->Width, si->Height);
     }
 

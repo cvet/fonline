@@ -143,24 +143,44 @@ struct TextureAtlas
     int LineW {};
 };
 
-struct SpriteInfo
+class SpriteInfo
 {
-    TextureAtlas* Atlas {};
-    FRect SprRect {};
+public:
+    virtual ~SpriteInfo() = default;
+    virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t = 0;
+
     int Width {};
     int Height {};
     int OffsX {};
     int OffsY {};
-    vector<bool> HitTestData {};
+    TextureAtlas* Atlas {};
     RenderEffect* DrawEffect {};
+};
+
+class AtlasSprite : public SpriteInfo
+{
+public:
+    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
+
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
-    bool DynamicDraw {};
-    ParticleSystem* Particle {};
-#if FO_ENABLE_3D
-    ModelInstance* Model {};
-#endif
+    FRect AtlasRect {};
+    vector<bool> HitTestData {};
 };
+
+class ParticleSprite : public AtlasSprite
+{
+public:
+    ParticleSystem* Particle {};
+};
+
+#if FO_ENABLE_3D
+class ModelSprite : public AtlasSprite
+{
+public:
+    ModelInstance* Model {};
+};
+#endif
 
 struct AnyFrames
 {
@@ -195,7 +215,7 @@ struct DipData
 {
     RenderTexture* MainTex {};
     RenderEffect* SourceEffect {};
-    size_t SpritesCount {};
+    size_t IndCount {};
 };
 
 class SpriteManager final
@@ -215,7 +235,6 @@ public:
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
-    [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
     [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(const MapSprite* spr) const -> IRect;
@@ -292,9 +311,9 @@ private:
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
 
     auto CreateAtlas(int request_width, int request_height) -> TextureAtlas*;
-    auto FindAtlasPlace(const SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
-    auto RequestFillAtlas(SpriteInfo* si, int width, int height, const uint* data) -> uint;
-    void FillAtlas(SpriteInfo* si, const uint* data);
+    auto FindAtlasPlace(const AtlasSprite* si, int& x, int& y) -> TextureAtlas*;
+    auto RequestFillAtlas(AtlasSprite* si, int width, int height, const uint* data) -> uint;
+    void FillAtlas(AtlasSprite* si, const uint* data);
 
     void RefreshScissor();
     void EnableScissor();
@@ -307,7 +326,7 @@ private:
     auto Load3dAnimation(string_view fname) -> AnyFrames*;
 #endif
 
-    auto LoadTexture(string_view path, unordered_map<string, const SpriteInfo*>& collection, AtlasType atlas) -> pair<RenderTexture*, FRect>;
+    auto LoadTexture(string_view path, unordered_map<string, const AtlasSprite*>& collection, AtlasType atlas) -> pair<RenderTexture*, FRect>;
 
     void AddParticleToAtlas(ParticleSystem* particle);
 #if FO_ENABLE_3D
@@ -335,7 +354,7 @@ private:
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
 
     bool _accumulatorActive {};
-    vector<pair<SpriteInfo*, uint*>> _accumulatorSprInfo {};
+    vector<pair<AtlasSprite*, uint*>> _accumulatorSprInfo {};
 
     vector<SpriteInfo*> _sprData {};
 
@@ -346,9 +365,7 @@ private:
     RenderDrawBuffer* _primitiveDrawBuf {};
     RenderDrawBuffer* _flushDrawBuf {};
     RenderDrawBuffer* _contourDrawBuf {};
-
-    size_t _maxDrawQuad {};
-    size_t _curDrawQuad {};
+    size_t _flushVertCount {};
 
     vector<int> _scissorStack {};
     IRect _scissorRect {};
@@ -361,7 +378,7 @@ private:
     uint16 _eggHy {};
     int _eggX {};
     int _eggY {};
-    const SpriteInfo* _sprEgg {};
+    const AtlasSprite* _sprEgg {};
     vector<uint> _eggData {};
 
     vector<uint> _borderBuf {};
@@ -372,13 +389,13 @@ private:
     int _windowSizeDiffY {};
 
     unique_ptr<ParticleManager> _particleMngr {};
-    unordered_map<string, const SpriteInfo*> _loadedParticleTextures {};
+    unordered_map<string, const AtlasSprite*> _loadedParticleTextures {};
     vector<ParticleSystem*> _autoDrawParticles {};
     unordered_map<const ParticleSystem*, tuple<uint, AtlasType>> _particlesInfo {};
 
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};
-    unordered_map<string, const SpriteInfo*> _loadedMeshTextures {};
+    unordered_map<string, const AtlasSprite*> _loadedMeshTextures {};
     vector<ModelInstance*> _autoDrawModels {};
     unordered_map<const ModelInstance*, tuple<uint, AtlasType>> _modelsInfo {};
 #endif

@@ -186,10 +186,14 @@ public:
 
     virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1), size_t custom_indices_size = static_cast<size_t>(-1)) = 0;
 
+    void CheckAllocBuf(size_t vcount, size_t icount);
+
     const bool IsStatic;
 
-    vector<Vertex2D> Vertices2D {};
+    vector<Vertex2D> Vertices {};
+    size_t VertCount {};
     vector<uint16> Indices {};
+    size_t IndCount {};
     bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
     bool PrimZoomed {};

@@ -915,80 +915,28 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, s
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        RUNTIME_ASSERT(Vertices2D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices3D.size() : custom_vertices_size;
+        RUNTIME_ASSERT(Vertices.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
     }
     else {
         RUNTIME_ASSERT(Vertices3D.empty());
-        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
-        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
     }
 #else
-    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
-    GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
+    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
+    GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices.data(), buf_type));
 #endif
 
     GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
-    // Auto generate indices
-    bool need_upload_indices = false;
-    if (!IsStatic) {
-        switch (usage) {
-#if FO_ENABLE_3D
-        case EffectUsage::Model:
-#endif
-        case EffectUsage::ImGui: {
-            // Nothing, indices generated manually
-            need_upload_indices = true;
-        } break;
-        case EffectUsage::QuadSprite: {
-            // Sprite quad
-            RUNTIME_ASSERT(upload_vertices % 4 == 0);
-            auto& indices = Indices;
-            const auto need_size = upload_vertices / 4 * 6;
-            if (indices.size() < need_size) {
-                const auto prev_size = indices.size();
-                indices.resize(need_size);
-                for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
-                    indices[i * 6 + 0] = static_cast<uint16>(i * 4 + 0);
-                    indices[i * 6 + 1] = static_cast<uint16>(i * 4 + 1);
-                    indices[i * 6 + 2] = static_cast<uint16>(i * 4 + 3);
-                    indices[i * 6 + 3] = static_cast<uint16>(i * 4 + 1);
-                    indices[i * 6 + 4] = static_cast<uint16>(i * 4 + 2);
-                    indices[i * 6 + 5] = static_cast<uint16>(i * 4 + 3);
-                }
-
-                need_upload_indices = true;
-            }
-        } break;
-        case EffectUsage::Primitive: {
-            // One to one
-            auto& indices = Indices;
-            if (indices.size() < upload_vertices) {
-                const auto prev_size = indices.size();
-                indices.resize(upload_vertices);
-                for (size_t i = prev_size; i < indices.size(); i++) {
-                    indices[i] = static_cast<uint16>(i);
-                }
-
-                need_upload_indices = true;
-            }
-        } break;
-        }
-    }
-    else {
-        need_upload_indices = true;
-    }
-
     // Fill index buffer
-    if (need_upload_indices) {
-        const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? Indices.size() : custom_indices_size;
+    const auto upload_indices = custom_indices_size == static_cast<size_t>(-1) ? IndCount : custom_indices_size;
 
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
-        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(uint16), Indices.data(), buf_type));
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-    }
+    GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
+    GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, upload_indices * sizeof(uint16), Indices.data(), buf_type));
+    GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 
     // Vertex array
     if (VertexArrObj == 0 && GL_HAS(vertex_array_object)) {
@@ -1182,7 +1130,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
 
     const auto* egg_tex = static_cast<const OpenGL_Texture*>(EggTex != nullptr ? EggTex : DummyTexture);
-    const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
+    const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->IndCount : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(uint16));
 
     for (size_t pass = 0; pass < _passCount; pass++) {
