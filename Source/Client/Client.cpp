@@ -134,14 +134,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     // Recreate static atlas
     SprMngr.AccumulateAtlasData();
-    SprMngr.PushAtlasType(AtlasType::Static);
 
     // Modules initialization
     ScriptSys->InitModules();
     OnStart.Fire();
 
     // Flush atlas data
-    SprMngr.PopAtlasType();
     SprMngr.FlushAccumulatedAtlasData();
 
     // Finish fonts
@@ -2780,26 +2778,6 @@ void FOClient::AnimFree(uint anim_id)
     }
 }
 
-auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
-        return 0;
-    }
-    return _ifaceAnimations[anim_id]->Frames->Ind[_ifaceAnimations[anim_id]->CurSpr];
-}
-
-auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
-        return 0;
-    }
-    return _ifaceAnimations[anim_id]->CurSpr;
-}
-
 auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 {
     STACK_TRACE_ENTRY();
@@ -3495,7 +3473,7 @@ void FOClient::WaitDraw()
     STACK_TRACE_ENTRY();
 
     if (_waitPic != nullptr) {
-        SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameplayTime()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
+        SprMngr.DrawSpriteSize(_waitPic->GetCurSpr(GameTime.GameplayTime()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
         SprMngr.Flush();
     }
 }

@@ -68,7 +68,7 @@ public:
     void RefreshOffs();
 
 private:
-    void SetupSprite(MapSprite* spr) override;
+    void SetupSprite(MapSprite* mspr) override;
     void SetCurSpr(uint num_spr);
 
     AnyFrames* _anim {};

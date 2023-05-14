@@ -77,7 +77,7 @@ public:
 
     // Todo: incapsulate hex view fileds
     bool Visible {true};
-    uint SprId {};
+    Sprite* Spr {};
     int ScrX {};
     int ScrY {};
     uint8 Alpha {0xFF};
@@ -86,7 +86,7 @@ public:
 protected:
     MapView* _map;
 
-    virtual void SetupSprite(MapSprite* spr);
+    virtual void SetupSprite(MapSprite* mspr);
     void ProcessFading();
 
 private:

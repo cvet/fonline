@@ -65,7 +65,7 @@ public:
     [[nodiscard]] auto IsNameVisible() const -> bool;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
 #endif
 
     void Init();
@@ -131,7 +131,7 @@ private:
 #endif
     [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
-    void SetupSprite(MapSprite* spr) override;
+    void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
     void SetAnimSpr(const AnyFrames* anim, uint frm_index);
@@ -160,6 +160,7 @@ private:
     time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D
-    unique_del_ptr<ModelInstance> _model {};
+    unique_del_ptr<ModelSprite> _modelSpr {};
+    ModelInstance* _model {};
 #endif
 };

@@ -36,7 +36,6 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-constexpr int SPRITES_BUFFER_SIZE = 10000;
 constexpr int ATLAS_SPRITES_PADDING = 1;
 
 static auto ApplyColorBrightness(uint color, int brightness) -> uint
@@ -144,19 +143,19 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     return 6;
 }
 
-auto AnyFrames::GetSprId(uint num_frm) const -> uint
+auto AnyFrames::GetSpr(uint num_frm) const -> Sprite*
 {
     STACK_TRACE_ENTRY();
 
-    return Ind[num_frm % CntFrm];
+    return Spr[num_frm % CntFrm];
 }
 
-auto AnyFrames::GetCurSprId(time_point time) const -> uint
+auto AnyFrames::GetCurSpr(time_point time) const -> Sprite*
 {
     STACK_TRACE_ENTRY();
 
     const auto ticks = time_duration_to_ms<size_t>(time.time_since_epoch());
-    return CntFrm > 1 ? Ind[ticks % Ticks * 100 / Ticks * CntFrm / 100] : Ind[0];
+    return CntFrm > 1 ? Spr[ticks % Ticks * 100 / Ticks * CntFrm / 100] : Spr[0];
 }
 
 auto AnyFrames::GetCurSprIndex(time_point time) const -> uint
@@ -203,7 +202,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _contourDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _contourDrawBuf->IndCount = 6;
 
-    _sprData.resize(SPRITES_BUFFER_SIZE);
     _borderBuf.resize(App->Render.MAX_ATLAS_SIZE);
 
 #if !FO_DIRECT_SPRITES_DRAW
@@ -226,10 +224,6 @@ SpriteManager::~SpriteManager()
     _window->Destroy();
 
     delete _dummyAnim;
-
-    for (const auto* it : _sprData) {
-        delete it;
-    }
 }
 
 auto SpriteManager::GetWindowSize() const -> tuple<int, int>
@@ -369,9 +363,9 @@ void SpriteManager::BeginScene(uint clear_color)
 
     // Draw particles to atlas
     if (!_autoDrawParticles.empty()) {
-        for (auto* particle : _autoDrawParticles) {
-            if (particle->NeedForceDraw() || particle->NeedDraw()) {
-                DrawParticleToAtlas(particle);
+        for (auto* particle_spr : _autoDrawParticles) {
+            if (particle_spr->Particle->NeedForceDraw() || particle_spr->Particle->NeedDraw()) {
+                DrawParticleToAtlas(particle_spr);
             }
         }
     }
@@ -379,9 +373,9 @@ void SpriteManager::BeginScene(uint clear_color)
 #if FO_ENABLE_3D
     // Draw models to atlas
     if (!_autoDrawModels.empty()) {
-        for (auto* model : _autoDrawModels) {
-            if (model->NeedForceDraw() || model->NeedDraw()) {
-                DrawModelToAtlas(model);
+        for (auto* model_spr : _autoDrawModels) {
+            if (model_spr->Model->NeedForceDraw() || model_spr->Model->NeedDraw()) {
+                DrawModelToAtlas(model_spr);
             }
         }
     }
@@ -713,27 +707,6 @@ void SpriteManager::DisableScissor()
     }
 }
 
-void SpriteManager::PushAtlasType(AtlasType atlas_type)
-{
-    STACK_TRACE_ENTRY();
-
-    PushAtlasType(atlas_type, false);
-}
-
-void SpriteManager::PushAtlasType(AtlasType atlas_type, bool one_image)
-{
-    STACK_TRACE_ENTRY();
-
-    _targetAtlasStack.emplace_back(atlas_type, one_image);
-}
-
-void SpriteManager::PopAtlasType()
-{
-    STACK_TRACE_ENTRY();
-
-    _targetAtlasStack.pop_back();
-}
-
 void SpriteManager::AccumulateAtlasData()
 {
     STACK_TRACE_ENTRY();
@@ -747,19 +720,19 @@ void SpriteManager::FlushAccumulatedAtlasData()
 
     _accumulatorActive = false;
 
-    if (_accumulatorSprInfo.empty()) {
+    if (_spritesAccumulator.empty()) {
         return;
     }
 
     // Sort by size
-    std::sort(_accumulatorSprInfo.begin(), _accumulatorSprInfo.end(), [](auto&& si1, auto&& si2) { return si1.first->Width * si1.first->Height > si2.first->Width * si2.first->Height; });
+    std::sort(_spritesAccumulator.begin(), _spritesAccumulator.end(), [](auto&& spr1, auto&& spr2) { return std::get<0>(spr1)->Width * std::get<0>(spr1)->Height > std::get<0>(spr2)->Width * std::get<0>(spr2)->Height; });
 
-    for (auto&& [si, data] : _accumulatorSprInfo) {
-        FillAtlas(si, data);
+    for (auto&& [atlas_spr, data, atlas_type] : _spritesAccumulator) {
+        FillAtlas(atlas_spr, data, atlas_type);
         delete[] data;
     }
 
-    _accumulatorSprInfo.clear();
+    _spritesAccumulator.clear();
 }
 
 auto SpriteManager::IsAccumulateAtlasActive() const -> bool
@@ -769,7 +742,7 @@ auto SpriteManager::IsAccumulateAtlasActive() const -> bool
     return _accumulatorActive;
 }
 
-auto SpriteManager::CreateAtlas(int request_width, int request_height) -> TextureAtlas*
+auto SpriteManager::CreateAtlas(int request_width, int request_height, AtlasType atlas_type) -> TextureAtlas*
 {
     STACK_TRACE_ENTRY();
 
@@ -780,25 +753,23 @@ auto SpriteManager::CreateAtlas(int request_width, int request_height) -> Textur
     auto result_height = request_height;
 
     auto atlas = std::make_unique<TextureAtlas>();
-    atlas->Type = std::get<0>(_targetAtlasStack.back());
+    atlas->Type = atlas_type;
 
-    if (!std::get<1>(_targetAtlasStack.back())) {
-        switch (atlas->Type) {
-        case AtlasType::Static:
-            result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
-            result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
-            break;
-        case AtlasType::Dynamic:
-            result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 2048);
-            result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
-            break;
-        case AtlasType::MeshTextures:
-            result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
-            result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
-            break;
-        case AtlasType::Splash:
-            throw UnreachablePlaceException(LINE_STR);
-        }
+    switch (atlas->Type) {
+    case AtlasType::Static:
+        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
+        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
+        break;
+    case AtlasType::Dynamic:
+        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 2048);
+        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
+        break;
+    case AtlasType::MeshTextures:
+        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
+        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
+        break;
+    case AtlasType::OneImage:
+        break;
     }
 
     atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, _settings.AtlasLinearFiltration);
@@ -813,62 +784,65 @@ auto SpriteManager::CreateAtlas(int request_width, int request_height) -> Textur
     return _allAtlases.back().get();
 }
 
-auto SpriteManager::FindAtlasPlace(const AtlasSprite* si, int& x, int& y) -> TextureAtlas*
+auto SpriteManager::FindAtlasPlace(const AtlasSprite* atlas_spr, AtlasType atlas_type, int& x, int& y) -> TextureAtlas*
 {
     STACK_TRACE_ENTRY();
 
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
-    const auto atlas_type = std::get<0>(_targetAtlasStack.back());
-    const auto w = si->Width + ATLAS_SPRITES_PADDING * 2;
-    const auto h = si->Height + ATLAS_SPRITES_PADDING * 2;
 
-    for (auto& a : _allAtlases) {
-        if (a->Type != atlas_type) {
-            continue;
-        }
+    const auto w = atlas_spr->Width + ATLAS_SPRITES_PADDING * 2;
+    const auto h = atlas_spr->Height + ATLAS_SPRITES_PADDING * 2;
 
-        if (a->RootNode) {
-            if (a->RootNode->FindPosition(w, h, x, y)) {
-                atlas = a.get();
+    if (atlas_type != AtlasType::OneImage) {
+        for (auto& a : _allAtlases) {
+            if (a->Type != atlas_type) {
+                continue;
             }
-        }
-        else {
-            if (w <= a->LineW && a->LineCurH + h <= a->LineMaxH) {
-                x = a->CurX - a->LineW;
-                y = a->CurY + a->LineCurH;
-                a->LineCurH += h;
-                atlas = a.get();
-            }
-            else if (a->Width - a->CurX >= w && a->Height - a->CurY >= h) {
-                x = a->CurX;
-                y = a->CurY;
-                a->CurX += w;
-                a->LineW = w;
-                a->LineCurH = h;
-                a->LineMaxH = std::max(a->LineMaxH, h);
-                atlas = a.get();
-            }
-            else if (a->Width >= w && a->Height - a->CurY - a->LineMaxH >= h) {
-                x = 0;
-                y = a->CurY + a->LineMaxH;
-                a->CurX = w;
-                a->CurY = y;
-                a->LineW = w;
-                a->LineCurH = h;
-                a->LineMaxH = h;
-                atlas = a.get();
-            }
-        }
 
-        if (atlas != nullptr) {
-            break;
+            if (a->RootNode) {
+                if (a->RootNode->FindPosition(w, h, x, y)) {
+                    atlas = a.get();
+                }
+            }
+            else {
+                if (w <= a->LineW && a->LineCurH + h <= a->LineMaxH) {
+                    x = a->CurX - a->LineW;
+                    y = a->CurY + a->LineCurH;
+                    a->LineCurH += h;
+                    atlas = a.get();
+                }
+                else if (a->Width - a->CurX >= w && a->Height - a->CurY >= h) {
+                    x = a->CurX;
+                    y = a->CurY;
+                    a->CurX += w;
+                    a->LineW = w;
+                    a->LineCurH = h;
+                    a->LineMaxH = std::max(a->LineMaxH, h);
+                    atlas = a.get();
+                }
+                else if (a->Width >= w && a->Height - a->CurY - a->LineMaxH >= h) {
+                    x = 0;
+                    y = a->CurY + a->LineMaxH;
+                    a->CurX = w;
+                    a->CurY = y;
+                    a->LineW = w;
+                    a->LineCurH = h;
+                    a->LineMaxH = h;
+                    atlas = a.get();
+                }
+            }
+
+            if (atlas != nullptr) {
+                break;
+            }
         }
     }
 
     // Create new
     if (atlas == nullptr) {
-        atlas = CreateAtlas(w, h);
+        atlas = CreateAtlas(w, h, atlas_type);
+
         if (atlas->RootNode) {
             atlas->RootNode->FindPosition(w, h, x, y);
         }
@@ -882,47 +856,10 @@ auto SpriteManager::FindAtlasPlace(const AtlasSprite* si, int& x, int& y) -> Tex
         }
     }
 
-    // Return parameters
     x += ATLAS_SPRITES_PADDING;
     y += ATLAS_SPRITES_PADDING;
+
     return atlas;
-}
-
-void SpriteManager::DestroyAtlases(AtlasType atlas_type)
-{
-    STACK_TRACE_ENTRY();
-
-    for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
-        auto&& atlas = *it;
-        if (atlas->Type == atlas_type) {
-            for (auto*& si : _sprData) {
-                if (si != nullptr && si->Atlas == atlas.get()) {
-                    if (const auto* ps = dynamic_cast<ParticleSprite*>(si); ps != nullptr) {
-                        if (ps->Particle != nullptr) {
-                            std::get<0>(_particlesInfo[ps->Particle]) = 0;
-                        }
-                    }
-#if FO_ENABLE_3D
-                    if (const auto* ms = dynamic_cast<ModelSprite*>(si); ms != nullptr) {
-                        if (ms->Model != nullptr) {
-                            std::get<0>(_modelsInfo[ms->Model]) = 0;
-                        }
-                    }
-#endif
-
-                    delete si;
-                    si = nullptr;
-                }
-            }
-
-            DeleteRenderTarget(atlas->RTarg);
-
-            it = _allAtlases.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
 }
 
 static void WriteSimpleTga(string_view fname, int width, int height, vector<uint> data)
@@ -980,15 +917,15 @@ void SpriteManager::DumpAtlases() const
         case AtlasType::Dynamic:
             atlas_type_name = "Dynamic";
             break;
-        case AtlasType::Splash:
-            atlas_type_name = "Splash";
+        case AtlasType::OneImage:
+            atlas_type_name = "OneImage";
             break;
         case AtlasType::MeshTextures:
             atlas_type_name = "MeshTextures";
             break;
         }
 
-        const string fname = _str("{}/{}{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
+        const string fname = _str("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
         auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
         WriteSimpleTga(fname, atlas->Width, atlas->Height, std::move(tex_data));
         cnt++;
@@ -1009,62 +946,40 @@ void SpriteManager::DumpAtlases() const
     }
 }
 
-auto SpriteManager::RequestFillAtlas(AtlasSprite* si, int width, int height, const uint* data) -> uint
+void SpriteManager::RequestFillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, int width, int height, const uint* data)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(width > 0);
     RUNTIME_ASSERT(height > 0);
 
-    // Get width, height
-    si->DataAtlasType = std::get<0>(_targetAtlasStack.back());
-    si->DataAtlasOneImage = std::get<1>(_targetAtlasStack.back());
-    si->Width = width;
-    si->Height = height;
+    atlas_spr->Width = width;
+    atlas_spr->Height = height;
 
-    // Find place on atlas
     if (_accumulatorActive) {
         auto* acc_data = new uint[static_cast<size_t>(width * height)];
         std::memcpy(acc_data, data, static_cast<size_t>(width * height) * sizeof(uint));
-        _accumulatorSprInfo.emplace_back(si, acc_data);
+        _spritesAccumulator.emplace_back(atlas_spr, acc_data, atlas_type);
     }
     else {
-        FillAtlas(si, data);
+        FillAtlas(atlas_spr, data, atlas_type);
     }
-
-    // Store sprite
-    size_t index = 1;
-    for (; index < _sprData.size(); index++) {
-        if (_sprData[index] == nullptr) {
-            break;
-        }
-    }
-
-    if (index < _sprData.size()) {
-        _sprData[index] = si;
-    }
-    else {
-        _sprData.push_back(si);
-    }
-    return static_cast<uint>(index);
 }
 
-void SpriteManager::FillAtlas(AtlasSprite* si, const uint* data)
+void SpriteManager::FillAtlas(AtlasSprite* atlas_spr, const uint* data, AtlasType atlas_type)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(si);
-    RUNTIME_ASSERT(si->Width > 0);
-    RUNTIME_ASSERT(si->Height > 0);
+    RUNTIME_ASSERT(atlas_spr);
+    RUNTIME_ASSERT(atlas_spr->Width > 0);
+    RUNTIME_ASSERT(atlas_spr->Height > 0);
 
-    const auto w = si->Width;
-    const auto h = si->Height;
+    const auto w = atlas_spr->Width;
+    const auto h = atlas_spr->Height;
 
-    PushAtlasType(si->DataAtlasType, si->DataAtlasOneImage);
     int x = 0;
     int y = 0;
-    auto* atlas = FindAtlasPlace(si, x, y);
-    PopAtlasType();
+    auto* atlas = FindAtlasPlace(atlas_spr, atlas_type, x, y);
 
     // Refresh texture
     if (data != nullptr) {
@@ -1095,9 +1010,9 @@ void SpriteManager::FillAtlas(AtlasSprite* si, const uint* data)
         tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w + 1, y + h + 1), _borderBuf.data());
 
         // Evaluate hit mask
-        si->HitTestData.resize(static_cast<size_t>(w * h));
+        atlas_spr->HitTestData.resize(static_cast<size_t>(w * h));
         for (size_t i = 0, j = static_cast<size_t>(w * h); i < j; i++) {
-            si->HitTestData[i] = (data[i] >> 24) > 0;
+            atlas_spr->HitTestData[i] = (data[i] >> 24) > 0;
         }
     }
 
@@ -1107,20 +1022,18 @@ void SpriteManager::FillAtlas(AtlasSprite* si, const uint* data)
     }
 
     // Set parameters
-    si->Atlas = atlas;
-    si->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
-    si->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
-    si->AtlasRect.Right = static_cast<float>(x + w) / static_cast<float>(atlas->Width);
-    si->AtlasRect.Bottom = static_cast<float>(y + h) / static_cast<float>(atlas->Height);
+    atlas_spr->Atlas = atlas;
+    atlas_spr->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
+    atlas_spr->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
+    atlas_spr->AtlasRect.Right = static_cast<float>(x + w) / static_cast<float>(atlas->Width);
+    atlas_spr->AtlasRect.Bottom = static_cast<float>(y + h) / static_cast<float>(atlas->Height);
 }
 
-auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*
+auto SpriteManager::LoadAnimation(string_view fname, AtlasType atlas_type, bool use_dummy_if_not_exists) -> AnyFrames*
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(!_targetAtlasStack.empty());
-
-    auto* dummy = use_dummy ? _dummyAnim : nullptr;
+    auto* dummy = use_dummy_if_not_exists ? _dummyAnim : nullptr;
 
     if (fname.empty()) {
         return dummy;
@@ -1135,19 +1048,19 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrame
     AnyFrames* result;
     if (ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj") {
 #if FO_ENABLE_3D
-        result = Load3dAnimation(fname);
+        result = Load3dAnimation(fname, atlas_type);
 #else
         throw NotEnabled3DException("Can't load animation, 3D submodule not enabled", fname);
 #endif
     }
     else {
-        result = Load2dAnimation(fname);
+        result = Load2dAnimation(fname, atlas_type);
     }
 
     return result != nullptr ? result : dummy;
 }
 
-auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
+auto SpriteManager::Load2dAnimation(string_view fname, AtlasType atlas_type) -> AnyFrames*
 {
     STACK_TRACE_ENTRY();
 
@@ -1173,20 +1086,21 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
         const auto oy = file.GetLEShort();
         for (uint16 i = 0; i < frames_count; i++) {
             if (file.GetUChar() == 0) {
-                auto* si = new AtlasSprite();
-                si->OffsX = ox;
-                si->OffsY = oy;
+                auto* spr = new AtlasSprite();
+                spr->OffsX = ox;
+                spr->OffsY = oy;
                 const auto w = file.GetLEUShort();
                 const auto h = file.GetLEUShort();
                 dir_anim->NextX[i] = file.GetLEShort();
                 dir_anim->NextY[i] = file.GetLEShort();
                 const auto* data = file.GetCurBuf();
-                dir_anim->Ind[i] = RequestFillAtlas(si, w, h, reinterpret_cast<const uint*>(data));
+                RequestFillAtlas(spr, atlas_type, w, h, reinterpret_cast<const uint*>(data));
                 file.GoForward(w * h * 4);
+                dir_anim->Spr[i] = spr;
             }
             else {
                 const auto index = file.GetLEUShort();
-                dir_anim->Ind[i] = dir_anim->Ind[index];
+                dir_anim->Spr[i] = dir_anim->Spr[index];
             }
         }
     }
@@ -1196,35 +1110,20 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
     return anim;
 }
 
-auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*
-{
-    STACK_TRACE_ENTRY();
-
-    // Release old images
-    if (anim != nullptr) {
-        DestroyAnyFrames(anim);
-    }
-
-    // Load fresh
-    return LoadAnimation(fname, false);
-}
-
-auto SpriteManager::LoadTexture(string_view path, unordered_map<string, const AtlasSprite*>& collection, AtlasType atlas) -> pair<RenderTexture*, FRect>
+auto SpriteManager::LoadTexture(string_view path, unordered_map<string, const AtlasSprite*>& collection, AtlasType atlas_type) -> pair<RenderTexture*, FRect>
 {
     STACK_TRACE_ENTRY();
 
     auto result = pair<RenderTexture*, FRect>();
 
     if (const auto it = collection.find(string(path)); it == collection.end()) {
-        PushAtlasType(atlas);
-        auto* anim = LoadAnimation(path, false);
-        PopAtlasType();
+        auto* anim = LoadAnimation(path, atlas_type, false);
 
         if (anim != nullptr) {
-            const auto* si = dynamic_cast<const AtlasSprite*>(GetSpriteInfo(anim->Ind[0]));
-            RUNTIME_ASSERT(si);
-            collection[string(path)] = si;
-            result = pair {si->Atlas->MainTex, FRect {si->AtlasRect[0], si->AtlasRect[1], si->AtlasRect[2] - si->AtlasRect[0], si->AtlasRect[3] - si->AtlasRect[1]}};
+            const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(anim->Spr[0]);
+            RUNTIME_ASSERT(atlas_spr);
+            collection[string(path)] = atlas_spr;
+            result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
             DestroyAnyFrames(anim);
         }
         else {
@@ -1233,8 +1132,8 @@ auto SpriteManager::LoadTexture(string_view path, unordered_map<string, const At
             collection[string(path)] = nullptr;
         }
     }
-    else if (const auto* si = it->second; si != nullptr) {
-        result = pair {si->Atlas->MainTex, FRect {si->AtlasRect[0], si->AtlasRect[1], si->AtlasRect[2] - si->AtlasRect[0], si->AtlasRect[3] - si->AtlasRect[1]}};
+    else if (const auto* atlas_spr = it->second; atlas_spr != nullptr) {
+        result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
     }
 
     return result;
@@ -1250,7 +1149,7 @@ void SpriteManager::InitParticleSubsystem(GameTimer& game_time)
         [this](string_view path) { return LoadTexture(path, _loadedParticleTextures, AtlasType::Static); });
 }
 
-auto SpriteManager::LoadParticle(string_view name, bool auto_draw_to_atlas) -> unique_del_ptr<ParticleSystem>
+auto SpriteManager::LoadParticle(string_view name, AtlasType atlas_type) -> unique_del_ptr<ParticleSprite>
 {
     STACK_TRACE_ENTRY();
 
@@ -1271,109 +1170,32 @@ auto SpriteManager::LoadParticle(string_view name, bool auto_draw_to_atlas) -> u
 
     particle->Setup(proj, world, {}, {}, {});
 
-    _particlesInfo[particle.get()] = std::make_tuple(0u, std::get<0>(_targetAtlasStack.back()));
+    auto* particle_spr = new ParticleSprite();
+    particle_spr->Particle = std::move(particle);
+    particle_spr->OffsY = static_cast<int16>(draw_height / 4);
 
-    if (auto_draw_to_atlas) {
-        AddParticleToAtlas(particle.get());
-        _autoDrawParticles.push_back(particle.get());
-    }
+    RequestFillAtlas(particle_spr, atlas_type, draw_width, draw_height, nullptr);
 
-    return {particle.release(), [this, auto_draw_to_atlas](auto* del_particle) {
-                {
-                    const auto it = _particlesInfo.find(del_particle);
-                    RUNTIME_ASSERT(it != _particlesInfo.end());
-                    if (std::get<0>(it->second) != 0) {
-                        dynamic_cast<ParticleSprite*>(_sprData[std::get<0>(it->second)])->Particle = nullptr;
-                    }
-                    _particlesInfo.erase(it);
-                }
+    _autoDrawParticles.push_back(particle_spr);
 
-                if (auto_draw_to_atlas) {
-                    const auto it = std::find(_autoDrawParticles.begin(), _autoDrawParticles.end(), del_particle);
-                    RUNTIME_ASSERT(it != _autoDrawParticles.end());
-                    _autoDrawParticles.erase(it);
-                }
+    return {particle_spr, [this](auto* ptr) {
+                const auto it = std::find(_autoDrawParticles.begin(), _autoDrawParticles.end(), ptr);
+                RUNTIME_ASSERT(it != _autoDrawParticles.end());
+                _autoDrawParticles.erase(it);
 
-                delete del_particle;
+                delete ptr;
             }};
 }
 
-auto SpriteManager::GetParticleSprId(const ParticleSystem* particle) const -> uint
+void SpriteManager::DrawParticleToAtlas(ParticleSprite* particle_spr)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_particleMngr);
-
-    const auto it = _particlesInfo.find(particle);
-    RUNTIME_ASSERT(it != _particlesInfo.end());
-
-    return std::get<0>(it->second);
-}
-
-void SpriteManager::AddParticleToAtlas(ParticleSystem* particle)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_particleMngr);
-
-    auto& particle_info = _particlesInfo[particle];
-    auto& spr_id = std::get<0>(particle_info);
-    const auto atlas_type = std::get<1>(particle_info);
-
-    // Free old place
-    if (spr_id != 0) {
-        auto* si = dynamic_cast<ParticleSprite*>(_sprData[spr_id]);
-        si->Particle = nullptr;
-        spr_id = 0;
-    }
-
-    // Render size
-    auto&& [draw_width, draw_height] = particle->GetDrawSize();
-
-    // Find already created place for rendering
-    uint index = 0;
-    for (size_t i = 0; i < _sprData.size(); i++) {
-        const auto* si = dynamic_cast<ParticleSprite*>(_sprData[i]);
-        if (si != nullptr && si->Particle == nullptr && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == atlas_type) {
-            index = static_cast<uint>(i);
-            break;
-        }
-    }
-
-    // Create new place for rendering
-    if (index == 0) {
-        PushAtlasType(atlas_type);
-        index = RequestFillAtlas(new ParticleSprite(), draw_width, draw_height, nullptr);
-        PopAtlasType();
-    }
-
-    // Cross links
-    auto* si = dynamic_cast<ParticleSprite*>(_sprData[index]);
-    si->OffsY = static_cast<int16>(draw_height / 4);
-    si->Particle = particle;
-
-    spr_id = index;
-}
-
-void SpriteManager::DrawParticleToAtlas(ParticleSystem* particle)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_particleMngr);
-
-    const auto& particle_info = _particlesInfo[particle];
-    const auto& spr_id = std::get<0>(particle_info);
 
     // Find place for render
-    if (spr_id == 0) {
-        AddParticleToAtlas(particle);
-        RUNTIME_ASSERT(spr_id != 0);
-    }
-
-    // Find place for render
-    const auto* si = dynamic_cast<ParticleSprite*>(_sprData[spr_id]);
-    const auto frame_width = si->Width;
-    const auto frame_height = si->Height;
+    const auto frame_width = particle_spr->Width;
+    const auto frame_height = particle_spr->Height;
 
     RenderTarget* rt_intermediate = nullptr;
     for (auto* rt : _rtIntermediate) {
@@ -1391,7 +1213,7 @@ void SpriteManager::DrawParticleToAtlas(ParticleSystem* particle)
     ClearCurrentRenderTarget(0, true);
 
     // Draw particles
-    particle->Draw();
+    particle_spr->Particle->Draw();
 
     // Restore render target
     PopRenderTarget();
@@ -1402,21 +1224,21 @@ void SpriteManager::DrawParticleToAtlas(ParticleSystem* particle)
     // Render to atlas
     if (rt_intermediate->MainTex->FlippedHeight) {
         // Preserve flip
-        const auto l = iround(si->AtlasRect.Left * static_cast<float>(si->Atlas->Width));
-        const auto t = iround((1.0f - si->AtlasRect.Top) * static_cast<float>(si->Atlas->Height));
-        const auto r = iround(si->AtlasRect.Right * static_cast<float>(si->Atlas->Width));
-        const auto b = iround((1.0f - si->AtlasRect.Bottom) * static_cast<float>(si->Atlas->Height));
+        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Width));
+        const auto t = iround((1.0f - particle_spr->AtlasRect.Top) * static_cast<float>(particle_spr->Atlas->Height));
+        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Width));
+        const auto b = iround((1.0f - particle_spr->AtlasRect.Bottom) * static_cast<float>(particle_spr->Atlas->Height));
         region_to = IRect(l, t, r, b);
     }
     else {
-        const auto l = iround(si->AtlasRect.Left * static_cast<float>(si->Atlas->Width));
-        const auto t = iround(si->AtlasRect.Top * static_cast<float>(si->Atlas->Height));
-        const auto r = iround(si->AtlasRect.Right * static_cast<float>(si->Atlas->Width));
-        const auto b = iround(si->AtlasRect.Bottom * static_cast<float>(si->Atlas->Height));
+        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Width));
+        const auto t = iround(particle_spr->AtlasRect.Top * static_cast<float>(particle_spr->Atlas->Height));
+        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Width));
+        const auto b = iround(particle_spr->AtlasRect.Bottom * static_cast<float>(particle_spr->Atlas->Height));
         region_to = IRect(l, t, r, b);
     }
 
-    PushRenderTarget(si->Atlas->RTarg);
+    PushRenderTarget(particle_spr->Atlas->RTarg);
     DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
     PopRenderTarget();
 }
@@ -1443,17 +1265,19 @@ void SpriteManager::Preload3dModel(string_view model_name)
     _modelMngr->PreloadModel(model_name);
 }
 
-auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
+auto SpriteManager::Load3dAnimation(string_view fname, AtlasType atlas_type) -> AnyFrames*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
     // Load 3d animation
-    auto&& model = LoadModel(fname, false);
-    if (model == nullptr) {
+    auto&& model_spr = LoadModel(fname, atlas_type);
+    if (!model_spr) {
         return nullptr;
     }
+
+    auto&& model = model_spr->Model;
 
     model->PrewarmParticles();
     model->StartMeshGeneration();
@@ -1481,10 +1305,10 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     // If no animations available than render just one
     if (period == 0.0f || proc_from == proc_to || frames_count <= 1) {
         model->SetAnimation(0, proc_from * 10, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
-        DrawModelToAtlas(model.get());
+        DrawModelToAtlas(model_spr.get());
 
         auto* anim = CreateAnyFrames(1, 100);
-        anim->Ind[0] = GetModelSprId(model.get());
+        anim->Spr[0] = model_spr.get();
         return anim;
     }
 
@@ -1498,13 +1322,13 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
         // Previous frame is different
         if (cur_proci != prev_cur_proci) {
             model->SetAnimation(0, cur_proci, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
-            DrawModelToAtlas(model.get());
+            DrawModelToAtlas(model_spr.get());
 
-            anim->Ind[i] = GetModelSprId(model.get());
+            anim->Spr[i] = model_spr.get();
         }
         // Previous frame is same
         else if (i > 0) {
-            anim->Ind[i] = anim->Ind[i - 1];
+            anim->Spr[i] = anim->Spr[i - 1];
         }
 
         cur_proc += proc_step;
@@ -1514,25 +1338,23 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     return anim;
 }
 
-void SpriteManager::DrawModel(int x, int y, ModelInstance* model, uint color)
+void SpriteManager::DrawModel(int x, int y, ModelSprite* model_spr, uint color)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
+    auto&& model = model_spr->Model;
+
     model->PrewarmParticles();
     model->StartMeshGeneration();
 
-    DrawModelToAtlas(model);
+    DrawModelToAtlas(model_spr);
 
-    const auto& model_info = _modelsInfo[model];
-    const auto& spr_id = std::get<0>(model_info);
-
-    const auto* si = dynamic_cast<ModelSprite*>(_sprData[spr_id]);
-    DrawSprite(spr_id, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color);
+    DrawSprite(model_spr, x - model_spr->Width / 2 + model_spr->OffsX, y - model_spr->Height + model_spr->OffsY, color);
 }
 
-auto SpriteManager::LoadModel(string_view fname, bool auto_draw_to_atlas) -> unique_del_ptr<ModelInstance>
+auto SpriteManager::LoadModel(string_view fname, AtlasType atlas_type) -> unique_del_ptr<ModelSprite>
 {
     STACK_TRACE_ENTRY();
 
@@ -1543,110 +1365,35 @@ auto SpriteManager::LoadModel(string_view fname, bool auto_draw_to_atlas) -> uni
         return nullptr;
     }
 
-    _modelsInfo[model.get()] = std::make_tuple(0u, std::get<0>(_targetAtlasStack.back()));
-
-    if (auto_draw_to_atlas) {
-        AddModelToAtlas(model.get());
-        _autoDrawModels.push_back(model.get());
-    }
-
-    return {model.release(), [this, auto_draw_to_atlas](auto* del_model) {
-                {
-                    const auto it = _modelsInfo.find(del_model);
-                    RUNTIME_ASSERT(it != _modelsInfo.end());
-                    if (std::get<0>(it->second) != 0) {
-                        dynamic_cast<ModelSprite*>(_sprData[std::get<0>(it->second)])->Model = nullptr;
-                    }
-                    _modelsInfo.erase(it);
-                }
-
-                if (auto_draw_to_atlas) {
-                    const auto it = std::find(_autoDrawModels.begin(), _autoDrawModels.end(), del_model);
-                    RUNTIME_ASSERT(it != _autoDrawModels.end());
-                    _autoDrawModels.erase(it);
-                }
-
-                delete del_model;
-            }};
-}
-
-auto SpriteManager::GetModelSprId(const ModelInstance* model) const -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    const auto it = _modelsInfo.find(model);
-    RUNTIME_ASSERT(it != _modelsInfo.end());
-
-    return std::get<0>(it->second);
-}
-
-void SpriteManager::AddModelToAtlas(ModelInstance* model)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    auto& model_info = _modelsInfo[model];
-    auto& spr_id = std::get<0>(model_info);
-    const auto atlas_type = std::get<1>(model_info);
-
-    // Free old place
-    if (spr_id != 0) {
-        auto* si = dynamic_cast<ModelSprite*>(_sprData[spr_id]);
-        si->Model = nullptr;
-        spr_id = 0;
-    }
-
-    // Render size
     model->SetupFrame();
     auto&& [draw_width, draw_height] = model->GetDrawSize();
 
-    // Find already created place for rendering
-    uint index = 0;
-    for (size_t i = 0; i < _sprData.size(); i++) {
-        const auto* si = dynamic_cast<ModelSprite*>(_sprData[spr_id]);
-        if (si != nullptr && si->Model == nullptr && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == atlas_type) {
-            index = static_cast<uint>(i);
-            break;
-        }
-    }
+    auto* model_spr = new ModelSprite();
+    model_spr->Model = std::move(model);
+    model_spr->OffsY = static_cast<int16>(draw_height / 4);
 
-    // Create new place for rendering
-    if (index == 0) {
-        PushAtlasType(atlas_type);
-        index = RequestFillAtlas(new ModelSprite(), draw_width, draw_height, nullptr);
-        PopAtlasType();
-    }
+    RequestFillAtlas(model_spr, atlas_type, draw_width, draw_height, nullptr);
 
-    // Cross links
-    auto* si = dynamic_cast<ModelSprite*>(_sprData[index]);
-    si->OffsY = static_cast<int16>(draw_height / 4);
-    si->Model = model;
+    _autoDrawModels.push_back(model_spr);
 
-    spr_id = index;
+    return {model_spr, [this](auto* ptr) {
+                const auto it = std::find(_autoDrawModels.begin(), _autoDrawModels.end(), ptr);
+                RUNTIME_ASSERT(it != _autoDrawModels.end());
+                _autoDrawModels.erase(it);
+
+                delete ptr;
+            }};
 }
 
-void SpriteManager::DrawModelToAtlas(ModelInstance* model)
+void SpriteManager::DrawModelToAtlas(ModelSprite* model_spr)
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_modelMngr);
 
-    const auto& model_info = _modelsInfo[model];
-    const auto& spr_id = std::get<0>(model_info);
-
     // Find place for render
-    if (spr_id == 0) {
-        AddModelToAtlas(model);
-        RUNTIME_ASSERT(spr_id != 0);
-    }
-
-    // Find place for render
-    const auto* si = dynamic_cast<ModelSprite*>(_sprData[spr_id]);
-    const auto frame_width = si->Width * ModelInstance::FRAME_SCALE;
-    const auto frame_height = si->Height * ModelInstance::FRAME_SCALE;
+    const auto frame_width = model_spr->Width * ModelInstance::FRAME_SCALE;
+    const auto frame_height = model_spr->Height * ModelInstance::FRAME_SCALE;
 
     RenderTarget* rt_model = nullptr;
     for (auto* rt : _rtIntermediate) {
@@ -1664,7 +1411,7 @@ void SpriteManager::DrawModelToAtlas(ModelInstance* model)
     ClearCurrentRenderTarget(0, true);
 
     // Draw model
-    model->Draw();
+    model_spr->Model->Draw();
 
     // Restore render target
     PopRenderTarget();
@@ -1675,21 +1422,21 @@ void SpriteManager::DrawModelToAtlas(ModelInstance* model)
     // Render to atlas
     if (rt_model->MainTex->FlippedHeight) {
         // Preserve flip
-        const auto l = iround(si->AtlasRect.Left * static_cast<float>(si->Atlas->Width));
-        const auto t = iround((1.0f - si->AtlasRect.Top) * static_cast<float>(si->Atlas->Height));
-        const auto r = iround(si->AtlasRect.Right * static_cast<float>(si->Atlas->Width));
-        const auto b = iround((1.0f - si->AtlasRect.Bottom) * static_cast<float>(si->Atlas->Height));
+        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Width));
+        const auto t = iround((1.0f - model_spr->AtlasRect.Top) * static_cast<float>(model_spr->Atlas->Height));
+        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Width));
+        const auto b = iround((1.0f - model_spr->AtlasRect.Bottom) * static_cast<float>(model_spr->Atlas->Height));
         region_to = IRect(l, t, r, b);
     }
     else {
-        const auto l = iround(si->AtlasRect.Left * static_cast<float>(si->Atlas->Width));
-        const auto t = iround(si->AtlasRect.Top * static_cast<float>(si->Atlas->Height));
-        const auto r = iround(si->AtlasRect.Right * static_cast<float>(si->Atlas->Width));
-        const auto b = iround(si->AtlasRect.Bottom * static_cast<float>(si->Atlas->Height));
+        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Width));
+        const auto t = iround(model_spr->AtlasRect.Top * static_cast<float>(model_spr->Atlas->Height));
+        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Width));
+        const auto b = iround(model_spr->AtlasRect.Bottom * static_cast<float>(model_spr->Atlas->Height));
         region_to = IRect(l, t, r, b);
     }
 
-    PushRenderTarget(si->Atlas->RTarg);
+    PushRenderTarget(model_spr->Atlas->RTarg);
     DrawRenderTarget(rt_model, false, nullptr, &region_to);
     PopRenderTarget();
 }
@@ -1776,20 +1523,11 @@ void SpriteManager::Flush()
     _spritesDrawBuf->IndCount = 0;
 }
 
-void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
+void SpriteManager::DrawSprite(const Sprite* spr, int x, int y, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (id == 0) {
-        return;
-    }
-
-    const auto* si = _sprData[id];
-    if (si == nullptr) {
-        return;
-    }
-
-    auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
 
     if (color == 0) {
@@ -1798,10 +1536,10 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     color = ApplyColorBrightness(color, _settings.Brightness);
     color = COLOR_SWAP_RB(color);
 
-    const auto ind_count = si->FillData(_spritesDrawBuf, IRect {x, y, x + si->Width, y + si->Height}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf, IRect {x, y, x + spr->Width, y + spr->Height}, {color, color});
 
-    if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {si->Atlas->MainTex, effect, ind_count});
+    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
+        _dipQueue.emplace_back(DipData {spr->Atlas->MainTex, effect, ind_count});
     }
     else {
         _dipQueue.back().IndCount += ind_count;
@@ -1812,30 +1550,21 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     }
 }
 
-void SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
+void SpriteManager::DrawSpriteSize(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    DrawSpriteSizeExt(id, x, y, w, h, zoom_up, center, false, color);
+    DrawSpriteSizeExt(spr, x, y, w, h, zoom_up, center, false, color);
 }
 
-void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color)
+void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color)
 {
     STACK_TRACE_ENTRY();
-
-    if (id == 0) {
-        return;
-    }
-
-    const auto* si = _sprData[id];
-    if (si == nullptr) {
-        return;
-    }
 
     auto xf = static_cast<float>(x);
     auto yf = static_cast<float>(y);
-    auto wf = static_cast<float>(si->Width);
-    auto hf = static_cast<float>(si->Height);
+    auto wf = static_cast<float>(spr->Width);
+    auto hf = static_cast<float>(spr->Height);
     const auto k = std::min(static_cast<float>(w) / wf, static_cast<float>(h) / hf);
 
     if (!stretch) {
@@ -1861,7 +1590,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
         hf = static_cast<float>(h);
     }
 
-    auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
 
     if (color == 0) {
@@ -1870,10 +1599,10 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     color = ApplyColorBrightness(color, _settings.Brightness);
     color = COLOR_SWAP_RB(color);
 
-    const auto ind_count = si->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color, color});
 
-    if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {si->Atlas->MainTex, effect, ind_count});
+    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
+        _dipQueue.emplace_back(DipData {spr->Atlas->MainTex, effect, ind_count});
     }
     else {
         _dipQueue.back().IndCount += ind_count;
@@ -1884,24 +1613,20 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     }
 }
 
-void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color)
+void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, int h, int spr_width, int spr_height, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (id == 0) {
-        return;
-    }
-    if (w == 0 || h == 0) {
+    RUNTIME_ASSERT(w > 0);
+    RUNTIME_ASSERT(h > 0);
+
+    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
+    if (atlas_spr == nullptr) {
         return;
     }
 
-    const auto* si = dynamic_cast<AtlasSprite*>(_sprData[id]);
-    if (si == nullptr) {
-        return;
-    }
-
-    auto width = static_cast<float>(si->Width);
-    auto height = static_cast<float>(si->Height);
+    auto width = static_cast<float>(atlas_spr->Width);
+    auto height = static_cast<float>(atlas_spr->Height);
 
     if (spr_width != 0 && spr_height != 0) {
         width = static_cast<float>(spr_width);
@@ -1924,11 +1649,11 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
     color = ApplyColorBrightness(color, _settings.Brightness);
     color = COLOR_SWAP_RB(color);
 
-    auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+    auto* effect = atlas_spr->DrawEffect != nullptr ? atlas_spr->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
 
-    const auto last_right_offs = (si->AtlasRect.Right - si->AtlasRect.Left) / width;
-    const auto last_bottom_offs = (si->AtlasRect.Bottom - si->AtlasRect.Top) / height;
+    const auto last_right_offs = (atlas_spr->AtlasRect.Right - atlas_spr->AtlasRect.Left) / width;
+    const auto last_bottom_offs = (atlas_spr->AtlasRect.Bottom - atlas_spr->AtlasRect.Top) / height;
 
     for (auto yy = static_cast<float>(y), end_y = static_cast<float>(y + h); yy < end_y;) {
         const auto last_y = yy + height >= end_y;
@@ -1936,10 +1661,10 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
         for (auto xx = static_cast<float>(x), end_x = static_cast<float>(x + w); xx < end_x;) {
             const auto last_x = xx + width >= end_x;
 
-            const auto local_width = (last_x ? end_x - xx : width);
-            const auto local_height = (last_y ? end_y - yy : height);
-            const auto local_right = (last_x ? si->AtlasRect.Left + last_right_offs * local_width : si->AtlasRect.Right);
-            const auto local_bottom = (last_y ? si->AtlasRect.Top + last_bottom_offs * local_height : si->AtlasRect.Bottom);
+            const auto local_width = last_x ? end_x - xx : width;
+            const auto local_height = last_y ? end_y - yy : height;
+            const auto local_right = last_x ? atlas_spr->AtlasRect.Left + last_right_offs * local_width : atlas_spr->AtlasRect.Right;
+            const auto local_bottom = last_y ? atlas_spr->AtlasRect.Top + last_bottom_offs * local_height : atlas_spr->AtlasRect.Bottom;
 
             _spritesDrawBuf->CheckAllocBuf(4, 6);
 
@@ -1957,20 +1682,20 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
-            vbuf[vpos].TexU = si->AtlasRect.Left;
+            vbuf[vpos].TexU = atlas_spr->AtlasRect.Left;
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy;
-            vbuf[vpos].TexU = si->AtlasRect.Left;
-            vbuf[vpos].TexV = si->AtlasRect.Top;
+            vbuf[vpos].TexU = atlas_spr->AtlasRect.Left;
+            vbuf[vpos].TexV = atlas_spr->AtlasRect.Top;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = local_right;
-            vbuf[vpos].TexV = si->AtlasRect.Top;
+            vbuf[vpos].TexV = atlas_spr->AtlasRect.Top;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
@@ -1979,8 +1704,8 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos++].Color = color;
 
-            if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {si->Atlas->MainTex, effect, 6});
+            if (_dipQueue.empty() || _dipQueue.back().MainTex != atlas_spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {atlas_spr->Atlas->MainTex, effect, 6});
             }
             else {
                 _dipQueue.back().IndCount += 6;
@@ -2021,41 +1746,37 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(const MapSprite* spr) const -> IRect
+auto SpriteManager::GetDrawRect(const MapSprite* mspr) const -> IRect
 {
     STACK_TRACE_ENTRY();
 
-    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
-    RUNTIME_ASSERT(id < _sprData.size());
-    const auto* si = _sprData[id];
-    RUNTIME_ASSERT(si);
+    const auto* spr = mspr->PSpr != nullptr ? *mspr->PSpr : mspr->Spr;
+    RUNTIME_ASSERT(spr);
 
-    auto x = spr->ScrX - si->Width / 2 + si->OffsX + *spr->PScrX;
-    auto y = spr->ScrY - si->Height + si->OffsY + *spr->PScrY;
-    if (spr->OffsX != nullptr) {
-        x += *spr->OffsX;
+    auto x = mspr->ScrX - spr->Width / 2 + spr->OffsX + *mspr->PScrX;
+    auto y = mspr->ScrY - spr->Height + spr->OffsY + *mspr->PScrY;
+    if (mspr->OffsX != nullptr) {
+        x += *mspr->OffsX;
     }
-    if (spr->OffsY != nullptr) {
-        y += *spr->OffsY;
+    if (mspr->OffsY != nullptr) {
+        y += *mspr->OffsY;
     }
 
-    return {x, y, x + si->Width, y + si->Height};
+    return {x, y, x + spr->Width, y + spr->Height};
 }
 
-auto SpriteManager::GetViewRect(const MapSprite* spr) const -> IRect
+auto SpriteManager::GetViewRect(const MapSprite* mspr) const -> IRect
 {
     STACK_TRACE_ENTRY();
 
-    auto rect = GetDrawRect(spr);
+    auto rect = GetDrawRect(mspr);
 
-    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
-    RUNTIME_ASSERT(id < _sprData.size());
-    const auto* si = _sprData[id];
-    RUNTIME_ASSERT(si);
+    const auto* spr = mspr->PSpr != nullptr ? *mspr->PSpr : mspr->Spr;
+    RUNTIME_ASSERT(spr);
 
 #if FO_ENABLE_3D
-    if (const auto* ms = dynamic_cast<const ModelSprite*>(si); ms != nullptr) {
-        auto&& [view_width, view_height] = ms->Model->GetViewSize();
+    if (const auto* model_spr = dynamic_cast<const ModelSprite*>(spr); model_spr != nullptr) {
+        auto&& [view_width, view_height] = model_spr->Model->GetViewSize();
 
         rect.Left = rect.CenterX() - view_width / 2;
         rect.Right = rect.Left + view_width;
@@ -2067,7 +1788,7 @@ auto SpriteManager::GetViewRect(const MapSprite* spr) const -> IRect
     return rect;
 }
 
-void SpriteManager::InitializeEgg(string_view egg_name)
+void SpriteManager::InitializeEgg(string_view egg_name, AtlasType atlas_type)
 {
     STACK_TRACE_ENTRY();
 
@@ -2075,10 +1796,10 @@ void SpriteManager::InitializeEgg(string_view egg_name)
     _eggHx = _eggHy = 0;
     _eggX = _eggY = 0;
 
-    auto* egg_frames = LoadAnimation(egg_name, true);
+    auto* egg_frames = LoadAnimation(egg_name, atlas_type, true);
     RUNTIME_ASSERT(egg_frames != nullptr);
 
-    _sprEgg = dynamic_cast<AtlasSprite*>(_sprData[egg_frames->Ind[0]]);
+    _sprEgg = dynamic_cast<AtlasSprite*>(egg_frames->Spr[0]);
     RUNTIME_ASSERT(_sprEgg);
 
     DestroyAnyFrames(egg_frames);
@@ -2131,28 +1852,25 @@ auto SpriteManager::CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType e
     return false;
 }
 
-void SpriteManager::SetEgg(uint16 hx, uint16 hy, const MapSprite* spr)
+void SpriteManager::SetEgg(uint16 hx, uint16 hy, const MapSprite* mspr)
 {
     STACK_TRACE_ENTRY();
 
-    const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
-    const auto* si = _sprData[id];
-    if (si == nullptr) {
-        return;
-    }
+    const auto* spr = mspr->PSpr != nullptr ? *mspr->PSpr : mspr->Spr;
+    RUNTIME_ASSERT(spr);
 
-    _eggX = spr->ScrX + si->OffsX - _sprEgg->Width / 2 + *spr->OffsX + *spr->PScrX;
-    _eggY = spr->ScrY - si->Height / 2 + si->OffsY - _sprEgg->Height / 2 + *spr->OffsY + *spr->PScrY;
+    _eggX = mspr->ScrX + spr->OffsX - _sprEgg->Width / 2 + *mspr->OffsX + *mspr->PScrX;
+    _eggY = mspr->ScrY - spr->Height / 2 + spr->OffsY - _sprEgg->Height / 2 + *mspr->OffsY + *mspr->PScrY;
     _eggHx = hx;
     _eggHy = hy;
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color)
 {
     STACK_TRACE_ENTRY();
 
-    if (list.RootSprite() == nullptr) {
+    if (mspr_list.RootSprite() == nullptr) {
         return;
     }
 
@@ -2165,32 +1883,31 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
     const auto ex = _eggX + _settings.ScrOx;
     const auto ey = _eggY + _settings.ScrOy;
 
-    for (const auto* spr = list.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
-        RUNTIME_ASSERT(spr->Valid);
+    for (const auto* mspr = mspr_list.RootSprite(); mspr != nullptr; mspr = mspr->ChainChild) {
+        RUNTIME_ASSERT(mspr->Valid);
 
-        if (spr->DrawOrder < draw_oder_from) {
+        if (mspr->DrawOrder < draw_oder_from) {
             continue;
         }
-        if (spr->DrawOrder > draw_oder_to) {
+        if (mspr->DrawOrder > draw_oder_to) {
             continue;
         }
 
-        const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
-        const auto* si = _sprData[id];
-        if (si == nullptr) {
+        const auto* spr = mspr->PSpr != nullptr ? *mspr->PSpr : mspr->Spr;
+        if (spr == nullptr) {
             continue;
         }
 
         // Coords
-        auto x = spr->ScrX - si->Width / 2 + si->OffsX + *spr->PScrX;
-        auto y = spr->ScrY - si->Height + si->OffsY + *spr->PScrY;
+        auto x = mspr->ScrX - spr->Width / 2 + spr->OffsX + *mspr->PScrX;
+        auto y = mspr->ScrY - spr->Height + spr->OffsY + *mspr->PScrY;
         x += _settings.ScrOx;
         y += _settings.ScrOy;
-        if (spr->OffsX != nullptr) {
-            x += *spr->OffsX;
+        if (mspr->OffsX != nullptr) {
+            x += *mspr->OffsX;
         }
-        if (spr->OffsY != nullptr) {
-            y += *spr->OffsY;
+        if (mspr->OffsY != nullptr) {
+            y += *mspr->OffsY;
         }
 
         const auto zoom = _spritesZoom;
@@ -2198,15 +1915,15 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         // Base color
         uint color_r = 0;
         uint color_l = 0;
-        if (spr->Color != 0) {
-            color_r = color_l = spr->Color | 0xFF000000;
+        if (mspr->Color != 0) {
+            color_r = color_l = mspr->Color | 0xFF000000;
         }
         else {
             color_r = color_l = color;
         }
 
         // Light
-        if (spr->Light != nullptr) {
+        if (mspr->Light != nullptr) {
             static auto light_func = [](uint& c, const uint8* l, const uint8* l2) {
                 const int lr = *l;
                 const int lg = *(l + 1);
@@ -2224,14 +1941,14 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
                 g = static_cast<uint8>(std::min(ig, 255));
                 b = static_cast<uint8>(std::min(ib, 255));
             };
-            light_func(color_r, spr->Light, spr->LightRight);
-            light_func(color_l, spr->Light, spr->LightLeft);
+            light_func(color_r, mspr->Light, mspr->LightRight);
+            light_func(color_l, mspr->Light, mspr->LightLeft);
         }
 
         // Alpha
-        if (spr->Alpha != nullptr) {
-            reinterpret_cast<uint8*>(&color_r)[3] = *spr->Alpha;
-            reinterpret_cast<uint8*>(&color_l)[3] = *spr->Alpha;
+        if (mspr->Alpha != nullptr) {
+            reinterpret_cast<uint8*>(&color_r)[3] = *mspr->Alpha;
+            reinterpret_cast<uint8*>(&color_l)[3] = *mspr->Alpha;
         }
 
         // Fix color
@@ -2241,39 +1958,39 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         color_l = COLOR_SWAP_RB(color_l);
 
         // Check borders
-        if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + si->Width) / zoom < 0.0f || //
-            static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) || static_cast<float>(y + si->Height) / zoom < 0.0f) {
+        if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + spr->Width) / zoom < 0.0f || //
+            static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) || static_cast<float>(y + spr->Height) / zoom < 0.0f) {
             continue;
         }
 
         // Choose effect
-        auto* effect = spr->DrawEffect != nullptr ? *spr->DrawEffect : nullptr;
+        auto* effect = mspr->DrawEffect != nullptr ? *mspr->DrawEffect : nullptr;
         if (effect == nullptr) {
-            effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Generic;
+            effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Generic;
         }
         RUNTIME_ASSERT(effect);
 
         // Fill buffer
         const auto xf = static_cast<float>(x) / zoom;
         const auto yf = static_cast<float>(y) / zoom;
-        const auto wf = static_cast<float>(si->Width) / zoom;
-        const auto hf = static_cast<float>(si->Height) / zoom;
+        const auto wf = static_cast<float>(spr->Width) / zoom;
+        const auto hf = static_cast<float>(spr->Height) / zoom;
 
         const auto prev_vpos = _spritesDrawBuf->VertCount;
 
-        const auto ind_count = si->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
+        const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
 
         // Setup egg
         bool egg_added = false;
 
-        if (use_egg && CheckEggAppearence(spr->HexX, spr->HexY, spr->EggAppearence)) {
+        if (use_egg && CheckEggAppearence(mspr->HexX, mspr->HexY, mspr->EggAppearence)) {
             auto x1 = x - ex;
             auto y1 = y - ey;
-            auto x2 = x1 + si->Width;
-            auto y2 = y1 + si->Height;
+            auto x2 = x1 + spr->Width;
+            auto y2 = y1 + spr->Height;
 
             if (x1 < _sprEgg->Width - 100 && y1 < _sprEgg->Height - 100 && x2 >= 100 && y2 >= 100) {
-                if (const auto* as = dynamic_cast<const AtlasSprite*>(si); as != nullptr) {
+                if (const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr); atlas_spr != nullptr) {
                     x1 = std::max(x1, 0);
                     y1 = std::max(y1, 0);
                     x2 = std::min(x2, _sprEgg->Width);
@@ -2308,8 +2025,8 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
             }
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {si->Atlas->MainTex, effect, ind_count});
+        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {spr->Atlas->MainTex, effect, ind_count});
         }
         else {
             _dipQueue.back().IndCount += ind_count;
@@ -2320,11 +2037,11 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
         }
 
         // Corners indication
-        if (_settings.ShowCorners && spr->EggAppearence != EggAppearenceType::None) {
+        if (_settings.ShowCorners && mspr->EggAppearence != EggAppearenceType::None) {
             vector<PrimitivePoint> corner;
             const auto cx = wf / 2.0f;
 
-            switch (spr->EggAppearence) {
+            switch (mspr->EggAppearence) {
             case EggAppearenceType::Always:
                 PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), 0x5FFFFF00);
                 break;
@@ -2351,21 +2068,21 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
 
         // Draw order
         if (_settings.ShowDrawOrder) {
-            const auto x1 = iround(static_cast<float>(spr->ScrX + _settings.ScrOx) / zoom);
-            auto y1 = iround(static_cast<float>(spr->ScrY + _settings.ScrOy) / zoom);
+            const auto x1 = iround(static_cast<float>(mspr->ScrX + _settings.ScrOx) / zoom);
+            auto y1 = iround(static_cast<float>(mspr->ScrY + _settings.ScrOy) / zoom);
 
-            if (spr->DrawOrder < DrawOrderType::NormalBegin || spr->DrawOrder > DrawOrderType::NormalEnd) {
+            if (mspr->DrawOrder < DrawOrderType::NormalBegin || mspr->DrawOrder > DrawOrderType::NormalEnd) {
                 y1 -= iround(40.0f / zoom);
             }
 
-            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", spr->TreeIndex), 0, 0, -1);
+            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", mspr->TreeIndex), 0, 0, -1);
         }
 
         // Process contour effect
-        if (collect_contours && spr->Contour != ContourType::None) {
+        if (collect_contours && mspr->Contour != ContourType::None) {
             uint contour_color = 0xFF0000FF;
 
-            switch (spr->Contour) {
+            switch (mspr->Contour) {
             case ContourType::Red:
                 contour_color = 0xFFAF0000;
                 break;
@@ -2373,17 +2090,17 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
                 contour_color = 0x00AFAF00;
                 break;
             case ContourType::Custom:
-                contour_color = spr->ContourColor;
+                contour_color = mspr->ContourColor;
                 break;
             default:
                 break;
             }
 
-            CollectContour(x, y, si, contour_color);
+            CollectContour(x, y, spr, contour_color);
         }
 
-        if (_settings.ShowSpriteBorders && spr->DrawOrder > DrawOrderType::Tile4) {
-            auto rect = GetViewRect(spr);
+        if (_settings.ShowSpriteBorders && mspr->DrawOrder > DrawOrderType::Tile4) {
+            auto rect = GetViewRect(mspr);
 
             rect.Left += _settings.ScrOx;
             rect.Right += _settings.ScrOx;
@@ -2401,14 +2118,9 @@ void SpriteManager::DrawSprites(MapSpriteList& list, bool collect_contours, bool
     }
 }
 
-auto SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool
+auto SpriteManager::IsPixNoTransp(const Sprite* spr, int offs_x, int offs_y, bool with_zoom) const -> bool
 {
     STACK_TRACE_ENTRY();
-
-    const auto* si = _sprData[spr_id];
-    if (si == nullptr) {
-        return false;
-    }
 
     auto ox = offs_x;
     auto oy = offs_y;
@@ -2422,19 +2134,19 @@ auto SpriteManager::IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with
         oy = iround(static_cast<float>(oy) * _spritesZoom);
     }
 
-    if (ox >= si->Width || oy >= si->Height) {
+    if (ox >= spr->Width || oy >= spr->Height) {
         return false;
     }
 
-    if (const auto* as = dynamic_cast<const AtlasSprite*>(si); as != nullptr) {
-        if (!as->HitTestData.empty()) {
-            return as->HitTestData[oy * as->Width + ox];
+    if (const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr); atlas_spr != nullptr) {
+        if (!atlas_spr->HitTestData.empty()) {
+            return atlas_spr->HitTestData[oy * atlas_spr->Width + ox];
         }
         else {
-            ox += iround(as->Atlas->MainTex->SizeData[0] * as->AtlasRect.Left);
-            oy += iround(as->Atlas->MainTex->SizeData[1] * as->AtlasRect.Top);
+            ox += iround(atlas_spr->Atlas->MainTex->SizeData[0] * atlas_spr->AtlasRect.Left);
+            oy += iround(atlas_spr->Atlas->MainTex->SizeData[1] * atlas_spr->AtlasRect.Top);
 
-            return (GetRenderTargetPixel(si->Atlas->RTarg, ox, oy) >> 24) > 0;
+            return (GetRenderTargetPixel(atlas_spr->Atlas->RTarg, ox, oy) >> 24) > 0;
         }
     }
     else {
@@ -2580,7 +2292,7 @@ void SpriteManager::DrawContours()
     }
 }
 
-void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint contour_color)
+void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour_color)
 {
     STACK_TRACE_ENTRY();
 
@@ -2588,13 +2300,13 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, uint cont
         return;
     }
 
-    const auto* as = dynamic_cast<const AtlasSprite*>(si);
+    const auto* as = dynamic_cast<const AtlasSprite*>(spr);
     if (as == nullptr) {
         return;
     }
 
 #if FO_ENABLE_3D
-    const auto is_model_sprite = dynamic_cast<const ModelSprite*>(si) != nullptr;
+    const auto is_model_sprite = dynamic_cast<const ModelSprite*>(spr) != nullptr;
     auto* contour_effect = is_model_sprite ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
 #else
     auto* contour_effect = _effectMngr.Effects.ContourSprite;
@@ -2801,11 +2513,11 @@ void SpriteManager::BuildFont(int index)
     font.Builded = true;
 
     // Fix texture coordinates
-    const auto* si = dynamic_cast<const AtlasSprite*>(GetSpriteInfo(font.ImageNormal->GetSprId(0)));
-    auto tex_w = static_cast<float>(si->Atlas->Width);
-    auto tex_h = static_cast<float>(si->Atlas->Height);
-    auto image_x = tex_w * si->AtlasRect.Left;
-    auto image_y = tex_h * si->AtlasRect.Top;
+    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(font.ImageNormal->GetSpr(0));
+    auto tex_w = static_cast<float>(atlas_spr->Atlas->Width);
+    auto tex_h = static_cast<float>(atlas_spr->Atlas->Height);
+    auto image_x = tex_w * atlas_spr->AtlasRect.Left;
+    auto image_y = tex_h * atlas_spr->AtlasRect.Top;
     auto max_h = 0;
     for (auto& [letter_index, letter] : font.Letters) {
         const auto x = static_cast<float>(letter.PosX);
@@ -2822,7 +2534,7 @@ void SpriteManager::BuildFont(int index)
     }
 
     // Fill data
-    font.FontTex = si->Atlas->MainTex;
+    font.FontTex = atlas_spr->Atlas->MainTex;
     if (font.LineHeight == 0) {
         font.LineHeight = max_h;
     }
@@ -2830,16 +2542,16 @@ void SpriteManager::BuildFont(int index)
         font.SpaceWidth = font.Letters[' '].XAdvance;
     }
 
-    const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered != nullptr ? GetSpriteInfo(font.ImageBordered->GetSprId(0)) : nullptr);
+    const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered != nullptr ? font.ImageBordered->GetSpr(0) : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
-    const auto normal_ox = iround(tex_w * si->AtlasRect.Left);
-    const auto normal_oy = iround(tex_h * si->AtlasRect.Top);
+    const auto normal_ox = iround(tex_w * atlas_spr->AtlasRect.Left);
+    const auto normal_oy = iround(tex_h * atlas_spr->AtlasRect.Top);
     const auto bordered_ox = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Width) * si_bordered->AtlasRect.Left) : 0);
     const auto bordered_oy = (si_bordered != nullptr ? iround(static_cast<float>(si_bordered->Atlas->Height) * si_bordered->AtlasRect.Top) : 0);
 
     // Read texture data
-    auto data_normal = si->Atlas->MainTex->GetTextureRegion(normal_ox, normal_oy, si->Width, si->Height);
+    auto data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion(normal_ox, normal_oy, atlas_spr->Width, atlas_spr->Height);
 
     vector<uint> data_bordered;
     if (si_bordered != nullptr) {
@@ -2848,17 +2560,17 @@ void SpriteManager::BuildFont(int index)
 
     // Normalize color to gray
     if (font.MakeGray) {
-        for (auto y = 0; y < si->Height; y++) {
-            for (auto x = 0; x < si->Width; x++) {
-                const auto a = reinterpret_cast<uint8*>(&PIXEL_AT(data_normal, si->Width, x, y))[3];
+        for (auto y = 0; y < atlas_spr->Height; y++) {
+            for (auto x = 0; x < atlas_spr->Width; x++) {
+                const auto a = reinterpret_cast<uint8*>(&PIXEL_AT(data_normal, atlas_spr->Width, x, y))[3];
                 if (a != 0) {
-                    PIXEL_AT(data_normal, si->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
+                    PIXEL_AT(data_normal, atlas_spr->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
                     if (si_bordered != nullptr) {
                         PIXEL_AT(data_bordered, si_bordered->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
                     }
                 }
                 else {
-                    PIXEL_AT(data_normal, si->Width, x, y) = COLOR_RGBA(0, 0, 0, 0);
+                    PIXEL_AT(data_normal, atlas_spr->Width, x, y) = COLOR_RGBA(0, 0, 0, 0);
                     if (si_bordered != nullptr) {
                         PIXEL_AT(data_bordered, si_bordered->Width, x, y) = COLOR_RGBA(0, 0, 0, 0);
                     }
@@ -2866,15 +2578,15 @@ void SpriteManager::BuildFont(int index)
             }
         }
 
-        const auto r = IRect(normal_ox, normal_oy, normal_ox + si->Width, normal_oy + si->Height);
-        si->Atlas->MainTex->UpdateTextureRegion(r, data_normal.data());
+        const auto r = IRect(normal_ox, normal_oy, normal_ox + atlas_spr->Width, normal_oy + atlas_spr->Height);
+        atlas_spr->Atlas->MainTex->UpdateTextureRegion(r, data_normal.data());
     }
 
     // Fill border
     if (si_bordered != nullptr) {
         for (auto y = 1; y < si_bordered->Height - 2; y++) {
             for (auto x = 1; x < si_bordered->Width - 2; x++) {
-                if (PIXEL_AT(data_normal, si->Width, x, y)) {
+                if (PIXEL_AT(data_normal, atlas_spr->Width, x, y)) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
@@ -2911,7 +2623,7 @@ void SpriteManager::BuildFont(int index)
 #undef PIXEL_AT
 }
 
-auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
+auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -3033,7 +2745,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Load image
     image_name.insert(0, "Fonts/");
-    auto* image_normal = LoadAnimation(image_name, false);
+    auto* image_normal = LoadAnimation(image_name, atlas_type, false);
     if (image_normal == nullptr) {
         WriteLog("Image file '{}' not found", image_name);
         return false;
@@ -3042,7 +2754,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Create bordered instance
     if (!not_bordered) {
-        auto* image_bordered = LoadAnimation(image_name, false);
+        auto* image_bordered = LoadAnimation(image_name, atlas_type, false);
         if (image_bordered == nullptr) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;
@@ -3064,7 +2776,7 @@ static constexpr auto MAKEUINT(uint8 ch0, uint8 ch1, uint8 ch2, uint8 ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
+auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -3152,7 +2864,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     font.MakeGray = true;
 
     // Load image
-    auto* image_normal = LoadAnimation(image_name, false);
+    auto* image_normal = LoadAnimation(image_name, atlas_type, false);
     if (image_normal == nullptr) {
         WriteLog("Image file '{}' not found", image_name);
         return false;
@@ -3160,7 +2872,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     font.ImageNormal = image_normal;
 
     // Create bordered instance
-    auto* image_bordered = LoadAnimation(image_name, false);
+    auto* image_bordered = LoadAnimation(image_name, atlas_type, false);
     if (image_bordered == nullptr) {
         WriteLog("Can't load twice file '{}'", image_name);
         return false;
@@ -3403,7 +3115,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
 
                 StrEraseInterval(&str[i], j - i);
-                letter = str[i];
+                letter = static_cast<uint>(str[i]);
                 i_advance = 1;
                 if (fmt_type == FORMAT_TYPE_DRAW) {
                     for (auto k = i, l = FONT_BUF_LEN - (j - i); k < l; k++) {

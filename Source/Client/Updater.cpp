@@ -63,21 +63,17 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     // Wait screen
     if (!_settings.DefaultSplash.empty()) {
-        _sprMngr.PushAtlasType(AtlasType::Splash, true);
-        _splashPic = _sprMngr.LoadAnimation(_settings.DefaultSplash, false);
-        _sprMngr.PopAtlasType();
+        _splashPic = _sprMngr.LoadAnimation(_settings.DefaultSplash, AtlasType::OneImage, false);
     }
 
     _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     if (_splashPic != nullptr) {
-        _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+        _sprMngr.DrawSpriteSize(_splashPic->GetSpr(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
     }
     _sprMngr.EndScene();
 
     // Load font
-    _sprMngr.PushAtlasType(AtlasType::Static);
-    _sprMngr.LoadFontFO(0, "Default", false, true);
-    _sprMngr.PopAtlasType();
+    _sprMngr.LoadFontFO(0, "Default", AtlasType::Static, false, true);
     _sprMngr.BuildFonts();
     _sprMngr.SetDefaultFont(0, COLOR_TEXT);
 
@@ -166,7 +162,7 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     {
         if (_splashPic != nullptr) {
-            _sprMngr.DrawSpriteSize(_splashPic->GetSprId(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+            _sprMngr.DrawSpriteSize(_splashPic->GetSpr(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
         }
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {

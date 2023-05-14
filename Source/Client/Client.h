@@ -139,8 +139,6 @@ public:
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
     void AnimFree(uint anim_id);
-    auto AnimGetCurSpr(uint anim_id) const -> uint;
-    auto AnimGetCurSprCnt(uint anim_id) const -> uint;
     auto AnimGetSprCount(uint anim_id) const -> uint;
     auto AnimGetFrames(uint anim_id) -> AnyFrames*;
     void AnimRun(uint anim_id, uint flags);
@@ -262,7 +260,7 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
-    vector<unique_del_ptr<ModelInstance>> DrawCritterModel {};
+    vector<unique_del_ptr<ModelSprite>> DrawCritterModel {};
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[MODEL_LAYERS_COUNT] {};

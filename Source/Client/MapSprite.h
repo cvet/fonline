@@ -41,6 +41,7 @@ class RenderEffect;
 class SpriteManager;
 class MapSpriteList;
 class MapSprite;
+class Sprite;
 
 ///@ ExportEnum
 enum class DrawOrderType : uint8
@@ -149,8 +150,8 @@ public:
     DrawOrderType DrawOrder {};
     uint DrawOrderPos {};
     size_t TreeIndex {};
-    uint SprId {};
-    const uint* PSprId {};
+    const Sprite* Spr {};
+    const Sprite* const* PSpr {};
     uint16 HexX {};
     uint16 HexY {};
     int ScrX {};
@@ -196,13 +197,13 @@ public:
 
     [[nodiscard]] auto RootSprite() -> MapSprite*;
 
-    auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
-    auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void Invalidate();
     void Sort();
 
 private:
-    auto PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
+    auto PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&;
     void GrowPool();
 
     SpriteManager& _sprMngr;

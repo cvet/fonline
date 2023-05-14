@@ -65,13 +65,13 @@ void CritterHexView::Init()
     DrawEffect = _engine->EffectMngr.Effects.Critter;
 }
 
-void CritterHexView::SetupSprite(MapSprite* spr)
+void CritterHexView::SetupSprite(MapSprite* mspr)
 {
     STACK_TRACE_ENTRY();
 
-    HexView::SetupSprite(spr);
+    HexView::SetupSprite(mspr);
 
-    spr->SetLight(CornerType::EastWest, _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
+    mspr->SetLight(CornerType::EastWest, _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
 }
 
 auto CritterHexView::GetCurAnim() -> CritterAnim*
@@ -468,21 +468,24 @@ void CritterHexView::RefreshModel()
 {
     STACK_TRACE_ENTRY();
 
+    Spr = nullptr;
+
+    _modelSpr = nullptr;
     _model = nullptr;
 
     const auto model_name = GetModelName();
     const auto ext = _str(model_name).getFileExtension();
 
     if (ext == "fo3d") {
-        _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
+        _modelSpr = _engine->SprMngr.LoadModel(model_name, AtlasType::Dynamic);
 
-        _model = _engine->SprMngr.LoadModel(model_name, true);
+        if (_modelSpr) {
+            Spr = _modelSpr.get();
 
-        if (_model) {
+            _model = _modelSpr->Model.get();
+
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
-
-            SprId = _engine->SprMngr.GetModelSprId(_model.get());
 
             _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetModelLayersData(), 0);
             _model->PrewarmParticles();
@@ -494,8 +497,6 @@ void CritterHexView::RefreshModel()
         else {
             BreakIntoDebugger();
         }
-
-        _engine->SprMngr.PopAtlasType();
     }
 }
 #endif
@@ -841,7 +842,7 @@ void CritterHexView::SetAnimSpr(const AnyFrames* anim, uint frm_index)
 
     _curFrmIndex = frm_index;
 
-    SprId = anim->GetSprId(_curFrmIndex);
+    Spr = anim->GetSpr(_curFrmIndex);
 
     _oxAnim = 0;
     _oyAnim = 0;

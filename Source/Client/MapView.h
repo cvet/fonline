@@ -132,8 +132,7 @@ struct ParticlePattern
     SCRIPTABLE_OBJECT_END();
 
     std::function<void()> FinishCallback {};
-    vector<unique_del_ptr<ParticleSystem>> Particles {};
-    vector<uint> ParticleSprIds {};
+    vector<unique_del_ptr<ParticleSprite>> Particles {};
 };
 
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
@@ -203,7 +202,7 @@ public:
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
     void RebuildFog() { _rebuildFog = true; }
     void SetShootBorders(bool enabled);
-    auto MeasureMapBorders(uint spr_id, int ox, int oy) -> bool;
+    auto MeasureMapBorders(const Sprite* spr, int ox, int oy) -> bool;
     auto MeasureMapBorders(const ItemHexView* item) -> bool;
     void EvaluateFieldFlags(uint16 hx, uint16 hy);
     void EvaluateFieldFlags(Field& field);
@@ -258,7 +257,7 @@ public:
     auto RunParticlePattern(string_view name, uint count) -> ParticlePattern*;
 
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
-    void DrawCursor(uint spr_id);
+    void DrawCursor(const Sprite* spr);
     void DrawCursor(string_view text);
 
     [[nodiscard]] auto IsFastPid(hstring pid) const -> bool;
@@ -294,7 +293,7 @@ private:
     };
 
     [[nodiscard]] auto FieldAt(uint16 hx, uint16 hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _width + hx]; }
-    [[nodiscard]] auto IsVisible(uint spr_id, int ox, int oy) const -> bool;
+    [[nodiscard]] auto IsVisible(const Sprite* spr, int ox, int oy) const -> bool;
     [[nodiscard]] auto GetViewWidth() const -> int;
     [[nodiscard]] auto GetViewHeight() const -> int;
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
@@ -312,7 +311,7 @@ private:
     void InitView(int screen_hx, int screen_hy);
     void ResizeView();
 
-    void AddSpriteToChain(Field& field, MapSprite* spr);
+    void AddSpriteToChain(Field& field, MapSprite* mspr);
     void InvalidateSpriteChain(Field& field);
 
     // Lighting

@@ -126,7 +126,7 @@
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
     auto& spr = self->GetDrawList().InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
         (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
-        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, //
+        mapSpr->FrameIndex < 0 ? anim->GetCurSpr(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSpr(mapSpr->FrameIndex), nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;

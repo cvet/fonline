@@ -72,16 +72,16 @@ void ResourceManager::IndexFiles()
     }
 }
 
-void ResourceManager::FreeResources(AtlasType atlas_type)
+void ResourceManager::ReinitializeDynamicAtlas()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(atlas_type == AtlasType::Static || atlas_type == AtlasType::Dynamic);
-
-    _sprMngr.DestroyAtlases(atlas_type);
+    // Cleanup
+    _sprMngr.DestroyAnyFrames(CritterDefaultAnim);
+    _sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
 
     for (auto it = _loadedAnims.begin(); it != _loadedAnims.end();) {
-        if (it->second.ResType == atlas_type) {
+        if (it->second.ResType == AtlasType::Dynamic) {
             if (it->second.Anim != nullptr) {
                 _sprMngr.DestroyAnyFrames(it->second.Anim);
             }
@@ -93,33 +93,15 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
         }
     }
 
-    if (atlas_type == AtlasType::Static) {
-        _sprMngr.ClearFonts();
+    for (auto&& [id, anim] : _critterFrames) {
+        _sprMngr.DestroyAnyFrames(anim);
     }
+    _critterFrames.clear();
 
-    if (atlas_type == AtlasType::Dynamic) {
-        for (auto&& [id, anim] : _critterFrames) {
-            _sprMngr.DestroyAnyFrames(anim);
-        }
-        _critterFrames.clear();
-    }
-}
-
-void ResourceManager::ReinitializeDynamicAtlas()
-{
-    STACK_TRACE_ENTRY();
-
-    FreeResources(AtlasType::Dynamic);
-    _sprMngr.DestroyAnyFrames(CritterDefaultAnim);
-    _sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
-
-    _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    {
-        _sprMngr.InitializeEgg("TransparentEgg.png");
-        CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true);
-        ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true);
-    }
-    _sprMngr.PopAtlasType();
+    // Initialize
+    _sprMngr.InitializeEgg("TransparentEgg.png", AtlasType::Dynamic);
+    CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", AtlasType::Dynamic, true);
+    ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", AtlasType::Dynamic, true);
 }
 
 auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
@@ -131,9 +113,7 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
         return it->second.Anim;
     }
 
-    _sprMngr.PushAtlasType(atlas_type);
-    auto* anim = _sprMngr.LoadAnimation(name, false);
-    _sprMngr.PopAtlasType();
+    auto* anim = _sprMngr.LoadAnimation(name, atlas_type, false);
 
     if (anim != nullptr) {
         anim->Name = name;
@@ -184,9 +164,7 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                 string str;
                 if (_animNameResolver.ResolveCritterAnimation(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
                     if (!str.empty()) {
-                        _sprMngr.PushAtlasType(AtlasType::Dynamic);
-                        anim = _sprMngr.LoadAnimation(str, false);
-                        _sprMngr.PopAtlasType();
+                        anim = _sprMngr.LoadAnimation(str, AtlasType::Dynamic, false);
 
                         // Fix by dirs
                         for (uint d = 0; anim != nullptr && d < anim->DirCount; d++) {
@@ -206,7 +184,7 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                                     }
 
                                     // Change size
-                                    dir_anim->Ind[0] = first ? dir_anim->Ind[0] : dir_anim->Ind[dir_anim->CntFrm - 1];
+                                    dir_anim->Spr[0] = first ? dir_anim->Spr[0] : dir_anim->Spr[dir_anim->CntFrm - 1];
                                     dir_anim->NextX[0] = first ? dir_anim->NextX[0] : dir_anim->NextX[dir_anim->CntFrm - 1];
                                     dir_anim->NextY[0] = first ? dir_anim->NextY[0] : dir_anim->NextY[dir_anim->CntFrm - 1];
                                     dir_anim->CntFrm = 1;
@@ -217,18 +195,17 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                             ox = oy = 0; // Todo: why I disable offset adding?
                             if (ox != 0 || oy != 0) {
                                 for (uint i = 0; i < dir_anim->CntFrm; i++) {
-                                    const auto spr_id = dir_anim->Ind[i];
+                                    auto* spr = dir_anim->Spr[i];
                                     auto fixed = false;
                                     for (uint j = 0; j < i; j++) {
-                                        if (dir_anim->Ind[j] == spr_id) {
+                                        if (dir_anim->Spr[j] == spr) {
                                             fixed = true;
                                             break;
                                         }
                                     }
                                     if (!fixed) {
-                                        auto* si = _sprMngr.GetSpriteInfoForEditing(spr_id);
-                                        si->OffsX += ox;
-                                        si->OffsY += oy;
+                                        spr->OffsX += ox;
+                                        spr->OffsY += oy;
                                     }
                                 }
                             }
@@ -307,10 +284,10 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
                 const auto* anim_ = anim->GetDir(d);
                 const auto* animex_ = animex->GetDir(d);
 
-                std::memcpy(anim_merge->Ind, anim_->Ind, anim_->CntFrm * sizeof(uint));
+                std::memcpy(anim_merge->Spr, anim_->Spr, anim_->CntFrm * sizeof(Sprite*));
                 std::memcpy(anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof(int));
                 std::memcpy(anim_merge->NextY, anim_->NextY, anim_->CntFrm * sizeof(int));
-                std::memcpy(anim_merge->Ind + anim_->CntFrm, animex_->Ind, animex_->CntFrm * sizeof(uint));
+                std::memcpy(anim_merge->Spr + anim_->CntFrm, animex_->Spr, animex_->CntFrm * sizeof(Sprite*));
                 std::memcpy(anim_merge->NextX + anim_->CntFrm, animex_->NextX, animex_->CntFrm * sizeof(int));
                 std::memcpy(anim_merge->NextY + anim_->CntFrm, animex_->NextY, animex_->CntFrm * sizeof(int));
 
@@ -339,12 +316,12 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
                 const auto* anim_ = anim->GetDir(d);
 
                 if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
-                    std::memcpy(anim_clone->Ind, anim_->Ind, anim_->CntFrm * sizeof(uint));
+                    std::memcpy(anim_clone->Spr, anim_->Spr, anim_->CntFrm * sizeof(Sprite*));
                     std::memcpy(anim_clone->NextX, anim_->NextX, anim_->CntFrm * sizeof(int));
                     std::memcpy(anim_clone->NextY, anim_->NextY, anim_->CntFrm * sizeof(int));
                 }
                 else {
-                    anim_clone->Ind[0] = anim_->Ind[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
+                    anim_clone->Spr[0] = anim_->Spr[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
                     anim_clone->NextX[0] = anim_->NextX[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
                     anim_clone->NextY[0] = anim_->NextY[IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) ? 0 : anim_->CntFrm - 1];
 
@@ -377,20 +354,13 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
     for (uint d = 0; d < stay_frm_base->DirCount; d++) {
         const auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
-
-        const auto* stay_si = _sprMngr.GetSpriteInfo(stay_frm->Ind[0]);
-        if (stay_si == nullptr) {
-            return;
-        }
+        const auto* stay_spr = stay_frm->Spr[0];
 
         for (uint i = 0; i < frames->CntFrm; i++) {
-            auto* si = _sprMngr.GetSpriteInfoForEditing(frames->Ind[i]);
-            if (si == nullptr) {
-                continue;
-            }
+            auto* spr = frames->Spr[i];
 
-            si->OffsX += stay_si->OffsX;
-            si->OffsY += stay_si->OffsY;
+            spr->OffsX += stay_spr->OffsX;
+            spr->OffsY += stay_spr->OffsY;
         }
     }
 }
@@ -409,11 +379,6 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
         const auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
 
-        const auto* stay_si = _sprMngr.GetSpriteInfo(stay_frm->Ind[0]);
-        if (stay_si == nullptr) {
-            return;
-        }
-
         int next_x = 0;
         int next_y = 0;
 
@@ -423,13 +388,10 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
         }
 
         for (uint i = 0; i < frames->CntFrm; i++) {
-            auto* si = _sprMngr.GetSpriteInfoForEditing(frames->Ind[i]);
-            if (si == nullptr) {
-                continue;
-            }
+            auto* spr = frames->Spr[i];
 
-            si->OffsX += next_x;
-            si->OffsY += next_y;
+            spr->OffsX += next_x;
+            spr->OffsY += next_y;
         }
     }
 }
@@ -471,20 +433,16 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
         return it->second;
     }
 
-    _sprMngr.PushAtlasType(AtlasType::Dynamic);
-
     // Try load fofrm
     static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
     string spr_name = _str("{}{}{}.fofrm", model_name, frm_ind[anim1], frm_ind[anim2]);
-    auto* frames = _sprMngr.LoadAnimation(spr_name, false);
+    auto* frames = _sprMngr.LoadAnimation(spr_name, AtlasType::Dynamic, false);
 
     // Try load fallout frames
     if (frames == nullptr) {
         spr_name = _str("{}{}{}.frm", model_name, frm_ind[anim1], frm_ind[anim2]);
-        frames = _sprMngr.LoadAnimation(spr_name, false);
+        frames = _sprMngr.LoadAnimation(spr_name, AtlasType::Dynamic, false);
     }
-
-    _sprMngr.PopAtlasType();
 
     _critterFrames.insert(std::make_pair(AnimMapId(model_name, anim1, anim2, true), frames));
     if (frames == nullptr) {
@@ -566,47 +524,45 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelInstance*
+auto ResourceManager::GetCritterModelSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelSprite*
 {
     STACK_TRACE_ENTRY();
 
     if (_critterModels.count(model_name) != 0u) {
-        _critterModels[model_name]->SetDir(dir, false);
-        _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+        _critterModels[model_name]->Model->SetDir(dir, false);
+        _critterModels[model_name]->Model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
         return _critterModels[model_name].get();
     }
 
-    _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    auto&& model = _sprMngr.LoadModel(model_name, true);
-    _sprMngr.PopAtlasType();
-
-    if (!model) {
+    auto&& model_spr = _sprMngr.LoadModel(model_name, AtlasType::Dynamic);
+    if (!model_spr) {
         return nullptr;
     }
+
+    auto&& model = model_spr->Model;
 
     model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
     model->SetDir(dir, false);
     model->PrewarmParticles();
     model->StartMeshGeneration();
 
-    _critterModels[model_name] = std::move(model);
+    _critterModels[model_name] = std::move(model_spr);
     return _critterModels[model_name].get();
 }
 #endif
 
-auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> uint
+auto ResourceManager::GetCritterSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> const Sprite*
 {
     STACK_TRACE_ENTRY();
 
     const string ext = _str().getFileExtension();
     if (ext != "fo3d") {
         const auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
-        return anim != nullptr ? anim->GetSprId(0) : 0u;
+        return anim != nullptr ? anim->GetSpr(0) : nullptr;
     }
     else {
 #if FO_ENABLE_3D
-        const auto* model = GetCritterModel(model_name, anim1, anim2, dir, layers3d);
-        return model != nullptr ? _sprMngr.GetModelSprId(model) : 0;
+        return GetCritterModelSpr(model_name, anim1, anim2, dir, layers3d);
 #else
         UNUSED_VARIABLE(layers3d);
         throw NotEnabled3DException("3D submodule not enabled");
@@ -624,10 +580,11 @@ auto ResourceManager::GetRandomSplash() -> AnyFrames*
 
     const auto rnd = GenericUtils::Random(0, static_cast<int>(_splashNames.size()) - 1);
 
-    _sprMngr.DestroyAtlases(AtlasType::Splash);
-    _sprMngr.PushAtlasType(AtlasType::Splash, true);
-    _splash = _sprMngr.ReloadAnimation(_splash, _splashNames[rnd]);
-    _sprMngr.PopAtlasType();
+    if (_splash != nullptr) {
+        _sprMngr.DestroyAnyFrames(_splash);
+    }
+
+    _splash = _sprMngr.LoadAnimation(_splashNames[rnd], AtlasType::OneImage, false);
 
     return _splash;
 }

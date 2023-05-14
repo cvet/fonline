@@ -148,7 +148,7 @@ public:
     void InitIface();
     auto IfaceLoadRect(IRect& comp, string_view name) const -> bool;
     void MapperMainLoop();
-    auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
+    auto GetProtoItemCurSpr(const ProtoItem* proto_item) -> const Sprite*;
     void ProcessMapperInput();
 
     void CurDraw();
@@ -157,7 +157,7 @@ public:
 
     auto IsCurInRect(const IRect& rect, int ax, int ay) const -> bool;
     auto IsCurInRect(const IRect& rect) const -> bool;
-    auto IsCurInRectNoTransp(uint spr_id, const IRect& rect, int ax, int ay) const -> bool;
+    auto IsCurInRectNoTransp(const Sprite* spr, const IRect& rect, int ax, int ay) const -> bool;
     auto IsCurInInterface() const -> bool;
     auto GetCurHex(uint16& hx, uint16& hy, bool ignore_interface) -> bool;
 

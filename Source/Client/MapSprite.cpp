@@ -105,7 +105,7 @@ auto MapSprite::CheckHit(int ox, int oy, bool check_transparent) const -> bool
         return false;
     }
 
-    return !check_transparent || Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true);
+    return !check_transparent || Root->_sprMngr.IsPixNoTransp(PSpr != nullptr ? *PSpr : Spr, ox, oy, true);
 }
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)
@@ -230,15 +230,15 @@ auto MapSpriteList::RootSprite() -> MapSprite*
     return _rootSprite;
 }
 
-auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
     _spriteCount++;
 
-    MapSprite* spr;
+    MapSprite* mspr;
     if (!_invalidatedSprites.empty()) {
-        spr = _invalidatedSprites.back();
+        mspr = _invalidatedSprites.back();
         _invalidatedSprites.pop_back();
     }
     else {
@@ -246,103 +246,103 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16
             GrowPool();
         }
 
-        spr = _spritesPool.back();
+        mspr = _spritesPool.back();
         _spritesPool.pop_back();
     }
 
-    spr->Root = this;
+    mspr->Root = this;
 
     if (child == nullptr) {
         if (_lastSprite == nullptr) {
-            _rootSprite = spr;
-            _lastSprite = spr;
-            spr->ChainRoot = &_rootSprite;
-            spr->ChainLast = &_lastSprite;
-            spr->ChainParent = nullptr;
-            spr->ChainChild = nullptr;
-            spr->TreeIndex = 0;
+            _rootSprite = mspr;
+            _lastSprite = mspr;
+            mspr->ChainRoot = &_rootSprite;
+            mspr->ChainLast = &_lastSprite;
+            mspr->ChainParent = nullptr;
+            mspr->ChainChild = nullptr;
+            mspr->TreeIndex = 0;
         }
         else {
-            spr->ChainParent = _lastSprite;
-            spr->ChainChild = nullptr;
-            _lastSprite->ChainChild = spr;
+            mspr->ChainParent = _lastSprite;
+            mspr->ChainChild = nullptr;
+            _lastSprite->ChainChild = mspr;
             _lastSprite->ChainLast = nullptr;
-            spr->ChainLast = &_lastSprite;
-            spr->TreeIndex = _lastSprite->TreeIndex + 1;
-            _lastSprite = spr;
+            mspr->ChainLast = &_lastSprite;
+            mspr->TreeIndex = _lastSprite->TreeIndex + 1;
+            _lastSprite = mspr;
         }
     }
     else {
-        spr->ChainChild = child;
-        spr->ChainParent = child->ChainParent;
-        child->ChainParent = spr;
-        if (spr->ChainParent != nullptr) {
-            spr->ChainParent->ChainChild = spr;
+        mspr->ChainChild = child;
+        mspr->ChainParent = child->ChainParent;
+        child->ChainParent = mspr;
+        if (mspr->ChainParent != nullptr) {
+            mspr->ChainParent->ChainChild = mspr;
         }
 
         // Recalculate indices
-        auto index = spr->ChainParent != nullptr ? spr->ChainParent->TreeIndex + 1 : 0;
-        auto* spr_ = spr;
-        while (spr_ != nullptr) {
-            spr_->TreeIndex = index;
-            spr_ = spr_->ChainChild;
+        auto index = mspr->ChainParent != nullptr ? mspr->ChainParent->TreeIndex + 1 : 0;
+        auto* mspr_ = mspr;
+        while (mspr_ != nullptr) {
+            mspr_->TreeIndex = index;
+            mspr_ = mspr_->ChainChild;
             index++;
         }
 
-        if (spr->ChainParent == nullptr) {
+        if (mspr->ChainParent == nullptr) {
             RUNTIME_ASSERT(child->ChainRoot);
-            _rootSprite = spr;
-            spr->ChainRoot = &_rootSprite;
+            _rootSprite = mspr;
+            mspr->ChainRoot = &_rootSprite;
             child->ChainRoot = nullptr;
         }
     }
 
-    spr->HexX = hx;
-    spr->HexY = hy;
-    spr->ScrX = x;
-    spr->ScrY = y;
-    spr->PScrX = sx;
-    spr->PScrY = sy;
-    spr->SprId = id;
-    spr->PSprId = id_ptr;
-    spr->OffsX = ox;
-    spr->OffsY = oy;
-    spr->Alpha = alpha;
-    spr->Light = nullptr;
-    spr->LightRight = nullptr;
-    spr->LightLeft = nullptr;
-    spr->Valid = true;
-    spr->ValidCallback = callback;
+    mspr->HexX = hx;
+    mspr->HexY = hy;
+    mspr->ScrX = x;
+    mspr->ScrY = y;
+    mspr->PScrX = sx;
+    mspr->PScrY = sy;
+    mspr->Spr = spr;
+    mspr->PSpr = pspr;
+    mspr->OffsX = ox;
+    mspr->OffsY = oy;
+    mspr->Alpha = alpha;
+    mspr->Light = nullptr;
+    mspr->LightRight = nullptr;
+    mspr->LightLeft = nullptr;
+    mspr->Valid = true;
+    mspr->ValidCallback = callback;
     if (callback != nullptr) {
         *callback = true;
     }
-    spr->EggAppearence = EggAppearenceType::None;
-    spr->Contour = ContourType::None;
-    spr->ContourColor = 0u;
-    spr->Color = 0u;
-    spr->DrawEffect = effect;
+    mspr->EggAppearence = EggAppearenceType::None;
+    mspr->Contour = ContourType::None;
+    mspr->ContourColor = 0u;
+    mspr->Color = 0u;
+    mspr->DrawEffect = effect;
 
     // Draw order
-    spr->DrawOrder = draw_order;
+    mspr->DrawOrder = draw_order;
 
     if (draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd) {
-        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + spr->HexY * MAXHEX_MAX + spr->HexX;
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(draw_order) + mspr->HexY * MAXHEX_MAX + mspr->HexX;
     }
     else {
-        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + spr->HexY * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + spr->HexX * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
+        mspr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * static_cast<int>(DrawOrderType::NormalBegin) + mspr->HexY * static_cast<int>(DrawOrderType::NormalBegin) * MAXHEX_MAX + mspr->HexX * static_cast<int>(DrawOrderType::NormalBegin) + (static_cast<int>(draw_order) - static_cast<int>(DrawOrderType::NormalBegin));
     }
 
-    return *spr;
+    return *mspr;
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
-    return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
+    return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, spr, pspr, ox, oy, alpha, effect, callback);
 }
 
-auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, uint id, const uint* id_ptr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
+auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy, int x, int y, const int* sx, const int* sy, const Sprite* spr, const Sprite* const* pspr, const int* ox, const int* oy, const uint8* alpha, RenderEffect** effect, bool* callback) -> MapSprite&
 {
     STACK_TRACE_ENTRY();
 
@@ -366,7 +366,7 @@ auto MapSpriteList::InsertSprite(DrawOrderType draw_order, uint16 hx, uint16 hy,
         parent = parent->ChainChild;
     }
 
-    return PutSprite(parent, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
+    return PutSprite(parent, draw_order, hx, hy, x, y, sx, sy, spr, pspr, ox, oy, alpha, effect, callback);
 }
 
 void MapSpriteList::Invalidate()
@@ -391,17 +391,17 @@ void MapSpriteList::Sort()
 
     _sortSprites.reserve(_spriteCount);
 
-    auto* spr = _rootSprite;
-    while (spr != nullptr) {
-        _sortSprites.emplace_back(spr);
-        spr = spr->ChainChild;
+    auto* mspr = _rootSprite;
+    while (mspr != nullptr) {
+        _sortSprites.emplace_back(mspr);
+        mspr = mspr->ChainChild;
     }
 
-    std::sort(_sortSprites.begin(), _sortSprites.end(), [](const MapSprite* spr1, const MapSprite* spr2) {
-        if (spr1->DrawOrderPos == spr2->DrawOrderPos) {
-            return spr1->TreeIndex < spr2->TreeIndex;
+    std::sort(_sortSprites.begin(), _sortSprites.end(), [](const MapSprite* mspr1, const MapSprite* mspr2) {
+        if (mspr1->DrawOrderPos == mspr2->DrawOrderPos) {
+            return mspr1->TreeIndex < mspr2->TreeIndex;
         }
-        return spr1->DrawOrderPos < spr2->DrawOrderPos;
+        return mspr1->DrawOrderPos < mspr2->DrawOrderPos;
     });
 
     _rootSprite = _sortSprites.front();

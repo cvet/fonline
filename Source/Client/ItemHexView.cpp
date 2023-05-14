@@ -71,21 +71,21 @@ void ItemHexView::Init()
     }
 }
 
-void ItemHexView::SetupSprite(MapSprite* spr)
+void ItemHexView::SetupSprite(MapSprite* mspr)
 {
     STACK_TRACE_ENTRY();
 
-    HexView::SetupSprite(spr);
+    HexView::SetupSprite(mspr);
 
-    spr->SetColor(GetIsColorize() ? GetLightColor() & 0xFFFFFF : 0);
-    spr->SetEggAppearence(GetEggType());
+    mspr->SetColor(GetIsColorize() ? GetLightColor() & 0xFFFFFF : 0);
+    mspr->SetEggAppearence(GetEggType());
 
     if (GetIsBadItem()) {
-        spr->SetContour(ContourType::Red);
+        mspr->SetContour(ContourType::Red);
     }
 
     if (!GetIsNoLightInfluence()) {
-        spr->SetLight(GetCorner(), _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
+        mspr->SetLight(GetCorner(), _map->GetLightHex(0, 0), _map->GetWidth(), _map->GetHeight());
     }
 }
 
@@ -380,7 +380,7 @@ void ItemHexView::SetCurSpr(uint num_spr)
     STACK_TRACE_ENTRY();
 
     _curFrm = num_spr;
-    SprId = _anim->GetSprId(_curFrm);
+    Spr = _anim->GetSpr(_curFrm);
 
     RefreshOffs();
 }

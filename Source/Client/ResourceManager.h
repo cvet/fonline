@@ -55,15 +55,14 @@ public:
     [[nodiscard]] auto GetSkDxAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
     [[nodiscard]] auto GetItemAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Dynamic); }
     [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uint8 dir) -> AnyFrames*;
-    [[nodiscard]] auto GetCritterSprId(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> uint;
+    [[nodiscard]] auto GetCritterSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> const Sprite*;
     [[nodiscard]] auto GetRandomSplash() -> AnyFrames*;
     [[nodiscard]] auto GetSoundNames() -> map<string, string>& { return _soundNames; }
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelInstance*;
+    [[nodiscard]] auto GetCritterModelSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> ModelSprite*;
 #endif
 
     void IndexFiles();
-    void FreeResources(AtlasType atlas_type);
     void ReinitializeDynamicAtlas();
 
     AnyFrames* ItemHexDefaultAnim {};
@@ -93,6 +92,6 @@ private:
     AnyFrames* _splash {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
-    unordered_map<hstring, unique_del_ptr<ModelInstance>> _critterModels {};
+    unordered_map<hstring, unique_del_ptr<ModelSprite>> _critterModels {};
 #endif
 };

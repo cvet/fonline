@@ -51,12 +51,12 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, uint16 hx
 
     RUNTIME_ASSERT(!_mapSprValid);
 
-    auto& spr = list.AddSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, 0, &SprId, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
+    auto& mspr = list.AddSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
+        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
 
-    SetupSprite(&spr);
+    SetupSprite(&mspr);
 
-    RUNTIME_ASSERT(_mapSpr == &spr);
+    RUNTIME_ASSERT(_mapSpr == &mspr);
     RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr;
@@ -68,22 +68,22 @@ auto HexView::InsertSprite(MapSpriteList& list, DrawOrderType draw_order, uint16
 
     RUNTIME_ASSERT(!_mapSprValid);
 
-    auto& spr = list.InsertSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
-        sx, sy, 0, &SprId, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
+    auto& mspr = list.InsertSprite(draw_order, hx, hy, _map->GetEngine()->Settings.MapHexWidth / 2, _map->GetEngine()->Settings.MapHexHeight / 2, //
+        sx, sy, nullptr, &Spr, &ScrX, &ScrY, &Alpha, &DrawEffect, &_mapSprValid);
 
-    SetupSprite(&spr);
+    SetupSprite(&mspr);
 
-    RUNTIME_ASSERT(_mapSpr == &spr);
+    RUNTIME_ASSERT(_mapSpr == &mspr);
     RUNTIME_ASSERT(_mapSprValid);
 
     return _mapSpr;
 }
 
-void HexView::SetupSprite(MapSprite* spr)
+void HexView::SetupSprite(MapSprite* mspr)
 {
     STACK_TRACE_ENTRY();
 
-    _mapSpr = spr;
+    _mapSpr = mspr;
 }
 
 void HexView::Finish()

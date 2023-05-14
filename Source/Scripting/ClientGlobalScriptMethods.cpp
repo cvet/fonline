@@ -712,20 +712,17 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
 {
-    client->SprMngr.PushAtlasType(AtlasType::Static);
-
     bool result;
     if (!fontFname.empty() && fontFname[0] == '*') {
-        result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), false, false);
+        result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), AtlasType::Static, false, false);
     }
     else {
-        result = client->SprMngr.LoadFontBmf(fontIndex, fontFname);
+        result = client->SprMngr.LoadFontBmf(fontIndex, fontFname, AtlasType::Static);
     }
 
     if (result && !client->SprMngr.IsAccumulateAtlasActive()) {
         client->SprMngr.BuildFonts();
     }
-    client->SprMngr.PopAtlasType();
 
     if (!result) {
         throw ScriptException("Can't load font", fontIndex, fontFname);
@@ -972,12 +969,12 @@
         return 0;
     }
 
-    const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex));
-    if (si == nullptr) {
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+    if (spr == nullptr) {
         return 0;
     }
 
-    return si->Width;
+    return spr->Width;
 }
 
 ///# ...
@@ -992,12 +989,12 @@
         return 0;
     }
 
-    const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex));
-    if (si == nullptr) {
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+    if (spr == nullptr) {
         return 0;
     }
 
-    return si->Height;
+    return spr->Height;
 }
 
 ///# ...
@@ -1038,7 +1035,7 @@
         return false;
     }
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex));
+    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex));
     return client->SprMngr.IsPixNoTransp(spr_id_, x, y, false);
 }
 
@@ -1080,7 +1077,7 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
     client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(0));
 }
 
@@ -1106,7 +1103,7 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
     client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(color));
 }
 
@@ -1136,18 +1133,14 @@
     auto xx = x;
     auto yy = y;
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
-    if (offs) {
-        const auto* si = client->SprMngr.GetSpriteInfo(spr_id);
-        if (si == nullptr) {
-            return;
-        }
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
 
-        xx += -si->Width / 2 + si->OffsX;
-        yy += -si->Height + si->OffsY;
+    if (offs) {
+        xx += -spr->Width / 2 + spr->OffsX;
+        yy += -spr->Height + spr->OffsY;
     }
 
-    client->SprMngr.DrawSprite(spr_id, xx, yy, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSprite(spr, xx, yy, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
@@ -1173,8 +1166,8 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
-    client->SprMngr.DrawSpriteSizeExt(spr_id, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(0));
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(0));
 }
 
 ///# ...
@@ -1201,8 +1194,8 @@
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
-    client->SprMngr.DrawSpriteSizeExt(spr_id, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(color));
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
@@ -1234,18 +1227,14 @@
     auto xx = x;
     auto yy = y;
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex);
-    if (offs) {
-        const auto* si = client->SprMngr.GetSpriteInfo(spr_id);
-        if (si == nullptr) {
-            return;
-        }
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
 
-        xx += si->OffsX;
-        yy += si->OffsY;
+    if (offs) {
+        xx += spr->OffsX;
+        yy += spr->OffsY;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr_id, xx, yy, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSpriteSizeExt(spr, xx, yy, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
@@ -1265,16 +1254,18 @@
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    auto* anim = client->AnimGetFrames(sprId);
+    const auto* anim = client->AnimGetFrames(sprId);
     if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameplayTime()) : anim->GetSprId(frameIndex), x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
+    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+
+    client->SprMngr.DrawSpritePattern(spr, x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
@@ -1379,9 +1370,9 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
-    auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
+    const auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim != nullptr) {
-        client->SprMngr.DrawSpriteSize(anim->Ind[0], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
+        client->SprMngr.DrawSpriteSize(anim->Spr[0], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
     }
 }
 
@@ -1412,23 +1403,23 @@
         return;
     }
 
-    auto&& model = client->DrawCritterModel[instance];
-    if (!model || client->DrawCritterModelCrType[instance] != modelName) {
-        model = nullptr;
+    auto& model_spr = client->DrawCritterModel[instance];
 
-        client->SprMngr.PushAtlasType(AtlasType::Dynamic);
-        model = client->SprMngr.LoadModel(modelName, false);
-        client->SprMngr.PopAtlasType();
+    if (!model_spr || client->DrawCritterModelCrType[instance] != modelName) {
+        model_spr = nullptr;
+
+        model_spr = client->SprMngr.LoadModel(modelName, AtlasType::Static);
+
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;
 
-        if (!model) {
+        if (!model_spr) {
             client->DrawCritterModelFailedToLoad[instance] = true;
             return;
         }
 
-        model->EnableShadow(false);
-        model->SetTimer(false);
+        model_spr->Model->EnableShadow(false);
+        model_spr->Model->SetTimer(false);
     }
 
     const auto count = static_cast<uint>(position.size());
@@ -1455,6 +1446,8 @@
         client->DrawCritterModelLayers[i] = layers[i];
     }
 
+    auto&& model = model_spr->Model;
+
     model->SetLookDirAngle(0);
     model->SetMoveDirAngle(0, false);
     model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
@@ -1462,7 +1455,7 @@
     model->SetSpeed(speed);
     model->SetAnimation(anim1, anim2, client->DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
-    client->SprMngr.DrawModel(static_cast<int>(x), static_cast<int>(y), model.get(), COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawModel(static_cast<int>(x), static_cast<int>(y), model_spr.get(), COLOR_SCRIPT_SPRITE(color));
 
     if (count > 13) {
         client->SprMngr.PopScissor();
