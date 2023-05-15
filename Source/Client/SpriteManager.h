@@ -119,7 +119,7 @@ struct TextureAtlas
     struct SpaceNode
     {
         SpaceNode(int x, int y, int width, int height);
-        auto FindPosition(int width, int height, int& x, int& y) -> bool;
+        auto FindPosition(int width, int height, int& x, int& y) -> SpaceNode*;
 
         int PosX {};
         int PosY {};
@@ -136,11 +136,6 @@ struct TextureAtlas
     int Width {};
     int Height {};
     unique_ptr<SpaceNode> RootNode {};
-    int CurX {};
-    int CurY {};
-    int LineMaxH {};
-    int LineCurH {};
-    int LineW {};
 };
 
 class Sprite
@@ -160,8 +155,10 @@ public:
 class AtlasSprite : public Sprite
 {
 public:
+    ~AtlasSprite() override;
     auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
 
+    TextureAtlas::SpaceNode* Node {};
     FRect AtlasRect {};
     vector<bool> HitTestData {};
 };
@@ -238,8 +235,7 @@ public:
     [[nodiscard]] auto IsPixNoTransp(const Sprite* spr, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool;
-    [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
-    [[nodiscard]] auto LoadAnimation(string_view fname, AtlasType target_atlas, bool use_dummy_if_not_exists) -> AnyFrames*;
+    [[nodiscard]] auto LoadAnimation(string_view fname, AtlasType atlas_type, bool use_dummy_if_not_exists) -> AnyFrames*;
     [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
 
     void SetWindowSize(int w, int h);
@@ -259,8 +255,6 @@ public:
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void ClearCurrentRenderTarget(uint color, bool with_depth = false);
     void DeleteRenderTarget(RenderTarget* rt);
-    void AccumulateAtlasData();
-    void FlushAccumulatedAtlasData();
     void DumpAtlases() const;
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
@@ -298,9 +292,8 @@ private:
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
 
     auto CreateAtlas(int request_width, int request_height, AtlasType atlas_type) -> TextureAtlas*;
-    auto FindAtlasPlace(const AtlasSprite* atlas_spr, AtlasType atlas_type, int& x, int& y) -> TextureAtlas*;
-    void RequestFillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, int width, int height, const uint* data);
-    void FillAtlas(AtlasSprite* atlas_spr, const uint* data, AtlasType atlas_type);
+    auto FindAtlasPlace(const AtlasSprite* atlas_spr, AtlasType atlas_type, int& x, int& y) -> pair<TextureAtlas*, TextureAtlas::SpaceNode*>;
+    void FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, int width, int height, const uint* data);
 
     void RefreshScissor();
     void EnableScissor();
@@ -333,9 +326,6 @@ private:
     vector<unique_ptr<RenderTarget>> _rtAll {};
 
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
-
-    bool _accumulatorActive {};
-    vector<tuple<AtlasSprite*, uint*, AtlasType>> _spritesAccumulator {};
 
     MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
 
@@ -391,7 +381,6 @@ public:
     auto LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool;
     void SetDefaultFont(int index, uint color);
     void SetFontEffect(int index, RenderEffect* effect);
-    void BuildFonts();
     void DrawStr(const IRect& r, string_view str, uint flags, uint color, int num_font);
     auto SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>;
     void ClearFonts();
@@ -419,7 +408,6 @@ private:
         };
 
         RenderEffect* DrawEffect {};
-        bool Builded {};
         RenderTexture* FontTex {};
         RenderTexture* FontTexBordered {};
         map<uint, Letter> Letters {};

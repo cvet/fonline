@@ -74,7 +74,6 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     // Load font
     _sprMngr.LoadFontFO(0, "Default", AtlasType::Static, false, true);
-    _sprMngr.BuildFonts();
     _sprMngr.SetDefaultFont(0, COLOR_TEXT);
 
     // Network handlers

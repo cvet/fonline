@@ -86,7 +86,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         load_fonts_ok = false;
     }
     RUNTIME_ASSERT(load_fonts_ok);
-    SprMngr.BuildFonts();
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     SprMngr.BeginScene(COLOR_RGB(100, 100, 100));

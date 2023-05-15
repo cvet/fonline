@@ -132,18 +132,9 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     ResMngr.ReinitializeDynamicAtlas();
 
-    // Recreate static atlas
-    SprMngr.AccumulateAtlasData();
-
     // Modules initialization
     ScriptSys->InitModules();
     OnStart.Fire();
-
-    // Flush atlas data
-    SprMngr.FlushAccumulatedAtlasData();
-
-    // Finish fonts
-    SprMngr.BuildFonts();
 
     // Connection handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });

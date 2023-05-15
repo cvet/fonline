@@ -713,15 +713,12 @@
 [[maybe_unused]] void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
 {
     bool result;
+
     if (!fontFname.empty() && fontFname[0] == '*') {
         result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), AtlasType::Static, false, false);
     }
     else {
         result = client->SprMngr.LoadFontBmf(fontIndex, fontFname, AtlasType::Static);
-    }
-
-    if (result && !client->SprMngr.IsAccumulateAtlasActive()) {
-        client->SprMngr.BuildFonts();
     }
 
     if (!result) {
