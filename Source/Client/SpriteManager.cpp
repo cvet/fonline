@@ -2498,7 +2498,7 @@ void SpriteManager::BuildFont(int index)
 
     NON_CONST_METHOD_HINT();
 
-#define PIXEL_AT(tex_data, width, x, y) (*((uint*)(tex_data).data() + (y) * (width) + (x)))
+#define PIXEL_AT(tex_data, width, x, y) (*(reinterpret_cast<uint*>(tex_data.data()) + (y) * (width) + (x)))
 
     auto& font = *_allFonts[index];
 

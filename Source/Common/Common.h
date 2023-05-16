@@ -930,10 +930,10 @@ private:
 #define UNUSED_VARIABLE(x) (void)(x)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
+#define COLOR_RGBA(a, r, g, b) (static_cast<uint>((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
-#define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
+#define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | (static_cast<uint>(a) & 0xFF) << 24)
 
 // Bits
 #define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
