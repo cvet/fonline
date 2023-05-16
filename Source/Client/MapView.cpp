@@ -89,18 +89,18 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _rtFog = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtFog->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
 
-    _picHex[0] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::Dynamic, true);
-    _picHex[1] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex2.png", AtlasType::Dynamic, true);
-    _picHex[2] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex3.png", AtlasType::Dynamic, true);
-    _cursorPrePic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_pre.png", AtlasType::Dynamic, false);
-    _cursorPostPic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_post.png", AtlasType::Dynamic, false);
-    _cursorXPic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_x.png", AtlasType::Dynamic, false);
-    _picTrack1 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track1.png", AtlasType::Dynamic, true);
-    _picTrack2 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track2.png", AtlasType::Dynamic, true);
-    _picHexMask = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex_mask.png", AtlasType::Dynamic, false);
+    _picHex[0] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::MapSprites);
+    _picHex[1] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex2.png", AtlasType::MapSprites);
+    _picHex[2] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex3.png", AtlasType::MapSprites);
+    _cursorPrePic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_pre.png", AtlasType::MapSprites);
+    _cursorPostPic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_post.png", AtlasType::MapSprites);
+    _cursorXPic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_x.png", AtlasType::MapSprites);
+    _picTrack1 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track1.png", AtlasType::MapSprites);
+    _picTrack2 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track2.png", AtlasType::MapSprites);
+    _picHexMask = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex_mask.png", AtlasType::MapSprites);
 
-    if (_picHexMask != nullptr) {
-        const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask->Spr[0]);
+    if (_picHexMask) {
+        const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask->GetSpr());
         const auto mask_x = iround(static_cast<float>(atlas_spr->Atlas->MainTex->Width) * atlas_spr->AtlasRect.Left);
         const auto mask_y = iround(static_cast<float>(atlas_spr->Atlas->MainTex->Height) * atlas_spr->AtlasRect.Top);
         _picHexMaskData = atlas_spr->Atlas->MainTex->GetTextureRegion(mask_x, mask_y, atlas_spr->Width, atlas_spr->Height);
@@ -895,7 +895,7 @@ auto MapView::RunParticlePattern(string_view name, uint count) -> ParticlePatter
 {
     STACK_TRACE_ENTRY();
 
-    auto&& particle_spr = _engine->SprMngr.LoadParticle(name, AtlasType::Dynamic);
+    auto&& particle_spr = _engine->SprMngr.LoadParticle(name, AtlasType::MapSprites);
     if (!particle_spr) {
         BreakIntoDebugger();
         return nullptr;
@@ -910,7 +910,7 @@ auto MapView::RunParticlePattern(string_view name, uint count) -> ParticlePatter
     pattern->Particles.emplace_back(std::move(particle_spr));
 
     for (uint i = 1; i < count; i++) {
-        auto&& next_particle_spr = _engine->SprMngr.LoadParticle(name, AtlasType::Dynamic);
+        auto&& next_particle_spr = _engine->SprMngr.LoadParticle(name, AtlasType::MapSprites);
         next_particle_spr->Particle->Prewarm();
         pattern->Particles.emplace_back(std::move(next_particle_spr));
     }
@@ -3505,7 +3505,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
 
                 // Correct with hex color mask
                 if (_picHexMask != nullptr) {
-                    const auto* spr = _picHexMask->Spr[0];
+                    const auto* spr = _picHexMask->GetSpr();
                     const auto mask_x = std::clamp(iround((xf - x_) * GetSpritesZoom()), 0, spr->Width - 1);
                     const auto mask_y = std::clamp(iround((yf - y_) * GetSpritesZoom()), 0, spr->Height - 1);
                     const auto mask_color = _picHexMaskData[mask_y * spr->Width + mask_x];

@@ -117,7 +117,7 @@ public:
 private:
     struct CritterAnim
     {
-        AnyFrames* Anim {};
+        const SpriteSheet* Anim {};
         time_duration AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
@@ -134,7 +134,7 @@ private:
     void SetupSprite(MapSprite* mspr) override;
     void ProcessMoving();
     void NextAnim(bool erase_front);
-    void SetAnimSpr(const AnyFrames* anim, uint frm_index);
+    void SetAnimSpr(const SpriteSheet* anim, uint frm_index);
 
     bool _needReset {};
     time_point _resetTime {};

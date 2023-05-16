@@ -71,7 +71,7 @@ private:
     void SetupSprite(MapSprite* mspr) override;
     void SetCurSpr(uint num_spr);
 
-    AnyFrames* _anim {};
+    const SpriteSheet* _anim {};
     uint _curFrm {};
     uint _begFrm {};
     uint _endFrm {};

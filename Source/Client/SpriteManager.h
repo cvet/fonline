@@ -45,9 +45,7 @@
 #include "Settings.h"
 #include "VisualParticles.h"
 
-static constexpr auto ANY_FRAMES_POOL_SIZE = 2000;
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
-static constexpr auto MAX_FRAMES = 50;
 
 // Font flags
 // Todo: convert FT_ font flags to enum
@@ -89,8 +87,8 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> uint
 
 enum class AtlasType
 {
-    Static,
-    Dynamic,
+    IfaceSprites,
+    MapSprites,
     MeshTextures,
     OneImage,
 };
@@ -114,22 +112,28 @@ struct RenderTarget
     vector<tuple<int, int, uint>> LastPixelPicks {};
 };
 
-struct TextureAtlas
+class TextureAtlas final
 {
-    struct SpaceNode
+public:
+    class SpaceNode final
     {
+    public:
         SpaceNode(int x, int y, int width, int height);
-        auto FindPosition(int width, int height, int& x, int& y) -> SpaceNode*;
+
+        [[nodiscard]] auto IsBusyRecursively() const noexcept -> bool;
+
+        auto FindPosition(int width, int height) -> SpaceNode*;
+        void Free() noexcept;
 
         int PosX {};
         int PosY {};
         int Width {};
         int Height {};
         bool Busy {};
-        unique_ptr<SpaceNode> Child1 {};
-        unique_ptr<SpaceNode> Child2 {};
+        vector<unique_ptr<SpaceNode>> Children {};
     };
 
+    // Todo: incapsulate texture atlas & atlas space node data
     AtlasType Type {};
     RenderTarget* RTarg {};
     RenderTexture* MainTex {};
@@ -141,9 +145,16 @@ struct TextureAtlas
 class Sprite
 {
 public:
+    Sprite() = default;
+    Sprite(const Sprite&) = delete;
+    Sprite(Sprite&&) noexcept = default;
+    auto operator=(const Sprite&) = delete;
+    auto operator=(Sprite&&) noexcept -> Sprite& = default;
     virtual ~Sprite() = default;
+
     virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t = 0;
 
+    // Todo: incapsulate sprite data
     int Width {};
     int Height {};
     int OffsX {};
@@ -152,48 +163,88 @@ public:
     RenderEffect* DrawEffect {};
 };
 
+class SpriteRef final : public Sprite
+{
+public:
+    explicit SpriteRef(const Sprite* ref);
+    SpriteRef(const SpriteRef&) = delete;
+    SpriteRef(SpriteRef&&) noexcept = default;
+    auto operator=(const SpriteRef&) = delete;
+    auto operator=(SpriteRef&&) noexcept -> SpriteRef& = default;
+    ~SpriteRef() override = default;
+
+    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
+
+private:
+    const Sprite* _ref {};
+};
+
 class AtlasSprite : public Sprite
 {
 public:
+    AtlasSprite() = default;
+    AtlasSprite(const AtlasSprite&) = delete;
+    AtlasSprite(AtlasSprite&&) noexcept = default;
+    auto operator=(const AtlasSprite&) = delete;
+    auto operator=(AtlasSprite&&) noexcept -> AtlasSprite& = default;
     ~AtlasSprite() override;
+
     auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
 
-    TextureAtlas::SpaceNode* Node {};
+    TextureAtlas::SpaceNode* AtlasNode {};
     FRect AtlasRect {};
     vector<bool> HitTestData {};
 };
 
-class ParticleSprite : public AtlasSprite
+class ParticleSprite final : public AtlasSprite
 {
 public:
+    ParticleSprite() = default;
+    ParticleSprite(const ParticleSprite&) = delete;
+    ParticleSprite(ParticleSprite&&) noexcept = default;
+    auto operator=(const ParticleSprite&) = delete;
+    auto operator=(ParticleSprite&&) noexcept -> ParticleSprite& = default;
+    ~ParticleSprite() override = default;
+
     unique_ptr<ParticleSystem> Particle {};
 };
 
 #if FO_ENABLE_3D
-class ModelSprite : public AtlasSprite
+class ModelSprite final : public AtlasSprite
 {
 public:
+    ModelSprite() = default;
+    ModelSprite(const ModelSprite&) = delete;
+    ModelSprite(ModelSprite&&) noexcept = default;
+    auto operator=(const ModelSprite&) = delete;
+    auto operator=(ModelSprite&&) noexcept -> ModelSprite& = default;
+    ~ModelSprite() override = default;
+
     unique_ptr<ModelInstance> Model {};
 };
 #endif
 
-struct AnyFrames
+class SpriteSheet final
 {
-    [[nodiscard]] auto GetSpr(uint num_frm = 0) const -> Sprite*;
-    [[nodiscard]] auto GetCurSpr(time_point time) const -> Sprite*;
-    [[nodiscard]] auto GetCurSprIndex(time_point time) const -> uint;
-    [[nodiscard]] auto GetDir(uint dir) -> AnyFrames*;
+public:
+    SpriteSheet(uint frames, uint ticks, uint dirs);
 
-    Sprite* Spr[MAX_FRAMES] {};
-    int NextX[MAX_FRAMES] {};
-    int NextY[MAX_FRAMES] {};
-    uint CntFrm {};
-    uint Ticks {}; // Time of playing animation
+    [[nodiscard]] auto GetSpr(uint num_frm = 0) const -> const Sprite*;
+    [[nodiscard]] auto GetSpr(uint num_frm = 0) -> Sprite*;
+    [[nodiscard]] auto GetCurSpr(time_point time) const -> const Sprite*;
+    [[nodiscard]] auto GetDir(uint dir) const -> const SpriteSheet*;
+    [[nodiscard]] auto GetDir(uint dir) -> SpriteSheet*;
+
+    // Todo: incapsulate sprite sheet data
+    vector<unique_ptr<Sprite>> Spr {};
+    vector<IPoint> SprOffset {};
+    uint CntFrm {}; // Todo: Spr.size()
+    uint WholeTicks {};
     uint Anim1 {};
     uint Anim2 {};
     hstring Name {};
-    uint DirCount {1};
-    AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
+    uint DirCount {};
+    unique_ptr<SpriteSheet> Dirs[GameSettings::MAP_DIR_COUNT - 1] {};
 };
 
 struct PrimitivePoint
@@ -235,8 +286,7 @@ public:
     [[nodiscard]] auto IsPixNoTransp(const Sprite* spr, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool;
-    [[nodiscard]] auto LoadAnimation(string_view fname, AtlasType atlas_type, bool use_dummy_if_not_exists) -> AnyFrames*;
-    [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
+    [[nodiscard]] auto LoadAnimation(string_view fname, AtlasType atlas_type) -> unique_ptr<SpriteSheet>;
 
     void SetWindowSize(int w, int h);
     void SetScreenSize(int w, int h);
@@ -256,8 +306,6 @@ public:
     void ClearCurrentRenderTarget(uint color, bool with_depth = false);
     void DeleteRenderTarget(RenderTarget* rt);
     void DumpAtlases() const;
-    void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
-    void DestroyAnyFrames(AnyFrames* anim);
     void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color);
     void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
     void PushScissor(int l, int t, int r, int b);
@@ -291,7 +339,7 @@ public:
 private:
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
 
-    auto CreateAtlas(int request_width, int request_height, AtlasType atlas_type) -> TextureAtlas*;
+    auto CreateAtlas(AtlasType atlas_type, int request_width, int request_height) -> TextureAtlas*;
     auto FindAtlasPlace(const AtlasSprite* atlas_spr, AtlasType atlas_type, int& x, int& y) -> pair<TextureAtlas*, TextureAtlas::SpaceNode*>;
     void FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, int width, int height, const uint* data);
 
@@ -301,12 +349,12 @@ private:
 
     void CollectContour(int x, int y, const Sprite* spr, uint contour_color);
 
-    auto Load2dAnimation(string_view fname, AtlasType atlas_type) -> AnyFrames*;
+    auto Load2dAnimation(string_view fname, AtlasType atlas_type) -> unique_ptr<SpriteSheet>;
 #if FO_ENABLE_3D
-    auto Load3dAnimation(string_view fname, AtlasType atlas_type) -> AnyFrames*;
+    auto Load3dAnimation(string_view fname, AtlasType atlas_type) -> unique_ptr<SpriteSheet>;
 #endif
 
-    auto LoadTexture(string_view path, unordered_map<string, const AtlasSprite*>& collection, AtlasType atlas_type) -> pair<RenderTexture*, FRect>;
+    auto LoadTexture(string_view path, unordered_map<string, unique_ptr<AtlasSprite>>& collection, AtlasType atlas_type) -> pair<RenderTexture*, FRect>;
 
     void OnScreenSizeChanged();
 
@@ -316,8 +364,6 @@ private:
     EffectManager& _effectMngr;
     EventUnsubscriber _eventUnsubscriber {};
 
-    AnyFrames* _dummyAnim {};
-
     RenderTarget* _rtMain {};
     RenderTarget* _rtContours {};
     RenderTarget* _rtContoursMid {};
@@ -326,8 +372,6 @@ private:
     vector<unique_ptr<RenderTarget>> _rtAll {};
 
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
-
-    MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
 
     vector<DipData> _dipQueue {};
     RenderDrawBuffer* _spritesDrawBuf {};
@@ -347,7 +391,7 @@ private:
     uint16 _eggHy {};
     int _eggX {};
     int _eggY {};
-    const AtlasSprite* _sprEgg {};
+    unique_ptr<AtlasSprite> _sprEgg {};
     vector<uint> _eggData {};
 
     vector<uint> _borderBuf {};
@@ -358,12 +402,12 @@ private:
     int _windowSizeDiffY {};
 
     unique_ptr<ParticleManager> _particleMngr {};
-    unordered_map<string, const AtlasSprite*> _loadedParticleTextures {};
+    unordered_map<string, unique_ptr<AtlasSprite>> _loadedParticleTextures {};
     vector<ParticleSprite*> _autoDrawParticles {};
 
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};
-    unordered_map<string, const AtlasSprite*> _loadedMeshTextures {};
+    unordered_map<string, unique_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ModelSprite*> _autoDrawModels {};
 #endif
 
@@ -414,8 +458,8 @@ private:
         int SpaceWidth {};
         int LineHeight {};
         int YAdvance {};
-        AnyFrames* ImageNormal {};
-        AnyFrames* ImageBordered {};
+        unique_ptr<SpriteSheet> ImageNormal {};
+        unique_ptr<SpriteSheet> ImageBordered {};
         bool MakeGray {};
     };
 

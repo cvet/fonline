@@ -77,7 +77,7 @@ public:
 
     // Todo: incapsulate hex view fileds
     bool Visible {true};
-    Sprite* Spr {};
+    const Sprite* Spr {};
     int ScrX {};
     int ScrY {};
     uint8 Alpha {0xFF};

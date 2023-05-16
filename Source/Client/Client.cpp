@@ -109,6 +109,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     }
 #endif
 
+    SprMngr.InitializeEgg("TransparentEgg.png", AtlasType::MapSprites);
+
     EffectMngr.LoadDefaultEffects();
 
     if (mapper_mode) {
@@ -129,8 +131,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 #endif
 
     ProtoMngr.LoadFromResources();
-
-    ResMngr.ReinitializeDynamicAtlas();
 
     // Modules initialization
     ScriptSys->InitModules();
@@ -705,6 +705,8 @@ void FOClient::Net_OnDisconnect()
         CurMap->MarkAsDestroyed();
         CurMap->Release();
         CurMap = nullptr;
+
+        ResMngr.CleanupMapSprites();
     }
 
     if (_curPlayer != nullptr) {
@@ -2453,6 +2455,8 @@ void FOClient::Net_OnLoadMap()
         CurMap->MarkAsDestroyed();
         CurMap->Release();
         CurMap = nullptr;
+
+        ResMngr.CleanupMapSprites();
     }
 
     if (_curLocation != nullptr) {
@@ -2463,7 +2467,6 @@ void FOClient::Net_OnLoadMap()
 
     SndMngr.StopSounds();
     ShowMainScreen(SCREEN_WAIT, {});
-    ResMngr.ReinitializeDynamicAtlas();
 
     _curMapLocPid = loc_pid;
     _curMapIndexInLoc = map_index_in_loc;
@@ -2729,16 +2732,16 @@ void FOClient::FlashGameWindow()
     }
 }
 
-auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
+auto FOClient::AnimLoad(hstring name) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    auto* anim = ResMngr.GetAnim(name, res_type);
+    auto* anim = ResMngr.GetIfaceAnim(name);
     if (anim == nullptr) {
         return 0u;
     }
 
-    auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameplayTime()};
+    auto* ianim = new IfaceAnim {anim, GameTime.GameplayTime()};
 
     size_t index = 1;
     for (; index < _ifaceAnimations.size(); index++) {
@@ -2779,14 +2782,14 @@ auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
     return _ifaceAnimations[anim_id]->Frames->CntFrm;
 }
 
-auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
+auto FOClient::AnimGetFrames(uint anim_id) -> const SpriteSheet*
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
-        return 0;
+        return nullptr;
     }
     return _ifaceAnimations[anim_id]->Frames;
 }
@@ -2842,7 +2845,7 @@ void FOClient::ProcessAnim()
         }
 
         if (IsBitSet(anim->Flags, ANIMRUN_TO_END) || IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
-            if (time - anim->LastUpdateTime < std::chrono::milliseconds {anim->Frames->Ticks / anim->Frames->CntFrm}) {
+            if (time - anim->LastUpdateTime < std::chrono::milliseconds {anim->Frames->WholeTicks / anim->Frames->CntFrm}) {
                 continue;
             }
 

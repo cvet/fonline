@@ -109,7 +109,7 @@ void ItemHexView::Process()
         }
 
         if (_animStartTime == time_point {}) {
-            const auto anim_proc = GenericUtils::Percent(_anim->Ticks, time_duration_to_ms<uint>(time - _animTime));
+            const auto anim_proc = GenericUtils::Percent(_anim->WholeTicks, time_duration_to_ms<uint>(time - _animTime));
             if (anim_proc >= 100) {
                 SetCurSpr(_endFrm);
 
@@ -243,7 +243,7 @@ void ItemHexView::RefreshAnim()
 
     const auto pic_name = GetPicMap();
     if (pic_name) {
-        _anim = _engine->ResMngr.GetItemAnim(pic_name);
+        _anim = _engine->ResMngr.GetMapAnim(pic_name);
     }
     if (pic_name && _anim == nullptr) {
         WriteLog("PicMap for item '{}' not found", GetName());
@@ -253,7 +253,7 @@ void ItemHexView::RefreshAnim()
         _anim = _anim->GetDir(_effDir);
     }
     if (_anim == nullptr) {
-        _anim = _engine->ResMngr.ItemHexDefaultAnim;
+        _anim = _engine->ResMngr.ItemHexDefaultAnim.get();
     }
 
     PlayStayAnim();
@@ -404,8 +404,8 @@ void ItemHexView::RefreshOffs()
     }
 
     for (const auto i : xrange(_curFrm + 1u)) {
-        ScrX += _anim->NextX[i];
-        ScrY += _anim->NextY[i];
+        ScrX += _anim->SprOffset[i].X;
+        ScrY += _anim->SprOffset[i].Y;
     }
 
     if (_isDynamicEffect) {

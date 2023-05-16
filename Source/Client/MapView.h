@@ -352,11 +352,11 @@ private:
 
     time_point _scrollLastTime {};
 
-    AnyFrames* _picTrack1 {};
-    AnyFrames* _picTrack2 {};
-    AnyFrames* _picHexMask {};
+    unique_ptr<SpriteSheet> _picTrack1 {};
+    unique_ptr<SpriteSheet> _picTrack2 {};
+    unique_ptr<SpriteSheet> _picHexMask {};
     vector<uint> _picHexMaskData {};
-    AnyFrames* _picHex[3] {};
+    unique_ptr<SpriteSheet> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
 
@@ -422,9 +422,9 @@ private:
     int _roofSkip {};
 
     int _drawCursorX {};
-    AnyFrames* _cursorPrePic {};
-    AnyFrames* _cursorPostPic {};
-    AnyFrames* _cursorXPic {};
+    unique_ptr<SpriteSheet> _cursorPrePic {};
+    unique_ptr<SpriteSheet> _cursorPostPic {};
+    unique_ptr<SpriteSheet> _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
     int _lastCurX {};

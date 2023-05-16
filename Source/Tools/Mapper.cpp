@@ -70,19 +70,17 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     ProtoMngr.LoadFromResources();
 
-    ResMngr.ReinitializeDynamicAtlas();
-
     // Fonts
     auto load_fonts_ok = true;
-    if (!SprMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::Static, false, true) || //
-        !SprMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::Static, true, true) || //
-        !SprMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::Static, true, true) || //
-        !SprMngr.LoadFontFO(FONT_SAND_NUM, "SandNumbers", AtlasType::Static, false, true) || //
-        !SprMngr.LoadFontFO(FONT_SPECIAL, "Special", AtlasType::Static, false, true) || //
-        !SprMngr.LoadFontFO(FONT_DEFAULT, "Default", AtlasType::Static, false, true) || //
-        !SprMngr.LoadFontFO(FONT_THIN, "Thin", AtlasType::Static, false, true) || //
-        !SprMngr.LoadFontFO(FONT_FAT, "Fat", AtlasType::Static, false, true) || //
-        !SprMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::Static, false, true)) {
+    if (!SprMngr.LoadFontFO(FONT_FO, "OldDefault", AtlasType::IfaceSprites, false, true) || //
+        !SprMngr.LoadFontFO(FONT_NUM, "Numbers", AtlasType::IfaceSprites, true, true) || //
+        !SprMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", AtlasType::IfaceSprites, true, true) || //
+        !SprMngr.LoadFontFO(FONT_SAND_NUM, "SandNumbers", AtlasType::IfaceSprites, false, true) || //
+        !SprMngr.LoadFontFO(FONT_SPECIAL, "Special", AtlasType::IfaceSprites, false, true) || //
+        !SprMngr.LoadFontFO(FONT_DEFAULT, "Default", AtlasType::IfaceSprites, false, true) || //
+        !SprMngr.LoadFontFO(FONT_THIN, "Thin", AtlasType::IfaceSprites, false, true) || //
+        !SprMngr.LoadFontFO(FONT_FAT, "Fat", AtlasType::IfaceSprites, false, true) || //
+        !SprMngr.LoadFontFO(FONT_BIG, "Big", AtlasType::IfaceSprites, false, true)) {
         load_fonts_ok = false;
     }
     RUNTIME_ASSERT(load_fonts_ok);
@@ -261,28 +259,25 @@ void FOMapper::InitIface()
     ConsoleTextX = ini.GetInt("", "ConsoleTextX", 0);
     ConsoleTextY = ini.GetInt("", "ConsoleTextY", 0);
 
-    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "ItemStub", "art/items/reserved.frm"), AtlasType::Static, true);
-    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "CritterStub", "art/critters/reservaa.frm"), AtlasType::Static, true);
-
     // Cursor
-    CurPDef = SprMngr.LoadAnimation(ini.GetStr("", "CurDefault", "actarrow.frm"), AtlasType::Static, true);
-    CurPHand = SprMngr.LoadAnimation(ini.GetStr("", "CurHand", "hand.frm"), AtlasType::Static, true);
+    CurPDef = SprMngr.LoadAnimation(ini.GetStr("", "CurDefault", "actarrow.frm"), AtlasType::IfaceSprites);
+    CurPHand = SprMngr.LoadAnimation(ini.GetStr("", "CurHand", "hand.frm"), AtlasType::IfaceSprites);
 
     // Iface
-    IntMainPic = SprMngr.LoadAnimation(ini.GetStr("", "IntMainPic", "error"), AtlasType::Static, true);
-    IntPTab = SprMngr.LoadAnimation(ini.GetStr("", "IntTabPic", "error"), AtlasType::Static, true);
-    IntPSelect = SprMngr.LoadAnimation(ini.GetStr("", "IntSelectPic", "error"), AtlasType::Static, true);
-    IntPShow = SprMngr.LoadAnimation(ini.GetStr("", "IntShowPic", "error"), AtlasType::Static, true);
+    IntMainPic = SprMngr.LoadAnimation(ini.GetStr("", "IntMainPic", "error"), AtlasType::IfaceSprites);
+    IntPTab = SprMngr.LoadAnimation(ini.GetStr("", "IntTabPic", "error"), AtlasType::IfaceSprites);
+    IntPSelect = SprMngr.LoadAnimation(ini.GetStr("", "IntSelectPic", "error"), AtlasType::IfaceSprites);
+    IntPShow = SprMngr.LoadAnimation(ini.GetStr("", "IntShowPic", "error"), AtlasType::IfaceSprites);
 
     // Object
-    ObjWMainPic = SprMngr.LoadAnimation(ini.GetStr("", "ObjMainPic", "error"), AtlasType::Static, true);
-    ObjPbToAllDn = SprMngr.LoadAnimation(ini.GetStr("", "ObjToAllPicDn", "error"), AtlasType::Static, true);
+    ObjWMainPic = SprMngr.LoadAnimation(ini.GetStr("", "ObjMainPic", "error"), AtlasType::IfaceSprites);
+    ObjPbToAllDn = SprMngr.LoadAnimation(ini.GetStr("", "ObjToAllPicDn", "error"), AtlasType::IfaceSprites);
 
     // Sub tabs
-    SubTabsPic = SprMngr.LoadAnimation(ini.GetStr("", "SubTabsPic", "error"), AtlasType::Static, true);
+    SubTabsPic = SprMngr.LoadAnimation(ini.GetStr("", "SubTabsPic", "error"), AtlasType::IfaceSprites);
 
     // Console
-    ConsolePic = SprMngr.LoadAnimation(ini.GetStr("", "ConsolePic", "error"), AtlasType::Static, true);
+    ConsolePic = SprMngr.LoadAnimation(ini.GetStr("", "ConsolePic", "error"), AtlasType::IfaceSprites);
 
     WriteLog("Init interface complete");
 }
@@ -755,7 +750,7 @@ auto FOMapper::GetProtoItemCurSpr(const ProtoItem* proto_item) -> const Sprite*
 {
     STACK_TRACE_ENTRY();
 
-    const auto* anim = ResMngr.GetItemAnim(proto_item->GetPicMap());
+    const auto* anim = ResMngr.GetMapAnim(proto_item->GetPicMap());
     if (anim == nullptr) {
         return nullptr;
     }
@@ -781,10 +776,10 @@ auto FOMapper::GetProtoItemCurSpr(const ProtoItem* proto_item) -> const Sprite*
     }
 
     const auto count = end - beg + 1;
-    const auto ticks = anim->Ticks / anim->CntFrm * count;
+    const auto ticks = anim->WholeTicks / anim->CntFrm * count;
     const auto ticks_elapsed = time_duration_to_ms<uint>(GameTime.FrameTime().time_since_epoch());
 
-    return anim->Spr[beg + ((ticks_elapsed % ticks) * 100 / ticks) * count / 100];
+    return anim->GetSpr(beg + ((ticks_elapsed % ticks) * 100 / ticks) * count / 100);
 }
 
 void FOMapper::IntDraw()
@@ -927,7 +922,7 @@ void FOMapper::IntDraw()
             SprMngr.DrawSpriteSize(GetProtoItemCurSpr(proto_item), x, y, w, h / 2, false, true, col);
 
             if (proto_item->GetPicInv()) {
-                auto* anim = ResMngr.GetInvAnim(proto_item->GetPicInv());
+                auto* anim = ResMngr.GetIfaceAnim(proto_item->GetPicInv());
                 if (anim != nullptr) {
                     SprMngr.DrawSpriteSize(anim->GetCurSpr(GameTime.GameplayTime()), x, y + h / 2, w, h / 2, false, true, col);
                 }
@@ -958,8 +953,8 @@ void FOMapper::IntDraw()
             const auto* proto = (*CurNpcProtos)[i];
 
             auto model_name = proto->GetModelName();
-            auto spr_id = ResMngr.GetCritterSpr(model_name, 1, 1, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
-            if (spr_id == 0u) {
+            const auto* spr = ResMngr.GetCritterSpr(model_name, 1, 1, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            if (spr == nullptr) {
                 continue;
             }
 
@@ -968,7 +963,7 @@ void FOMapper::IntDraw()
                 col = COLOR_SPRITE_RED;
             }
 
-            SprMngr.DrawSpriteSize(spr_id, x, y, w, h / 2, false, true, col);
+            SprMngr.DrawSpriteSize(spr, x, y, w, h / 2, false, true, col);
             SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
         }
 
@@ -991,7 +986,7 @@ void FOMapper::IntDraw()
             auto* inner_item = inner_items[i];
             RUNTIME_ASSERT(inner_item);
 
-            auto* anim = ResMngr.GetInvAnim(inner_item->GetPicInv());
+            auto* anim = ResMngr.GetIfaceAnim(inner_item->GetPicInv());
             if (anim == nullptr) {
                 continue;
             }
@@ -1108,14 +1103,14 @@ void FOMapper::ObjDraw()
     }
 
     if (item != nullptr) {
-        const auto* anim = ResMngr.GetItemAnim(item->GetPicMap());
+        const auto* anim = ResMngr.GetMapAnim(item->GetPicMap());
         if (anim == nullptr) {
-            anim = ResMngr.ItemHexDefaultAnim;
+            anim = ResMngr.ItemHexDefaultAnim.get();
         }
         SprMngr.DrawSpriteSize(anim->GetCurSpr(GameTime.GameplayTime()), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true, 0);
 
         if (item->GetPicInv()) {
-            const auto* inv_anim = ResMngr.GetInvAnim(item->GetPicInv());
+            const auto* inv_anim = ResMngr.GetIfaceAnim(item->GetPicInv());
             if (inv_anim != nullptr) {
                 SprMngr.DrawSpriteSize(inv_anim->GetCurSpr(GameTime.GameplayTime()), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, 0);
             }
@@ -2618,7 +2613,7 @@ void FOMapper::CurDraw()
     switch (CurMode) {
     case CUR_MODE_DEFAULT:
     case CUR_MODE_MOVE_SELECTION: {
-        const auto* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
+        const auto* anim = CurMode == CUR_MODE_DEFAULT ? CurPDef.get() : CurPHand.get();
         if (anim != nullptr) {
             SprMngr.DrawSprite(anim->GetCurSpr(GameTime.GameplayTime()), Settings.MouseX, Settings.MouseY, COLOR_SPRITE);
         }

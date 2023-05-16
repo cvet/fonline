@@ -91,7 +91,7 @@ private:
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     vector<uint8> _updateFileBuf {};
-    AnyFrames* _splashPic {};
+    unique_ptr<SpriteSheet> _splashPic {};
     vector<vector<uint8>> _globalsPropertiesData {};
     size_t _bytesRealReceivedCheckpoint {};
 };

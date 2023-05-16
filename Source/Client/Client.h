@@ -137,10 +137,10 @@ public:
     void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
 
-    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
+    auto AnimLoad(hstring name) -> uint;
     void AnimFree(uint anim_id);
     auto AnimGetSprCount(uint anim_id) const -> uint;
-    auto AnimGetFrames(uint anim_id) -> AnyFrames*;
+    auto AnimGetFrames(uint anim_id) -> const SpriteSheet*;
     void AnimRun(uint anim_id, uint flags);
 
     void ShowMainScreen(int new_screen, map<string, any_t> params);
@@ -269,8 +269,7 @@ public:
 protected:
     struct IfaceAnim
     {
-        AnyFrames* Frames {};
-        AtlasType ResType {};
+        const SpriteSheet* Frames {};
         time_point LastUpdateTime {};
         uint16 Flags {};
         uint CurSpr {};
@@ -432,7 +431,7 @@ protected:
 
     int _screenModeMain {SCREEN_WAIT};
 
-    AnyFrames* _waitPic {};
+    const SpriteSheet* _waitPic {};
 
     uint8 _pupTransferType {};
     uint _pupContId {};

@@ -715,10 +715,10 @@
     bool result;
 
     if (!fontFname.empty() && fontFname[0] == '*') {
-        result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), AtlasType::Static, false, false);
+        result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), AtlasType::IfaceSprites, false, false);
     }
     else {
-        result = client->SprMngr.LoadFontBmf(fontIndex, fontFname, AtlasType::Static);
+        result = client->SprMngr.LoadFontBmf(fontIndex, fontFname, AtlasType::IfaceSprites);
     }
 
     if (!result) {
@@ -934,7 +934,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
-    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::Static);
+    return client->AnimLoad(client->ToHashedString(sprName));
 }
 
 ///# ...
@@ -943,7 +943,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 {
-    return client->AnimLoad(nameHash, AtlasType::Static);
+    return client->AnimLoad(nameHash);
 }
 
 ///# ...
@@ -1011,7 +1011,7 @@
 [[maybe_unused]] uint Client_Game_GetSpriteTicks(FOClient* client, uint sprId)
 {
     const auto* anim = client->AnimGetFrames(sprId);
-    return anim != nullptr ? anim->Ticks : 0;
+    return anim != nullptr ? anim->WholeTicks : 0;
 }
 
 ///# ...
@@ -1369,7 +1369,7 @@
 {
     const auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim != nullptr) {
-        client->SprMngr.DrawSpriteSize(anim->Spr[0], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
+        client->SprMngr.DrawSpriteSize(anim->GetSpr(), l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
     }
 }
 
@@ -1405,7 +1405,7 @@
     if (!model_spr || client->DrawCritterModelCrType[instance] != modelName) {
         model_spr = nullptr;
 
-        model_spr = client->SprMngr.LoadModel(modelName, AtlasType::Static);
+        model_spr = client->SprMngr.LoadModel(modelName, AtlasType::IfaceSprites);
 
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;
