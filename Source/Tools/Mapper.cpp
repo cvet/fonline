@@ -3074,7 +3074,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
         return nullptr;
     }
 
-    auto new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
+    auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
     auto* new_map = new_map_holder.get();
     new_map->EnableMapperMode();
 

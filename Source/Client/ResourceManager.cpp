@@ -289,7 +289,7 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
                 anim_merge->SprOffset[anim_->CntFrm].X -= oy;
             }
 
-            return anim_merge_base;
+            return std::move(anim_merge_base);
         }
 
         // Clone
@@ -320,7 +320,7 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
                 }
             }
 
-            return anim_clone_base;
+            return std::move(anim_clone_base);
         }
 
         return nullptr;

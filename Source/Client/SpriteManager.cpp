@@ -535,7 +535,7 @@ auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType s
 
     Flush();
 
-    auto rt = std::make_unique<RenderTarget>();
+    auto&& rt = std::make_unique<RenderTarget>();
     rt->Size = size;
     rt->BaseWidth = width;
     rt->BaseHeight = height;
@@ -846,7 +846,7 @@ auto SpriteManager::CreateAtlas(AtlasType atlas_type, int request_width, int req
     auto result_width = request_width;
     auto result_height = request_height;
 
-    auto atlas = std::make_unique<TextureAtlas>();
+    auto&& atlas = std::make_unique<TextureAtlas>();
     atlas->Type = atlas_type;
 
     switch (atlas->Type) {
@@ -1147,7 +1147,7 @@ auto SpriteManager::Load2dAnimation(string_view fname, AtlasType atlas_type) -> 
     const auto check_number2 = file.GetUChar();
     RUNTIME_ASSERT(check_number2 == 42);
 
-    return anim;
+    return std::move(anim);
 }
 
 auto SpriteManager::LoadTexture(string_view path, unordered_map<string, unique_ptr<AtlasSprite>>& collection, AtlasType atlas_type) -> pair<RenderTexture*, FRect>
@@ -1349,7 +1349,7 @@ auto SpriteManager::Load3dAnimation(string_view fname, AtlasType atlas_type) -> 
 
         auto&& anim = std::make_unique<SpriteSheet>(1, 100, 1);
         // anim->Spr[0] = model_spr.get();
-        return anim;
+        return std::move(anim);
     }
 
     auto&& anim = std::make_unique<SpriteSheet>(frames_count, static_cast<uint>(period_len * 1000.0f), 1);
@@ -1375,7 +1375,7 @@ auto SpriteManager::Load3dAnimation(string_view fname, AtlasType atlas_type) -> 
         prev_cur_proci = cur_proci;
     }
 
-    return anim;
+    return std::move(anim);
 }
 
 void SpriteManager::DrawModel(int x, int y, ModelSprite* model_spr, uint color)
