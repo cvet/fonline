@@ -119,6 +119,11 @@ public:
     {
     public:
         SpaceNode(int x, int y, int width, int height);
+        SpaceNode(const SpaceNode&) = delete;
+        SpaceNode(SpaceNode&&) noexcept = default;
+        auto operator=(const SpaceNode&) = delete;
+        auto operator=(SpaceNode&&) noexcept -> SpaceNode& = default;
+        ~SpaceNode() = default;
 
         [[nodiscard]] auto IsBusyRecursively() const noexcept -> bool;
 
@@ -132,6 +137,13 @@ public:
         bool Busy {};
         vector<unique_ptr<SpaceNode>> Children {};
     };
+
+    TextureAtlas() = default;
+    TextureAtlas(const TextureAtlas&) = delete;
+    TextureAtlas(TextureAtlas&&) noexcept = default;
+    auto operator=(const TextureAtlas&) = delete;
+    auto operator=(TextureAtlas&&) noexcept -> TextureAtlas& = default;
+    ~TextureAtlas() = default;
 
     // Todo: incapsulate texture atlas & atlas space node data
     AtlasType Type {};
@@ -228,6 +240,11 @@ class SpriteSheet final
 {
 public:
     SpriteSheet(uint frames, uint ticks, uint dirs);
+    SpriteSheet(const SpriteSheet&) = delete;
+    SpriteSheet(SpriteSheet&&) noexcept = default;
+    auto operator=(const SpriteSheet&) = delete;
+    auto operator=(SpriteSheet&&) noexcept -> SpriteSheet& = default;
+    ~SpriteSheet() = default;
 
     [[nodiscard]] auto GetSpr(uint num_frm = 0) const -> const Sprite*;
     [[nodiscard]] auto GetSpr(uint num_frm = 0) -> Sprite*;
