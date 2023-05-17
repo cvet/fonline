@@ -1127,9 +1127,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
         "${FO_ENGINE_ROOT}/Source/Frontend/Application.h"
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationHeadless.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
     add_dependencies(AppHeadless CodeGeneration)
     list(APPEND FO_CORE_LIBS_GROUP "AppHeadless")
 
