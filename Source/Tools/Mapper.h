@@ -147,6 +147,7 @@ public:
 
     void InitIface();
     auto IfaceLoadRect(IRect& comp, string_view name) const -> bool;
+    auto GetIfaceSpr(hstring fname) -> Sprite*;
     void MapperMainLoop();
     auto GetProtoItemCurSpr(const ProtoItem* proto_item) -> const Sprite*;
     void ProcessMapperInput();
@@ -234,15 +235,16 @@ public:
     unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};
     bool PressedKeys[0x100] {};
+    unordered_map<hstring, shared_ptr<Sprite>> IfaceSpr {};
     int CurMode {};
-    unique_ptr<SpriteSheet> CurPDef {};
-    unique_ptr<SpriteSheet> CurPHand {};
+    shared_ptr<Sprite> CurPDef {};
+    shared_ptr<Sprite> CurPHand {};
     int IntMode {};
     int IntHold {};
-    unique_ptr<SpriteSheet> IntMainPic {};
-    unique_ptr<SpriteSheet> IntPTab {};
-    unique_ptr<SpriteSheet> IntPSelect {};
-    unique_ptr<SpriteSheet> IntPShow {};
+    shared_ptr<Sprite> IntMainPic {};
+    shared_ptr<Sprite> IntPTab {};
+    shared_ptr<Sprite> IntPSelect {};
+    shared_ptr<Sprite> IntPShow {};
     int IntX {};
     int IntY {};
     int IntVectX {};
@@ -285,7 +287,7 @@ public:
     int TabsScroll[INT_MODE_COUNT] {};
     bool SubTabsActive {};
     int SubTabsActiveTab {};
-    unique_ptr<SpriteSheet> SubTabsPic {};
+    shared_ptr<Sprite> SubTabsPic {};
     IRect SubTabsRect {};
     int SubTabsX {};
     int SubTabsY {};
@@ -317,8 +319,8 @@ public:
     int BefferHexY {};
     vector<ClientEntity*> SelectedEntities {};
     vector<EntityBuf> EntitiesBuffer {};
-    unique_ptr<SpriteSheet> ObjWMainPic {};
-    unique_ptr<SpriteSheet> ObjPbToAllDn {};
+    shared_ptr<Sprite> ObjWMainPic {};
+    shared_ptr<Sprite> ObjPbToAllDn {};
     IRect ObjWMain {};
     IRect ObjWWork {};
     IRect ObjBToAll {};
@@ -334,7 +336,7 @@ public:
     bool ObjFix {};
     bool ObjToAll {};
     ClientEntity* InspectorEntity {};
-    unique_ptr<SpriteSheet> ConsolePic {};
+    shared_ptr<Sprite> ConsolePic {};
     int ConsolePicX {};
     int ConsolePicY {};
     int ConsoleTextX {};

@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "MapSprite.h"
-#include "Rendering.h"
 
 class MapView;
 class FOEngineBase;

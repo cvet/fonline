@@ -40,7 +40,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
+void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -62,14 +62,14 @@ void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
-        SkinBoneNames[i] = name_resolver.ToHashedString(tmp);
+        SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
     }
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
     reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
 }
 
-void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
+void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -78,12 +78,12 @@ void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
     string tmp;
     tmp.resize(len);
     reader.ReadPtr(tmp.data(), len);
-    Name = name_resolver.ToHashedString(tmp);
+    Name = hash_resolver.ToHashedString(tmp);
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
     if (reader.Read<uint8>() != 0) {
         AttachedMesh = std::make_unique<MeshData>();
-        AttachedMesh->Load(reader, name_resolver);
+        AttachedMesh->Load(reader, hash_resolver);
         AttachedMesh->Owner = this;
     }
     else {
@@ -92,7 +92,7 @@ void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
     reader.ReadPtr(&len, sizeof(len));
     for (uint i = 0; i < len; i++) {
         auto child = std::make_unique<ModelBone>();
-        child->Load(reader, name_resolver);
+        child->Load(reader, hash_resolver);
         Children.push_back(std::move(child));
     }
     CombinedTransformationMatrix = mat44();
@@ -136,11 +136,12 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
     _resources {resources},
     _effectMngr {effect_mngr},
     _gameTime {game_time},
+    _hashResolver {hash_resolver},
     _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
@@ -169,7 +170,7 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
     STACK_TRACE_ENTRY();
 
-    return _nameResolver.ToHashedString(name);
+    return _hashResolver.ToHashedString(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> ModelBone*
@@ -177,7 +178,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     STACK_TRACE_ENTRY();
 
     // Find already loaded
-    auto name_hashed = _nameResolver.ToHashedString(fname);
+    auto name_hashed = _hashResolver.ToHashedString(fname);
     for (auto&& root_bone : _loadedModels) {
         if (root_bone->Name == name_hashed) {
             return root_bone.get();
@@ -201,14 +202,14 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     auto root_bone = std::make_unique<ModelBone>();
     auto reader = DataReader({file.GetBuf(), file.GetSize()});
 
-    root_bone->Load(reader, _nameResolver);
+    root_bone->Load(reader, _hashResolver);
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
     const auto anim_sets_count = reader.Read<uint>();
     for (uint i = 0; i < anim_sets_count; i++) {
         auto anim_set = std::make_unique<ModelAnimation>();
-        anim_set->Load(reader, _nameResolver);
+        anim_set->Load(reader, _hashResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
 
@@ -226,7 +227,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
 
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
-    const auto name_hashed = _nameResolver.ToHashedString(anim_fname);
+    const auto name_hashed = _hashResolver.ToHashedString(anim_fname);
     for (auto&& anim_set : _loadedAnimSets) {
         if (_str(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || _str(anim_set->GetName()).compareIgnoreCase(anim_name))) {
             return anim_set.get();
@@ -265,7 +266,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     auto* mesh_tex = new MeshTexture();
-    mesh_tex->Name = _nameResolver.ToHashedString(texture_name);
+    mesh_tex->Name = _hashResolver.ToHashedString(texture_name);
     mesh_tex->MainTex = tex;
     mesh_tex->AtlasOffsetData[0] = tex_data[0];
     mesh_tex->AtlasOffsetData[1] = tex_data[1];
@@ -891,7 +892,7 @@ void ModelInstance::RefreshMoveAnimation()
     uint anim2 = ANIM2_IDLE;
 
     if (_isMoving) {
-        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
         if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
             anim2 = _isRunning ? ANIM2_RUN : ANIM2_WALK;
@@ -911,7 +912,7 @@ void ModelInstance::RefreshMoveAnimation()
         anim1 = _curAnim1;
         _isMovingBack = false;
 
-        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
+        const auto angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
         if (std::abs(angle_diff) > _modelMngr._settings.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
@@ -1224,7 +1225,7 @@ void ModelInstance::SetDir(uint8 dir, bool smooth_rotation)
 {
     STACK_TRACE_ENTRY();
 
-    const auto dir_angle = _modelMngr._geometry.DirToAngle(dir);
+    const auto dir_angle = GeometryHelper::DirToAngle(dir);
 
     SetMoveDirAngle(dir_angle, smooth_rotation);
     SetLookDirAngle(dir_angle);
@@ -1851,7 +1852,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 
     // Rotate body
     if (!Math::FloatCompare(_moveDirAngle, _targetMoveDirAngle)) {
-        const auto diff = _modelMngr._geometry.GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
+        const auto diff = GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
         _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
     }
 
@@ -1946,12 +1947,12 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
     else {
@@ -2785,7 +2786,7 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
     }
 
     // Find substitute animation
-    const auto base_model_name = _modelMngr._nameResolver.ToHashedString(_fileName);
+    const auto base_model_name = _modelMngr._hashResolver.ToHashedString(_fileName);
     const auto anim1_base = anim1;
     const auto anim2_base = anim2;
     while (index == -1) {

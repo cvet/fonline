@@ -37,8 +37,10 @@
 
 #include "3dStuff.h"
 #include "CritterView.h"
+#include "DefaultSprites.h"
 #include "EntityProtos.h"
 #include "HexView.h"
+#include "ModelSprites.h"
 #include "SpriteManager.h"
 
 class ItemView;
@@ -69,6 +71,7 @@ public:
 #endif
 
     void Init();
+    void MarkAsDestroyed() override;
     auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView* override;
     auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
@@ -117,7 +120,7 @@ public:
 private:
     struct CritterAnim
     {
-        const SpriteSheet* Anim {};
+        const SpriteSheet* AnimFrames {};
         time_duration AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
@@ -160,7 +163,7 @@ private:
     time_point _offsExtNextTime {};
 
 #if FO_ENABLE_3D
-    unique_del_ptr<ModelSprite> _modelSpr {};
+    shared_ptr<ModelSprite> _modelSpr {};
     ModelInstance* _model {};
 #endif
 };

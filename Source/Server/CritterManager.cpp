@@ -442,7 +442,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
-        if (cr->GetMapId() != map_id || !_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
+        if (cr->GetMapId() != map_id || !GeometryHelper::CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
             cr->Send_TextMsg(cr, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cr);
         }

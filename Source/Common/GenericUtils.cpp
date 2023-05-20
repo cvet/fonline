@@ -33,6 +33,7 @@
 
 #include "GenericUtils.h"
 #include "Application.h"
+#include "DiskFileSystem.h"
 #include "Log.h"
 
 #include "zlib.h"
@@ -44,6 +45,89 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
+
+auto HashStorage::ToHashedString(string_view s) -> hstring
+{
+    STACK_TRACE_ENTRY();
+
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
+
+    if (s.empty()) {
+        return {};
+    }
+
+    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
+    RUNTIME_ASSERT(hash_value != 0);
+
+    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+#if FO_DEBUG
+        const auto collision_detected = (s != it->second.Str);
+#else
+        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+#endif
+        if (collision_detected) {
+            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+        }
+
+        return hstring(&it->second);
+    }
+
+    // Add new entry
+    const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
+    RUNTIME_ASSERT(inserted);
+
+    return hstring(&it->second);
+}
+
+auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
+{
+    STACK_TRACE_ENTRY();
+
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
+
+    if (s.empty()) {
+        return {};
+    }
+
+    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
+    RUNTIME_ASSERT(hash_value != 0);
+
+    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+#if FO_DEBUG
+        const auto collision_detected = (s != it->second.Str);
+#else
+        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+#endif
+        if (collision_detected) {
+            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+        }
+
+        return hstring(&it->second);
+    }
+
+    throw HashInsertException("String value is not in hash storage", s);
+}
+
+auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
+{
+    STACK_TRACE_ENTRY();
+
+    if (h == 0) {
+        return {};
+    }
+
+    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        return hstring(&it->second);
+    }
+
+    if (failed != nullptr) {
+        WriteLog("Can't resolve hash {}", h);
+        *failed = true;
+        return {};
+    }
+
+    throw HashResolveException("Can't resolve hash", h);
+}
 
 auto Math::FloatCompare(float f1, float f2) -> bool
 {
@@ -59,8 +143,8 @@ auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (len == 0u) {
-        return 0u;
+    if (len == 0) {
+        return 0;
     }
 
     constexpr uint seed = 0;
@@ -111,8 +195,8 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
 {
     STACK_TRACE_ENTRY();
 
-    if (len == 0u) {
-        return 0u;
+    if (len == 0) {
+        return 0;
     }
 
     constexpr uint seed = 0;
@@ -236,6 +320,25 @@ void GenericUtils::ForkProcess()
 #endif
 }
 
+void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vector<uint> data)
+{
+    STACK_TRACE_ENTRY();
+
+    auto file = DiskFileSystem::OpenFile(fname, true);
+    RUNTIME_ASSERT(file);
+
+    const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
+        static_cast<uint8>(width % 256), static_cast<uint8>(width / 256), //
+        static_cast<uint8>(height % 256), static_cast<uint8>(height / 256), 4 * 8, 0x20};
+    file.Write(header);
+
+    for (auto& c : data) {
+        c = COLOR_SWAP_RB(c);
+    }
+
+    file.Write(data.data(), data.size() * sizeof(uint));
+}
+
 // Default randomizer
 static std::mt19937 RandomGenerator(std::random_device {}());
 void GenericUtils::SetRandomSeed(int seed)
@@ -277,11 +380,11 @@ auto GenericUtils::Percent(uint full, uint peace) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if (full == 0u) {
-        return 0u;
+    if (full == 0) {
+        return 0;
     }
 
-    const auto percent = peace * 100u / full;
+    const auto percent = peace * 100 / full;
     return std::clamp(percent, 0u, 100u);
 }
 
@@ -289,7 +392,7 @@ auto GenericUtils::NumericalNumber(uint num) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if ((num & 1) != 0u) {
+    if ((num & 1) != 0) {
         return num * (num / 2 + 1);
     }
 

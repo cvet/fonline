@@ -116,6 +116,8 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
+    UNUSED_VARIABLE(client);
+
     if (cr1 == nullptr) {
         throw ScriptException("Critter 1 arg is null");
     }
@@ -137,7 +139,7 @@
         throw ScriptException("Critters different maps");
     }
 
-    return client->Geometry.DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
+    return GeometryHelper::DistGame(hex_cr1->GetHexX(), hex_cr1->GetHexY(), hex_cr2->GetHexX(), hex_cr2->GetHexY());
 }
 
 ///# ...
@@ -794,8 +796,12 @@
     if ((eff_type & static_cast<uint>(EffectType::Interface)) != 0) {
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
-    if ((eff_type & static_cast<uint>(EffectType::Contour)) != 0) {
-        client->EffectMngr.Effects.ContourSprite = reload_effect(client->EffectMngr.Effects.ContourSpriteDefault);
+
+    if ((eff_type & static_cast<uint>(EffectType::ContourStrict)) != 0) {
+        client->EffectMngr.Effects.ContourStrictSprite = reload_effect(client->EffectMngr.Effects.ContourStrictSpriteDefault);
+    }
+    if ((eff_type & static_cast<uint>(EffectType::ContourDynamic)) != 0) {
+        client->EffectMngr.Effects.ContourDynamicSprite = reload_effect(client->EffectMngr.Effects.ContourDynamicSpriteDefault);
     }
 
     if (((eff_type & static_cast<uint>(EffectType::Font)) != 0) && effectSubtype == -1) {
@@ -934,7 +940,7 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
-    return client->AnimLoad(client->ToHashedString(sprName));
+    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::IfaceSprites);
 }
 
 ///# ...
@@ -943,7 +949,25 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 {
-    return client->AnimLoad(nameHash);
+    return client->AnimLoad(nameHash, AtlasType::IfaceSprites);
+}
+
+///# ...
+///# param sprName ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_LoadMapSprite(FOClient* client, string_view sprName)
+{
+    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::MapSprites);
+}
+
+///# ...
+///# param nameHash ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_LoadMapSprite(FOClient* client, hstring nameHash)
+{
+    return client->AnimLoad(nameHash, AtlasType::MapSprites);
 }
 
 ///# ...
@@ -956,17 +980,11 @@
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetSpriteWidth(FOClient* client, uint sprId, int frameIndex)
+[[maybe_unused]] int Client_Game_GetSpriteWidth(FOClient* client, uint sprId)
 {
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
-        return 0;
-    }
-
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+    const auto* spr = client->AnimGetSpr(sprId);
     if (spr == nullptr) {
         return 0;
     }
@@ -976,17 +994,11 @@
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetSpriteHeight(FOClient* client, uint sprId, int frameIndex)
+[[maybe_unused]] int Client_Game_GetSpriteHeight(FOClient* client, uint sprId)
 {
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
-        return 0;
-    }
-
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
+    const auto* spr = client->AnimGetSpr(sprId);
     if (spr == nullptr) {
         return 0;
     }
@@ -996,44 +1008,70 @@
 
 ///# ...
 ///# param sprId ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetSpriteCount(FOClient* client, uint sprId)
-{
-    const auto* anim = client->AnimGetFrames(sprId);
-    return anim != nullptr ? anim->CntFrm : 0;
-}
-
-///# ...
-///# param sprId ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uint Client_Game_GetSpriteTicks(FOClient* client, uint sprId)
-{
-    const auto* anim = client->AnimGetFrames(sprId);
-    return anim != nullptr ? anim->WholeTicks : 0;
-}
-
-///# ...
-///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, int frameIndex, int x, int y)
+[[maybe_unused]] bool Client_Game_IsSpriteHit(FOClient* client, uint sprId, int x, int y)
 {
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return false;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return false;
     }
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex));
-    return client->SprMngr.IsPixNoTransp(spr_id_, x, y, false);
+    return client->SprMngr.SpriteHitTest(spr, x, y, false);
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_StopSprite(FOClient* client, uint sprId)
+{
+    if (sprId == 0) {
+        return;
+    }
+
+    auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
+        return;
+    }
+
+    spr->Stop();
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_SetSpriteTime(FOClient* client, uint sprId, float normalizedTime)
+{
+    if (sprId == 0) {
+        return;
+    }
+
+    auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
+        return;
+    }
+
+    spr->SetTime(normalizedTime);
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_PlaySprite(FOClient* client, uint sprId, hstring animName, bool looped, bool reversed)
+{
+    if (sprId == 0) {
+        return;
+    }
+
+    auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
+        return;
+    }
+
+    spr->Play(animName, looped, reversed);
 }
 
 ///# ...
@@ -1055,82 +1093,75 @@
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
-    client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(0));
+    client->SprMngr.DrawSprite(spr, x, y, COLOR_SCRIPT_SPRITE(0));
 }
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, uint color)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, uint color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
 
-    const auto spr_id = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
-    client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSprite(spr, x, y, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, uint color, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, uint color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
 
     auto xx = x;
     auto yy = y;
-
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
 
     if (offs) {
         xx += -spr->Width / 2 + spr->OffsX;
@@ -1142,62 +1173,57 @@
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# param w ...
 ///# param h ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
 
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
     client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(0));
 }
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# param w ...
 ///# param h ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, uint color)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, uint color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
 
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
     client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# param w ...
@@ -1206,25 +1232,23 @@
 ///# param zoom ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, uint color, bool zoom, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, uint color, bool zoom, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }
 
-    if (sprId == 0u) {
+    if (sprId == 0) {
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
 
     auto xx = x;
     auto yy = y;
-
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
 
     if (offs) {
         xx += spr->OffsX;
@@ -1236,7 +1260,6 @@
 
 ///# ...
 ///# param sprId ...
-///# param frameIndex ...
 ///# param x ...
 ///# param y ...
 ///# param w ...
@@ -1245,7 +1268,7 @@
 ///# param sprHeight ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
+[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1255,12 +1278,10 @@
         return;
     }
 
-    const auto* anim = client->AnimGetFrames(sprId);
-    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* spr = client->AnimGetSpr(sprId);
+    if (spr == nullptr) {
         return;
     }
-
-    const auto* spr = frameIndex < 0 ? anim->GetCurSpr(client->GameTime.GameplayTime()) : anim->GetSpr(frameIndex);
 
     client->SprMngr.DrawSpritePattern(spr, x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
 }
@@ -1367,9 +1388,9 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
-    const auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
-    if (anim != nullptr) {
-        client->SprMngr.DrawSpriteSize(anim->GetSpr(), l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
+    const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, anim1, anim2, dir);
+    if (frames != nullptr) {
+        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
     }
 }
 
@@ -1403,9 +1424,7 @@
     auto& model_spr = client->DrawCritterModel[instance];
 
     if (!model_spr || client->DrawCritterModelCrType[instance] != modelName) {
-        model_spr = nullptr;
-
-        model_spr = client->SprMngr.LoadModel(modelName, AtlasType::IfaceSprites);
+        model_spr = dynamic_pointer_cast<ModelSprite>(client->SprMngr.LoadSprite(modelName, AtlasType::IfaceSprites));
 
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;
@@ -1415,8 +1434,11 @@
             return;
         }
 
-        model_spr->Model->EnableShadow(false);
-        model_spr->Model->SetTimer(false);
+        auto* model = model_spr->GetModel();
+
+        model->EnableShadow(false);
+        model->SetTimer(false);
+        model->StartMeshGeneration();
     }
 
     const auto count = static_cast<uint>(position.size());
@@ -1443,7 +1465,7 @@
         client->DrawCritterModelLayers[i] = layers[i];
     }
 
-    auto&& model = model_spr->Model;
+    auto* model = model_spr->GetModel();
 
     model->SetLookDirAngle(0);
     model->SetMoveDirAngle(0, false);
@@ -1452,7 +1474,9 @@
     model->SetSpeed(speed);
     model->SetAnimation(anim1, anim2, client->DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
-    client->SprMngr.DrawModel(static_cast<int>(x), static_cast<int>(y), model_spr.get(), COLOR_SCRIPT_SPRITE(color));
+    model_spr->DrawToAtlas();
+
+    client->SprMngr.DrawSprite(model_spr.get(), static_cast<int>(x) - model_spr->Width / 2 + model_spr->OffsX, static_cast<int>(y) - model_spr->Height + model_spr->OffsY, COLOR_SCRIPT_SPRITE(color));
 
     if (count > 13) {
         client->SprMngr.PopScissor();
@@ -1500,7 +1524,7 @@
     }
 
     if (client->OffscreenSurfaces.empty()) {
-        auto* rt = client->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
+        auto* rt = client->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
         if (rt == nullptr) {
             throw ScriptException("Can't create offscreen surface");
         }
@@ -1512,7 +1536,7 @@
     client->OffscreenSurfaces.pop_back();
     client->ActiveOffscreenSurfaces.push_back(rt);
 
-    client->SprMngr.PushRenderTarget(rt);
+    client->SprMngr.GetRtMngr().PushRenderTarget(rt);
 
     const auto it = std::find(client->DirtyOffscreenSurfaces.begin(), client->DirtyOffscreenSurfaces.end(), rt);
     if (it != client->DirtyOffscreenSurfaces.end() || forceClear) {
@@ -1520,7 +1544,7 @@
             client->DirtyOffscreenSurfaces.erase(it);
         }
 
-        client->SprMngr.ClearCurrentRenderTarget(0);
+        client->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
     }
 
     if (std::find(client->PreDirtyOffscreenSurfaces.begin(), client->PreDirtyOffscreenSurfaces.end(), rt) == client->PreDirtyOffscreenSurfaces.end()) {
@@ -1544,7 +1568,7 @@
     client->ActiveOffscreenSurfaces.pop_back();
     client->OffscreenSurfaces.push_back(rt);
 
-    client->SprMngr.PopRenderTarget();
+    client->SprMngr.GetRtMngr().PopRenderTarget();
 
     if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
@@ -1575,7 +1599,7 @@
     client->ActiveOffscreenSurfaces.pop_back();
     client->OffscreenSurfaces.push_back(rt);
 
-    client->SprMngr.PopRenderTarget();
+    client->SprMngr.GetRtMngr().PopRenderTarget();
 
     if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");
@@ -1612,7 +1636,7 @@
     client->ActiveOffscreenSurfaces.pop_back();
     client->OffscreenSurfaces.push_back(rt);
 
-    client->SprMngr.PopRenderTarget();
+    client->SprMngr.GetRtMngr().PopRenderTarget();
 
     if (effectSubtype < 0 || effectSubtype >= static_cast<int>(client->OffscreenEffects.size()) || client->OffscreenEffects[effectSubtype] == nullptr) {
         throw ScriptException("Invalid effect subtype");

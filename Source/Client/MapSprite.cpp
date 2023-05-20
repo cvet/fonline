@@ -32,6 +32,7 @@
 //
 
 #include "MapSprite.h"
+#include "ModelSprites.h"
 #include "SpriteManager.h"
 
 void MapSprite::Invalidate()
@@ -97,6 +98,49 @@ void MapSprite::Invalidate()
     Root = nullptr;
 }
 
+auto MapSprite::GetDrawRect() const -> IRect
+{
+    STACK_TRACE_ENTRY();
+
+    const auto* spr = PSpr != nullptr ? *PSpr : Spr;
+    RUNTIME_ASSERT(spr);
+
+    auto x = ScrX - spr->Width / 2 + spr->OffsX + *PScrX;
+    auto y = ScrY - spr->Height + spr->OffsY + *PScrY;
+    if (OffsX != nullptr) {
+        x += *OffsX;
+    }
+    if (OffsY != nullptr) {
+        y += *OffsY;
+    }
+
+    return {x, y, x + spr->Width, y + spr->Height};
+}
+
+auto MapSprite::GetViewRect() const -> IRect
+{
+    STACK_TRACE_ENTRY();
+
+    auto rect = GetDrawRect();
+
+    const auto* spr = PSpr != nullptr ? *PSpr : Spr;
+    RUNTIME_ASSERT(spr);
+
+    if (auto&& view_rect = spr->GetViewSize(); view_rect.has_value()) {
+        const auto view_width = view_rect->Left;
+        const auto view_height = view_rect->Top;
+        const auto view_ox = view_rect->Right;
+        const auto view_oy = view_rect->Bottom;
+
+        rect.Left = rect.CenterX() - view_width / 2 + view_ox;
+        rect.Right = rect.Left + view_width;
+        rect.Bottom = rect.Bottom + view_oy;
+        rect.Top = rect.Bottom - view_height;
+    }
+
+    return rect;
+}
+
 auto MapSprite::CheckHit(int ox, int oy, bool check_transparent) const -> bool
 {
     STACK_TRACE_ENTRY();
@@ -105,7 +149,7 @@ auto MapSprite::CheckHit(int ox, int oy, bool check_transparent) const -> bool
         return false;
     }
 
-    return !check_transparent || Root->_sprMngr.IsPixNoTransp(PSpr != nullptr ? *PSpr : Spr, ox, oy, true);
+    return !check_transparent || Root->_sprMngr.SpriteHitTest(PSpr != nullptr ? *PSpr : Spr, ox, oy, true);
 }
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence)

@@ -478,7 +478,7 @@ void Player::Send_EraseItemFromMap(const Item* item)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
+void Player::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
 {
     STACK_TRACE_ENTRY();
 
@@ -487,8 +487,9 @@ void Player::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ANIMATE_ITEM);
     Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(from_frm);
-    Connection->OutBuf.Write(to_frm);
+    Connection->OutBuf.Write(anim_name);
+    Connection->OutBuf.Write(looped);
+    Connection->OutBuf.Write(reversed);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }

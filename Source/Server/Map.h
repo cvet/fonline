@@ -131,7 +131,7 @@ public:
     void EraseItem(ident_t item_id);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
-    void AnimateItem(Item* item, uint8 from_frm, uint8 to_frm);
+    void AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed);
     void SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void SendFlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
     void SetHexFlag(uint16 hx, uint16 hy, uint8 flag);

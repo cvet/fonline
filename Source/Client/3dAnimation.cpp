@@ -37,7 +37,7 @@
 
 #include "GenericUtils.h"
 
-void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
+void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -61,7 +61,7 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
             reader.ReadPtr(&len, sizeof(len));
             tmp.resize(len);
             reader.ReadPtr(tmp.data(), len);
-            _bonesHierarchy[i][k] = name_resolver.ToHashedString(tmp);
+            _bonesHierarchy[i][k] = hash_resolver.ToHashedString(tmp);
         }
     }
 
@@ -73,7 +73,7 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
         reader.ReadPtr(&len, sizeof(len));
         tmp.resize(len);
         reader.ReadPtr(tmp.data(), len);
-        o.BoneName = name_resolver.ToHashedString(tmp);
+        o.BoneName = hash_resolver.ToHashedString(tmp);
         reader.ReadPtr(&len, sizeof(len));
         o.ScaleTime.resize(len);
         o.ScaleValue.resize(len);

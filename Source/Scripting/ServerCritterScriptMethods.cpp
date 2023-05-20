@@ -385,7 +385,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetDirAngle(Critter* self, int16 dir_angle)
 {
-    const auto normalized_dir_angle = self->GetEngine()->Geometry.NormalizeAngle(dir_angle);
+    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(dir_angle);
 
     if (self->GetDirAngle() == normalized_dir_angle) {
         return;
@@ -414,8 +414,8 @@
     int hx = self->GetHexX();
     int hy = self->GetHexY();
     std::sort(critters.begin(), critters.end(), [self, hx, hy](Critter* cr1, Critter* cr2) {
-        const auto dist1 = self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const auto dist2 = self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        const auto dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
+        const auto dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
     });
 
@@ -442,8 +442,8 @@
     int hx = self->GetHexX();
     int hy = self->GetHexY();
     std::sort(result.begin(), result.end(), [self, hx, hy](Critter* cr1, Critter* cr2) {
-        const auto dist1 = self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const auto dist2 = self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        const auto dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
+        const auto dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
     });
 

@@ -92,8 +92,8 @@
         return;
     }
 
-    const auto* anim = self->GetEngine()->AnimGetFrames(mapSpr->SprId);
-    if (anim == nullptr || mapSpr->FrameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = self->GetEngine()->AnimGetSpr(mapSpr->SprId);
+    if (anim == nullptr) {
         return;
     }
 
@@ -125,8 +125,7 @@
 
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
     auto& spr = self->GetDrawList().InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + static_cast<uint16>(draw_order_hy_offset), //
-        (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, //
-        mapSpr->FrameIndex < 0 ? anim->GetCurSpr(self->GetEngine()->GameTime.GameplayTime()) : anim->GetSpr(mapSpr->FrameIndex), nullptr, //
+        (self->GetEngine()->Settings.MapHexWidth / 2) + mapSpr->OffsX, (self->GetEngine()->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, anim, nullptr, //
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
@@ -324,14 +323,14 @@
     vector<CritterView*> critters;
 
     for (auto* cr : self->GetCritters()) {
-        if (cr->CheckFind(findType) && self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
             critters.push_back(cr);
         }
     }
 
     std::sort(critters.begin(), critters.end(), [&self, &hx, &hy](const CritterView* cr1, const CritterView* cr2) {
         //
-        return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });
 
     return critters;
@@ -418,9 +417,9 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
-        if (self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
-            return {self->GetEngine()->Geometry.GetFarDir(fromHx, fromHy, to_hx, to_hy)};
+    if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+        if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
+            return {GeometryHelper::GetFarDir(fromHx, fromHy, to_hx, to_hy)};
         }
         return {};
     }
@@ -432,7 +431,7 @@
         return {};
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (cut > 0 && GeometryHelper::DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return {};
     }
 
@@ -465,9 +464,9 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
-        if (self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) > cr->GetMultihex() && cut == 0) {
-            return {self->GetEngine()->Geometry.GetFarDir(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy)};
+    if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+        if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) > cr->GetMultihex() && cut == 0) {
+            return {GeometryHelper::GetFarDir(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy)};
         }
         return {};
     }
@@ -479,7 +478,7 @@
         return {};
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return {};
     }
 
@@ -511,7 +510,7 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return cut > 0 ? 0 : 1;
     }
 
@@ -522,7 +521,7 @@
         return 0;
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && self->GetEngine()->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+    if (cut > 0 && GeometryHelper::DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && GeometryHelper::DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return 0;
     }
 
@@ -555,7 +554,7 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return cut > 0 ? 0 : 1;
     }
 
@@ -566,7 +565,7 @@
         return 0;
     }
 
-    if (cut > 0 && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && self->GetEngine()->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+    if (cut > 0 && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return 0;
     }
 
@@ -660,11 +659,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
+            result |= GeometryHelper::MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
         }
     }
     else {
-        result = self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
+        result = GeometryHelper::MoveHexByDir(hx_, hy_, dir, self->GetWidth(), self->GetHeight());
     }
 
     hx = hx_;
@@ -926,13 +925,13 @@
 
 ///# ...
 ///@ ExportMethod
-[[maybe_unused]] ParticlePattern* Client_Map_RunParticlePattern(MapView* self, string_view particleName, uint particleCount)
+[[maybe_unused]] SpritePattern* Client_Map_RunSpritePattern(MapView* self, string_view spriteName, uint spriteCount)
 {
-    if (particleCount < 1) {
-        throw ScriptException("Invalid particle count");
+    if (spriteCount < 1) {
+        throw ScriptException("Invalid sprite count");
     }
 
-    return self->RunParticlePattern(particleName, particleCount);
+    return self->RunSpritePattern(spriteName, spriteCount);
 }
 
 ///@ ExportMethod

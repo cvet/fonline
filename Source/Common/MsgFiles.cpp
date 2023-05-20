@@ -326,7 +326,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
     return true;
 }
 
-auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
+auto FOMsg::LoadFromString(string_view str, HashResolver& hash_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -361,10 +361,10 @@ auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
             auto substr = line.substr(first + 1, last - first - 1);
             offset = last + 1;
             if (i == 0 && num == 0u) {
-                num = _str(substr).isNumber() ? _str(substr).toInt() : name_resolver.ToHashedString(substr).as_int();
+                num = _str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
             }
             else if (i == 1 && num != 0u) {
-                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : name_resolver.ToHashedString(substr).as_int()) : 0;
+                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
             }
             else if (i == 2 && num != 0u) {
                 AddStr(num, substr);
@@ -432,7 +432,7 @@ auto FOMsg::GetMsgType(string_view type_name) -> int
     return -1;
 }
 
-void LanguagePack::ParseTexts(FileSystem& resources, NameResolver& name_resolver, string_view lang_name)
+void LanguagePack::ParseTexts(FileSystem& resources, HashResolver& hash_resolver, string_view lang_name)
 {
     STACK_TRACE_ENTRY();
 
@@ -451,7 +451,7 @@ void LanguagePack::ParseTexts(FileSystem& resources, NameResolver& name_resolver
         if (name.substr(0, 4) == lang_name) {
             for (auto i = 0; i < TEXTMSG_COUNT; i++) {
                 if (Data->TextMsgFileName[i] == name.substr(5)) {
-                    if (!Msg[i].LoadFromString(msg_file.GetStr(), name_resolver)) {
+                    if (!Msg[i].LoadFromString(msg_file.GetStr(), hash_resolver)) {
                         throw LanguagePackException("Invalid text file", msg_file.GetPath());
                     }
                 }

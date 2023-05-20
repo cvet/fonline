@@ -34,9 +34,12 @@
 #include "Client.h"
 #include "ClientConnection.h"
 #include "ClientScripting.h"
+#include "DefaultSprites.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "ModelSprites.h"
 #include "NetCommand.h"
+#include "ParticleSprites.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 
@@ -47,7 +50,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
     EffectMngr(Settings, Resources),
-    SprMngr(Settings, window, Resources, EffectMngr),
+    SprMngr(Settings, window, Resources, GameTime, EffectMngr, *this),
     ResMngr(Resources, SprMngr, *this),
     SndMngr(Settings, Resources),
     Keyb(Settings, SprMngr),
@@ -84,6 +87,28 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     Resources.AddDataSource("PersistentData");
 #endif
 
+    EffectMngr.LoadDefaultEffects();
+
+    // Init sprite subsystems
+    SprMngr.RegisterSpriteFactory(std::make_unique<DefaultSpriteFactory>(SprMngr));
+    SprMngr.RegisterSpriteFactory(std::make_unique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this));
+
+#if FO_ENABLE_3D
+    auto&& model_spr_factory = std::make_unique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, *this, *this, *this);
+
+    if (!Preload3dFiles.empty()) {
+        WriteLog("Preload 3d files...");
+        for (const auto& name : Preload3dFiles) {
+            model_spr_factory->GetModelMngr()->PreloadModel(name);
+        }
+        WriteLog("Preload 3d files complete");
+    }
+
+    SprMngr.RegisterSpriteFactory(std::move(model_spr_factory));
+#endif
+
+    SprMngr.InitializeEgg(FOEngineBase::ToHashedString("TransparentEgg.png"), AtlasType::MapSprites);
+
     ResMngr.IndexFiles();
 
     GameTime.FrameAdvance();
@@ -93,25 +118,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
 
     // Language Packs
     _curLang.LoadTexts(Resources, Settings.Language);
-
-    // Init sprite subsystems
-    SprMngr.InitParticleSubsystem(GameTime);
-
-#if FO_ENABLE_3D
-    SprMngr.Init3dSubsystem(GameTime, *this, *this);
-
-    if (!Preload3dFiles.empty()) {
-        WriteLog("Preload 3d files...");
-        for (const auto& name : Preload3dFiles) {
-            SprMngr.Preload3dModel(name);
-        }
-        WriteLog("Preload 3d files complete");
-    }
-#endif
-
-    SprMngr.InitializeEgg("TransparentEgg.png", AtlasType::MapSprites);
-
-    EffectMngr.LoadDefaultEffects();
 
     if (mapper_mode) {
         return;
@@ -261,6 +267,10 @@ FOClient::~FOClient()
 {
     STACK_TRACE_ENTRY();
 
+    if (_chosen != nullptr || CurMap != nullptr || _curPlayer != nullptr || _curLocation != nullptr) {
+        BreakIntoDebugger();
+    }
+
     delete ScriptSys;
 }
 
@@ -270,6 +280,29 @@ void FOClient::Shutdown()
 
     App->Render.SetRenderTarget(nullptr);
     _conn.Disconnect();
+
+    if (_chosen != nullptr) {
+        _chosen->Release();
+        _chosen = nullptr;
+    }
+
+    if (CurMap != nullptr) {
+        CurMap->MarkAsDestroyed();
+        CurMap->Release();
+        CurMap = nullptr;
+    }
+
+    if (_curPlayer != nullptr) {
+        _curPlayer->MarkAsDestroyed();
+        _curPlayer->Release();
+        _curPlayer = nullptr;
+    }
+
+    if (_curLocation != nullptr) {
+        _curLocation->MarkAsDestroyed();
+        _curLocation->Release();
+        _curLocation = nullptr;
+    }
 }
 
 auto FOClient::ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
@@ -414,9 +447,6 @@ void FOClient::MainLoop()
 
     // Input
     ProcessInputEvents();
-
-    // Process
-    ProcessAnim();
 
     // Game time
     if (time_changed) {
@@ -706,7 +736,7 @@ void FOClient::Net_OnDisconnect()
         CurMap->Release();
         CurMap = nullptr;
 
-        ResMngr.CleanupMapSprites();
+        CleanupSpriteCache();
     }
 
     if (_curPlayer != nullptr) {
@@ -1094,7 +1124,7 @@ void FOClient::Net_OnAddCritter()
         _chosen->AddRef();
     }
 
-    OnCritterIn.Fire(cr);
+    OnCritterIn.Fire(cr, true);
 
     if (CurMap != nullptr && cr->IsChosen()) {
         CurMap->RebuildFog();
@@ -1118,7 +1148,7 @@ void FOClient::Net_OnRemoveCritter()
 
         cr->Finish();
 
-        OnCritterOut.Fire(cr);
+        OnCritterOut.Fire(cr, true);
     }
     else {
         const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
@@ -1128,7 +1158,7 @@ void FOClient::Net_OnRemoveCritter()
         }
 
         auto* cr = *it;
-        OnCritterOut.Fire(cr);
+        OnCritterOut.Fire(cr, true);
         _worldmapCritters.erase(it);
         cr->MarkAsDestroyed();
         cr->Release();
@@ -1495,7 +1525,7 @@ void FOClient::Net_OnCritterMove()
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], CurMap->GetWidth(), CurMap->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], CurMap->GetWidth(), CurMap->GetHeight());
             RUNTIME_ASSERT(move_ok);
         }
 
@@ -2042,11 +2072,7 @@ void FOClient::Net_OnAddItemOnMap()
             item->FadeUp();
         }
 
-        if (is_added) {
-            item->PlayShowAnim();
-        }
-
-        OnItemMapIn.Fire(item);
+        OnItemMapIn.Fire(item, !is_added);
     }
 }
 
@@ -2066,15 +2092,11 @@ void FOClient::Net_OnEraseItemFromMap()
 
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
-        OnItemMapOut.Fire(item);
+        OnItemMapOut.Fire(item, !is_deleted);
 
         // Refresh borders
         if (!item->GetIsShootThru()) {
             CurMap->RebuildFog();
-        }
-
-        if (is_deleted) {
-            item->PlayHideAnim();
         }
 
         item->Finish();
@@ -2086,8 +2108,9 @@ void FOClient::Net_OnAnimateItem()
     STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto from_frm = _conn.InBuf.Read<uint8>();
-    const auto to_frm = _conn.InBuf.Read<uint8>();
+    const auto anim_name = _conn.InBuf.Read<hstring>(*this);
+    const auto looped = _conn.InBuf.Read<bool>();
+    const auto reversed = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2098,7 +2121,7 @@ void FOClient::Net_OnAnimateItem()
 
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
-        item->PlayAnim(from_frm, to_frm);
+        item->GetAnim()->Play(anim_name, looped, reversed);
     }
 }
 
@@ -2456,7 +2479,7 @@ void FOClient::Net_OnLoadMap()
         CurMap->Release();
         CurMap = nullptr;
 
-        ResMngr.CleanupMapSprites();
+        CleanupSpriteCache();
     }
 
     if (_curLocation != nullptr) {
@@ -2732,151 +2755,61 @@ void FOClient::FlashGameWindow()
     }
 }
 
-auto FOClient::AnimLoad(hstring name) -> uint
+auto FOClient::AnimLoad(hstring name, AtlasType atlas_type) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    auto* anim = ResMngr.GetIfaceAnim(name);
-    if (anim == nullptr) {
-        return 0u;
+    if (const auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
+        auto&& iface_anim = it->second;
+
+        iface_anim->Anim->PlayDefault();
+
+        _ifaceAnimations[++_ifaceAnimIndex] = std::move(iface_anim);
+        _ifaceAnimationsCache.erase(it);
+
+        return _ifaceAnimIndex;
     }
 
-    auto* ianim = new IfaceAnim {anim, GameTime.GameplayTime()};
-
-    size_t index = 1;
-    for (; index < _ifaceAnimations.size(); index++) {
-        if (_ifaceAnimations[index] == nullptr) {
-            break;
-        }
+    auto&& anim = SprMngr.LoadSprite(name, atlas_type);
+    if (!anim) {
+        BreakIntoDebugger();
+        return 0;
     }
 
-    if (index < _ifaceAnimations.size()) {
-        _ifaceAnimations[index] = ianim;
-    }
-    else {
-        _ifaceAnimations.push_back(ianim);
-    }
+    anim->PlayDefault();
 
-    return static_cast<uint>(index);
+    auto&& iface_anim = std::make_unique<IfaceAnim>();
+
+    iface_anim->Name = name;
+    iface_anim->Anim = anim;
+
+    _ifaceAnimations[++_ifaceAnimIndex] = std::move(iface_anim);
+
+    return _ifaceAnimIndex;
 }
 
 void FOClient::AnimFree(uint anim_id)
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(anim_id < _ifaceAnimations.size());
+    if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
+        auto&& iface_anim = it->second;
 
-    if (_ifaceAnimations[anim_id] != nullptr) {
-        delete _ifaceAnimations[anim_id];
-        _ifaceAnimations[anim_id] = nullptr;
+        iface_anim->Anim->Stop();
+
+        _ifaceAnimationsCache.emplace(iface_anim->Name, std::move(iface_anim));
+        _ifaceAnimations.erase(it);
     }
 }
 
-auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
+auto FOClient::AnimGetSpr(uint anim_id) -> Sprite*
 {
     STACK_TRACE_ENTRY();
 
-    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
-        return 0;
+    if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
+        return it->second->Anim.get();
     }
-    return _ifaceAnimations[anim_id]->Frames->CntFrm;
-}
-
-auto FOClient::AnimGetFrames(uint anim_id) -> const SpriteSheet*
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
-        return nullptr;
-    }
-    return _ifaceAnimations[anim_id]->Frames;
-}
-
-void FOClient::AnimRun(uint anim_id, uint flags)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    if (anim_id >= _ifaceAnimations.size() || _ifaceAnimations[anim_id] == nullptr) {
-        return;
-    }
-
-    auto* anim = _ifaceAnimations[anim_id];
-
-    // Set flags
-    anim->Flags = flags & 0xFFFF;
-    flags >>= 16;
-
-    // Set frm
-    uint8 cur_frm = (flags & 0xFF);
-    if (cur_frm > 0u) {
-        cur_frm--;
-        if (cur_frm >= anim->Frames->CntFrm) {
-            if (anim->Frames->CntFrm > 0u) {
-                cur_frm = static_cast<uint8>(anim->Frames->CntFrm - 1u);
-            }
-            else {
-                cur_frm = 0u;
-            }
-        }
-        anim->CurSpr = cur_frm;
-    }
-}
-
-void FOClient::ProcessAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    const auto time = GameTime.GameplayTime();
-
-    for (auto* anim : _ifaceAnimations) {
-        if (anim == nullptr || anim->Flags == 0u) {
-            continue;
-        }
-
-        if (IsBitSet(anim->Flags, ANIMRUN_STOP)) {
-            anim->Flags = 0;
-            continue;
-        }
-
-        if (IsBitSet(anim->Flags, ANIMRUN_TO_END) || IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
-            if (time - anim->LastUpdateTime < std::chrono::milliseconds {anim->Frames->WholeTicks / anim->Frames->CntFrm}) {
-                continue;
-            }
-
-            anim->LastUpdateTime = time;
-
-            auto end_spr = anim->Frames->CntFrm - 1;
-            if (IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
-                end_spr = 0;
-            }
-
-            if (anim->CurSpr < end_spr) {
-                anim->CurSpr++;
-            }
-            else if (anim->CurSpr > end_spr) {
-                anim->CurSpr--;
-            }
-            else {
-                if (IsBitSet(anim->Flags, ANIMRUN_CYCLE)) {
-                    if (IsBitSet(anim->Flags, ANIMRUN_TO_END)) {
-                        anim->CurSpr = 0;
-                    }
-                    else {
-                        anim->CurSpr = end_spr;
-                    }
-                }
-                else {
-                    anim->Flags = 0;
-                }
-            }
-        }
-    }
+    return nullptr;
 }
 
 void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
@@ -3113,10 +3046,10 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop)
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         if (item->GetIsCanOpen()) {
             if (item->GetOpened()) {
-                item->PlayAnimFromStart();
+                item->GetAnim()->Play({}, false, false);
             }
             else {
-                item->PlayAnimFromEnd();
+                item->GetAnim()->Play({}, false, true);
             }
         }
     }
@@ -3407,7 +3340,7 @@ void FOClient::LmapPrepareMap()
             }
 
             auto is_far = false;
-            const auto dist = Geometry.DistGame(chosen->GetHexX(), chosen->GetHexY(), i1, i2);
+            const auto dist = GeometryHelper::DistGame(chosen->GetHexX(), chosen->GetHexY(), i1, i2);
             if (dist > vis) {
                 is_far = true;
             }
@@ -3466,10 +3399,18 @@ void FOClient::WaitDraw()
 {
     STACK_TRACE_ENTRY();
 
-    if (_waitPic != nullptr) {
-        SprMngr.DrawSpriteSize(_waitPic->GetCurSpr(GameTime.GameplayTime()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
+    if (_waitPic) {
+        SprMngr.DrawSpriteSize(_waitPic.get(), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
         SprMngr.Flush();
     }
+}
+
+void FOClient::CleanupSpriteCache()
+{
+    STACK_TRACE_ENTRY();
+
+    ResMngr.CleanupCritterFrames();
+    SprMngr.CleanupSpriteCache();
 }
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string
@@ -3532,7 +3473,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
     }
     else if (cmd == "DumpAtlases") {
-        SprMngr.DumpAtlases();
+        SprMngr.GetAtlasMngr().DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
         if (CurMap != nullptr) {
@@ -3864,7 +3805,7 @@ void FOClient::CritterMoveTo(CritterHexView* cr, variant<tuple<uint16, uint16, i
             RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
             RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
             for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-                const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, cr->Moving.Steps[j], cr->GetMap()->GetWidth(), cr->GetMap()->GetHeight());
+                const auto move_ok = GeometryHelper::MoveHexByDir(hx2, hy2, cr->Moving.Steps[j], cr->GetMap()->GetWidth(), cr->GetMap()->GetHeight());
                 RUNTIME_ASSERT(move_ok);
             }
 

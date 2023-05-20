@@ -32,12 +32,10 @@
 //
 
 #include "SpriteManager.h"
+#include "DefaultSprites.h"
 #include "DiskFileSystem.h"
-#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
-
-constexpr int ATLAS_SPRITES_PADDING = 1;
 
 static auto ApplyColorBrightness(uint color, int brightness) -> uint
 {
@@ -54,259 +52,38 @@ static auto ApplyColorBrightness(uint color, int brightness) -> uint
     }
 }
 
-TextureAtlas::SpaceNode::SpaceNode(int x, int y, int width, int height) :
-    PosX {x},
-    PosY {y},
-    Width {width},
-    Height {height}
+Sprite::Sprite(SpriteManager& spr_mngr) :
+    _sprMngr {spr_mngr}
 {
     STACK_TRACE_ENTRY();
 }
 
-auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
+auto Sprite::IsHitTest(int x, int y) const -> bool
 {
-    STACK_TRACE_ENTRY();
-
-    if (Busy) {
-        return true;
-    }
-
-    for (auto&& child : Children) {
-        if (child->IsBusyRecursively()) {
-            return true;
-        }
-    }
+    UNUSED_VARIABLE(x, y);
 
     return false;
 }
 
-auto TextureAtlas::SpaceNode::FindPosition(int width, int height) -> SpaceNode*
+void Sprite::StartUpdate()
 {
     STACK_TRACE_ENTRY();
-
-    for (auto&& child : Children) {
-        if (auto* child_node = child->FindPosition(width, height); child_node != nullptr) {
-            return child_node;
-        }
-    }
-
-    if (!Busy && Width >= width && Height >= height) {
-        Busy = true;
-
-        if (Width == width && Height > height) {
-            Children.emplace_back(std::make_unique<SpaceNode>(PosX, PosY + height, Width, Height - height));
-            Height = height;
-        }
-        else if (Height == height && Width > width) {
-            Children.emplace_back(std::make_unique<SpaceNode>(PosX + width, PosY, Width - width, Height));
-            Width = width;
-        }
-        else if (Width > width && Height > height) {
-            Children.emplace_back(std::make_unique<SpaceNode>(PosX + width, PosY, Width - width, height));
-            Children.emplace_back(std::make_unique<SpaceNode>(PosX, PosY + height, Width, Height - height));
-            Width = width;
-            Height = height;
-        }
-
-        return this;
-    }
-
-    return nullptr;
+    _sprMngr._updateSprites.emplace(this, weak_from_this());
 }
 
-void TextureAtlas::SpaceNode::Free() noexcept
-{
-    STACK_TRACE_ENTRY();
-
-    Busy = false;
-
-    // Collapse free children
-    if (!Children.empty()) {
-        bool all_children_free = true;
-
-        for (auto&& child : Children) {
-            if (child->IsBusyRecursively()) {
-                all_children_free = false;
-                break;
-            }
-        }
-
-        if (all_children_free) {
-            int max_x = PosX + Width;
-            int max_y = PosY + Height;
-
-            for (auto&& child : Children) {
-                max_x = std::max(max_x, child->PosX + child->Width);
-                max_y = std::max(max_y, child->PosY + child->Height);
-            }
-
-            Width = max_x - PosX;
-            Height = max_y - PosY;
-
-            Children.clear();
-        }
-    }
-}
-
-SpriteRef::SpriteRef(const Sprite* ref) :
-    _ref {ref}
-{
-    STACK_TRACE_ENTRY();
-
-    Width = ref->Width;
-    Height = ref->Height;
-    OffsX = ref->OffsX;
-    OffsY = ref->OffsY;
-    Atlas = ref->Atlas;
-    DrawEffect = ref->DrawEffect;
-}
-
-auto SpriteRef::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    return _ref->FillData(dbuf, pos, colors);
-}
-
-AtlasSprite::~AtlasSprite()
-{
-    STACK_TRACE_ENTRY();
-
-    if constexpr (FO_DEBUG) {
-        try {
-            const auto rnd_color = COLOR_RGB(GenericUtils::Random(0, 255), GenericUtils::Random(0, 255), GenericUtils::Random(0, 255));
-
-            vector<uint> color_data;
-            color_data.resize(static_cast<size_t>(AtlasNode->Width * AtlasNode->Height));
-            for (size_t i = 0; i < color_data.size(); i++) {
-                color_data[i] = rnd_color;
-            }
-
-            Atlas->MainTex->UpdateTextureRegion({AtlasNode->PosX, AtlasNode->PosY, AtlasNode->PosX + AtlasNode->Width, AtlasNode->PosY + AtlasNode->Height}, color_data.data());
-        }
-        catch (...) {
-        }
-    }
-
-    if (AtlasNode != nullptr) {
-        AtlasNode->Free();
-    }
-}
-
-auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t
-{
-    STACK_TRACE_ENTRY();
-
-    dbuf->CheckAllocBuf(4, 6);
-
-    auto& vbuf = dbuf->Vertices;
-    auto& vpos = dbuf->VertCount;
-    auto& ibuf = dbuf->Indices;
-    auto& ipos = dbuf->IndCount;
-
-    ibuf[ipos++] = static_cast<uint16>(vpos + 0);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 1);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 2);
-    ibuf[ipos++] = static_cast<uint16>(vpos + 3);
-
-    auto& v0 = vbuf[vpos++];
-    v0.PosX = pos.Left;
-    v0.PosY = pos.Bottom;
-    v0.TexU = AtlasRect.Left;
-    v0.TexV = AtlasRect.Bottom;
-    v0.Color = std::get<0>(colors);
-
-    auto& v1 = vbuf[vpos++];
-    v1.PosX = pos.Left;
-    v1.PosY = pos.Top;
-    v1.TexU = AtlasRect.Left;
-    v1.TexV = AtlasRect.Top;
-    v1.Color = std::get<0>(colors);
-
-    auto& v2 = vbuf[vpos++];
-    v2.PosX = pos.Right;
-    v2.PosY = pos.Top;
-    v2.TexU = AtlasRect.Right;
-    v2.TexV = AtlasRect.Top;
-    v2.Color = std::get<1>(colors);
-
-    auto& v3 = vbuf[vpos++];
-    v3.PosX = pos.Right;
-    v3.PosY = pos.Bottom;
-    v3.TexU = AtlasRect.Right;
-    v3.TexV = AtlasRect.Bottom;
-    v3.Color = std::get<1>(colors);
-
-    return 6;
-}
-
-SpriteSheet::SpriteSheet(uint frames, uint ticks, uint dirs)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(frames > 0);
-    RUNTIME_ASSERT(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT);
-
-    Spr.resize(frames);
-    SprOffset.resize(frames);
-    CntFrm = frames;
-    WholeTicks = ticks != 0 ? ticks : frames * 100;
-
-    DirCount = dirs;
-
-    for (uint dir = 0; dir < dirs - 1; dir++) {
-        Dirs[dir] = std::make_unique<SpriteSheet>(frames, ticks, 1);
-    }
-}
-
-auto SpriteSheet::GetSpr(uint num_frm) const -> const Sprite*
-{
-    STACK_TRACE_ENTRY();
-
-    return Spr[num_frm % CntFrm].get();
-}
-
-auto SpriteSheet::GetSpr(uint num_frm) -> Sprite*
-{
-    STACK_TRACE_ENTRY();
-
-    return Spr[num_frm % CntFrm].get();
-}
-
-auto SpriteSheet::GetCurSpr(time_point time) const -> const Sprite*
-{
-    STACK_TRACE_ENTRY();
-
-    const auto ticks = time_duration_to_ms<size_t>(time.time_since_epoch());
-    return CntFrm > 1 ? Spr[ticks % WholeTicks * 100 / WholeTicks * CntFrm / 100].get() : Spr[0].get();
-}
-
-auto SpriteSheet::GetDir(uint dir) const -> const SpriteSheet*
-{
-    STACK_TRACE_ENTRY();
-
-    return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
-}
-
-auto SpriteSheet::GetDir(uint dir) -> SpriteSheet*
-{
-    STACK_TRACE_ENTRY();
-
-    return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1].get();
-}
-
-SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, EffectManager& effect_mngr) :
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& resources, GameTimer& game_time, EffectManager& effect_mngr, HashResolver& hash_resolver) :
     _settings {settings},
     _window {window},
     _resources {resources},
-    _effectMngr {effect_mngr}
+    _gameTimer {game_time},
+    _rtMngr(settings, window, [this] { Flush(); }),
+    _atlasMngr(settings, _rtMngr),
+    _effectMngr {effect_mngr},
+    _hashResolver {hash_resolver}
 {
     STACK_TRACE_ENTRY();
 
     _flushVertCount = 4096;
-    _allAtlases.reserve(100);
     _dipQueue.reserve(1000);
 
     _spritesDrawBuf = App->Render.CreateDrawBuffer(false);
@@ -326,15 +103,11 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _contourDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _contourDrawBuf->IndCount = 6;
 
-    _borderBuf.resize(App->Render.MAX_ATLAS_SIZE);
-
 #if !FO_DIRECT_SPRITES_DRAW
-    _rtMain = CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, true);
+    _rtMain = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, true);
 #endif
-    _rtContours = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
-    _rtContoursMid = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
-
-    _eventUnsubscriber += _window->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
+    _rtContours = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
+    _rtContoursMid = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
 }
 
 SpriteManager::~SpriteManager()
@@ -470,34 +243,34 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
     _window->AlwaysOnTop(enable);
 }
 
+void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory)
+{
+    STACK_TRACE_ENTRY();
+
+    for (auto&& ext : factory->GetExtensions()) {
+        _spriteFactoryMap[ext] = factory.get();
+    }
+
+    _spriteFactories.emplace_back(std::move(factory));
+}
+
 void SpriteManager::BeginScene(uint clear_color)
 {
     STACK_TRACE_ENTRY();
 
     if (_rtMain != nullptr) {
-        PushRenderTarget(_rtMain);
-        ClearCurrentRenderTarget(clear_color);
+        _rtMngr.PushRenderTarget(_rtMain);
+        _rtMngr.ClearCurrentRenderTarget(clear_color);
     }
 
-    // Draw particles to atlas
-    if (!_autoDrawParticles.empty()) {
-        for (auto* particle_spr : _autoDrawParticles) {
-            if (particle_spr->Particle->NeedForceDraw() || particle_spr->Particle->NeedDraw()) {
-                DrawParticleToAtlas(particle_spr);
-            }
+    for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
+        if (auto&& spr = it->second.lock(); spr && spr->Update()) {
+            ++it;
+        }
+        else {
+            it = _updateSprites.erase(it);
         }
     }
-
-#if FO_ENABLE_3D
-    // Draw models to atlas
-    if (!_autoDrawModels.empty()) {
-        for (auto* model_spr : _autoDrawModels) {
-            if (model_spr->Model->NeedForceDraw() || model_spr->Model->NeedDraw()) {
-                DrawModelToAtlas(model_spr);
-            }
-        }
-    }
-#endif
 }
 
 void SpriteManager::EndScene()
@@ -507,118 +280,9 @@ void SpriteManager::EndScene()
     Flush();
 
     if (_rtMain != nullptr) {
-        PopRenderTarget();
+        _rtMngr.PopRenderTarget();
         DrawRenderTarget(_rtMain, false);
     }
-}
-
-void SpriteManager::OnScreenSizeChanged()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    // Reallocate fullscreen render targets
-    for (auto&& rt : _rtAll) {
-        if (rt->Size != RenderTarget::SizeType::Custom) {
-            AllocateRenderTargetTexture(rt.get(), rt->MainTex->LinearFiltered, rt->MainTex->WithDepth);
-        }
-    }
-}
-
-auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(width >= 0);
-    RUNTIME_ASSERT(height >= 0);
-
-    Flush();
-
-    auto&& rt = std::make_unique<RenderTarget>();
-    rt->Size = size;
-    rt->BaseWidth = width;
-    rt->BaseHeight = height;
-
-    AllocateRenderTargetTexture(rt.get(), linear_filtered, with_depth);
-
-    _rtAll.push_back(std::move(rt));
-    return _rtAll.back().get();
-}
-
-void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    auto tex_width = rt->BaseWidth;
-    auto tex_height = rt->BaseHeight;
-
-    if (rt->Size == RenderTarget::SizeType::Screen) {
-        tex_width += _settings.ScreenWidth;
-        tex_height += _settings.ScreenHeight;
-    }
-    else if (rt->Size == RenderTarget::SizeType::Map) {
-        tex_width += _settings.ScreenWidth;
-        tex_height += _settings.ScreenHeight - _settings.ScreenHudHeight;
-    }
-
-    tex_width = std::max(tex_width, 1);
-    tex_height = std::max(tex_height, 1);
-
-    RUNTIME_ASSERT(tex_width > 0);
-    RUNTIME_ASSERT(tex_height > 0);
-
-    rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(tex_width, tex_height, linear_filtered, with_depth));
-
-    rt->MainTex->FlippedHeight = App->Render.IsRenderTargetFlipped();
-
-    auto* prev_tex = App->Render.GetRenderTarget();
-    App->Render.SetRenderTarget(rt->MainTex.get());
-    App->Render.ClearRenderTarget(0, with_depth);
-    App->Render.SetRenderTarget(prev_tex);
-}
-
-void SpriteManager::PushRenderTarget(RenderTarget* rt)
-{
-    STACK_TRACE_ENTRY();
-
-    Flush();
-
-    const auto redundant = !_rtStack.empty() && _rtStack.back() == rt;
-    _rtStack.push_back(rt);
-    if (!redundant) {
-        Flush();
-        App->Render.SetRenderTarget(rt->MainTex.get());
-        rt->LastPixelPicks.clear();
-    }
-}
-
-void SpriteManager::PopRenderTarget()
-{
-    STACK_TRACE_ENTRY();
-
-    const auto redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
-    _rtStack.pop_back();
-
-    if (!redundant) {
-        Flush();
-
-        if (!_rtStack.empty()) {
-            App->Render.SetRenderTarget(_rtStack.back()->MainTex.get());
-        }
-        else {
-            App->Render.SetRenderTarget(nullptr);
-        }
-    }
-}
-
-void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
-{
-    STACK_TRACE_ENTRY();
-
-    DrawTexture(rt->MainTex.get(), alpha_blend, region_from, region_to, rt->CustomDrawEffect);
 }
 
 void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from, const IRect* region_to, RenderEffect* custom_effect)
@@ -627,11 +291,12 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
     Flush();
 
+    const auto& rt_stack = _rtMngr.GetRenderTargetStack();
     const auto flipped_height = tex->FlippedHeight;
     const auto width_from_i = tex->Width;
     const auto height_from_i = tex->Height;
-    const auto width_to_i = _rtStack.empty() ? _settings.ScreenWidth : _rtStack.back()->MainTex->Width;
-    const auto height_to_i = _rtStack.empty() ? _settings.ScreenHeight : _rtStack.back()->MainTex->Height;
+    const auto width_to_i = rt_stack.empty() ? _settings.ScreenWidth : rt_stack.back()->MainTex->Width;
+    const auto height_to_i = rt_stack.empty() ? _settings.ScreenHeight : rt_stack.back()->MainTex->Height;
     const auto width_from_f = static_cast<float>(width_from_i);
     const auto height_from_f = static_cast<float>(height_from_i);
     const auto width_to_f = static_cast<float>(width_to_i);
@@ -697,49 +362,11 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
     effect->DrawBuffer(_flushDrawBuf);
 }
 
-auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
+void SpriteManager::DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
 {
     STACK_TRACE_ENTRY();
 
-#if FO_NO_TEXTURE_LOOKUP
-    return 0xFFFFFFFF;
-
-#else
-
-    // Try find in last picks
-    for (auto&& pix : rt->LastPixelPicks) {
-        if (std::get<0>(pix) == x && std::get<1>(pix) == y) {
-            return std::get<2>(pix);
-        }
-    }
-
-    // Read one pixel
-    auto color = rt->MainTex->GetTexturePixel(x, y);
-
-    // Refresh picks
-    rt->LastPixelPicks.emplace(rt->LastPixelPicks.begin(), x, y, color);
-    if (rt->LastPixelPicks.size() > MAX_STORED_PIXEL_PICKS) {
-        rt->LastPixelPicks.pop_back();
-    }
-
-    return color;
-#endif
-}
-
-void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)
-{
-    STACK_TRACE_ENTRY();
-
-    App->Render.ClearRenderTarget(color, with_depth);
-}
-
-void SpriteManager::DeleteRenderTarget(RenderTarget* rt)
-{
-    STACK_TRACE_ENTRY();
-
-    const auto it = std::find_if(_rtAll.begin(), _rtAll.end(), [rt](auto&& check_rt) { return check_rt.get() == rt; });
-    RUNTIME_ASSERT(it != _rtAll.end());
-    _rtAll.erase(it);
+    DrawTexture(rt->MainTex.get(), alpha_blend, region_from, region_to, rt->CustomDrawEffect);
 }
 
 void SpriteManager::PushScissor(int l, int t, int r, int b)
@@ -807,9 +434,9 @@ void SpriteManager::EnableScissor()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    const auto& rt_stack = _rtMngr.GetRenderTargetStack();
 
-    if (!_scissorStack.empty() && !_rtStack.empty() && _rtStack.back() == _rtMain) {
+    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
         App->Render.EnableScissor(_scissorRect.Left, _scissorRect.Top, _scissorRect.Width(), _scissorRect.Height());
     }
 }
@@ -818,669 +445,66 @@ void SpriteManager::DisableScissor()
 {
     STACK_TRACE_ENTRY();
 
-    NON_CONST_METHOD_HINT();
+    const auto& rt_stack = _rtMngr.GetRenderTargetStack();
 
-    if (!_scissorStack.empty() && !_rtStack.empty() && _rtStack.back() == _rtMain) {
+    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
         App->Render.DisableScissor();
     }
 }
 
-auto SpriteManager::CreateAtlas(AtlasType atlas_type, int request_width, int request_height) -> TextureAtlas*
+auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
     STACK_TRACE_ENTRY();
 
-    // Cleanup expired atlases
-    for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
-        if (it->get()->Type == AtlasType::OneImage && !it->get()->RootNode->Busy) {
-            it = _allAtlases.erase(it);
+    return LoadSprite(_hashResolver.ToHashedString(path), atlas_type);
+}
+
+auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
+{
+    STACK_TRACE_ENTRY();
+
+    RUNTIME_ASSERT(path);
+
+    if (const auto it = _copyableSpriteCache.find(path); it != _copyableSpriteCache.end()) {
+        return it->second->MakeCopy();
+    }
+
+    const string ext = _str(path).getFileExtension();
+    if (ext.empty()) {
+        BreakIntoDebugger();
+        WriteLog("Extension not found, file '{}'", path);
+        return nullptr;
+    }
+
+    const auto it = _spriteFactoryMap.find(ext);
+    if (it == _spriteFactoryMap.end()) {
+        BreakIntoDebugger();
+        WriteLog("Unknown extension, file '{}'", path);
+        return nullptr;
+    }
+
+    auto&& spr = it->second->LoadSprite(path, atlas_type);
+
+    if (spr->IsCopyable()) {
+        _copyableSpriteCache.emplace(path, spr);
+    }
+
+    return spr;
+}
+
+void SpriteManager::CleanupSpriteCache()
+{
+    STACK_TRACE_ENTRY();
+
+    for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
+        if (it->second.use_count() == 1) {
+            it = _copyableSpriteCache.erase(it);
         }
         else {
             ++it;
         }
     }
-
-    // Create new
-    RUNTIME_ASSERT(request_width > 0);
-    RUNTIME_ASSERT(request_height > 0);
-
-    auto result_width = request_width;
-    auto result_height = request_height;
-
-    auto&& atlas = std::make_unique<TextureAtlas>();
-    atlas->Type = atlas_type;
-
-    switch (atlas->Type) {
-    case AtlasType::IfaceSprites:
-        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 4096);
-        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096);
-        break;
-    case AtlasType::MapSprites:
-        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 2048);
-        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
-        break;
-    case AtlasType::MeshTextures:
-        result_width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
-        result_height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
-        break;
-    case AtlasType::OneImage:
-        break;
-    }
-
-    atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, result_width, result_height, _settings.AtlasLinearFiltration);
-    atlas->RTarg->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
-    atlas->MainTex = atlas->RTarg->MainTex.get();
-    atlas->MainTex->FlippedHeight = false;
-    atlas->Width = result_width;
-    atlas->Height = result_height;
-    atlas->RootNode = std::make_unique<TextureAtlas::SpaceNode>(0, 0, result_width, result_height);
-
-    _allAtlases.push_back(std::move(atlas));
-    return _allAtlases.back().get();
 }
-
-auto SpriteManager::FindAtlasPlace(const AtlasSprite* atlas_spr, AtlasType atlas_type, int& x, int& y) -> pair<TextureAtlas*, TextureAtlas::SpaceNode*>
-{
-    STACK_TRACE_ENTRY();
-
-    // Find place in already created atlas
-    TextureAtlas* atlas = nullptr;
-    TextureAtlas::SpaceNode* atlas_node = nullptr;
-
-    const auto request_width = atlas_spr->Width + ATLAS_SPRITES_PADDING * 2;
-    const auto request_height = atlas_spr->Height + ATLAS_SPRITES_PADDING * 2;
-
-    if (atlas_type != AtlasType::OneImage) {
-        for (auto&& a : _allAtlases) {
-            if (a->Type != atlas_type) {
-                continue;
-            }
-
-            auto* node = a->RootNode->FindPosition(request_width, request_height);
-            if (node != nullptr) {
-                atlas = a.get();
-                atlas_node = node;
-                break;
-            }
-        }
-    }
-
-    // Create new
-    if (atlas == nullptr) {
-        atlas = CreateAtlas(atlas_type, request_width, request_height);
-        atlas_node = atlas->RootNode->FindPosition(request_width, request_height);
-    }
-
-    x = atlas_node->PosX + ATLAS_SPRITES_PADDING;
-    y = atlas_node->PosY + ATLAS_SPRITES_PADDING;
-
-    return {atlas, atlas_node};
-}
-
-static void WriteSimpleTga(string_view fname, int width, int height, vector<uint> data)
-{
-    STACK_TRACE_ENTRY();
-
-    auto file = DiskFileSystem::OpenFile(fname, true);
-    RUNTIME_ASSERT(file);
-
-    const uint8 header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        static_cast<uint8>(width % 256), static_cast<uint8>(width / 256), //
-        static_cast<uint8>(height % 256), static_cast<uint8>(height / 256), 4 * 8, 0x20};
-    file.Write(header);
-
-    for (auto& c : data) {
-        c = COLOR_SWAP_RB(c);
-    }
-
-    file.Write(data.data(), data.size() * sizeof(uint));
-}
-
-void SpriteManager::DumpAtlases() const
-{
-    STACK_TRACE_ENTRY();
-
-    uint atlases_memory_size = 0;
-    for (auto&& atlas : _allAtlases) {
-        atlases_memory_size += atlas->Width * atlas->Height * 4;
-    }
-
-    const auto date = Timer::GetCurrentDateTime();
-    const string dir = _str("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
-        date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, //
-        atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
-
-    const auto write_rt = [&dir](string_view name, const RenderTarget* rt) {
-        if (rt != nullptr) {
-            const string fname = _str("{}/{}_{}x{}.tga", dir, name, rt->MainTex->Width, rt->MainTex->Height);
-            auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
-            WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
-        }
-    };
-
-    write_rt("Main", _rtMain);
-    write_rt("Contours", _rtContours);
-    write_rt("ContoursMid", _rtContoursMid);
-
-    auto cnt = 1;
-    for (auto&& atlas : _allAtlases) {
-        string atlas_type_name;
-        switch (atlas->Type) {
-        case AtlasType::IfaceSprites:
-            atlas_type_name = "Static";
-            break;
-        case AtlasType::MapSprites:
-            atlas_type_name = "MapSprites";
-            break;
-        case AtlasType::OneImage:
-            atlas_type_name = "OneImage";
-            break;
-        case AtlasType::MeshTextures:
-            atlas_type_name = "MeshTextures";
-            break;
-        }
-
-        const string fname = _str("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, cnt, atlas->Width, atlas->Height);
-        auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
-        WriteSimpleTga(fname, atlas->Width, atlas->Height, std::move(tex_data));
-        cnt++;
-    }
-
-#if FO_ENABLE_3D
-    cnt = 1;
-    for (const auto* rt : _rtIntermediate) {
-        write_rt(_str("Model_{}", cnt), rt);
-        cnt++;
-    }
-#endif
-
-    cnt = 1;
-    for (auto&& rt : _rtAll) {
-        write_rt(_str("All_{}", cnt), rt.get());
-        cnt++;
-    }
-}
-
-void SpriteManager::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, int width, int height, const uint* data)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(atlas_spr);
-    RUNTIME_ASSERT(width > 0);
-    RUNTIME_ASSERT(height > 0);
-
-    atlas_spr->Width = width;
-    atlas_spr->Height = height;
-
-    int x = 0;
-    int y = 0;
-    auto&& [atlas, atlas_node] = FindAtlasPlace(atlas_spr, atlas_type, x, y);
-
-    // Refresh texture
-    if (data != nullptr) {
-        auto* tex = atlas->MainTex;
-        tex->UpdateTextureRegion(IRect(x, y, x + width, y + height), data);
-
-        // 1px border for correct linear interpolation
-        // Top
-        tex->UpdateTextureRegion(IRect(x, y - 1, x + width, y), data);
-
-        // Bottom
-        tex->UpdateTextureRegion(IRect(x, y + height, x + width, y + height + 1), data + static_cast<size_t>((height - 1) * width));
-
-        // Left
-        for (auto i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + static_cast<size_t>(i * width));
-        }
-        _borderBuf[0] = _borderBuf[1];
-        _borderBuf[height + 1] = _borderBuf[height];
-        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + height + 1), _borderBuf.data());
-
-        // Right
-        for (auto i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + static_cast<size_t>(i * width + (width - 1)));
-        }
-        _borderBuf[0] = _borderBuf[1];
-        _borderBuf[height + 1] = _borderBuf[height];
-        tex->UpdateTextureRegion(IRect(x + width, y - 1, x + width + 1, y + height + 1), _borderBuf.data());
-
-        // Evaluate hit mask
-        atlas_spr->HitTestData.resize(static_cast<size_t>(width * height));
-        for (size_t i = 0, j = static_cast<size_t>(width * height); i < j; i++) {
-            atlas_spr->HitTestData[i] = (data[i] >> 24) > 0;
-        }
-    }
-
-    // Invalidate last pixel color picking
-    if (!atlas->RTarg->LastPixelPicks.empty()) {
-        atlas->RTarg->LastPixelPicks.clear();
-    }
-
-    // Set parameters
-    atlas_spr->Atlas = atlas;
-    atlas_spr->AtlasNode = atlas_node;
-    atlas_spr->AtlasRect.Left = static_cast<float>(x) / static_cast<float>(atlas->Width);
-    atlas_spr->AtlasRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
-    atlas_spr->AtlasRect.Right = static_cast<float>(x + width) / static_cast<float>(atlas->Width);
-    atlas_spr->AtlasRect.Bottom = static_cast<float>(y + height) / static_cast<float>(atlas->Height);
-}
-
-auto SpriteManager::LoadAnimation(string_view fname, AtlasType atlas_type) -> unique_ptr<SpriteSheet>
-{
-    STACK_TRACE_ENTRY();
-
-    if (fname.empty()) {
-        BreakIntoDebugger();
-        return nullptr;
-    }
-
-    const string ext = _str(fname).getFileExtension();
-    if (ext.empty()) {
-        BreakIntoDebugger();
-        WriteLog("Extension not found, file '{}'", fname);
-        return nullptr;
-    }
-
-    if (ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj") {
-#if FO_ENABLE_3D
-        return Load3dAnimation(fname, atlas_type);
-#else
-        throw NotEnabled3DException("Can't load animation, 3D submodule not enabled", fname);
-#endif
-    }
-    else {
-        return Load2dAnimation(fname, atlas_type);
-    }
-}
-
-auto SpriteManager::Load2dAnimation(string_view fname, AtlasType atlas_type) -> unique_ptr<SpriteSheet>
-{
-    STACK_TRACE_ENTRY();
-
-    auto file = _resources.ReadFile(fname);
-    if (!file) {
-        BreakIntoDebugger();
-        return nullptr;
-    }
-
-    const auto check_number = file.GetUChar();
-    RUNTIME_ASSERT(check_number == 42);
-    const auto frames_count = file.GetLEUShort();
-    const auto ticks = file.GetLEUShort();
-    const auto dirs = file.GetUChar();
-
-    auto&& anim = std::make_unique<SpriteSheet>(frames_count, ticks, dirs);
-
-    for (uint16 dir = 0; dir < dirs; dir++) {
-        auto* dir_anim = anim->GetDir(dir);
-        const auto ox = file.GetLEShort();
-        const auto oy = file.GetLEShort();
-
-        for (uint16 i = 0; i < frames_count; i++) {
-            if (file.GetUChar() == 0) {
-                const auto width = file.GetLEUShort();
-                const auto height = file.GetLEUShort();
-                const auto nx = file.GetLEShort();
-                const auto ny = file.GetLEShort();
-                const auto* data = file.GetCurBuf();
-
-                auto&& spr = std::make_unique<AtlasSprite>();
-                FillAtlas(spr.get(), atlas_type, width, height, reinterpret_cast<const uint*>(data));
-
-                spr->OffsX = ox;
-                spr->OffsY = oy;
-                dir_anim->SprOffset[i].X = nx;
-                dir_anim->SprOffset[i].Y = ny;
-                dir_anim->Spr[i] = std::move(spr);
-
-                file.GoForward(width * height * 4);
-            }
-            else {
-                const auto index = file.GetLEUShort();
-
-                dir_anim->Spr[i] = std::make_unique<SpriteRef>(dir_anim->GetSpr(index));
-                dir_anim->SprOffset[i].X = dir_anim->SprOffset[index].X;
-                dir_anim->SprOffset[i].Y = dir_anim->SprOffset[index].Y;
-            }
-        }
-    }
-
-    const auto check_number2 = file.GetUChar();
-    RUNTIME_ASSERT(check_number2 == 42);
-
-    return std::move(anim);
-}
-
-auto SpriteManager::LoadTexture(string_view path, unordered_map<string, unique_ptr<AtlasSprite>>& collection, AtlasType atlas_type) -> pair<RenderTexture*, FRect>
-{
-    STACK_TRACE_ENTRY();
-
-    auto result = pair<RenderTexture*, FRect>();
-
-    if (const auto it = collection.find(string(path)); it == collection.end()) {
-        auto&& anim = LoadAnimation(path, atlas_type);
-
-        if (anim != nullptr) {
-            auto* atlas_spr = dynamic_cast<AtlasSprite*>(anim->Spr[0].release());
-            RUNTIME_ASSERT(atlas_spr);
-            collection[string(path)] = unique_ptr<AtlasSprite>(atlas_spr);
-            result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
-        }
-        else {
-            BreakIntoDebugger();
-            WriteLog("Texture '{}' not found", path);
-            collection[string(path)] = nullptr;
-        }
-    }
-    else if (auto&& atlas_spr = it->second) {
-        result = pair {atlas_spr->Atlas->MainTex, FRect {atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[1], atlas_spr->AtlasRect[2] - atlas_spr->AtlasRect[0], atlas_spr->AtlasRect[3] - atlas_spr->AtlasRect[1]}};
-    }
-
-    return result;
-}
-
-void SpriteManager::InitParticleSubsystem(GameTimer& game_time)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(!_particleMngr);
-
-    _particleMngr = std::make_unique<ParticleManager>(_settings, _effectMngr, _resources, game_time, //
-        [this](string_view path) { return LoadTexture(path, _loadedParticleTextures, AtlasType::IfaceSprites); });
-}
-
-auto SpriteManager::LoadParticle(string_view name, AtlasType atlas_type) -> unique_del_ptr<ParticleSprite>
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_particleMngr);
-
-    auto&& particle = _particleMngr->CreateParticle(name);
-    if (particle == nullptr) {
-        return nullptr;
-    }
-
-    auto&& [draw_width, draw_height] = particle->GetDrawSize();
-    const auto frame_ratio = static_cast<float>(draw_width) / static_cast<float>(draw_height);
-    const auto proj_height = static_cast<float>(draw_height) * (1.0f / _settings.ModelProjFactor);
-    const auto proj_width = proj_height * frame_ratio;
-    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    mat44 world;
-    mat44::Translation({proj_width / 2.0f, proj_height / 4.0f, 0.0f}, world);
-
-    particle->Setup(proj, world, {}, {}, {});
-
-    auto&& particle_spr = std::make_unique<ParticleSprite>();
-    particle_spr->Particle = std::move(particle);
-    particle_spr->OffsY = static_cast<int16>(draw_height / 4);
-
-    FillAtlas(particle_spr.get(), atlas_type, draw_width, draw_height, nullptr);
-
-    _autoDrawParticles.push_back(particle_spr.get());
-
-    return {particle_spr.release(), [this](auto* ptr) {
-                const auto it = std::find(_autoDrawParticles.begin(), _autoDrawParticles.end(), ptr);
-                RUNTIME_ASSERT(it != _autoDrawParticles.end());
-                _autoDrawParticles.erase(it);
-
-                delete ptr;
-            }};
-}
-
-void SpriteManager::DrawParticleToAtlas(ParticleSprite* particle_spr)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_particleMngr);
-
-    // Find place for render
-    const auto frame_width = particle_spr->Width;
-    const auto frame_height = particle_spr->Height;
-
-    RenderTarget* rt_intermediate = nullptr;
-    for (auto* rt : _rtIntermediate) {
-        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
-            rt_intermediate = rt;
-            break;
-        }
-    }
-    if (rt_intermediate == nullptr) {
-        rt_intermediate = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
-        _rtIntermediate.push_back(rt_intermediate);
-    }
-
-    PushRenderTarget(rt_intermediate);
-    ClearCurrentRenderTarget(0, true);
-
-    // Draw particles
-    particle_spr->Particle->Draw();
-
-    // Restore render target
-    PopRenderTarget();
-
-    // Copy render
-    IRect region_to;
-
-    // Render to atlas
-    if (rt_intermediate->MainTex->FlippedHeight) {
-        // Preserve flip
-        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Width));
-        const auto t = iround((1.0f - particle_spr->AtlasRect.Top) * static_cast<float>(particle_spr->Atlas->Height));
-        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Width));
-        const auto b = iround((1.0f - particle_spr->AtlasRect.Bottom) * static_cast<float>(particle_spr->Atlas->Height));
-        region_to = IRect(l, t, r, b);
-    }
-    else {
-        const auto l = iround(particle_spr->AtlasRect.Left * static_cast<float>(particle_spr->Atlas->Width));
-        const auto t = iround(particle_spr->AtlasRect.Top * static_cast<float>(particle_spr->Atlas->Height));
-        const auto r = iround(particle_spr->AtlasRect.Right * static_cast<float>(particle_spr->Atlas->Width));
-        const auto b = iround(particle_spr->AtlasRect.Bottom * static_cast<float>(particle_spr->Atlas->Height));
-        region_to = IRect(l, t, r, b);
-    }
-
-    PushRenderTarget(particle_spr->Atlas->RTarg);
-    DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
-    PopRenderTarget();
-}
-
-#if FO_ENABLE_3D
-void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(!_modelMngr);
-
-    _modelMngr = std::make_unique<ModelManager>(_settings, _resources, _effectMngr, game_time, name_resolver, anim_name_resolver, //
-        [this](string_view path) { return LoadTexture(path, _loadedMeshTextures, AtlasType::MeshTextures); });
-}
-
-void SpriteManager::Preload3dModel(string_view model_name)
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    _modelMngr->PreloadModel(model_name);
-}
-
-auto SpriteManager::Load3dAnimation(string_view fname, AtlasType atlas_type) -> unique_ptr<SpriteSheet>
-{
-    // Todo: restore non-critter models rendering
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    // Load 3d animation
-    auto&& model_spr = LoadModel(fname, atlas_type);
-    if (!model_spr) {
-        return nullptr;
-    }
-
-    auto&& model = model_spr->Model;
-
-    model->PrewarmParticles();
-    model->StartMeshGeneration();
-
-    // Get animation data
-    const auto [period, proc_from, proc_to, dir] = model->GetRenderFramesData();
-
-    // Set fir
-    if (dir < 0) {
-        model->SetLookDirAngle(-dir);
-        model->SetMoveDirAngle(-dir, false);
-    }
-    else {
-        model->SetDir(static_cast<uint8>(dir), false);
-    }
-
-    // Calculate needed information
-    const auto frame_time = 1.0f / static_cast<float>(_settings.Animation3dFPS != 0 ? _settings.Animation3dFPS : 10); // 1 second / fps
-    const auto period_from = period * static_cast<float>(proc_from) / 100.0f;
-    const auto period_to = period * static_cast<float>(proc_to) / 100.0f;
-    const auto period_len = fabs(period_to - period_from);
-    const auto proc_step = static_cast<float>(proc_to - proc_from) / (period_len / frame_time);
-    const auto frames_count = iround(std::ceil(period_len / frame_time));
-
-    // If no animations available than render just one
-    if (period == 0.0f || proc_from == proc_to || frames_count <= 1) {
-        model->SetAnimation(0, proc_from * 10, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
-        DrawModelToAtlas(model_spr.get());
-
-        auto&& anim = std::make_unique<SpriteSheet>(1, 100, 1);
-        // anim->Spr[0] = model_spr.get();
-        return std::move(anim);
-    }
-
-    auto&& anim = std::make_unique<SpriteSheet>(frames_count, static_cast<uint>(period_len * 1000.0f), 1);
-    auto cur_proc = static_cast<float>(proc_from);
-    auto prev_cur_proci = -1;
-
-    for (auto i = 0; i < frames_count; i++) {
-        const auto cur_proci = proc_to > proc_from ? iround(10.0f * cur_proc + 0.5f) : iround(10.0f * cur_proc);
-
-        // Previous frame is different
-        if (cur_proci != prev_cur_proci) {
-            model->SetAnimation(0, cur_proci, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
-            DrawModelToAtlas(model_spr.get());
-
-            // anim->Spr[i] = model_spr.get();
-        }
-        // Previous frame is same
-        else if (i > 0) {
-            // anim->Spr[i] = anim->Spr[i - 1];
-        }
-
-        cur_proc += proc_step;
-        prev_cur_proci = cur_proci;
-    }
-
-    return std::move(anim);
-}
-
-void SpriteManager::DrawModel(int x, int y, ModelSprite* model_spr, uint color)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    auto&& model = model_spr->Model;
-
-    model->PrewarmParticles();
-    model->StartMeshGeneration();
-
-    DrawModelToAtlas(model_spr);
-
-    DrawSprite(model_spr, x - model_spr->Width / 2 + model_spr->OffsX, y - model_spr->Height + model_spr->OffsY, color);
-}
-
-auto SpriteManager::LoadModel(string_view fname, AtlasType atlas_type) -> unique_del_ptr<ModelSprite>
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    auto&& model = _modelMngr->CreateModel(fname);
-    if (model == nullptr) {
-        return nullptr;
-    }
-
-    model->SetupFrame();
-    auto&& [draw_width, draw_height] = model->GetDrawSize();
-
-    auto&& model_spr = new ModelSprite();
-    model_spr->Model = std::move(model);
-    model_spr->OffsY = static_cast<int16>(draw_height / 4);
-
-    FillAtlas(model_spr, atlas_type, draw_width, draw_height, nullptr);
-
-    _autoDrawModels.push_back(model_spr);
-
-    return {model_spr, [this](auto* ptr) {
-                const auto it = std::find(_autoDrawModels.begin(), _autoDrawModels.end(), ptr);
-                RUNTIME_ASSERT(it != _autoDrawModels.end());
-                _autoDrawModels.erase(it);
-
-                delete ptr;
-            }};
-}
-
-void SpriteManager::DrawModelToAtlas(ModelSprite* model_spr)
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(_modelMngr);
-
-    // Find place for render
-    const auto frame_width = model_spr->Width * ModelInstance::FRAME_SCALE;
-    const auto frame_height = model_spr->Height * ModelInstance::FRAME_SCALE;
-
-    RenderTarget* rt_model = nullptr;
-    for (auto* rt : _rtIntermediate) {
-        if (rt->MainTex->Width == frame_width && rt->MainTex->Height == frame_height) {
-            rt_model = rt;
-            break;
-        }
-    }
-    if (rt_model == nullptr) {
-        rt_model = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
-        _rtIntermediate.push_back(rt_model);
-    }
-
-    PushRenderTarget(rt_model);
-    ClearCurrentRenderTarget(0, true);
-
-    // Draw model
-    model_spr->Model->Draw();
-
-    // Restore render target
-    PopRenderTarget();
-
-    // Copy render
-    IRect region_to;
-
-    // Render to atlas
-    if (rt_model->MainTex->FlippedHeight) {
-        // Preserve flip
-        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Width));
-        const auto t = iround((1.0f - model_spr->AtlasRect.Top) * static_cast<float>(model_spr->Atlas->Height));
-        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Width));
-        const auto b = iround((1.0f - model_spr->AtlasRect.Bottom) * static_cast<float>(model_spr->Atlas->Height));
-        region_to = IRect(l, t, r, b);
-    }
-    else {
-        const auto l = iround(model_spr->AtlasRect.Left * static_cast<float>(model_spr->Atlas->Width));
-        const auto t = iround(model_spr->AtlasRect.Top * static_cast<float>(model_spr->Atlas->Height));
-        const auto r = iround(model_spr->AtlasRect.Right * static_cast<float>(model_spr->Atlas->Width));
-        const auto b = iround(model_spr->AtlasRect.Bottom * static_cast<float>(model_spr->Atlas->Height));
-        region_to = IRect(l, t, r, b);
-    }
-
-    PushRenderTarget(model_spr->Atlas->RTarg);
-    DrawRenderTarget(rt_model, false, nullptr, &region_to);
-    PopRenderTarget();
-}
-#endif
 
 void SpriteManager::SetSpritesZoom(float zoom) noexcept
 {
@@ -1540,8 +564,8 @@ void SpriteManager::DrawSprite(const Sprite* spr, int x, int y, uint color)
 
     const auto ind_count = spr->FillData(_spritesDrawBuf, IRect {x, y, x + spr->Width, y + spr->Height}, {color, color});
 
-    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {spr->Atlas->MainTex, effect, ind_count});
+    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+        _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
     }
     else {
         _dipQueue.back().IndCount += ind_count;
@@ -1603,8 +627,8 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, in
 
     const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color, color});
 
-    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {spr->Atlas->MainTex, effect, ind_count});
+    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+        _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
     }
     else {
         _dipQueue.back().IndCount += ind_count;
@@ -1706,8 +730,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, in
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos++].Color = color;
 
-            if (_dipQueue.empty() || _dipQueue.back().MainTex != atlas_spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {atlas_spr->Atlas->MainTex, effect, 6});
+            if (_dipQueue.empty() || _dipQueue.back().MainTex != atlas_spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {atlas_spr->GetBatchTex(), effect, 6});
             }
             else {
                 _dipQueue.back().IndCount += 6;
@@ -1748,49 +772,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPo
     points.push_back({rb.X, rb.Y, color});
 }
 
-auto SpriteManager::GetDrawRect(const MapSprite* mspr) const -> IRect
-{
-    STACK_TRACE_ENTRY();
-
-    const auto* spr = mspr->PSpr != nullptr ? *mspr->PSpr : mspr->Spr;
-    RUNTIME_ASSERT(spr);
-
-    auto x = mspr->ScrX - spr->Width / 2 + spr->OffsX + *mspr->PScrX;
-    auto y = mspr->ScrY - spr->Height + spr->OffsY + *mspr->PScrY;
-    if (mspr->OffsX != nullptr) {
-        x += *mspr->OffsX;
-    }
-    if (mspr->OffsY != nullptr) {
-        y += *mspr->OffsY;
-    }
-
-    return {x, y, x + spr->Width, y + spr->Height};
-}
-
-auto SpriteManager::GetViewRect(const MapSprite* mspr) const -> IRect
-{
-    STACK_TRACE_ENTRY();
-
-    auto rect = GetDrawRect(mspr);
-
-    const auto* spr = mspr->PSpr != nullptr ? *mspr->PSpr : mspr->Spr;
-    RUNTIME_ASSERT(spr);
-
-#if FO_ENABLE_3D
-    if (const auto* model_spr = dynamic_cast<const ModelSprite*>(spr); model_spr != nullptr) {
-        auto&& [view_width, view_height] = model_spr->Model->GetViewSize();
-
-        rect.Left = rect.CenterX() - view_width / 2;
-        rect.Right = rect.Left + view_width;
-        rect.Bottom = rect.Bottom - rect.Height() / 4 + _settings.MapHexHeight / 2;
-        rect.Top = rect.Bottom - view_height;
-    }
-#endif
-
-    return rect;
-}
-
-void SpriteManager::InitializeEgg(string_view egg_name, AtlasType atlas_type)
+void SpriteManager::InitializeEgg(hstring egg_name, AtlasType atlas_type)
 {
     STACK_TRACE_ENTRY();
 
@@ -1800,10 +782,10 @@ void SpriteManager::InitializeEgg(string_view egg_name, AtlasType atlas_type)
     _eggX = 0;
     _eggY = 0;
 
-    auto&& egg_frames = LoadAnimation(egg_name, atlas_type);
-    RUNTIME_ASSERT(egg_frames);
+    auto&& spr = LoadSprite(egg_name, atlas_type);
+    RUNTIME_ASSERT(spr);
 
-    _sprEgg = unique_ptr<AtlasSprite>(dynamic_cast<AtlasSprite*>(egg_frames->Spr[0].release()));
+    _sprEgg = dynamic_pointer_cast<AtlasSprite>(spr);
     RUNTIME_ASSERT(_sprEgg);
 
     const auto x = iround(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->AtlasRect.Left);
@@ -2027,8 +1009,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
             }
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {spr->Atlas->MainTex, effect, ind_count});
+        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
         }
         else {
             _dipQueue.back().IndCount += ind_count;
@@ -2102,7 +1084,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         }
 
         if (_settings.ShowSpriteBorders && mspr->DrawOrder > DrawOrderType::Tile4) {
-            auto rect = GetViewRect(mspr);
+            auto rect = mspr->GetViewRect();
 
             rect.Left += _settings.ScrOx;
             rect.Right += _settings.ScrOx;
@@ -2120,39 +1102,22 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
     }
 }
 
-auto SpriteManager::IsPixNoTransp(const Sprite* spr, int offs_x, int offs_y, bool with_zoom) const -> bool
+auto SpriteManager::SpriteHitTest(const Sprite* spr, int spr_x, int spr_y, bool with_zoom) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    auto ox = offs_x;
-    auto oy = offs_y;
-
-    if (ox < 0 || oy < 0) {
+    if (spr_x < 0 || spr_y < 0) {
         return false;
     }
 
     if (with_zoom && _spritesZoom != 1.0f) {
-        ox = iround(static_cast<float>(ox) * _spritesZoom);
-        oy = iround(static_cast<float>(oy) * _spritesZoom);
-    }
+        const auto zoomed_spr_x = iround(static_cast<float>(spr_x) * _spritesZoom);
+        const auto zoomed_spr_y = iround(static_cast<float>(spr_y) * _spritesZoom);
 
-    if (ox >= spr->Width || oy >= spr->Height) {
-        return false;
-    }
-
-    if (const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr); atlas_spr != nullptr) {
-        if (!atlas_spr->HitTestData.empty()) {
-            return atlas_spr->HitTestData[oy * atlas_spr->Width + ox];
-        }
-        else {
-            ox += iround(atlas_spr->Atlas->MainTex->SizeData[0] * atlas_spr->AtlasRect.Left);
-            oy += iround(atlas_spr->Atlas->MainTex->SizeData[1] * atlas_spr->AtlasRect.Top);
-
-            return (GetRenderTargetPixel(atlas_spr->Atlas->RTarg, ox, oy) >> 24) > 0;
-        }
+        return spr->IsHitTest(zoomed_spr_x, zoomed_spr_y);
     }
     else {
-        return false;
+        return spr->IsHitTest(spr_x, spr_y);
     }
 }
 
@@ -2278,16 +1243,16 @@ void SpriteManager::DrawContours()
         DrawRenderTarget(_rtContours, true);
 
         // Clean render targets
-        PushRenderTarget(_rtContours);
-        ClearCurrentRenderTarget(0);
-        PopRenderTarget();
+        _rtMngr.PushRenderTarget(_rtContours);
+        _rtMngr.ClearCurrentRenderTarget(0);
+        _rtMngr.PopRenderTarget();
 
         if (_contourClearMid) {
             _contourClearMid = false;
 
-            PushRenderTarget(_rtContoursMid);
-            ClearCurrentRenderTarget(0);
-            PopRenderTarget();
+            _rtMngr.PushRenderTarget(_rtContoursMid);
+            _rtMngr.ClearCurrentRenderTarget(0);
+            _rtMngr.PopRenderTarget();
         }
 
         _contoursAdded = false;
@@ -2307,12 +1272,9 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
         return;
     }
 
-#if FO_ENABLE_3D
-    const auto is_model_sprite = dynamic_cast<const ModelSprite*>(spr) != nullptr;
-    auto* contour_effect = is_model_sprite ? _effectMngr.Effects.ContourModelSprite : _effectMngr.Effects.ContourSprite;
-#else
-    auto* contour_effect = _effectMngr.Effects.ContourSprite;
-#endif
+    const auto is_dynamic_draw = spr->IsDynamicDraw();
+
+    auto* contour_effect = is_dynamic_draw ? _effectMngr.Effects.ContourDynamicSprite : _effectMngr.Effects.ContourStrictSprite;
     if (contour_effect == nullptr) {
         return;
     }
@@ -2329,8 +1291,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
     }
 
     if (_spritesZoom == 1.0f) {
-#if FO_ENABLE_3D
-        if (is_model_sprite) {
+        if (is_dynamic_draw) {
             const auto& sr = as->AtlasRect;
             textureuv = sr;
             sprite_border = sr;
@@ -2339,9 +1300,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
             borders.Right--;
             borders.Bottom--;
         }
-        else
-#endif
-        {
+        else {
             const auto& sr = as->AtlasRect;
             const float txw = texture->SizeData[2];
             const float txh = texture->SizeData[3];
@@ -2360,7 +1319,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
         const auto flipped_height = _rtContoursMid->MainTex->FlippedHeight;
 
-        PushRenderTarget(_rtContoursMid);
+        _rtMngr.PushRenderTarget(_rtContoursMid);
         _contourClearMid = true;
 
         auto& vbuf = _flushDrawBuf->Vertices;
@@ -2389,7 +1348,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
         _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
         _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
 
-        PopRenderTarget();
+        _rtMngr.PopRenderTarget();
 
         texture = _rtContoursMid->MainTex.get();
         const auto tw = texture->SizeData[0];
@@ -2409,7 +1368,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
 
     const auto bordersf = FRect(borders);
 
-    PushRenderTarget(_rtContours);
+    _rtMngr.PushRenderTarget(_rtContours);
 
     auto& vbuf = _contourDrawBuf->Vertices;
     auto pos = 0;
@@ -2448,7 +1407,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
     _contourDrawBuf->Upload(contour_effect->Usage);
     contour_effect->DrawBuffer(_contourDrawBuf, 0, static_cast<size_t>(-1), texture);
 
-    PopRenderTarget();
+    _rtMngr.PopRenderTarget();
     _contoursAdded = true;
 }
 
@@ -2503,7 +1462,7 @@ void SpriteManager::BuildFont(int index)
     auto& font = *_allFonts[index];
 
     // Fix texture coordinates
-    const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(font.ImageNormal->GetSpr(0));
+    const auto* atlas_spr = font.ImageNormal.get();
     auto tex_w = static_cast<float>(atlas_spr->Atlas->Width);
     auto tex_h = static_cast<float>(atlas_spr->Atlas->Height);
     auto image_x = tex_w * atlas_spr->AtlasRect.Left;
@@ -2514,10 +1473,10 @@ void SpriteManager::BuildFont(int index)
         const auto y = static_cast<float>(letter.PosY);
         const auto w = static_cast<float>(letter.Width);
         const auto h = static_cast<float>(letter.Height);
-        letter.TexUV[0] = (image_x + x - 1.0f) / tex_w;
-        letter.TexUV[1] = (image_y + y - 1.0f) / tex_h;
-        letter.TexUV[2] = (image_x + x + w + 1.0f) / tex_w;
-        letter.TexUV[3] = (image_y + y + h + 1.0f) / tex_h;
+        letter.TexPos[0] = (image_x + x - 1.0f) / tex_w;
+        letter.TexPos[1] = (image_y + y - 1.0f) / tex_h;
+        letter.TexPos[2] = (image_x + x + w + 1.0f) / tex_w;
+        letter.TexPos[3] = (image_y + y + h + 1.0f) / tex_h;
         if (letter.Height > max_h) {
             max_h = letter.Height;
         }
@@ -2532,7 +1491,7 @@ void SpriteManager::BuildFont(int index)
         font.SpaceWidth = font.Letters[' '].XAdvance;
     }
 
-    const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered != nullptr ? font.ImageBordered->GetSpr(0) : nullptr);
+    const auto* si_bordered = dynamic_cast<const AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
     const auto normal_ox = iround(tex_w * atlas_spr->AtlasRect.Left);
@@ -2603,10 +1562,10 @@ void SpriteManager::BuildFont(int index)
             const auto y = static_cast<float>(letter.PosY);
             const auto w = static_cast<float>(letter.Width);
             const auto h = static_cast<float>(letter.Height);
-            letter.TexBorderedUV[0] = (image_x + x - 1.0f) / tex_w;
-            letter.TexBorderedUV[1] = (image_y + y - 1.0f) / tex_h;
-            letter.TexBorderedUV[2] = (image_x + x + w + 1.0f) / tex_w;
-            letter.TexBorderedUV[3] = (image_y + y + h + 1.0f) / tex_h;
+            letter.TexBorderedPos[0] = (image_x + x - 1.0f) / tex_w;
+            letter.TexBorderedPos[1] = (image_y + y - 1.0f) / tex_h;
+            letter.TexBorderedPos[2] = (image_x + x + w + 1.0f) / tex_w;
+            letter.TexBorderedPos[3] = (image_y + y + h + 1.0f) / tex_h;
         }
     }
 
@@ -2736,20 +1695,27 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
     font->MakeGray = make_gray;
 
     // Load image
-    image_name.insert(0, "Fonts/");
-    font->ImageNormal = LoadAnimation(image_name, atlas_type);
-    if (!font->ImageNormal) {
-        WriteLog("Image file '{}' not found", image_name);
-        return false;
+    {
+        image_name.insert(0, "Fonts/");
+
+        font->ImageNormal = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        if (!font->ImageNormal) {
+            WriteLog("Image file '{}' not found", image_name);
+            return false;
+        }
+
+        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
     }
 
     // Create bordered instance
     if (!not_bordered) {
-        font->ImageBordered = LoadAnimation(image_name, atlas_type);
+        font->ImageBordered = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
         if (!font->ImageBordered) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;
         }
+
+        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
     }
 
     // Register
@@ -2858,17 +1824,25 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
     font->MakeGray = true;
 
     // Load image
-    font->ImageNormal = LoadAnimation(image_name, atlas_type);
-    if (!font->ImageNormal) {
-        WriteLog("Image file '{}' not found", image_name);
-        return false;
+    {
+        font->ImageNormal = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        if (!font->ImageNormal) {
+            WriteLog("Image file '{}' not found", image_name);
+            return false;
+        }
+
+        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
     }
 
     // Create bordered instance
-    font->ImageBordered = LoadAnimation(image_name, atlas_type);
-    if (!font->ImageBordered) {
-        WriteLog("Can't load twice file '{}'", image_name);
-        return false;
+    {
+        font->ImageBordered = dynamic_pointer_cast<AtlasSprite>(LoadSprite(_hashResolver.ToHashedString(image_name), atlas_type));
+        if (!font->ImageBordered) {
+            WriteLog("Can't load twice file '{}'", image_name);
+            return false;
+        }
+
+        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
     }
 
     // Register
@@ -3109,7 +2083,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
 
                 StrEraseInterval(&str[i], j - i);
-                letter = static_cast<uint>(str[i]);
+                letter = static_cast<uint8>(str[i]);
                 i_advance = 1;
                 if (fmt_type == FORMAT_TYPE_DRAW) {
                     for (auto k = i, l = FONT_BUF_LEN - (j - i); k < l; k++) {
@@ -3508,7 +2482,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             const auto w = l.Width + 2;
             const auto h = l.Height + 2;
 
-            auto& texture_uv = IsBitSet(flags, FT_BORDERED) ? l.TexBorderedUV : l.TexUV;
+            auto& texture_uv = IsBitSet(flags, FT_BORDERED) ? l.TexBorderedPos : l.TexPos;
             const auto x1 = texture_uv[0];
             const auto y1 = texture_uv[1];
             const auto x2 = texture_uv[2];

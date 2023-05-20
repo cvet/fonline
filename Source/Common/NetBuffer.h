@@ -183,13 +183,13 @@ public:
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
-    [[nodiscard]] auto Read(const NameResolver& name_resolver) -> hstring
+    [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
     {
-        return ReadHashedString(name_resolver);
+        return ReadHashedString(hash_resolver);
     }
 
 private:
-    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
+    [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
 
     size_t _bufReadPos {};
 };

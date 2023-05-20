@@ -235,14 +235,14 @@ void Properties::StoreAllData(vector<uint8>& all_data, set<hstring>& str_hashes)
     // Store hashes
     const auto add_hash = [&str_hashes, this](const string& str) {
         if (!str.empty()) {
-            const auto hstr = _registrator->_nameResolver.ToHashedString(str);
+            const auto hstr = _registrator->_hashResolver.ToHashedString(str);
             str_hashes.emplace(hstr);
         }
     };
 
     for (const auto* prop : _registrator->_registeredProperties) {
         if (!prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_hashResolver, _registrator->_nameResolver);
 
             if (value.index() == AnyData::STRING_VALUE) {
                 add_hash(std::get<AnyData::STRING_VALUE>(value));
@@ -538,7 +538,7 @@ auto Properties::ApplyPropertyFromText(const Property* prop, string_view text) -
     }
 
     const auto value = AnyData::ParseValue(string(text), is_dict, is_array, value_type);
-    return PropertiesSerializator::LoadPropertyFromValue(this, prop, value, _registrator->_nameResolver);
+    return PropertiesSerializator::LoadPropertyFromValue(this, prop, value, _registrator->_hashResolver, _registrator->_nameResolver);
 }
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
@@ -549,7 +549,7 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
     RUNTIME_ASSERT(_registrator == prop->_registrator);
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
 
-    const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
+    const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_hashResolver, _registrator->_nameResolver);
     return AnyData::ValueToString(value);
 }
 
@@ -924,7 +924,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     }
 
     if (prop->_isHashBase) {
-        SetValue<hstring>(prop, _registrator->_nameResolver.ResolveHash(value));
+        SetValue<hstring>(prop, _registrator->_hashResolver.ResolveHash(value));
     }
     else if (prop->_isEnumBase) {
         if (prop->_baseSize == 1) {
@@ -985,12 +985,13 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 {
     STACK_TRACE_ENTRY();
 
-    return _registrator->_nameResolver.ResolveHash(h);
+    return _registrator->_hashResolver.ResolveHash(h);
 }
 
-PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) :
+PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver) :
     _className {class_name},
     _relation {relation},
+    _hashResolver {hash_resolver},
     _nameResolver {name_resolver}
 {
     STACK_TRACE_ENTRY();
@@ -1032,7 +1033,7 @@ void PropertyRegistrator::RegisterComponent(string_view name)
 {
     STACK_TRACE_ENTRY();
 
-    const auto name_hash = _nameResolver.ToHashedString(name);
+    const auto name_hash = _hashResolver.ToHashedString(name);
 
     RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
     _registeredComponents.insert(name_hash);
@@ -1164,7 +1165,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
     prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
 
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
-        prop->_component = _nameResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
+        prop->_component = _hashResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
         prop->_propName[dot_pos] = '_';
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
 
@@ -1174,7 +1175,7 @@ void PropertyRegistrator::RegisterProperty(const const_span<string_view>& flags)
         if (prop->_propNameWithoutComponent.empty()) {
             throw PropertyRegistrationException("Invalid property name part", prop->_propName, prop->_component);
         }
-        if (_registeredComponents.count(_nameResolver.ToHashedString(prop->_component)) == 0) {
+        if (_registeredComponents.count(_hashResolver.ToHashedString(prop->_component)) == 0) {
             throw PropertyRegistrationException("Unknown property component", prop->_propName, prop->_component);
         }
     }

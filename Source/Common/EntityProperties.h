@@ -148,24 +148,6 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, AnimWaitBase);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, AnimWaitRndMin);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint16, AnimWaitRndMax);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimStay0);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimStay1);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimShow0);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimShow1);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimHide0);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint8, AnimHide1);
-    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, int8, DrawOrderOffsetHexY);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, vector<uint8>, BlockLines);

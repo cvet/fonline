@@ -339,7 +339,7 @@ void Critter::ChangeDir(uint8 dir)
         return;
     }
 
-    SetDirAngle(_engine->Geometry.DirToAngle(normalized_dir));
+    SetDirAngle(GeometryHelper::DirToAngle(normalized_dir));
     SetDir(normalized_dir);
 }
 
@@ -347,14 +347,14 @@ void Critter::ChangeDirAngle(int dir_angle)
 {
     STACK_TRACE_ENTRY();
 
-    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<int16>(dir_angle));
+    const auto normalized_dir_angle = GeometryHelper::NormalizeAngle(static_cast<int16>(dir_angle));
 
     if (normalized_dir_angle == GetDirAngle()) {
         return;
     }
 
     SetDirAngle(normalized_dir_angle);
-    SetDir(_engine->Geometry.AngleToDir(normalized_dir_angle));
+    SetDir(GeometryHelper::AngleToDir(normalized_dir_angle));
 }
 
 void Critter::SetItem(Item* item)
@@ -672,7 +672,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -705,7 +705,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, 
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
-        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, str_num, how_say, msg_num);
         }
     }
@@ -738,7 +738,7 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_nu
         if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
-        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (GeometryHelper::CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, str_num, how_say, msg_num, lexems);
         }
     }
@@ -900,14 +900,14 @@ void Critter::Send_EraseItemFromMap(const Item* item)
     }
 }
 
-void Critter::Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm)
+void Critter::Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_AnimateItem(item, from_frm, to_frm);
+        _player->Send_AnimateItem(item, anim_name, looped, reversed);
     }
 }
 

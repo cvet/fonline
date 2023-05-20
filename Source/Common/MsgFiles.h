@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetBinaryData() const -> vector<uint8>;
 
     auto LoadFromBinaryData(const vector<uint8>& data) -> bool;
-    auto LoadFromString(string_view str, NameResolver& name_resolver) -> bool;
+    auto LoadFromString(string_view str, HashResolver& hash_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(uint num, string_view str);
     void AddBinary(uint num, const uint8* binary, uint len);
@@ -101,7 +101,7 @@ public:
     auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
     ~LanguagePack() = default;
 
-    void ParseTexts(FileSystem& resources, NameResolver& name_resolver, string_view lang_name);
+    void ParseTexts(FileSystem& resources, HashResolver& hash_resolver, string_view lang_name);
     void SaveTextsToDisk(string_view dir) const;
     void LoadTexts(FileSystem& resources, string_view lang_name);
 

@@ -43,8 +43,8 @@ class PropertiesSerializator final
 public:
     PropertiesSerializator() = delete;
 
-    [[nodiscard]] static auto SaveToDocument(const Properties* props, const Properties* base, NameResolver& name_resolver) -> AnyData::Document;
-    [[nodiscard]] static auto LoadFromDocument(Properties* props, const AnyData::Document& doc, NameResolver& name_resolver) -> bool;
-    [[nodiscard]] static auto SavePropertyToValue(const Properties* props, const Property* prop, NameResolver& name_resolver) -> AnyData::Value;
-    [[nodiscard]] static auto LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, NameResolver& name_resolver) -> bool;
+    [[nodiscard]] static auto SaveToDocument(const Properties* props, const Properties* base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document;
+    [[nodiscard]] static auto LoadFromDocument(Properties* props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool;
+    [[nodiscard]] static auto SavePropertyToValue(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
+    [[nodiscard]] static auto LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool;
 };

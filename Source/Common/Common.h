@@ -188,9 +188,11 @@ using std::type_index;
 using std::type_info;
 using std::unique_ptr;
 using std::unordered_map;
+using std::unordered_multimap;
 using std::unordered_set;
 using std::variant;
 using std::vector;
+using std::weak_ptr;
 using tcb::span;
 
 template<typename T>
@@ -213,6 +215,16 @@ struct release_delete
 
 template<typename T>
 using unique_release_ptr = unique_ptr<T, release_delete<T>>;
+
+template<typename T, typename U>
+std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
+{
+    if (T* casted = dynamic_cast<T*>(p.get())) {
+        (void)p.release();
+        return std::unique_ptr<T> {casted};
+    }
+    return {};
+}
 
 // Strong types
 template<typename T>
@@ -924,10 +936,15 @@ private:
 };
 
 // Generic helpers
+template<typename... T>
+FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
+{
+}
+
 #define STRINGIFY(x) STRINGIFY2(x)
 #define STRINGIFY2(x) #x
 #define LINE_STR STRINGIFY(__LINE__)
-#define UNUSED_VARIABLE(x) (void)(x)
+#define UNUSED_VARIABLE(...) ignore_unused(__VA_ARGS__)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define COLOR_RGBA(a, r, g, b) (static_cast<uint>((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
@@ -1319,7 +1336,7 @@ struct hstring
     };
 
     hstring() = default;
-    explicit hstring(entry* static_storage_entry) :
+    explicit hstring(const entry* static_storage_entry) :
         _entry {static_storage_entry}
     {
     }
@@ -1337,7 +1354,7 @@ struct hstring
 private:
     static entry _zeroEntry;
 
-    entry* _entry {&_zeroEntry};
+    const entry* _entry {&_zeroEntry};
 };
 static_assert(sizeof(hstring::hash_t) == 4);
 static_assert(std::is_standard_layout_v<hstring>);
@@ -1535,7 +1552,8 @@ enum class EffectType : uint
     RainSprite = 0x00000010,
     SkinnedMesh = 0x00000400,
     Interface = 0x00001000,
-    Contour = 0x00002000,
+    ContourStrict = 0x00002000,
+    ContourDynamic = 0x00004000,
     Font = 0x00010000,
     Primitive = 0x00100000,
     Light = 0x00200000,
@@ -1653,16 +1671,6 @@ static constexpr auto CMD_RUNSCRIPT = 20;
 static constexpr auto CMD_REGENMAP = 25;
 static constexpr auto CMD_SETTIME = 32;
 static constexpr auto CMD_LOG = 37;
-
-// Client anim flags
-static constexpr uint16 ANIMRUN_TO_END = 0x0001;
-static constexpr uint16 ANIMRUN_FROM_END = 0x0002;
-static constexpr uint16 ANIMRUN_CYCLE = 0x0004;
-static constexpr uint16 ANIMRUN_STOP = 0x0008;
-static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
-{
-    return static_cast<uint>(frm + 1) << 16;
-}
 
 // Todo: rework built-in string messages
 #define STR_CRNORM (100)
@@ -1882,6 +1890,15 @@ constexpr auto iround(T value) -> int
     return static_cast<int>(std::lround(value));
 }
 
+class HashResolver
+{
+public:
+    virtual ~HashResolver() = default;
+    [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
+    [[nodiscard]] virtual auto ToHashedStringMustExists(string_view s) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
+};
+
 class NameResolver
 {
 public:
@@ -1889,8 +1906,6 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
-    [[nodiscard]] virtual auto ToHashedString(string_view s, bool mustExists = false) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };
 

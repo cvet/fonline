@@ -855,7 +855,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 }
 #endif
 
-[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, NameResolver& name_resolver) -> hstring
+[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, HashResolver& hash_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
 
@@ -875,7 +875,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
         func_name = _str("{}::{}", func->GetNamespace(), func->GetName()).str();
     }
 
-    return name_resolver.ToHashedString(func_name);
+    return hash_resolver.ToHashedString(func_name);
 }
 
 #if !COMPILER_MODE
@@ -1095,8 +1095,8 @@ static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* co
 
     const auto resolve_hash = [prop](const void* hptr) -> hstring {
         const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
-        const auto& name_resolver = prop->GetRegistrator()->GetNameResolver();
-        return name_resolver.ResolveHash(hash);
+        const auto& hash_resolver = prop->GetRegistrator()->GetHashResolver();
+        return hash_resolver.ResolveHash(hash);
     };
     const auto resolve_enum = [](const void* eptr, size_t elen) -> int {
         int result = 0;
@@ -1700,7 +1700,7 @@ static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
 }
 
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>, int> = 0>
-static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolver)
+static void ReadNetBuf(NetInBuffer& in_buf, T& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -1710,7 +1710,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
         in_buf.Pop(value.data(), len);
     }
     else if constexpr (std::is_same_v<T, hstring>) {
-        value = in_buf.Read<hstring>(name_resolver);
+        value = in_buf.Read<hstring>(hash_resolver);
     }
     else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
         value = in_buf.Read<T>();
@@ -1721,7 +1721,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolve
 }
 
 template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, any_t> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>, int> = 0>
-static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name_resolver)
+static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -1730,7 +1730,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name
 
     for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value;
-        ReadNetBuf(in_buf, inner_value, name_resolver);
+        ReadNetBuf(in_buf, inner_value, hash_resolver);
         value.emplace_back(inner_value);
     }
 }
@@ -1739,7 +1739,7 @@ template<typename T, typename U,
     std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T> || is_strong_type_v<T>)&& //
         (std::is_same_v<U, string> || std::is_same_v<U, any_t> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U> || is_strong_type_v<U>),
         int> = 0>
-static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name_resolver)
+static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash_resolver)
 {
     STACK_TRACE_ENTRY();
 
@@ -1747,9 +1747,9 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
 
     for (uint16 i = 0; i < inner_values_count; i++) {
         T inner_value_first;
-        ReadNetBuf(in_buf, inner_value_first, name_resolver);
+        ReadNetBuf(in_buf, inner_value_first, hash_resolver);
         U inner_value_second;
-        ReadNetBuf(in_buf, inner_value_second, name_resolver);
+        ReadNetBuf(in_buf, inner_value_second, hash_resolver);
         value.emplace(inner_value_first, inner_value_second);
     }
 }

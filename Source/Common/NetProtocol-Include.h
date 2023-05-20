@@ -448,13 +448,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ANIMATE_ITEM MAKE_NETMSG_HEADER(75)
-#define NETMSG_ANIMATE_ITEM_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uint8) * 2)
+#define NETMSG_ANIMATE_ITEM_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(hstring::hash_t) + sizeof(bool) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint item_id
-// uint8 from_frm
-// uint8 to_frm
+// ident_t item_id
+// hstring anim_name
+// bool looped
+// bool reversed
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

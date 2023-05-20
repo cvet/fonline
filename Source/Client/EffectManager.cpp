@@ -154,10 +154,8 @@ void EffectManager::LoadDefaultEffects()
         throw EffectManagerException("Default effects not loaded");
     }
 
-    LOAD_DEFAULT_EFFECT(Effects.ContourSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
-#if FO_ENABLE_3D
-    LOAD_DEFAULT_EFFECT(Effects.ContourModelSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
-#endif
+    LOAD_DEFAULT_EFFECT(Effects.ContourStrictSprite, EffectUsage::QuadSprite, "Effects/Contour_Default.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.ContourDynamicSprite, EffectUsage::QuadSprite, "Effects/Contour_Model.fofx");
 
     UNUSED_VARIABLE(effect_errors);
 }

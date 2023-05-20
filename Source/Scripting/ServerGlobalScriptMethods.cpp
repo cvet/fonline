@@ -146,6 +146,8 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
 {
+    UNUSED_VARIABLE(server);
+
     if (cr1 == nullptr) {
         throw ScriptException("Critter1 arg is null");
     }
@@ -156,7 +158,7 @@
         throw ScriptException("Differernt maps");
     }
 
-    const auto dist = server->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    const auto dist = GeometryHelper::DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
     return static_cast<int>(dist);
 }
 
@@ -865,7 +867,7 @@
 
     dummy_net_conn->Release();
 
-    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
+    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server, *server)) {
         player->MarkAsDestroyed();
         player->Release();
         throw ScriptException("Player data db read failed");

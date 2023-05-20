@@ -55,7 +55,7 @@ public:
     [[nodiscard]] auto GetDuration() const -> float;
     [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hstring>>&;
 
-    void Load(DataReader& reader, NameResolver& name_resolver);
+    void Load(DataReader& reader, HashResolver& hash_resolver);
     void SetData(string_view fname, string_view name, float ticks, float tps);
     void AddBoneOutput(vector<hstring> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv);
 

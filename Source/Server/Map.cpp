@@ -259,7 +259,7 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = _engine->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
+                    int dist = GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -406,7 +406,7 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = _engine->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -427,7 +427,7 @@ void Map::ChangeViewItem(Item* item)
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = _engine->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -445,7 +445,7 @@ void Map::ChangeViewItem(Item* item)
     }
 }
 
-void Map::AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
+void Map::AnimateItem(Item* item, hstring anim_name, bool looped, bool reversed)
 {
     STACK_TRACE_ENTRY();
 
@@ -453,7 +453,7 @@ void Map::AnimateItem(Item* item, uint8 from_frm, uint8 to_frm)
 
     for (auto* cr : _playerCritters) {
         if (cr->CountIdVisItem(item->GetId())) {
-            cr->Send_AnimateItem(item, from_frm, to_frm);
+            cr->Send_AnimateItem(item, anim_name, looped, reversed);
         }
     }
 }
@@ -530,7 +530,7 @@ auto Map::GetItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) -> vecto
 
     vector<Item*> items;
     for (auto* item : _items) {
-        if ((!pid || item->GetProtoId() == pid) && _engine->Geometry.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
+        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
     }
@@ -577,7 +577,7 @@ auto Map::IsPlaceForProtoItem(uint16 hx, uint16 hy, const ProtoItem* proto_item)
     }
 
     auto is_critter = false;
-    _engine->Geometry.ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, &is_critter](auto hx2, auto hy2) { is_critter = is_critter || IsHexCritter(hx2, hy2); });
+    GeometryHelper::ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, &is_critter](auto hx2, auto hy2) { is_critter = is_critter || IsHexCritter(hx2, hy2); });
     return !is_critter;
 }
 
@@ -585,7 +585,7 @@ void Map::PlaceItemBlocks(uint16 hx, uint16 hy, Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
+    GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
         _blockLinesByHex.emplace(tuple {hx2, hy2}, vector<Item*>()).first->second.push_back(item);
         RecacheHexFlags(hx2, hy2);
     });
@@ -595,7 +595,7 @@ void Map::RemoveItemBlocks(uint16 hx, uint16 hy, Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
+    GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
         auto it_hex_all_bl = _blockLinesByHex.find(tuple {hx2, hy2});
         RUNTIME_ASSERT(it_hex_all_bl != _blockLinesByHex.end());
 
@@ -906,7 +906,7 @@ auto Map::GetHexCritter(uint16 hx, uint16 hy, bool dead) -> Critter*
                 }
             }
             else {
-                if (_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, mh)) {
+                if (GeometryHelper::CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, mh)) {
                     return cr;
                 }
             }
@@ -925,7 +925,7 @@ auto Map::GetCrittersHex(uint16 hx, uint16 hy, uint radius, CritterFindType find
     critters.reserve(_critters.size());
 
     for (auto* cr : _critters) {
-        if (cr->CheckFind(find_type) && _engine->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
+        if (cr->CheckFind(find_type) && GeometryHelper::CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
             critters.push_back(cr);
         }
     }
@@ -1008,7 +1008,7 @@ void Map::SendEffect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius)
     NON_CONST_METHOD_HINT();
 
     for (auto* cr : _playerCritters) {
-        if (_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetLookDistance() + radius)) {
+        if (GeometryHelper::CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetLookDistance() + radius)) {
             cr->Send_Effect(eff_pid, hx, hy, radius);
         }
     }
@@ -1038,7 +1038,7 @@ void Map::SetText(uint16 hx, uint16 hy, uint color, string_view text, bool unsaf
     }
 
     for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapText(hx, hy, color, text, unsafe_text);
         }
     }
@@ -1055,7 +1055,7 @@ void Map::SetTextMsg(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint str_
     }
 
     for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsg(hx, hy, color, msg_num, str_num);
         }
     }
@@ -1072,7 +1072,7 @@ void Map::SetTextMsgLex(uint16 hx, uint16 hy, uint color, uint16 msg_num, uint s
     }
 
     for (auto* cr : _playerCritters) {
-        if (cr->GetLookDistance() >= _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->GetLookDistance() >= GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsgLex(hx, hy, color, msg_num, str_num, lexems);
         }
     }
@@ -1127,7 +1127,7 @@ auto Map::GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hstring pid) ->
 
     vector<StaticItem*> items;
     for (auto* item : _staticMap->StaticItems) {
-        if ((!pid || item->GetProtoId() == pid) && _engine->Geometry.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
+        if ((!pid || item->GetProtoId() == pid) && GeometryHelper::DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
     }

@@ -34,9 +34,9 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* name_resolver, ConfigFileOption options) :
+ConfigFile::ConfigFile(string_view fname_hint, const string& str, HashResolver* hash_resolver, ConfigFileOption options) :
     _fileNameHint {fname_hint},
-    _nameResolver {name_resolver},
+    _hashResolver {hash_resolver},
     _options {options}
 {
     STACK_TRACE_ENTRY();
@@ -148,10 +148,10 @@ ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* 
                     offset = last + 1;
 
                     if (i == 0 && num == 0u) {
-                        num = _str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->ToHashedString(str2).as_int();
+                        num = _str(str2).isNumber() ? _str(str2).toInt() : _hashResolver->ToHashedString(str2).as_int();
                     }
                     else if (i == 1 && num != 0u) {
-                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->ToHashedString(str2).as_int()) : 0;
+                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _hashResolver->ToHashedString(str2).as_int()) : 0;
                     }
                     else if (i == 2 && num != 0u) {
                         (*cur_section)[_str("{}", num)] = str2;

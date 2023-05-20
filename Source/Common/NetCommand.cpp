@@ -63,7 +63,7 @@ static constexpr CmdDef CMD_LIST[] = {
     {"log", CMD_LOG},
 };
 
-auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, NameResolver& name_resolver) -> bool
+auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, HashResolver& name_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 

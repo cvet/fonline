@@ -644,7 +644,7 @@
     }
 
     auto critters = self->GetCrittersHex(hx, hy, radius, findType);
-    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
     return critters;
 }
 
@@ -1283,11 +1283,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+            result |= GeometryHelper::MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
         }
     }
     else {
-        result = self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+        result = GeometryHelper::MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
     }
 
     hx = hx_;
@@ -1312,7 +1312,7 @@
 
     auto from_hx = hx;
     auto from_hy = hy;
-    if (self->GetEngine()->Geometry.MoveHexByDir(from_hx, from_hy, self->GetEngine()->Geometry.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
+    if (GeometryHelper::MoveHexByDir(from_hx, from_hy, GeometryHelper::ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
         self->GetEngine()->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
     }
 }

@@ -35,6 +35,21 @@
 
 #include "Common.h"
 
+DECLARE_EXCEPTION(HashResolveException);
+DECLARE_EXCEPTION(HashInsertException);
+DECLARE_EXCEPTION(HashCollisionException);
+
+class HashStorage : public HashResolver
+{
+public:
+    auto ToHashedString(string_view s) -> hstring override;
+    auto ToHashedStringMustExists(string_view s) const -> hstring override;
+    auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
+
+private:
+    unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
+};
+
 class Math final
 {
 public:
@@ -79,6 +94,7 @@ public:
 
     static void SetRandomSeed(int seed);
     static void ForkProcess();
+    static void WriteSimpleTga(string_view fname, int width, int height, vector<uint> data);
 };
 
 class MatrixHelper final

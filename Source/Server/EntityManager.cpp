@@ -228,7 +228,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) -> Location*
     }
 
     auto* loc = new Location(_engine, loc_id, loc_proto);
-    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), loc_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
         return {};
@@ -277,7 +277,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) -> Map*
     const auto* static_map = _engine->MapMngr.GetStaticMap(map_proto);
 
     auto* map = new Map(_engine, map_id, map_proto, nullptr, static_map);
-    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), map_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
         return {};
@@ -333,7 +333,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, Player* owner, bool& is_error) ->
     }
 
     auto* cr = new Critter(_engine, cr_id, owner, proto);
-    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
         return {};
@@ -369,7 +369,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
     }
 
     auto* item = new Item(_engine, item_id, proto);
-    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine)) {
+    if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), item_doc, *_engine, *_engine)) {
         WriteLog("Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
         return {};
@@ -666,12 +666,12 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
 
         if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
             const auto* proto = entity_with_proto->GetProto();
-            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine);
+            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine, *_engine);
             doc["_Proto"] = string(proto->GetName());
             _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
         }
         else {
-            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine);
+            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine, *_engine);
             _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
         }
     }
@@ -739,7 +739,7 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, ident_t id) -
 
         const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
         auto props = Properties(registrator);
-        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine)) {
+        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine, *_engine)) {
             return nullptr;
         }
 

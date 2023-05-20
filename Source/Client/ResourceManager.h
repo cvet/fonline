@@ -36,6 +36,8 @@
 #include "Common.h"
 
 #include "3dStuff.h"
+#include "DefaultSprites.h"
+#include "ModelSprites.h"
 #include "SpriteManager.h"
 
 class ResourceManager final
@@ -49,40 +51,36 @@ public:
     auto operator=(ResourceManager&&) noexcept = delete;
     ~ResourceManager() = default;
 
-    [[nodiscard]] auto GetIfaceAnim(hstring name) -> const SpriteSheet* { return GetAnim(name, AtlasType::IfaceSprites); }
-    [[nodiscard]] auto GetMapAnim(hstring name) -> const SpriteSheet* { return GetAnim(name, AtlasType::MapSprites); }
-    [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uint8 dir) -> const SpriteSheet*;
-    [[nodiscard]] auto GetCritterSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> const Sprite*;
-    [[nodiscard]] auto GetRandomSplash() -> const SpriteSheet*;
-    [[nodiscard]] auto GetSoundNames() const -> const map<string, string>& { return _soundNames; }
-#if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterModelSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, int* layers3d) -> const ModelSprite*;
-#endif
+    [[nodiscard]] auto GetItemDefaultSpr() -> const shared_ptr<Sprite>&;
+    [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, uint anim1, uint anim2, uint8 dir) -> const SpriteSheet*;
+    [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
+    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, const int* layers3d) -> const Sprite*;
+    [[nodiscard]] auto GetRandomSplash() -> shared_ptr<Sprite>;
+    [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
     void IndexFiles();
-    void CleanupMapSprites();
-
-    unique_ptr<SpriteSheet> ItemHexDefaultAnim {};
-    unique_ptr<SpriteSheet> CritterDefaultAnim {};
+    void CleanupCritterFrames();
 
 private:
-    [[nodiscard]] auto GetAnim(hstring name, AtlasType atlas_type) -> const SpriteSheet*;
-    [[nodiscard]] auto LoadFalloutAnim(hstring model_name, uint anim1, uint anim2) -> unique_ptr<SpriteSheet>;
-    [[nodiscard]] auto LoadFalloutAnimSpr(hstring model_name, uint anim1, uint anim2) -> const SpriteSheet*;
+    [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, uint anim1, uint anim2) -> shared_ptr<SpriteSheet>;
+    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint anim1, uint anim2) -> const SpriteSheet*;
+#if FO_ENABLE_3D
+    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, const int* layers3d) -> const ModelSprite*;
+#endif
 
-    void FixAnimOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
-    void FixAnimOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
+    void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
+    void FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
 
     FileSystem& _resources;
     SpriteManager& _sprMngr;
     AnimationResolver& _animNameResolver;
-    unordered_map<hstring, unique_ptr<SpriteSheet>> _loadedAnims {};
-    unordered_map<uint, unique_ptr<SpriteSheet>> _critterFrames {};
+    unordered_map<uint, shared_ptr<SpriteSheet>> _critterFrames {};
+    shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
+    shared_ptr<Sprite> _itemHexDummyAnim {};
     vector<string> _splashNames {};
     map<string, string> _soundNames {};
-    unique_ptr<SpriteSheet> _splash {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
-    unordered_map<hstring, unique_del_ptr<ModelSprite>> _critterModels {};
+    unordered_map<hstring, shared_ptr<ModelSprite>> _critterModels {};
 #endif
 };

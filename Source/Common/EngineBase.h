@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "EntityProperties.h"
+#include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
 #include "ProtoManager.h"
@@ -45,11 +46,8 @@
 
 DECLARE_EXCEPTION(DataRegistrationException);
 DECLARE_EXCEPTION(EnumResolveException);
-DECLARE_EXCEPTION(HashResolveException);
-DECLARE_EXCEPTION(HashInsertException);
-DECLARE_EXCEPTION(HashCollisionException);
 
-class FOEngineBase : public NameResolver, public Entity, public GameProperties
+class FOEngineBase : public HashStorage, public NameResolver, public Entity, public GameProperties
 {
 public:
     FOEngineBase(const FOEngineBase&) = delete;
@@ -64,8 +62,6 @@ public:
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string override;
-    [[nodiscard]] auto ToHashedString(string_view s, bool mustExists = false) const -> hstring override;
-    [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
@@ -93,5 +89,4 @@ private:
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
-    mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };

@@ -325,7 +325,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
 {
-    return engine->Geometry.DistGame(hx1, hy1, hx2, hy2);
+    return GeometryHelper::DistGame(hx1, hy1, hx2, hy2);
 }
 
 ///# ...
@@ -337,7 +337,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy);
+    return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy);
 }
 
 ///# ...
@@ -350,7 +350,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_GetDirection([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 {
-    return engine->Geometry.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
+    return GeometryHelper::GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
 
 ///# ...
@@ -362,7 +362,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
 {
-    return static_cast<int16>(engine->Geometry.GetDirAngle(fromHx, fromHy, toHx, toHy));
+    return static_cast<int16>(GeometryHelper::GetDirAngle(fromHx, fromHy, toHx, toHy));
 }
 
 ///# ...
@@ -383,7 +383,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint8 Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, int16 dirAngle)
 {
-    return engine->Geometry.AngleToDir(dirAngle);
+    return GeometryHelper::AngleToDir(dirAngle);
 }
 
 ///# ...
@@ -392,7 +392,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] int16 Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uint8 dir)
 {
-    return engine->Geometry.DirToAngle(dir);
+    return GeometryHelper::DirToAngle(dir);
 }
 
 ///# ...

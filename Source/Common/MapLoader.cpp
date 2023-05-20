@@ -37,7 +37,7 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
+void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     STACK_TRACE_ENTRY();
 
@@ -48,7 +48,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Header
-    ConfigFile map_data(_str("{}.fomap", name), buf, &name_resolver);
+    ConfigFile map_data(_str("{}.fomap", name), buf, &hash_resolver);
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
@@ -82,7 +82,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
 
         const auto id = process_id(kv.count("$Id") != 0 ? _str(kv["$Id"]).toUInt() : 0);
         const auto& proto_name = kv["$Proto"];
-        const auto* proto = proto_mngr.GetProtoCritter(name_resolver.ToHashedString(proto_name));
+        const auto* proto = proto_mngr.GetProtoCritter(hash_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto critter '{}' not found", proto_name));
         }
@@ -101,7 +101,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
 
         const auto id = process_id(kv.count("$Id") != 0 ? _str(kv["$Id"]).toUInt() : 0);
         const auto& proto_name = kv["$Proto"];
-        const auto* proto = proto_mngr.GetProtoItem(name_resolver.ToHashedString(proto_name));
+        const auto* proto = proto_mngr.GetProtoItem(hash_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto item '{}' not found", proto_name));
         }

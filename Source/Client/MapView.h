@@ -113,13 +113,13 @@ struct Field
 };
 
 ///@ ExportObject Client
-struct ParticlePattern
+struct SpritePattern
 {
     SCRIPTABLE_OBJECT_BEGIN();
 
     bool Finished {};
-    string ParticleName {};
-    uint ParticleCount {};
+    string SprName {};
+    uint SprCount {};
     uint16 EveryHexX {1};
     uint16 EveryHexY {1};
     bool InteractWithRoof {};
@@ -132,7 +132,7 @@ struct ParticlePattern
     SCRIPTABLE_OBJECT_END();
 
     std::function<void()> FinishCallback {};
-    vector<unique_del_ptr<ParticleSprite>> Particles {};
+    vector<shared_ptr<Sprite>> Sprites {};
 };
 
 class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
@@ -254,7 +254,7 @@ public:
 
     void RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);
 
-    auto RunParticlePattern(string_view name, uint count) -> ParticlePattern*;
+    auto RunSpritePattern(string_view name, uint count) -> SpritePattern*;
 
     void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
     void DrawCursor(const Sprite* spr);
@@ -352,11 +352,11 @@ private:
 
     time_point _scrollLastTime {};
 
-    unique_ptr<SpriteSheet> _picTrack1 {};
-    unique_ptr<SpriteSheet> _picTrack2 {};
-    unique_ptr<SpriteSheet> _picHexMask {};
+    shared_ptr<Sprite> _picTrack1 {};
+    shared_ptr<Sprite> _picTrack2 {};
+    shared_ptr<Sprite> _picHexMask {};
     vector<uint> _picHexMaskData {};
-    unique_ptr<SpriteSheet> _picHex[3] {};
+    shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
 
@@ -422,9 +422,9 @@ private:
     int _roofSkip {};
 
     int _drawCursorX {};
-    unique_ptr<SpriteSheet> _cursorPrePic {};
-    unique_ptr<SpriteSheet> _cursorPostPic {};
-    unique_ptr<SpriteSheet> _cursorXPic {};
+    shared_ptr<Sprite> _cursorPrePic {};
+    shared_ptr<Sprite> _cursorPostPic {};
+    shared_ptr<Sprite> _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
     int _lastCurX {};
@@ -435,5 +435,5 @@ private:
     set<hstring> _ignorePids {};
     vector<char> _hexTrack {};
 
-    vector<unique_release_ptr<ParticlePattern>> _particlePatterns {};
+    vector<unique_release_ptr<SpritePattern>> _spritePatterns {};
 };

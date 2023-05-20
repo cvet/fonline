@@ -690,7 +690,7 @@ class PropertyRegistrator final
 
 public:
     PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver);
+    PropertyRegistrator(string_view class_name, PropertiesRelationType relation, HashResolver& hash_resolver, NameResolver& name_resolver);
     PropertyRegistrator(const PropertyRegistrator&) = delete;
     PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
     auto operator=(const PropertyRegistrator&) = delete;
@@ -706,6 +706,7 @@ public:
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
     [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
+    [[nodiscard]] auto GetHashResolver() const -> const HashResolver& { return _hashResolver; }
     [[nodiscard]] auto GetNameResolver() const -> const NameResolver& { return _nameResolver; }
 
     void RegisterComponent(string_view name);
@@ -715,6 +716,7 @@ public:
 private:
     const string _className;
     const PropertiesRelationType _relation;
+    HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};

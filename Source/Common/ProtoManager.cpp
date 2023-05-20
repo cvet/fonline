@@ -79,7 +79,7 @@ static void WriteProtosToBinary(vector<uint8>& data, const unordered_map<hstring
 }
 
 template<class T>
-static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, unordered_map<hstring, const T*>& protos)
+static void ReadProtosFromBinary(HashResolver& hash_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, unordered_map<hstring, const T*>& protos)
 {
     STACK_TRACE_ENTRY();
 
@@ -90,7 +90,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
         const auto str_len = reader.Read<uint>();
         str.resize(str_len);
         reader.ReadPtr(str.data(), str.length());
-        const auto hstr = name_resolver.ToHashedString(str);
+        const auto hstr = hash_resolver.ToHashedString(str);
         UNUSED_VARIABLE(hstr);
     }
 
@@ -100,7 +100,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
     for (uint i = 0; i < protos_count; i++) {
         const auto proto_name_len = reader.Read<uint16>();
         const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
-        const auto proto_id = name_resolver.ToHashedString(proto_name);
+        const auto proto_id = hash_resolver.ToHashedString(proto_name);
 
         auto* proto = new T(proto_id, property_registrator);
 
@@ -108,7 +108,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
         for (uint16 j = 0; j < components_count; j++) {
             const auto component_name_len = reader.Read<uint16>();
             const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
-            const auto component_name_hashed = name_resolver.ToHashedString(component_name);
+            const auto component_name_hashed = hash_resolver.ToHashedString(component_name);
             RUNTIME_ASSERT(property_registrator->IsComponentRegistered(component_name_hashed));
             proto->EnableComponent(component_name_hashed);
         }
@@ -150,7 +150,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
+static void ParseProtosExt(FileSystem& resources, HashResolver& hash_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
 {
     STACK_TRACE_ENTRY();
 
@@ -166,7 +166,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
             fopro_options = ConfigFileOption::ReadFirstSection;
         }
 
-        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &name_resolver, fopro_options);
+        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &hash_resolver, fopro_options);
 
         auto protos_data = fopro.GetSections(section_name);
         if constexpr (std::is_same_v<T, ProtoMap>) {
@@ -178,7 +178,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
         for (auto& pkv : protos_data) {
             auto& kv = *pkv;
             auto name = kv.count("$Name") ? kv["$Name"] : file.GetName();
-            auto pid = name_resolver.ToHashedString(name);
+            auto pid = hash_resolver.ToHashedString(name);
             if (files_protos.count(pid) != 0) {
                 throw ProtoManagerException("Proto already loaded", name);
             }
@@ -202,7 +202,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
     }
 
     // Injection
-    auto injection = [&files_protos, &name_resolver](const string& key_name, bool overwrite) {
+    auto injection = [&files_protos, &hash_resolver](const string& key_name, bool overwrite) {
         for (auto&& [pid, kv] : files_protos) {
             if (kv.count(key_name)) {
                 for (const auto& inject_name : _str(kv[key_name]).split(' ')) {
@@ -214,7 +214,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
                         }
                     }
                     else {
-                        auto inject_name_hashed = name_resolver.ToHashedString(inject_name);
+                        auto inject_name_hashed = hash_resolver.ToHashedString(inject_name);
                         if (!files_protos.count(inject_name_hashed)) {
                             throw ProtoManagerException("Proto not found for injection from another proto", inject_name, pid);
                         }
@@ -233,10 +233,10 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
 
         // Fill content from parents
         map<string, string> final_kv;
-        std::function<void(string_view, map<string, string>&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv, &name_resolver](string_view name, map<string, string>& cur_kv) {
+        std::function<void(string_view, map<string, string>&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv, &hash_resolver](string_view name, map<string, string>& cur_kv) {
             const auto parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"] : string();
             for (auto& parent_name : _str(parent_name_line).split(' ')) {
-                const auto parent_pid = name_resolver.ToHashedString(parent_name);
+                const auto parent_pid = hash_resolver.ToHashedString(parent_name);
                 auto parent = files_protos.find(parent_pid);
                 if (parent == files_protos.end()) {
                     if (base_name == name) {
@@ -269,7 +269,7 @@ static void ParseProtosExt(FileSystem& resources, NameResolver& name_resolver, c
         // Components
         if (final_kv.count("$Components")) {
             for (const auto& component_name : _str(final_kv["$Components"]).split(' ')) {
-                const auto component_name_hashed = name_resolver.ToHashedString(component_name);
+                const auto component_name_hashed = hash_resolver.ToHashedString(component_name);
                 if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hashed)) {
                     throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
                 }

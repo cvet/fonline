@@ -486,7 +486,7 @@ void NetInBuffer::ShrinkReadBuf()
     }
 }
 
-auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
+auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
 {
     STACK_TRACE_ENTRY();
 
@@ -496,7 +496,7 @@ auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
 
     if (!_isError) {
         bool failed = false;
-        result = name_resolver.ResolveHash(h, &failed);
+        result = hash_resolver.ResolveHash(h, &failed);
         if (failed) {
             _isError = true;
         }

@@ -310,10 +310,10 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     sound->OriginalRate = waveformatex.NSamplesPerSec;
     switch (waveformatex.WBitsPerSample) {
     case 8:
-        sound->OriginalFormat = App->Audio.AUDIO_FORMAT_U8;
+        sound->OriginalFormat = AppAudio::AUDIO_FORMAT_U8;
         break;
     case 16:
-        sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
+        sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
         break;
     default:
         WriteLog("Unknown format");
@@ -343,7 +343,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uint8*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
-    sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
+    sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = is_music ? 2 : 1;
     sound->OriginalRate = 22050;
     sound->BaseBuf.resize(buf_size);
@@ -443,7 +443,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     const auto* vi = ov_info(sound->OggStream.get(), -1);
     RUNTIME_ASSERT(vi != nullptr);
 
-    sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
+    sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
     sound->OriginalRate = static_cast<int>(vi->rate);
     sound->BaseBuf.resize(_streamingPortion);

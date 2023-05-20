@@ -50,8 +50,10 @@ struct EffectCollection
     RenderEffect* ImGuiDefault {};
     RenderEffect* Font {};
     RenderEffect* FontDefault {};
-    RenderEffect* ContourSprite {};
-    RenderEffect* ContourSpriteDefault {};
+    RenderEffect* ContourStrictSprite {};
+    RenderEffect* ContourStrictSpriteDefault {};
+    RenderEffect* ContourDynamicSprite {};
+    RenderEffect* ContourDynamicSpriteDefault {};
     RenderEffect* Generic {};
     RenderEffect* GenericDefault {};
     RenderEffect* Critter {};
@@ -83,8 +85,6 @@ struct EffectCollection
 #if FO_ENABLE_3D
     RenderEffect* SkinnedModel {};
     RenderEffect* SkinnedModelDefault {};
-    RenderEffect* ContourModelSprite {};
-    RenderEffect* ContourModelSpriteDefault {};
 #endif
 };
 

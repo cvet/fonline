@@ -35,7 +35,6 @@
 #include "Client.h"
 #include "EffectManager.h"
 #include "GenericUtils.h"
-#include "Log.h"
 #include "MapSprite.h"
 #include "MapView.h"
 #include "Timer.h"
@@ -60,15 +59,6 @@ void ItemHexView::Init()
 
     RefreshAnim();
     RefreshAlpha();
-
-    if (GetIsShowAnim()) {
-        _isAnimLooped = true;
-
-        const auto next_anim_wait = GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
-        if (next_anim_wait != 0) {
-            _animStartTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {next_anim_wait};
-        }
-    }
 }
 
 void ItemHexView::SetupSprite(MapSprite* mspr)
@@ -97,55 +87,10 @@ void ItemHexView::Process()
         ProcessFading();
     }
 
-    // Animation
-    if (_begFrm != _endFrm) {
-        const auto time = _engine->GameTime.GameplayTime();
-
-        if (_animStartTime != time_point {}) {
-            if (time >= _animStartTime) {
-                PlayStayAnim();
-                _animStartTime = time_point {};
-            }
-        }
-
-        if (_animStartTime == time_point {}) {
-            const auto anim_proc = GenericUtils::Percent(_anim->WholeTicks, time_duration_to_ms<uint>(time - _animTime));
-            if (anim_proc >= 100) {
-                SetCurSpr(_endFrm);
-
-                if (_isAnimLooped) {
-                    const auto next_anim_wait = GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
-                    if (next_anim_wait != 0) {
-                        _animStartTime = time + std::chrono::milliseconds {next_anim_wait};
-                    }
-                    else {
-                        PlayStayAnim();
-                    }
-                }
-                else {
-                    _begFrm = _endFrm;
-                }
-            }
-            else {
-                const auto cur_spr = lerp(_begFrm, _endFrm, static_cast<float>(anim_proc) / 100.0f);
-                RUNTIME_ASSERT((cur_spr >= _begFrm && cur_spr <= _endFrm) || (cur_spr >= _endFrm && cur_spr <= _begFrm));
-
-                if (_curFrm != cur_spr) {
-                    SetCurSpr(cur_spr);
-                }
-            }
-        }
-    }
-    else if (_isEffect && !IsFinishing()) {
-        if (_isDynamicEffect) {
-            PlayAnimFromStart();
-        }
-        else {
-            Finish();
-        }
+    if (_isEffect && !_isDynamicEffect && !IsFinishing()) {
+        Finish();
     }
 
-    // Effect
     if (_isDynamicEffect && !IsFinishing()) {
         const auto dt = time_duration_to_ms<float>(_engine->GameTime.GameplayTime() - _effUpdateLastTime);
         if (dt > 0.0f) {
@@ -222,7 +167,7 @@ void ItemHexView::SetFlyEffect(uint16 to_hx, uint16 to_hy)
     _effStartY = ScrY;
     _effCurX = static_cast<float>(ScrX);
     _effCurY = static_cast<float>(ScrY);
-    _effDir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    _effDir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
     _effUpdateLastTime = _engine->GameTime.GameplayTime();
 
     RefreshAnim();
@@ -239,39 +184,42 @@ void ItemHexView::RefreshAnim()
 {
     STACK_TRACE_ENTRY();
 
-    _anim = nullptr;
-
     const auto pic_name = GetPicMap();
+
     if (pic_name) {
-        _anim = _engine->ResMngr.GetMapAnim(pic_name);
+        _anim = _engine->SprMngr.LoadSprite(pic_name, AtlasType::MapSprites);
     }
-    if (pic_name && _anim == nullptr) {
-        WriteLog("PicMap for item '{}' not found", GetName());
+    else {
+        _anim = nullptr;
     }
 
-    if (_anim != nullptr && _isEffect) {
-        _anim = _anim->GetDir(_effDir);
-    }
     if (_anim == nullptr) {
-        _anim = _engine->ResMngr.ItemHexDefaultAnim.get();
+        _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    PlayStayAnim();
-    _animBegFrm = _begFrm;
-    _animEndFrm = _endFrm;
+    if (_isEffect) {
+        _anim->SetDir(static_cast<uint8>(_effDir));
+    }
+
+    _anim->UseGameplayTimer();
 
     if (GetIsCanOpen()) {
+        _anim->Stop();
+
         if (GetOpened()) {
-            SetCurSpr(_animEndFrm);
-            _begFrm = _curFrm;
-            _endFrm = _curFrm;
+            _anim->SetTime(1.0f);
         }
         else {
-            SetCurSpr(_animBegFrm);
-            _begFrm = _curFrm;
-            _endFrm = _curFrm;
+            _anim->SetTime(0.0f);
         }
     }
+    else {
+        _anim->PlayDefault();
+    }
+
+    Spr = _anim.get();
+
+    RefreshOffs();
 }
 
 auto ItemHexView::GetEggType() const -> EggAppearenceType
@@ -298,93 +246,6 @@ auto ItemHexView::GetEggType() const -> EggAppearenceType
     return EggAppearenceType::None;
 }
 
-void ItemHexView::PlayAnimFromEnd()
-{
-    STACK_TRACE_ENTRY();
-
-    _begFrm = _animEndFrm;
-    _endFrm = _animBegFrm;
-    SetCurSpr(_begFrm);
-    _animTime = _engine->GameTime.GameplayTime();
-}
-
-void ItemHexView::PlayAnimFromStart()
-{
-    STACK_TRACE_ENTRY();
-
-    _begFrm = _animBegFrm;
-    _endFrm = _animEndFrm;
-    SetCurSpr(_begFrm);
-    _animTime = _engine->GameTime.GameplayTime();
-}
-
-void ItemHexView::PlayAnim(uint beg, uint end)
-{
-    STACK_TRACE_ENTRY();
-
-    if (beg >= _anim->CntFrm) {
-        beg = _anim->CntFrm - 1;
-    }
-    if (end >= _anim->CntFrm) {
-        end = _anim->CntFrm - 1;
-    }
-
-    _begFrm = beg;
-    _endFrm = end;
-    SetCurSpr(_begFrm);
-    _animTime = _engine->GameTime.GameplayTime();
-}
-
-void ItemHexView::PlayStayAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        PlayAnim(GetAnimStay0(), GetAnimStay1());
-    }
-    else {
-        PlayAnim(0, _anim->CntFrm - 1);
-    }
-}
-
-void ItemHexView::PlayShowAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        PlayAnim(GetAnimShow0(), GetAnimShow1());
-    }
-    else {
-        PlayAnim(0, _anim->CntFrm - 1);
-    }
-}
-
-void ItemHexView::PlayHideAnim()
-{
-    STACK_TRACE_ENTRY();
-
-    if (GetIsShowAnimExt()) {
-        PlayAnim(GetAnimHide0(), GetAnimHide1());
-        _animBegFrm = GetAnimHide1();
-        _animEndFrm = GetAnimHide1();
-    }
-    else {
-        PlayAnim(0, _anim->CntFrm - 1);
-        _animBegFrm = _anim->CntFrm - 1;
-        _animEndFrm = _anim->CntFrm - 1;
-    }
-}
-
-void ItemHexView::SetCurSpr(uint num_spr)
-{
-    STACK_TRACE_ENTRY();
-
-    _curFrm = num_spr;
-    Spr = _anim->GetSpr(_curFrm);
-
-    RefreshOffs();
-}
-
 void ItemHexView::RefreshOffs()
 {
     STACK_TRACE_ENTRY();
@@ -401,11 +262,6 @@ void ItemHexView::RefreshOffs()
             ScrX += _engine->Settings.MapTileOffsX;
             ScrY += _engine->Settings.MapTileOffsY;
         }
-    }
-
-    for (const auto i : xrange(_curFrm + 1u)) {
-        ScrX += _anim->SprOffset[i].X;
-        ScrY += _anim->SprOffset[i].Y;
     }
 
     if (_isDynamicEffect) {

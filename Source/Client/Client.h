@@ -137,11 +137,9 @@ public:
     void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
 
-    auto AnimLoad(hstring name) -> uint;
+    auto AnimLoad(hstring name, AtlasType atlas_type) -> uint;
     void AnimFree(uint anim_id);
-    auto AnimGetSprCount(uint anim_id) const -> uint;
-    auto AnimGetFrames(uint anim_id) -> const SpriteSheet*;
-    void AnimRun(uint anim_id, uint flags);
+    auto AnimGetSpr(uint anim_id) -> Sprite*;
 
     void ShowMainScreen(int new_screen, map<string, any_t> params);
     auto GetMainScreen() const -> int { return _screenModeMain; }
@@ -191,15 +189,15 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
+    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/, bool /*fovAppeared*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
+    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/, bool /*fovDisappeared*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/, bool /*fovAppeared*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/, bool /*fovDisappeared*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInvAllIn);
     ///@ ExportEvent
@@ -260,19 +258,18 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
-    vector<unique_del_ptr<ModelSprite>> DrawCritterModel {};
+    vector<shared_ptr<ModelSprite>> DrawCritterModel {};
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[MODEL_LAYERS_COUNT] {};
 #endif
 
 protected:
+    // Todo: make IfaceAnim scriptable object
     struct IfaceAnim
     {
-        const SpriteSheet* Frames {};
-        time_point LastUpdateTime {};
-        uint16 Flags {};
-        uint CurSpr {};
+        hstring Name {};
+        shared_ptr<Sprite> Anim {};
     };
 
     struct ScreenFadingData
@@ -306,9 +303,9 @@ protected:
     void TryExit();
     void FlashGameWindow();
     void WaitDraw();
+    void CleanupSpriteCache();
 
     void ProcessInputEvents();
-    void ProcessAnim();
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
     void ProcessVideo();
@@ -420,7 +417,9 @@ protected:
     vector<vector<uint8>> _tempPropertiesData {};
     vector<vector<uint8>> _tempPropertiesDataExt {};
 
-    vector<IfaceAnim*> _ifaceAnimations {};
+    uint _ifaceAnimIndex {};
+    unordered_map<uint, unique_ptr<IfaceAnim>> _ifaceAnimations {};
+    unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
 
     vector<ScreenFadingData> _screenFadingEffects {};
 
@@ -431,7 +430,7 @@ protected:
 
     int _screenModeMain {SCREEN_WAIT};
 
-    const SpriteSheet* _waitPic {};
+    shared_ptr<Sprite> _waitPic {};
 
     uint8 _pupTransferType {};
     uint _pupContId {};

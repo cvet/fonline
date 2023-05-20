@@ -37,7 +37,7 @@
 
 #include "HexView.h"
 #include "ItemView.h"
-#include "ResourceManager.h"
+#include "SpriteManager.h"
 
 class ItemHexView final : public ItemView, public HexView
 {
@@ -52,34 +52,20 @@ public:
 
     [[nodiscard]] auto IsDrawContour() const -> bool { return !GetIsWall() && !GetIsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
-    [[nodiscard]] auto IsNeedProcess() const -> bool { return _begFrm != _endFrm || (_isEffect && !IsFinishing()) || _isAnimLooped || (_isDynamicEffect && !IsFinishing()) || IsFading(); }
+    [[nodiscard]] auto IsNeedProcess() const -> bool { return (_isEffect && !IsFinishing()) || (_isDynamicEffect && !IsFinishing()) || IsFading(); }
+    [[nodiscard]] auto GetAnim() -> Sprite* { NON_CONST_METHOD_HINT_ONELINE() return _anim.get(); }
 
     void Init();
     void Process();
     void RefreshAlpha();
     void RefreshAnim();
     void SetFlyEffect(uint16 to_hx, uint16 to_hy);
-    void PlayAnimFromEnd();
-    void PlayAnimFromStart();
-    void PlayAnim(uint beg, uint end);
-    void PlayStayAnim();
-    void PlayShowAnim();
-    void PlayHideAnim();
     void RefreshOffs();
 
 private:
     void SetupSprite(MapSprite* mspr) override;
-    void SetCurSpr(uint num_spr);
 
-    const SpriteSheet* _anim {};
-    uint _curFrm {};
-    uint _begFrm {};
-    uint _endFrm {};
-    uint _animBegFrm {};
-    uint _animEndFrm {};
-    time_point _animTime {};
-    bool _isAnimLooped {};
-    time_point _animStartTime {};
+    shared_ptr<Sprite> _anim {};
 
     bool _isEffect {};
     bool _isDynamicEffect {};

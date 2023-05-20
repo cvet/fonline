@@ -83,24 +83,25 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _rtScreenOx = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = iround(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
-    _rtLight = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
+    _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
 
-    _rtFog = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
+    _rtFog = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtFog->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
 
-    _picHex[0] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::MapSprites);
-    _picHex[1] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex2.png", AtlasType::MapSprites);
-    _picHex[2] = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex3.png", AtlasType::MapSprites);
-    _cursorPrePic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_pre.png", AtlasType::MapSprites);
-    _cursorPostPic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_post.png", AtlasType::MapSprites);
-    _cursorXPic = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "move_x.png", AtlasType::MapSprites);
-    _picTrack1 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track1.png", AtlasType::MapSprites);
-    _picTrack2 = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "track2.png", AtlasType::MapSprites);
-    _picHexMask = _engine->SprMngr.LoadAnimation(_engine->Settings.MapDataPrefix + "hex_mask.png", AtlasType::MapSprites);
+    _picHex[0] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex1.png", AtlasType::MapSprites);
+    _picHex[1] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex2.png", AtlasType::MapSprites);
+    _picHex[2] = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex3.png", AtlasType::MapSprites);
+    _cursorPrePic = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "move_pre.png", AtlasType::MapSprites);
+    _cursorPostPic = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "move_post.png", AtlasType::MapSprites);
+    _cursorXPic = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "move_x.png", AtlasType::MapSprites);
+    _picTrack1 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "track1.png", AtlasType::MapSprites);
+    _picTrack2 = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "track2.png", AtlasType::MapSprites);
+    _picHexMask = _engine->SprMngr.LoadSprite(_engine->Settings.MapDataPrefix + "hex_mask.png", AtlasType::MapSprites);
 
     if (_picHexMask) {
-        const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask->GetSpr());
+        const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(_picHexMask.get());
+        RUNTIME_ASSERT(atlas_spr);
         const auto mask_x = iround(static_cast<float>(atlas_spr->Atlas->MainTex->Width) * atlas_spr->AtlasRect.Left);
         const auto mask_y = iround(static_cast<float>(atlas_spr->Atlas->MainTex->Height) * atlas_spr->AtlasRect.Top);
         _picHexMaskData = atlas_spr->Atlas->MainTex->GetTextureRegion(mask_x, mask_y, atlas_spr->Width, atlas_spr->Height);
@@ -126,13 +127,13 @@ MapView::~MapView()
     }
 
     if (_rtMap != nullptr) {
-        _engine->SprMngr.DeleteRenderTarget(_rtMap);
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap);
     }
-    _engine->SprMngr.DeleteRenderTarget(_rtLight);
-    _engine->SprMngr.DeleteRenderTarget(_rtFog);
+    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight);
+    _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtFog);
 
-    for (auto&& pattern : _particlePatterns) {
-        pattern->Particles.clear();
+    for (auto&& pattern : _spritePatterns) {
+        pattern->Sprites.clear();
         pattern->FinishCallback = nullptr;
         pattern->Finished = true;
     }
@@ -321,7 +322,7 @@ void MapView::LoadStaticData()
                 for (const auto dir : xrange(GameSettings::MAP_DIR_COUNT)) {
                     auto hx_ = hx;
                     auto hy_ = hy;
-                    _engine->Geometry.MoveHexByDir(hx_, hy_, static_cast<uint8>(dir), _width, _height);
+                    GeometryHelper::MoveHexByDir(hx_, hy_, static_cast<uint8>(dir), _width, _height);
                     FieldAt(hx_, hy_).Flags.IsMoveBlocked = true;
                 }
             }
@@ -487,7 +488,7 @@ void MapView::AddItemToField(ItemHexView* item)
         EvaluateFieldFlags(field);
 
         if (item->IsNonEmptyBlockLines()) {
-            _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
+            GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
                 auto& field2 = FieldAt(hx2, hy2);
                 field2.BlockLineItems.push_back(item);
                 EvaluateFieldFlags(field2);
@@ -525,7 +526,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
         EvaluateFieldFlags(field);
 
         if (item->IsNonEmptyBlockLines()) {
-            _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
+            GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
                 auto& field2 = FieldAt(hx2, hy2);
                 const auto it2 = std::find(field2.BlockLineItems.begin(), field2.BlockLineItems.end(), item);
                 RUNTIME_ASSERT(it2 != field2.BlockLineItems.end());
@@ -891,42 +892,46 @@ void MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uin
     effect_item->SetFlyEffect(to_hx, to_hy);
 }
 
-auto MapView::RunParticlePattern(string_view name, uint count) -> ParticlePattern*
+auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
 {
     STACK_TRACE_ENTRY();
 
-    auto&& particle_spr = _engine->SprMngr.LoadParticle(name, AtlasType::MapSprites);
-    if (!particle_spr) {
+    auto&& spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+    if (!spr) {
         BreakIntoDebugger();
         return nullptr;
     }
 
-    particle_spr->Particle->Prewarm();
+    spr->Prewarm();
+    spr->PlayDefault();
 
-    auto&& pattern = unique_release_ptr<ParticlePattern>(new ParticlePattern());
+    auto&& pattern = unique_release_ptr<SpritePattern>(new SpritePattern());
 
-    pattern->ParticleName = name;
-    pattern->ParticleCount = count;
-    pattern->Particles.emplace_back(std::move(particle_spr));
+    pattern->SprName = name;
+    pattern->SprCount = count;
+    pattern->Sprites.emplace_back(std::move(spr));
 
     for (uint i = 1; i < count; i++) {
-        auto&& next_particle_spr = _engine->SprMngr.LoadParticle(name, AtlasType::MapSprites);
-        next_particle_spr->Particle->Prewarm();
-        pattern->Particles.emplace_back(std::move(next_particle_spr));
+        auto&& next_spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+
+        next_spr->Prewarm();
+        next_spr->PlayDefault();
+
+        pattern->Sprites.emplace_back(std::move(next_spr));
     }
 
     pattern->FinishCallback = [this, pattern = pattern.get()]() {
-        const auto it = std::find_if(_particlePatterns.begin(), _particlePatterns.end(), [pattern](auto&& p) { return p.get() == pattern; });
-        RUNTIME_ASSERT(it != _particlePatterns.end());
-        it->get()->Particles.clear();
-        _particlePatterns.erase(it);
+        const auto it = std::find_if(_spritePatterns.begin(), _spritePatterns.end(), [pattern](auto&& p) { return p.get() == pattern; });
+        RUNTIME_ASSERT(it != _spritePatterns.end());
+        it->get()->Sprites.clear();
+        _spritePatterns.erase(it);
         pattern->FinishCallback = nullptr;
         pattern->Finished = true;
     };
 
-    _particlePatterns.emplace_back(std::move(pattern));
+    _spritePatterns.emplace_back(std::move(pattern));
 
-    return _particlePatterns.back().get();
+    return _spritePatterns.back().get();
 }
 
 void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh)
@@ -950,7 +955,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
         const auto cy = cr->GetHexY();
         const auto mh = cr->GetMultihex();
 
-        if ((cx == hx && cy == hy) || (field.Flags.IsMoveBlocked && (mh == 0 || !_engine->Geometry.CheckDist(cx, cy, hx, hy, mh)))) {
+        if ((cx == hx && cy == hy) || (field.Flags.IsMoveBlocked && (mh == 0 || !GeometryHelper::CheckDist(cx, cy, hx, hy, mh)))) {
             _drawCursorX = -1;
         }
         else {
@@ -1062,19 +1067,19 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
 
         // Track
         if (_isShowTrack && GetHexTrack(hx, hy) != 0) {
-            const auto* spr = GetHexTrack(hx, hy) == 1 ? _picTrack1->GetCurSpr(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSpr(_engine->GameTime.GameplayTime());
+            auto&& spr = GetHexTrack(hx, hy) == 1 ? _picTrack1 : _picTrack2;
             auto& mspr = _mapSprites.AddSprite(DrawOrderType::Track, hx, hy, //
-                _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr != nullptr ? spr->Height / 2 : 0), &field.ScrX, &field.ScrY, //
-                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Height / 2 : 0), &field.ScrX, &field.ScrY, //
+                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &mspr);
         }
 
         // Hex Lines
         if (_isShowHex) {
-            const auto* spr = _picHex[0]->GetCurSpr(_engine->GameTime.GameplayTime());
+            auto&& spr = _picHex[0];
             auto& mspr = _mapSprites.AddSprite(DrawOrderType::HexGrid, hx, hy, //
-                spr != nullptr ? spr->Width / 2 : 0, spr != nullptr ? spr->Height : 0, &field.ScrX, &field.ScrY, //
-                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                spr ? spr->Width / 2 : 0, spr ? spr->Height : 0, &field.ScrX, &field.ScrY, //
+                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &mspr);
         }
 
@@ -1173,9 +1178,9 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
             }
         }
 
-        // Particles
-        if (!_particlePatterns.empty()) {
-            for (auto&& pattern : _particlePatterns) {
+        // Patterns
+        if (!_spritePatterns.empty()) {
+            for (auto&& pattern : _spritePatterns) {
                 if ((hx % pattern->EveryHexX) != 0) {
                     continue;
                 }
@@ -1199,7 +1204,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                     continue;
                 }
 
-                const auto* spr = pattern->Particles[(hy * (pattern->Particles.size() / 5) + hx) % pattern->Particles.size()].get();
+                const auto* spr = pattern->Sprites[(hy * (pattern->Sprites.size() / 5) + hx) % pattern->Sprites.size()].get();
                 auto& mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hx, hy, //
                     _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0), &field.ScrX, &field.ScrY, //
                     spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1322,19 +1327,19 @@ void MapView::RebuildMapOffset(int ox, int oy)
 
         // Track
         if (_isShowTrack && (GetHexTrack(hx, hy) != 0)) {
-            const auto* spr = GetHexTrack(hx, hy) == 1 ? _picTrack1->GetCurSpr(_engine->GameTime.GameplayTime()) : _picTrack2->GetCurSpr(_engine->GameTime.GameplayTime());
+            auto&& spr = GetHexTrack(hx, hy) == 1 ? _picTrack1 : _picTrack2;
             auto& mspr = _mapSprites.InsertSprite(DrawOrderType::Track, hx, hy, //
-                _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr != nullptr ? spr->Height / 2 : 0), &field.ScrX, &field.ScrY, //
-                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                _engine->Settings.MapHexWidth / 2, (_engine->Settings.MapHexHeight / 2) + (spr ? spr->Height / 2 : 0), &field.ScrX, &field.ScrY, //
+                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &mspr);
         }
 
         // Hex lines
         if (_isShowHex) {
-            const auto* spr = _picHex[0]->GetCurSpr(_engine->GameTime.GameplayTime());
+            auto&& spr = _picHex[0];
             auto& mspr = _mapSprites.InsertSprite(DrawOrderType::HexGrid, hx, hy, //
-                spr != nullptr ? spr->Width / 2 : 0, spr != nullptr ? spr->Height : 0, &field.ScrX, &field.ScrY, //
-                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                spr ? spr->Width / 2 : 0, spr ? spr->Height : 0, &field.ScrX, &field.ScrY, //
+                spr.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             AddSpriteToChain(field, &mspr);
         }
 
@@ -1433,9 +1438,9 @@ void MapView::RebuildMapOffset(int ox, int oy)
             }
         }
 
-        // Particles
-        if (!_particlePatterns.empty()) {
-            for (auto&& pattern : _particlePatterns) {
+        // Patterns
+        if (!_spritePatterns.empty()) {
+            for (auto&& pattern : _spritePatterns) {
                 if ((hx % pattern->EveryHexX) != 0) {
                     continue;
                 }
@@ -1459,7 +1464,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                     continue;
                 }
 
-                const auto* spr = pattern->Particles[(hy * (pattern->Particles.size() / 5) + hx) % pattern->Particles.size()].get();
+                const auto* spr = pattern->Sprites[(hy * (pattern->Sprites.size() / 5) + hx) % pattern->Sprites.size()].get();
                 auto& mspr = _mapSprites.InsertSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hx, hy, //
                     _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0), &field.ScrX, &field.ScrY, //
                     spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1529,15 +1534,15 @@ void MapView::PrepareLightToDraw()
     // Prerender light
     if (_requestRenderLight) {
         _requestRenderLight = false;
-        _engine->SprMngr.PushRenderTarget(_rtLight);
-        _engine->SprMngr.ClearCurrentRenderTarget(0);
+        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight);
+        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
         const auto zoom = GetSpritesZoom();
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
         for (size_t i = 0; i < _lightPointsCount; i++) {
             _engine->SprMngr.DrawPoints(_lightPoints[i], RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Light);
         }
         _engine->SprMngr.DrawPoints(_lightSoftPoints, RenderPrimitiveType::TriangleList, &zoom, &offset, _engine->EffectMngr.Effects.Light);
-        _engine->SprMngr.PopRenderTarget();
+        _engine->SprMngr.GetRtMngr().PopRenderTarget();
     }
 }
 
@@ -1619,7 +1624,7 @@ void MapView::MarkLightEnd(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 
         }
     }
 
-    const int dir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    const int dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
 
     if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
         MarkLight(to_hx, to_hy, inten);
@@ -1667,7 +1672,7 @@ void MapView::MarkLightStep(uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16
 
     if (field.Flags.IsWallTransp) {
         const bool north_south = field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West;
-        const int dir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+        const int dir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
 
         if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
             MarkLight(to_hx, to_hy, inten);
@@ -1864,14 +1869,14 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
             if (seek_start) {
                 // Move to start position
                 for (auto l = 0; l < dist; l++) {
-                    _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
+                    GeometryHelper::MoveHexByDirUnsafe(hx_far, hy_far, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
                 }
                 seek_start = false;
                 j = -1;
             }
             else {
                 // Move to next hex
-                _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, dir);
+                GeometryHelper::MoveHexByDirUnsafe(hx_far, hy_far, dir);
             }
 
             auto hx_ = static_cast<uint16>(std::clamp(hx_far, 0, _width - 1));
@@ -1888,7 +1893,7 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
                 int* ox = nullptr;
                 int* oy = nullptr;
                 if (static_cast<int>(hx_) != hx_far || static_cast<int>(hy_) != hy_far) {
-                    int a = static_cast<int>(alpha - _engine->Geometry.DistGame(hx, hy, hx_, hy_) * alpha / dist);
+                    int a = static_cast<int>(alpha - GeometryHelper::DistGame(hx, hy, hx_, hy_) * alpha / dist);
                     a = std::clamp(a, 0, alpha);
                     color = COLOR_RGBA(a, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
                     if (hx_ == hx && hy_ == hy) {
@@ -2559,13 +2564,13 @@ void MapView::DrawMap()
     // Separate render target
     if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
         if (_rtMap == nullptr) {
-            _rtMap = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
+            _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
         }
 
         _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
 
-        _engine->SprMngr.PushRenderTarget(_rtMap);
-        _engine->SprMngr.ClearCurrentRenderTarget(0);
+        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap);
+        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
     }
 
     // Tiles
@@ -2581,7 +2586,7 @@ void MapView::DrawMap()
 
     // Cursor flat
     if (_cursorPrePic != nullptr) {
-        DrawCursor(_cursorPrePic->GetCurSpr(_engine->GameTime.GameplayTime()));
+        DrawCursor(_cursorPrePic.get());
     }
 
     // Sprites
@@ -2597,12 +2602,12 @@ void MapView::DrawMap()
 
     // Cursor
     if (_cursorPostPic != nullptr) {
-        DrawCursor(_cursorPostPic->GetCurSpr(_engine->GameTime.GameplayTime()));
+        DrawCursor(_cursorPostPic.get());
     }
 
     if (_cursorXPic != nullptr) {
         if (_drawCursorX < 0) {
-            DrawCursor(_cursorXPic->GetCurSpr(_engine->GameTime.GameplayTime()));
+            DrawCursor(_cursorXPic.get());
         }
         else if (_drawCursorX > 0) {
             DrawCursor(_str("{}", _drawCursorX));
@@ -2611,7 +2616,7 @@ void MapView::DrawMap()
 
     // Draw map from render target
     if (_engine->EffectMngr.Effects.FlushMap != nullptr) {
-        _engine->SprMngr.PopRenderTarget();
+        _engine->SprMngr.GetRtMngr().PopRenderTarget();
         _engine->SprMngr.DrawRenderTarget(_rtMap, false);
     }
 }
@@ -2716,20 +2721,20 @@ void MapView::PrepareFogToDraw()
                     if (seek_start) {
                         // Move to start position
                         for (uint l = 0; l < dist; l++) {
-                            _engine->Geometry.MoveHexByDirUnsafe(hx, hy, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
+                            GeometryHelper::MoveHexByDirUnsafe(hx, hy, GameSettings::HEXAGONAL_GEOMETRY ? 0 : 7);
                         }
                         seek_start = false;
                         j = -1;
                     }
                     else {
                         // Move to next hex
-                        _engine->Geometry.MoveHexByDirUnsafe(hx, hy, static_cast<uint8>(dir));
+                        GeometryHelper::MoveHexByDirUnsafe(hx, hy, static_cast<uint8>(dir));
                     }
 
                     auto hx_ = static_cast<uint16>(std::clamp(hx, 0, _width - 1));
                     auto hy_ = static_cast<uint16>(std::clamp(hy, 0, _height - 1));
                     if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
-                        const int dir_ = _engine->Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
+                        const int dir_ = GeometryHelper::GetFarDir(base_hx, base_hy, hx_, hy_);
                         auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
                         if (ii > static_cast<int>(GameSettings::MAP_DIR_COUNT / 2)) {
                             ii = static_cast<int>(GameSettings::MAP_DIR_COUNT - ii);
@@ -2748,7 +2753,7 @@ void MapView::PrepareFogToDraw()
                         hy_ = block.second;
                     }
 
-                    auto dist_look = _engine->Geometry.DistGame(base_hx, base_hy, hx_, hy_);
+                    auto dist_look = GeometryHelper::DistGame(base_hx, base_hy, hx_, hy_);
                     if (_drawLookBorders) {
                         auto x = 0;
                         auto y = 0;
@@ -2771,7 +2776,7 @@ void MapView::PrepareFogToDraw()
                         auto x_ = 0;
                         auto y_ = 0;
                         GetHexCurrentPosition(hx_2, hy_2, x_, y_);
-                        const auto result_shoot_dist = _engine->Geometry.DistGame(base_hx, base_hy, hx_2, hy_2);
+                        const auto result_shoot_dist = GeometryHelper::DistGame(base_hx, base_hy, hx_2, hy_2);
                         auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->ScrX : nullptr);
                         auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->ScrY : nullptr);
                         _fogShootPoints.emplace_back(PrimitivePoint {x_ + half_hw, y_ + half_hh, COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
@@ -2799,12 +2804,12 @@ void MapView::PrepareFogToDraw()
         }
 
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
-        _engine->SprMngr.PushRenderTarget(_rtFog);
-        _engine->SprMngr.ClearCurrentRenderTarget(0);
+        _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtFog);
+        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
         const float zoom = GetSpritesZoom();
         _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
         _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
-        _engine->SprMngr.PopRenderTarget();
+        _engine->SprMngr.GetRtMngr().PopRenderTarget();
     }
 }
 
@@ -3041,13 +3046,13 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
         auto hx = static_cast<uint16>(_viewField[pos].HexX);
         auto hy = static_cast<uint16>(_viewField[pos].HexY);
 
-        _engine->Geometry.MoveHexByDir(hx, hy, static_cast<uint8>(dir1), _width, _height);
+        GeometryHelper::MoveHexByDir(hx, hy, static_cast<uint8>(dir1), _width, _height);
         if (FieldAt(hx, hy).Flags.ScrollBlock) {
             return true;
         }
 
         if (dir2 >= 0) {
-            _engine->Geometry.MoveHexByDir(hx, hy, static_cast<uint8>(dir2), _width, _height);
+            GeometryHelper::MoveHexByDir(hx, hy, static_cast<uint8>(dir2), _width, _height);
             if (FieldAt(hx, hy).Flags.ScrollBlock) {
                 return true;
             }
@@ -3504,24 +3509,23 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
                 auto hy_ = _viewField[vpos].HexY;
 
                 // Correct with hex color mask
-                if (_picHexMask != nullptr) {
-                    const auto* spr = _picHexMask->GetSpr();
-                    const auto mask_x = std::clamp(iround((xf - x_) * GetSpritesZoom()), 0, spr->Width - 1);
-                    const auto mask_y = std::clamp(iround((yf - y_) * GetSpritesZoom()), 0, spr->Height - 1);
-                    const auto mask_color = _picHexMaskData[mask_y * spr->Width + mask_x];
+                if (_picHexMask) {
+                    const auto mask_x = std::clamp(iround((xf - x_) * GetSpritesZoom()), 0, _picHexMask->Width - 1);
+                    const auto mask_y = std::clamp(iround((yf - y_) * GetSpritesZoom()), 0, _picHexMask->Height - 1);
+                    const auto mask_color = _picHexMaskData[mask_y * _picHexMask->Width + mask_x];
                     const auto mask_color_r = mask_color & 0x000000FF;
 
                     if (mask_color_r == 50) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
+                        GeometryHelper::MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);
                     }
                     else if (mask_color_r == 100) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 0);
+                        GeometryHelper::MoveHexByDirUnsafe(hx_, hy_, 0);
                     }
                     else if (mask_color_r == 150) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 3u : 4u);
+                        GeometryHelper::MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 3u : 4u);
                     }
                     else if (mask_color_r == 200) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 2u);
+                        GeometryHelper::MoveHexByDirUnsafe(hx_, hy_, 2u);
                     }
                 }
 
@@ -3671,11 +3675,11 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, i
 
         if (x >= l && x <= r && y >= t && y <= b) {
             if (check_transparent) {
-                const auto rect_draw = _engine->SprMngr.GetDrawRect(cr->GetSprite());
+                const auto rect_draw = cr->GetSprite()->GetDrawRect();
                 const auto l_draw = iround(static_cast<float>(rect_draw.Left + _engine->Settings.ScrOx) / GetSpritesZoom());
                 const auto t_draw = iround(static_cast<float>(rect_draw.Top + _engine->Settings.ScrOy) / GetSpritesZoom());
 
-                if (_engine->SprMngr.IsPixNoTransp(cr->Spr, x - l_draw, y - t_draw, true)) {
+                if (_engine->SprMngr.SpriteHitTest(cr->Spr, x - l_draw, y - t_draw, true)) {
                     crits.push_back(cr);
                 }
             }
@@ -3774,7 +3778,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     auto nx_ = nx;
                     auto ny_ = ny;
                     for (uint k = 0; k < mh; k++) {
-                        _engine->Geometry.MoveHexByDirUnsafe(nx_, ny_, static_cast<uint8>(j));
+                        GeometryHelper::MoveHexByDirUnsafe(nx_, ny_, static_cast<uint8>(j));
                     }
                     if (nx_ < 0 || ny_ < 0 || nx_ >= _width || ny_ >= _height) {
                         continue;
@@ -3795,7 +3799,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     auto nx_2 = nx_;
                     auto ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
-                        _engine->Geometry.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
+                        GeometryHelper::MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
                         not_passed = FieldAt(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
                     }
                     if (not_passed) {
@@ -3811,7 +3815,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                     nx_2 = nx_;
                     ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
-                        _engine->Geometry.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
+                        GeometryHelper::MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uint8>(dir_));
                         not_passed = FieldAt(static_cast<uint16>(nx_2), static_cast<uint16>(ny_2)).Flags.IsMoveBlocked;
                     }
                     if (not_passed) {
@@ -3822,7 +3826,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                 GRID_AT(nx, ny) = numindex;
                 coords.emplace_back(nx, ny);
 
-                if (cut >= 0 && _engine->Geometry.CheckDist(static_cast<uint16>(nx), static_cast<uint16>(ny), end_x, end_y, cut)) {
+                if (cut >= 0 && GeometryHelper::CheckDist(static_cast<uint16>(nx), static_cast<uint16>(ny), end_x, end_y, cut)) {
                     end_x = static_cast<uint16>(nx);
                     end_y = static_cast<uint16>(ny);
                     return FindPathResult();
@@ -3845,7 +3849,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
     vector<uint8> raw_steps;
     raw_steps.resize(numindex - 1);
 
-    float base_angle = _engine->Geometry.GetDirAngle(end_x, end_y, start_x, start_y);
+    float base_angle = GeometryHelper::GetDirAngle(end_x, end_y, start_x, start_y);
 
     // From end
     while (numindex > 1) {
@@ -3856,11 +3860,11 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 
         const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, grid_ox, grid_oy, start_x, start_y, base_angle, this](int dir, int step_hx, int step_hy) {
             if (GRID_AT(step_hx, step_hy) == numindex) {
-                const float angle = _engine->Geometry.GetDirAngle(step_hx, step_hy, start_x, start_y);
-                const float angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
+                const float angle = GeometryHelper::GetDirAngle(step_hx, step_hy, start_x, start_y);
+                const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
                 if (best_step_dir == -1 || numindex == 0) {
                     best_step_dir = dir;
-                    best_step_angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
+                    best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
                 }
                 else {
                     if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
@@ -3968,7 +3972,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
             uint16 trace_ty = end_y;
 
             for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, _width, _height, 0.0f);
+                LineTracer tracer(trace_hx, trace_hy, trace_tx, trace_ty, _width, _height, 0.0f);
                 uint16 next_hx = trace_hx;
                 uint16 next_hy = trace_hy;
                 vector<uint8> direct_steps;
@@ -3990,7 +3994,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 
                 if (failed) {
                     RUNTIME_ASSERT(i > 0);
-                    _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), _width, _height);
+                    GeometryHelper::MoveHexByDir(trace_tx, trace_ty, GeometryHelper::ReverseDir(raw_steps[i]), _width, _height);
                     continue;
                 }
 
@@ -4055,7 +4059,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
         auto check_hx = hx;
         auto check_hy = hy;
 
-        if (!_engine->Geometry.MoveHexByDir(check_hx, check_hy, dir, _width, _height)) {
+        if (!GeometryHelper::MoveHexByDir(check_hx, check_hy, dir, _width, _height)) {
             return false;
         }
 
@@ -4116,7 +4120,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
     }
 
     if (dist == 0) {
-        dist = _engine->Geometry.DistGame(hx, hy, tx, ty);
+        dist = GeometryHelper::DistGame(hx, hy, tx, ty);
     }
 
     auto cx = hx;
@@ -4124,7 +4128,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
     auto old_cx = cx;
     auto old_cy = cy;
 
-    LineTracer line_tracer(_engine->Geometry, hx, hy, tx, ty, _width, _height, angle);
+    LineTracer line_tracer(hx, hy, tx, ty, _width, _height, angle);
 
     for (uint i = 0; i < dist; i++) {
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -4191,7 +4195,7 @@ void MapView::FindSetCenter(int cx, int cy)
         auto i = 0;
 
         for (; i < steps; i++) {
-            if (!_engine->Geometry.MoveHexByDir(sx, sy, static_cast<uint8>(dirs[i % dirs_index]), _width, _height)) {
+            if (!GeometryHelper::MoveHexByDir(sx, sy, static_cast<uint8>(dirs[i % dirs_index]), _width, _height)) {
                 break;
             }
 
@@ -4209,7 +4213,7 @@ void MapView::FindSetCenter(int cx, int cy)
         }
 
         for (; i < steps; i++) {
-            _engine->Geometry.MoveHexByDir(hx, hy, _engine->Geometry.ReverseDir(static_cast<uint8>(dirs[i % dirs_index])), _width, _height);
+            GeometryHelper::MoveHexByDir(hx, hy, GeometryHelper::ReverseDir(static_cast<uint8>(dirs[i % dirs_index])), _width, _height);
         }
     };
 

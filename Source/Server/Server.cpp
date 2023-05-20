@@ -282,7 +282,7 @@ void FOServer::Start()
         DbStorage.Insert("Game", ident_t {1}, {});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
             throw ServerInitException("Failed to load globals document");
         }
 
@@ -2006,7 +2006,7 @@ void FOServer::Process_Login(Player* unlogined_player)
     if (player == nullptr) {
         player_reconnected = false;
 
-        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this, *this)) {
             unlogined_player->Send_TextMsg(nullptr, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
             unlogined_player->Connection->GracefulDisconnect();
             return;
@@ -2646,7 +2646,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         entry_id = ident_t {1};
     }
 
-    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+    auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
 
     if (server_entity != nullptr) {
         DbStorage.Update(_str("{}s", server_entity->GetClassName()), entry_id, prop->GetName(), value);
@@ -2955,7 +2955,7 @@ void FOServer::ProcessMove(Critter* cr)
 
     if (cr->IsMoving() && cr->TargetMoving.TargId && (cr->TargetMoving.HexX != 0u || cr->TargetMoving.HexY != 0u)) {
         const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
-        if (targ != nullptr && !Geometry.CheckDist(targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0)) {
+        if (targ != nullptr && !GeometryHelper::CheckDist(targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0)) {
             recalculate = true;
         }
     }
@@ -3113,7 +3113,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
             RUNTIME_ASSERT(move_ok);
         }
 
@@ -3151,7 +3151,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             auto hy2 = next_start_hy;
 
             for (auto j2 = control_step_begin; j2 < step_index; j2++) {
-                const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
+                const auto move_ok = GeometryHelper::MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
                 RUNTIME_ASSERT(move_ok);
             }
 
@@ -3159,7 +3159,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             const auto old_hy = cr->GetHexY();
 
             if (old_hx != hx2 || old_hy != hy2) {
-                const uint8 dir = Geometry.GetFarDir(old_hx, old_hy, hx2, hy2);
+                const uint8 dir = GeometryHelper::GetFarDir(old_hx, old_hy, hx2, hy2);
                 const uint multihex = cr->GetMultihex();
 
                 if (map->IsMovePassed(cr, hx2, hy2, multihex)) {
@@ -3283,7 +3283,7 @@ void FOServer::MoveCritter(Critter* cr, uint16 speed, const vector<uint8>& steps
         RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
         RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
         for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
-            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            const auto move_ok = GeometryHelper::MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
             RUNTIME_ASSERT(move_ok);
         }
 
@@ -3697,7 +3697,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
 
             auto talk_distance = npc->GetTalkDistance();
             talk_distance = (talk_distance != 0u ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
-            if (!Geometry.CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
+            if (!GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
                 cl->Send_Position(cl);
                 cl->Send_Position(npc);
                 cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
@@ -3749,8 +3749,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
         }
 
         if (!ignore_distance) {
-            const auto dir = Geometry.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
-            npc->ChangeDir(Geometry.ReverseDir(dir));
+            const auto dir = GeometryHelper::GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
+            npc->ChangeDir(GeometryHelper::ReverseDir(dir));
             npc->Broadcast_Dir();
             cl->ChangeDir(dir);
             cl->Broadcast_Dir();
@@ -3759,7 +3759,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, uint1
     }
     // Talk with hex
     else {
-        if (!ignore_distance && !Geometry.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
+        if (!ignore_distance && !GeometryHelper::CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Position(cl);
             cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());

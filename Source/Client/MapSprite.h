@@ -104,7 +104,6 @@ struct MapSpriteData
     uint16 HexX {};
     uint16 HexY {};
     hstring ProtoId {};
-    int FrameIndex {};
     int OffsX {};
     int OffsY {};
     bool IsFlat {};
@@ -134,6 +133,8 @@ public:
     auto operator=(MapSprite&&) noexcept = delete;
     ~MapSprite() = default;
 
+    [[nodiscard]] auto GetDrawRect() const -> IRect;
+    [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto CheckHit(int ox, int oy, bool check_transparent) const -> bool;
 
     void Invalidate();

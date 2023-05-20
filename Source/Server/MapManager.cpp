@@ -238,7 +238,7 @@ void MapManager::LoadFromResources()
                 for (uint8 k = 0; k < 6; k++) {
                     auto hx_ = hx;
                     auto hy_ = hy;
-                    if (_engine->Geometry.MoveHexByDir(hx_, hy_, k, maxhx, maxhy)) {
+                    if (GeometryHelper::MoveHexByDir(hx_, hy_, k, maxhx, maxhy)) {
                         SetBit(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
                     }
                 }
@@ -250,7 +250,7 @@ void MapManager::LoadFromResources()
 
             if (item->IsNonEmptyBlockLines()) {
                 const auto shooted = item->GetIsShootThru();
-                _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, shooted](auto hx2, auto hy2) {
+                GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, shooted](auto hx2, auto hy2) {
                     SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_BLOCK);
                     if (!shooted) {
                         SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_NOTRAKE);
@@ -784,7 +784,7 @@ void MapManager::TraceBullet(TraceData& trace)
 
     auto dist = trace.Dist;
     if (dist == 0) {
-        dist = _engine->Geometry.DistGame(hx, hy, tx, ty);
+        dist = GeometryHelper::DistGame(hx, hy, tx, ty);
     }
 
     auto cx = hx;
@@ -792,7 +792,7 @@ void MapManager::TraceBullet(TraceData& trace)
     auto old_cx = cx;
     auto old_cy = cy;
 
-    LineTracer line_tracer(_engine->Geometry, hx, hy, tx, ty, maxhx, maxhy, trace.Angle);
+    LineTracer line_tracer(hx, hy, tx, ty, maxhx, maxhy, trace.Angle);
 
     trace.IsFullTrace = false;
     trace.IsCritterFounded = false;
@@ -810,7 +810,7 @@ void MapManager::TraceBullet(TraceData& trace)
         }
         else {
             line_tracer.GetNextSquare(cx, cy);
-            dir = _engine->Geometry.GetNearDir(old_cx, old_cy, cx, cy);
+            dir = GeometryHelper::GetNearDir(old_cx, old_cy, cx, cy);
         }
 
         if (trace.HexCallback != nullptr) {
@@ -886,7 +886,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
         output.Result = FindPathOutput::ResultType::InvalidHexes;
         return output;
     }
-    if (_engine->Geometry.CheckDist(input.FromHexX, input.FromHexY, input.ToHexX, input.ToHexY, input.Cut)) {
+    if (GeometryHelper::CheckDist(input.FromHexX, input.FromHexY, input.ToHexX, input.ToHexY, input.Cut)) {
         output.Result = FindPathOutput::ResultType::AlreadyHere;
         return output;
     }
@@ -952,7 +952,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
             cy = coords[p].second;
             numindex = GridAt(cx, cy);
 
-            if (_engine->Geometry.CheckDist(cx, cy, to_hx, to_hy, input.Cut)) {
+            if (GeometryHelper::CheckDist(cx, cy, to_hx, to_hy, input.Cut)) {
                 to_hx = cx;
                 to_hy = cy;
                 goto label_FindOk;
@@ -1051,7 +1051,7 @@ label_FindOk:
     raw_steps.resize(numindex - 1);
 
     // Smooth data
-    float base_angle = _engine->Geometry.GetDirAngle(to_hx, to_hy, input.FromHexX, input.FromHexY);
+    float base_angle = GeometryHelper::GetDirAngle(to_hx, to_hy, input.FromHexX, input.FromHexY);
 
     while (numindex > 1) {
         numindex--;
@@ -1062,11 +1062,11 @@ label_FindOk:
 
             const auto check_hex = [&best_step_dir, &best_step_angle_diff, &input, numindex, base_angle, this](int dir, int step_hx, int step_hy) {
                 if (GridAt(step_hx, step_hy) == numindex) {
-                    const float angle = _engine->Geometry.GetDirAngle(step_hx, step_hy, input.FromHexX, input.FromHexY);
-                    const float angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
+                    const float angle = GeometryHelper::GetDirAngle(step_hx, step_hy, input.FromHexX, input.FromHexY);
+                    const float angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
                     if (best_step_dir == -1 || numindex == 0) {
                         best_step_dir = dir;
-                        best_step_angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
+                        best_step_angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
                     }
                     else {
                         if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
@@ -1178,7 +1178,7 @@ label_FindOk:
             const auto prev_check_hx = check_hx;
             const auto prev_check_hy = check_hy;
 
-            const auto move_ok = _engine->Geometry.MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
+            const auto move_ok = GeometryHelper::MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
             RUNTIME_ASSERT(move_ok);
 
             if (map->IsHexPassed(check_hx, check_hy)) {
@@ -1226,7 +1226,7 @@ label_FindOk:
         uint16 check_hy = input.FromHexY;
 
         for (size_t i = 0; i < raw_steps.size(); i++) {
-            const auto move_ok = _engine->Geometry.MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
+            const auto move_ok = GeometryHelper::MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
             RUNTIME_ASSERT(move_ok);
 
             if (map->IsHexGag(check_hx, check_hy)) {
@@ -1248,7 +1248,7 @@ label_FindOk:
             uint16 check_hy2 = input.FromHexY;
 
             for (size_t i = 0; i < raw_steps.size() - 1; i++) {
-                const auto move_ok2 = _engine->Geometry.MoveHexByDir(check_hx2, check_hy2, raw_steps[i], maxhx, maxhy);
+                const auto move_ok2 = GeometryHelper::MoveHexByDir(check_hx2, check_hy2, raw_steps[i], maxhx, maxhy);
                 RUNTIME_ASSERT(move_ok2);
 
                 if (k < 4 && trace_seq[i + 2] != k) {
@@ -1258,7 +1258,7 @@ label_FindOk:
                     continue;
                 }
 
-                if (!_engine->Geometry.CheckDist(check_hx2, check_hy2, targ_hx, targ_hy, input.TraceDist)) {
+                if (!GeometryHelper::CheckDist(check_hx2, check_hy2, targ_hx, targ_hy, input.TraceDist)) {
                     continue;
                 }
 
@@ -1270,7 +1270,7 @@ label_FindOk:
                 if (trace.IsCritterFounded) {
                     trace_ok = true;
                     raw_steps.resize(i + 1);
-                    const auto move_ok3 = _engine->Geometry.MoveHexByDir(check_hx2, check_hy2, raw_steps[i + 1], maxhx, maxhy);
+                    const auto move_ok3 = GeometryHelper::MoveHexByDir(check_hx2, check_hy2, raw_steps[i + 1], maxhx, maxhy);
                     RUNTIME_ASSERT(move_ok3);
                     to_hx = check_hx2;
                     to_hy = check_hy2;
@@ -1305,7 +1305,7 @@ label_FindOk:
             uint16 trace_ty = to_hy;
 
             for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, maxhx, maxhy, 0.0f);
+                LineTracer tracer(trace_hx, trace_hy, trace_tx, trace_ty, maxhx, maxhy, 0.0f);
                 uint16 next_hx = trace_hx;
                 uint16 next_hy = trace_hy;
                 vector<uint8> direct_steps;
@@ -1327,7 +1327,7 @@ label_FindOk:
 
                 if (failed) {
                     RUNTIME_ASSERT(i > 0);
-                    _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), maxhx, maxhy);
+                    GeometryHelper::MoveHexByDir(trace_tx, trace_ty, GeometryHelper::ReverseDir(raw_steps[i]), maxhx, maxhy);
                     continue;
                 }
 
@@ -1707,7 +1707,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             continue;
         }
 
-        auto dist = _engine->Geometry.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+        auto dist = GeometryHelper::DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
 
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SCRIPT)) {
             const auto allow_self = _engine->OnMapCheckLook.Fire(map, view_cr, cr);
@@ -1826,7 +1826,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
             // Self
-            auto real_dir = _engine->Geometry.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+            auto real_dir = GeometryHelper::GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
             auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
             if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
@@ -1864,7 +1864,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (cr->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
-                const auto real_dir = _engine->Geometry.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+                const auto real_dir = GeometryHelper::GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
                 auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
                 if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
@@ -1937,7 +1937,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             auto sneak_self = sneak_base_self;
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto dir_opp = cr->GetDir();
-                const auto real_dir = _engine->Geometry.GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
+                const auto real_dir = GeometryHelper::GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
                 auto i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
                 if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
@@ -2044,7 +2044,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, view_cr, item);
             }
             else {
-                int dist = _engine->Geometry.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                int dist = GeometryHelper::DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
                 }
@@ -2085,12 +2085,12 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
             continue;
         }
 
-        const auto dist = _engine->Geometry.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
+        const auto dist = GeometryHelper::DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
         auto look_self = look;
 
         // Dir modifier
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
-            const auto real_dir = _engine->Geometry.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
+            const auto real_dir = GeometryHelper::GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
             auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
             if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
@@ -2121,7 +2121,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
         if (cr->GetIsHide()) {
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
-                const auto real_dir = _engine->Geometry.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
+                const auto real_dir = GeometryHelper::GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
                 auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
                 if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
@@ -2157,7 +2157,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, view_cr, item);
             }
             else {
-                auto dist = _engine->Geometry.DistGame(hx, hy, item->GetHexX(), item->GetHexY());
+                auto dist = GeometryHelper::DistGame(hx, hy, item->GetHexX(), item->GetHexY());
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
                 }

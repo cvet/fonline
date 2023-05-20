@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-auto PropertiesSerializator::SaveToDocument(const Properties* props, const Properties* base, NameResolver& name_resolver) -> AnyData::Document
+auto PropertiesSerializator::SaveToDocument(const Properties* props, const Properties* base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
@@ -88,13 +88,13 @@ auto PropertiesSerializator::SaveToDocument(const Properties* props, const Prope
             }
         }
 
-        doc.insert(std::make_pair(prop->_propName, SavePropertyToValue(props, prop, name_resolver)));
+        doc.insert(std::make_pair(prop->_propName, SavePropertyToValue(props, prop, hash_resolver, name_resolver)));
     }
 
     return doc;
 }
 
-auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::Document& doc, NameResolver& name_resolver) -> bool
+auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -110,7 +110,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
         const auto* prop = props->_registrator->Find(key);
 
         if (prop != nullptr && !prop->IsDisabled() && !prop->IsTemporary()) {
-            if (!LoadPropertyFromValue(props, prop, value, name_resolver)) {
+            if (!LoadPropertyFromValue(props, prop, value, hash_resolver, name_resolver)) {
                 is_error = true;
             }
         }
@@ -123,7 +123,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
     return !is_error;
 }
 
-auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const Property* prop, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
 {
     STACK_TRACE_ENTRY();
 
@@ -137,7 +137,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
 
         if (prop->_isHashBase) {
-            return string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(&props->_podData[prop->_podDataOffset])));
+            return string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(&props->_podData[prop->_podDataOffset])));
         }
         else if (prop->_isEnumBase) {
             int enum_value = 0;
@@ -207,7 +207,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 
             for (uint i = 0; i < arr_size; i++) {
                 if (prop->_isHashBase) {
-                    arr.push_back(string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * prop->_baseSize))));
+                    arr.push_back(string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * prop->_baseSize))));
                 }
                 else if (prop->_isEnumBase) {
                     int enum_value = 0;
@@ -267,9 +267,9 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         AnyData::Dict dict;
 
         if (data_size > 0) {
-            const auto get_key_string = [prop, &name_resolver](const uint8* p) -> string {
+            const auto get_key_string = [prop, &hash_resolver, &name_resolver](const uint8* p) -> string {
                 if (prop->_isDictKeyHash) {
-                    return string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(p)));
+                    return string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(p)));
                 }
                 else if (prop->_isDictKeyEnum) {
                     int enum_value = 0;
@@ -319,7 +319,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                         else {
                             for (uint i = 0; i < arr_size; i++) {
                                 if (prop->_isHashBase) {
-                                    arr.push_back(string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * sizeof(hstring::hash_t)))));
+                                    arr.push_back(string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * sizeof(hstring::hash_t)))));
                                 }
                                 else if (prop->_isEnumBase) {
                                     int enum_value = 0;
@@ -409,7 +409,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     string key_str = get_key_string(pkey);
 
                     if (prop->_isHashBase) {
-                        dict.insert(std::make_pair(std::move(key_str), string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(pvalue)))));
+                        dict.insert(std::make_pair(std::move(key_str), string(hash_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(pvalue)))));
                     }
                     else if (prop->_isEnumBase) {
                         int enum_value = 0;
@@ -470,7 +470,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     throw UnreachablePlaceException(LINE_STR);
 }
 
-auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, NameResolver& name_resolver) -> bool
+auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -557,7 +557,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 return false;
             }
 
-            const auto h = name_resolver.ToHashedString(std::get<string>(value)).as_hash();
+            const auto h = hash_resolver.ToHashedString(std::get<string>(value)).as_hash();
             props->SetRawData(prop, reinterpret_cast<const uint8*>(&h), prop->_baseSize);
         }
         else if (prop->_isEnumBase) {
@@ -687,7 +687,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             for (size_t i = 0; i < arr.size(); i++) {
                 RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
 
-                const auto h = name_resolver.ToHashedString(std::get<string>(arr[i])).as_hash();
+                const auto h = hash_resolver.ToHashedString(std::get<string>(arr[i])).as_hash();
                 *reinterpret_cast<hstring::hash_t*>(data.get() + i * sizeof(hstring::hash_t)) = h;
             }
 
@@ -975,7 +975,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         for (const auto& [key2, value2] : dict) {
             // Key
             if (prop->_isDictKeyHash) {
-                *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(key2).as_hash();
+                *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(key2).as_hash();
             }
             else if (prop->_isDictKeyEnum) {
                 auto is_error = false;
@@ -1025,7 +1025,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
                 else if (prop->_isHashBase) {
                     for (const auto& e : arr) {
-                        *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(std::get<string>(e)).as_hash();
+                        *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(std::get<string>(e)).as_hash();
                         data_pos += sizeof(hstring::hash_t);
                     }
                 }
@@ -1121,7 +1121,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else {
                 if (prop->_isHashBase) {
-                    *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(std::get<string>(value2)).as_hash();
+                    *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(std::get<string>(value2)).as_hash();
                 }
                 else if (prop->_isEnumBase) {
                     auto is_error = false;

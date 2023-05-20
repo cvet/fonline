@@ -134,7 +134,7 @@ public:
     void Send_Position(const Critter* cr);
     void Send_AddItemOnMap(const Item* item);
     void Send_EraseItemFromMap(const Item* item);
-    void Send_AnimateItem(const Item* item, uint8 from_frm, uint8 to_frm);
+    void Send_AnimateItem(const Item* item, hstring anim_name, bool looped, bool reversed);
     void Send_AddItem(const Item* item);
     void Send_EraseItem(const Item* item);
     void Send_GlobalInfo(uint8 flags);

@@ -74,7 +74,7 @@ struct MeshTexture
 
 struct MeshData
 {
-    void Load(DataReader& reader, NameResolver& name_resolver);
+    void Load(DataReader& reader, HashResolver& hash_resolver);
 
     ModelBone* Owner {};
     vector<Vertex3D> Vertices {};
@@ -100,7 +100,7 @@ struct MeshInstance
 
 struct ModelBone
 {
-    void Load(DataReader& reader, NameResolver& name_resolver);
+    void Load(DataReader& reader, HashResolver& hash_resolver);
     void FixAfterLoad(ModelBone* root_bone);
     auto Find(hstring bone_name) -> ModelBone*;
 
@@ -183,7 +183,7 @@ public:
     using TextureLoader = std::function<pair<RenderTexture*, FRect>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -207,6 +207,7 @@ private:
     FileSystem& _resources;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
+    HashResolver& _hashResolver;
     NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
     TextureLoader _textureLoader;

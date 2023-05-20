@@ -38,15 +38,17 @@
 #if !FO_SINGLEPLAYER
 
 #include "ClientScripting.h"
+#include "DefaultSprites.h"
 #include "Log.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
 
 Updater::Updater(GlobalSettings& settings, AppWindow* window) :
     _settings {settings},
-    _conn(settings),
+    _conn(_settings),
+    _gameTime(_settings),
     _effectMngr(_settings, _resources),
-    _sprMngr(_settings, window, _resources, _effectMngr)
+    _sprMngr(_settings, window, _resources, _gameTime, _effectMngr, _hashStorage)
 {
     STACK_TRACE_ENTRY();
 
@@ -61,15 +63,21 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
 
     _effectMngr.LoadMinimalEffects();
 
+    _sprMngr.RegisterSpriteFactory(std::make_unique<DefaultSpriteFactory>(_sprMngr));
+
     // Wait screen
     if (!_settings.DefaultSplash.empty()) {
         _splashPic.reset();
-        _splashPic = _sprMngr.LoadAnimation(_settings.DefaultSplash, AtlasType::OneImage);
+        _splashPic = _sprMngr.LoadSprite(_settings.DefaultSplash, AtlasType::OneImage);
+
+        if (_splashPic) {
+            _splashPic->PlayDefault();
+        }
     }
 
     _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic->GetSpr(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+        _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
     }
     _sprMngr.EndScene();
 
@@ -162,7 +170,7 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     {
         if (_splashPic) {
-            _sprMngr.DrawSpriteSize(_splashPic->GetSpr(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+            _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
         }
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {
