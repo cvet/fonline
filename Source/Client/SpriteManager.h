@@ -145,6 +145,8 @@ public:
     [[nodiscard]] virtual auto GetExtensions() const -> vector<string> = 0;
 
     virtual auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> = 0;
+    virtual void Update() { }
+    virtual void ClenupCache() { }
 };
 
 struct PrimitivePoint
@@ -177,10 +179,11 @@ public:
     auto operator=(SpriteManager&&) noexcept = delete;
     ~SpriteManager();
 
+    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { NON_CONST_METHOD_HINT_ONELINE() return _hashResolver.ToHashedString(str); }
     [[nodiscard]] auto GetResources() -> FileSystem& { NON_CONST_METHOD_HINT_ONELINE() return _resources; }
     [[nodiscard]] auto GetRtMngr() -> RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetAtlasMngr() -> TextureAtlasManager& { return _atlasMngr; }
-    [[nodiscard]] auto GetTime(bool use_gameplay_timer) const -> time_point { return use_gameplay_timer ? _gameTimer.GameplayTime() : _gameTimer.FrameTime(); }
+    [[nodiscard]] auto GetTimer() const -> GameTimer& { return _gameTimer; }
     [[nodiscard]] auto GetWindow() -> AppWindow* { NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
@@ -248,7 +251,8 @@ private:
 
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
     unordered_map<string, SpriteFactory*> _spriteFactoryMap {};
-    unordered_map<hstring, shared_ptr<Sprite>> _copyableSpriteCache {};
+    unordered_set<hstring> _nonFoundSprites {};
+    unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>, pair_hash> _copyableSpriteCache {};
     unordered_map<const Sprite*, weak_ptr<Sprite>> _updateSprites {};
 
     RenderTarget* _rtMain {};
@@ -280,6 +284,8 @@ private:
 
     int _windowSizeDiffX {};
     int _windowSizeDiffY {};
+
+    EventUnsubscriber _eventUnsubscriber {};
 
     bool _nonConstHelper {};
 

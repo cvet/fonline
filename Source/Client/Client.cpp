@@ -139,7 +139,11 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode
     ProtoMngr.LoadFromResources();
 
     // Modules initialization
+    extern void InitClientEngine(FOClient * client);
+    InitClientEngine(this);
+
     ScriptSys->InitModules();
+
     OnStart.Fire();
 
     // Connection handlers

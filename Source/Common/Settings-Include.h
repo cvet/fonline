@@ -211,7 +211,7 @@ VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fopts", "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini", "lfspine"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

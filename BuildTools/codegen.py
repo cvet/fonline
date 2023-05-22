@@ -1022,7 +1022,7 @@ def parseTags():
             
             try:
                 name = tokenize(tagContext)[1]
-                assert name in ['ConfigSectionParseHook', 'ConfigEntryParseHook'], 'Invalid engine hook ' + name
+                assert name in ['InitClientEngine', 'ConfigSectionParseHook', 'ConfigEntryParseHook'], 'Invalid engine hook ' + name
                 
                 codeGenTags['EngineHook'].append((name, [], comment))
             
@@ -1374,6 +1374,8 @@ def genGenericCode():
         return False
     
     globalLines.append('// Engine hooks')
+    if not isHookEnabled('InitClientEngine'):
+        globalLines.append('void InitClientEngine(FOClient*) { /* Stub */ }')
     if not isHookEnabled('ConfigSectionParseHook'):
         globalLines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
     if not isHookEnabled('ConfigEntryParseHook'):

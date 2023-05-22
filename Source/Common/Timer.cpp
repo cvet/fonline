@@ -70,6 +70,9 @@ auto GameTimer::FrameAdvance() -> bool
 {
     STACK_TRACE_ENTRY();
 
+    const auto prev_frame_time = _frameTime;
+    const auto prev_gameplay_time = GameplayTime();
+
     const auto now_time = time_point::clock::now();
 
     if (IsRunInDebugger() && _settings.DebuggingDeltaTimeCap != 0) {
@@ -84,6 +87,9 @@ auto GameTimer::FrameAdvance() -> bool
     else {
         _frameTime = now_time;
     }
+
+    _frameDeltaTime = _frameTime - prev_frame_time;
+    _gameplayDeltaTime = GameplayTime() - prev_gameplay_time;
 
 #if FO_SINGLEPLAYER
     if (_isGameplayPaused) {
@@ -102,11 +108,32 @@ auto GameTimer::FrameAdvance() -> bool
     return false;
 }
 
+auto GameTimer::GetTime(bool gameplay_timer) const -> time_point
+{
+    STACK_TRACE_ENTRY();
+
+    return gameplay_timer ? GameplayTime() : FrameTime();
+}
+
+auto GameTimer::GetDeltaTime(bool gameplay_timer) const -> time_duration
+{
+    STACK_TRACE_ENTRY();
+
+    return gameplay_timer ? GameplayDeltaTime() : FrameDeltaTime();
+}
+
 auto GameTimer::FrameTime() const -> time_point
 {
     STACK_TRACE_ENTRY();
 
     return _frameTime;
+}
+
+auto GameTimer::FrameDeltaTime() const -> time_duration
+{
+    STACK_TRACE_ENTRY();
+
+    return _frameDeltaTime;
 }
 
 auto GameTimer::GameplayTime() const -> time_point
@@ -120,6 +147,13 @@ auto GameTimer::GameplayTime() const -> time_point
 #endif
 
     return _gameplayTimeBase + (FrameTime() - _gameplayTimeFrame);
+}
+
+auto GameTimer::GameplayDeltaTime() const -> time_duration
+{
+    STACK_TRACE_ENTRY();
+
+    return _gameplayDeltaTime;
 }
 
 auto GameTimer::GetFullSecond() const -> tick_t

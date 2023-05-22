@@ -83,6 +83,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <deque>
+#include <forward_list>
 #include <functional>
 #include <future>
 #include <iostream>
@@ -172,6 +173,7 @@ static_assert(CHAR_BIT == 8);
 // Bind to global scope frequently used types
 using std::array;
 using std::deque;
+using std::forward_list;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
@@ -225,6 +227,15 @@ std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
     }
     return {};
 }
+
+struct pair_hash
+{
+    template<class T, class U>
+    std::size_t operator()(const std::pair<T, U>& p) const
+    {
+        return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
+    }
+};
 
 // Strong types
 template<typename T>

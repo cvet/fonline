@@ -108,6 +108,8 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 #endif
     _rtContours = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
     _rtContoursMid = _rtMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
+
+    _eventUnsubscriber += App->OnLowMemory += [this] { CleanupSpriteCache(); };
 }
 
 SpriteManager::~SpriteManager()
@@ -261,6 +263,10 @@ void SpriteManager::BeginScene(uint clear_color)
     if (_rtMain != nullptr) {
         _rtMngr.PushRenderTarget(_rtMain);
         _rtMngr.ClearCurrentRenderTarget(clear_color);
+    }
+
+    for (auto&& spr_factory : _spriteFactories) {
+        spr_factory->Update();
     }
 
     for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
@@ -465,14 +471,19 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr
 
     RUNTIME_ASSERT(path);
 
-    if (const auto it = _copyableSpriteCache.find(path); it != _copyableSpriteCache.end()) {
+    if (const auto it = _copyableSpriteCache.find({path, atlas_type}); it != _copyableSpriteCache.end()) {
         return it->second->MakeCopy();
+    }
+
+    if (_nonFoundSprites.count(path) != 0) {
+        return nullptr;
     }
 
     const string ext = _str(path).getFileExtension();
     if (ext.empty()) {
         BreakIntoDebugger();
         WriteLog("Extension not found, file '{}'", path);
+        _nonFoundSprites.emplace(path);
         return nullptr;
     }
 
@@ -480,13 +491,20 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr
     if (it == _spriteFactoryMap.end()) {
         BreakIntoDebugger();
         WriteLog("Unknown extension, file '{}'", path);
+        _nonFoundSprites.emplace(path);
         return nullptr;
     }
 
     auto&& spr = it->second->LoadSprite(path, atlas_type);
+    if (!spr) {
+        BreakIntoDebugger();
+        WriteLog("Sprite not loaded by fabric, file '{}'", path);
+        _nonFoundSprites.emplace(path);
+        return nullptr;
+    }
 
     if (spr->IsCopyable()) {
-        _copyableSpriteCache.emplace(path, spr);
+        _copyableSpriteCache.emplace(pair {path, atlas_type}, spr);
     }
 
     return spr;
@@ -495,6 +513,10 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr
 void SpriteManager::CleanupSpriteCache()
 {
     STACK_TRACE_ENTRY();
+
+    for (auto&& spr_factory : _spriteFactories) {
+        spr_factory->ClenupCache();
+    }
 
     for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
         if (it->second.use_count() == 1) {
@@ -564,15 +586,17 @@ void SpriteManager::DrawSprite(const Sprite* spr, int x, int y, uint color)
 
     const auto ind_count = spr->FillData(_spritesDrawBuf, IRect {x, y, x + spr->Width, y + spr->Height}, {color, color});
 
-    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
-    }
-    else {
-        _dipQueue.back().IndCount += ind_count;
-    }
+    if (ind_count != 0) {
+        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
+        }
+        else {
+            _dipQueue.back().IndCount += ind_count;
+        }
 
-    if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-        Flush();
+        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+            Flush();
+        }
     }
 }
 
@@ -627,15 +651,17 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, in
 
     const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color, color});
 
-    if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
-    }
-    else {
-        _dipQueue.back().IndCount += ind_count;
-    }
+    if (ind_count != 0) {
+        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+            _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
+        }
+        else {
+            _dipQueue.back().IndCount += ind_count;
+        }
 
-    if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-        Flush();
+        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+            Flush();
+        }
     }
 }
 
@@ -1009,15 +1035,17 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
             }
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
-        }
-        else {
-            _dipQueue.back().IndCount += ind_count;
-        }
+        if (ind_count != 0) {
+            if (_dipQueue.empty() || _dipQueue.back().MainTex != spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {spr->GetBatchTex(), effect, ind_count});
+            }
+            else {
+                _dipQueue.back().IndCount += ind_count;
+            }
 
-        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-            Flush();
+            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                Flush();
+            }
         }
 
         // Corners indication
@@ -1704,7 +1732,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
             return false;
         }
 
-        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
+        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
     }
 
     // Create bordered instance
@@ -1715,7 +1743,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, AtlasType atlas
             return false;
         }
 
-        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
+        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
     }
 
     // Register
@@ -1831,7 +1859,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
             return false;
         }
 
-        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
+        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
     }
 
     // Create bordered instance
@@ -1842,7 +1870,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name, AtlasType atla
             return false;
         }
 
-        _copyableSpriteCache.erase(_hashResolver.ToHashedString(image_name));
+        _copyableSpriteCache.erase({_hashResolver.ToHashedString(image_name), atlas_type});
     }
 
     // Register
