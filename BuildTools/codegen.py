@@ -1375,6 +1375,7 @@ def genGenericCode():
     
     globalLines.append('// Engine hooks')
     if not isHookEnabled('InitClientEngine'):
+        globalLines.append('class FOClient;')
         globalLines.append('void InitClientEngine(FOClient*) { /* Stub */ }')
     if not isHookEnabled('ConfigSectionParseHook'):
         globalLines.append('void ConfigSectionParseHook(const string&, string&, map<string, string>&) { /* Stub */ }')
