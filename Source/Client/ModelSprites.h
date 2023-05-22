@@ -40,6 +40,8 @@
 #include "DefaultSprites.h"
 #include "SpriteManager.h"
 
+class ModelSpriteFactory;
+
 class ModelSprite final : public AtlasSprite
 {
     friend class ModelSpriteFactory;
