@@ -110,6 +110,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     v0.PosY = pos.Bottom;
     v0.TexU = AtlasRect.Left;
     v0.TexV = AtlasRect.Bottom;
+    v0.EggTexU = 0.0f;
     v0.Color = std::get<0>(colors);
 
     auto& v1 = vbuf[vpos++];
@@ -117,6 +118,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     v1.PosY = pos.Top;
     v1.TexU = AtlasRect.Left;
     v1.TexV = AtlasRect.Top;
+    v1.EggTexU = 0.0f;
     v1.Color = std::get<0>(colors);
 
     auto& v2 = vbuf[vpos++];
@@ -124,6 +126,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     v2.PosY = pos.Top;
     v2.TexU = AtlasRect.Right;
     v2.TexV = AtlasRect.Top;
+    v2.EggTexU = 0.0f;
     v2.Color = std::get<1>(colors);
 
     auto& v3 = vbuf[vpos++];
@@ -131,6 +134,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple
     v3.PosY = pos.Bottom;
     v3.TexU = AtlasRect.Right;
     v3.TexV = AtlasRect.Bottom;
+    v3.EggTexU = 0.0f;
     v3.Color = std::get<1>(colors);
 
     return 6;

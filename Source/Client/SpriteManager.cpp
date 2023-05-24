@@ -315,22 +315,26 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         vbuf[pos].PosX = 0.0f;
         vbuf[pos].PosY = flipped_height ? height_to_f : 0.0f;
         vbuf[pos].TexU = 0.0f;
-        vbuf[pos++].TexV = 0.0f;
+        vbuf[pos].TexV = 0.0f;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = 0.0f;
         vbuf[pos].PosY = flipped_height ? 0.0f : height_to_f;
         vbuf[pos].TexU = 0.0f;
-        vbuf[pos++].TexV = 1.0f;
+        vbuf[pos].TexV = 1.0f;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = width_to_f;
         vbuf[pos].PosY = flipped_height ? 0.0f : height_to_f;
         vbuf[pos].TexU = 1.0f;
-        vbuf[pos++].TexV = 1.0f;
+        vbuf[pos].TexV = 1.0f;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = width_to_f;
         vbuf[pos].PosY = flipped_height ? height_to_f : 0.0f;
         vbuf[pos].TexU = 1.0f;
         vbuf[pos].TexV = 0.0f;
+        vbuf[pos].EggTexU = 0.0f;
     }
     else {
         const FRect rect_from = region_from != nullptr ? *region_from : IRect(0, 0, width_from_i, height_from_i);
@@ -342,22 +346,26 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
         vbuf[pos].PosX = rect_to.Left;
         vbuf[pos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
         vbuf[pos].TexU = rect_from.Left / width_from_f;
-        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
+        vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = rect_to.Left;
         vbuf[pos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
         vbuf[pos].TexU = rect_from.Left / width_from_f;
-        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
+        vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = rect_to.Right;
         vbuf[pos].PosY = flipped_height ? rect_to.Top : rect_to.Bottom;
         vbuf[pos].TexU = rect_from.Right / width_from_f;
-        vbuf[pos++].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
+        vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Top / height_from_f : rect_from.Bottom / height_from_f;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = rect_to.Right;
         vbuf[pos].PosY = flipped_height ? rect_to.Bottom : rect_to.Top;
         vbuf[pos].TexU = rect_from.Right / width_from_f;
         vbuf[pos].TexV = flipped_height ? 1.0f - rect_from.Bottom / height_from_f : rect_from.Top / height_from_f;
+        vbuf[pos].EggTexU = 0.0f;
     }
 
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.FlushRenderTarget;
@@ -736,24 +744,28 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, in
             vbuf[vpos].PosY = yy + local_height;
             vbuf[vpos].TexU = atlas_spr->AtlasRect.Left;
             vbuf[vpos].TexV = local_bottom;
+            vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = atlas_spr->AtlasRect.Left;
             vbuf[vpos].TexV = atlas_spr->AtlasRect.Top;
+            vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy;
             vbuf[vpos].TexU = local_right;
             vbuf[vpos].TexV = atlas_spr->AtlasRect.Top;
+            vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy + local_height;
             vbuf[vpos].TexU = local_right;
             vbuf[vpos].TexV = local_bottom;
+            vbuf[vpos].EggTexU = 0.0f;
             vbuf[vpos++].Color = color;
 
             if (_dipQueue.empty() || _dipQueue.back().MainTex != atlas_spr->GetBatchTex() || _dipQueue.back().SourceEffect != effect) {
@@ -986,14 +998,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         const auto wf = static_cast<float>(spr->Width) / zoom;
         const auto hf = static_cast<float>(spr->Height) / zoom;
 
-        const auto prev_vpos = _spritesDrawBuf->VertCount;
-
         const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color_l, color_r});
 
         // Setup egg
-        bool egg_added = false;
-
-        if (use_egg && CheckEggAppearence(mspr->HexX, mspr->HexY, mspr->EggAppearence)) {
+        if (use_egg && ind_count == 6 && CheckEggAppearence(mspr->HexX, mspr->HexY, mspr->EggAppearence)) {
             auto x1 = x - ex;
             auto y1 = y - ey;
             auto x2 = x1 + spr->Width;
@@ -1012,26 +1020,17 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                     const auto y2_f = _sprEgg->AtlasRect.Top + static_cast<float>(y2) / _sprEgg->Atlas->MainTex->SizeData[1];
 
                     auto& vbuf = _spritesDrawBuf->Vertices;
+                    const auto vpos = _spritesDrawBuf->VertCount;
 
-                    vbuf[prev_vpos + 0].EggTexU = x1_f;
-                    vbuf[prev_vpos + 0].EggTexV = y2_f;
-                    vbuf[prev_vpos + 1].EggTexU = x1_f;
-                    vbuf[prev_vpos + 1].EggTexV = y1_f;
-                    vbuf[prev_vpos + 2].EggTexU = x2_f;
-                    vbuf[prev_vpos + 2].EggTexV = y1_f;
-                    vbuf[prev_vpos + 3].EggTexU = x2_f;
-                    vbuf[prev_vpos + 3].EggTexV = y2_f;
-
-                    egg_added = true;
+                    vbuf[vpos - 4].EggTexU = x1_f;
+                    vbuf[vpos - 4].EggTexV = y2_f;
+                    vbuf[vpos - 3].EggTexU = x1_f;
+                    vbuf[vpos - 3].EggTexV = y1_f;
+                    vbuf[vpos - 2].EggTexU = x2_f;
+                    vbuf[vpos - 2].EggTexV = y1_f;
+                    vbuf[vpos - 1].EggTexU = x2_f;
+                    vbuf[vpos - 1].EggTexV = y2_f;
                 }
-            }
-        }
-
-        if (!egg_added) {
-            auto& vbuf = _spritesDrawBuf->Vertices;
-
-            for (size_t i = prev_vpos; i < _spritesDrawBuf->VertCount; i++) {
-                vbuf[i].EggTexU = 0.0f;
             }
         }
 
@@ -1356,22 +1355,26 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
         vbuf[pos].PosX = bordersf.Left;
         vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Left;
-        vbuf[pos++].TexV = sr.Bottom;
+        vbuf[pos].TexV = sr.Bottom;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = bordersf.Left;
         vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Left;
-        vbuf[pos++].TexV = sr.Top;
+        vbuf[pos].TexV = sr.Top;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = bordersf.Right;
         vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Top : bordersf.Top;
         vbuf[pos].TexU = sr.Right;
-        vbuf[pos++].TexV = sr.Top;
+        vbuf[pos].TexV = sr.Top;
+        vbuf[pos++].EggTexU = 0.0f;
 
         vbuf[pos].PosX = bordersf.Right;
         vbuf[pos].PosY = flipped_height ? mid_height - bordersf.Bottom : bordersf.Bottom;
         vbuf[pos].TexU = sr.Right;
         vbuf[pos].TexV = sr.Bottom;
+        vbuf[pos].EggTexU = 0.0f;
 
         _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
         _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
@@ -1405,24 +1408,28 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
     vbuf[pos].PosY = bordersf.Bottom;
     vbuf[pos].TexU = textureuv.Left;
     vbuf[pos].TexV = textureuv.Bottom;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = contour_color;
 
     vbuf[pos].PosX = bordersf.Left;
     vbuf[pos].PosY = bordersf.Top;
     vbuf[pos].TexU = textureuv.Left;
     vbuf[pos].TexV = textureuv.Top;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = contour_color;
 
     vbuf[pos].PosX = bordersf.Right;
     vbuf[pos].PosY = bordersf.Top;
     vbuf[pos].TexU = textureuv.Right;
     vbuf[pos].TexV = textureuv.Top;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos++].Color = contour_color;
 
     vbuf[pos].PosX = bordersf.Right;
     vbuf[pos].PosY = bordersf.Bottom;
     vbuf[pos].TexU = textureuv.Right;
     vbuf[pos].TexV = textureuv.Bottom;
+    vbuf[pos].EggTexU = 0.0f;
     vbuf[pos].Color = contour_color;
 
     auto&& contour_buf = contour_effect->ContourBuf = RenderEffect::ContourBuffer();
@@ -2528,6 +2535,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             v0.PosY = static_cast<float>(y + h);
             v0.TexU = x1;
             v0.TexV = y2;
+            v0.EggTexU = 0.0f;
             v0.Color = color;
 
             auto& v1 = vbuf[vpos++];
@@ -2535,6 +2543,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             v1.PosY = static_cast<float>(y);
             v1.TexU = x1;
             v1.TexV = y1;
+            v1.EggTexU = 0.0f;
             v1.Color = color;
 
             auto& v2 = vbuf[vpos++];
@@ -2542,6 +2551,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             v2.PosY = static_cast<float>(y);
             v2.TexU = x2;
             v2.TexV = y1;
+            v2.EggTexU = 0.0f;
             v2.Color = color;
 
             auto& v3 = vbuf[vpos++];
@@ -2549,6 +2559,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             v3.PosY = static_cast<float>(y + h);
             v3.TexU = x2;
             v3.TexV = y2;
+            v3.EggTexU = 0.0f;
             v3.Color = color;
 
             curx += l.XAdvance;
