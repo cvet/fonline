@@ -3058,22 +3058,28 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 {
     STACK_TRACE_ENTRY();
 
-    const auto* pmap = ProtoMngr.GetProtoMap(ToHashedString(map_name));
-    if (pmap == nullptr) {
-        AddMess("Map prototype not found");
-        return nullptr;
-    }
-
-    auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
-    auto* new_map = new_map_holder.get();
-    new_map->EnableMapperMode();
-
     const auto map_files = ContentFileSys.FilterFiles("fomap");
     const auto map_file = map_files.FindFileByName(map_name);
     if (!map_file) {
         AddMess("Map file not found");
         return nullptr;
     }
+
+    const auto map_file_str = map_file.GetStr();
+
+    auto map_data = ConfigFile(_str("{}.fomap", map_name), map_file_str, this, ConfigFileOption::ReadFirstSection);
+    if (!map_data.HasSection("ProtoMap")) {
+        throw MapLoaderException("Invalid map format", map_name);
+    }
+
+    auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+    if (!pmap->GetPropertiesForEdit().ApplyFromText(map_data.GetSection("ProtoMap"))) {
+        throw MapLoaderException("Invalid map header", map_name);
+    }
+
+    auto&& new_map_holder = std::make_unique<MapView>(this, ident_t {}, pmap);
+    auto* new_map = new_map_holder.get();
+    new_map->EnableMapperMode();
 
     try {
         new_map->LoadFromFile(map_name, map_file.GetStr());
