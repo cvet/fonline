@@ -1389,7 +1389,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} VS_DEBUGGER_WORKING_DIRECTORY ${FO_TESTS_OUTPUT})
         set_target_properties(${target} PROPERTIES OUTPUT_NAME ${target})
         set_target_properties(${target} PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=1")
-        target_link_libraries(${target} "AppHeadless" "BakerLib" "EditorLib" "MapperLib" "${FO_TESTING_LIBS}")
+        target_link_libraries(${target} "BakerLib" "EditorLib" "MapperLib" "${FO_TESTING_LIBS}")
 
         if(NOT FO_SINGLEPLAYER)
             target_sources(${target} PRIVATE
@@ -1407,6 +1407,8 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         if(FO_ANGELSCRIPT_SCRIPTING)
             target_link_libraries(${target} "ASCompilerLib")
         endif()
+
+        target_link_libraries(${target} "AppHeadless")
 
         CopyFbxSdkLib(${target})
         add_custom_target(Run${name}
