@@ -46,6 +46,7 @@ FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
 FIXED_SETTING(vector<int>, DummyIntVec);
 FIXED_SETTING(string, ImGuiColorStyle, "Light"); // Light, Classic, Dark
+FIXED_SETTING(uint, ScriptOverrunReportTime, 100);
 FIXED_SETTING(bool, DebugBuild, false);
 SETTING_GROUP_END();
 

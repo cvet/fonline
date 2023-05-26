@@ -433,7 +433,17 @@ struct SCRIPTING_CLASS::AngelScriptImpl
                 }
             });
 
+            const auto is_suspended_execution = ctx->GetState() == asEXECUTION_SUSPENDED;
+            const auto execution_start_time = Timer::CurTime();
+
             exec_result = ctx->Execute();
+
+            const auto execution_end_time = Timer::CurTime();
+            const auto execution_duration = time_duration_to_ms<uint>(execution_end_time - execution_start_time);
+
+            if (execution_duration >= GameEngine->Settings.ScriptOverrunReportTime) {
+                WriteLog("Script '{}' execution overrun ({} ms{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended" : "");
+            }
 
 #ifdef TRACY_ENABLE
             while (!ctx_ext.TracyExecutionCalls.empty()) {
