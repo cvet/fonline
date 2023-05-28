@@ -477,7 +477,9 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(path);
+    if (!path) {
+        return nullptr;
+    }
 
     if (const auto it = _copyableSpriteCache.find({path, atlas_type}); it != _copyableSpriteCache.end()) {
         return it->second->MakeCopy();
