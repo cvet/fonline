@@ -149,7 +149,6 @@ public:
     auto IfaceLoadRect(IRect& comp, string_view name) const -> bool;
     auto GetIfaceSpr(hstring fname) -> Sprite*;
     void MapperMainLoop();
-    auto GetProtoItemCurSpr(const ProtoItem* proto_item) -> const Sprite*;
     void ProcessMapperInput();
 
     void CurDraw();

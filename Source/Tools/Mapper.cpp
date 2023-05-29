@@ -292,7 +292,7 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
         return false;
     }
 
-    if (std::sscanf(res.c_str(), "%d%d%d%d", &comp[0], &comp[1], &comp[2], &comp[3]) != 4) {
+    if (auto istr = istringstream(res); !(istr >> comp[0] && istr >> comp[1] && istr >> comp[2] && istr >> comp[3])) {
         comp.Clear();
         WriteLog("Unable to parse signature '{}'", name);
         return false;
@@ -762,13 +762,6 @@ void FOMapper::MapperMainLoop()
     SprMngr.EndScene();
 }
 
-auto FOMapper::GetProtoItemCurSpr(const ProtoItem* proto_item) -> const Sprite*
-{
-    STACK_TRACE_ENTRY();
-
-    return GetIfaceSpr(proto_item->GetPicMap());
-}
-
 void FOMapper::IntDraw()
 {
     STACK_TRACE_ENTRY();
@@ -906,10 +899,12 @@ void FOMapper::IntDraw()
         for (; i < j; i++, x += w) {
             const auto* proto_item = (*CurItemProtos)[i];
             auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
-            SprMngr.DrawSpriteSize(GetProtoItemCurSpr(proto_item), x, y, w, h / 2, false, true, col);
+            if (const auto* spr = GetIfaceSpr(proto_item->GetPicMap()); spr != nullptr) {
+                SprMngr.DrawSpriteSize(spr, x, y, w, h / 2, false, true, col);
+            }
 
             if (proto_item->GetPicInv()) {
-                auto* spr = GetIfaceSpr(proto_item->GetPicInv());
+                const auto* spr = GetIfaceSpr(proto_item->GetPicInv());
                 if (spr != nullptr) {
                     SprMngr.DrawSpriteSize(spr, x, y + h / 2, w, h / 2, false, true, col);
                 }
@@ -2621,7 +2616,7 @@ void FOMapper::CurDraw()
                 hy -= hy % Settings.MapTileStep;
             }
 
-            const auto* spr = GetProtoItemCurSpr(proto_item);
+            const auto* spr = GetIfaceSpr(proto_item->GetPicMap());
             if (spr != nullptr) {
                 auto x = CurMap->GetField(hx, hy).ScrX - (spr->Width / 2) + spr->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
                 auto y = CurMap->GetField(hx, hy).ScrY - spr->Height + spr->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
