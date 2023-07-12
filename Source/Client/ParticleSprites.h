@@ -58,6 +58,7 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
     [[nodiscard]] auto GetParticle() -> ParticleSystem* { NON_CONST_METHOD_HINT_ONELINE() return _particle.get(); }
+    [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
     void Prewarm() override;
     void SetTime(float normalized_time) override;

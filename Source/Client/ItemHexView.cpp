@@ -87,7 +87,7 @@ void ItemHexView::Process()
         ProcessFading();
     }
 
-    if (_isEffect && !_isDynamicEffect && !IsFinishing()) {
+    if (_isEffect && !_isDynamicEffect && !IsFinishing() && !_anim->IsPlaying()) {
         Finish();
     }
 
@@ -111,17 +111,9 @@ void ItemHexView::Process()
             }
         }
 
-        auto dist = GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY);
-        if (dist > _effDist) {
-            dist = _effDist;
-        }
-
-        auto proc = GenericUtils::Percent(_effDist, dist);
-        if (proc > 99) {
-            proc = 99;
-        }
-
-        auto&& [step_hx, step_hy] = _effSteps[_effSteps.size() * proc / 100];
+        const auto dist = GenericUtils::DistSqrt(iround(_effCurX), iround(_effCurY), _effStartX, _effStartY);
+        const auto proc = GenericUtils::Percent(_effDist, dist);
+        auto&& [step_hx, step_hy] = _effSteps[_effSteps.size() * std::min(proc, 99u) / 100];
 
         if (GetHexX() != step_hx || GetHexY() != step_hy) {
             const auto hx = GetHexX();
@@ -138,39 +130,32 @@ void ItemHexView::Process()
     }
 }
 
-void ItemHexView::SetFlyEffect(uint16 to_hx, uint16 to_hy)
+void ItemHexView::SetEffect(uint16 to_hx, uint16 to_hy)
 {
     STACK_TRACE_ENTRY();
+
+    _isEffect = true;
+    _isDynamicEffect = false;
 
     const auto from_hx = GetHexX();
     const auto from_hy = GetHexY();
 
-    auto sx = 0.0f;
-    auto sy = 0.0f;
-    auto dist = 0u;
-
     if (from_hx != to_hx || from_hy != to_hy) {
+        _isDynamicEffect = true;
         _effSteps.emplace_back(from_hx, from_hy);
         _map->TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_effSteps, false);
         auto [x, y] = _engine->Geometry.GetHexInterval(from_hx, from_hy, to_hx, to_hy);
         y += GenericUtils::Random(5, 25); // Center of body
-        std::tie(sx, sy) = GenericUtils::GetStepsCoords(0, 0, x, y);
-        dist = GenericUtils::DistSqrt(0, 0, x, y);
+        std::tie(_effSx, _effSy) = GenericUtils::GetStepsCoords(0, 0, x, y);
+        _effDist = GenericUtils::DistSqrt(0, 0, x, y);
     }
 
-    _isEffect = true;
-    _effSx = sx;
-    _effSy = sy;
-    _isDynamicEffect = _effSx != 0.0f || _effSy != 0.0f;
-    _effDist = dist;
     _effStartX = ScrX;
     _effStartY = ScrY;
     _effCurX = static_cast<float>(ScrX);
     _effCurY = static_cast<float>(ScrY);
     _effDir = GeometryHelper::GetFarDir(from_hx, from_hy, to_hx, to_hy);
     _effUpdateLastTime = _engine->GameTime.GameplayTime();
-
-    RefreshAnim();
 }
 
 void ItemHexView::RefreshAlpha()
@@ -212,6 +197,9 @@ void ItemHexView::RefreshAnim()
         else {
             _anim->SetTime(0.0f);
         }
+    }
+    else if (_isEffect && !_isDynamicEffect) {
+        _anim->Play(hstring(), false, false);
     }
     else {
         _anim->PlayDefault();

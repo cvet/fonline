@@ -59,6 +59,7 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
     [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model.get(); }
+    [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
     void Prewarm() override;
     void SetTime(float normalized_time) override;

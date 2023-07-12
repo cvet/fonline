@@ -886,10 +886,9 @@ void MapView::RunEffectItem(hstring eff_pid, uint16 from_hx, uint16 from_hy, uin
 
     effect_item->SetHexX(from_hx);
     effect_item->SetHexY(from_hy);
+    effect_item->SetEffect(to_hx, to_hy);
 
     AddItemInternal(effect_item);
-
-    effect_item->SetFlyEffect(to_hx, to_hy);
 }
 
 auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*

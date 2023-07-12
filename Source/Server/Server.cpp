@@ -1040,16 +1040,16 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 {
     STACK_TRACE_ENTRY();
 
-    auto* cl_ = player->GetOwnedCritter();
+    auto* player_cr = player->GetOwnedCritter();
 
     [[maybe_unused]] const auto msg_len = buf.Read<uint>();
     const auto cmd = buf.Read<uint8>();
 
-    auto sstr = string(cl_ != nullptr ? "" : admin_panel);
+    auto sstr = string(player_cr != nullptr ? "" : admin_panel);
     auto allow_command = OnPlayerAllowCommand.Fire(player, sstr, cmd);
 
-    if (!allow_command && (cl_ == nullptr)) {
-        logcb("Command refused by script.");
+    if (!allow_command && (player_cr == nullptr)) {
+        logcb("Command refused by script");
         return;
     }
 
@@ -1062,8 +1062,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
 #define CHECK_ADMIN_PANEL() \
     do { \
-        if (!cl_) { \
-            logcb("Can't execute this command in admin panel."); \
+        if (player_cr == nullptr) { \
+            logcb("Can't execute this command in admin panel"); \
             return; \
         } \
     } while (0)
@@ -1079,19 +1079,19 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        string istr = _str("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", cl_->GetName(), cl_->GetId());
+        string istr = _str("|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ", player_cr->GetName(), player_cr->GetId());
         switch (player->Access) {
         case ACCESS_CLIENT:
-            istr += "|0xFFFF0000 Client|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Client|0xFF00FF00";
             break;
         case ACCESS_TESTER:
-            istr += "|0xFFFF0000 Tester|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Tester|0xFF00FF00";
             break;
         case ACCESS_MODER:
-            istr += "|0xFFFF0000 Moderator|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Moderator|0xFF00FF00";
             break;
         case ACCESS_ADMIN:
-            istr += "|0xFFFF0000 Administrator|0xFF00FF00 .";
+            istr += "|0xFFFF0000 Administrator|0xFF00FF00";
             break;
         default:
             break;
@@ -1141,10 +1141,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         const auto player_id = MakePlayerId(name);
         if (DbStorage.Valid("Players", player_id)) {
-            logcb(_str("Player id is {}.", player_id));
+            logcb(_str("Player id is {}", player_id));
         }
         else {
-            logcb("Client not found.");
+            logcb("Client not found");
         }
     } break;
     case CMD_MOVECRIT: {
@@ -1156,26 +1156,26 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* cr = CrMngr.GetCritter(cr_id);
         if (cr == nullptr) {
-            logcb("Critter not found.");
+            logcb("Critter not found");
             break;
         }
 
         auto* map = MapMngr.GetMap(cr->GetMapId());
         if (map == nullptr) {
-            logcb("Critter is on global.");
+            logcb("Critter is on global");
             break;
         }
 
         if (hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
-            logcb("Invalid hex position.");
+            logcb("Invalid hex position");
             break;
         }
 
         if (MapMngr.Transit(cr, map, hex_x, hex_y, cr->GetDir(), 3, ident_t {})) {
-            logcb("Critter move success.");
+            logcb("Critter move success");
         }
         else {
-            logcb("Critter move fail.");
+            logcb("Critter move fail");
         }
     } break;
     case CMD_DISCONCRIT: {
@@ -1183,45 +1183,45 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        if (cl_ != nullptr && cl_->GetId() == cr_id) {
+        if (player_cr != nullptr && player_cr->GetId() == cr_id) {
             logcb("To kick yourself type <~exit>");
             return;
         }
 
         auto* cr = CrMngr.GetCritter(cr_id);
         if (cr == nullptr) {
-            logcb("Critter not found.");
+            logcb("Critter not found");
             return;
         }
 
         if (!cr->IsOwnedByPlayer()) {
-            logcb("Founded critter is not owned by player.");
+            logcb("Founded critter is not owned by player");
             return;
         }
 
         if (auto* owner = cr->GetOwner()) {
-            owner->Send_Text(nullptr, "You are kicked from game.", SAY_NETMSG);
+            owner->Send_Text(nullptr, "You are kicked from game", SAY_NETMSG);
             owner->Connection->GracefulDisconnect();
-            logcb("Player disconnected.");
+            logcb("Player disconnected");
         }
         else {
-            logcb("Player is not in a game.");
+            logcb("Player is not in a game");
         }
     } break;
     case CMD_TOGLOBAL: {
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (!cl_->IsAlive()) {
-            logcb("To global fail, only life none.");
+        if (!player_cr->IsAlive()) {
+            logcb("To global fail, only life none");
             break;
         }
 
-        if (MapMngr.TransitToGlobal(cl_, ident_t {})) {
-            logcb("To global success.");
+        if (MapMngr.TransitToGlobal(player_cr, ident_t {})) {
+            logcb("To global success");
         }
         else {
-            logcb("To global fail.");
+            logcb("To global fail");
         }
     } break;
     case CMD_PROPERTY: {
@@ -1231,23 +1231,23 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        auto* cr = !cr_id ? cl_ : CrMngr.GetCritter(cr_id);
+        auto* cr = !cr_id ? player_cr : CrMngr.GetCritter(cr_id);
         if (cr != nullptr) {
             const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
             if (prop == nullptr) {
-                logcb("Property not found.");
+                logcb("Property not found");
                 return;
             }
             if (!prop->IsPlainData()) {
-                logcb("Property is not plain data type.");
+                logcb("Property is not plain data type");
                 return;
             }
 
             cr->SetValueAsInt(prop, property_value);
-            logcb("Done.");
+            logcb("Done");
         }
         else {
-            logcb("Critter not found.");
+            logcb("Critter not found");
         }
     } break;
     case CMD_GETACCESS: {
@@ -1278,12 +1278,12 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (!allow) {
-            logcb("Access denied.");
+            logcb("Access denied");
             break;
         }
 
         player->Access = static_cast<uint8>(wanted_access);
-        logcb("Access changed.");
+        logcb("Access changed");
     } break;
     case CMD_ADDITEM: {
         const auto hex_x = buf.Read<uint16>();
@@ -1294,17 +1294,17 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        auto* map = MapMngr.GetMap(cl_->GetMapId());
+        auto* map = MapMngr.GetMap(player_cr->GetMapId());
         if ((map == nullptr) || hex_x >= map->GetWidth() || hex_y >= map->GetHeight()) {
-            logcb("Wrong hexes or critter on global map.");
+            logcb("Wrong hexes or critter on global map");
             return;
         }
 
         if (CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr, true) == nullptr) {
-            logcb("Item(s) not added.");
+            logcb("Item(s) not added");
         }
         else {
-            logcb("Item(s) added.");
+            logcb("Item(s) added");
         }
     } break;
     case CMD_ADDITEM_SELF: {
@@ -1314,11 +1314,11 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        if (ItemMngr.AddItemCritter(cl_, pid, count) != nullptr) {
-            logcb("Item(s) added.");
+        if (ItemMngr.AddItemCritter(player_cr, pid, count) != nullptr) {
+            logcb("Item(s) added");
         }
         else {
-            logcb("Item(s) added fail.");
+            logcb("Item(s) added fail");
         }
     } break;
     case CMD_ADDNPC: {
@@ -1330,13 +1330,13 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        auto* map = MapMngr.GetMap(cl_->GetMapId());
+        auto* map = MapMngr.GetMap(player_cr->GetMapId());
         auto* npc = CrMngr.CreateCritter(pid, nullptr, map, hex_x, hex_y, dir, true);
         if (npc == nullptr) {
-            logcb("Npc not created.");
+            logcb("Npc not created");
         }
         else {
-            logcb("Npc created.");
+            logcb("Npc created");
         }
     } break;
     case CMD_ADDLOCATION: {
@@ -1348,31 +1348,35 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         auto* loc = MapMngr.CreateLocation(pid, wx, wy);
         if (loc == nullptr) {
-            logcb("Location not created.");
+            logcb("Location not created");
         }
         else {
-            logcb("Location created.");
+            logcb("Location created");
         }
     } break;
     case CMD_RUNSCRIPT: {
         const auto func_name = buf.Read<string>();
-        const auto param0 = buf.Read<int>();
-        const auto param1 = buf.Read<int>();
-        const auto param2 = buf.Read<int>();
+        const auto param0_str = buf.Read<string>();
+        const auto param1_str = buf.Read<string>();
+        const auto param2_str = buf.Read<string>();
 
         CHECK_ALLOW_COMMAND();
 
         if (func_name.empty()) {
-            logcb("Fail, length is zero.");
+            logcb("Fail, length is zero");
             break;
         }
 
-        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), static_cast<Critter*>(cl_), param0, param1, param2) || //
+        const auto param0 = ResolveGenericValue(param0_str);
+        const auto param1 = ResolveGenericValue(param1_str);
+        const auto param2 = ResolveGenericValue(param2_str);
+
+        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), player_cr, param0, param1, param2) || //
             ScriptSys->CallFunc<void, Player*, int, int, int>(ToHashedString(func_name), player, param0, param1, param2)) {
-            logcb("Run script success.");
+            logcb("Run script success");
         }
         else {
-            logcb("Run script failed.");
+            logcb("Run script failed");
         }
     } break;
     case CMD_REGENMAP: {
@@ -1380,25 +1384,25 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         // Check global
-        if (!cl_->GetMapId()) {
-            logcb("Only on local map.");
+        if (!player_cr->GetMapId()) {
+            logcb("Only on local map");
             return;
         }
 
         // Find map
-        auto* map = MapMngr.GetMap(cl_->GetMapId());
+        auto* map = MapMngr.GetMap(player_cr->GetMapId());
         if (map == nullptr) {
-            logcb("Map not found.");
+            logcb("Map not found");
             return;
         }
 
         // Regenerate
-        auto hx = cl_->GetHexX();
-        auto hy = cl_->GetHexY();
-        auto dir = cl_->GetDir();
+        auto hx = player_cr->GetHexX();
+        auto hy = player_cr->GetHexY();
+        auto dir = player_cr->GetDir();
         MapMngr.RegenerateMap(map);
-        MapMngr.Transit(cl_, map, hx, hy, dir, 5, ident_t {});
-        logcb("Regenerate map complete.");
+        MapMngr.Transit(player_cr, map, hx, hy, dir, 5, ident_t {});
+        logcb("Regenerate map complete");
     } break;
     case CMD_SETTIME: {
         const auto multiplier = buf.Read<int>();
@@ -1412,7 +1416,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
 
         SetGameTime(multiplier, year, month, day, hour, minute, second);
-        logcb("Time changed.");
+        logcb("Time changed");
     } break;
     case CMD_LOG: {
         char flags[16];
@@ -1426,19 +1430,19 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         auto it = std::find(_logClients.begin(), _logClients.end(), player);
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
-            logcb("Detached.");
+            logcb("Detached");
             player->Release();
             _logClients.erase(it);
         }
         else if (flags[0] == '+' && flags[1] == '\0' && it == _logClients.end()) // Attach current
         {
-            logcb("Attached.");
+            logcb("Attached");
             player->AddRef();
             _logClients.push_back(player);
         }
         else if (flags[0] == '-' && flags[1] == '-' && flags[2] == '\0') // Detach all
         {
-            logcb("Detached all.");
+            logcb("Detached all");
             for (auto* acc : _logClients) {
                 acc->Release();
             }
@@ -1450,7 +1454,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     default:
-        logcb("Unknown command.");
+        logcb("Unknown command");
         break;
     }
 

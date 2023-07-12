@@ -81,6 +81,7 @@ public:
     [[nodiscard]] auto GetSpr(uint num_frm) -> Sprite*;
     [[nodiscard]] auto GetDir(uint dir) const -> const SpriteSheet*;
     [[nodiscard]] auto GetDir(uint dir) -> SpriteSheet*;
+    [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
 
     auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
     void Prewarm() override;

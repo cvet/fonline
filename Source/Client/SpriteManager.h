@@ -106,6 +106,7 @@ public:
     [[nodiscard]] virtual auto IsDynamicDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(LINE_STR); }
+    [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
 
     virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t = 0;
     virtual void Prewarm() { }

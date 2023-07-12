@@ -59,7 +59,7 @@ public:
     void Process();
     void RefreshAlpha();
     void RefreshAnim();
-    void SetFlyEffect(uint16 to_hx, uint16 to_hy);
+    void SetEffect(uint16 to_hx, uint16 to_hy);
     void RefreshOffs();
 
 private:
