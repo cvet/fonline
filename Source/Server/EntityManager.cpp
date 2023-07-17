@@ -375,6 +375,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) -> Item*
         return {};
     }
 
+    item->SetIsStatic(false);
+
     if (item->GetIsRadio()) {
         _engine->ItemMngr.RegisterRadio(item);
     }

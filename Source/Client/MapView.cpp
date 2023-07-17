@@ -293,7 +293,8 @@ void MapView::LoadStaticData()
             item_props.RestoreAllData(props_data);
 
             auto* static_item = new ItemHexView(this, static_id, item_proto, &item_props);
-            RUNTIME_ASSERT(static_item->GetIsStatic());
+
+            static_item->SetIsStatic(true);
 
             AddItemInternal(static_item);
         }

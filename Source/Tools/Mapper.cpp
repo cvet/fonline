@@ -1106,7 +1106,7 @@ void FOMapper::ObjDraw()
         DrawLine("Type", "", "Critter", true, r);
     }
     else if (item != nullptr && !item->GetIsStatic()) {
-        DrawLine("Type", "", "Item", true, r);
+        DrawLine("Type", "", "Dynamic Item", true, r);
     }
     else if (item != nullptr && item->GetIsStatic()) {
         DrawLine("Type", "", "Static Item", true, r);
@@ -2386,9 +2386,6 @@ auto FOMapper::CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> I
         return nullptr;
     }
     if (owner == nullptr && (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight())) {
-        return nullptr;
-    }
-    if ((proto->GetIsStatic() || proto->GetIsTile()) && owner != nullptr) {
         return nullptr;
     }
 

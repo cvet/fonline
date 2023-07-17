@@ -1974,8 +1974,7 @@ void FOClient::Net_OnChosenAddItem()
     RUNTIME_ASSERT(proto_item);
 
     auto* item = chosen->AddInvItem(item_id, proto_item, slot, _tempPropertiesData);
-
-    item->AddRef();
+    auto self_destroy_fuse = RefCountHolder(item);
 
     if (CurMap != nullptr) {
         CurMap->RebuildFog();
@@ -1988,8 +1987,6 @@ void FOClient::Net_OnChosenAddItem()
     if (!_initialItemsSend) {
         OnItemInvIn.Fire(item);
     }
-
-    item->Release();
 }
 
 void FOClient::Net_OnChosenEraseItem()
@@ -2361,9 +2358,9 @@ void FOClient::Net_OnProperty(uint data_size)
 
     if (type == NetProperty::ChosenItem) {
         auto* item = dynamic_cast<ItemView*>(entity);
-        item->AddRef();
+        auto self_destroy_fuse = RefCountHolder(item);
+
         OnItemInvChanged.Fire(item, item);
-        item->Release();
     }
 }
 

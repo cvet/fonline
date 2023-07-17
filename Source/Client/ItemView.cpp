@@ -79,6 +79,7 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, c
 
     auto* item = new ItemView(_engine, id, proto, props);
 
+    item->SetIsStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
@@ -97,6 +98,11 @@ auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, c
     auto* item = AddInnerItem(id, proto, stack_id, nullptr);
 
     item->RestoreData(props_data);
+
+    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::ItemContainer);
+    RUNTIME_ASSERT(item->GetContainerId() == GetId());
+    RUNTIME_ASSERT(item->GetContainerStack() == stack_id);
 
     std::sort(_innerItems.begin(), _innerItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 

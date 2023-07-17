@@ -97,6 +97,7 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, con
 
     auto* item = new ItemView(_engine, id, proto, props);
 
+    item->SetIsStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
@@ -115,6 +116,11 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, con
     auto* item = AddInvItem(id, proto, slot, nullptr);
 
     item->RestoreData(props_data);
+
+    RUNTIME_ASSERT(!item->GetIsStatic());
+    RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::CritterInventory);
+    RUNTIME_ASSERT(item->GetCritterId() == GetId());
+    RUNTIME_ASSERT(item->GetCritterSlot() == slot);
 
     std::sort(_invItems.begin(), _invItems.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
 

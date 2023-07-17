@@ -727,7 +727,10 @@ void Baker::BakeAll()
                                     map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                     map_item_data_writer.WritePtr(props_data.data(), props_data.size());
 
-                                    if (proto->GetIsStatic() && !proto->GetIsHidden()) {
+                                    const auto is_static = props.GetValue<bool>(proto->GetPropertyIsStatic());
+                                    const auto is_hidden = props.GetValue<bool>(proto->GetPropertyIsHidden());
+
+                                    if (is_static && !is_hidden) {
                                         const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
                                         auto client_props = copy(client_proto->GetProperties());
 
