@@ -33,6 +33,7 @@
 
 #include "DefaultSprites.h"
 #include "GenericUtils.h"
+#include "GeometryHelper.h"
 
 AtlasSprite::AtlasSprite(SpriteManager& spr_mngr) :
     Sprite(spr_mngr)
@@ -43,7 +44,7 @@ AtlasSprite::~AtlasSprite()
 {
     STACK_TRACE_ENTRY();
 
-#if 0
+#if 0 // For debug purposes
     if constexpr (FO_DEBUG) {
         try {
             const auto rnd_color = COLOR_RGB(GenericUtils::Random(0, 255), GenericUtils::Random(0, 255), GenericUtils::Random(0, 255));

@@ -72,8 +72,11 @@ void CritterHexView::MarkAsDestroyed()
     CritterView::MarkAsDestroyed();
 
     Spr = nullptr;
+
+#if FO_ENABLE_3D
     _modelSpr = nullptr;
     _model = nullptr;
+#endif
 }
 
 void CritterHexView::SetupSprite(MapSprite* mspr)
