@@ -707,7 +707,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
         for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
             if (it->Id != 0 && keep_alive_particles.count(it->Id) == 0) {
-                _modelParticles.erase(it);
+                it = _modelParticles.erase(it);
             }
             else {
                 ++it;
