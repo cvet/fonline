@@ -1771,31 +1771,35 @@ void FOClient::Net_OnCritterSetAnims()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    if (CurMap == nullptr) {
-        BreakIntoDebugger();
-        return;
+    CritterView* cr;
+    CritterHexView* hex_cr;
+
+    if (CurMap != nullptr) {
+        hex_cr = CurMap->GetCritter(cr_id);
+        cr = hex_cr;
+    }
+    else {
+        cr = GetWorldmapCritter(cr_id);
+        hex_cr = nullptr;
     }
 
-    auto* cr = CurMap->GetCritter(cr_id);
-    if (cr == nullptr) {
-        return;
+    if (cr != nullptr) {
+        if (cond == CritterCondition::Alive) {
+            cr->SetAnim1Alive(anim1);
+            cr->SetAnim2Alive(anim2);
+        }
+        if (cond == CritterCondition::Knockout) {
+            cr->SetAnim1Knockout(anim1);
+            cr->SetAnim2Knockout(anim2);
+        }
+        if (cond == CritterCondition::Dead) {
+            cr->SetAnim1Dead(anim1);
+            cr->SetAnim2Dead(anim2);
+        }
     }
 
-    if (cond == CritterCondition::Alive) {
-        cr->SetAnim1Alive(anim1);
-        cr->SetAnim2Alive(anim2);
-    }
-    if (cond == CritterCondition::Knockout) {
-        cr->SetAnim1Knockout(anim1);
-        cr->SetAnim2Knockout(anim2);
-    }
-    if (cond == CritterCondition::Dead) {
-        cr->SetAnim1Dead(anim1);
-        cr->SetAnim2Dead(anim2);
-    }
-
-    if (!cr->IsAnim()) {
-        cr->AnimateStay();
+    if (hex_cr != nullptr && !hex_cr->IsAnim()) {
+        hex_cr->AnimateStay();
     }
 }
 

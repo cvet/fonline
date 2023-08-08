@@ -401,7 +401,7 @@ auto EntityManager::LoadEntityDoc(string_view collection_name, ident_t id, bool&
     auto doc = _engine->DbStorage.Get(collection_name, id);
 
     if (doc.empty()) {
-        WriteLog("{} doesn't contains entity {}", collection_name, id);
+        WriteLog("{} document {} not found", collection_name, id);
         is_error = true;
         return {};
     }
