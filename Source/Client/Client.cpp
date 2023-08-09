@@ -3706,7 +3706,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
         auto alpha = _str(args[1]).toInt();
 
-        GetMapChosen()->Alpha = static_cast<uint8>(alpha);
+        if (auto* chosen = GetMapChosen(); chosen != nullptr) {
+            chosen->Alpha = static_cast<uint8>(alpha);
+        }
     }
     else if (cmd == "SetScreenKeyboard" && args.size() == 2) {
         /*if (SDL_HasScreenKeyboardSupport())
