@@ -294,6 +294,9 @@ void FOServer::Start()
     // Scripting
     WriteLog("Init script modules");
 
+    extern void InitServerEngine(FOServer * server);
+    InitServerEngine(this);
+
     ScriptSys->InitModules();
 
     if (!OnInit.Fire()) {
