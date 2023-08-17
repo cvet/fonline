@@ -76,6 +76,7 @@ public:
     ProtoManager ProtoMngr;
     ScriptSystem* ScriptSys {};
     FileSystem Resources {};
+    unique_del_ptr<void> UserData {};
 
 protected:
     FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation);
