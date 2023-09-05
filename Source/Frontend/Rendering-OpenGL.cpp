@@ -1152,16 +1152,11 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             UBO_BIND_BUFFER(RandomValueBuf);
             UBO_BIND_BUFFER(ScriptValueBuf);
 #if FO_ENABLE_3D
+            UBO_BIND_BUFFER(ModelBuf);
             UBO_BIND_BUFFER(ModelTexBuf);
             UBO_BIND_BUFFER(ModelAnimBuf);
 #endif
 #undef UBO_BIND_BUFFER
-#if FO_ENABLE_3D
-            if (Ubo_ModelBuf != 0 && _posModelBuf[pass] != -1) {
-                const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float) * 16;
-                GL(glBindBufferRange(GL_UNIFORM_BUFFER, _posModelBuf[pass], Ubo_ModelBuf, 0, static_cast<GLsizeiptr>(bind_size)));
-            }
-#endif
         }
 
         GL(glUseProgram(Program[pass]));
