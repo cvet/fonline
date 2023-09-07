@@ -442,7 +442,9 @@ struct SCRIPTING_CLASS::AngelScriptImpl
             const auto execution_duration = time_duration_to_ms<uint>(execution_end_time - execution_start_time);
 
             if (execution_duration >= GameEngine->Settings.ScriptOverrunReportTime) {
+#if !FO_DEBUG
                 WriteLog("Script execution overrun: {} ({} ms{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended" : "");
+#endif
             }
 
 #ifdef TRACY_ENABLE
