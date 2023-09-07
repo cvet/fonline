@@ -746,13 +746,13 @@ OpenGL_Texture::~OpenGL_Texture()
 {
     STACK_TRACE_ENTRY();
 
-    if (DepthBuffer != 0u) {
+    if (DepthBuffer != 0) {
         glDeleteRenderbuffers(1, &DepthBuffer);
     }
-    if (TexId != 0u) {
+    if (TexId != 0) {
         glDeleteTextures(1, &TexId);
     }
-    if (FramebufObj != 0u) {
+    if (FramebufObj != 0) {
         glDeleteFramebuffers(1, &FramebufObj);
     }
 }
@@ -862,7 +862,7 @@ static void DisableVertAtribs(EffectUsage usage)
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
-        for (uint i = 0; i <= 7; i++) {
+        for (uint i = 0; i <= 8; i++) {
             GL(glDisableVertexAttribArray(i));
         }
 
@@ -888,12 +888,12 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
     STACK_TRACE_ENTRY();
 
-    glDeleteBuffers(1, &VertexBufObj);
-    glDeleteBuffers(1, &IndexBufObj);
-
     if (VertexArrObj != 0) {
         glDeleteVertexArrays(1, &VertexArrObj);
     }
+
+    glDeleteBuffers(1, &VertexBufObj);
+    glDeleteBuffers(1, &IndexBufObj);
 }
 
 void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size, size_t custom_indices_size)
@@ -1000,7 +1000,7 @@ OpenGL_Effect::~OpenGL_Effect()
     STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < _passCount; i++) {
-        if (Program[i] != 0u) {
+        if (Program[i] != 0) {
             glDeleteProgram(Program[i]);
         }
     }
@@ -1235,6 +1235,8 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     }
     else {
         DisableVertAtribs(Usage);
+        GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
 
     if (DisableBlending) {
