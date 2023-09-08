@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -87,8 +87,7 @@ SDL_IdleTimerDisabledChanged(void *userdata, const char *name, const char *oldVa
 
 #if !TARGET_OS_TV
 /* Load a launch image using the old UILaunchImageFile-era naming rules. */
-static UIImage *
-SDL_LoadLaunchImageNamed(NSString *name, int screenh)
+static UIImage *SDL_LoadLaunchImageNamed(NSString *name, int screenh)
 {
     UIInterfaceOrientation curorient = [UIApplication sharedApplication].statusBarOrientation;
     UIUserInterfaceIdiom idiom = [UIDevice currentDevice].userInterfaceIdiom;

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
   Copyright (C) 2022 Collabora Ltd.
 
   This software is provided 'as-is', without any express or implied
@@ -33,13 +33,11 @@ SDL_Sandbox SDL_DetectSandbox(void)
 
     /* For Snap, we check multiple variables because they might be set for
      * unrelated reasons. This is the same thing WebKitGTK does. */
-    if (SDL_getenv("SNAP") != NULL
-        && SDL_getenv("SNAP_NAME") != NULL
-        && SDL_getenv("SNAP_REVISION") != NULL) {
+    if (SDL_getenv("SNAP") != NULL && SDL_getenv("SNAP_NAME") != NULL && SDL_getenv("SNAP_REVISION") != NULL) {
         return SDL_SANDBOX_SNAP;
     }
 
-    if (access("/run/host/container-runtime", F_OK) == 0) {
+    if (access("/run/host/container-manager", F_OK) == 0) {
         return SDL_SANDBOX_UNKNOWN_CONTAINER;
     }
 

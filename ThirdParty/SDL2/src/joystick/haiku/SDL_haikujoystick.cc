@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -66,10 +66,9 @@ extern "C"
         /* Search for attached joysticks */
         nports = joystick.CountDevices();
         numjoysticks = 0;
-        SDL_memset(SDL_joyport, 0, (sizeof SDL_joyport));
-        SDL_memset(SDL_joyname, 0, (sizeof SDL_joyname));
-        for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i)
-        {
+        SDL_memset(SDL_joyport, 0, sizeof(SDL_joyport));
+        SDL_memset(SDL_joyname, 0, sizeof(SDL_joyname));
+        for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i) {
             if (joystick.GetDeviceName(i, name) == B_OK) {
                 if (joystick.Open(name) != B_ERROR) {
                       BString stick_name;

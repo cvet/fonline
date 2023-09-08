@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -182,53 +182,61 @@
 
 @end
 
-static void
-HandleModifiers(_THIS, unsigned short scancode, unsigned int modifierFlags)
+static bool IsModifierKeyPressed(unsigned int flags,
+                                 unsigned int target_mask,
+                                 unsigned int other_mask,
+                                 unsigned int either_mask)
 {
-    SDL_Scancode code = darwin_scancode_table[scancode];
+    bool target_pressed = (flags & target_mask) != 0;
+    bool other_pressed = (flags & other_mask) != 0;
+    bool either_pressed = (flags & either_mask) != 0;
 
-    const SDL_Scancode codes[] = { 
-        SDL_SCANCODE_LSHIFT, 
-        SDL_SCANCODE_LCTRL, 
-        SDL_SCANCODE_LALT, 
-        SDL_SCANCODE_LGUI, 
-        SDL_SCANCODE_RSHIFT, 
-        SDL_SCANCODE_RCTRL, 
-        SDL_SCANCODE_RALT, 
-        SDL_SCANCODE_RGUI, 
-        SDL_SCANCODE_LSHIFT, 
-        SDL_SCANCODE_LCTRL, 
-        SDL_SCANCODE_LALT, 
-        SDL_SCANCODE_LGUI, };
+    if (either_pressed != (target_pressed || other_pressed))
+        return either_pressed;
 
-    const unsigned int modifiers[] = { 
-        NX_DEVICELSHIFTKEYMASK, 
-        NX_DEVICELCTLKEYMASK, 
-        NX_DEVICELALTKEYMASK, 
-        NX_DEVICELCMDKEYMASK, 
-        NX_DEVICERSHIFTKEYMASK, 
-        NX_DEVICERCTLKEYMASK, 
-        NX_DEVICERALTKEYMASK, 
-        NX_DEVICERCMDKEYMASK,
-        NX_SHIFTMASK,
-        NX_CONTROLMASK, 
-        NX_ALTERNATEMASK,
-        NX_COMMANDMASK };
+    return target_pressed;
+}
 
-    for (int i = 0; i < 12; i++)
-    {
-        if (code == codes[i])
-        {
-            if (modifierFlags & modifiers[i])
-                SDL_SendKeyboardKey(SDL_PRESSED, code);
-            else
-                SDL_SendKeyboardKey(SDL_RELEASED, code);
-        }
+static void HandleModifiers(_THIS, SDL_Scancode code, unsigned int modifierFlags)
+{
+    bool pressed = false;
+
+    if (code == SDL_SCANCODE_LSHIFT) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICELSHIFTKEYMASK,
+                                       NX_DEVICERSHIFTKEYMASK, NX_SHIFTMASK);
+    } else if (code == SDL_SCANCODE_LCTRL) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICELCTLKEYMASK,
+                                       NX_DEVICERCTLKEYMASK, NX_CONTROLMASK);
+    } else if (code == SDL_SCANCODE_LALT) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICELALTKEYMASK,
+                                       NX_DEVICERALTKEYMASK, NX_ALTERNATEMASK);
+    } else if (code == SDL_SCANCODE_LGUI) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICELCMDKEYMASK,
+                                       NX_DEVICERCMDKEYMASK, NX_COMMANDMASK);
+    } else if (code == SDL_SCANCODE_RSHIFT) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICERSHIFTKEYMASK,
+                                       NX_DEVICELSHIFTKEYMASK, NX_SHIFTMASK);
+    } else if (code == SDL_SCANCODE_RCTRL) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICERCTLKEYMASK,
+                                       NX_DEVICELCTLKEYMASK, NX_CONTROLMASK);
+    } else if (code == SDL_SCANCODE_RALT) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICERALTKEYMASK,
+                                       NX_DEVICELALTKEYMASK, NX_ALTERNATEMASK);
+    } else if (code == SDL_SCANCODE_RGUI) {
+        pressed = IsModifierKeyPressed(modifierFlags, NX_DEVICERCMDKEYMASK,
+                                       NX_DEVICELCMDKEYMASK, NX_COMMANDMASK);
+    } else {
+        return;
+    }
+
+    if (pressed) {
+        SDL_SendKeyboardKey(SDL_PRESSED, code);
+    } else {
+        SDL_SendKeyboardKey(SDL_RELEASED, code);
     }
 }
 
-static void
-UpdateKeymap(SDL_VideoData *data, SDL_bool send_event)
+static void UpdateKeymap(SDL_VideoData *data, SDL_bool send_event)
 {
     TISInputSourceRef key_layout;
     const void *chr_data;
@@ -270,6 +278,17 @@ UpdateKeymap(SDL_VideoData *data, SDL_bool send_event)
                 continue;
             }
 
+            /*
+             * Swap the scancode for these two wrongly translated keys
+             * UCKeyTranslate() function does not do its job properly for ISO layout keyboards, where the key '@',
+             * which is located in the top left corner of the keyboard right under the Escape key, and the additional
+             * key '<', which is on the right of the Shift key, are inverted
+            */
+            if ((scancode == SDL_SCANCODE_NONUSBACKSLASH || scancode == SDL_SCANCODE_GRAVE) && KBGetLayoutType(LMGetKbdType()) == kKeyboardISO) {
+                /* see comments in scancodes_darwin.h */
+                scancode = (SDL_Scancode)((SDL_SCANCODE_NONUSBACKSLASH + SDL_SCANCODE_GRAVE) - scancode);
+            }
+
             dead_key_state = 0;
             err = UCKeyTranslate ((UCKeyboardLayout *) chr_data,
                                   i, kUCKeyActionDown,
@@ -292,8 +311,7 @@ cleanup:
     CFRelease(key_layout);
 }
 
-void
-Cocoa_InitKeyboard(_THIS)
+void Cocoa_InitKeyboard(_THIS)
 {
     SDL_VideoData *data = (__bridge SDL_VideoData *) _this->driverdata;
 
@@ -308,11 +326,10 @@ Cocoa_InitKeyboard(_THIS)
     SDL_SetScancodeName(SDL_SCANCODE_RGUI, "Right Command");
 
     data.modifierFlags = (unsigned int)[NSEvent modifierFlags];
-    SDL_ToggleModState(KMOD_CAPS, (data.modifierFlags & NSEventModifierFlagCapsLock) != 0);
+    SDL_ToggleModState(KMOD_CAPS, (data.modifierFlags & NSEventModifierFlagCapsLock) ? SDL_TRUE : SDL_FALSE);
 }
 
-void
-Cocoa_StartTextInput(_THIS)
+void Cocoa_StartTextInput(_THIS)
 { @autoreleasepool
 {
     NSView *parentView;
@@ -343,8 +360,7 @@ Cocoa_StartTextInput(_THIS)
     }
 }}
 
-void
-Cocoa_StopTextInput(_THIS)
+void Cocoa_StopTextInput(_THIS)
 { @autoreleasepool
 {
     SDL_VideoData *data = (__bridge SDL_VideoData *) _this->driverdata;
@@ -355,8 +371,7 @@ Cocoa_StopTextInput(_THIS)
     }
 }}
 
-void
-Cocoa_SetTextInputRect(_THIS, const SDL_Rect *rect)
+void Cocoa_SetTextInputRect(_THIS, const SDL_Rect *rect)
 {
     SDL_VideoData *data = (__bridge SDL_VideoData *) _this->driverdata;
 
@@ -368,8 +383,7 @@ Cocoa_SetTextInputRect(_THIS, const SDL_Rect *rect)
     [data.fieldEdit setInputRect:rect];
 }
 
-void
-Cocoa_HandleKeyEvent(_THIS, NSEvent *event)
+void Cocoa_HandleKeyEvent(_THIS, NSEvent *event)
 {
     unsigned short scancode;
     SDL_Scancode code;
@@ -384,7 +398,7 @@ Cocoa_HandleKeyEvent(_THIS, NSEvent *event)
 #endif
 
     if ((scancode == 10 || scancode == 50) && KBGetLayoutType(LMGetKbdType()) == kKeyboardISO) {
-        /* see comments in SDL_cocoakeys.h */
+        /* see comments in scancodes_darwin.h */
         scancode = 60 - scancode;
     }
 
@@ -424,15 +438,14 @@ Cocoa_HandleKeyEvent(_THIS, NSEvent *event)
         SDL_SendKeyboardKey(SDL_RELEASED, code);
         break;
     case NSEventTypeFlagsChanged:
-        HandleModifiers(_this, scancode, (unsigned int)[event modifierFlags]);	
+        HandleModifiers(_this, code, (unsigned int)[event modifierFlags]);
         break;
     default: /* just to avoid compiler warnings */
         break;
     }
 }
 
-void
-Cocoa_QuitKeyboard(_THIS)
+void Cocoa_QuitKeyboard(_THIS)
 {
 }
 
@@ -445,8 +458,7 @@ typedef enum {
 extern CGSConnection _CGSDefaultConnection(void);
 extern CGError CGSSetGlobalHotKeyOperatingMode(CGSConnection connection, CGSGlobalHotKeyOperatingMode mode);
 
-void
-Cocoa_SetWindowKeyboardGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
+void Cocoa_SetWindowKeyboardGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
 {
 #if SDL_MAC_NO_SANDBOX
     CGSSetGlobalHotKeyOperatingMode(_CGSDefaultConnection(), grabbed ? CGSGlobalHotKeyDisable : CGSGlobalHotKeyEnable);

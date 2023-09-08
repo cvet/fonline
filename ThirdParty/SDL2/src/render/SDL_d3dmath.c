@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -128,7 +128,6 @@ Float4X4 MatrixRotationZ(float r)
     m.v._33 = 1.0f;
     m.v._44 = 1.0f;
     return m;
-
 }
 
 #endif /* (SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12) && !SDL_RENDER_DISABLED */
