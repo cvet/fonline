@@ -10,7 +10,7 @@
 * glslang - [glslang-11.13.0/1.3.236.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
-* SDL2 - [SDL2-2.26.2](https://github.com/libsdl-org/SDL)
+* SDL2 - [SDL2-2.28.3](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
 * span - [span](https://github.com/tcbrindle/span)
 * SPIRV-Cross - [SPIRV-Cross-1.3.236.0](https://github.com/KhronosGroup/SPIRV-Cross)
