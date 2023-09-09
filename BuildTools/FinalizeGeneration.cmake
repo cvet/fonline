@@ -1158,7 +1158,7 @@ if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_EDITOR OR FO_BUILD_MAPPER OR F
     StatusMessage("+ CommonLib")
     add_library(CommonLib STATIC ${FO_COMMON_SOURCE})
     add_dependencies(CommonLib CodeGeneration)
-    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS} ${CMAKE_DL_LIBS})
+    target_link_libraries(CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
     list(APPEND FO_CORE_LIBS_GROUP "CommonLib")
 endif()
 
