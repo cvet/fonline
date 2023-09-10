@@ -297,6 +297,7 @@ add_compile_definitions(FO_HAVE_JSON=1)
 # Fmt
 StatusMessage("+ Fmt")
 set(FO_FMT_DIR "${FO_ENGINE_ROOT}/ThirdParty/fmt")
+set(FMT_INSTALL OFF CACHE BOOL "Forced by FOnline" FORCE)
 add_subdirectory("${FO_FMT_DIR}")
 include_directories("${FO_FMT_DIR}/include")
 list(APPEND FO_COMMON_LIBS "fmt")
