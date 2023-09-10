@@ -2,7 +2,7 @@
 // experimental/coro/partial.cpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2021-2022 Klemens D. Morgenstern
+// Copyright (c) 2021-2023 Klemens D. Morgenstern
 //                         (klemens dot morgenstern at gmx dot net)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -28,7 +28,7 @@ void partial()
 {
   asio::io_context ctx;
   bool ran = false;
-  auto p = detail::post_coroutine(ctx, [&]{ran = true;});
+  auto p = detail::post_coroutine(ctx, [&]{ran = true;}).handle;
   ASIO_CHECK(!ran);
   p.resume();
   ASIO_CHECK(!ran);

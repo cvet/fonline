@@ -46,6 +46,7 @@ noinst_PROGRAMS = \
 	operations/composed_6 \
 	operations/composed_7 \
 	operations/composed_8 \
+  parallel_group/ranged_wait_for_all \
   parallel_group/wait_for_all \
   parallel_group/wait_for_one \
   parallel_group/wait_for_one_error \
@@ -56,7 +57,8 @@ noinst_PROGRAMS = \
 	timeouts/blocking_token_tcp_client \
 	timeouts/blocking_udp_client \
 	timeouts/server \
-	timers/time_t_timer
+	timers/time_t_timer \
+	type_erasure/type_erasure
 
 if !WINDOWS_TARGET
 noinst_PROGRAMS += \
@@ -132,6 +134,7 @@ operations_composed_5_SOURCES = operations/composed_5.cpp
 operations_composed_6_SOURCES = operations/composed_6.cpp
 operations_composed_7_SOURCES = operations/composed_7.cpp
 operations_composed_8_SOURCES = operations/composed_8.cpp
+parallel_group_ranged_wait_for_all_SOURCES = parallel_group/ranged_wait_for_all.cpp
 parallel_group_wait_for_all_SOURCES = parallel_group/wait_for_all.cpp
 parallel_group_wait_for_one_SOURCES = parallel_group/wait_for_one.cpp
 parallel_group_wait_for_one_error_SOURCES = parallel_group/wait_for_one_error.cpp
@@ -143,6 +146,7 @@ timeouts_blocking_token_tcp_client_SOURCES = timeouts/blocking_token_tcp_client.
 timeouts_blocking_udp_client_SOURCES = timeouts/blocking_udp_client.cpp
 timeouts_server_SOURCES = timeouts/server.cpp
 timers_time_t_timer_SOURCES = timers/time_t_timer.cpp
+type_erasure_type_erasure_SOURCES = type_erasure/main.cpp type_erasure/stdin_line_reader.cpp type_erasure/sleep.cpp
 
 if !WINDOWS_TARGET
 fork_daemon_SOURCES = fork/daemon.cpp
@@ -181,7 +185,10 @@ EXTRA_DIST = \
 	ssl/README \
 	ssl/ca.pem \
 	ssl/server.pem \
-	ssl/dh4096.pem
+	ssl/dh4096.pem \
+	type_erasure/line_reader.hpp \
+	type_erasure/stdin_line_reader.hpp \
+	type_erasure/sleep.hpp
 
 
 MAINTAINERCLEANFILES = \

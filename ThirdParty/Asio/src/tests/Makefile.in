@@ -94,9 +94,10 @@ host_triplet = @host@
 check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/associated_allocator$(EXEEXT) \
 	unit/associated_cancellation_slot$(EXEEXT) \
-	unit/associated_executor$(EXEEXT) unit/associator$(EXEEXT) \
-	unit/async_result$(EXEEXT) unit/awaitable$(EXEEXT) \
-	unit/basic_datagram_socket$(EXEEXT) \
+	unit/associated_executor$(EXEEXT) \
+	unit/associated_immediate_executor$(EXEEXT) \
+	unit/associator$(EXEEXT) unit/async_result$(EXEEXT) \
+	unit/awaitable$(EXEEXT) unit/basic_datagram_socket$(EXEEXT) \
 	unit/basic_deadline_timer$(EXEEXT) unit/basic_file$(EXEEXT) \
 	unit/basic_random_access_file$(EXEEXT) \
 	unit/basic_raw_socket$(EXEEXT) \
@@ -110,7 +111,9 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/basic_waitable_timer$(EXEEXT) \
 	unit/basic_writable_pipe$(EXEEXT) unit/bind_allocator$(EXEEXT) \
 	unit/bind_cancellation_slot$(EXEEXT) \
-	unit/bind_executor$(EXEEXT) unit/buffered_read_stream$(EXEEXT) \
+	unit/bind_executor$(EXEEXT) \
+	unit/bind_immediate_executor$(EXEEXT) \
+	unit/buffered_read_stream$(EXEEXT) \
 	unit/buffered_stream$(EXEEXT) \
 	unit/buffered_write_stream$(EXEEXT) unit/buffer$(EXEEXT) \
 	unit/buffer_registration$(EXEEXT) \
@@ -120,10 +123,11 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/cancellation_type$(EXEEXT) unit/co_spawn$(EXEEXT) \
 	unit/completion_condition$(EXEEXT) unit/compose$(EXEEXT) \
 	unit/connect$(EXEEXT) unit/connect_pipe$(EXEEXT) \
-	unit/coroutine$(EXEEXT) unit/deadline_timer$(EXEEXT) \
-	unit/defer$(EXEEXT) unit/deferred$(EXEEXT) \
-	unit/detached$(EXEEXT) unit/dispatch$(EXEEXT) \
-	unit/error$(EXEEXT) unit/execution/any_executor$(EXEEXT) \
+	unit/consign$(EXEEXT) unit/coroutine$(EXEEXT) \
+	unit/deadline_timer$(EXEEXT) unit/defer$(EXEEXT) \
+	unit/deferred$(EXEEXT) unit/detached$(EXEEXT) \
+	unit/dispatch$(EXEEXT) unit/error$(EXEEXT) \
+	unit/execution/any_executor$(EXEEXT) \
 	unit/execution/blocking$(EXEEXT) \
 	unit/execution/blocking_adaptation$(EXEEXT) \
 	unit/execution/bulk_execute$(EXEEXT) \
@@ -175,6 +179,7 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/local/basic_endpoint$(EXEEXT) \
 	unit/local/connect_pair$(EXEEXT) \
 	unit/local/datagram_protocol$(EXEEXT) \
+	unit/local/seq_packet_protocol$(EXEEXT) \
 	unit/local/stream_protocol$(EXEEXT) \
 	unit/packaged_task$(EXEEXT) unit/placeholders$(EXEEXT) \
 	unit/posix/basic_descriptor$(EXEEXT) \
@@ -188,19 +193,19 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/recycling_allocator$(EXEEXT) unit/redirect_error$(EXEEXT) \
 	unit/registered_buffer$(EXEEXT) unit/serial_port$(EXEEXT) \
 	unit/serial_port_base$(EXEEXT) unit/signal_set$(EXEEXT) \
-	unit/socket_base$(EXEEXT) unit/static_thread_pool$(EXEEXT) \
-	unit/steady_timer$(EXEEXT) unit/strand$(EXEEXT) \
-	unit/stream_file$(EXEEXT) unit/streambuf$(EXEEXT) \
-	unit/system_context$(EXEEXT) unit/system_executor$(EXEEXT) \
-	unit/system_timer$(EXEEXT) unit/this_coro$(EXEEXT) \
-	unit/thread$(EXEEXT) unit/thread_pool$(EXEEXT) \
-	unit/time_traits$(EXEEXT) unit/ts/buffer$(EXEEXT) \
-	unit/ts/executor$(EXEEXT) unit/ts/internet$(EXEEXT) \
-	unit/ts/io_context$(EXEEXT) unit/ts/net$(EXEEXT) \
-	unit/ts/netfwd$(EXEEXT) unit/ts/socket$(EXEEXT) \
-	unit/ts/timer$(EXEEXT) unit/use_awaitable$(EXEEXT) \
-	unit/use_future$(EXEEXT) unit/uses_executor$(EXEEXT) \
-	unit/wait_traits$(EXEEXT) \
+	unit/signal_set_base$(EXEEXT) unit/socket_base$(EXEEXT) \
+	unit/static_thread_pool$(EXEEXT) unit/steady_timer$(EXEEXT) \
+	unit/strand$(EXEEXT) unit/stream_file$(EXEEXT) \
+	unit/streambuf$(EXEEXT) unit/system_context$(EXEEXT) \
+	unit/system_executor$(EXEEXT) unit/system_timer$(EXEEXT) \
+	unit/this_coro$(EXEEXT) unit/thread$(EXEEXT) \
+	unit/thread_pool$(EXEEXT) unit/time_traits$(EXEEXT) \
+	unit/ts/buffer$(EXEEXT) unit/ts/executor$(EXEEXT) \
+	unit/ts/internet$(EXEEXT) unit/ts/io_context$(EXEEXT) \
+	unit/ts/net$(EXEEXT) unit/ts/netfwd$(EXEEXT) \
+	unit/ts/socket$(EXEEXT) unit/ts/timer$(EXEEXT) \
+	unit/use_awaitable$(EXEEXT) unit/use_future$(EXEEXT) \
+	unit/uses_executor$(EXEEXT) unit/wait_traits$(EXEEXT) \
 	unit/windows/basic_object_handle$(EXEEXT) \
 	unit/windows/basic_overlapped_handle$(EXEEXT) \
 	unit/windows/basic_random_access_handle$(EXEEXT) \
@@ -219,18 +224,20 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 @STANDALONE_FALSE@	latency/udp_server$(EXEEXT) \
 @STANDALONE_FALSE@	performance/client$(EXEEXT) \
 @STANDALONE_FALSE@	performance/server$(EXEEXT)
-@HAVE_CXX17_TRUE@am__append_2 = \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_channel \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_concurrent_channel \
-@HAVE_CXX17_TRUE@	unit/experimental/channel \
-@HAVE_CXX17_TRUE@	unit/experimental/channel_traits \
-@HAVE_CXX17_TRUE@	unit/experimental/concurrent_channel
+@HAVE_CXX11_TRUE@am__append_2 = \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_channel \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_concurrent_channel \
+@HAVE_CXX11_TRUE@	unit/experimental/channel \
+@HAVE_CXX11_TRUE@	unit/experimental/channel_traits \
+@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel
 
 @HAVE_CXX20_TRUE@am__append_3 = \
 @HAVE_CXX20_TRUE@	unit/experimental/promise
 
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@am__append_4 = \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/awaitable_operators \
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/co_composed \
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/allocator \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/cancel \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/co_spawn \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/exception \
@@ -252,9 +259,10 @@ check_PROGRAMS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/associated_allocator$(EXEEXT) \
 	unit/associated_cancellation_slot$(EXEEXT) \
-	unit/associated_executor$(EXEEXT) unit/associator$(EXEEXT) \
-	unit/async_result$(EXEEXT) unit/awaitable$(EXEEXT) \
-	unit/basic_datagram_socket$(EXEEXT) \
+	unit/associated_executor$(EXEEXT) \
+	unit/associated_immediate_executor$(EXEEXT) \
+	unit/associator$(EXEEXT) unit/async_result$(EXEEXT) \
+	unit/awaitable$(EXEEXT) unit/basic_datagram_socket$(EXEEXT) \
 	unit/basic_deadline_timer$(EXEEXT) unit/basic_file$(EXEEXT) \
 	unit/basic_random_access_file$(EXEEXT) \
 	unit/basic_raw_socket$(EXEEXT) \
@@ -268,7 +276,9 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/basic_waitable_timer$(EXEEXT) \
 	unit/basic_writable_pipe$(EXEEXT) unit/bind_allocator$(EXEEXT) \
 	unit/bind_cancellation_slot$(EXEEXT) \
-	unit/bind_executor$(EXEEXT) unit/buffered_read_stream$(EXEEXT) \
+	unit/bind_executor$(EXEEXT) \
+	unit/bind_immediate_executor$(EXEEXT) \
+	unit/buffered_read_stream$(EXEEXT) \
 	unit/buffered_stream$(EXEEXT) \
 	unit/buffered_write_stream$(EXEEXT) unit/buffer$(EXEEXT) \
 	unit/buffer_registration$(EXEEXT) \
@@ -278,10 +288,10 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/cancellation_type$(EXEEXT) unit/co_spawn$(EXEEXT) \
 	unit/completion_condition$(EXEEXT) unit/compose$(EXEEXT) \
 	unit/connect$(EXEEXT) unit/connect_pipe$(EXEEXT) \
-	unit/deadline_timer$(EXEEXT) unit/defer$(EXEEXT) \
-	unit/deferred$(EXEEXT) unit/detached$(EXEEXT) \
-	unit/dispatch$(EXEEXT) unit/error$(EXEEXT) \
-	unit/execution/any_executor$(EXEEXT) \
+	unit/consign$(EXEEXT) unit/deadline_timer$(EXEEXT) \
+	unit/defer$(EXEEXT) unit/deferred$(EXEEXT) \
+	unit/detached$(EXEEXT) unit/dispatch$(EXEEXT) \
+	unit/error$(EXEEXT) unit/execution/any_executor$(EXEEXT) \
 	unit/execution/blocking$(EXEEXT) \
 	unit/execution/blocking_adaptation$(EXEEXT) \
 	unit/execution/bulk_execute$(EXEEXT) \
@@ -328,6 +338,7 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/local/basic_endpoint$(EXEEXT) \
 	unit/local/connect_pair$(EXEEXT) \
 	unit/local/datagram_protocol$(EXEEXT) \
+	unit/local/seq_packet_protocol$(EXEEXT) \
 	unit/local/stream_protocol$(EXEEXT) \
 	unit/packaged_task$(EXEEXT) unit/placeholders$(EXEEXT) \
 	unit/posix/basic_descriptor$(EXEEXT) \
@@ -341,19 +352,19 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/recycling_allocator$(EXEEXT) unit/redirect_error$(EXEEXT) \
 	unit/registered_buffer$(EXEEXT) unit/serial_port$(EXEEXT) \
 	unit/serial_port_base$(EXEEXT) unit/signal_set$(EXEEXT) \
-	unit/socket_base$(EXEEXT) unit/static_thread_pool$(EXEEXT) \
-	unit/steady_timer$(EXEEXT) unit/strand$(EXEEXT) \
-	unit/stream_file$(EXEEXT) unit/streambuf$(EXEEXT) \
-	unit/system_context$(EXEEXT) unit/system_executor$(EXEEXT) \
-	unit/system_timer$(EXEEXT) unit/this_coro$(EXEEXT) \
-	unit/thread$(EXEEXT) unit/thread_pool$(EXEEXT) \
-	unit/time_traits$(EXEEXT) unit/ts/buffer$(EXEEXT) \
-	unit/ts/executor$(EXEEXT) unit/ts/internet$(EXEEXT) \
-	unit/ts/io_context$(EXEEXT) unit/ts/net$(EXEEXT) \
-	unit/ts/netfwd$(EXEEXT) unit/ts/socket$(EXEEXT) \
-	unit/ts/timer$(EXEEXT) unit/use_awaitable$(EXEEXT) \
-	unit/use_future$(EXEEXT) unit/uses_executor$(EXEEXT) \
-	unit/wait_traits$(EXEEXT) \
+	unit/signal_set_base$(EXEEXT) unit/socket_base$(EXEEXT) \
+	unit/static_thread_pool$(EXEEXT) unit/steady_timer$(EXEEXT) \
+	unit/strand$(EXEEXT) unit/stream_file$(EXEEXT) \
+	unit/streambuf$(EXEEXT) unit/system_context$(EXEEXT) \
+	unit/system_executor$(EXEEXT) unit/system_timer$(EXEEXT) \
+	unit/this_coro$(EXEEXT) unit/thread$(EXEEXT) \
+	unit/thread_pool$(EXEEXT) unit/time_traits$(EXEEXT) \
+	unit/ts/buffer$(EXEEXT) unit/ts/executor$(EXEEXT) \
+	unit/ts/internet$(EXEEXT) unit/ts/io_context$(EXEEXT) \
+	unit/ts/net$(EXEEXT) unit/ts/netfwd$(EXEEXT) \
+	unit/ts/socket$(EXEEXT) unit/ts/timer$(EXEEXT) \
+	unit/use_awaitable$(EXEEXT) unit/use_future$(EXEEXT) \
+	unit/uses_executor$(EXEEXT) unit/wait_traits$(EXEEXT) \
 	unit/windows/basic_object_handle$(EXEEXT) \
 	unit/windows/basic_overlapped_handle$(EXEEXT) \
 	unit/windows/basic_random_access_handle$(EXEEXT) \
@@ -366,18 +377,20 @@ TESTS = unit/append$(EXEEXT) unit/as_tuple$(EXEEXT) \
 	unit/writable_pipe$(EXEEXT) unit/write$(EXEEXT) \
 	unit/write_at$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2) \
 	$(am__EXEEXT_3) $(am__EXEEXT_4)
-@HAVE_CXX17_TRUE@am__append_6 = \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_channel \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_concurrent_channel \
-@HAVE_CXX17_TRUE@	unit/experimental/channel \
-@HAVE_CXX17_TRUE@	unit/experimental/channel_traits \
-@HAVE_CXX17_TRUE@	unit/experimental/concurrent_channel
+@HAVE_CXX11_TRUE@am__append_6 = \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_channel \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_concurrent_channel \
+@HAVE_CXX11_TRUE@	unit/experimental/channel \
+@HAVE_CXX11_TRUE@	unit/experimental/channel_traits \
+@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel
 
 @HAVE_CXX20_TRUE@am__append_7 = \
 @HAVE_CXX20_TRUE@	unit/experimental/promise
 
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@am__append_8 = \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/awaitable_operators \
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/co_composed \
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/allocator \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/cancel \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/co_spawn \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/exception \
@@ -406,14 +419,16 @@ DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@HAVE_CXX17_TRUE@am__EXEEXT_1 =  \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_channel$(EXEEXT) \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_concurrent_channel$(EXEEXT) \
-@HAVE_CXX17_TRUE@	unit/experimental/channel$(EXEEXT) \
-@HAVE_CXX17_TRUE@	unit/experimental/channel_traits$(EXEEXT) \
-@HAVE_CXX17_TRUE@	unit/experimental/concurrent_channel$(EXEEXT)
+@HAVE_CXX11_TRUE@am__EXEEXT_1 =  \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_channel$(EXEEXT) \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_concurrent_channel$(EXEEXT) \
+@HAVE_CXX11_TRUE@	unit/experimental/channel$(EXEEXT) \
+@HAVE_CXX11_TRUE@	unit/experimental/channel_traits$(EXEEXT) \
+@HAVE_CXX11_TRUE@	unit/experimental/concurrent_channel$(EXEEXT)
 @HAVE_CXX20_TRUE@am__EXEEXT_2 = unit/experimental/promise$(EXEEXT)
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@am__EXEEXT_3 = unit/experimental/awaitable_operators$(EXEEXT) \
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/co_composed$(EXEEXT) \
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/allocator$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/cancel$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/co_spawn$(EXEEXT) \
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@	unit/experimental/coro/exception$(EXEEXT) \
@@ -515,6 +530,13 @@ unit_associated_executor_OBJECTS =  \
 	$(am_unit_associated_executor_OBJECTS)
 unit_associated_executor_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_associated_executor_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_unit_associated_immediate_executor_OBJECTS =  \
+	unit/associated_immediate_executor.$(OBJEXT)
+unit_associated_immediate_executor_OBJECTS =  \
+	$(am_unit_associated_immediate_executor_OBJECTS)
+unit_associated_immediate_executor_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_associated_immediate_executor_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_associator_OBJECTS = unit/associator.$(OBJEXT)
 unit_associator_OBJECTS = $(am_unit_associator_OBJECTS)
@@ -641,6 +663,13 @@ unit_bind_executor_OBJECTS = $(am_unit_bind_executor_OBJECTS)
 unit_bind_executor_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_bind_executor_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_unit_bind_immediate_executor_OBJECTS =  \
+	unit/bind_immediate_executor.$(OBJEXT)
+unit_bind_immediate_executor_OBJECTS =  \
+	$(am_unit_bind_immediate_executor_OBJECTS)
+unit_bind_immediate_executor_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_bind_immediate_executor_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_buffer_OBJECTS = unit/buffer.$(OBJEXT)
 unit_buffer_OBJECTS = $(am_unit_buffer_OBJECTS)
 unit_buffer_LDADD = $(LDADD)
@@ -718,6 +747,10 @@ am_unit_connect_pipe_OBJECTS = unit/connect_pipe.$(OBJEXT)
 unit_connect_pipe_OBJECTS = $(am_unit_connect_pipe_OBJECTS)
 unit_connect_pipe_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_connect_pipe_DEPENDENCIES = libasio.a
+am_unit_consign_OBJECTS = unit/consign.$(OBJEXT)
+unit_consign_OBJECTS = $(am_unit_consign_OBJECTS)
+unit_consign_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_consign_DEPENDENCIES = libasio.a
 am_unit_coroutine_OBJECTS = unit/coroutine.$(OBJEXT)
 unit_coroutine_OBJECTS = $(am_unit_coroutine_OBJECTS)
 unit_coroutine_LDADD = $(LDADD)
@@ -929,8 +962,8 @@ unit_experimental_awaitable_operators_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_basic_channel_SOURCES_DIST =  \
 	unit/experimental/basic_channel.cpp
-@HAVE_CXX17_TRUE@am_unit_experimental_basic_channel_OBJECTS =  \
-@HAVE_CXX17_TRUE@	unit/experimental/basic_channel.$(OBJEXT)
+@HAVE_CXX11_TRUE@am_unit_experimental_basic_channel_OBJECTS =  \
+@HAVE_CXX11_TRUE@	unit/experimental/basic_channel.$(OBJEXT)
 unit_experimental_basic_channel_OBJECTS =  \
 	$(am_unit_experimental_basic_channel_OBJECTS)
 unit_experimental_basic_channel_LDADD = $(LDADD)
@@ -938,7 +971,7 @@ unit_experimental_basic_channel_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_basic_concurrent_channel_SOURCES_DIST =  \
 	unit/experimental/basic_concurrent_channel.cpp
-@HAVE_CXX17_TRUE@am_unit_experimental_basic_concurrent_channel_OBJECTS = unit/experimental/basic_concurrent_channel.$(OBJEXT)
+@HAVE_CXX11_TRUE@am_unit_experimental_basic_concurrent_channel_OBJECTS = unit/experimental/basic_concurrent_channel.$(OBJEXT)
 unit_experimental_basic_concurrent_channel_OBJECTS =  \
 	$(am_unit_experimental_basic_concurrent_channel_OBJECTS)
 unit_experimental_basic_concurrent_channel_LDADD = $(LDADD)
@@ -946,8 +979,8 @@ unit_experimental_basic_concurrent_channel_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_channel_SOURCES_DIST =  \
 	unit/experimental/channel.cpp
-@HAVE_CXX17_TRUE@am_unit_experimental_channel_OBJECTS =  \
-@HAVE_CXX17_TRUE@	unit/experimental/channel.$(OBJEXT)
+@HAVE_CXX11_TRUE@am_unit_experimental_channel_OBJECTS =  \
+@HAVE_CXX11_TRUE@	unit/experimental/channel.$(OBJEXT)
 unit_experimental_channel_OBJECTS =  \
 	$(am_unit_experimental_channel_OBJECTS)
 unit_experimental_channel_LDADD = $(LDADD)
@@ -955,20 +988,36 @@ unit_experimental_channel_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_channel_traits_SOURCES_DIST =  \
 	unit/experimental/channel_traits.cpp
-@HAVE_CXX17_TRUE@am_unit_experimental_channel_traits_OBJECTS =  \
-@HAVE_CXX17_TRUE@	unit/experimental/channel_traits.$(OBJEXT)
+@HAVE_CXX11_TRUE@am_unit_experimental_channel_traits_OBJECTS =  \
+@HAVE_CXX11_TRUE@	unit/experimental/channel_traits.$(OBJEXT)
 unit_experimental_channel_traits_OBJECTS =  \
 	$(am_unit_experimental_channel_traits_OBJECTS)
 unit_experimental_channel_traits_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_experimental_channel_traits_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am__unit_experimental_co_composed_SOURCES_DIST =  \
+	unit/experimental/co_composed.cpp
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@am_unit_experimental_co_composed_OBJECTS = unit/experimental/co_composed.$(OBJEXT)
+unit_experimental_co_composed_OBJECTS =  \
+	$(am_unit_experimental_co_composed_OBJECTS)
+unit_experimental_co_composed_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_experimental_co_composed_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_concurrent_channel_SOURCES_DIST =  \
 	unit/experimental/concurrent_channel.cpp
-@HAVE_CXX17_TRUE@am_unit_experimental_concurrent_channel_OBJECTS = unit/experimental/concurrent_channel.$(OBJEXT)
+@HAVE_CXX11_TRUE@am_unit_experimental_concurrent_channel_OBJECTS = unit/experimental/concurrent_channel.$(OBJEXT)
 unit_experimental_concurrent_channel_OBJECTS =  \
 	$(am_unit_experimental_concurrent_channel_OBJECTS)
 unit_experimental_concurrent_channel_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_experimental_concurrent_channel_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am__unit_experimental_coro_allocator_SOURCES_DIST =  \
+	unit/experimental/coro/allocator.cpp
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@am_unit_experimental_coro_allocator_OBJECTS = unit/experimental/coro/allocator.$(OBJEXT)
+unit_experimental_coro_allocator_OBJECTS =  \
+	$(am_unit_experimental_coro_allocator_OBJECTS)
+unit_experimental_coro_allocator_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_experimental_coro_allocator_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am__unit_experimental_coro_cancel_SOURCES_DIST =  \
 	unit/experimental/coro/cancel.cpp
@@ -1247,6 +1296,13 @@ unit_local_datagram_protocol_OBJECTS =  \
 unit_local_datagram_protocol_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_local_datagram_protocol_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_unit_local_seq_packet_protocol_OBJECTS =  \
+	unit/local/seq_packet_protocol.$(OBJEXT)
+unit_local_seq_packet_protocol_OBJECTS =  \
+	$(am_unit_local_seq_packet_protocol_OBJECTS)
+unit_local_seq_packet_protocol_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_local_seq_packet_protocol_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_local_stream_protocol_OBJECTS =  \
 	unit/local/stream_protocol.$(OBJEXT)
 unit_local_stream_protocol_OBJECTS =  \
@@ -1358,6 +1414,11 @@ am_unit_signal_set_OBJECTS = unit/signal_set.$(OBJEXT)
 unit_signal_set_OBJECTS = $(am_unit_signal_set_OBJECTS)
 unit_signal_set_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@unit_signal_set_DEPENDENCIES = libasio.a
+am_unit_signal_set_base_OBJECTS = unit/signal_set_base.$(OBJEXT)
+unit_signal_set_base_OBJECTS = $(am_unit_signal_set_base_OBJECTS)
+unit_signal_set_base_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@unit_signal_set_base_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_unit_socket_base_OBJECTS = unit/socket_base.$(OBJEXT)
 unit_socket_base_OBJECTS = $(am_unit_socket_base_OBJECTS)
 unit_socket_base_LDADD = $(LDADD)
@@ -1618,6 +1679,7 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/$(DEPDIR)/associated_allocator.Po \
 	unit/$(DEPDIR)/associated_cancellation_slot.Po \
 	unit/$(DEPDIR)/associated_executor.Po \
+	unit/$(DEPDIR)/associated_immediate_executor.Po \
 	unit/$(DEPDIR)/associator.Po unit/$(DEPDIR)/async_result.Po \
 	unit/$(DEPDIR)/awaitable.Po \
 	unit/$(DEPDIR)/basic_datagram_socket.Po \
@@ -1638,8 +1700,9 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/$(DEPDIR)/basic_writable_pipe.Po \
 	unit/$(DEPDIR)/bind_allocator.Po \
 	unit/$(DEPDIR)/bind_cancellation_slot.Po \
-	unit/$(DEPDIR)/bind_executor.Po unit/$(DEPDIR)/buffer.Po \
-	unit/$(DEPDIR)/buffer_registration.Po \
+	unit/$(DEPDIR)/bind_executor.Po \
+	unit/$(DEPDIR)/bind_immediate_executor.Po \
+	unit/$(DEPDIR)/buffer.Po unit/$(DEPDIR)/buffer_registration.Po \
 	unit/$(DEPDIR)/buffered_read_stream.Po \
 	unit/$(DEPDIR)/buffered_stream.Po \
 	unit/$(DEPDIR)/buffered_write_stream.Po \
@@ -1649,11 +1712,12 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/$(DEPDIR)/cancellation_type.Po unit/$(DEPDIR)/co_spawn.Po \
 	unit/$(DEPDIR)/completion_condition.Po \
 	unit/$(DEPDIR)/compose.Po unit/$(DEPDIR)/connect.Po \
-	unit/$(DEPDIR)/connect_pipe.Po unit/$(DEPDIR)/coroutine.Po \
-	unit/$(DEPDIR)/deadline_timer.Po unit/$(DEPDIR)/defer.Po \
-	unit/$(DEPDIR)/deferred.Po unit/$(DEPDIR)/detached.Po \
-	unit/$(DEPDIR)/dispatch.Po unit/$(DEPDIR)/error.Po \
-	unit/$(DEPDIR)/execution_context.Po unit/$(DEPDIR)/executor.Po \
+	unit/$(DEPDIR)/connect_pipe.Po unit/$(DEPDIR)/consign.Po \
+	unit/$(DEPDIR)/coroutine.Po unit/$(DEPDIR)/deadline_timer.Po \
+	unit/$(DEPDIR)/defer.Po unit/$(DEPDIR)/deferred.Po \
+	unit/$(DEPDIR)/detached.Po unit/$(DEPDIR)/dispatch.Po \
+	unit/$(DEPDIR)/error.Po unit/$(DEPDIR)/execution_context.Po \
+	unit/$(DEPDIR)/executor.Po \
 	unit/$(DEPDIR)/executor_work_guard.Po \
 	unit/$(DEPDIR)/file_base.Po \
 	unit/$(DEPDIR)/high_resolution_timer.Po \
@@ -1671,7 +1735,8 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/$(DEPDIR)/registered_buffer.Po \
 	unit/$(DEPDIR)/serial_port.Po \
 	unit/$(DEPDIR)/serial_port_base.Po \
-	unit/$(DEPDIR)/signal_set.Po unit/$(DEPDIR)/socket_base.Po \
+	unit/$(DEPDIR)/signal_set.Po unit/$(DEPDIR)/signal_set_base.Po \
+	unit/$(DEPDIR)/socket_base.Po \
 	unit/$(DEPDIR)/static_thread_pool.Po \
 	unit/$(DEPDIR)/steady_timer.Po unit/$(DEPDIR)/strand.Po \
 	unit/$(DEPDIR)/stream_file.Po unit/$(DEPDIR)/streambuf.Po \
@@ -1712,8 +1777,10 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po \
 	unit/experimental/$(DEPDIR)/channel.Po \
 	unit/experimental/$(DEPDIR)/channel_traits.Po \
+	unit/experimental/$(DEPDIR)/co_composed.Po \
 	unit/experimental/$(DEPDIR)/concurrent_channel.Po \
 	unit/experimental/$(DEPDIR)/promise.Po \
+	unit/experimental/coro/$(DEPDIR)/allocator.Po \
 	unit/experimental/coro/$(DEPDIR)/cancel.Po \
 	unit/experimental/coro/$(DEPDIR)/co_spawn.Po \
 	unit/experimental/coro/$(DEPDIR)/exception.Po \
@@ -1747,6 +1814,7 @@ am__depfiles_remade = ../$(DEPDIR)/asio.Po ../$(DEPDIR)/asio_ssl.Po \
 	unit/local/$(DEPDIR)/basic_endpoint.Po \
 	unit/local/$(DEPDIR)/connect_pair.Po \
 	unit/local/$(DEPDIR)/datagram_protocol.Po \
+	unit/local/$(DEPDIR)/seq_packet_protocol.Po \
 	unit/local/$(DEPDIR)/stream_protocol.Po \
 	unit/posix/$(DEPDIR)/basic_descriptor.Po \
 	unit/posix/$(DEPDIR)/basic_stream_descriptor.Po \
@@ -1791,8 +1859,10 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(performance_server_SOURCES) $(unit_append_SOURCES) \
 	$(unit_as_tuple_SOURCES) $(unit_associated_allocator_SOURCES) \
 	$(unit_associated_cancellation_slot_SOURCES) \
-	$(unit_associated_executor_SOURCES) $(unit_associator_SOURCES) \
-	$(unit_async_result_SOURCES) $(unit_awaitable_SOURCES) \
+	$(unit_associated_executor_SOURCES) \
+	$(unit_associated_immediate_executor_SOURCES) \
+	$(unit_associator_SOURCES) $(unit_async_result_SOURCES) \
+	$(unit_awaitable_SOURCES) \
 	$(unit_basic_datagram_socket_SOURCES) \
 	$(unit_basic_deadline_timer_SOURCES) \
 	$(unit_basic_file_SOURCES) \
@@ -1810,7 +1880,8 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_basic_writable_pipe_SOURCES) \
 	$(unit_bind_allocator_SOURCES) \
 	$(unit_bind_cancellation_slot_SOURCES) \
-	$(unit_bind_executor_SOURCES) $(unit_buffer_SOURCES) \
+	$(unit_bind_executor_SOURCES) \
+	$(unit_bind_immediate_executor_SOURCES) $(unit_buffer_SOURCES) \
 	$(unit_buffer_registration_SOURCES) \
 	$(unit_buffered_read_stream_SOURCES) \
 	$(unit_buffered_stream_SOURCES) \
@@ -1821,10 +1892,11 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_cancellation_type_SOURCES) $(unit_co_spawn_SOURCES) \
 	$(unit_completion_condition_SOURCES) $(unit_compose_SOURCES) \
 	$(unit_connect_SOURCES) $(unit_connect_pipe_SOURCES) \
-	$(unit_coroutine_SOURCES) $(unit_deadline_timer_SOURCES) \
-	$(unit_defer_SOURCES) $(unit_deferred_SOURCES) \
-	$(unit_detached_SOURCES) $(unit_dispatch_SOURCES) \
-	$(unit_error_SOURCES) $(unit_execution_any_executor_SOURCES) \
+	$(unit_consign_SOURCES) $(unit_coroutine_SOURCES) \
+	$(unit_deadline_timer_SOURCES) $(unit_defer_SOURCES) \
+	$(unit_deferred_SOURCES) $(unit_detached_SOURCES) \
+	$(unit_dispatch_SOURCES) $(unit_error_SOURCES) \
+	$(unit_execution_any_executor_SOURCES) \
 	$(unit_execution_blocking_SOURCES) \
 	$(unit_execution_blocking_adaptation_SOURCES) \
 	$(unit_execution_bulk_execute_SOURCES) \
@@ -1855,7 +1927,9 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_experimental_basic_concurrent_channel_SOURCES) \
 	$(unit_experimental_channel_SOURCES) \
 	$(unit_experimental_channel_traits_SOURCES) \
+	$(unit_experimental_co_composed_SOURCES) \
 	$(unit_experimental_concurrent_channel_SOURCES) \
+	$(unit_experimental_coro_allocator_SOURCES) \
 	$(unit_experimental_coro_cancel_SOURCES) \
 	$(unit_experimental_coro_co_spawn_SOURCES) \
 	$(unit_experimental_coro_exception_SOURCES) \
@@ -1893,6 +1967,7 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_local_basic_endpoint_SOURCES) \
 	$(unit_local_connect_pair_SOURCES) \
 	$(unit_local_datagram_protocol_SOURCES) \
+	$(unit_local_seq_packet_protocol_SOURCES) \
 	$(unit_local_stream_protocol_SOURCES) \
 	$(unit_packaged_task_SOURCES) $(unit_placeholders_SOURCES) \
 	$(unit_posix_basic_descriptor_SOURCES) \
@@ -1907,8 +1982,9 @@ SOURCES = $(libasio_a_SOURCES) $(latency_tcp_client_SOURCES) \
 	$(unit_redirect_error_SOURCES) \
 	$(unit_registered_buffer_SOURCES) $(unit_serial_port_SOURCES) \
 	$(unit_serial_port_base_SOURCES) $(unit_signal_set_SOURCES) \
-	$(unit_socket_base_SOURCES) $(unit_ssl_context_SOURCES) \
-	$(unit_ssl_context_base_SOURCES) $(unit_ssl_error_SOURCES) \
+	$(unit_signal_set_base_SOURCES) $(unit_socket_base_SOURCES) \
+	$(unit_ssl_context_SOURCES) $(unit_ssl_context_base_SOURCES) \
+	$(unit_ssl_error_SOURCES) \
 	$(unit_ssl_host_name_verification_SOURCES) \
 	$(unit_ssl_rfc2818_verification_SOURCES) \
 	$(unit_ssl_stream_SOURCES) $(unit_ssl_stream_base_SOURCES) \
@@ -1945,8 +2021,10 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__performance_server_SOURCES_DIST) $(unit_append_SOURCES) \
 	$(unit_as_tuple_SOURCES) $(unit_associated_allocator_SOURCES) \
 	$(unit_associated_cancellation_slot_SOURCES) \
-	$(unit_associated_executor_SOURCES) $(unit_associator_SOURCES) \
-	$(unit_async_result_SOURCES) $(unit_awaitable_SOURCES) \
+	$(unit_associated_executor_SOURCES) \
+	$(unit_associated_immediate_executor_SOURCES) \
+	$(unit_associator_SOURCES) $(unit_async_result_SOURCES) \
+	$(unit_awaitable_SOURCES) \
 	$(unit_basic_datagram_socket_SOURCES) \
 	$(unit_basic_deadline_timer_SOURCES) \
 	$(unit_basic_file_SOURCES) \
@@ -1964,7 +2042,8 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(unit_basic_writable_pipe_SOURCES) \
 	$(unit_bind_allocator_SOURCES) \
 	$(unit_bind_cancellation_slot_SOURCES) \
-	$(unit_bind_executor_SOURCES) $(unit_buffer_SOURCES) \
+	$(unit_bind_executor_SOURCES) \
+	$(unit_bind_immediate_executor_SOURCES) $(unit_buffer_SOURCES) \
 	$(unit_buffer_registration_SOURCES) \
 	$(unit_buffered_read_stream_SOURCES) \
 	$(unit_buffered_stream_SOURCES) \
@@ -1975,10 +2054,11 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(unit_cancellation_type_SOURCES) $(unit_co_spawn_SOURCES) \
 	$(unit_completion_condition_SOURCES) $(unit_compose_SOURCES) \
 	$(unit_connect_SOURCES) $(unit_connect_pipe_SOURCES) \
-	$(unit_coroutine_SOURCES) $(unit_deadline_timer_SOURCES) \
-	$(unit_defer_SOURCES) $(unit_deferred_SOURCES) \
-	$(unit_detached_SOURCES) $(unit_dispatch_SOURCES) \
-	$(unit_error_SOURCES) $(unit_execution_any_executor_SOURCES) \
+	$(unit_consign_SOURCES) $(unit_coroutine_SOURCES) \
+	$(unit_deadline_timer_SOURCES) $(unit_defer_SOURCES) \
+	$(unit_deferred_SOURCES) $(unit_detached_SOURCES) \
+	$(unit_dispatch_SOURCES) $(unit_error_SOURCES) \
+	$(unit_execution_any_executor_SOURCES) \
 	$(unit_execution_blocking_SOURCES) \
 	$(unit_execution_blocking_adaptation_SOURCES) \
 	$(unit_execution_bulk_execute_SOURCES) \
@@ -2009,7 +2089,9 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__unit_experimental_basic_concurrent_channel_SOURCES_DIST) \
 	$(am__unit_experimental_channel_SOURCES_DIST) \
 	$(am__unit_experimental_channel_traits_SOURCES_DIST) \
+	$(am__unit_experimental_co_composed_SOURCES_DIST) \
 	$(am__unit_experimental_concurrent_channel_SOURCES_DIST) \
+	$(am__unit_experimental_coro_allocator_SOURCES_DIST) \
 	$(am__unit_experimental_coro_cancel_SOURCES_DIST) \
 	$(am__unit_experimental_coro_co_spawn_SOURCES_DIST) \
 	$(am__unit_experimental_coro_exception_SOURCES_DIST) \
@@ -2048,6 +2130,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(unit_local_basic_endpoint_SOURCES) \
 	$(unit_local_connect_pair_SOURCES) \
 	$(unit_local_datagram_protocol_SOURCES) \
+	$(unit_local_seq_packet_protocol_SOURCES) \
 	$(unit_local_stream_protocol_SOURCES) \
 	$(unit_packaged_task_SOURCES) $(unit_placeholders_SOURCES) \
 	$(unit_posix_basic_descriptor_SOURCES) \
@@ -2062,7 +2145,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(unit_redirect_error_SOURCES) \
 	$(unit_registered_buffer_SOURCES) $(unit_serial_port_SOURCES) \
 	$(unit_serial_port_base_SOURCES) $(unit_signal_set_SOURCES) \
-	$(unit_socket_base_SOURCES) \
+	$(unit_signal_set_base_SOURCES) $(unit_socket_base_SOURCES) \
 	$(am__unit_ssl_context_SOURCES_DIST) \
 	$(am__unit_ssl_context_base_SOURCES_DIST) \
 	$(am__unit_ssl_error_SOURCES_DIST) \
@@ -2491,6 +2574,7 @@ unit_as_tuple_SOURCES = unit/as_tuple.cpp
 unit_associated_allocator_SOURCES = unit/associated_allocator.cpp
 unit_associated_cancellation_slot_SOURCES = unit/associated_cancellation_slot.cpp
 unit_associated_executor_SOURCES = unit/associated_executor.cpp
+unit_associated_immediate_executor_SOURCES = unit/associated_immediate_executor.cpp
 unit_associator_SOURCES = unit/associator.cpp
 unit_async_result_SOURCES = unit/async_result.cpp
 unit_awaitable_SOURCES = unit/awaitable.cpp
@@ -2513,6 +2597,7 @@ unit_basic_writable_pipe_SOURCES = unit/basic_writable_pipe.cpp
 unit_bind_allocator_SOURCES = unit/bind_allocator.cpp
 unit_bind_cancellation_slot_SOURCES = unit/bind_cancellation_slot.cpp
 unit_bind_executor_SOURCES = unit/bind_executor.cpp
+unit_bind_immediate_executor_SOURCES = unit/bind_immediate_executor.cpp
 unit_buffer_SOURCES = unit/buffer.cpp
 unit_buffer_registration_SOURCES = unit/buffer_registration.cpp
 unit_buffers_iterator_SOURCES = unit/buffers_iterator.cpp
@@ -2527,6 +2612,7 @@ unit_completion_condition_SOURCES = unit/completion_condition.cpp
 unit_compose_SOURCES = unit/compose.cpp
 unit_connect_SOURCES = unit/connect.cpp
 unit_connect_pipe_SOURCES = unit/connect_pipe.cpp
+unit_consign_SOURCES = unit/consign.cpp
 unit_coroutine_SOURCES = unit/coroutine.cpp
 unit_deadline_timer_SOURCES = unit/deadline_timer.cpp
 unit_defer_SOURCES = unit/defer.cpp
@@ -2597,6 +2683,7 @@ unit_is_write_buffered_SOURCES = unit/is_write_buffered.cpp
 unit_local_basic_endpoint_SOURCES = unit/local/basic_endpoint.cpp
 unit_local_connect_pair_SOURCES = unit/local/connect_pair.cpp
 unit_local_datagram_protocol_SOURCES = unit/local/datagram_protocol.cpp
+unit_local_seq_packet_protocol_SOURCES = unit/local/seq_packet_protocol.cpp
 unit_local_stream_protocol_SOURCES = unit/local/stream_protocol.cpp
 unit_packaged_task_SOURCES = unit/packaged_task.cpp
 unit_placeholders_SOURCES = unit/placeholders.cpp
@@ -2618,6 +2705,7 @@ unit_registered_buffer_SOURCES = unit/registered_buffer.cpp
 unit_serial_port_SOURCES = unit/serial_port.cpp
 unit_serial_port_base_SOURCES = unit/serial_port_base.cpp
 unit_signal_set_SOURCES = unit/signal_set.cpp
+unit_signal_set_base_SOURCES = unit/signal_set_base.cpp
 unit_socket_base_SOURCES = unit/socket_base.cpp
 unit_static_thread_pool_SOURCES = unit/static_thread_pool.cpp
 unit_steady_timer_SOURCES = unit/steady_timer.cpp
@@ -2655,13 +2743,15 @@ unit_windows_stream_handle_SOURCES = unit/windows/stream_handle.cpp
 unit_writable_pipe_SOURCES = unit/writable_pipe.cpp
 unit_write_SOURCES = unit/write.cpp
 unit_write_at_SOURCES = unit/write_at.cpp
-@HAVE_CXX17_TRUE@unit_experimental_basic_channel_SOURCES = unit/experimental/basic_channel.cpp
-@HAVE_CXX17_TRUE@unit_experimental_basic_concurrent_channel_SOURCES = unit/experimental/basic_concurrent_channel.cpp
-@HAVE_CXX17_TRUE@unit_experimental_channel_SOURCES = unit/experimental/channel.cpp
-@HAVE_CXX17_TRUE@unit_experimental_channel_traits_SOURCES = unit/experimental/channel_traits.cpp
-@HAVE_CXX17_TRUE@unit_experimental_concurrent_channel_SOURCES = unit/experimental/concurrent_channel.cpp
+@HAVE_CXX11_TRUE@unit_experimental_basic_channel_SOURCES = unit/experimental/basic_channel.cpp
+@HAVE_CXX11_TRUE@unit_experimental_basic_concurrent_channel_SOURCES = unit/experimental/basic_concurrent_channel.cpp
+@HAVE_CXX11_TRUE@unit_experimental_channel_SOURCES = unit/experimental/channel.cpp
+@HAVE_CXX11_TRUE@unit_experimental_channel_traits_SOURCES = unit/experimental/channel_traits.cpp
+@HAVE_CXX11_TRUE@unit_experimental_concurrent_channel_SOURCES = unit/experimental/concurrent_channel.cpp
 @HAVE_CXX20_TRUE@unit_experimental_promise_SOURCES = unit/experimental/promise.cpp
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_awaitable_operators_SOURCES = unit/experimental/awaitable_operators.cpp
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_co_composed_SOURCES = unit/experimental/co_composed.cpp
+@HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_coro_allocator_SOURCES = unit/experimental/coro/allocator.cpp
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_coro_cancel_SOURCES = unit/experimental/coro/cancel.cpp
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_coro_co_spawn_SOURCES = unit/experimental/coro/co_spawn.cpp
 @HAVE_COROUTINES_TRUE@@HAVE_CXX20_TRUE@unit_experimental_coro_exception_SOURCES = unit/experimental/coro/exception.cpp
@@ -2828,6 +2918,12 @@ unit/associated_executor.$(OBJEXT): unit/$(am__dirstamp) \
 unit/associated_executor$(EXEEXT): $(unit_associated_executor_OBJECTS) $(unit_associated_executor_DEPENDENCIES) $(EXTRA_unit_associated_executor_DEPENDENCIES) unit/$(am__dirstamp)
 	@rm -f unit/associated_executor$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_associated_executor_OBJECTS) $(unit_associated_executor_LDADD) $(LIBS)
+unit/associated_immediate_executor.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/associated_immediate_executor$(EXEEXT): $(unit_associated_immediate_executor_OBJECTS) $(unit_associated_immediate_executor_DEPENDENCIES) $(EXTRA_unit_associated_immediate_executor_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/associated_immediate_executor$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_associated_immediate_executor_OBJECTS) $(unit_associated_immediate_executor_LDADD) $(LIBS)
 unit/associator.$(OBJEXT): unit/$(am__dirstamp) \
 	unit/$(DEPDIR)/$(am__dirstamp)
 
@@ -2960,6 +3056,12 @@ unit/bind_executor.$(OBJEXT): unit/$(am__dirstamp) \
 unit/bind_executor$(EXEEXT): $(unit_bind_executor_OBJECTS) $(unit_bind_executor_DEPENDENCIES) $(EXTRA_unit_bind_executor_DEPENDENCIES) unit/$(am__dirstamp)
 	@rm -f unit/bind_executor$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_bind_executor_OBJECTS) $(unit_bind_executor_LDADD) $(LIBS)
+unit/bind_immediate_executor.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/bind_immediate_executor$(EXEEXT): $(unit_bind_immediate_executor_OBJECTS) $(unit_bind_immediate_executor_DEPENDENCIES) $(EXTRA_unit_bind_immediate_executor_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/bind_immediate_executor$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_bind_immediate_executor_OBJECTS) $(unit_bind_immediate_executor_LDADD) $(LIBS)
 unit/buffer.$(OBJEXT): unit/$(am__dirstamp) \
 	unit/$(DEPDIR)/$(am__dirstamp)
 
@@ -3044,6 +3146,12 @@ unit/connect_pipe.$(OBJEXT): unit/$(am__dirstamp) \
 unit/connect_pipe$(EXEEXT): $(unit_connect_pipe_OBJECTS) $(unit_connect_pipe_DEPENDENCIES) $(EXTRA_unit_connect_pipe_DEPENDENCIES) unit/$(am__dirstamp)
 	@rm -f unit/connect_pipe$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_connect_pipe_OBJECTS) $(unit_connect_pipe_LDADD) $(LIBS)
+unit/consign.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/consign$(EXEEXT): $(unit_consign_OBJECTS) $(unit_consign_DEPENDENCIES) $(EXTRA_unit_consign_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/consign$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_consign_OBJECTS) $(unit_consign_LDADD) $(LIBS)
 unit/coroutine.$(OBJEXT): unit/$(am__dirstamp) \
 	unit/$(DEPDIR)/$(am__dirstamp)
 
@@ -3300,6 +3408,13 @@ unit/experimental/channel_traits.$(OBJEXT):  \
 unit/experimental/channel_traits$(EXEEXT): $(unit_experimental_channel_traits_OBJECTS) $(unit_experimental_channel_traits_DEPENDENCIES) $(EXTRA_unit_experimental_channel_traits_DEPENDENCIES) unit/experimental/$(am__dirstamp)
 	@rm -f unit/experimental/channel_traits$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_experimental_channel_traits_OBJECTS) $(unit_experimental_channel_traits_LDADD) $(LIBS)
+unit/experimental/co_composed.$(OBJEXT):  \
+	unit/experimental/$(am__dirstamp) \
+	unit/experimental/$(DEPDIR)/$(am__dirstamp)
+
+unit/experimental/co_composed$(EXEEXT): $(unit_experimental_co_composed_OBJECTS) $(unit_experimental_co_composed_DEPENDENCIES) $(EXTRA_unit_experimental_co_composed_DEPENDENCIES) unit/experimental/$(am__dirstamp)
+	@rm -f unit/experimental/co_composed$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_experimental_co_composed_OBJECTS) $(unit_experimental_co_composed_LDADD) $(LIBS)
 unit/experimental/concurrent_channel.$(OBJEXT):  \
 	unit/experimental/$(am__dirstamp) \
 	unit/experimental/$(DEPDIR)/$(am__dirstamp)
@@ -3313,6 +3428,13 @@ unit/experimental/coro/$(am__dirstamp):
 unit/experimental/coro/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) unit/experimental/coro/$(DEPDIR)
 	@: > unit/experimental/coro/$(DEPDIR)/$(am__dirstamp)
+unit/experimental/coro/allocator.$(OBJEXT):  \
+	unit/experimental/coro/$(am__dirstamp) \
+	unit/experimental/coro/$(DEPDIR)/$(am__dirstamp)
+
+unit/experimental/coro/allocator$(EXEEXT): $(unit_experimental_coro_allocator_OBJECTS) $(unit_experimental_coro_allocator_DEPENDENCIES) $(EXTRA_unit_experimental_coro_allocator_DEPENDENCIES) unit/experimental/coro/$(am__dirstamp)
+	@rm -f unit/experimental/coro/allocator$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_experimental_coro_allocator_OBJECTS) $(unit_experimental_coro_allocator_LDADD) $(LIBS)
 unit/experimental/coro/cancel.$(OBJEXT):  \
 	unit/experimental/coro/$(am__dirstamp) \
 	unit/experimental/coro/$(DEPDIR)/$(am__dirstamp)
@@ -3612,6 +3734,12 @@ unit/local/datagram_protocol.$(OBJEXT): unit/local/$(am__dirstamp) \
 unit/local/datagram_protocol$(EXEEXT): $(unit_local_datagram_protocol_OBJECTS) $(unit_local_datagram_protocol_DEPENDENCIES) $(EXTRA_unit_local_datagram_protocol_DEPENDENCIES) unit/local/$(am__dirstamp)
 	@rm -f unit/local/datagram_protocol$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_local_datagram_protocol_OBJECTS) $(unit_local_datagram_protocol_LDADD) $(LIBS)
+unit/local/seq_packet_protocol.$(OBJEXT): unit/local/$(am__dirstamp) \
+	unit/local/$(DEPDIR)/$(am__dirstamp)
+
+unit/local/seq_packet_protocol$(EXEEXT): $(unit_local_seq_packet_protocol_OBJECTS) $(unit_local_seq_packet_protocol_DEPENDENCIES) $(EXTRA_unit_local_seq_packet_protocol_DEPENDENCIES) unit/local/$(am__dirstamp)
+	@rm -f unit/local/seq_packet_protocol$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_local_seq_packet_protocol_OBJECTS) $(unit_local_seq_packet_protocol_LDADD) $(LIBS)
 unit/local/stream_protocol.$(OBJEXT): unit/local/$(am__dirstamp) \
 	unit/local/$(DEPDIR)/$(am__dirstamp)
 
@@ -3745,6 +3873,12 @@ unit/signal_set.$(OBJEXT): unit/$(am__dirstamp) \
 unit/signal_set$(EXEEXT): $(unit_signal_set_OBJECTS) $(unit_signal_set_DEPENDENCIES) $(EXTRA_unit_signal_set_DEPENDENCIES) unit/$(am__dirstamp)
 	@rm -f unit/signal_set$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(unit_signal_set_OBJECTS) $(unit_signal_set_LDADD) $(LIBS)
+unit/signal_set_base.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/signal_set_base$(EXEEXT): $(unit_signal_set_base_OBJECTS) $(unit_signal_set_base_DEPENDENCIES) $(EXTRA_unit_signal_set_base_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/signal_set_base$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(unit_signal_set_base_OBJECTS) $(unit_signal_set_base_LDADD) $(LIBS)
 unit/socket_base.$(OBJEXT): unit/$(am__dirstamp) \
 	unit/$(DEPDIR)/$(am__dirstamp)
 
@@ -4067,6 +4201,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/associated_allocator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/associated_cancellation_slot.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/associated_executor.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/associated_immediate_executor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/associator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/async_result.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/awaitable.Po@am__quote@ # am--include-marker
@@ -4089,6 +4224,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/bind_allocator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/bind_cancellation_slot.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/bind_executor.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/bind_immediate_executor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/buffer.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/buffer_registration.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/buffered_read_stream.Po@am__quote@ # am--include-marker
@@ -4103,6 +4239,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/compose.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/connect.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/connect_pipe.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/consign.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/coroutine.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/deadline_timer.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/defer.Po@am__quote@ # am--include-marker
@@ -4134,6 +4271,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/serial_port.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/serial_port_base.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/signal_set.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/signal_set_base.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/socket_base.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/static_thread_pool.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/steady_timer.Po@am__quote@ # am--include-marker
@@ -4183,8 +4321,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/channel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/channel_traits.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/co_composed.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/concurrent_channel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/$(DEPDIR)/promise.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/coro/$(DEPDIR)/allocator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/coro/$(DEPDIR)/cancel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/coro/$(DEPDIR)/co_spawn.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/experimental/coro/$(DEPDIR)/exception.Po@am__quote@ # am--include-marker
@@ -4223,6 +4363,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/local/$(DEPDIR)/basic_endpoint.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/local/$(DEPDIR)/connect_pair.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/local/$(DEPDIR)/datagram_protocol.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@unit/local/$(DEPDIR)/seq_packet_protocol.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/local/$(DEPDIR)/stream_protocol.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/posix/$(DEPDIR)/basic_descriptor.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@unit/posix/$(DEPDIR)/basic_stream_descriptor.Po@am__quote@ # am--include-marker
@@ -4551,6 +4692,13 @@ unit/associated_executor.log: unit/associated_executor$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/associated_immediate_executor.log: unit/associated_immediate_executor$(EXEEXT)
+	@p='unit/associated_immediate_executor$(EXEEXT)'; \
+	b='unit/associated_immediate_executor'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/associator.log: unit/associator$(EXEEXT)
 	@p='unit/associator$(EXEEXT)'; \
 	b='unit/associator'; \
@@ -4705,6 +4853,13 @@ unit/bind_executor.log: unit/bind_executor$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/bind_immediate_executor.log: unit/bind_immediate_executor$(EXEEXT)
+	@p='unit/bind_immediate_executor$(EXEEXT)'; \
+	b='unit/bind_immediate_executor'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/buffered_read_stream.log: unit/buffered_read_stream$(EXEEXT)
 	@p='unit/buffered_read_stream$(EXEEXT)'; \
 	b='unit/buffered_read_stream'; \
@@ -4799,6 +4954,13 @@ unit/connect.log: unit/connect$(EXEEXT)
 unit/connect_pipe.log: unit/connect_pipe$(EXEEXT)
 	@p='unit/connect_pipe$(EXEEXT)'; \
 	b='unit/connect_pipe'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/consign.log: unit/consign$(EXEEXT)
+	@p='unit/consign$(EXEEXT)'; \
+	b='unit/consign'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -5251,6 +5413,13 @@ unit/local/datagram_protocol.log: unit/local/datagram_protocol$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/local/seq_packet_protocol.log: unit/local/seq_packet_protocol$(EXEEXT)
+	@p='unit/local/seq_packet_protocol$(EXEEXT)'; \
+	b='unit/local/seq_packet_protocol'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/local/stream_protocol.log: unit/local/stream_protocol$(EXEEXT)
 	@p='unit/local/stream_protocol$(EXEEXT)'; \
 	b='unit/local/stream_protocol'; \
@@ -5394,6 +5563,13 @@ unit/serial_port_base.log: unit/serial_port_base$(EXEEXT)
 unit/signal_set.log: unit/signal_set$(EXEEXT)
 	@p='unit/signal_set$(EXEEXT)'; \
 	b='unit/signal_set'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/signal_set_base.log: unit/signal_set_base$(EXEEXT)
+	@p='unit/signal_set_base$(EXEEXT)'; \
+	b='unit/signal_set_base'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -5706,6 +5882,20 @@ unit/experimental/awaitable_operators.log: unit/experimental/awaitable_operators
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/experimental/co_composed.log: unit/experimental/co_composed$(EXEEXT)
+	@p='unit/experimental/co_composed$(EXEEXT)'; \
+	b='unit/experimental/co_composed'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+unit/experimental/coro/allocator.log: unit/experimental/coro/allocator$(EXEEXT)
+	@p='unit/experimental/coro/allocator$(EXEEXT)'; \
+	b='unit/experimental/coro/allocator'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 unit/experimental/coro/cancel.log: unit/experimental/coro/cancel$(EXEEXT)
 	@p='unit/experimental/coro/cancel$(EXEEXT)'; \
 	b='unit/experimental/coro/cancel'; \
@@ -5971,6 +6161,7 @@ distclean: distclean-recursive
 	-rm -f unit/$(DEPDIR)/associated_allocator.Po
 	-rm -f unit/$(DEPDIR)/associated_cancellation_slot.Po
 	-rm -f unit/$(DEPDIR)/associated_executor.Po
+	-rm -f unit/$(DEPDIR)/associated_immediate_executor.Po
 	-rm -f unit/$(DEPDIR)/associator.Po
 	-rm -f unit/$(DEPDIR)/async_result.Po
 	-rm -f unit/$(DEPDIR)/awaitable.Po
@@ -5993,6 +6184,7 @@ distclean: distclean-recursive
 	-rm -f unit/$(DEPDIR)/bind_allocator.Po
 	-rm -f unit/$(DEPDIR)/bind_cancellation_slot.Po
 	-rm -f unit/$(DEPDIR)/bind_executor.Po
+	-rm -f unit/$(DEPDIR)/bind_immediate_executor.Po
 	-rm -f unit/$(DEPDIR)/buffer.Po
 	-rm -f unit/$(DEPDIR)/buffer_registration.Po
 	-rm -f unit/$(DEPDIR)/buffered_read_stream.Po
@@ -6007,6 +6199,7 @@ distclean: distclean-recursive
 	-rm -f unit/$(DEPDIR)/compose.Po
 	-rm -f unit/$(DEPDIR)/connect.Po
 	-rm -f unit/$(DEPDIR)/connect_pipe.Po
+	-rm -f unit/$(DEPDIR)/consign.Po
 	-rm -f unit/$(DEPDIR)/coroutine.Po
 	-rm -f unit/$(DEPDIR)/deadline_timer.Po
 	-rm -f unit/$(DEPDIR)/defer.Po
@@ -6038,6 +6231,7 @@ distclean: distclean-recursive
 	-rm -f unit/$(DEPDIR)/serial_port.Po
 	-rm -f unit/$(DEPDIR)/serial_port_base.Po
 	-rm -f unit/$(DEPDIR)/signal_set.Po
+	-rm -f unit/$(DEPDIR)/signal_set_base.Po
 	-rm -f unit/$(DEPDIR)/socket_base.Po
 	-rm -f unit/$(DEPDIR)/static_thread_pool.Po
 	-rm -f unit/$(DEPDIR)/steady_timer.Po
@@ -6087,8 +6281,10 @@ distclean: distclean-recursive
 	-rm -f unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/channel_traits.Po
+	-rm -f unit/experimental/$(DEPDIR)/co_composed.Po
 	-rm -f unit/experimental/$(DEPDIR)/concurrent_channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/promise.Po
+	-rm -f unit/experimental/coro/$(DEPDIR)/allocator.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/cancel.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/co_spawn.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/exception.Po
@@ -6127,6 +6323,7 @@ distclean: distclean-recursive
 	-rm -f unit/local/$(DEPDIR)/basic_endpoint.Po
 	-rm -f unit/local/$(DEPDIR)/connect_pair.Po
 	-rm -f unit/local/$(DEPDIR)/datagram_protocol.Po
+	-rm -f unit/local/$(DEPDIR)/seq_packet_protocol.Po
 	-rm -f unit/local/$(DEPDIR)/stream_protocol.Po
 	-rm -f unit/posix/$(DEPDIR)/basic_descriptor.Po
 	-rm -f unit/posix/$(DEPDIR)/basic_stream_descriptor.Po
@@ -6215,6 +6412,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/$(DEPDIR)/associated_allocator.Po
 	-rm -f unit/$(DEPDIR)/associated_cancellation_slot.Po
 	-rm -f unit/$(DEPDIR)/associated_executor.Po
+	-rm -f unit/$(DEPDIR)/associated_immediate_executor.Po
 	-rm -f unit/$(DEPDIR)/associator.Po
 	-rm -f unit/$(DEPDIR)/async_result.Po
 	-rm -f unit/$(DEPDIR)/awaitable.Po
@@ -6237,6 +6435,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/$(DEPDIR)/bind_allocator.Po
 	-rm -f unit/$(DEPDIR)/bind_cancellation_slot.Po
 	-rm -f unit/$(DEPDIR)/bind_executor.Po
+	-rm -f unit/$(DEPDIR)/bind_immediate_executor.Po
 	-rm -f unit/$(DEPDIR)/buffer.Po
 	-rm -f unit/$(DEPDIR)/buffer_registration.Po
 	-rm -f unit/$(DEPDIR)/buffered_read_stream.Po
@@ -6251,6 +6450,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/$(DEPDIR)/compose.Po
 	-rm -f unit/$(DEPDIR)/connect.Po
 	-rm -f unit/$(DEPDIR)/connect_pipe.Po
+	-rm -f unit/$(DEPDIR)/consign.Po
 	-rm -f unit/$(DEPDIR)/coroutine.Po
 	-rm -f unit/$(DEPDIR)/deadline_timer.Po
 	-rm -f unit/$(DEPDIR)/defer.Po
@@ -6282,6 +6482,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/$(DEPDIR)/serial_port.Po
 	-rm -f unit/$(DEPDIR)/serial_port_base.Po
 	-rm -f unit/$(DEPDIR)/signal_set.Po
+	-rm -f unit/$(DEPDIR)/signal_set_base.Po
 	-rm -f unit/$(DEPDIR)/socket_base.Po
 	-rm -f unit/$(DEPDIR)/static_thread_pool.Po
 	-rm -f unit/$(DEPDIR)/steady_timer.Po
@@ -6331,8 +6532,10 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/experimental/$(DEPDIR)/basic_concurrent_channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/channel_traits.Po
+	-rm -f unit/experimental/$(DEPDIR)/co_composed.Po
 	-rm -f unit/experimental/$(DEPDIR)/concurrent_channel.Po
 	-rm -f unit/experimental/$(DEPDIR)/promise.Po
+	-rm -f unit/experimental/coro/$(DEPDIR)/allocator.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/cancel.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/co_spawn.Po
 	-rm -f unit/experimental/coro/$(DEPDIR)/exception.Po
@@ -6371,6 +6574,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f unit/local/$(DEPDIR)/basic_endpoint.Po
 	-rm -f unit/local/$(DEPDIR)/connect_pair.Po
 	-rm -f unit/local/$(DEPDIR)/datagram_protocol.Po
+	-rm -f unit/local/$(DEPDIR)/seq_packet_protocol.Po
 	-rm -f unit/local/$(DEPDIR)/stream_protocol.Po
 	-rm -f unit/posix/$(DEPDIR)/basic_descriptor.Po
 	-rm -f unit/posix/$(DEPDIR)/basic_stream_descriptor.Po
