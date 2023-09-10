@@ -41,6 +41,8 @@
 #include "mongoc-error-private.h"
 #include "mongoc-database-private.h"
 
+#include <bson-dsl.h>
+
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "collection"
 
@@ -750,27 +752,22 @@ mongoc_collection_count_with_opts (
    bool success;
    bson_t reply;
    bson_t cmd = BSON_INITIALIZER;
-   bson_t q;
 
    ENTRY;
 
    BSON_ASSERT_PARAM (collection);
 
-   bson_append_utf8 (
-      &cmd, "count", 5, collection->collection, collection->collectionlen);
-   if (query) {
-      bson_append_document (&cmd, "query", 5, query);
-   } else {
-      bson_init (&q);
-      bson_append_document (&cmd, "query", 5, &q);
-      bson_destroy (&q);
-   }
-   if (limit) {
-      bson_append_int64 (&cmd, "limit", 5, limit);
-   }
-   if (skip) {
-      bson_append_int64 (&cmd, "skip", 4, skip);
-   }
+   bsonBuildAppend (
+      cmd,
+      kv ("count",
+          utf8_w_len (collection->collection, collection->collectionlen)),
+      kv ("query",
+          if (query,                // If we have a query,
+              then (bson (*query)), // Copy it
+              else (doc ()))),      // Otherwise, add an empty doc
+      if (limit, then (kv ("limit", int64 (limit)))),
+      if (skip, then (kv ("skip", int64 (skip)))));
+
 
    success = _mongoc_client_command_with_opts (collection->client,
                                                collection->db,
@@ -817,13 +814,8 @@ mongoc_collection_estimated_document_count (
 
    BSON_ASSERT_PARAM (coll);
 
-   server_stream =
-      mongoc_cluster_stream_for_reads (&coll->client->cluster,
-                                       read_prefs,
-                                       NULL,
-                                       reply,
-                                       /* Not aggregate-with-write */ false,
-                                       error);
+   server_stream = mongoc_cluster_stream_for_reads (
+      &coll->client->cluster, read_prefs, NULL, reply, error);
 
    if (opts && bson_has_field (opts, "sessionId")) {
       bson_set_error (error,
@@ -883,10 +875,9 @@ done:
 static void
 _make_aggregate_for_count (const mongoc_collection_t *coll,
                            const bson_t *filter,
-                           const bson_t *opts,
+                           mongoc_count_document_opts_t *opts,
                            bson_t *out)
 {
-   bson_iter_t iter;
    bson_t pipeline;
    bson_t match_stage;
    bson_t group_stage;
@@ -906,18 +897,18 @@ _make_aggregate_for_count (const mongoc_collection_t *coll,
    bson_append_document_begin (&pipeline, keys[key++], 1, &match_stage);
    bson_append_document (&match_stage, "$match", 6, filter);
    bson_append_document_end (&pipeline, &match_stage);
-   /* if @opts includes "skip", or "count", append $skip and $count stages to
+   /* if @opts includes "skip", or "limit", append $skip and $limit stages to
     * the aggregate pipeline. */
-   if (opts && bson_iter_init_find (&iter, opts, "skip")) {
+   if (opts->skip.value_type != BSON_TYPE_EOD) {
       bson_t skip_stage;
       bson_append_document_begin (&pipeline, keys[key++], 1, &skip_stage);
-      bson_append_value (&skip_stage, "$skip", 5, bson_iter_value (&iter));
+      bson_append_value (&skip_stage, "$skip", 5, &opts->skip);
       bson_append_document_end (&pipeline, &skip_stage);
    }
-   if (opts && bson_iter_init_find (&iter, opts, "limit")) {
+   if (opts->limit.value_type != BSON_TYPE_EOD) {
       bson_t limit_stage;
       bson_append_document_begin (&pipeline, keys[key++], 1, &limit_stage);
-      bson_append_value (&limit_stage, "$limit", 6, bson_iter_value (&iter));
+      bson_append_value (&limit_stage, "$limit", 6, &opts->limit);
       bson_append_document_end (&pipeline, &limit_stage);
    }
    bson_append_document_begin (&pipeline, keys[key], 1, &group_stage);
@@ -954,11 +945,18 @@ mongoc_collection_count_documents (mongoc_collection_t *coll,
    BSON_ASSERT_PARAM (coll);
    BSON_ASSERT_PARAM (filter);
 
-   _make_aggregate_for_count (coll, filter, opts, &aggregate_cmd);
+   // Parse options to validate.
+   mongoc_count_document_opts_t cd_opts;
+   if (!_mongoc_count_document_opts_parse (
+          coll->client, opts, &cd_opts, error)) {
+      GOTO (done);
+   }
+
+   _make_aggregate_for_count (coll, filter, &cd_opts, &aggregate_cmd);
    bson_init (&aggregate_opts);
    if (opts) {
-      bson_copy_to_excluding_noinit (
-         opts, &aggregate_opts, "skip", "limit", NULL);
+      bsonBuildAppend (aggregate_opts,
+                       insert (*opts, not(key ("skip", "limit"))));
    }
 
    ret = mongoc_collection_read_command_with_opts (
@@ -994,6 +992,7 @@ mongoc_collection_count_documents (mongoc_collection_t *coll,
    }
 
 done:
+   _mongoc_count_document_opts_cleanup (&cd_opts);
    if (cursor) {
       mongoc_cursor_destroy (cursor);
    }
@@ -1063,13 +1062,18 @@ drop_with_opts_with_encryptedFields (mongoc_collection_t *collection,
                                      bson_error_t *error)
 {
    char *escName = NULL;
-   char *eccName = NULL;
    char *ecocName = NULL;
    mongoc_collection_t *escCollection = NULL;
-   mongoc_collection_t *eccCollection = NULL;
    mongoc_collection_t *ecocCollection = NULL;
    bool ok = false;
    const char *name = mongoc_collection_get_name (collection);
+   bson_error_t local_error = {0};
+
+   if (!error) {
+      /* If no error is passed, use a local error. Error codes are checked
+       * when collections are dropped. */
+      error = &local_error;
+   }
 
    /* Drop ESC collection. */
    escName = _mongoc_get_encryptedField_state_collection (
@@ -1081,23 +1085,6 @@ drop_with_opts_with_encryptedFields (mongoc_collection_t *collection,
    escCollection = mongoc_client_get_collection (
       collection->client, collection->db, escName);
    if (!drop_with_opts (escCollection, NULL /* opts */, error)) {
-      if (error->code == MONGOC_SERVER_ERR_NS_NOT_FOUND) {
-         memset (error, 0, sizeof (bson_error_t));
-      } else {
-         goto fail;
-      }
-   }
-
-   /* Drop ECC collection. */
-   eccName = _mongoc_get_encryptedField_state_collection (
-      encryptedFields, name, "ecc", error);
-   if (!eccName) {
-      goto fail;
-   }
-
-   eccCollection = mongoc_client_get_collection (
-      collection->client, collection->db, eccName);
-   if (!drop_with_opts (eccCollection, NULL /* opts */, error)) {
       if (error->code == MONGOC_SERVER_ERR_NS_NOT_FOUND) {
          memset (error, 0, sizeof (bson_error_t));
       } else {
@@ -1135,8 +1122,6 @@ drop_with_opts_with_encryptedFields (mongoc_collection_t *collection,
 fail:
    mongoc_collection_destroy (ecocCollection);
    bson_free (ecocName);
-   mongoc_collection_destroy (eccCollection);
-   bson_free (eccName);
    mongoc_collection_destroy (escCollection);
    bson_free (escName);
    return ok;
@@ -1147,55 +1132,67 @@ mongoc_collection_drop_with_opts (mongoc_collection_t *collection,
                                   const bson_t *opts,
                                   bson_error_t *error)
 {
-   bson_iter_t iter;
+   // The encryptedFields for the collection.
    bson_t encryptedFields = BSON_INITIALIZER;
+   bson_t opts_without_encryptedFields = BSON_INITIALIZER;
+   bool okay = false;
 
-   if (opts && bson_iter_init_find (&iter, opts, "encryptedFields")) {
-      if (!_mongoc_iter_document_as_bson (&iter, &encryptedFields, error)) {
-         return false;
+   // Try to find the encryptedFields from the collection options or from the
+   // encryptedFieldsMap.
+   if (!_mongoc_get_collection_encryptedFields (
+          collection->client,
+          collection->db,
+          mongoc_collection_get_name (collection),
+          opts,
+          true /* checkEncryptedFieldsMap */,
+          &encryptedFields,
+          error)) {
+      goto done;
+   }
+
+   if (bson_empty (&encryptedFields)) {
+      // We didn't find the encryptedFields (yet)
+      if (collection->client->topology->encrypted_fields_map != NULL) {
+         // but we can ask the server for them:
+         if (!_mongoc_get_encryptedFields_from_server (
+                collection->client,
+                collection->db,
+                mongoc_collection_get_name (collection),
+                &encryptedFields,
+                error)) {
+            goto done;
+         }
       }
    }
 
    if (bson_empty (&encryptedFields)) {
-      if (!_mongoc_get_encryptedFields_from_map (
-             collection->client,
-             collection->db,
-             mongoc_collection_get_name (collection),
-             &encryptedFields,
-             error)) {
-         return false;
-      }
+      // There are no encryptedFields with this collection, so we can just do a
+      // regular drop
+      okay = drop_with_opts (collection, opts, error);
+      goto done;
    }
 
-   if (bson_empty (&encryptedFields) &&
-       collection->client->topology->encrypted_fields_map != NULL) {
-      if (!_mongoc_get_encryptedFields_from_server (
-             collection->client,
-             collection->db,
-             mongoc_collection_get_name (collection),
-             &encryptedFields,
-             error)) {
-         return false;
-      }
+   // We've found the encryptedFields, so we need to do something different
+   // to drop this collection:
+   bsonBuildAppend (
+      opts_without_encryptedFields,
+      if (opts, then (insert (*opts, not(key ("encryptedFields"))))));
+   if (bsonBuildError) {
+      bson_set_error (error,
+                      MONGOC_ERROR_BSON,
+                      MONGOC_ERROR_BSON_INVALID,
+                      "Error while updating drop options: %s",
+                      bsonBuildError);
+      goto done;
    }
 
-   if (!bson_empty (&encryptedFields)) {
-      bson_t opts_without_encryptedFields = BSON_INITIALIZER;
+   okay = drop_with_opts_with_encryptedFields (
+      collection, &opts_without_encryptedFields, &encryptedFields, error);
 
-      if (opts) {
-         bson_copy_to_excluding_noinit (
-            opts, &opts_without_encryptedFields, "encryptedFields", NULL);
-      }
-
-      bool ret = drop_with_opts_with_encryptedFields (
-         collection, &opts_without_encryptedFields, &encryptedFields, error);
-
-      bson_destroy (&opts_without_encryptedFields);
-      bson_destroy (&encryptedFields);
-      return ret;
-   }
-
-   return drop_with_opts (collection, opts, error);
+done:
+   bson_destroy (&opts_without_encryptedFields);
+   bson_destroy (&encryptedFields);
+   return okay;
 }
 
 
@@ -1495,7 +1492,6 @@ mongoc_collection_create_index_with_opts (mongoc_collection_t *collection,
    char *alloc_name = NULL;
    bool ret = false;
    bool reply_initialized = false;
-   bool has_collation = false;
    mongoc_server_stream_t *server_stream = NULL;
    mongoc_cluster_t *cluster;
 
@@ -1584,7 +1580,6 @@ mongoc_collection_create_index_with_opts (mongoc_collection_t *collection,
    }
    if (opt->collation) {
       BSON_ASSERT (BSON_APPEND_DOCUMENT (&doc, "collation", opt->collation));
-      has_collation = true;
    }
    if (opt->geo_options) {
       geo_opt = opt->geo_options;
@@ -1639,19 +1634,8 @@ mongoc_collection_create_index_with_opts (mongoc_collection_t *collection,
       GOTO (done);
    }
 
-   if (!mongoc_cmd_parts_set_write_concern (&parts,
-                                            parsed.writeConcern,
-                                            server_stream->sd->max_wire_version,
-                                            error)) {
-      GOTO (done);
-   }
-
-   if (has_collation &&
-       server_stream->sd->max_wire_version < WIRE_VERSION_COLLATION) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
-                      "The selected server does not support collation");
+   if (!mongoc_cmd_parts_set_write_concern (
+          &parts, parsed.writeConcern, error)) {
       GOTO (done);
    }
 
@@ -2273,14 +2257,6 @@ _mongoc_collection_update_or_replace (mongoc_collection_t *collection,
    }
 
    if (!bson_empty0 (array_filters)) {
-      if (server_stream->sd->max_wire_version < WIRE_VERSION_ARRAY_FILTERS) {
-         bson_set_error (error,
-                         MONGOC_ERROR_COMMAND,
-                         MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
-                         "The selected server does not support array filters");
-         GOTO (done);
-      }
-
       if (!mongoc_write_concern_is_acknowledged (
              update_opts->crud.writeConcern)) {
          bson_set_error (error,
@@ -3364,8 +3340,8 @@ mongoc_collection_create_bulk_operation_with_opts (
  *       If @reply is not NULL, then the result document will be placed
  *       in reply and should be released with bson_destroy().
  *
- *       See http://docs.mongodb.org/manual/reference/command/findAndModify/
- *       for more information.
+ *       See for more information:
+ *       https://www.mongodb.com/docs/manual/reference/command/findAndModify/
  *
  * Returns:
  *       true on success; false on failure.
@@ -3490,9 +3466,7 @@ mongoc_collection_find_and_modify_with_opts (
       write_concern = appended_opts.writeConcern;
    }
    /* inherit write concern from collection if not in transaction */
-   else if (server_stream->sd->max_wire_version >=
-               WIRE_VERSION_FAM_WRITE_CONCERN &&
-            !_mongoc_client_session_in_txn (parts.assembled.session)) {
+   else if (!_mongoc_client_session_in_txn (parts.assembled.session)) {
       if (!mongoc_write_concern_is_valid (collection->write_concern)) {
          bson_set_error (error,
                          MONGOC_ERROR_COMMAND,
@@ -3533,17 +3507,14 @@ mongoc_collection_find_and_modify_with_opts (
    /* Append any remaining unparsed options set via
     * mongoc_find_and_modify_opts_append to the command part. */
    if (bson_iter_init (&iter, &appended_opts.extra)) {
-      bool ok = mongoc_cmd_parts_append_opts (
-         &parts, &iter, server_stream->sd->max_wire_version, error);
-      if (!ok) {
+      if (!mongoc_cmd_parts_append_opts (&parts, &iter, error)) {
          GOTO (done);
       }
    }
 
    /* An empty write concern amounts to a no-op, so there's no need to guard
     * against it. */
-   if (!mongoc_cmd_parts_set_write_concern (
-          &parts, write_concern, server_stream->sd->max_wire_version, error)) {
+   if (!mongoc_cmd_parts_set_write_concern (&parts, write_concern, error)) {
       GOTO (done);
    }
 
@@ -3564,6 +3535,14 @@ mongoc_collection_find_and_modify_with_opts (
          &txn_number_iter,
          ++parts.assembled.session->server_session->txn_number);
    }
+
+   // Store the original error and reply if needed.
+   struct {
+      bson_t reply;
+      bson_error_t error;
+      bool set;
+   } original_error = {.reply = {0}, .error = {0}, .set = false};
+
 retry:
    bson_destroy (reply_ptr);
    ret = mongoc_cluster_run_command_monitored (
@@ -3592,11 +3571,34 @@ retry:
       retry_server_stream = mongoc_cluster_stream_for_writes (
          cluster, parts.assembled.session, NULL /* reply */, &ignored_error);
 
-      if (retry_server_stream && retry_server_stream->sd->max_wire_version >=
-                                    WIRE_VERSION_RETRY_WRITES) {
+      if (retry_server_stream) {
          parts.assembled.server_stream = retry_server_stream;
+         {
+            // Store the original error and reply before retry.
+            BSON_ASSERT (!original_error.set); // Retry only happens once.
+            original_error.set = true;
+            bson_copy_to (reply_ptr, &original_error.reply);
+            if (error) {
+               original_error.error = *error;
+            }
+         }
          GOTO (retry);
       }
+   }
+
+   // If a retry attempt fails with an error labeled NoWritesPerformed,
+   // drivers MUST return the original error.
+   if (original_error.set &&
+       mongoc_error_has_label (reply_ptr, "NoWritesPerformed")) {
+      if (error) {
+         *error = original_error.error;
+      }
+      bson_destroy (reply_ptr);
+      bson_copy_to (&original_error.reply, reply_ptr);
+   }
+
+   if (original_error.set) {
+      bson_destroy (&original_error.reply);
    }
 
    if (bson_iter_init_find (&iter, reply_ptr, "writeConcernError") &&
@@ -3657,8 +3659,8 @@ done:
  *       If @_new is true, then the new version of the document is returned
  *       instead of the old document.
  *
- *       See http://docs.mongodb.org/manual/reference/command/findAndModify/
- *       for more information.
+ *       See for more information:
+ *       https://www.mongodb.com/docs/manual/reference/command/findAndModify/
  *
  * Returns:
  *       true on success; false on failure.
@@ -3723,4 +3725,140 @@ mongoc_collection_watch (const mongoc_collection_t *coll,
                          const bson_t *opts)
 {
    return _mongoc_change_stream_new_from_collection (coll, pipeline, opts);
+}
+
+struct _mongoc_index_model_t {
+   bson_t *keys;
+   bson_t *opts;
+};
+
+mongoc_index_model_t *
+mongoc_index_model_new (const bson_t *keys, const bson_t *opts)
+{
+   BSON_ASSERT_PARAM (keys);
+   // `opts` may be NULL.
+
+   mongoc_index_model_t *im = bson_malloc (sizeof (mongoc_index_model_t));
+   im->keys = bson_copy (keys);
+   im->opts = opts ? bson_copy (opts) : NULL;
+   return im;
+}
+
+void
+mongoc_index_model_destroy (mongoc_index_model_t *im)
+{
+   if (!im) {
+      return;
+   }
+   bson_destroy (im->keys);
+   bson_destroy (im->opts);
+   bson_free (im);
+}
+
+bool
+mongoc_collection_create_indexes_with_opts (mongoc_collection_t *collection,
+                                            mongoc_index_model_t *const *models,
+                                            size_t n_models,
+                                            const bson_t *opts,
+                                            bson_t *reply,
+                                            bson_error_t *error)
+{
+   BSON_ASSERT_PARAM (collection);
+   BSON_ASSERT_PARAM (models);
+   // `opts` may be NULL.
+   // `reply` may be NULL.
+   // `error` may be NULL.
+   bson_t reply_local = BSON_INITIALIZER;
+   bson_t *reply_ptr;
+   mongoc_server_stream_t *server_stream = NULL;
+   bool ok = false;
+   bson_t cmd = BSON_INITIALIZER;
+
+   reply_ptr = reply ? reply : &reply_local;
+   // Always initialize `reply` if set. Caller is expected to `bson_destroy
+   // (reply)`.
+   bson_init (reply_ptr);
+
+   // Check for commitQuorum option.
+   if (opts && bson_has_field (opts, "commitQuorum")) {
+      server_stream =
+         mongoc_cluster_stream_for_writes (&collection->client->cluster,
+                                           NULL /* mongoc_client_session_t */,
+                                           reply_ptr,
+                                           error);
+      if (server_stream->sd->max_wire_version < WIRE_VERSION_4_4) {
+         // Raise an error required by the specification:
+         // "Drivers MUST manually raise an error if this option is specified
+         // when creating an index on a pre 4.4 server."
+         bson_set_error (
+            error,
+            MONGOC_ERROR_COMMAND,
+            MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
+            "The selected server does not support the commitQuorum option");
+         GOTO (fail);
+      }
+   }
+
+   // Build the createIndexes command.
+   BSON_ASSERT (
+      BSON_APPEND_UTF8 (&cmd, "createIndexes", collection->collection));
+   bson_t indexes;
+   BSON_ASSERT (BSON_APPEND_ARRAY_BEGIN (&cmd, "indexes", &indexes));
+   for (uint32_t idx = 0; idx < n_models; idx++) {
+      /*
+         Append a document of this form:
+         <idx>: {
+             key: {
+                 <key-value_pair>,
+                 <key-value_pair>,
+                 ...
+             },
+             name: <index_name>,
+             <option1>,
+             <option2>,
+             ...
+         },
+      */
+
+      const char *idx_str_ptr;
+      char idx_str[16];
+      BSON_ASSERT (
+         bson_uint32_to_string (idx, &idx_str_ptr, idx_str, sizeof (idx_str)) <=
+         sizeof (idx_str));
+      bson_t index;
+      BSON_ASSERT (BSON_APPEND_DOCUMENT_BEGIN (&indexes, idx_str_ptr, &index));
+      BSON_ASSERT (BSON_APPEND_DOCUMENT (&index, "key", models[idx]->keys));
+      bson_iter_t name_iter;
+      if (models[idx]->opts &&
+          bson_iter_init_find (&name_iter, models[idx]->opts, "name")) {
+         // `name` was specified as an index option.
+      } else {
+         // No `name` was specified. Create index `name` from keys.
+         char *name =
+            mongoc_collection_keys_to_index_string (models[idx]->keys);
+         BSON_ASSERT (name);
+         BSON_ASSERT (BSON_APPEND_UTF8 (&index, "name", name));
+         bson_free (name);
+      }
+
+      if (models[idx]->opts) {
+         BSON_ASSERT (bson_concat (&index, models[idx]->opts));
+      }
+      BSON_ASSERT (bson_append_document_end (&indexes, &index));
+   }
+   BSON_ASSERT (bson_append_array_end (&cmd, &indexes));
+
+   ok = mongoc_client_command_with_opts (collection->client,
+                                         collection->db,
+                                         &cmd,
+                                         NULL /* read_prefs */,
+                                         opts,
+                                         reply_ptr,
+                                         error);
+
+fail:
+   mongoc_server_stream_cleanup (server_stream);
+   bson_destroy (&cmd);
+   bson_destroy (&reply_local);
+   return ok;
 }

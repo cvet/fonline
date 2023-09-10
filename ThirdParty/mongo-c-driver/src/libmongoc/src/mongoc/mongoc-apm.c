@@ -23,9 +23,9 @@ static bson_oid_t kObjectIdZero = {{0}};
 
 /*
  * An Application Performance Management (APM) implementation, complying with
- * MongoDB's Command Monitoring Spec:
+ * MongoDB's Command Logging and Monitoring Spec:
  *
- * https://github.com/mongodb/specifications/tree/master/source/command-monitoring
+ * https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring
  */
 
 static void
@@ -77,7 +77,7 @@ mongoc_apm_command_started_init (mongoc_apm_command_started_t *event,
                                  const mongoc_host_list_t *host,
                                  uint32_t server_id,
                                  const bson_oid_t *service_id,
-                                 int32_t server_connection_id,
+                                 int64_t server_connection_id,
                                  bool *is_redacted, /* out */
                                  void *context)
 {
@@ -208,7 +208,7 @@ mongoc_apm_command_succeeded_init (mongoc_apm_command_succeeded_t *event,
                                    const mongoc_host_list_t *host,
                                    uint32_t server_id,
                                    const bson_oid_t *service_id,
-                                   int32_t server_connection_id,
+                                   int64_t server_connection_id,
                                    bool force_redaction,
                                    void *context)
 {
@@ -271,7 +271,7 @@ mongoc_apm_command_failed_init (mongoc_apm_command_failed_t *event,
                                 const mongoc_host_list_t *host,
                                 uint32_t server_id,
                                 const bson_oid_t *service_id,
-                                int32_t server_connection_id,
+                                int64_t server_connection_id,
                                 bool force_redaction,
                                 void *context)
 {
@@ -390,6 +390,24 @@ int32_t
 mongoc_apm_command_started_get_server_connection_id (
    const mongoc_apm_command_started_t *event)
 {
+   if (event->server_connection_id > INT32_MAX ||
+       event->server_connection_id < INT32_MIN) {
+      MONGOC_WARNING (
+         "Server connection ID %" PRId64
+         " is outside of int32 range. Returning -1. Use "
+         "mongoc_apm_command_started_get_server_connection_id_int64.",
+         event->server_connection_id);
+      return MONGOC_NO_SERVER_CONNECTION_ID;
+   }
+
+   return (int32_t) event->server_connection_id;
+}
+
+
+int64_t
+mongoc_apm_command_started_get_server_connection_id_int64 (
+   const mongoc_apm_command_started_t *event)
+{
    return event->server_connection_id;
 }
 
@@ -475,6 +493,24 @@ mongoc_apm_command_succeeded_get_service_id (
 
 int32_t
 mongoc_apm_command_succeeded_get_server_connection_id (
+   const mongoc_apm_command_succeeded_t *event)
+{
+   if (event->server_connection_id > INT32_MAX ||
+       event->server_connection_id < INT32_MIN) {
+      MONGOC_WARNING (
+         "Server connection ID %" PRId64
+         " is outside of int32 range. Returning -1. Use "
+         "mongoc_apm_command_succeeded_get_server_connection_id_int64.",
+         event->server_connection_id);
+      return MONGOC_NO_SERVER_CONNECTION_ID;
+   }
+
+   return (int32_t) event->server_connection_id;
+}
+
+
+int64_t
+mongoc_apm_command_succeeded_get_server_connection_id_int64 (
    const mongoc_apm_command_succeeded_t *event)
 {
    return event->server_connection_id;
@@ -566,6 +602,24 @@ mongoc_apm_command_failed_get_service_id (
 
 int32_t
 mongoc_apm_command_failed_get_server_connection_id (
+   const mongoc_apm_command_failed_t *event)
+{
+   if (event->server_connection_id > INT32_MAX ||
+       event->server_connection_id < INT32_MIN) {
+      MONGOC_WARNING (
+         "Server connection ID %" PRId64
+         " is outside of int32 range. Returning -1. Use "
+         "mongoc_apm_command_failed_get_server_connection_id_int64.",
+         event->server_connection_id);
+      return MONGOC_NO_SERVER_CONNECTION_ID;
+   }
+
+   return (int32_t) event->server_connection_id;
+}
+
+
+int64_t
+mongoc_apm_command_failed_get_server_connection_id_int64 (
    const mongoc_apm_command_failed_t *event)
 {
    return event->server_connection_id;

@@ -30,6 +30,8 @@
 #include "mongoc-write-concern-private.h"
 #include "mongoc-change-stream-private.h"
 
+#include <bson-dsl.h>
+
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "database"
 
@@ -1013,15 +1015,13 @@ _mongoc_get_encryptedField_state_collection (
 
    if (0 == strcmp (state_collection_suffix, "esc")) {
       fieldName = "escCollection";
-   } else if (0 == strcmp (state_collection_suffix, "ecc")) {
-      fieldName = "eccCollection";
    } else if (0 == strcmp (state_collection_suffix, "ecoc")) {
       fieldName = "ecocCollection";
    } else {
       bson_set_error (error,
                       MONGOC_ERROR_COMMAND,
                       MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "expected state_collection_suffix to be 'esc', 'ecc', or "
+                      "expected state_collection_suffix to be 'esc' or "
                       "'ecoc', got: %s",
                       state_collection_suffix);
       return NULL;
@@ -1095,11 +1095,36 @@ create_collection_with_encryptedFields (mongoc_database_t *database,
    mongoc_collection_t *dataCollection = NULL;
    bool ok = false;
    bson_t *cc_opts = NULL;
+
+   // Check the wire version to ensure server is 7.0.0 or newer.
+   {
+      mongoc_server_stream_t *stream =
+         mongoc_cluster_stream_for_writes (&database->client->cluster,
+                                           NULL /* client session */,
+                                           NULL /* reply */,
+                                           error);
+      if (!stream) {
+         goto fail;
+      }
+      if (stream->sd->max_wire_version < WIRE_VERSION_7_0) {
+         bson_set_error (
+            error,
+            MONGOC_ERROR_PROTOCOL,
+            MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
+            "Driver support of Queryable Encryption is incompatible "
+            "with server. Upgrade server to use Queryable Encryption. "
+            "Got maxWireVersion %" PRId32 " but need maxWireVersion >= %d",
+            stream->sd->max_wire_version,
+            WIRE_VERSION_7_0);
+         mongoc_server_stream_cleanup (stream);
+         goto fail;
+      }
+      mongoc_server_stream_cleanup (stream);
+   }
+
    bool state_collections_ok =
       create_encField_state_collection (
          database, encryptedFields, name, "esc", error) &&
-      create_encField_state_collection (
-         database, encryptedFields, name, "ecc", error) &&
       create_encField_state_collection (
          database, encryptedFields, name, "ecoc", error);
    if (!state_collections_ok) {
@@ -1124,26 +1149,10 @@ create_collection_with_encryptedFields (mongoc_database_t *database,
    /* Create index on __safeContent__. */
    {
       bson_t *keys = BCON_NEW ("__safeContent__", BCON_INT32 (1));
-      char *index_name;
-      bson_t *create_indexes;
-
-      index_name = mongoc_collection_keys_to_index_string (keys);
-      create_indexes = BCON_NEW ("createIndexes",
-                                 BCON_UTF8 (name),
-                                 "indexes",
-                                 "[",
-                                 "{",
-                                 "key",
-                                 BCON_DOCUMENT (keys),
-                                 "name",
-                                 BCON_UTF8 (index_name),
-                                 "}",
-                                 "]");
-
-      ok = mongoc_database_write_command_with_opts (
-         database, create_indexes, NULL /* opts */, NULL /* reply */, error);
-      bson_destroy (create_indexes);
-      bson_free (index_name);
+      mongoc_index_model_t *im = mongoc_index_model_new (keys, NULL /* opts */);
+      ok = mongoc_collection_create_indexes_with_opts (
+         dataCollection, &im, 1, NULL /* opts */, NULL /* reply */, error);
+      mongoc_index_model_destroy (im);
       bson_destroy (keys);
       if (!ok) {
          goto fail;
@@ -1168,6 +1177,8 @@ _mongoc_get_encryptedFields_from_map (mongoc_client_t *client,
                                       bson_t *encryptedFields,
                                       bson_error_t *error)
 {
+   BSON_ASSERT_PARAM (client);
+
    const bson_t *efMap = client->topology->encrypted_fields_map;
 
    bson_init (encryptedFields);
@@ -1201,6 +1212,8 @@ _mongoc_get_encryptedFields_from_server (mongoc_client_t *client,
                                          bson_t *encryptedFields,
                                          bson_error_t *error)
 {
+   BSON_ASSERT_PARAM (client);
+
    mongoc_database_t *db = mongoc_client_get_database (client, dbName);
    bson_t *opts = BCON_NEW ("filter", "{", "name", BCON_UTF8 (collName), "}");
    mongoc_cursor_t *cursor;
@@ -1246,39 +1259,94 @@ fail:
    return ret;
 }
 
+bool
+_mongoc_get_collection_encryptedFields (mongoc_client_t *client,
+                                        const char *dbName,
+                                        const char *collName,
+                                        const bson_t *opts,
+                                        bool checkEncryptedFieldsMap,
+                                        bson_t *encryptedFields,
+                                        bson_error_t *error)
+{
+   BSON_ASSERT_PARAM (client);
+   BSON_ASSERT_PARAM (dbName);
+   BSON_ASSERT_PARAM (collName);
+   BSON_ASSERT (opts || true);
+   BSON_ASSERT_PARAM (encryptedFields);
+   BSON_ASSERT (error || true);
+
+   bson_init (encryptedFields); // Initially empty
+
+   if (opts) {
+      // We have collection options, which may have encryptedFields in it
+      bool found = false;
+      bsonParse (
+         *opts,
+         find (key ("encryptedFields"),
+               if (not(type (doc)),
+                   then (error ("'encryptedFields' should be a document"))),
+               // Update encryptedFields to be a reference to the subdocument:
+               storeDocRef (*encryptedFields),
+               do (found = true)));
+      if (bsonParseError) {
+         // Error while parsing
+         bson_set_error (error,
+                         MONGOC_ERROR_COMMAND,
+                         MONGOC_ERROR_COMMAND_INVALID_ARG,
+                         "Invalid createCollection command options: %s",
+                         bsonParseError);
+         return false;
+      } else if (found) {
+         // Found it!
+         return true;
+      } else {
+         // Nothing found in the options
+      }
+   }
+
+   // Look in the encryptedFieldsMap based on this collection name
+   if (checkEncryptedFieldsMap &&
+       !_mongoc_get_encryptedFields_from_map (
+          client, dbName, collName, encryptedFields, error)) {
+      // Error during lookup.
+      return false;
+   }
+
+   // No error. We may or may not have found encryptedFields. The caller
+   // determines this by checking if encryptedFields is empty.
+   return true;
+}
+
 mongoc_collection_t *
 mongoc_database_create_collection (mongoc_database_t *database,
                                    const char *name,
                                    const bson_t *opts,
                                    bson_error_t *error)
 {
-   bson_iter_t iter;
+   BSON_ASSERT_PARAM (database);
+   BSON_ASSERT_PARAM (name);
+   BSON_ASSERT (opts || true);
+   BSON_ASSERT (error || true);
+
    bson_t encryptedFields = BSON_INITIALIZER;
-
-   if (opts && bson_iter_init_find (&iter, opts, "encryptedFields")) {
-      if (!_mongoc_iter_document_as_bson (&iter, &encryptedFields, error)) {
-         return NULL;
-      }
-   }
-
-   if (bson_empty (&encryptedFields)) {
-      if (!_mongoc_get_encryptedFields_from_map (
-             database->client,
-             mongoc_database_get_name (database),
-             name,
-             &encryptedFields,
-             error)) {
-         return NULL;
-      }
+   if (!_mongoc_get_collection_encryptedFields (
+          database->client,
+          mongoc_database_get_name (database),
+          name,
+          opts,
+          true /* checkEncryptedFieldsMap */,
+          &encryptedFields,
+          error)) {
+      // Error during fields lookup
+      bson_destroy (&encryptedFields);
+      return false;
    }
 
    if (!bson_empty (&encryptedFields)) {
-      bson_t opts_without_encryptedFields = BSON_INITIALIZER;
-
-      if (opts) {
-         bson_copy_to_excluding_noinit (
-            opts, &opts_without_encryptedFields, "encryptedFields", NULL);
-      }
+      // Clone 'opts' without the encryptedFields element
+      bsonBuildDecl (
+         opts_without_encryptedFields,
+         if (opts, then (insert (*opts, not(key ("encryptedFields"))))));
 
       mongoc_collection_t *ret =
          create_collection_with_encryptedFields (database,
@@ -1287,11 +1355,12 @@ mongoc_database_create_collection (mongoc_database_t *database,
                                                  &encryptedFields,
                                                  error);
 
-      bson_destroy (&opts_without_encryptedFields);
       bson_destroy (&encryptedFields);
+      bson_destroy (&opts_without_encryptedFields);
       return ret;
    }
 
+   bson_destroy (&encryptedFields);
    return create_collection (database, name, opts, error);
 }
 

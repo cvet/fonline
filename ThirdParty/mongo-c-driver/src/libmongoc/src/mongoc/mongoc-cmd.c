@@ -33,6 +33,8 @@ mongoc_cmd_parts_init (mongoc_cmd_parts_t *parts,
                        mongoc_query_flags_t user_query_flags,
                        const bson_t *command_body)
 {
+   BSON_ASSERT_PARAM (client);
+
    parts->body = command_body;
    parts->user_query_flags = user_query_flags;
    parts->read_prefs = NULL;
@@ -108,7 +110,6 @@ mongoc_cmd_parts_set_session (mongoc_cmd_parts_t *parts,
 bool
 mongoc_cmd_parts_append_opts (mongoc_cmd_parts_t *parts,
                               bson_iter_t *iter,
-                              int max_wire_version,
                               bson_error_t *error)
 {
    mongoc_client_session_t *cs = NULL;
@@ -124,23 +125,13 @@ mongoc_cmd_parts_append_opts (mongoc_cmd_parts_t *parts,
    BSON_ASSERT (!parts->assembled.command);
 
    while (bson_iter_next (iter)) {
-      if (BSON_ITER_IS_KEY (iter, "collation")) {
-         if (max_wire_version < WIRE_VERSION_COLLATION) {
-            bson_set_error (error,
-                            MONGOC_ERROR_COMMAND,
-                            MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
-                            "The selected server does not support collation");
-            RETURN (false);
-         }
-
-      } else if (BSON_ITER_IS_KEY (iter, "writeConcern")) {
+      if (BSON_ITER_IS_KEY (iter, "writeConcern")) {
          wc = _mongoc_write_concern_new_from_iter (iter, error);
          if (!wc) {
             RETURN (false);
          }
 
-         if (!mongoc_cmd_parts_set_write_concern (
-                parts, wc, max_wire_version, error)) {
+         if (!mongoc_cmd_parts_set_write_concern (parts, wc, error)) {
             mongoc_write_concern_destroy (wc);
             RETURN (false);
          }
@@ -148,14 +139,6 @@ mongoc_cmd_parts_append_opts (mongoc_cmd_parts_t *parts,
          mongoc_write_concern_destroy (wc);
          continue;
       } else if (BSON_ITER_IS_KEY (iter, "readConcern")) {
-         if (max_wire_version < WIRE_VERSION_READ_CONCERN) {
-            bson_set_error (error,
-                            MONGOC_ERROR_COMMAND,
-                            MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
-                            "The selected server does not support readConcern");
-            RETURN (false);
-         }
-
          if (!BSON_ITER_HOLDS_DOCUMENT (iter)) {
             bson_set_error (error,
                             MONGOC_ERROR_COMMAND,
@@ -213,7 +196,6 @@ mongoc_cmd_parts_append_opts (mongoc_cmd_parts_t *parts,
 bool
 mongoc_cmd_parts_set_read_concern (mongoc_cmd_parts_t *parts,
                                    const mongoc_read_concern_t *rc,
-                                   int max_wire_version,
                                    bson_error_t *error)
 {
    const char *command_name;
@@ -238,18 +220,6 @@ mongoc_cmd_parts_set_read_concern (mongoc_cmd_parts_t *parts,
       RETURN (true);
    }
 
-   if (max_wire_version < WIRE_VERSION_READ_CONCERN) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_PROTOCOL_BAD_WIRE_VERSION,
-                      "\"%s\" command does not support readConcern with "
-                      "wire version %d, wire version %d is required",
-                      command_name,
-                      max_wire_version,
-                      WIRE_VERSION_READ_CONCERN);
-      RETURN (false);
-   }
-
    bson_destroy (&parts->read_concern_document);
    bson_copy_to (_mongoc_read_concern_get_bson ((mongoc_read_concern_t *) rc),
                  &parts->read_concern_document);
@@ -263,40 +233,24 @@ mongoc_cmd_parts_set_read_concern (mongoc_cmd_parts_t *parts,
 bool
 mongoc_cmd_parts_set_write_concern (mongoc_cmd_parts_t *parts,
                                     const mongoc_write_concern_t *wc,
-                                    int max_wire_version,
                                     bson_error_t *error)
 {
-   const char *command_name;
-   bool is_fam;
-   bool wc_allowed;
-
    ENTRY;
 
    if (!wc) {
       RETURN (true);
    }
 
-   command_name = _mongoc_get_command_name (parts->body);
+   const char *const command_name = _mongoc_get_command_name (parts->body);
 
    if (!command_name) {
       OPTS_ERR (COMMAND_INVALID_ARG, "Empty command document");
    }
 
-   is_fam = !strcasecmp (command_name, "findandmodify");
-
-   wc_allowed =
-      parts->is_write_command ||
-      (is_fam && max_wire_version >= WIRE_VERSION_FAM_WRITE_CONCERN) ||
-      (!is_fam && max_wire_version >= WIRE_VERSION_CMD_WRITE_CONCERN);
-
-   if (wc_allowed) {
-      parts->assembled.is_acknowledged =
-         mongoc_write_concern_is_acknowledged (wc);
-      bson_destroy (&parts->write_concern_document);
-      bson_copy_to (
-         _mongoc_write_concern_get_bson ((mongoc_write_concern_t *) wc),
-         &parts->write_concern_document);
-   }
+   parts->assembled.is_acknowledged = mongoc_write_concern_is_acknowledged (wc);
+   bson_destroy (&parts->write_concern_document);
+   bson_copy_to (_mongoc_write_concern_get_bson ((mongoc_write_concern_t *) wc),
+                 &parts->write_concern_document);
 
    RETURN (true);
 }
@@ -324,7 +278,6 @@ mongoc_cmd_parts_set_write_concern (mongoc_cmd_parts_t *parts,
 bool
 mongoc_cmd_parts_append_read_write (mongoc_cmd_parts_t *parts,
                                     mongoc_read_write_opts_t *rw_opts,
-                                    int max_wire_version,
                                     bson_error_t *error)
 {
    ENTRY;
@@ -333,11 +286,6 @@ mongoc_cmd_parts_append_read_write (mongoc_cmd_parts_t *parts,
    BSON_ASSERT (!parts->assembled.command);
 
    if (!bson_empty (&rw_opts->collation)) {
-      if (max_wire_version < WIRE_VERSION_COLLATION) {
-         OPTS_ERR (PROTOCOL_BAD_WIRE_VERSION,
-                   "The selected server does not support collation");
-      }
-
       if (!bson_append_document (
              &parts->extra, "collation", 9, &rw_opts->collation)) {
          OPTS_ERR (COMMAND_INVALID_ARG, "'opts' with 'collation' is too large");
@@ -345,17 +293,12 @@ mongoc_cmd_parts_append_read_write (mongoc_cmd_parts_t *parts,
    }
 
    if (!mongoc_cmd_parts_set_write_concern (
-          parts, rw_opts->writeConcern, max_wire_version, error)) {
+          parts, rw_opts->writeConcern, error)) {
       RETURN (false);
    }
 
    /* process explicit read concern */
    if (!bson_empty (&rw_opts->readConcern)) {
-      if (max_wire_version < WIRE_VERSION_READ_CONCERN) {
-         OPTS_ERR (PROTOCOL_BAD_WIRE_VERSION,
-                   "The selected server does not support readConcern");
-      }
-
       /* save readConcern for later, once we know about causal consistency */
       bson_destroy (&parts->read_concern_document);
       bson_copy_to (&rw_opts->readConcern, &parts->read_concern_document);
@@ -707,7 +650,7 @@ _allow_txn_number (const mongoc_cmd_parts_t *parts,
       return false;
    }
 
-   if (server_stream->sd->max_wire_version < WIRE_VERSION_RETRY_WRITES) {
+   if (server_stream->retry_attempted) {
       return false;
    }
 
@@ -740,7 +683,7 @@ _is_retryable_write (const mongoc_cmd_parts_t *parts,
       return false;
    }
 
-   if (server_stream->sd->max_wire_version < WIRE_VERSION_RETRY_WRITES) {
+   if (server_stream->retry_attempted) {
       return false;
    }
 
@@ -777,7 +720,7 @@ _is_retryable_read (const mongoc_cmd_parts_t *parts,
       return false;
    }
 
-   if (server_stream->sd->max_wire_version < WIRE_VERSION_RETRY_READS) {
+   if (server_stream->retry_attempted) {
       return false;
    }
 
@@ -896,7 +839,8 @@ mongoc_cmd_parts_assemble (mongoc_cmd_parts_t *parts,
    }
 
    if (mongoc_client_uses_server_api (parts->client) ||
-       server_stream->sd->max_wire_version >= WIRE_VERSION_OP_MSG) {
+       mongoc_client_uses_loadbalanced (parts->client) ||
+       server_stream->sd->max_wire_version >= WIRE_VERSION_MIN) {
       if (!bson_has_field (parts->body, "$db")) {
          BSON_APPEND_UTF8 (&parts->extra, "$db", parts->assembled.db_name);
       }

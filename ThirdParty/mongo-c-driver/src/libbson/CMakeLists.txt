@@ -28,7 +28,7 @@ set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/../../build/cm
 include (LoadVersion)
 LoadVersion (${PROJECT_SOURCE_DIR}/../../VERSION_CURRENT BSON)
 
-message ("lib${BSON_OUTPUT_BASENAME} version (from VERSION_CURRENT file): ${BSON_VERSION}")
+message (STATUS "lib${BSON_OUTPUT_BASENAME} version (from VERSION_CURRENT file): ${BSON_VERSION}")
 
 set (BSON_API_VERSION 1.0)
 
@@ -143,10 +143,6 @@ endif ()
 
 include (MaintainerFlags)
 
-if (ENABLE_COVERAGE)
-   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g --coverage")
-endif ()
-
 set (SOURCES
    ${PROJECT_SOURCE_DIR}/src/bson/bcon.c
    ${PROJECT_SOURCE_DIR}/src/bson/bson.c
@@ -211,7 +207,18 @@ set (HEADERS_FORWARDING
 
 if(FALSE) #!
 add_library (bson_shared SHARED ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
+if (MSVC AND MSVC_VERSION VERSION_LESS 1900)
+   message (STATUS "Disabling warning C4756 for VS 2013 and older")
+   # Macro constant INFINITY triggers constant arithmetic overflow warnings in
+   # VS 2013, but VS 2013 doesn't support inline warning suppression.
+   # Remove once support for VS 2013 is dropped.
+   target_compile_options(bson_shared PRIVATE /wd4756)
+endif ()
 set (CMAKE_CXX_VISIBILITY_PRESET hidden)
+if(ENABLE_COVERAGE)
+   target_compile_options(bson_shared PRIVATE --coverage)
+   target_link_options(bson_shared PUBLIC --coverage)
+endif()
 target_compile_definitions (bson_shared
    PRIVATE
       BSON_COMPILATION
@@ -280,6 +287,13 @@ endif() #!
 
 if (MONGOC_ENABLE_STATIC_BUILD)
    add_library (bson_static STATIC ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
+   if (MSVC AND MSVC_VERSION VERSION_LESS 1900)
+      message (STATUS "Disabling warning C4756 for VS 2013 and older")
+      # Macro constant INFINITY triggers constant arithmetic overflow warnings in
+      # VS 2013, but VS 2013 doesn't support inline warning suppression.
+      # Remove once support for VS 2013 is dropped.
+      target_compile_options(bson_static PRIVATE /wd4756)
+   endif ()
    target_compile_definitions (bson_static
       PUBLIC
          BSON_STATIC
@@ -290,8 +304,12 @@ if (MONGOC_ENABLE_STATIC_BUILD)
    )
    if (NOT WIN32 AND ENABLE_PIC)
       target_compile_options (bson_static PUBLIC -fPIC)
-      message ("Adding -fPIC to compilation of bson_static components")
+      message (STATUS "Adding -fPIC to compilation of bson_static components")
    endif ()
+   if(ENABLE_COVERAGE)
+      target_compile_options(bson_static PRIVATE --coverage)
+      target_link_options(bson_static PUBLIC --coverage)
+   endif()
    # Several directories in the source and build trees contain headers we would like
    # include via relative reference, but they all end up in the same install path
    target_include_directories (
@@ -350,7 +368,6 @@ set (BSON_HEADER_INSTALL_DIR
    "${CMAKE_INSTALL_INCLUDEDIR}/libbson-${BSON_API_VERSION}"
 )
 
-if(FALSE) #!
 if (MONGOC_ENABLE_STATIC_INSTALL)
    set (TARGETS_TO_INSTALL bson_shared bson_static)
 else ()
@@ -381,7 +398,6 @@ if (ENABLE_APPLE_FRAMEWORK)
       DESTINATION "${CMAKE_INSTALL_BINDIR}/bson.framework/Modules/"
    )
 endif ()
-endif() #!
 
 set (LIBBSON_LIBRARIES "")
 foreach (_lib ${BSON_LIBRARIES})
@@ -449,13 +465,11 @@ configure_file (src/bson-config.cmake
    COPYONLY
 )
 
-if(FALSE) #!
 install (EXPORT bson-targets
    NAMESPACE mongo::
    FILE bson-targets.cmake
    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bson-${BSON_API_VERSION}
 )
-endif() #!
 
 install (
    FILES
@@ -482,10 +496,10 @@ endif ()
 
 add_subdirectory (build)
 # sub-directory 'doc' was already included above
-add_subdirectory (examples)
-add_subdirectory (fuzz)
+#! add_subdirectory (examples)
+#! add_subdirectory (fuzz)
 add_subdirectory (src)
-add_subdirectory (tests)
+#! add_subdirectory (tests)
 
 set_local_dist (src_libbson_DIST_local
    CMakeLists.txt

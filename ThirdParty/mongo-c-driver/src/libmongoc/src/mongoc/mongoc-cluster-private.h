@@ -21,6 +21,7 @@
 
 #include <bson/bson.h>
 
+#include "mcd-rpc.h"
 #include "mongoc-array-private.h"
 #include "mongoc-buffer-private.h"
 #include "mongoc-config.h"
@@ -51,7 +52,7 @@ typedef struct _mongoc_cluster_node_t {
 
 typedef struct _mongoc_cluster_t {
    int64_t operation_id;
-   uint32_t request_id;
+   int32_t request_id;
    uint32_t sockettimeoutms;
    uint32_t socketcheckintervalms;
    mongoc_uri_t *uri;
@@ -95,13 +96,13 @@ mongoc_cluster_check_interval (mongoc_cluster_t *cluster, uint32_t server_id);
 bool
 mongoc_cluster_legacy_rpc_sendv_to_server (
    mongoc_cluster_t *cluster,
-   mongoc_rpc_t *rpcs,
+   mcd_rpc_message *rpc,
    mongoc_server_stream_t *server_stream,
    bson_error_t *error);
 
 bool
 mongoc_cluster_try_recv (mongoc_cluster_t *cluster,
-                         mongoc_rpc_t *rpc,
+                         mcd_rpc_message *rpc,
                          mongoc_buffer_t *buffer,
                          mongoc_server_stream_t *server_stream,
                          bson_error_t *error);
@@ -123,7 +124,6 @@ mongoc_cluster_stream_for_reads (mongoc_cluster_t *cluster,
                                  const mongoc_read_prefs_t *read_prefs,
                                  mongoc_client_session_t *cs,
                                  bson_t *reply,
-                                 bool is_aggr_with_write,
                                  bson_error_t *error);
 
 /**
@@ -142,6 +142,26 @@ mongoc_cluster_stream_for_writes (mongoc_cluster_t *cluster,
                                   mongoc_client_session_t *cs,
                                   bson_t *reply,
                                   bson_error_t *error);
+
+/**
+ * @brief Obtain a server stream appropriate for aggregate operations with
+ * writes on the cluster.
+ *
+ * Returns a new stream (that must be freed) or NULL and sets an error via
+ * `error`.
+ *
+ * @note The returned stream must be released via
+ * `mongoc_server_stream_cleanup`.
+ *
+ * @note May add nodes and/or update the cluster's topology.
+ */
+mongoc_server_stream_t *
+mongoc_cluster_stream_for_aggr_with_write (
+   mongoc_cluster_t *cluster,
+   const mongoc_read_prefs_t *read_prefs,
+   mongoc_client_session_t *cs,
+   bson_t *reply,
+   bson_error_t *error);
 
 /**
  * @brief Obtain a server stream associated with the cluster node associated
@@ -215,10 +235,15 @@ _mongoc_cluster_get_auth_cmd_x509 (const mongoc_uri_t *uri,
                                    bson_t *cmd /* OUT */,
                                    bson_error_t *error /* OUT */);
 
-/* Returns true if a versioned server API has been selected,
- * otherwise returns false. */
+/* Returns true if a versioned server API has been selected, otherwise returns
+ * false. */
 bool
 mongoc_cluster_uses_server_api (const mongoc_cluster_t *cluster);
+
+/* Returns true if load balancing mode has been selected, otherwise returns
+ * false. */
+bool
+mongoc_cluster_uses_loadbalanced (const mongoc_cluster_t *cluster);
 
 #ifdef MONGOC_ENABLE_CRYPTO
 void
@@ -232,6 +257,37 @@ _mongoc_cluster_get_auth_cmd_scram (mongoc_crypto_hash_algorithm_t algo,
                                     bson_t *cmd /* OUT */,
                                     bson_error_t *error /* OUT */);
 #endif /* MONGOC_ENABLE_CRYPTO */
+
+char *
+_mongoc_rpc_compress (struct _mongoc_cluster_t *cluster,
+                      int32_t compressor_id,
+                      mongoc_rpc_t *rpc_le,
+                      bson_error_t *error);
+bool
+_mongoc_rpc_decompress (mongoc_rpc_t *rpc_le, uint8_t *buf, size_t buflen);
+
+bool
+mcd_rpc_message_compress (mcd_rpc_message *rpc,
+                          int32_t compressor_id,
+                          int32_t compression_level,
+                          void **compressed_data,
+                          size_t *compressed_data_len,
+                          bson_error_t *error);
+
+bool
+mcd_rpc_message_decompress (mcd_rpc_message *rpc,
+                            void **data,
+                            size_t *data_len);
+
+bool
+_mongoc_rpc_decompress_if_necessary (mongoc_rpc_t *rpc,
+                                     mongoc_buffer_t *buffer /* IN/OUT */,
+                                     bson_error_t *error /* OUT */);
+
+bool
+mcd_rpc_message_decompress_if_necessary (mcd_rpc_message *rpc,
+                                         void **data,
+                                         size_t *data_len);
 
 BSON_END_DECLS
 

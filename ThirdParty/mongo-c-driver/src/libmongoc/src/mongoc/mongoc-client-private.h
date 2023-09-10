@@ -41,36 +41,8 @@
 
 BSON_BEGIN_DECLS
 
-/* Range of wire protocol versions this driver supports. Bumping
- * WIRE_VERSION_MAX must be accompanied by an update to
- * `_mongoc_wire_version_to_server_version`. */
-#define WIRE_VERSION_MIN 6  /* a.k.a. minWireVersion */
-#define WIRE_VERSION_MAX 17 /* a.k.a. maxWireVersion */
-
-/* first version that supported "find" and "getMore" commands */
-#define WIRE_VERSION_FIND_CMD 4
-/* first version with "killCursors" command */
-#define WIRE_VERSION_KILLCURSORS_CMD 4
-/* first version when findAndModify accepts writeConcern */
-#define WIRE_VERSION_FAM_WRITE_CONCERN 4
-/* first version to support readConcern */
-#define WIRE_VERSION_READ_CONCERN 4
-/* first version to support maxStalenessSeconds */
-#define WIRE_VERSION_MAX_STALENESS 5
-/* first version to support writeConcern */
-#define WIRE_VERSION_CMD_WRITE_CONCERN 5
-/* first version to support collation */
-#define WIRE_VERSION_COLLATION 5
-/* first version to support server-side errors for unsupported hint options */
-#define WIRE_VERSION_HINT_SERVER_SIDE_ERROR 5
-/* first version to support OP_MSG */
-#define WIRE_VERSION_OP_MSG 6
-/* first version to support array filters for "update" command */
-#define WIRE_VERSION_ARRAY_FILTERS 6
-/* first version to support retryable reads  */
-#define WIRE_VERSION_RETRY_READS 6
-/* first version to support retryable writes  */
-#define WIRE_VERSION_RETRY_WRITES 6
+/* version corresponding to server 3.6 release */
+#define WIRE_VERSION_3_6 6
 /* version corresponding to server 4.0 release */
 #define WIRE_VERSION_4_0 7
 /* first version to support hint for "update" command */
@@ -100,6 +72,16 @@ BSON_BEGIN_DECLS
 #define WIRE_VERSION_SNAPSHOT_READS 13
 /* version corresponding to server 5.1 release */
 #define WIRE_VERSION_5_1 14
+/* version corresponding to server 6.0 release */
+#define WIRE_VERSION_6_0 17
+/* version corresponding to server 7.0 release */
+#define WIRE_VERSION_7_0 21
+
+/* Range of wire protocol versions this driver supports. Bumping
+ * WIRE_VERSION_MAX must be accompanied by an update to
+ * `_mongoc_wire_version_to_server_version`. */
+#define WIRE_VERSION_MIN WIRE_VERSION_3_6 /* a.k.a. minWireVersion */
+#define WIRE_VERSION_MAX WIRE_VERSION_7_0 /* a.k.a. maxWireVersion */
 
 struct _mongoc_collection_t;
 
@@ -185,7 +167,7 @@ _mongoc_client_create_stream (mongoc_client_t *client,
 
 bool
 _mongoc_client_recv (mongoc_client_t *client,
-                     mongoc_rpc_t *rpc,
+                     mcd_rpc_message *rpc,
                      mongoc_buffer_t *buffer,
                      mongoc_server_stream_t *server_stream,
                      bson_error_t *error);
@@ -246,10 +228,16 @@ mongoc_client_connect (bool buffered,
                        bson_error_t *error);
 
 
-/* Returns true if a versioned server API has been selected,
- * otherwise returns false. */
+/* Returns true if a versioned server API has been selected, otherwise returns
+ * false. */
 bool
 mongoc_client_uses_server_api (const mongoc_client_t *client);
+
+
+/* Returns true if load balancing mode has been selected, otherwise returns
+ * false. */
+bool
+mongoc_client_uses_loadbalanced (const mongoc_client_t *client);
 
 BSON_END_DECLS
 

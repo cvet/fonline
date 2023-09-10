@@ -1,3 +1,201 @@
+libmongoc 1.24.4
+================
+
+Fixes:
+  * Fix build failure caused by missing `bson-dsl.h` install in libbson.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+
+
+libmongoc 1.24.3
+================
+
+Fixes:
+
+  * Fix possible memory leak on SCRAM authentication failure.
+  * Fix possible recursive lock on network error in single-threaded client.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Jeremy Mikola
+  * Roberto C. Sánchez
+
+
+
+libmongoc 1.24.2
+================
+
+Fixes:
+
+  * Fix possible crash if thread creation fails.
+  * Fix possible assertion if `mongoc_cursor_new_from_command_reply_with_opts` is called with open cursor and no `serverId` option.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+
+
+libmongoc 1.24.1
+================
+
+Fixes:
+
+    * Remove unnecessary assert in bulk API. May result in an abort when creating bulk operations with the `mongoc_bulk_operation_new` API intended for wrapping drivers.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+
+
+
+libmongoc 1.24.0
+================
+
+New Features:
+
+  * Support MongoDB server version 7.0.
+  * Support updated Queryable Encryption protocol.
+      * Introduces backwards breaking changes to the Queryable Encryption protocol. Using Queryable Encryption now requires MongoDB server version 7.0+.
+  * Support new Queryable Encryption features.
+      * Add `mongoc_client_encryption_create_encrypted_collection` to automatically create data encryption keys when creating a new encrypted collection.
+  * Support new security features.
+      * Add ability to fetch KMS credentials automatically from Azure, GCP, and AWS environments.
+      * Support authentication with KMS AWS temporary credentials.
+      * Cache fetched AWS credentials.
+      * Support AWS IAM Roles for service accounts, EKS in particular.
+  * Retry operations if the connection handshake fails.
+  * Add index creation helper: `mongoc_collection_create_indexes_with_opts`.
+
+Fixes:
+
+  * Fix default applied credentials for Kerberos with SSPI on Windows.
+  * Fix possible overcounting in Performance Counters used by `mongoc-stat`.
+
+Language Standard Support:
+
+  * C89 support has been dropped. C99 is the default tested C standard.
+
+Platform Support:
+
+  * Support for macOS 10.14 will be dropped in an upcoming release.
+  * Support for Ubuntu 14.04 will be dropped in an upcoming release.
+  * Support for Debian 8.1 will be dropped in an upcoming release.
+
+Build Configuration:
+
+  * The `ENABLE_BSON` configure-time option has been removed. Build scripts that
+    used `ENABLE_BSON=SYSTEM` should be updated to use `USE_SYSTEM_LIBBSON=TRUE`.
+    If the build script needs to support building arbitrary versions of the C
+    driver, add both `ENABLE_BSON=SYSTEM` and `USE_SYSTEM_LIBBSON=TRUE`.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Ezra Chung
+  * Colby Pike
+  * Gil Alon
+  * Kyle Kloberdanz
+  * Jeremy Mikola
+  * Andreas Braun
+  * Kondaiah Valagonda
+  * Joshua Siegel
+  * Roberto C. Sánchez
+  * Romain Geissler @ Amadeus
+  * bisht2050
+  * Adrian Dole
+
+libmongoc 1.23.5
+================
+
+Fixes:
+
+  * Fix potential crash due to insufficient memory when allocating performance counters.
+  * Fix compilation error on Android platforms due to missing `aligned_alloc`.
+  * Return an error if `RewrapManyDataKey` is invoked without a `provider` when a `masterKey` is given.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Romain Geissler @ Amadeus
+
+
+libmongoc 1.23.4
+================
+
+Fixes:
+
+  * Fix possible failure to authenticate with MONGODB-X509 after network error.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Andreas Braun
+  * Kevin Albertson
+  * Kyle Kloberdanz
+
+
+
+libmongoc 1.23.3
+================
+
+Fixes:
+
+  * Better handle malformed `hello` responses
+  * Handle `connectionId` of type `double`.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Gil Alon
+  * Kondaiah Valagonda
+
+
+
+libmongoc 1.23.2
+================
+
+Bug fixes:
+
+  * Fix compile on M1 macOS fails due to undeclared function (getpagesize)
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Kevin Albertson
+  * Kyle Kloberdanz
+
+
+libmongoc 1.22.2
+================
+
+  * Fix connectivity to Atlas Data Lake
+  * Additional bugfixes from libbson 1.22.2
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Andreas Braun
+  * Kevin Albertson
+  * Roberto C. Sánchez
+
+
+libmongoc 1.23.1
+================
+
+Bug fixes:
+
+  * Fix connectivity to Atlas Data Lake
+  * Fix crash when dropping a malformed Queryable Encryption collection.
+
+Thanks to everyone who contributed to the development of this release.
+
+  * Andreas Braun
+  * Kevin Albertson
+
+
+
 libmongoc 1.23.0
 ================
 
@@ -3109,7 +3307,7 @@ mongo-c-driver 0.96.0
 It's that time again, time for another mongo-c-driver release!
 
 This release includes much new documentation, which can be found at
-http://docs.mongodb.org/ecosystem/drivers/c/.
+https://www.mongodb.com/docs/ecosystem/drivers/c/.
 
 Additionally, this release improves support for various exotic systems.
 Solaris 10 is supported much better on SPARC and x86_64 based systems.

@@ -15,15 +15,10 @@
  */
 
 
-#include <bson/bson.h>
-
-#include "mongoc.h"
 #include "mongoc-rpc-private.h"
+
 #include "mongoc-counters-private.h"
 #include "mongoc-trace-private.h"
-#include "mongoc-util-private.h"
-#include "mongoc-compression-private.h"
-#include "mongoc-cluster-private.h"
 
 
 #define RPC(_name, _code)                                               \
@@ -47,6 +42,7 @@
    iov.iov_len = 4;                          \
    header->msg_len += (int32_t) iov.iov_len; \
    _mongoc_array_append_val (array, iov);
+#define CHECKSUM_FIELD(_name) // Do not include optional checksum.
 #define ENUM_FIELD INT32_FIELD
 #define INT64_FIELD(_name)                   \
    iov.iov_base = (void *) &rpc->_name;      \
@@ -176,6 +172,7 @@
 #undef SECTION_ARRAY_FIELD
 #undef RAW_BUFFER_FIELD
 #undef BSON_OPTIONAL
+#undef CHECKSUM_FIELD
 
 
 #if BSON_BYTE_ORDER == BSON_BIG_ENDIAN
@@ -188,6 +185,7 @@
    }
 #define UINT8_FIELD(_name)
 #define INT32_FIELD(_name) rpc->_name = BSON_UINT32_FROM_LE (rpc->_name);
+#define CHECKSUM_FIELD(_name) rpc->_name = BSON_UINT32_FROM_LE (rpc->_name);
 #define ENUM_FIELD INT32_FIELD
 #define INT64_FIELD(_name) rpc->_name = BSON_UINT64_FROM_LE (rpc->_name);
 #define CSTRING_FIELD(_name)
@@ -262,6 +260,7 @@
 #undef SECTION_ARRAY_FIELD
 #undef BSON_OPTIONAL
 #undef RAW_BUFFER_FIELD
+#undef CHECKSUM_FIELD
 
 #endif /* BSON_BYTE_ORDER == BSON_BIG_ENDIAN */
 
@@ -273,7 +272,9 @@
       _code                                                             \
    }
 #define UINT8_FIELD(_name) printf ("  " #_name " : %u\n", rpc->_name);
-#define INT32_FIELD(_name) printf ("  " #_name " : %d\n", rpc->_name);
+#define INT32_FIELD(_name) printf ("  " #_name " : %" PRId32 "\n", rpc->_name);
+#define CHECKSUM_FIELD(_name) \
+   printf ("  " #_name " : %" PRIu32 "\n", rpc->_name);
 #define ENUM_FIELD(_name) printf ("  " #_name " : %u\n", rpc->_name);
 #define INT64_FIELD(_name) \
    printf ("  " #_name " : %" PRIi64 "\n", (int64_t) rpc->_name);
@@ -318,44 +319,46 @@
          printf ("\n");                                    \
       }                                                    \
    } while (0);
-#define SECTION_ARRAY_FIELD(_name)                                          \
-   do {                                                                     \
-      ssize_t _i;                                                           \
-      printf ("  " #_name " : %d\n", rpc->n_##_name);                       \
-      for (_i = 0; _i < rpc->n_##_name; _i++) {                             \
-         if (rpc->_name[_i].payload_type == 0) {                            \
-            do {                                                            \
-               bson_t b;                                                    \
-               char *s;                                                     \
-               int32_t __l;                                                 \
-               memcpy (&__l, rpc->_name[_i].payload.bson_document, 4);      \
-               __l = BSON_UINT32_FROM_LE (__l);                             \
-               BSON_ASSERT (bson_init_static (                              \
-                  &b, rpc->_name[_i].payload.bson_document, __l));          \
-               s = bson_as_relaxed_extended_json (&b, NULL);                \
-               printf ("  Type %d: %s\n", rpc->_name[_i].payload_type, s);  \
-               bson_free (s);                                               \
-               bson_destroy (&b);                                           \
-            } while (0);                                                    \
-         } else if (rpc->_name[_i].payload_type == 1) {                     \
-            bson_reader_t *__r;                                             \
-            int max = rpc->_name[_i].payload.sequence.size -                \
-                      strlen (rpc->_name[_i].payload.sequence.identifier) - \
-                      1 - sizeof (int32_t);                                 \
-            bool __eof;                                                     \
-            const bson_t *__b;                                              \
-            printf ("  Identifier: %s\n",                                   \
-                    rpc->_name[_i].payload.sequence.identifier);            \
-            printf ("  Size: %d\n", max);                                   \
-            __r = bson_reader_new_from_data (                               \
-               rpc->_name[_i].payload.sequence.bson_documents, max);        \
-            while ((__b = bson_reader_read (__r, &__eof))) {                \
-               char *s = bson_as_relaxed_extended_json (__b, NULL);         \
-               bson_free (s);                                               \
-            }                                                               \
-            bson_reader_destroy (__r);                                      \
-         }                                                                  \
-      }                                                                     \
+#define SECTION_ARRAY_FIELD(_name)                                         \
+   do {                                                                    \
+      printf ("  " #_name " : %d\n", rpc->n_##_name);                      \
+      for (ssize_t _i = 0; _i < rpc->n_##_name; _i++) {                    \
+         if (rpc->_name[_i].payload_type == 0) {                           \
+            do {                                                           \
+               bson_t b;                                                   \
+               char *s;                                                    \
+               int32_t __l;                                                \
+               memcpy (&__l, rpc->_name[_i].payload.bson_document, 4);     \
+               __l = BSON_UINT32_FROM_LE (__l);                            \
+               BSON_ASSERT (bson_init_static (                             \
+                  &b, rpc->_name[_i].payload.bson_document, __l));         \
+               s = bson_as_relaxed_extended_json (&b, NULL);               \
+               printf ("  Type %d: %s\n", rpc->_name[_i].payload_type, s); \
+               bson_free (s);                                              \
+               bson_destroy (&b);                                          \
+            } while (0);                                                   \
+         } else if (rpc->_name[_i].payload_type == 1) {                    \
+            bson_reader_t *__r;                                            \
+            BSON_ASSERT (bson_in_range_signed (                            \
+               size_t, rpc->_name[_i].payload.sequence.size));             \
+            const size_t max_size =                                        \
+               (size_t) rpc->_name[_i].payload.sequence.size -             \
+               strlen (rpc->_name[_i].payload.sequence.identifier) - 1u -  \
+               sizeof (int32_t);                                           \
+            bool __eof;                                                    \
+            const bson_t *__b;                                             \
+            printf ("  Identifier: %s\n",                                  \
+                    rpc->_name[_i].payload.sequence.identifier);           \
+            printf ("  Size: %zu\n", max_size);                            \
+            __r = bson_reader_new_from_data (                              \
+               rpc->_name[_i].payload.sequence.bson_documents, max_size);  \
+            while ((__b = bson_reader_read (__r, &__eof))) {               \
+               char *s = bson_as_relaxed_extended_json (__b, NULL);        \
+               bson_free (s);                                              \
+            }                                                              \
+            bson_reader_destroy (__r);                                     \
+         }                                                                 \
+      }                                                                    \
    } while (0);
 #define BSON_OPTIONAL(_check, _code) \
    if (rpc->_check) {                \
@@ -406,6 +409,7 @@
 #undef SECTION_ARRAY_FIELD
 #undef BSON_OPTIONAL
 #undef RAW_BUFFER_FIELD
+#undef CHECKSUM_FIELD
 
 
 #define RPC(_name, _code)                                             \
@@ -431,6 +435,12 @@
    memcpy (&rpc->_name, buf, 4); \
    buflen -= 4;                  \
    buf += 4;
+#define CHECKSUM_FIELD(_name)       \
+   if (buflen >= 4) {               \
+      memcpy (&rpc->_name, buf, 4); \
+      buflen -= 4;                  \
+      buf += 4;                     \
+   }
 #define ENUM_FIELD INT32_FIELD
 #define INT64_FIELD(_name)       \
    if (buflen < 8) {             \
@@ -525,7 +535,7 @@
       buf += __l;                                                           \
       buflen -= __l;                                                        \
       rpc->n_##_name++;                                                     \
-   } while (buflen);
+   } while (buflen > 4); // Only optional checksum can come after data sections.
 #define RAW_BUFFER_FIELD(_name)         \
    rpc->_name = (void *) buf;           \
    rpc->_name##_len = (int32_t) buflen; \
@@ -559,26 +569,12 @@
 #undef SECTION_ARRAY_FIELD
 #undef BSON_OPTIONAL
 #undef RAW_BUFFER_FIELD
+#undef CHECKSUM_FIELD
 
-
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_rpc_gather --
- *
- *       Takes a (native endian) rpc struct and gathers the buffer.
- *       Caller should swab to little endian after calling gather.
- *
- *       Gather, swab, compress write.
- *       Read, scatter, uncompress, swab
- *
- *--------------------------------------------------------------------------
- */
 
 void
 _mongoc_rpc_gather (mongoc_rpc_t *rpc, mongoc_array_t *array)
 {
-   mongoc_counter_op_egress_total_inc ();
    switch ((mongoc_opcode_t) rpc->header.opcode) {
    case MONGOC_OPCODE_REPLY:
       _mongoc_rpc_gather_reply (&rpc->reply, &rpc->header, array);
@@ -586,46 +582,99 @@ _mongoc_rpc_gather (mongoc_rpc_t *rpc, mongoc_array_t *array)
 
    case MONGOC_OPCODE_MSG:
       _mongoc_rpc_gather_msg (&rpc->msg, &rpc->header, array);
-      mongoc_counter_op_egress_msg_inc ();
       return;
 
    case MONGOC_OPCODE_UPDATE:
       _mongoc_rpc_gather_update (&rpc->update, &rpc->header, array);
-      mongoc_counter_op_egress_update_inc ();
       return;
 
    case MONGOC_OPCODE_INSERT:
       _mongoc_rpc_gather_insert (&rpc->insert, &rpc->header, array);
-      mongoc_counter_op_egress_insert_inc ();
       return;
 
    case MONGOC_OPCODE_QUERY:
       _mongoc_rpc_gather_query (&rpc->query, &rpc->header, array);
-      mongoc_counter_op_egress_query_inc ();
       return;
 
    case MONGOC_OPCODE_GET_MORE:
       _mongoc_rpc_gather_get_more (&rpc->get_more, &rpc->header, array);
-      mongoc_counter_op_egress_getmore_inc ();
       return;
 
    case MONGOC_OPCODE_DELETE:
       _mongoc_rpc_gather_delete (&rpc->delete_, &rpc->header, array);
-      mongoc_counter_op_egress_delete_inc ();
       return;
 
    case MONGOC_OPCODE_KILL_CURSORS:
       _mongoc_rpc_gather_kill_cursors (&rpc->kill_cursors, &rpc->header, array);
-      mongoc_counter_op_egress_killcursors_inc ();
       return;
 
    case MONGOC_OPCODE_COMPRESSED:
       _mongoc_rpc_gather_compressed (&rpc->compressed, &rpc->header, array);
-      mongoc_counter_op_egress_compressed_inc ();
       return;
 
    default:
       MONGOC_WARNING ("Unknown rpc type: 0x%08x", rpc->header.opcode);
+      BSON_ASSERT (false);
+      break;
+   }
+}
+
+
+void
+_mongoc_rpc_op_egress_inc (const mongoc_rpc_t *rpc)
+{
+   mongoc_opcode_t opcode =
+      (mongoc_opcode_t) BSON_UINT32_FROM_LE (rpc->header.opcode);
+
+   if (opcode == MONGOC_OPCODE_COMPRESSED) {
+      mongoc_counter_op_egress_compressed_inc ();
+      mongoc_counter_op_egress_total_inc ();
+
+      opcode = (mongoc_opcode_t) BSON_UINT32_FROM_LE (
+         rpc->compressed.original_opcode);
+   }
+
+   mongoc_counter_op_egress_total_inc ();
+
+   switch (opcode) {
+   case MONGOC_OPCODE_REPLY:
+      return;
+
+   case MONGOC_OPCODE_MSG:
+      mongoc_counter_op_egress_msg_inc ();
+      return;
+
+   case MONGOC_OPCODE_UPDATE:
+      mongoc_counter_op_egress_update_inc ();
+      return;
+
+   case MONGOC_OPCODE_INSERT:
+      mongoc_counter_op_egress_insert_inc ();
+      return;
+
+   case MONGOC_OPCODE_QUERY:
+      mongoc_counter_op_egress_query_inc ();
+      return;
+
+   case MONGOC_OPCODE_GET_MORE:
+      mongoc_counter_op_egress_getmore_inc ();
+      return;
+
+   case MONGOC_OPCODE_DELETE:
+      mongoc_counter_op_egress_delete_inc ();
+      return;
+
+   case MONGOC_OPCODE_KILL_CURSORS:
+      mongoc_counter_op_egress_killcursors_inc ();
+      return;
+
+   case MONGOC_OPCODE_COMPRESSED:
+      MONGOC_WARNING ("Compressed an OP_COMPRESSED message!?");
+      BSON_ASSERT (false);
+      return;
+
+   default:
+      MONGOC_WARNING ("Unknown rpc type: 0x%08x", opcode);
       BSON_ASSERT (false);
       break;
    }
@@ -775,141 +824,6 @@ _mongoc_rpc_printf (mongoc_rpc_t *rpc)
 /*
  *--------------------------------------------------------------------------
  *
- * _mongoc_rpc_decompress --
- *
- *       Takes a (little endian) rpc struct assumed to be OP_COMPRESSED
- *       and decompresses the opcode into its original opcode.
- *       The in-place updated rpc struct remains little endian.
- *
- * Side effects:
- *       Overwrites the RPC, along with the provided buf with the
- *       compressed results.
- *
- *--------------------------------------------------------------------------
- */
-
-bool
-_mongoc_rpc_decompress (mongoc_rpc_t *rpc_le, uint8_t *buf, size_t buflen)
-{
-   size_t uncompressed_size =
-      BSON_UINT32_FROM_LE (rpc_le->compressed.uncompressed_size);
-   bool ok;
-   size_t msg_len = BSON_UINT32_TO_LE (buflen);
-   const size_t original_uncompressed_size = uncompressed_size;
-
-   BSON_ASSERT (uncompressed_size <= buflen);
-   memcpy (buf, (void *) (&msg_len), 4);
-   memcpy (buf + 4, (void *) (&rpc_le->header.request_id), 4);
-   memcpy (buf + 8, (void *) (&rpc_le->header.response_to), 4);
-   memcpy (buf + 12, (void *) (&rpc_le->compressed.original_opcode), 4);
-
-   ok = mongoc_uncompress (rpc_le->compressed.compressor_id,
-                           rpc_le->compressed.compressed_message,
-                           rpc_le->compressed.compressed_message_len,
-                           buf + 16,
-                           &uncompressed_size);
-
-   BSON_ASSERT (original_uncompressed_size == uncompressed_size);
-
-   if (ok) {
-      return _mongoc_rpc_scatter (rpc_le, buf, buflen);
-   }
-
-   return false;
-}
-
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_rpc_compress --
- *
- *       Takes a (little endian) rpc struct and creates a OP_COMPRESSED
- *       compressed opcode based on the provided compressor_id.
- *       The in-place updated rpc struct remains little endian.
- *
- * Side effects:
- *       Overwrites the RPC, and clears and overwrites the cluster buffer
- *       with the compressed results.
- *
- *--------------------------------------------------------------------------
- */
-
-char *
-_mongoc_rpc_compress (struct _mongoc_cluster_t *cluster,
-                      int32_t compressor_id,
-                      mongoc_rpc_t *rpc_le,
-                      bson_error_t *error)
-{
-   char *output;
-   size_t output_length = 0;
-   size_t allocate = BSON_UINT32_FROM_LE (rpc_le->header.msg_len) - 16;
-   char *data;
-   int size;
-   int32_t compression_level = -1;
-
-   if (compressor_id == MONGOC_COMPRESSOR_ZLIB_ID) {
-      compression_level = mongoc_uri_get_option_as_int32 (
-         cluster->uri, MONGOC_URI_ZLIBCOMPRESSIONLEVEL, -1);
-   }
-
-   BSON_ASSERT (allocate > 0);
-   data = bson_malloc0 (allocate);
-   size = _mongoc_cluster_buffer_iovec (
-      cluster->iov.data, cluster->iov.len, 16, data);
-   BSON_ASSERT (size);
-
-   output_length =
-      mongoc_compressor_max_compressed_length (compressor_id, size);
-   if (!output_length) {
-      bson_set_error (error,
-                      MONGOC_ERROR_COMMAND,
-                      MONGOC_ERROR_COMMAND_INVALID_ARG,
-                      "Could not determine compression bounds for %s",
-                      mongoc_compressor_id_to_name (compressor_id));
-      bson_free (data);
-      return NULL;
-   }
-
-   output = (char *) bson_malloc0 (output_length);
-   if (mongoc_compress (compressor_id,
-                        compression_level,
-                        data,
-                        size,
-                        output,
-                        &output_length)) {
-      rpc_le->header.msg_len = 0;
-      rpc_le->compressed.original_opcode =
-         BSON_UINT32_FROM_LE (rpc_le->header.opcode);
-      rpc_le->header.opcode = MONGOC_OPCODE_COMPRESSED;
-      rpc_le->header.request_id =
-         BSON_UINT32_FROM_LE (rpc_le->header.request_id);
-      rpc_le->header.response_to =
-         BSON_UINT32_FROM_LE (rpc_le->header.response_to);
-
-      rpc_le->compressed.uncompressed_size = size;
-      rpc_le->compressed.compressor_id = compressor_id;
-      rpc_le->compressed.compressed_message = (const uint8_t *) output;
-      rpc_le->compressed.compressed_message_len = output_length;
-      bson_free (data);
-
-
-      _mongoc_array_destroy (&cluster->iov);
-      _mongoc_array_init (&cluster->iov, sizeof (mongoc_iovec_t));
-      _mongoc_rpc_gather (rpc_le, &cluster->iov);
-      _mongoc_rpc_swab_to_le (rpc_le);
-      return output;
-   } else {
-      MONGOC_WARNING ("Could not compress data with %s",
-                      mongoc_compressor_id_to_name (compressor_id));
-   }
-   bson_free (data);
-   bson_free (output);
-   return NULL;
-}
-
-/*
- *--------------------------------------------------------------------------
- *
  * _mongoc_rpc_scatter --
  *
  *       Takes a (little endian) rpc struct and scatters the buffer.
@@ -997,9 +911,8 @@ _mongoc_rpc_get_first_document (mongoc_rpc_t *rpc, bson_t *reply)
       return _mongoc_rpc_reply_get_first_msg (&rpc->msg, reply);
    }
 
-   if (rpc->header.opcode == MONGOC_OPCODE_REPLY &&
-       _mongoc_rpc_reply_get_first (&rpc->reply, reply)) {
-      return true;
+   if (rpc->header.opcode == MONGOC_OPCODE_REPLY) {
+      return _mongoc_rpc_reply_get_first (&rpc->reply, reply);
    }
 
    return false;
@@ -1015,17 +928,17 @@ _mongoc_rpc_reply_get_first_msg (mongoc_rpc_msg_t *reply_msg,
 
    int32_t document_len;
 
-   BSON_ASSERT (0 == reply_msg->sections[0].payload_type);
+   if (BSON_UNLIKELY (reply_msg->sections[0].payload_type != 0)) {
+      return false;
+   }
 
    /* As per the Wire Protocol documentation, each section has a 32 bit length
    field: */
    memcpy (&document_len, reply_msg->sections[0].payload.bson_document, 4);
    document_len = BSON_UINT32_FROM_LE (document_len);
 
-   bson_init_static (
+   return bson_init_static (
       bson_reply, reply_msg->sections[0].payload.bson_document, document_len);
-
-   return true;
 }
 
 bool
@@ -1046,44 +959,56 @@ _mongoc_rpc_reply_get_first (mongoc_rpc_reply_t *reply, bson_t *bson)
    return bson_init_static (bson, reply->documents, len);
 }
 
-
-/*
- *--------------------------------------------------------------------------
- *
- * _mongoc_rpc_prep_command --
- *
- *       Prepare an RPC for mongoc_cluster_run_command_rpc. @cmd_ns and
- *       @cmd must not be freed or modified while the RPC is in use.
- *
- * Side effects:
- *       Fills out the RPC, including pointers into @cmd_ns and @command.
- *
- *--------------------------------------------------------------------------
- */
-
-void
-_mongoc_rpc_prep_command (mongoc_rpc_t *rpc,
-                          const char *cmd_ns,
-                          mongoc_cmd_t *cmd)
-
+bool
+mcd_rpc_message_get_body (const mcd_rpc_message *rpc, bson_t *reply)
 {
-   rpc->header.msg_len = 0;
-   rpc->header.request_id = 0;
-   rpc->header.response_to = 0;
-   rpc->header.opcode = MONGOC_OPCODE_QUERY;
-   rpc->query.collection = cmd_ns;
-   rpc->query.skip = 0;
-   rpc->query.n_return = -1;
-   rpc->query.fields = NULL;
-   rpc->query.query = bson_get_data (cmd->command);
+   switch (mcd_rpc_header_get_op_code (rpc)) {
+   case MONGOC_OP_CODE_MSG: {
+      const size_t sections_count = mcd_rpc_op_msg_get_sections_count (rpc);
 
-   /* Find, getMore And killCursors Commands Spec: "When sending a find command
-    * rather than a legacy OP_QUERY find, only the secondaryOk flag is honored."
-    * For other cursor-typed commands like aggregate, only secondaryOk can be
-    * set. Clear bits except secondaryOk; leave secondaryOk set only if it is
-    * already.
-    */
-   rpc->query.flags = cmd->query_flags & MONGOC_QUERY_SECONDARY_OK;
+      // Look for section kind 0.
+      for (size_t index = 0u; index < sections_count; ++index) {
+         switch (mcd_rpc_op_msg_section_get_kind (rpc, index)) {
+         case 0: { // Body.
+            const uint8_t *const body =
+               mcd_rpc_op_msg_section_get_body (rpc, index);
+
+            const int32_t body_len =
+               bson_iter_int32_unsafe (&(bson_iter_t){.raw = body});
+
+            return bson_init_static (reply, body, (size_t) body_len);
+         }
+
+         case 1: // Document Sequence.
+            continue;
+
+         default:
+            // Validated by `mcd_rpc_message_from_data`.
+            BSON_UNREACHABLE ("invalid OP_MSG section kind");
+         }
+      }
+      break;
+   }
+
+   case MONGOC_OP_CODE_REPLY: {
+      if (mcd_rpc_op_reply_get_documents_len (rpc) < 1) {
+         return false;
+      }
+
+      // Assume the first document in OP_REPLY is the body.
+      const uint8_t *const body = mcd_rpc_op_reply_get_documents (rpc);
+
+      return bson_init_static (
+         reply,
+         body,
+         (size_t) bson_iter_int32_unsafe (&(bson_iter_t){.raw = body}));
+   }
+
+   default:
+      break;
+   }
+
+   return false;
 }
 
 
@@ -1367,41 +1292,184 @@ _mongoc_rpc_check_ok (mongoc_rpc_t *rpc,
    RETURN (true);
 }
 
-/* If rpc is OP_COMPRESSED, decompress it into buffer.
- *
- * Assumes rpc is still in network little-endian representation (i.e.
- * _mongoc_rpc_swab_to_le has not been called).
- * Returns true if rpc is not OP_COMPRESSED (and is a no-op) or if decompression
- * succeeds.
- * Return false and sets error otherwise.
- */
 bool
-_mongoc_rpc_decompress_if_necessary (mongoc_rpc_t *rpc,
-                                     mongoc_buffer_t *buffer /* IN/OUT */,
-                                     bson_error_t *error /* OUT */)
+mcd_rpc_message_check_ok (mcd_rpc_message *rpc,
+                          int32_t error_api_version,
+                          bson_error_t *error /* OUT */,
+                          bson_t *error_doc /* OUT */)
 {
-   uint8_t *buf = NULL;
-   size_t len;
+   BSON_ASSERT (rpc);
 
-   if (BSON_UINT32_FROM_LE (rpc->header.opcode) != MONGOC_OPCODE_COMPRESSED) {
-      return true;
-   }
+   ENTRY;
 
-   len = BSON_UINT32_FROM_LE (rpc->compressed.uncompressed_size) +
-         sizeof (mongoc_rpc_header_t);
-
-   buf = bson_malloc0 (len);
-   if (!_mongoc_rpc_decompress (rpc, buf, len)) {
-      bson_free (buf);
+   if (mcd_rpc_header_get_op_code (rpc) != MONGOC_OP_CODE_REPLY) {
       bson_set_error (error,
                       MONGOC_ERROR_PROTOCOL,
                       MONGOC_ERROR_PROTOCOL_INVALID_REPLY,
-                      "Could not decompress server reply");
-      return false;
+                      "Received rpc other than OP_REPLY.");
+      RETURN (false);
    }
 
-   _mongoc_buffer_destroy (buffer);
-   _mongoc_buffer_init (buffer, buf, len, NULL, NULL);
+   const int32_t flags = mcd_rpc_op_reply_get_response_flags (rpc);
 
-   return true;
+   if (flags & MONGOC_OP_REPLY_RESPONSE_FLAG_QUERY_FAILURE) {
+      bson_t body;
+
+      if (mcd_rpc_message_get_body (rpc, &body)) {
+         _mongoc_populate_query_error (&body, error_api_version, error);
+
+         if (error_doc) {
+            bson_destroy (error_doc);
+            bson_copy_to (&body, error_doc);
+         }
+
+         bson_destroy (&body);
+      } else {
+         bson_set_error (error,
+                         MONGOC_ERROR_QUERY,
+                         MONGOC_ERROR_QUERY_FAILURE,
+                         "Unknown query failure.");
+      }
+
+      RETURN (false);
+   }
+
+   if (flags & MONGOC_OP_REPLY_RESPONSE_FLAG_CURSOR_NOT_FOUND) {
+      bson_set_error (error,
+                      MONGOC_ERROR_CURSOR,
+                      MONGOC_ERROR_CURSOR_INVALID_CURSOR,
+                      "The cursor is invalid or has expired.");
+
+      RETURN (false);
+   }
+
+
+   RETURN (true);
+}
+
+void
+mcd_rpc_message_egress (const mcd_rpc_message *rpc)
+{
+   // `mcd_rpc_message_egress` is expected to be called after
+   // `mcd_rpc_message_to_iovecs`, which converts the opCode field to
+   // little endian.
+   int32_t op_code = mcd_rpc_header_get_op_code (rpc);
+   op_code = bson_iter_int32_unsafe (
+      &(bson_iter_t){.raw = (const uint8_t *) &op_code});
+
+   if (op_code == MONGOC_OP_CODE_COMPRESSED) {
+      mongoc_counter_op_egress_compressed_inc ();
+      mongoc_counter_op_egress_total_inc ();
+
+      op_code = mcd_rpc_op_compressed_get_original_opcode (rpc);
+      op_code = bson_iter_int32_unsafe (
+         &(bson_iter_t){.raw = (const uint8_t *) &op_code});
+   }
+
+   switch (op_code) {
+   case MONGOC_OP_CODE_COMPRESSED:
+      BSON_UNREACHABLE ("invalid opcode (double compression?!)");
+      break;
+
+   case MONGOC_OP_CODE_MSG:
+      mongoc_counter_op_egress_msg_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_REPLY:
+      BSON_UNREACHABLE ("unexpected OP_REPLY egress");
+      break;
+
+   case MONGOC_OP_CODE_UPDATE:
+      mongoc_counter_op_egress_update_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_INSERT:
+      mongoc_counter_op_egress_insert_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_QUERY:
+      mongoc_counter_op_egress_query_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_GET_MORE:
+      mongoc_counter_op_egress_getmore_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_DELETE:
+      mongoc_counter_op_egress_delete_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_KILL_CURSORS:
+      mongoc_counter_op_egress_killcursors_inc ();
+      mongoc_counter_op_egress_total_inc ();
+      break;
+
+   default:
+      BSON_UNREACHABLE ("invalid opcode");
+   }
+}
+
+void
+mcd_rpc_message_ingress (const mcd_rpc_message *rpc)
+{
+   // `mcd_rpc_message_ingress` is expected be called after
+   // `mcd_rpc_message_from_data`, which converts the opCode field to native
+   // endian.
+   int32_t op_code = mcd_rpc_header_get_op_code (rpc);
+
+   if (op_code == MONGOC_OP_CODE_COMPRESSED) {
+      mongoc_counter_op_ingress_compressed_inc ();
+      mongoc_counter_op_ingress_total_inc ();
+
+      op_code = mcd_rpc_op_compressed_get_original_opcode (rpc);
+   }
+
+   switch (op_code) {
+   case MONGOC_OP_CODE_COMPRESSED:
+      BSON_UNREACHABLE ("invalid opcode (double compression?!)");
+      break;
+
+   case MONGOC_OP_CODE_MSG:
+      mongoc_counter_op_ingress_msg_inc ();
+      mongoc_counter_op_ingress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_REPLY:
+      mongoc_counter_op_ingress_reply_inc ();
+      mongoc_counter_op_ingress_total_inc ();
+      break;
+
+   case MONGOC_OP_CODE_UPDATE:
+      BSON_UNREACHABLE ("unexpected OP_UPDATE ingress");
+      break;
+
+   case MONGOC_OP_CODE_INSERT:
+      BSON_UNREACHABLE ("unexpected OP_INSERT ingress");
+      break;
+
+   case MONGOC_OP_CODE_QUERY:
+      BSON_UNREACHABLE ("unexpected OP_QUERY ingress");
+      break;
+
+   case MONGOC_OP_CODE_GET_MORE:
+      BSON_UNREACHABLE ("unexpected OP_GET_MORE ingress");
+      break;
+
+   case MONGOC_OP_CODE_DELETE:
+      BSON_UNREACHABLE ("unexpected OP_DELETE ingress");
+      break;
+
+   case MONGOC_OP_CODE_KILL_CURSORS:
+      BSON_UNREACHABLE ("unexpected OP_KILL_CURSORS ingress");
+      break;
+
+   default:
+      BSON_UNREACHABLE ("invalid opcode");
+   }
 }

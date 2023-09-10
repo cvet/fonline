@@ -38,9 +38,9 @@ function (sphinx_build_html target_name doc_dir)
       ${SPHINX_HTML_DIR}/.nojekyll ${SPHINX_HTML_DIR}/objects.inv
       COMMAND
       ${CMAKE_COMMAND} -E env
-      "PYTHONDONTWRITEBYTECODE=1"
+         "PYTHONDONTWRITEBYTECODE=1"
       ${SPHINX_EXECUTABLE}
-         -qEW -b html
+         -qEnW -b html
          -c "${CMAKE_CURRENT_SOURCE_DIR}"
          "${CMAKE_CURRENT_SOURCE_DIR}"
          "${SPHINX_HTML_DIR}"
@@ -131,7 +131,7 @@ function (sphinx_build_man target_name)
    add_custom_command (OUTPUT ${doc_mans}
       COMMAND
       ${CMAKE_COMMAND} -E env
-      "PYTHONDONTWRITEBYTECODE=1"
+         "PYTHONDONTWRITEBYTECODE=1"
       ${SPHINX_EXECUTABLE}
          -qEW -b man
          -c "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -159,4 +159,3 @@ function (sphinx_build_man target_name)
    set (doc_DIST_rsts ${doc_rsts} PARENT_SCOPE)
    set (doc_DIST_mans ${doc_mans} PARENT_SCOPE)
 endfunction ()
-
