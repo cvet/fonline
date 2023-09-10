@@ -444,6 +444,8 @@ struct SCRIPTING_CLASS::AngelScriptImpl
             if (execution_duration >= GameEngine->Settings.ScriptOverrunReportTime) {
 #if !FO_DEBUG
                 WriteLog("Script execution overrun: {} ({} ms{})", ctx->GetFunction()->GetDeclaration(true, true), execution_duration, is_suspended_execution ? ", was suspended" : "");
+#else
+                UNUSED_VARIABLE(is_suspended_execution);
 #endif
             }
 
