@@ -409,6 +409,7 @@ bool SysTraceStart( int64_t& samplingPeriod )
         return false;
     }
 
+#ifndef TRACY_NO_SAMPLING
     if( isOs64Bit )
     {
         CLASSIC_EVENT_ID stackId[2] = {};
@@ -423,6 +424,7 @@ bool SysTraceStart( int64_t& samplingPeriod )
             return false;
         }
     }
+#endif
 
 #ifdef UNICODE
     WCHAR KernelLoggerName[sizeof( KERNEL_LOGGER_NAME )];
@@ -1263,8 +1265,7 @@ void SysTraceWorker( void* ptr )
                             type = QueueType::HwSampleBranchMiss;
                             break;
                         default:
-                            assert( false );
-                            break;
+                            abort();
                         }
 
                         TracyLfqPrepare( type );

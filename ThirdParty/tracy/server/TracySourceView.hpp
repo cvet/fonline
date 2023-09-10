@@ -235,7 +235,6 @@ private:
     bool m_asmShowSourceLocation;
     bool m_calcInlineStats;
     uint8_t m_maxAsmBytes;
-    bool m_atnt;
     uint64_t m_jumpPopupAddr;
     const CallstackFrameData* m_localCallstackPopup;
     bool m_hwSamples, m_hwSamplesRelative;
@@ -263,6 +262,7 @@ private:
 
     uint32_t m_maxLine;
     int m_maxMnemonicLen;
+    int m_maxOperandLen;
 
     unordered_flat_map<const char*, int, charutil::Hasher, charutil::Comparator> m_microArchOpMap;
     CpuArchitecture m_cpuArch;

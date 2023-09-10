@@ -166,9 +166,9 @@ struct QueueZoneValidationThread : public QueueZoneValidation
 
 struct QueueZoneColor
 {
-    uint8_t r;
-    uint8_t g;
     uint8_t b;
+    uint8_t g;
+    uint8_t r;
 };
 
 struct QueueZoneColorThread : public QueueZoneColor
@@ -222,9 +222,9 @@ struct QueueSourceLocation
     uint64_t function;  // ptr
     uint64_t file;      // ptr
     uint32_t line;
-    uint8_t r;
-    uint8_t g;
     uint8_t b;
+    uint8_t g;
+    uint8_t r;
 };
 
 struct QueueZoneTextFat
@@ -342,9 +342,9 @@ struct QueueMessage
 
 struct QueueMessageColor : public QueueMessage
 {
-    uint8_t r;
-    uint8_t g;
     uint8_t b;
+    uint8_t g;
+    uint8_t r;
 };
 
 struct QueueMessageLiteral : public QueueMessage
