@@ -51,6 +51,7 @@
 #include "Filters.hpp"
 #include "Fonts.hpp"
 #include "HttpRequest.hpp"
+#include "IsElevated.hpp"
 #include "ImGuiContext.hpp"
 #include "ResolvService.hpp"
 #include "RunQueue.hpp"
@@ -96,6 +97,7 @@ static void* iconTex;
 static int iconTexSz;
 static Backend* bptr;
 static bool s_customTitle = false;
+static bool s_isElevated = false;
 
 static void SetWindowTitleCallback( const char* title )
 {
@@ -248,6 +250,7 @@ int main( int argc, char** argv )
     }
 
     tracy::Fileselector::Init();
+    s_isElevated = IsElevated();
 
     backend.Show();
     backend.Run();
@@ -586,6 +589,17 @@ static void DrawContents()
                     } );
                 }
             }
+        }
+        if( s_isElevated )
+        {
+            ImGui::Separator();
+            ImGui::TextColored( ImVec4( 1, 0.25f, 0.25f, 1 ), ICON_FA_TRIANGLE_EXCLAMATION " Profiler has elevated privileges! " ICON_FA_TRIANGLE_EXCLAMATION );
+            ImGui::PushFont( s_smallFont );
+            ImGui::TextColored( ImVec4( 1, 0.25f, 0.25f, 1 ), "You are running the profiler interface with admin privileges. This is" );
+            ImGui::TextColored( ImVec4( 1, 0.25f, 0.25f, 1 ), "most likely a mistake, as there is no reason to do so. Instead, you" );
+            ImGui::TextColored( ImVec4( 1, 0.25f, 0.25f, 1 ), "probably wanted to run the client (the application you are profiling)" );
+            ImGui::TextColored( ImVec4( 1, 0.25f, 0.25f, 1 ), "with elevated privileges." );
+            ImGui::PopFont();
         }
         ImGui::Separator();
         ImGui::TextUnformatted( "Client address" );
@@ -962,6 +976,16 @@ static void DrawContents()
         animTime += ImGui::GetIO().DeltaTime;
         tracy::DrawWaitingDots( animTime );
         ImGui::TextUnformatted( "Please wait, cleanup is in progress" );
+        ImGui::EndPopup();
+    }
+
+    if( tracy::Fileselector::HasFailed() ) ImGui::OpenPopup( "File selector is not available" );
+    if( ImGui::BeginPopupModal( "File selector is not available", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        ImGui::TextUnformatted( "File selector cannot be displayed." );
+        ImGui::TextUnformatted( "Check nfd library implementation for details." );
+        ImGui::Separator();
+        if( ImGui::Button( "Ok" ) ) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
 

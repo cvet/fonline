@@ -72,8 +72,13 @@ Backend::Backend( const char* title, std::function<void()> redraw, RunQueue* mai
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
     glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 2 );
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
-#if __APPLE__
+#ifdef __APPLE__
     glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
+#endif
+#ifdef WIN32
+#  if GLFW_VERSION_MAJOR > 3 || ( GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4 )
+    glfwWindowHint( GLFW_WIN32_KEYBOARD_MENU, 1 );
+#  endif
 #endif
     s_window = glfwCreateWindow( m_winPos.w, m_winPos.h, title, NULL, NULL );
     if( !s_window ) exit( 1 );

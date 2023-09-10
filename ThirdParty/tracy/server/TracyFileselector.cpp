@@ -11,6 +11,8 @@
 namespace tracy::Fileselector
 {
 
+static bool s_hasFailed = false;
+
 void Init()
 {
 #if !defined TRACY_NO_FILESELECTOR && !defined __EMSCRIPTEN__
@@ -25,6 +27,19 @@ void Shutdown()
 #endif
 }
 
+bool HasFailed()
+{
+    if( s_hasFailed )
+    {
+        s_hasFailed = false;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 #ifdef __EMSCRIPTEN__
 static std::function<void(const char*)> s_openFileCallback;
 
@@ -35,7 +50,7 @@ extern "C" int nativeOpenFile()
 }
 #endif
 
-void OpenFile( const char* ext, const char* desc, std::function<void(const char*)> callback )
+static bool OpenFileImpl( const char* ext, const char* desc, std::function<void(const char*)> callback )
 {
 #ifndef TRACY_NO_FILESELECTOR
 #  ifdef __EMSCRIPTEN__
@@ -58,29 +73,54 @@ void OpenFile( const char* ext, const char* desc, std::function<void(const char*
         };
         input.click();
     }, ext );
+    return true;
 #  else
     nfdu8filteritem_t filter = { desc, ext };
     nfdu8char_t* fn;
-    if( NFD_OpenDialogU8( &fn, &filter, 1, nullptr ) == NFD_OKAY )
+    const auto res = NFD_OpenDialogU8( &fn, &filter, 1, nullptr );
+    if( res == NFD_OKAY )
     {
         callback( (const char*)fn );
         NFD_FreePathU8( fn );
+        return true;
+    }
+    else
+    {
+        return res != NFD_ERROR;
     }
 #  endif
 #endif
+    return false;
 }
 
-void SaveFile( const char* ext, const char* desc, std::function<void(const char*)> callback )
+static bool SaveFileImpl( const char* ext, const char* desc, std::function<void(const char*)> callback )
 {
 #if !defined TRACY_NO_FILESELECTOR && !defined __EMSCRIPTEN__
     nfdu8filteritem_t filter = { desc, ext };
     nfdu8char_t* fn;
-    if( NFD_SaveDialogU8( &fn, &filter, 1, nullptr, nullptr ) == NFD_OKAY )
+    const auto res = NFD_SaveDialogU8( &fn, &filter, 1, nullptr, nullptr );
+    if( res == NFD_OKAY )
     {
         callback( (const char*)fn );
         NFD_FreePathU8( fn );
+        return true;
+    }
+    else
+    {
+        return res != NFD_ERROR;
     }
 #endif
+    return false;
+}
+
+void OpenFile( const char* ext, const char* desc, std::function<void(const char*)> callback )
+{
+    if( !OpenFileImpl( ext, desc, callback ) ) s_hasFailed = true;
+}
+
+void SaveFile( const char* ext, const char* desc, std::function<void(const char*)> callback )
+{
+    if( !SaveFileImpl( ext, desc, callback ) ) s_hasFailed = true;
 }
 
 }
