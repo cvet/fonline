@@ -237,23 +237,12 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     attr.majorVersion = 2;
     attr.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context("#canvas", &attr);
-    if (gl_context <= 0) {
-        attr.majorVersion = 1;
-        attr.minorVersion = 0;
-        gl_context = emscripten_webgl_create_context(nullptr, &attr);
-        RUNTIME_ASSERT_STR(gl_context > 0, _str("Failed to create WebGL context, error '{}'", (int)gl_context));
-        WriteLog("Created WebGL1 context");
-    }
-    else {
-        WriteLog("Created WebGL2 context");
-    }
+    RUNTIME_ASSERT_STR(gl_context > 0, _str("Failed to create WebGL2 context, error {}", static_cast<int>(gl_context)));
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
-    RUNTIME_ASSERT_STR(r >= 0, _str("Can't set current context, error '{}'", r));
+    RUNTIME_ASSERT_STR(r >= 0, _str("Can't set current context, error {}", r));
 
-    OGL_vertex_array_object = (attr.majorVersion > 1 || emscripten_webgl_enable_extension(gl_context, "OES_vertex_array_object"));
-
-    GlContext = (SDL_GLContext)gl_context;
+    GlContext = reinterpret_cast<SDL_GLContext>(gl_context);
 #endif
 
     // Initialize GLEW
@@ -279,13 +268,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
     OGL_vertex_buffer_object = true;
     OGL_framebuffer_object = true;
     OGL_framebuffer_object_ext = false;
-    OGL_vertex_array_object = false;
-#if FO_ANDROID
-    OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
-#endif
-#if FO_IOS
-    OGL_vertex_array_object = true;
-#endif
+    OGL_vertex_array_object = true; // No in es 2 / webgl 1
     OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
 #endif
 
