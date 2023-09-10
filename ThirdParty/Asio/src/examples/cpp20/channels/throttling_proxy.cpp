@@ -2,7 +2,7 @@
 // throttling_proxy.cpp
 // ~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2022 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2023 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -118,10 +118,11 @@ int main(int argc, char* argv[])
     io_context ctx;
 
     auto listen_endpoint =
-      *tcp::resolver(ctx).resolve(argv[1], argv[2], tcp::resolver::passive);
+      *tcp::resolver(ctx).resolve(argv[1], argv[2],
+          tcp::resolver::passive).begin();
 
     auto target_endpoint =
-      *tcp::resolver(ctx).resolve(argv[3], argv[4]);
+      *tcp::resolver(ctx).resolve(argv[3], argv[4]).begin();
 
     tcp::acceptor acceptor(ctx, listen_endpoint);
     co_spawn(ctx, listen(acceptor, target_endpoint), detached);
