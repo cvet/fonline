@@ -734,6 +734,7 @@ if (MONGOC_ENABLE_MONGODB_AWS_AUTH)
    endif()
 endif ()
 
+if(FALSE) #!
 if (MONGOC_ENABLE_STATIC_BUILD)
    add_library (mcd_rpc STATIC EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/src/mongoc/mcd-rpc.c)
    target_include_directories (mcd_rpc PUBLIC ${PROJECT_SOURCE_DIR}/src)
@@ -744,6 +745,7 @@ if (MONGOC_ENABLE_STATIC_BUILD)
    target_compile_definitions (mcd_rpc PUBLIC ${BSON_STATIC_PUBLIC_DEFINITIONS})
    set_target_properties (mcd_rpc PROPERTIES OUTPUT_NAME "mcd-rpc")
 endif ()
+endif() #!
 
 if(FALSE) #!
 add_library (mongoc_shared SHARED ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
