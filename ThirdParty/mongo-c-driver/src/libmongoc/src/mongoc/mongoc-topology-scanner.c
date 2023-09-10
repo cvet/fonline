@@ -261,7 +261,6 @@ _build_handshake_cmd (const bson_t *basis_cmd,
    bson_t subdoc;
    bson_iter_t iter;
    const char *key;
-   int keylen;
    const bson_t *compressors;
    int count = 0;
    char buf[16];
@@ -285,7 +284,9 @@ _build_handshake_cmd (const bson_t *basis_cmd,
 
       if (bson_iter_init (&iter, compressors)) {
          while (bson_iter_next (&iter)) {
-            keylen = bson_uint32_to_string (count++, &key, buf, sizeof buf);
+            const size_t keylen =
+               bson_uint32_to_string (count++, &key, buf, sizeof (buf));
+            BSON_ASSERT (bson_in_range_unsigned (int, keylen));
             bson_append_utf8 (
                &subdoc, key, (int) keylen, bson_iter_key (&iter), -1);
          }
@@ -301,13 +302,19 @@ _build_handshake_cmd (const bson_t *basis_cmd,
    return doc;
 }
 
+static bool
+_should_use_op_msg (const mongoc_topology_scanner_t *ts)
+{
+   return mongoc_topology_scanner_uses_server_api (ts) ||
+          mongoc_topology_scanner_uses_loadbalanced (ts);
+}
+
 const bson_t *
 _mongoc_topology_scanner_get_monitoring_cmd (mongoc_topology_scanner_t *ts,
                                              bool hello_ok)
 {
-   return hello_ok || mongoc_topology_scanner_uses_server_api (ts)
-             ? &ts->hello_cmd
-             : &ts->legacy_hello_cmd;
+   return hello_ok || _should_use_op_msg (ts) ? &ts->hello_cmd
+                                              : &ts->legacy_hello_cmd;
 }
 
 void
@@ -338,12 +345,11 @@ _mongoc_topology_scanner_dup_handshake_cmd (mongoc_topology_scanner_t *ts,
    /* Construct a new handshake command to be sent */
    BSON_ASSERT (ts->handshake_cmd == NULL);
    bson_mutex_unlock (&ts->handshake_cmd_mtx);
-   new_cmd = _build_handshake_cmd (mongoc_topology_scanner_uses_server_api (ts)
-                                      ? &ts->hello_cmd
-                                      : &ts->legacy_hello_cmd,
-                                   appname,
-                                   ts->uri,
-                                   ts->loadbalanced);
+   new_cmd = _build_handshake_cmd (
+      _should_use_op_msg (ts) ? &ts->hello_cmd : &ts->legacy_hello_cmd,
+      appname,
+      ts->uri,
+      ts->loadbalanced);
    bson_mutex_lock (&ts->handshake_cmd_mtx);
    if (ts->handshake_state != HANDSHAKE_CMD_UNINITIALIZED) {
       /* Someone else updated the handshake_cmd while we were building ours.
@@ -365,9 +371,8 @@ _mongoc_topology_scanner_dup_handshake_cmd (mongoc_topology_scanner_t *ts,
 after_init:
    /* If the doc turned out to be too big */
    if (ts->handshake_state == HANDSHAKE_CMD_TOO_BIG) {
-      bson_t *ret = mongoc_topology_scanner_uses_server_api (ts)
-                       ? &ts->hello_cmd
-                       : &ts->legacy_hello_cmd;
+      bson_t *ret =
+         _should_use_op_msg (ts) ? &ts->hello_cmd : &ts->legacy_hello_cmd;
       bson_copy_to (ret, copy_into);
    } else {
       BSON_ASSERT (ts->handshake_cmd != NULL);
@@ -385,14 +390,12 @@ _begin_hello_cmd (mongoc_topology_scanner_node_t *node,
                   bool use_handshake)
 {
    mongoc_topology_scanner_t *ts = node->ts;
-   mongoc_opcode_t cmd_opcode_type = MONGOC_OPCODE_QUERY;
    bson_t cmd;
 
    /* If we're asked to use a specific API version, we should send our
    hello handshake via op_msg rather than the legacy op_query: */
-   if (mongoc_topology_scanner_uses_server_api (ts)) {
-      cmd_opcode_type = MONGOC_OPCODE_MSG;
-   }
+   const int32_t cmd_opcode =
+      _should_use_op_msg (ts) ? MONGOC_OP_CODE_MSG : MONGOC_OP_CODE_QUERY;
 
    if (node->last_used != -1 && node->last_failed == -1 && !use_handshake) {
       /* The node's been used before and not failed recently */
@@ -416,6 +419,10 @@ _begin_hello_cmd (mongoc_topology_scanner_node_t *node,
       ssl_opts = ts->ssl_opts;
 #endif
 
+      // _mongoc_topology_scanner_add_speculative_authentication is called with
+      // NULL for the scram_cache argument. The scram cache is not used for
+      // speculative authentication in the topology scanner. This is planned to
+      // be improved in CDRIVER-3642.
       _mongoc_topology_scanner_add_speculative_authentication (
          &cmd, ts->uri, ssl_opts, NULL, &node->scram);
    }
@@ -437,7 +444,7 @@ _begin_hello_cmd (mongoc_topology_scanner_node_t *node,
                          node->host.host,
                          "admin",
                          &cmd,
-                         cmd_opcode_type,
+                         cmd_opcode,
                          &_async_handler,
                          node,
                          ts->connect_timeout_msec);
@@ -601,10 +608,6 @@ mongoc_topology_scanner_node_disconnect (mongoc_topology_scanner_node_t *node,
       }
 
       node->stream = NULL;
-      memset (
-         &node->sasl_supported_mechs, 0, sizeof (node->sasl_supported_mechs));
-      node->negotiated_sasl_supported_mechs = false;
-      bson_reinit (&node->speculative_auth_response);
    }
    mongoc_server_description_destroy (node->handshake_sd);
    node->handshake_sd = NULL;
@@ -1094,6 +1097,20 @@ mongoc_topology_scanner_node_setup (mongoc_topology_scanner_node_t *node,
 
    BSON_ASSERT (!node->retired);
 
+   // If a new stream is needed, reset state authentication state.
+   // Authentication state is tied to a stream.
+   {
+      node->has_auth = false;
+      bson_reinit (&node->speculative_auth_response);
+#ifdef MONGOC_ENABLE_CRYPTO
+      // Destroy and zero `node->scram`.
+      _mongoc_scram_destroy (&node->scram);
+#endif
+      memset (
+         &node->sasl_supported_mechs, 0, sizeof (node->sasl_supported_mechs));
+      node->negotiated_sasl_supported_mechs = false;
+   }
+
    if (node->ts->initiator) {
       stream = node->ts->initiator (
          node->ts->uri, &node->host, node->ts->initiator_context, error);
@@ -1124,8 +1141,6 @@ mongoc_topology_scanner_node_setup (mongoc_topology_scanner_node_t *node,
       node->ts->setup_err_cb (node->id, node->ts->cb_data, error);
       return;
    }
-
-   node->has_auth = false;
 }
 
 /*
@@ -1504,8 +1519,15 @@ _mongoc_topology_scanner_set_loadbalanced (mongoc_topology_scanner_t *ts,
 }
 
 bool
-mongoc_topology_scanner_uses_server_api (
-   const mongoc_topology_scanner_t *topology_scanner)
+mongoc_topology_scanner_uses_server_api (const mongoc_topology_scanner_t *ts)
 {
-   return NULL != topology_scanner->api;
+   BSON_ASSERT_PARAM (ts);
+   return NULL != ts->api;
+}
+
+bool
+mongoc_topology_scanner_uses_loadbalanced (const mongoc_topology_scanner_t *ts)
+{
+   BSON_ASSERT_PARAM (ts);
+   return ts->loadbalanced;
 }

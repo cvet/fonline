@@ -9,12 +9,14 @@ set (build_cmake_MODULES
    LoadVersion.cmake
    MaintainerFlags.cmake
    MongoCPackage.cmake
+   MongoSettings.cmake
    MongoC-Warnings.cmake
    ParseVersion.cmake
    SphinxBuild.cmake
    Sanitizers.cmake
    CCache.cmake
    LLDLinker.cmake
+   TestFixtures.cmake
 )
 
 set_local_dist (build_cmake_DIST_local

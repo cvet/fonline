@@ -17,6 +17,7 @@
 /* All interaction with kms_message is limited to this file. */
 
 #include "common-b64-private.h"
+#include "mcd-time.h"
 #include "mongoc-cluster-aws-private.h"
 #include "mongoc-client-private.h"
 #include "mongoc-host-list-private.h"
@@ -26,6 +27,8 @@
 #include "mongoc-uri-private.h"
 #include "mongoc-util-private.h"
 #include "mongoc-http-private.h"
+#include "mongoc-rand-private.h"
+#include "mongoc-ssl-private.h"
 
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "aws_auth"
@@ -134,7 +137,8 @@ fail:
  * credentials.
  */
 static bool
-_send_http_request (const char *ip,
+_send_http_request (bool use_tls,
+                    const char *ip,
                     int port,
                     const char *method,
                     const char *path,
@@ -147,6 +151,7 @@ _send_http_request (const char *ip,
    mongoc_http_response_t res;
    const int socket_timeout_ms = 10000;
    bool ret;
+   mongoc_ssl_opt_t ssl_opt = {0};
 
    *http_response_body = NULL;
    *http_response_headers = NULL;
@@ -158,10 +163,14 @@ _send_http_request (const char *ip,
    req.method = method;
    req.path = path;
    req.extra_headers = headers;
+   if (use_tls) {
+      _mongoc_ssl_opts_copy_to (
+         mongoc_ssl_opt_get_default (), &ssl_opt, true /* copy_internal */);
+   }
    ret = _mongoc_http_send (&req,
                             socket_timeout_ms,
-                            false /* use_tls */,
-                            NULL /* ssl_opts */,
+                            use_tls /* use_tls */,
+                            use_tls ? &ssl_opt : NULL,
                             &res,
                             error);
 
@@ -172,6 +181,7 @@ _send_http_request (const char *ip,
    }
 
    _mongoc_http_response_cleanup (&res);
+   _mongoc_ssl_opts_cleanup (&ssl_opt, true);
    return ret;
 }
 
@@ -296,6 +306,107 @@ fail:
    return ret;
 }
 
+// expiration_ms_to_timer converts milliseconds since Unix Epoch into the
+// mcd_timer `expiration_timer`.
+static bool
+expiration_ms_to_timer (int64_t expiration_ms,
+                        mcd_timer *expiration_timer,
+                        bson_error_t *error)
+{
+   bool ret = false;
+
+   // get current time in milliseconds since Unix Epoch.
+   int64_t now_ms;
+   {
+      struct timeval now;
+      if (0 != bson_gettimeofday (&now)) {
+         AUTH_ERROR_AND_FAIL ("bson_gettimeofday returned failure. Unable to "
+                              "determine expiration.");
+      } else {
+         now_ms = (1000 * now.tv_sec) + (now.tv_usec / 1000);
+      }
+   }
+
+   *expiration_timer = mcd_timer_expire_after (mcd_milliseconds (
+      expiration_ms - now_ms - MONGOC_AWS_CREDENTIALS_EXPIRATION_WINDOW_MS));
+   ret = true;
+fail:
+   return ret;
+}
+
+// expiration_iso8601_to_timer parses the "Expiration" string value returned
+// from an ECS or EC2 response. "Expiration" is expected to be an ISO-8601
+// string. Example: "2023-02-07T20:04:27Z". On success, `expiration_timer` is
+// set to the expiration time.
+static bool
+expiration_iso8601_to_timer (const char *expiration_str,
+                             mcd_timer *expiration_timer,
+                             bson_error_t *error)
+{
+   bool ret = false;
+
+   // get expiration time in milliseconds since Unix Epoch.
+   int64_t expiration_ms;
+   {
+      bson_error_t json_err;
+      bson_t date_doc;
+      bson_iter_t date_iter;
+      char *date_doc_str;
+      // libbson has private API `_bson_iso8601_date_parse` to parse ISO-8601
+      // strings. The private API is inaccessible to libmongoc.
+      // Create a temporary bson document with a $date to parse.
+      date_doc_str = bson_strdup_printf (
+         "{\"Expiration\" : {\"$date\" : \"%s\"}}", expiration_str);
+
+      if (!bson_init_from_json (&date_doc, date_doc_str, -1, &json_err)) {
+         bson_free (date_doc_str);
+         AUTH_ERROR_AND_FAIL ("failed to parse Expiration: %s",
+                              json_err.message);
+      }
+      BSON_ASSERT (bson_iter_init_find (&date_iter, &date_doc, "Expiration"));
+      expiration_ms = bson_iter_date_time (&date_iter);
+      bson_free (date_doc_str);
+      bson_destroy (&date_doc);
+   }
+
+   if (!expiration_ms_to_timer (expiration_ms, expiration_timer, error)) {
+      goto fail;
+   }
+   ret = true;
+fail:
+   return ret;
+}
+
+// generate_AWS_ROLE_SESSION_NAME generates a 16 byte hex string (32 characters)
+// to use as the AWS_ROLE_SESSION_NAME.
+static char *
+generate_AWS_ROLE_SESSION_NAME (bson_error_t *error)
+{
+#define NUM_BYTES 16
+   bool ok = false;
+   uint8_t data[NUM_BYTES];
+   char *out = bson_malloc (NUM_BYTES * 2 + 1);
+   if (!_mongoc_rand_bytes (data, NUM_BYTES)) {
+      AUTH_ERROR_AND_FAIL (
+         "unable to generate random bytes for AWS_ROLE_SESSION_NAME");
+   }
+
+   size_t i;
+   for (i = 0; i < NUM_BYTES; i++) {
+      bson_snprintf (out + (2 * i), 3, "%02x", data[i]);
+   }
+   out[NUM_BYTES * 2] = '\0';
+
+   ok = true;
+fail:
+   if (!ok) {
+      bson_free (out);
+      out = NULL;
+   }
+   return out;
+#undef NUM_BYTES
+}
+
 static bool
 _obtain_creds_from_ecs (_mongoc_aws_credentials_t *creds, bson_error_t *error)
 {
@@ -316,7 +427,8 @@ _obtain_creds_from_ecs (_mongoc_aws_credentials_t *creds, bson_error_t *error)
       return true;
    }
 
-   if (!_send_http_request ("169.254.170.2",
+   if (!_send_http_request (false /* use_tls */,
+                            "169.254.170.2",
                             80,
                             "GET",
                             relative_ecs_uri,
@@ -350,6 +462,15 @@ _obtain_creds_from_ecs (_mongoc_aws_credentials_t *creds, bson_error_t *error)
       ecs_session_token = bson_iter_utf8 (&iter, NULL);
    }
 
+   if (bson_iter_init_find_case (&iter, response_json, "Expiration") &&
+       BSON_ITER_HOLDS_UTF8 (&iter)) {
+      if (!expiration_iso8601_to_timer (
+             bson_iter_utf8 (&iter, NULL), &creds->expiration.value, error)) {
+         goto fail;
+      }
+      creds->expiration.set = true;
+   }
+
    if (!_validate_and_set_creds (ecs_access_key_id,
                                  ecs_secret_access_key,
                                  ecs_session_token,
@@ -358,13 +479,222 @@ _obtain_creds_from_ecs (_mongoc_aws_credentials_t *creds, bson_error_t *error)
       goto fail;
    }
 
-
    ret = true;
 fail:
    bson_destroy (response_json);
    bson_free (http_response_headers);
    bson_free (http_response_body);
    bson_free (relative_ecs_uri);
+   return ret;
+}
+
+static bool
+_obtain_creds_from_assumerolewithwebidentity (_mongoc_aws_credentials_t *creds,
+                                              bson_error_t *error)
+{
+   bool ret = false;
+   char *http_response_headers = NULL;
+   char *http_response_body = NULL;
+   char *aws_web_identity_token_file = NULL;
+   char *aws_role_arn = NULL;
+   char *aws_role_session_name = NULL;
+   bson_t *response_bson = NULL;
+   bson_iter_t iter;
+   const char *access_key_id = NULL;
+   const char *secret_access_key = NULL;
+   const char *session_token = NULL;
+   bson_error_t http_error;
+   mongoc_stream_t *fstream = NULL;
+   bson_string_t *token_file_contents = NULL;
+   char *path_and_query = NULL;
+
+   aws_web_identity_token_file = _mongoc_getenv ("AWS_WEB_IDENTITY_TOKEN_FILE");
+   aws_role_arn = _mongoc_getenv ("AWS_ROLE_ARN");
+   if (!aws_web_identity_token_file ||
+       strlen (aws_web_identity_token_file) == 0 || !aws_role_arn ||
+       strlen (aws_role_arn) == 0) {
+      bson_free (aws_role_arn);
+      bson_free (aws_web_identity_token_file);
+      // Not an error. May need to obtain credentials another way.
+      return true;
+   }
+
+   aws_role_session_name = _mongoc_getenv ("AWS_ROLE_SESSION_NAME");
+   if (!aws_role_session_name) {
+      aws_role_session_name = generate_AWS_ROLE_SESSION_NAME (error);
+      if (!aws_role_session_name) {
+         goto fail;
+      }
+   }
+
+   // Read the contents of the file given by ``AWS_WEB_IDENTITY_TOKEN_FILE``.
+   {
+      fstream = mongoc_stream_file_new_for_path (
+         aws_web_identity_token_file, O_RDONLY, 0);
+      if (!fstream) {
+         AUTH_ERROR_AND_FAIL (
+            "failed to open AWS_WEB_IDENTITY_TOKEN_FILE: %s. Reason: %s",
+            aws_web_identity_token_file,
+            strerror (errno));
+      }
+
+      token_file_contents = bson_string_new (NULL);
+
+      for (;;) {
+         char buf[128];
+         ssize_t got = mongoc_stream_read (
+            fstream,
+            buf,
+            sizeof (buf) - 1 /* leave space for null terminator */,
+            0 /* min_bytes */,
+            0 /* timeout_msec. Unused for file stream. */);
+
+         if (got > 0) {
+            // add null terminator.
+            buf[got] = '\0';
+            bson_string_append (token_file_contents, (const char *) buf);
+         } else if (got == 0) {
+            // EOF.
+            break;
+         } else {
+            AUTH_ERROR_AND_FAIL (
+               "failed to read AWS_WEB_IDENTITY_TOKEN_FILE: %s. Reason: %s",
+               aws_web_identity_token_file,
+               strerror (errno));
+         }
+      }
+   }
+
+   path_and_query =
+      bson_strdup_printf ("/?Action=AssumeRoleWithWebIdentity"
+                          "&RoleSessionName=%s"
+                          "&RoleArn=%s"
+                          "&WebIdentityToken=%s&Version=2011-06-15",
+                          aws_role_session_name,
+                          aws_role_arn,
+                          token_file_contents->str);
+
+   // send an HTTP request to sts.amazonaws.com.
+   if (!_send_http_request (true /* use_tls */,
+                            "sts.amazonaws.com",
+                            443,
+                            "POST",
+                            path_and_query,
+                            "Accept: application/json\r\n",
+                            &http_response_body,
+                            &http_response_headers,
+                            &http_error)) {
+      AUTH_ERROR_AND_FAIL ("failed to contact sts.amazonaws.com: %s",
+                           http_error.message);
+   }
+
+   response_bson = bson_new_from_json (
+      (const uint8_t *) http_response_body, strlen (http_response_body), error);
+   if (!response_bson) {
+      AUTH_ERROR_AND_FAIL ("invalid JSON in response from sts.amazonaws.com. "
+                           "Response headers: %s",
+                           http_response_headers);
+   }
+
+   if (!bson_iter_init (&iter, response_bson)) {
+      AUTH_ERROR_AND_FAIL ("failed to initialize BSON iterator to response: %s",
+                           http_response_body);
+   }
+
+   // If the response contains "Error", return only the "Error" document.
+   // Do not include http_response_body in subsequent errors to limit risk of
+   // including credentials in error messages.
+   bson_iter_t Error_iter;
+   if (bson_iter_init_find (&Error_iter, response_bson, "Error")) {
+      bson_t Error_bson;
+      if (!_mongoc_iter_document_as_bson (&Error_iter, &Error_bson, error)) {
+         goto fail;
+      }
+      char *Error_json = bson_as_json (&Error_bson, NULL);
+      bson_set_error (
+         error,
+         MONGOC_ERROR_CLIENT,
+         MONGOC_ERROR_CLIENT_AUTHENTICATE,
+         "Response to AssumeRoleWithWebIdentity contains 'Error': %s",
+         Error_json);
+      bson_free (Error_json);
+      goto fail;
+   }
+
+   bson_iter_t Credentials_iter;
+   if (!bson_iter_find_descendant (
+          &iter,
+          "AssumeRoleWithWebIdentityResponse.AssumeRoleWithWebIdentityResult."
+          "Credentials",
+          &iter)) {
+      AUTH_ERROR_AND_FAIL (
+         "did not find "
+         "AssumeRoleWithWebIdentityResponse.AssumeRoleWithWebIdentityResult."
+         "Credentials in response from sts.amazonaws.com.");
+   }
+
+   if (!bson_iter_recurse (&iter, &Credentials_iter)) {
+      AUTH_ERROR_AND_FAIL (
+         "Unable to recurse in Credentials in response from sts.amazonaws.com");
+   }
+
+   iter = Credentials_iter;
+   if (bson_iter_find (&iter, "AccessKeyId") && BSON_ITER_HOLDS_UTF8 (&iter)) {
+      access_key_id = bson_iter_utf8 (&iter, NULL);
+   } else {
+      AUTH_ERROR_AND_FAIL (
+         "did not find AccessKeyId in response from sts.amazonaws.com");
+   }
+
+   iter = Credentials_iter;
+   if (bson_iter_find (&iter, "SecretAccessKey") &&
+       BSON_ITER_HOLDS_UTF8 (&iter)) {
+      secret_access_key = bson_iter_utf8 (&iter, NULL);
+   } else {
+      AUTH_ERROR_AND_FAIL (
+         "did not find SecretAccessKey in response from sts.amazonaws.com");
+   }
+
+   iter = Credentials_iter;
+   if (bson_iter_find (&iter, "SessionToken") && BSON_ITER_HOLDS_UTF8 (&iter)) {
+      session_token = bson_iter_utf8 (&iter, NULL);
+   } else {
+      AUTH_ERROR_AND_FAIL (
+         "did not find SessionToken in response from sts.amazonaws.com");
+   }
+
+   iter = Credentials_iter;
+   if (bson_iter_find (&iter, "Expiration") && BSON_ITER_HOLDS_DOUBLE (&iter)) {
+      // "Expiration" is returned as a double representing the number of seconds
+      // since Unix Epoch. This differs from the ISO-8601 string returned in EC2
+      // and ECS responses.
+      int64_t expiration_ms = (int64_t) (1000.0 * bson_iter_double (&iter));
+      if (!expiration_ms_to_timer (
+             expiration_ms, &creds->expiration.value, error)) {
+         goto fail;
+      }
+      creds->expiration.set = true;
+   } else {
+      AUTH_ERROR_AND_FAIL (
+         "did not find Expiration in response from sts.amazonaws.com");
+   }
+
+   if (!_validate_and_set_creds (
+          access_key_id, secret_access_key, session_token, creds, error)) {
+      goto fail;
+   }
+
+   ret = true;
+fail:
+   bson_free (path_and_query);
+   bson_destroy (response_bson);
+   bson_free (http_response_headers);
+   bson_free (http_response_body);
+   bson_string_free (token_file_contents, true /* free segment */);
+   mongoc_stream_destroy (fstream);
+   bson_free (aws_role_session_name);
+   bson_free (aws_role_arn);
+   bson_free (aws_web_identity_token_file);
    return ret;
 }
 
@@ -388,7 +718,8 @@ _obtain_creds_from_ec2 (_mongoc_aws_credentials_t *creds, bson_error_t *error)
    const char *ip = "169.254.169.254";
 
    /* Get the token. */
-   if (!_send_http_request (ip,
+   if (!_send_http_request (false /* use_tls */,
+                            ip,
                             80,
                             "PUT",
                             "/latest/api/token",
@@ -412,7 +743,8 @@ _obtain_creds_from_ec2 (_mongoc_aws_credentials_t *creds, bson_error_t *error)
       bson_strdup_printf ("X-aws-ec2-metadata-token: %s\r\n", token);
 
    /* Get the role name. */
-   if (!_send_http_request (ip,
+   if (!_send_http_request (false /* use_tls */,
+                            ip,
                             80,
                             "GET",
                             "/latest/meta-data/iam/security-credentials/",
@@ -435,7 +767,8 @@ _obtain_creds_from_ec2 (_mongoc_aws_credentials_t *creds, bson_error_t *error)
       "/latest/meta-data/iam/security-credentials/%s", role_name);
    bson_free (http_response_headers);
    http_response_headers = NULL;
-   if (!_send_http_request (ip,
+   if (!_send_http_request (false /* use_tls */,
+                            ip,
                             80,
                             "GET",
                             path_with_role,
@@ -467,6 +800,15 @@ _obtain_creds_from_ec2 (_mongoc_aws_credentials_t *creds, bson_error_t *error)
    if (bson_iter_init_find_case (&iter, response_json, "Token") &&
        BSON_ITER_HOLDS_UTF8 (&iter)) {
       ec2_session_token = bson_iter_utf8 (&iter, NULL);
+   }
+
+   if (bson_iter_init_find_case (&iter, response_json, "Expiration") &&
+       BSON_ITER_HOLDS_UTF8 (&iter)) {
+      if (!expiration_iso8601_to_timer (
+             bson_iter_utf8 (&iter, NULL), &creds->expiration.value, error)) {
+         goto fail;
+      }
+      creds->expiration.set = true;
    }
 
    if (!_validate_and_set_creds (ec2_access_key_id,
@@ -509,9 +851,16 @@ _mongoc_aws_credentials_obtain (mongoc_uri_t *uri,
 {
    bool ret = false;
 
-   creds->access_key_id = NULL;
-   creds->secret_access_key = NULL;
-   creds->session_token = NULL;
+   BSON_ASSERT_PARAM (creds);
+   *creds = MONGOC_AWS_CREDENTIALS_INIT;
+
+   // Check cache before enviroment variables. This is required by the
+   // specification: "Even if the environment variables are present in
+   // subsequent authorization attempts, the driver MUST use the cached
+   // credentials"
+   if (_mongoc_aws_credentials_cache_get (creds)) {
+      goto succeed;
+   }
 
    if (uri) {
       TRACE ("%s", "checking URI for credentials");
@@ -531,20 +880,61 @@ _mongoc_aws_credentials_obtain (mongoc_uri_t *uri,
       goto succeed;
    }
 
-   TRACE ("%s", "checking ECS metadata for credentials");
-   if (!_obtain_creds_from_ecs (creds, error)) {
-      goto fail;
-   }
-   if (!_creds_empty (creds)) {
-      goto succeed;
-   }
+   // Try to fetch credentials from cacheable sources:
+   // AssumeRoleWithWebIdentity, ECS or EC2. Lock the cache to prevent duplicate
+   // requests.
+   {
+      _mongoc_aws_credentials_cache_lock ();
 
-   TRACE ("%s", "checking EC2 metadata for credentials");
-   if (!_obtain_creds_from_ec2 (creds, error)) {
-      goto fail;
-   }
-   if (!_creds_empty (creds)) {
-      goto succeed;
+      // Check again if credentials have been cached.
+      if (_mongoc_aws_credentials_cache_get_nolock (creds)) {
+         _mongoc_aws_credentials_cache_unlock ();
+         goto succeed;
+      }
+
+      TRACE ("%s", "checking AssumeRoleWithWebIdentity for credentials");
+      if (!_obtain_creds_from_assumerolewithwebidentity (creds, error)) {
+         _mongoc_aws_credentials_cache_unlock ();
+         goto fail;
+      }
+      if (!_creds_empty (creds)) {
+         if (creds->expiration.set) {
+            // Only try to cache credentials if an expiration time is included.
+            _mongoc_aws_credentials_cache_put_nolock (creds);
+         }
+         _mongoc_aws_credentials_cache_unlock ();
+         goto succeed;
+      }
+
+      TRACE ("%s", "checking ECS metadata for credentials");
+      if (!_obtain_creds_from_ecs (creds, error)) {
+         _mongoc_aws_credentials_cache_unlock ();
+         goto fail;
+      }
+      if (!_creds_empty (creds)) {
+         if (creds->expiration.set) {
+            // Only try to cache credentials if an expiration time is included.
+            _mongoc_aws_credentials_cache_put_nolock (creds);
+         }
+         _mongoc_aws_credentials_cache_unlock ();
+         goto succeed;
+      }
+
+      TRACE ("%s", "checking EC2 metadata for credentials");
+      if (!_obtain_creds_from_ec2 (creds, error)) {
+         _mongoc_aws_credentials_cache_unlock ();
+         goto fail;
+      }
+      if (!_creds_empty (creds)) {
+         if (creds->expiration.set) {
+            // Only try to cache credentials if an expiration time is included.
+            _mongoc_aws_credentials_cache_put_nolock (creds);
+         }
+         _mongoc_aws_credentials_cache_unlock ();
+         goto succeed;
+      }
+
+      _mongoc_aws_credentials_cache_unlock ();
    }
 
    AUTH_ERROR_AND_FAIL ("unable to get credentials\n");
@@ -553,14 +943,6 @@ succeed:
    ret = true;
 fail:
    return ret;
-}
-
-void
-_mongoc_aws_credentials_cleanup (_mongoc_aws_credentials_t *creds)
-{
-   bson_free (creds->access_key_id);
-   bson_free (creds->secret_access_key);
-   bson_free (creds->session_token);
 }
 
 /*
@@ -572,7 +954,7 @@ _mongoc_aws_credentials_cleanup (_mongoc_aws_credentials_t *creds)
  */
 bool
 _mongoc_validate_and_derive_region (char *sts_fqdn,
-                                    uint32_t sts_fqdn_len,
+                                    size_t sts_fqdn_len,
                                     char **region,
                                     bson_error_t *error)
 {
@@ -586,11 +968,11 @@ _mongoc_validate_and_derive_region (char *sts_fqdn,
 
    /* Drivers must also validate that the host is greater than 0 and less than
     * or equal to 255 bytes per RFC 1035 */
-   if (sts_fqdn_len == 0) {
+   if (sts_fqdn_len == 0u) {
       AUTH_ERROR_AND_FAIL ("invalid STS host: empty");
    }
 
-   if (sts_fqdn_len > 255) {
+   if (sts_fqdn_len > 255u) {
       AUTH_ERROR_AND_FAIL ("invalid STS host: too large");
    }
 
@@ -860,7 +1242,7 @@ _client_second (mongoc_cluster_t *cluster,
       AUTH_ERROR_AND_FAIL ("Failed to parse server nonce");
    }
 
-   if (!kms_request_append_payload (request, body, -1)) {
+   if (!kms_request_append_payload (request, body, strlen(body))) {
       AUTH_ERROR_AND_FAIL ("Failed to append payload");
    }
 
@@ -936,7 +1318,7 @@ _mongoc_cluster_auth_node_aws (mongoc_cluster_t *cluster,
    char *sts_fqdn = NULL;
    char *region = NULL;
    int conv_id = 0;
-   _mongoc_aws_credentials_t creds = {0};
+   _mongoc_aws_credentials_t creds = MONGOC_AWS_CREDENTIALS_INIT;
 
    if (!_mongoc_aws_credentials_obtain (cluster->client->uri, &creds, error)) {
       goto fail;
@@ -967,6 +1349,9 @@ _mongoc_cluster_auth_node_aws (mongoc_cluster_t *cluster,
 
    ret = true;
 fail:
+   if (!ret) {
+      _mongoc_aws_credentials_cache_clear ();
+   }
    _mongoc_aws_credentials_cleanup (&creds);
    bson_free (sts_fqdn);
    bson_free (region);
@@ -999,15 +1384,9 @@ fail:
    return false;
 }
 
-void
-_mongoc_aws_credentials_cleanup (_mongoc_aws_credentials_t *creds)
-{
-   return;
-}
-
 bool
 _mongoc_validate_and_derive_region (char *sts_fqdn,
-                                    uint32_t sts_fqdn_len,
+                                    size_t sts_fqdn_len,
                                     char **region,
                                     bson_error_t *error)
 {
@@ -1018,3 +1397,140 @@ fail:
 }
 
 #endif /* MONGOC_ENABLE_MONGODB_AWS_AUTH */
+
+void
+_mongoc_aws_credentials_cleanup (_mongoc_aws_credentials_t *creds)
+{
+   bson_free (creds->access_key_id);
+   bson_free (creds->secret_access_key);
+   bson_free (creds->session_token);
+}
+
+void
+_mongoc_aws_credentials_copy_to (const _mongoc_aws_credentials_t *src,
+                                 _mongoc_aws_credentials_t *dst)
+{
+   BSON_ASSERT_PARAM (src);
+   BSON_ASSERT_PARAM (dst);
+
+   dst->access_key_id = bson_strdup (src->access_key_id);
+   dst->secret_access_key = bson_strdup (src->secret_access_key);
+   dst->session_token = bson_strdup (src->session_token);
+   dst->expiration = src->expiration;
+}
+
+_mongoc_aws_credentials_cache_t mongoc_aws_credentials_cache;
+
+void
+_mongoc_aws_credentials_cache_init (void)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+   bson_mutex_init (&cache->mutex);
+}
+
+static bool
+check_expired (const _mongoc_aws_credentials_t *creds)
+{
+   if (!creds->expiration.set) {
+      return true;
+   }
+   return mcd_get_milliseconds (
+             mcd_timer_remaining (creds->expiration.value)) == 0;
+}
+
+void
+_mongoc_aws_credentials_cache_lock (void)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+   bson_mutex_lock (&cache->mutex);
+}
+
+void
+_mongoc_aws_credentials_cache_unlock (void)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+   bson_mutex_unlock (&cache->mutex);
+}
+
+void
+_mongoc_aws_credentials_cache_put_nolock (
+   const _mongoc_aws_credentials_t *creds)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+   BSON_ASSERT_PARAM (creds);
+
+   if (check_expired (creds)) {
+      // Do not add expired credentials.
+      return;
+   }
+   _mongoc_aws_credentials_cache_clear_nolock ();
+   _mongoc_aws_credentials_copy_to (creds, &cache->cached.value);
+   cache->cached.set = true;
+}
+
+void
+_mongoc_aws_credentials_cache_put (const _mongoc_aws_credentials_t *creds)
+{
+   _mongoc_aws_credentials_cache_lock ();
+   _mongoc_aws_credentials_cache_put_nolock (creds);
+   _mongoc_aws_credentials_cache_unlock ();
+}
+
+bool
+_mongoc_aws_credentials_cache_get_nolock (_mongoc_aws_credentials_t *creds)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+   BSON_ASSERT_PARAM (creds);
+   bool found_valid = false;
+   bool expired = false;
+   if (cache->cached.set) {
+      expired = check_expired (&cache->cached.value);
+      if (!expired) {
+         found_valid = true;
+         _mongoc_aws_credentials_copy_to (&cache->cached.value, creds);
+      }
+   }
+   if (expired) {
+      _mongoc_aws_credentials_cache_clear_nolock ();
+      return false;
+   }
+   return found_valid;
+}
+
+bool
+_mongoc_aws_credentials_cache_get (_mongoc_aws_credentials_t *creds)
+{
+   _mongoc_aws_credentials_cache_lock ();
+   bool got = _mongoc_aws_credentials_cache_get_nolock (creds);
+   _mongoc_aws_credentials_cache_unlock ();
+   return got;
+}
+
+void
+_mongoc_aws_credentials_cache_clear_nolock (void)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+
+   if (cache->cached.set) {
+      _mongoc_aws_credentials_cleanup (&cache->cached.value);
+   }
+   cache->cached.set = false;
+}
+
+void
+_mongoc_aws_credentials_cache_clear (void)
+{
+   _mongoc_aws_credentials_cache_lock ();
+   _mongoc_aws_credentials_cache_clear_nolock ();
+   _mongoc_aws_credentials_cache_unlock ();
+}
+
+void
+_mongoc_aws_credentials_cache_cleanup (void)
+{
+   _mongoc_aws_credentials_cache_t *cache = &mongoc_aws_credentials_cache;
+   if (cache->cached.set) {
+      _mongoc_aws_credentials_cleanup (&cache->cached.value);
+   }
+   bson_mutex_destroy (&cache->mutex);
+}

@@ -24,6 +24,7 @@
 #ifdef BSON_OS_UNIX
 #include <sys/mman.h>
 #include <sys/shm.h>
+#include <unistd.h>
 #endif
 
 #ifdef _MSC_VER
@@ -111,7 +112,7 @@ mongoc_counters_calc_size (void)
            (n_cpu * n_groups * sizeof (mongoc_counter_slots_t)));
 
 #ifdef BSON_OS_UNIX
-   return BSON_MAX (getpagesize (), size);
+   return BSON_MAX (sysconf (_SC_PAGESIZE), size);
 #else
    return size;
 #endif
@@ -180,15 +181,18 @@ mongoc_counters_alloc (size_t size)
       goto fail_noclean;
    }
 
-   /*
-    * NOTE:
-    *
-    * ftruncate() will cause reads to be zero. Therefore, we don't need to
-    * do write() of zeroes to initialize the shared memory area.
-    */
+#if defined(__APPLE__)
+   // macOS does not have posix_fallocate available.
    if (-1 == ftruncate (fd, size)) {
       goto fail_cleanup;
    }
+#else
+   // Prefer posix_fallocate on Linux. posix_fallocate ensures that disk space
+   // is allocated.
+   if (0 != posix_fallocate (fd, 0, size)) {
+      goto fail_cleanup;
+   }
+#endif // __APPLE__
 
    mem = mmap (NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
    if (mem == MAP_FAILED) {

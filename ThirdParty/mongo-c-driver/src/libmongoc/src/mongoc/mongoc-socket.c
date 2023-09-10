@@ -292,7 +292,6 @@ mongoc_socket_poll (mongoc_socket_poll_t *sds, /* IN */
    struct pollfd *pfds;
 #endif
    int ret;
-   int i;
 
    ENTRY;
 
@@ -303,7 +302,7 @@ mongoc_socket_poll (mongoc_socket_poll_t *sds, /* IN */
    FD_ZERO (&write_fds);
    FD_ZERO (&error_fds);
 
-   for (i = 0; i < nsds; i++) {
+   for (size_t i = 0u; i < nsds; i++) {
       if (sds[i].events & POLLIN) {
          FD_SET (sds[i].socket->sd, &read_fds);
       }
@@ -325,7 +324,7 @@ mongoc_socket_poll (mongoc_socket_poll_t *sds, /* IN */
       return -1;
    }
 
-   for (i = 0; i < nsds; i++) {
+   for (size_t i = 0u; i < nsds; i++) {
       if (FD_ISSET (sds[i].socket->sd, &read_fds)) {
          sds[i].revents = POLLIN;
       } else if (FD_ISSET (sds[i].socket->sd, &write_fds)) {
@@ -339,14 +338,14 @@ mongoc_socket_poll (mongoc_socket_poll_t *sds, /* IN */
 #else
    pfds = (struct pollfd *) bson_malloc (sizeof (*pfds) * nsds);
 
-   for (i = 0; i < nsds; i++) {
+   for (size_t i = 0u; i < nsds; i++) {
       pfds[i].fd = sds[i].socket->sd;
       pfds[i].events = sds[i].events | POLLERR | POLLHUP;
       pfds[i].revents = 0;
    }
 
    ret = poll (pfds, nsds, timeout);
-   for (i = 0; i < nsds; i++) {
+   for (size_t i = 0u; i < nsds; i++) {
       sds[i].revents = pfds[i].revents;
    }
 
@@ -432,8 +431,8 @@ _mongoc_socket_setkeepalive_windows (SOCKET sd)
       TRACE ("%s", "Could not set keepalive values");
    } else {
       TRACE ("%s", "KeepAlive values updated");
-      TRACE ("KeepAliveTime: %d", keepalive.keepalivetime);
-      TRACE ("KeepAliveInterval: %d", keepalive.keepaliveinterval);
+      TRACE ("KeepAliveTime: %lu", keepalive.keepalivetime);
+      TRACE ("KeepAliveInterval: %lu", keepalive.keepaliveinterval);
    }
 }
 #else
@@ -557,7 +556,7 @@ static bool
 #ifdef _WIN32
 _mongoc_socket_setnodelay (SOCKET sd) /* IN */
 #else
-_mongoc_socket_setnodelay (int sd) /* IN */
+_mongoc_socket_setnodelay (int sd)   /* IN */
 #endif
 {
 #ifdef _WIN32
@@ -1023,7 +1022,7 @@ mongoc_socket_new (int domain,   /* IN */
    /* Set SO_NOSIGPIPE, to ignore SIGPIPE on writes for platforms where
       setting MSG_NOSIGNAL on writes is not supported (primarily OSX). */
 #ifdef SO_NOSIGPIPE
-   setsockopt(sd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+   setsockopt (sd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof (on));
 #endif
 
    sock = (mongoc_socket_t *) bson_malloc0 (sizeof *sock);
@@ -1215,8 +1214,6 @@ _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock, /* IN */
                                size_t iovcnt)         /* IN */
 {
    ssize_t ret = 0;
-   size_t i;
-   ssize_t wrote;
 
    ENTRY;
 
@@ -1224,11 +1221,13 @@ _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock, /* IN */
    BSON_ASSERT (iov);
    BSON_ASSERT (iovcnt);
 
-   for (i = 0; i < iovcnt; i++) {
-      wrote = send (sock->sd, iov[i].iov_base, iov[i].iov_len, 0);
+   for (size_t i = 0u; i < iovcnt; i++) {
 #ifdef _WIN32
+      BSON_ASSERT (bson_in_range_unsigned (int, iov[i].iov_len));
+      const int wrote = send (sock->sd, iov[i].iov_base, (int) iov[i].iov_len, 0);
       if (wrote == SOCKET_ERROR) {
 #else
+      const ssize_t wrote = send (sock->sd, iov[i].iov_base, iov[i].iov_len, 0);
       if (wrote == -1) {
 #endif
          _mongoc_socket_capture_errno (sock);
@@ -1241,7 +1240,7 @@ _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock, /* IN */
 
       ret += wrote;
 
-      if (wrote != iov[i].iov_len) {
+      if (bson_cmp_not_equal_su (wrote, iov[i].iov_len)) {
          RETURN (ret);
       }
    }
@@ -1291,16 +1290,22 @@ _mongoc_socket_try_sendv (mongoc_socket_t *sock, /* IN */
    DUMP_IOVEC (sendbuf, iov, iovcnt);
 
 #ifdef _WIN32
-   ret = WSASend (
-      sock->sd, (LPWSABUF) iov, iovcnt, &dwNumberofBytesSent, 0, NULL, NULL);
-   TRACE ("WSASend sent: %ld (out of: %ld), ret: %d",
+   BSON_ASSERT (bson_in_range_unsigned (unsigned_long, iovcnt));
+   ret = WSASend (sock->sd,
+                  (LPWSABUF) iov,
+                  (DWORD) iovcnt,
+                  &dwNumberofBytesSent,
+                  0,
+                  NULL,
+                  NULL);
+   TRACE ("WSASend sent: %ld (out of: %zu), ret: %d",
           dwNumberofBytesSent,
           iov->iov_len,
           ret);
 #else
    memset (&msg, 0, sizeof msg);
    msg.msg_iov = iov;
-   msg.msg_iovlen = (int) iovcnt;
+   msg.msg_iovlen = iovcnt;
    ret = sendmsg (sock->sd,
                   &msg,
 #ifdef MSG_NOSIGNAL
@@ -1389,7 +1394,7 @@ mongoc_socket_sendv (mongoc_socket_t *sock,  /* IN */
    for (;;) {
       sent = _mongoc_socket_try_sendv (sock, &iov[cur], iovcnt - cur);
       TRACE (
-         "Sent %ld (of %ld) out of iovcnt=%ld", sent, iov[cur].iov_len, iovcnt);
+         "Sent %zd (of %zu) out of iovcnt=%zu", sent, iov[cur].iov_len, iovcnt);
 
       /*
        * If we failed with anything other than EAGAIN or EWOULDBLOCK,
@@ -1414,7 +1419,7 @@ mongoc_socket_sendv (mongoc_socket_t *sock,  /* IN */
           * Subtract the sent amount from what we still need to send.
           */
          while ((cur < iovcnt) && (sent >= (ssize_t) iov[cur].iov_len)) {
-            TRACE ("still got bytes left: sent -= iov_len: %ld -= %ld",
+            TRACE ("still got bytes left: sent -= iov_len: %zd -= %zu",
                    sent,
                    iov[cur].iov_len);
             sent -= iov[cur++].iov_len;
@@ -1433,12 +1438,12 @@ mongoc_socket_sendv (mongoc_socket_t *sock,  /* IN */
           * Increment the current iovec buffer to its proper offset and adjust
           * the number of bytes to write.
           */
-         TRACE ("Seeked io_base+%ld", sent);
+         TRACE ("Seeked io_base+%zd", sent);
          TRACE (
-            "Subtracting iov_len -= sent; %ld -= %ld", iov[cur].iov_len, sent);
+            "Subtracting iov_len -= sent; %zu -= %zd", iov[cur].iov_len, sent);
          iov[cur].iov_base = ((char *) iov[cur].iov_base) + sent;
          iov[cur].iov_len -= sent;
-         TRACE ("iov_len remaining %ld", iov[cur].iov_len);
+         TRACE ("iov_len remaining %zu", iov[cur].iov_len);
 
          BSON_ASSERT (iovcnt - cur);
          BSON_ASSERT (iov[cur].iov_len);

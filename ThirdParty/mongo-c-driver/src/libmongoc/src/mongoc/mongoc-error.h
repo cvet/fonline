@@ -49,7 +49,9 @@ typedef enum {
    MONGOC_ERROR_SERVER, /* Error API Version 2 only */
    MONGOC_ERROR_TRANSACTION,
    MONGOC_ERROR_CLIENT_SIDE_ENCRYPTION, /* An error coming from libmongocrypt */
-   MONGOC_ERROR_POOL
+   MONGOC_ERROR_POOL,
+   MONGOC_ERROR_AZURE,
+   MONGOC_ERROR_GCP
 } mongoc_error_domain_t;
 
 
@@ -134,6 +136,11 @@ typedef enum {
    MONGOC_ERROR_POOL_API_TOO_LATE,
 
    MONGOC_ERROR_CLIENT_INVALID_LOAD_BALANCER,
+
+   /* An error related to either GCP metadata or Azure IMDS server */
+   MONGOC_ERROR_KMS_SERVER_HTTP,
+   MONGOC_ERROR_KMS_SERVER_BAD_JSON,
+
 } mongoc_error_code_t;
 
 MONGOC_EXPORT (bool)
