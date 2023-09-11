@@ -111,8 +111,8 @@ def print_msl_compiler_version():
 
 def msl_compiler_supports_version(version):
     try:
-        subprocess.check_call(['xcrun', '--sdk', 'macosx', 'metal', '-x', 'metal', '-std=macos-metal' + version, '-'],
-                stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+        subprocess.check_call(['xcrun', '--sdk', 'macosx', 'metal', '-x', 'metal', version, '-'],
+            stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
         print('Current SDK supports MSL {0}. Enabling validation for MSL {0} shaders.'.format(version))
         return True
     except OSError as e:
@@ -124,7 +124,9 @@ def msl_compiler_supports_version(version):
 
 def path_to_msl_standard(shader):
     if '.ios.' in shader:
-        if '.msl2.' in shader:
+        if '.msl3.' in shader:
+            return '-std=metal3.0'
+        elif '.msl2.' in shader:
             return '-std=ios-metal2.0'
         elif '.msl21.' in shader:
             return '-std=ios-metal2.1'
@@ -141,7 +143,9 @@ def path_to_msl_standard(shader):
         else:
             return '-std=ios-metal1.2'
     else:
-        if '.msl2.' in shader:
+        if '.msl3.' in shader:
+            return '-std=metal3.0'
+        elif '.msl2.' in shader:
             return '-std=macos-metal2.0'
         elif '.msl21.' in shader:
             return '-std=macos-metal2.1'
@@ -157,7 +161,9 @@ def path_to_msl_standard(shader):
             return '-std=macos-metal1.2'
 
 def path_to_msl_standard_cli(shader):
-    if '.msl2.' in shader:
+    if '.msl3.' in shader:
+        return '30000'
+    elif '.msl2.' in shader:
         return '20000'
     elif '.msl21.' in shader:
         return '20100'
@@ -205,7 +211,7 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
         spirv_env = 'vulkan1.1'
         glslang_env = 'vulkan1.1'
 
-    spirv_cmd = [paths.spirv_as, '--target-env', spirv_env, '-o', spirv_path, shader]
+    spirv_cmd = [paths.spirv_as, '--preserve-numeric-ids', '--target-env', spirv_env, '-o', spirv_path, shader]
     if '.preserve.' in shader:
         spirv_cmd.append('--preserve-numeric-ids')
 
@@ -344,6 +350,8 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
         msl_args.append('--msl-force-sample-rate-shading')
     if '.discard-checks.' in shader:
         msl_args.append('--msl-check-discarded-frag-stores')
+    if '.lod-as-grad.' in shader:
+        msl_args.append('--msl-sample-dref-lod-array-as-grad')
     if '.decoration-binding.' in shader:
         msl_args.append('--msl-decoration-binding')
     if '.mask-location-0.' in shader:
@@ -474,7 +482,7 @@ def cross_compile_hlsl(shader, spirv, opt, force_no_external_validation, iterati
         spirv_env = 'vulkan1.1'
         glslang_env = 'vulkan1.1'
 
-    spirv_cmd = [paths.spirv_as, '--target-env', spirv_env, '-o', spirv_path, shader]
+    spirv_cmd = [paths.spirv_as, '--preserve-numeric-ids', '--target-env', spirv_env, '-o', spirv_path, shader]
     if '.preserve.' in shader:
         spirv_cmd.append('--preserve-numeric-ids')
 
@@ -507,6 +515,10 @@ def cross_compile_hlsl(shader, spirv, opt, force_no_external_validation, iterati
         hlsl_args.append('--hlsl-flatten-matrix-vertex-input-semantics')
     if '.relax-nan.' in shader:
         hlsl_args.append('--relax-nan-checks')
+    if '.structured.' in shader:
+        hlsl_args.append('--hlsl-preserve-structured-buffers')
+    if '.flip-vert-y.' in shader:
+        hlsl_args.append('--flip-vert-y')
 
     subprocess.check_call(hlsl_args)
 
@@ -521,7 +533,7 @@ def cross_compile_reflect(shader, spirv, opt, iterations, paths):
     spirv_path = create_temporary()
     reflect_path = create_temporary(os.path.basename(shader))
 
-    spirv_cmd = [paths.spirv_as, '--target-env', 'vulkan1.1', '-o', spirv_path, shader]
+    spirv_cmd = [paths.spirv_as, '--preserve-numeric-ids', '--target-env', 'vulkan1.1', '-o', spirv_path, shader]
     if '.preserve.' in shader:
         spirv_cmd.append('--preserve-numeric-ids')
 
@@ -566,14 +578,19 @@ def cross_compile(shader, vulkan, spirv, invalid_spirv, eliminate, is_legacy, fo
     if vulkan or spirv:
         vulkan_glsl_path = create_temporary('vk' + os.path.basename(shader))
 
-    spirv_cmd = [paths.spirv_as, '--target-env', spirv_env, '-o', spirv_path, shader]
+    spirv_cmd = [paths.spirv_as, '--preserve-numeric-ids', '--target-env', spirv_env, '-o', spirv_path, shader]
     if '.preserve.' in shader:
         spirv_cmd.append('--preserve-numeric-ids')
 
     if spirv:
         subprocess.check_call(spirv_cmd)
     else:
-        subprocess.check_call([paths.glslang, '--amb', '--target-env', glslang_env, '-V', '-o', spirv_path, shader])
+        glslang_cmd = [paths.glslang, '--amb', '--target-env', glslang_env, '-V', '-o', spirv_path, shader]
+        if '.g.' in shader:
+            glslang_cmd.append('-g')
+        if '.gV.' in shader:
+            glslang_cmd.append('-gV')
+        subprocess.check_call(glslang_cmd)
 
     if opt and (not invalid_spirv):
         subprocess.check_call([paths.spirv_opt, '--skip-validation', '-O', '-o', spirv_path, spirv_path])
@@ -1010,11 +1027,13 @@ def main():
     args.msl22 = False
     args.msl23 = False
     args.msl24 = False
+    args.msl30 = False
     if args.msl:
         print_msl_compiler_version()
-        args.msl22 = msl_compiler_supports_version('2.2')
-        args.msl23 = msl_compiler_supports_version('2.3')
-        args.msl24 = msl_compiler_supports_version('2.4')
+        args.msl22 = msl_compiler_supports_version('-std=macos-metal2.2')
+        args.msl23 = msl_compiler_supports_version('-std=macos-metal2.3')
+        args.msl24 = msl_compiler_supports_version('-std=macos-metal2.4')
+        args.msl30 = msl_compiler_supports_version('-std=metal3.0')
 
     backend = 'glsl'
     if (args.msl or args.metal):

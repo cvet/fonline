@@ -205,6 +205,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"hlsl.earlydepthstencil.frag", "main"},
         {"hlsl.emptystructreturn.frag", "main"},
         {"hlsl.emptystructreturn.vert", "main"},
+        {"hlsl.emptystructreturn.tesc", "main"},
         {"hlsl.emptystruct.init.vert", "main"},
         {"hlsl.entry-in.frag", "PixelShaderFunction"},
         {"hlsl.entry-out.frag", "PixelShaderFunction"},
@@ -312,6 +313,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"hlsl.matrixindex.frag", "main"},
         {"hlsl.nonstaticMemberFunction.frag", "main"},
         {"hlsl.numericsuffixes.frag", "main"},
+        {"hlsl.numericsuffixes.negative.frag", "main"},
         {"hlsl.numthreads.comp", "main_aux2"},
         {"hlsl.overload.frag", "PixelShaderFunction"},
         {"hlsl.opaque-type-bug.frag", "main"},
@@ -402,6 +404,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"hlsl.structbuffer.rw.frag", "main"},
         {"hlsl.structbuffer.rwbyte.frag", "main"},
         {"hlsl.structbuffer.rwbyte2.comp", "main"},
+        {"hlsl.structcopy.comp", "main"},
         {"hlsl.structin.vert", "main"},
         {"hlsl.structIoFourWay.frag", "main"},
         {"hlsl.structStructName.frag", "main"},
@@ -417,6 +420,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"hlsl.matType.bool.frag", "main"},
         {"hlsl.matType.int.frag", "main"},
         {"hlsl.max.frag", "PixelShaderFunction"},
+        {"hlsl.nested-runtimeArray.frag", "main"},
         {"hlsl.preprocessor.frag", "main"},
         {"hlsl.precedence.frag", "PixelShaderFunction"},
         {"hlsl.precedence2.frag", "PixelShaderFunction"},
@@ -471,7 +475,8 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     ToSpirv, HlslSpv1_6CompileTest,
     ::testing::ValuesIn(std::vector<FileNameEntryPointPair>{
-       {"hlsl.spv.1.6.discard.frag", "PixelShaderFunction"}
+       {"hlsl.spv.1.6.discard.frag", "PixelShaderFunction"},
+       {"hlsl.structcopylogical.comp","main"},
     }),
     FileNameAsCustomTestSuffix
 );
