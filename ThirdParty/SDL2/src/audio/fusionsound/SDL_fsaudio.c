@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -77,7 +77,8 @@ static struct
 
 #undef SDL_FS_SYM
 
-static void UnloadFusionSoundLibrary()
+static void
+UnloadFusionSoundLibrary()
 {
     if (fs_handle != NULL) {
         SDL_UnloadObject(fs_handle);
@@ -85,7 +86,8 @@ static void UnloadFusionSoundLibrary()
     }
 }
 
-static int LoadFusionSoundLibrary(void)
+static int
+LoadFusionSoundLibrary(void)
 {
     int i, retval = -1;
 
@@ -110,12 +112,14 @@ static int LoadFusionSoundLibrary(void)
 
 #else
 
-static void UnloadFusionSoundLibrary()
+static void
+UnloadFusionSoundLibrary()
 {
     return;
 }
 
-static int LoadFusionSoundLibrary(void)
+static int
+LoadFusionSoundLibrary(void)
 {
     return 0;
 }
@@ -123,13 +127,15 @@ static int LoadFusionSoundLibrary(void)
 #endif /* SDL_AUDIO_DRIVER_FUSIONSOUND_DYNAMIC */
 
 /* This function waits until it is possible to write a full sound buffer */
-static void SDL_FS_WaitDevice(_THIS)
+static void
+SDL_FS_WaitDevice(_THIS)
 {
     this->hidden->stream->Wait(this->hidden->stream,
                                this->hidden->mixsamples);
 }
 
-static void SDL_FS_PlayDevice(_THIS)
+static void
+SDL_FS_PlayDevice(_THIS)
 {
     DirectResult ret;
 
@@ -146,13 +152,15 @@ static void SDL_FS_PlayDevice(_THIS)
 }
 
 
-static Uint8 *SDL_FS_GetDeviceBuf(_THIS)
+static Uint8 *
+SDL_FS_GetDeviceBuf(_THIS)
 {
     return (this->hidden->mixbuf);
 }
 
 
-static void SDL_FS_CloseDevice(_THIS)
+static void
+SDL_FS_CloseDevice(_THIS)
 {
     if (this->hidden->stream) {
         this->hidden->stream->Release(this->hidden->stream);
@@ -165,7 +173,8 @@ static void SDL_FS_CloseDevice(_THIS)
 }
 
 
-static int SDL_FS_OpenDevice(_THIS, const char *devname)
+static int
+SDL_FS_OpenDevice(_THIS, const char *devname)
 {
     int bytes;
     SDL_AudioFormat test_format;
@@ -174,7 +183,8 @@ static int SDL_FS_OpenDevice(_THIS, const char *devname)
     DirectResult ret;
 
     /* Initialize all variables that we clean on shutdown */
-    this->hidden = (struct SDL_PrivateAudioData *)SDL_malloc(sizeof(*this->hidden));
+    this->hidden = (struct SDL_PrivateAudioData *)
+        SDL_malloc((sizeof *this->hidden));
     if (this->hidden == NULL) {
         return SDL_OutOfMemory();
     }
@@ -260,13 +270,15 @@ static int SDL_FS_OpenDevice(_THIS, const char *devname)
 }
 
 
-static void SDL_FS_Deinitialize(void)
+static void
+SDL_FS_Deinitialize(void)
 {
     UnloadFusionSoundLibrary();
 }
 
 
-static SDL_bool SDL_FS_Init(SDL_AudioDriverImpl * impl)
+static SDL_bool
+SDL_FS_Init(SDL_AudioDriverImpl * impl)
 {
     if (LoadFusionSoundLibrary() < 0) {
         return SDL_FALSE;

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -74,7 +74,8 @@ static const char *arrow[] = {
     "                                ",
 };
 
-static SDL_Cursor *DirectFB_CreateDefaultCursor(void)
+static SDL_Cursor *
+DirectFB_CreateDefaultCursor(void)
 {
     SDL_VideoDevice *dev = SDL_GetVideoDevice();
 
@@ -126,7 +127,8 @@ static SDL_Cursor *DirectFB_CreateDefaultCursor(void)
 }
 
 /* Create a cursor from a surface */
-static SDL_Cursor *DirectFB_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
+static SDL_Cursor *
+DirectFB_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 {
     SDL_VideoDevice *dev = SDL_GetVideoDevice();
 
@@ -172,7 +174,8 @@ static SDL_Cursor *DirectFB_CreateCursor(SDL_Surface * surface, int hot_x, int h
 }
 
 /* Show the specified cursor, or hide if cursor is NULL */
-static int DirectFB_ShowCursor(SDL_Cursor * cursor)
+static int
+DirectFB_ShowCursor(SDL_Cursor * cursor)
 {
     SDL_DFB_CURSORDATA(cursor);
     SDL_Window *window;
@@ -212,7 +215,8 @@ static int DirectFB_ShowCursor(SDL_Cursor * cursor)
 }
 
 /* Free a window manager cursor */
-static void DirectFB_FreeCursor(SDL_Cursor * cursor)
+static void
+DirectFB_FreeCursor(SDL_Cursor * cursor)
 {
     SDL_DFB_CURSORDATA(cursor);
 
@@ -222,7 +226,8 @@ static void DirectFB_FreeCursor(SDL_Cursor * cursor)
 }
 
 /* Warp the mouse to (x,y) */
-static void DirectFB_WarpMouse(SDL_Window * window, int x, int y)
+static void
+DirectFB_WarpMouse(SDL_Window * window, int x, int y)
 {
     SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
     DFB_DisplayData *dispdata = (DFB_DisplayData *) display->driverdata;
@@ -247,7 +252,9 @@ static void DirectFB_FreeMouse(SDL_Mouse * mouse);
 
 static int id_mask;
 
-static DFBEnumerationResult EnumMice(DFBInputDeviceID device_id, DFBInputDeviceDescription desc, void *callbackdata)
+static DFBEnumerationResult
+EnumMice(DFBInputDeviceID device_id, DFBInputDeviceDescription desc,
+         void *callbackdata)
 {
     DFB_DeviceData *devdata = callbackdata;
 
@@ -270,7 +277,8 @@ static DFBEnumerationResult EnumMice(DFBInputDeviceID device_id, DFBInputDeviceD
     return DFENUM_OK;
 }
 
-void DirectFB_InitMouse(_THIS)
+void
+DirectFB_InitMouse(_THIS)
 {
     SDL_DFB_DEVICEDATA(_this);
 
@@ -302,7 +310,8 @@ void DirectFB_InitMouse(_THIS)
     }
 }
 
-void DirectFB_QuitMouse(_THIS)
+void
+DirectFB_QuitMouse(_THIS)
 {
     SDL_DFB_DEVICEDATA(_this);
 
@@ -315,13 +324,15 @@ void DirectFB_QuitMouse(_THIS)
 
 
 /* This is called when a mouse motion event occurs */
-static void DirectFB_MoveCursor(SDL_Cursor * cursor)
+static void
+DirectFB_MoveCursor(SDL_Cursor * cursor)
 {
 
 }
 
 /* Warp the mouse to (x,y) */
-static void DirectFB_WarpMouse(SDL_Mouse * mouse, SDL_Window * window, int x, int y)
+static void
+DirectFB_WarpMouse(SDL_Mouse * mouse, SDL_Window * window, int x, int y)
 {
     SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
     DFB_DisplayData *dispdata = (DFB_DisplayData *) display->driverdata;
@@ -339,14 +350,16 @@ static void DirectFB_WarpMouse(SDL_Mouse * mouse, SDL_Window * window, int x, in
 }
 
 /* Free the mouse when it's time */
-static void DirectFB_FreeMouse(SDL_Mouse * mouse)
+static void
+DirectFB_FreeMouse(SDL_Mouse * mouse)
 {
     /* nothing yet */
 }
 
 #else /* USE_MULTI_API */
 
-void DirectFB_InitMouse(_THIS)
+void
+DirectFB_InitMouse(_THIS)
 {
     SDL_DFB_DEVICEDATA(_this);
 
@@ -362,9 +375,11 @@ void DirectFB_InitMouse(_THIS)
     devdata->num_mice = 1;
 }
 
-void DirectFB_QuitMouse(_THIS)
+void
+DirectFB_QuitMouse(_THIS)
 {
 }
+
 
 #endif
 

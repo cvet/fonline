@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -60,7 +60,8 @@ static void UIKit_DeleteDevice(SDL_VideoDevice * device)
     }
 }
 
-static SDL_VideoDevice *UIKit_CreateDevice(void)
+static SDL_VideoDevice *
+UIKit_CreateDevice(void)
 {
     @autoreleasepool {
         SDL_VideoDevice *device;
@@ -151,7 +152,8 @@ VideoBootStrap UIKIT_bootstrap = {
 };
 
 
-int UIKit_VideoInit(_THIS)
+int
+UIKit_VideoInit(_THIS)
 {
     _this->gl_config.driver_loaded = 1;
 
@@ -165,7 +167,8 @@ int UIKit_VideoInit(_THIS)
     return 0;
 }
 
-void UIKit_VideoQuit(_THIS)
+void
+UIKit_VideoQuit(_THIS)
 {
     SDL_QuitGCKeyboard();
     SDL_QuitGCMouse();
@@ -173,7 +176,8 @@ void UIKit_VideoQuit(_THIS)
     UIKit_QuitModes(_this);
 }
 
-void UIKit_SuspendScreenSaver(_THIS)
+void
+UIKit_SuspendScreenSaver(_THIS)
 {
     @autoreleasepool {
         /* Ignore ScreenSaver API calls if the idle timer hint has been set. */
@@ -187,12 +191,14 @@ void UIKit_SuspendScreenSaver(_THIS)
     }
 }
 
-SDL_bool UIKit_IsSystemVersionAtLeast(double version)
+SDL_bool
+UIKit_IsSystemVersionAtLeast(double version)
 {
     return [[UIDevice currentDevice].systemVersion doubleValue] >= version;
 }
 
-CGRect UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
+CGRect
+UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
 {
     SDL_WindowData *data = (__bridge SDL_WindowData *) window->driverdata;
     CGRect frame = screen.bounds;
@@ -214,8 +220,7 @@ CGRect UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
      * https://bugzilla.libsdl.org/show_bug.cgi?id=3465
      * https://forums.developer.apple.com/thread/65337 */
     UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
-    BOOL landscape = UIInterfaceOrientationIsLandscape(orient) ||
-                    !(UIKit_GetSupportedOrientations(window) & (UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown));
+    BOOL landscape = UIInterfaceOrientationIsLandscape(orient);
     BOOL fullscreen = CGRectEqualToRect(screen.bounds, frame);
 
     /* The orientation flip doesn't make sense when the window is smaller
@@ -230,7 +235,8 @@ CGRect UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
     return frame;
 }
 
-void UIKit_ForceUpdateHomeIndicator()
+void
+UIKit_ForceUpdateHomeIndicator()
 {
 #if !TARGET_OS_TV
     /* Force the main SDL window to re-evaluate home indicator state */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,9 +25,10 @@
 #include "../SDL_sysvideo.h"
 #include "SDL_offscreenframebuffer_c.h"
 
-#define OFFSCREEN_SURFACE "_SDL_DummySurface"
 
-int SDL_OFFSCREEN_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
+#define OFFSCREEN_SURFACE   "_SDL_DummySurface"
+
+int SDL_OFFSCREEN_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch)
 {
     SDL_Surface *surface;
     const Uint32 surface_format = SDL_PIXELFORMAT_RGB888;
@@ -37,9 +38,9 @@ int SDL_OFFSCREEN_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *for
     SDL_OFFSCREEN_DestroyWindowFramebuffer(_this, window);
 
     /* Create a new one */
-    SDL_GetWindowSizeInPixels(window, &w, &h);
+    SDL_GetWindowSize(window, &w, &h);
     surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 0, surface_format);
-    if (surface == NULL) {
+    if (!surface) {
         return -1;
     }
 
@@ -48,35 +49,34 @@ int SDL_OFFSCREEN_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *for
     *format = surface_format;
     *pixels = surface->pixels;
     *pitch = surface->pitch;
-
     return 0;
 }
 
-int SDL_OFFSCREEN_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
+int SDL_OFFSCREEN_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, int numrects)
 {
     static int frame_number;
     SDL_Surface *surface;
 
-    surface = (SDL_Surface *)SDL_GetWindowData(window, OFFSCREEN_SURFACE);
-    if (surface == NULL) {
+    surface = (SDL_Surface *) SDL_GetWindowData(window, OFFSCREEN_SURFACE);
+    if (!surface) {
         return SDL_SetError("Couldn't find offscreen surface for window");
     }
 
     /* Send the data to the display */
     if (SDL_getenv("SDL_VIDEO_OFFSCREEN_SAVE_FRAMES")) {
         char file[128];
-        (void)SDL_snprintf(file, sizeof(file), "SDL_window%" SDL_PRIu32 "-%8.8d.bmp",
-                           SDL_GetWindowID(window), ++frame_number);
+        SDL_snprintf(file, sizeof(file), "SDL_window%d-%8.8d.bmp",
+                     (int)SDL_GetWindowID(window), ++frame_number);
         SDL_SaveBMP(surface, file);
     }
     return 0;
 }
 
-void SDL_OFFSCREEN_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
+void SDL_OFFSCREEN_DestroyWindowFramebuffer(_THIS, SDL_Window * window)
 {
     SDL_Surface *surface;
 
-    surface = (SDL_Surface *)SDL_SetWindowData(window, OFFSCREEN_SURFACE, NULL);
+    surface = (SDL_Surface *) SDL_SetWindowData(window, OFFSCREEN_SURFACE, NULL);
     SDL_FreeSurface(surface);
 }
 

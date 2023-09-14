@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -38,9 +38,9 @@
 #include <android/log.h>
 
 #if 0
-#define LOG_TAG   "SDL_openslES"
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOG_TAG "SDL_openslES"
+#define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 //#define LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE,LOG_TAG,__VA_ARGS__)
 #define LOGV(...)
 #else
@@ -70,9 +70,9 @@
 #define SL_SPEAKER_TOP_BACK_RIGHT        ((SLuint32) 0x00020000)
 */
 #define SL_ANDROID_SPEAKER_STEREO (SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT)
-#define SL_ANDROID_SPEAKER_QUAD   (SL_ANDROID_SPEAKER_STEREO | SL_SPEAKER_BACK_LEFT | SL_SPEAKER_BACK_RIGHT)
-#define SL_ANDROID_SPEAKER_5DOT1  (SL_ANDROID_SPEAKER_QUAD | SL_SPEAKER_FRONT_CENTER | SL_SPEAKER_LOW_FREQUENCY)
-#define SL_ANDROID_SPEAKER_7DOT1  (SL_ANDROID_SPEAKER_5DOT1 | SL_SPEAKER_SIDE_LEFT | SL_SPEAKER_SIDE_RIGHT)
+#define SL_ANDROID_SPEAKER_QUAD (SL_ANDROID_SPEAKER_STEREO | SL_SPEAKER_BACK_LEFT | SL_SPEAKER_BACK_RIGHT)
+#define SL_ANDROID_SPEAKER_5DOT1 (SL_ANDROID_SPEAKER_QUAD | SL_SPEAKER_FRONT_CENTER  | SL_SPEAKER_LOW_FREQUENCY)
+#define SL_ANDROID_SPEAKER_7DOT1 (SL_ANDROID_SPEAKER_5DOT1 | SL_SPEAKER_SIDE_LEFT | SL_SPEAKER_SIDE_RIGHT)
 
 /* engine interfaces */
 static SLObjectItf engineObject = NULL;
@@ -98,8 +98,8 @@ static SLAndroidSimpleBufferQueueItf recorderBufferQueue = NULL;
 static const char *sldevaudiorecorderstr = "SLES Audio Recorder";
 static const char *sldevaudioplayerstr   = "SLES Audio Player";
 
-#define SLES_DEV_AUDIO_RECORDER sldevaudiorecorderstr
-#define SLES_DEV_AUDIO_PLAYER   sldevaudioplayerstr
+#define  SLES_DEV_AUDIO_RECORDER  sldevaudiorecorderstr
+#define  SLES_DEV_AUDIO_PLAYER  sldevaudioplayerstr
 static void openslES_DetectDevices( int iscapture )
 {
     LOGI( "openSLES_DetectDevices()" );
@@ -128,7 +128,8 @@ static void openslES_DestroyEngine(void)
     }
 }
 
-static int openslES_CreateEngine(void)
+static int
+openslES_CreateEngine(void)
 {
     const SLInterfaceID ids[1] = { SL_IID_VOLUME };
     const SLboolean req[1] = { SL_BOOLEAN_FALSE };
@@ -182,15 +183,17 @@ error:
 }
 
 /* this callback handler is called every time a buffer finishes recording */
-static void bqRecorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+static void
+bqRecorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
-    struct SDL_PrivateAudioData *audiodata = (struct SDL_PrivateAudioData *)context;
+    struct SDL_PrivateAudioData *audiodata = (struct SDL_PrivateAudioData *) context;
 
     LOGV("SLES: Recording Callback");
     SDL_SemPost(audiodata->playsem);
 }
 
-static void openslES_DestroyPCMRecorder(_THIS)
+static void
+openslES_DestroyPCMRecorder(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
     SLresult result;
@@ -221,7 +224,8 @@ static void openslES_DestroyPCMRecorder(_THIS)
     }
 }
 
-static int openslES_CreatePCMRecorder(_THIS)
+static int
+openslES_CreatePCMRecorder(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
     SLDataFormat_PCM format_pcm;
@@ -248,8 +252,8 @@ static int openslES_CreatePCMRecorder(_THIS)
     SDL_CalculateAudioSpec(&this->spec);
 
     LOGI("Try to open %u hz %u bit chan %u %s samples %u",
-         this->spec.freq, SDL_AUDIO_BITSIZE(this->spec.format),
-         this->spec.channels, (this->spec.format & 0x1000) ? "BE" : "LE", this->spec.samples);
+          this->spec.freq, SDL_AUDIO_BITSIZE(this->spec.format),
+          this->spec.channels, (this->spec.format & 0x1000) ? "BE" : "LE", this->spec.samples);
 
     /* configure audio source */
     loc_dev.locatorType = SL_DATALOCATOR_IODEVICE;
@@ -263,13 +267,13 @@ static int openslES_CreatePCMRecorder(_THIS)
     loc_bufq.locatorType = SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE;
     loc_bufq.numBuffers = NUM_BUFFERS;
 
-    format_pcm.formatType = SL_DATAFORMAT_PCM;
-    format_pcm.numChannels = this->spec.channels;
-    format_pcm.samplesPerSec = this->spec.freq * 1000; /* / kilo Hz to milli Hz */
+    format_pcm.formatType    = SL_DATAFORMAT_PCM;
+    format_pcm.numChannels   = this->spec.channels;
+    format_pcm.samplesPerSec = this->spec.freq * 1000;  /* / kilo Hz to milli Hz */
     format_pcm.bitsPerSample = SDL_AUDIO_BITSIZE(this->spec.format);
     format_pcm.containerSize = SDL_AUDIO_BITSIZE(this->spec.format);
-    format_pcm.endianness = SL_BYTEORDER_LITTLEENDIAN;
-    format_pcm.channelMask = SL_SPEAKER_FRONT_CENTER;
+    format_pcm.endianness    = SL_BYTEORDER_LITTLEENDIAN;
+    format_pcm.channelMask   = SL_SPEAKER_FRONT_CENTER;
 
     audioSnk.pLocator = &loc_bufq;
     audioSnk.pFormat = &format_pcm;
@@ -319,7 +323,7 @@ static int openslES_CreatePCMRecorder(_THIS)
     }
 
     /* Create the sound buffers */
-    audiodata->mixbuff = (Uint8 *)SDL_malloc(NUM_BUFFERS * this->spec.size);
+    audiodata->mixbuff = (Uint8 *) SDL_malloc(NUM_BUFFERS * this->spec.size);
     if (audiodata->mixbuff == NULL) {
         LOGE("mixbuffer allocate - out of memory");
         goto failed;
@@ -359,15 +363,17 @@ failed:
 }
 
 /* this callback handler is called every time a buffer finishes playing */
-static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+static void
+bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
-    struct SDL_PrivateAudioData *audiodata = (struct SDL_PrivateAudioData *)context;
+    struct SDL_PrivateAudioData *audiodata = (struct SDL_PrivateAudioData *) context;
 
     LOGV("SLES: Playback Callback");
     SDL_SemPost(audiodata->playsem);
 }
 
-static void openslES_DestroyPCMPlayer(_THIS)
+static void
+openslES_DestroyPCMPlayer(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
     SLresult result;
@@ -399,7 +405,8 @@ static void openslES_DestroyPCMPlayer(_THIS)
     }
 }
 
-static int openslES_CreatePCMPlayer(_THIS)
+static int
+openslES_CreatePCMPlayer(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
     SLDataLocator_AndroidSimpleBufferQueue loc_bufq;
@@ -417,7 +424,7 @@ static int openslES_CreatePCMPlayer(_THIS)
        it can be done as described here:
         https://developer.android.com/ndk/guides/audio/opensl/android-extensions.html#floating-point
     */
-    if (SDL_GetAndroidSDKVersion() >= 21) {
+    if(SDL_GetAndroidSDKVersion() >= 21) {
         SDL_AudioFormat test_format;
         for (test_format = SDL_FirstAudioFormat(this->spec.format); test_format; test_format = SDL_NextAudioFormat()) {
             if (SDL_AUDIO_ISSIGNED(test_format)) {
@@ -427,7 +434,7 @@ static int openslES_CreatePCMPlayer(_THIS)
 
         if (!test_format) {
             /* Didn't find a compatible format : */
-            LOGI("No compatible audio format, using signed 16-bit audio");
+            LOGI( "No compatible audio format, using signed 16-bit audio" );
             test_format = AUDIO_S16SYS;
         }
         this->spec.format = test_format;
@@ -440,16 +447,16 @@ static int openslES_CreatePCMPlayer(_THIS)
     SDL_CalculateAudioSpec(&this->spec);
 
     LOGI("Try to open %u hz %s %u bit chan %u %s samples %u",
-         this->spec.freq, SDL_AUDIO_ISFLOAT(this->spec.format) ? "float" : "pcm", SDL_AUDIO_BITSIZE(this->spec.format),
-         this->spec.channels, (this->spec.format & 0x1000) ? "BE" : "LE", this->spec.samples);
+          this->spec.freq, SDL_AUDIO_ISFLOAT(this->spec.format) ? "float" : "pcm", SDL_AUDIO_BITSIZE(this->spec.format),
+          this->spec.channels, (this->spec.format & 0x1000) ? "BE" : "LE", this->spec.samples);
 
     /* configure audio source */
     loc_bufq.locatorType = SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE;
     loc_bufq.numBuffers = NUM_BUFFERS;
 
-    format_pcm.formatType = SL_DATAFORMAT_PCM;
-    format_pcm.numChannels = this->spec.channels;
-    format_pcm.samplesPerSec = this->spec.freq * 1000; /* / kilo Hz to milli Hz */
+    format_pcm.formatType    = SL_DATAFORMAT_PCM;
+    format_pcm.numChannels   = this->spec.channels;
+    format_pcm.samplesPerSec = this->spec.freq * 1000;  /* / kilo Hz to milli Hz */
     format_pcm.bitsPerSample = SDL_AUDIO_BITSIZE(this->spec.format);
     format_pcm.containerSize = SDL_AUDIO_BITSIZE(this->spec.format);
 
@@ -459,7 +466,8 @@ static int openslES_CreatePCMPlayer(_THIS)
         format_pcm.endianness = SL_BYTEORDER_LITTLEENDIAN;
     }
 
-    switch (this->spec.channels) {
+    switch (this->spec.channels)
+    {
     case 1:
         format_pcm.channelMask = SL_SPEAKER_FRONT_LEFT;
         break;
@@ -491,7 +499,7 @@ static int openslES_CreatePCMPlayer(_THIS)
         break;
     }
 
-    if (SDL_AUDIO_ISFLOAT(this->spec.format)) {
+    if(SDL_AUDIO_ISFLOAT(this->spec.format)) {
         /* Copy all setup into PCM EX structure */
         format_pcm_ex.formatType = SL_ANDROID_DATAFORMAT_PCM_EX;
         format_pcm_ex.endianness = format_pcm.endianness;
@@ -504,7 +512,7 @@ static int openslES_CreatePCMPlayer(_THIS)
     }
 
     audioSrc.pLocator = &loc_bufq;
-    audioSrc.pFormat = SDL_AUDIO_ISFLOAT(this->spec.format) ? (void *)&format_pcm_ex : (void *)&format_pcm;
+    audioSrc.pFormat = SDL_AUDIO_ISFLOAT(this->spec.format) ? (void*)&format_pcm_ex : (void*)&format_pcm;
 
     /* configure audio sink */
     loc_outmix.locatorType = SL_DATALOCATOR_OUTPUTMIX;
@@ -565,7 +573,7 @@ static int openslES_CreatePCMPlayer(_THIS)
     }
 
     /* Create the sound buffers */
-    audiodata->mixbuff = (Uint8 *)SDL_malloc(NUM_BUFFERS * this->spec.size);
+    audiodata->mixbuff = (Uint8 *) SDL_malloc(NUM_BUFFERS * this->spec.size);
     if (audiodata->mixbuff == NULL) {
         LOGE("mixbuffer allocate - out of memory");
         goto failed;
@@ -588,9 +596,10 @@ failed:
     return -1;
 }
 
-static int openslES_OpenDevice(_THIS, const char *devname)
+static int
+openslES_OpenDevice(_THIS, const char *devname)
 {
-    this->hidden = (struct SDL_PrivateAudioData *)SDL_calloc(1, sizeof(*this->hidden));
+    this->hidden = (struct SDL_PrivateAudioData *) SDL_calloc(1, (sizeof *this->hidden));
     if (this->hidden == NULL) {
         return SDL_OutOfMemory();
     }
@@ -616,10 +625,12 @@ static int openslES_OpenDevice(_THIS, const char *devname)
         } else {
             return SDL_SetError("Open device failed!");
         }
+
     }
 }
 
-static void openslES_WaitDevice(_THIS)
+static void
+openslES_WaitDevice(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
 
@@ -629,7 +640,8 @@ static void openslES_WaitDevice(_THIS)
     SDL_SemWait(audiodata->playsem);
 }
 
-static void openslES_PlayDevice(_THIS)
+static void
+openslES_PlayDevice(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
     SLresult result;
@@ -663,7 +675,8 @@ static void openslES_PlayDevice(_THIS)
 /* */
 /* okay.. */
 
-static Uint8 *openslES_GetDeviceBuf(_THIS)
+static Uint8 *
+openslES_GetDeviceBuf(_THIS)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
 
@@ -671,7 +684,8 @@ static Uint8 *openslES_GetDeviceBuf(_THIS)
     return audiodata->pmixbuff[audiodata->next_buffer];
 }
 
-static int openslES_CaptureFromDevice(_THIS, void *buffer, int buflen)
+static int
+openslES_CaptureFromDevice(_THIS, void *buffer, int buflen)
 {
     struct SDL_PrivateAudioData *audiodata = this->hidden;
     SLresult result;
@@ -698,7 +712,8 @@ static int openslES_CaptureFromDevice(_THIS, void *buffer, int buflen)
     return this->spec.size;
 }
 
-static void openslES_CloseDevice(_THIS)
+static void
+openslES_CloseDevice(_THIS)
 {
     /* struct SDL_PrivateAudioData *audiodata = this->hidden; */
 
@@ -713,7 +728,8 @@ static void openslES_CloseDevice(_THIS)
     SDL_free(this->hidden);
 }
 
-static SDL_bool openslES_Init(SDL_AudioDriverImpl *impl)
+static SDL_bool
+openslES_Init(SDL_AudioDriverImpl * impl)
 {
     LOGI("openslES_Init() called");
 
@@ -725,13 +741,13 @@ static SDL_bool openslES_Init(SDL_AudioDriverImpl *impl)
 
     /* Set the function pointers */
     /* impl->DetectDevices = openslES_DetectDevices; */
-    impl->OpenDevice = openslES_OpenDevice;
-    impl->WaitDevice = openslES_WaitDevice;
-    impl->PlayDevice = openslES_PlayDevice;
-    impl->GetDeviceBuf = openslES_GetDeviceBuf;
+    impl->OpenDevice    = openslES_OpenDevice;
+    impl->WaitDevice    = openslES_WaitDevice;
+    impl->PlayDevice    = openslES_PlayDevice;
+    impl->GetDeviceBuf  = openslES_GetDeviceBuf;
     impl->CaptureFromDevice = openslES_CaptureFromDevice;
-    impl->CloseDevice = openslES_CloseDevice;
-    impl->Deinitialize = openslES_DestroyEngine;
+    impl->CloseDevice   = openslES_CloseDevice;
+    impl->Deinitialize  = openslES_DestroyEngine;
 
     /* and the capabilities */
     impl->HasCaptureSupport = SDL_TRUE;

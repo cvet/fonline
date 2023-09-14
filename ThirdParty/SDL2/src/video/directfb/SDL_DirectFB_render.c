@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -79,14 +79,16 @@ typedef struct
 #endif
 } DirectFB_TextureData;
 
-static void SDLtoDFBRect(const SDL_Rect * sr, DFBRectangle * dr)
+static SDL_INLINE void
+SDLtoDFBRect(const SDL_Rect * sr, DFBRectangle * dr)
 {
     dr->x = sr->x;
     dr->y = sr->y;
     dr->h = sr->h;
     dr->w = sr->w;
 }
-static void SDLtoDFBRect_Float(const SDL_FRect * sr, DFBRectangle * dr)
+static SDL_INLINE void
+SDLtoDFBRect_Float(const SDL_FRect * sr, DFBRectangle * dr)
 {
     dr->x = sr->x;
     dr->y = sr->y;
@@ -95,7 +97,8 @@ static void SDLtoDFBRect_Float(const SDL_FRect * sr, DFBRectangle * dr)
 }
 
 
-static int TextureHasAlpha(DirectFB_TextureData * data)
+static int
+TextureHasAlpha(DirectFB_TextureData * data)
 {
     /* Drawing primitive ? */
     if (!data)
@@ -146,7 +149,9 @@ static SDL_INLINE IDirectFBWindow *get_dfb_window(SDL_Window *window)
     return wm_info.info.dfb.window;
 }
 
-static void SetBlendMode(DirectFB_RenderData * data, int blendMode, DirectFB_TextureData * source)
+static void
+SetBlendMode(DirectFB_RenderData * data, int blendMode,
+             DirectFB_TextureData * source)
 {
     IDirectFBSurface *destsurf = data->target;
 
@@ -196,7 +201,6 @@ static void SetBlendMode(DirectFB_RenderData * data, int blendMode, DirectFB_Tex
         case SDL_BLENDMODE_MUL:
             data->blitFlags = DSBLIT_BLEND_ALPHACHANNEL;
             data->drawFlags = DSDRAW_BLEND;
-            /* FIXME SDL_BLENDMODE_MUL is simplified, and dstA is in fact un-changed.*/
             SDL_DFB_CHECK(destsurf->SetSrcBlendFunction(destsurf, DSBF_DESTCOLOR));
             SDL_DFB_CHECK(destsurf->SetDstBlendFunction(destsurf, DSBF_INVSRCALPHA));
 
@@ -206,7 +210,8 @@ static void SetBlendMode(DirectFB_RenderData * data, int blendMode, DirectFB_Tex
     }
 }
 
-static int PrepareDraw(SDL_Renderer * renderer, const SDL_RenderCommand *cmd)
+static int
+PrepareDraw(SDL_Renderer * renderer, const SDL_RenderCommand *cmd)
 {
     DirectFB_RenderData *data = (DirectFB_RenderData *) renderer->driverdata;
     IDirectFBSurface *destsurf = data->target;
@@ -240,7 +245,8 @@ static int PrepareDraw(SDL_Renderer * renderer, const SDL_RenderCommand *cmd)
     return -1;
 }
 
-static void DirectFB_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
+static void
+DirectFB_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
     SDL_DFB_RENDERERDATA(renderer);
 
@@ -252,7 +258,8 @@ static void DirectFB_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent 
    }
 }
 
-static void DirectFB_ActivateRenderer(SDL_Renderer * renderer)
+static void
+DirectFB_ActivateRenderer(SDL_Renderer * renderer)
 {
     SDL_DFB_RENDERERDATA(renderer);
 
@@ -261,7 +268,8 @@ static void DirectFB_ActivateRenderer(SDL_Renderer * renderer)
     }
 }
 
-static int DirectFB_AcquireVidLayer(SDL_Renderer * renderer, SDL_Texture * texture)
+static int
+DirectFB_AcquireVidLayer(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     SDL_Window *window = renderer->window;
     SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
@@ -332,7 +340,8 @@ void DirectFB_SetTexturePalette(SDL_Renderer *renderer, SDL_Texture *texture, SD
     data->palette->SetEntries(data->palette, dfbpal, pal->ncolors, 0);
 }
 
-static int DirectFB_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+static int
+DirectFB_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     SDL_Window *window = renderer->window;
     SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
@@ -427,7 +436,8 @@ static int DirectFB_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture
 }
 
 #if 0
-static int DirectFB_SetTextureScaleMode(SDL_Renderer * renderer, SDL_Texture * texture)
+static int
+DirectFB_SetTextureScaleMode(SDL_Renderer * renderer, SDL_Texture * texture)
 {
 #if (DFB_VERSION_ATLEAST(1,2,0))
 
@@ -455,7 +465,8 @@ static int DirectFB_SetTextureScaleMode(SDL_Renderer * renderer, SDL_Texture * t
 }
 #endif
 
-static int DirectFB_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+static int
+DirectFB_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                        const SDL_Rect * rect, const void *pixels, int pitch)
 {
     DirectFB_TextureData *data = (DirectFB_TextureData *) texture->driverdata;
@@ -511,7 +522,8 @@ static int DirectFB_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture
 
 }
 
-static int DirectFB_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+static int
+DirectFB_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                      const SDL_Rect * rect, void **pixels, int *pitch)
 {
     DirectFB_TextureData *texturedata =
@@ -548,7 +560,8 @@ static int DirectFB_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     return -1;
 }
 
-static void DirectFB_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+static void
+DirectFB_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     DirectFB_TextureData *texturedata =
         (DirectFB_TextureData *) texture->driverdata;
@@ -561,12 +574,14 @@ static void DirectFB_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * textur
     }
 }
 
-static void DirectFB_SetTextureScaleMode()
+static void
+DirectFB_SetTextureScaleMode()
 {
 }
 
 #if 0
-static void DirectFB_DirtyTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+static void
+DirectFB_DirtyTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                       int numrects, const SDL_Rect * rects)
 {
     DirectFB_TextureData *data = (DirectFB_TextureData *) texture->driverdata;
@@ -595,14 +610,16 @@ static int DirectFB_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * textu
 }
 
 
-static int DirectFB_QueueSetViewport(SDL_Renderer * renderer, SDL_RenderCommand *cmd)
+static int
+DirectFB_QueueSetViewport(SDL_Renderer * renderer, SDL_RenderCommand *cmd)
 {
     return 0;  /* nothing to do in this backend. */
 }
 
-static int DirectFB_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points, int count)
+static int
+DirectFB_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points, int count)
 {
-    const size_t len = count * sizeof(SDL_FPoint);
+    const size_t len = count * sizeof (SDL_FPoint);
     SDL_FPoint *verts = (SDL_FPoint *) SDL_AllocateRenderVertices(renderer, len, 0, &cmd->data.draw.first);
 
     if (!verts) {
@@ -614,7 +631,8 @@ static int DirectFB_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *
     return 0;
 }
 
-static int DirectFB_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
+static int
+DirectFB_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
         const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride,
         int num_vertices, const void *indices, int num_indices, int size_indices,
         float scale_x, float scale_y)
@@ -624,7 +642,7 @@ static int DirectFB_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd
     float *verts;
     int sz = 2 + 4 + (texture ? 2 : 0);
 
-    verts = (float *) SDL_AllocateRenderVertices(renderer, count * sz * sizeof(float), 0, &cmd->data.draw.first);
+    verts = (float *) SDL_AllocateRenderVertices(renderer, count * sz * sizeof (float), 0, &cmd->data.draw.first);
     if (!verts) {
         return -1;
     }
@@ -666,9 +684,10 @@ static int DirectFB_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd
     return 0;
 }
 
-static int DirectFB_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRect * rects, int count)
+static int
+DirectFB_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRect * rects, int count)
 {
-    const size_t len = count * sizeof(SDL_FRect);
+    const size_t len = count * sizeof (SDL_FRect);
     SDL_FRect *verts = (SDL_FRect *) SDL_AllocateRenderVertices(renderer, len, 0, &cmd->data.draw.first);
 
     if (!verts) {
@@ -680,10 +699,11 @@ static int DirectFB_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *c
     return 0;
 }
 
-static int DirectFB_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
+static int
+DirectFB_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
              const SDL_Rect * srcrect, const SDL_FRect * dstrect)
 {
-    DFBRectangle *verts = (DFBRectangle *) SDL_AllocateRenderVertices(renderer, 2 * sizeof(DFBRectangle), 0, &cmd->data.draw.first);
+    DFBRectangle *verts = (DFBRectangle *) SDL_AllocateRenderVertices(renderer, 2 * sizeof (DFBRectangle), 0, &cmd->data.draw.first);
 
     if (!verts) {
         return -1;
@@ -697,7 +717,8 @@ static int DirectFB_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, S
     return 0;
 }
 
-static int DirectFB_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
+static int
+DirectFB_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     /* !!! FIXME: there are probably some good optimization wins in here if someone wants to look it over. */
     DirectFB_RenderData *data = (DirectFB_RenderData *) renderer->driverdata;
@@ -1004,7 +1025,8 @@ static int DirectFB_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *
 }
 
 
-static int DirectFB_RenderPresent(SDL_Renderer * renderer)
+static int
+DirectFB_RenderPresent(SDL_Renderer * renderer)
 {
     DirectFB_RenderData *data = (DirectFB_RenderData *) renderer->driverdata;
     SDL_Window *window = renderer->window;
@@ -1037,7 +1059,8 @@ static int DirectFB_RenderPresent(SDL_Renderer * renderer)
     return 0;
 }
 
-static void DirectFB_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+static void
+DirectFB_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     DirectFB_TextureData *data = (DirectFB_TextureData *) texture->driverdata;
 
@@ -1062,7 +1085,8 @@ static void DirectFB_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * textu
     texture->driverdata = NULL;
 }
 
-static void DirectFB_DestroyRenderer(SDL_Renderer * renderer)
+static void
+DirectFB_DestroyRenderer(SDL_Renderer * renderer)
 {
     DirectFB_RenderData *data = (DirectFB_RenderData *) renderer->driverdata;
 #if 0
@@ -1076,7 +1100,8 @@ static void DirectFB_DestroyRenderer(SDL_Renderer * renderer)
     SDL_free(renderer);
 }
 
-static int DirectFB_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
+static int
+DirectFB_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
                      Uint32 format, void * pixels, int pitch)
 {
     Uint32 sdl_format;
@@ -1103,7 +1128,8 @@ static int DirectFB_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * r
 }
 
 #if 0
-static int DirectFB_RenderWritePixels(SDL_Renderer * renderer, const SDL_Rect * rect,
+static int
+DirectFB_RenderWritePixels(SDL_Renderer * renderer, const SDL_Rect * rect,
                       Uint32 format, const void * pixels, int pitch)
 {
     SDL_Window *window = renderer->window;
@@ -1130,7 +1156,8 @@ static int DirectFB_RenderWritePixels(SDL_Renderer * renderer, const SDL_Rect * 
 #endif
 
 
-SDL_Renderer *DirectFB_CreateRenderer(SDL_Window * window, Uint32 flags)
+SDL_Renderer *
+DirectFB_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
     IDirectFBSurface *winsurf = get_dfb_surface(window);
     /*SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);*/

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,9 +30,9 @@
 static struct
 {
     SDL_AudioSpec spec;
-    Uint8 *sound;    /* Pointer to wave data */
-    Uint32 soundlen; /* Length of wave data */
-    int soundpos;    /* Current play position */
+    Uint8 *sound;               /* Pointer to wave data */
+    Uint32 soundlen;            /* Length of wave data */
+    int soundpos;               /* Current play position */
 } wave;
 
 static SDL_AudioDeviceID device;
@@ -65,6 +65,7 @@ open_audio()
         quit(2);
     }
 
+
     /* Let the audio run */
     SDL_PauseAudioDevice(device, SDL_FALSE);
 }
@@ -78,7 +79,7 @@ static void reopen_audio()
 #endif
 
 void SDLCALL
-fillerup(void *unused, Uint8 *stream, int len)
+fillerup(void *unused, Uint8 * stream, int len)
 {
     Uint8 *waveptr;
     int waveleft;
@@ -103,15 +104,16 @@ fillerup(void *unused, Uint8 *stream, int len)
 static int done = 0;
 
 #ifdef __EMSCRIPTEN__
-void loop()
+void
+loop()
 {
-    if (done || (SDL_GetAudioDeviceStatus(device) != SDL_AUDIO_PLAYING)) {
+    if(done || (SDL_GetAudioDeviceStatus(device) != SDL_AUDIO_PLAYING))
         emscripten_cancel_main_loop();
-    }
 }
 #endif
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     int i;
     char *filename = NULL;
@@ -120,9 +122,9 @@ int main(int argc, char *argv[])
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Load the SDL library */
-    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS) < 0) {
+    if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_EVENTS) < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
-        return 1;
+        return (1);
     }
 
     filename = GetResourceFilename(argc > 1 ? argv[1] : NULL, "sample.wav");
@@ -176,7 +178,7 @@ int main(int argc, char *argv[])
     SDL_FreeWAV(wave.sound);
     SDL_free(filename);
     SDL_Quit();
-    return 0;
+    return (0);
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

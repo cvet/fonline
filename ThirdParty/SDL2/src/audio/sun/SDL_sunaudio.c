@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -55,13 +55,15 @@
 static Uint8 snd2au(int sample);
 
 /* Audio driver bootstrap functions */
-static void SUNAUDIO_DetectDevices(void)
+static void
+SUNAUDIO_DetectDevices(void)
 {
     SDL_EnumUnixAudioDevices(1, (int (*)(int)) NULL);
 }
 
 #ifdef DEBUG_AUDIO
-void CheckUnderflow(_THIS)
+void
+CheckUnderflow(_THIS)
 {
 #ifdef AUDIO_GETBUFINFO
     audio_info_t info;
@@ -76,7 +78,8 @@ void CheckUnderflow(_THIS)
 }
 #endif
 
-static void SUNAUDIO_WaitDevice(_THIS)
+static void
+SUNAUDIO_WaitDevice(_THIS)
 {
 #ifdef AUDIO_GETBUFINFO
 #define SLEEP_FUDGE 10      /* 10 ms scheduling fudge factor */
@@ -99,7 +102,8 @@ static void SUNAUDIO_WaitDevice(_THIS)
 #endif
 }
 
-static void SUNAUDIO_PlayDevice(_THIS)
+static void
+SUNAUDIO_PlayDevice(_THIS)
 {
     /* Write the audio data */
     if (this->hidden->ulaw_only) {
@@ -166,12 +170,14 @@ static void SUNAUDIO_PlayDevice(_THIS)
     }
 }
 
-static Uint8 *SUNAUDIO_GetDeviceBuf(_THIS)
+static Uint8 *
+SUNAUDIO_GetDeviceBuf(_THIS)
 {
     return (this->hidden->mixbuf);
 }
 
-static void SUNAUDIO_CloseDevice(_THIS)
+static void
+SUNAUDIO_CloseDevice(_THIS)
 {
     SDL_free(this->hidden->ulaw_buf);
     if (this->hidden->audio_fd >= 0) {
@@ -181,7 +187,8 @@ static void SUNAUDIO_CloseDevice(_THIS)
     SDL_free(this->hidden);
 }
 
-static int SUNAUDIO_OpenDevice(_THIS, const char *devname)
+static int
+SUNAUDIO_OpenDevice(_THIS, const char *devname)
 {
 #ifdef AUDIO_SETINFO
     int enc;
@@ -202,7 +209,8 @@ static int SUNAUDIO_OpenDevice(_THIS, const char *devname)
     }
 
     /* Initialize all variables that we clean on shutdown */
-    this->hidden = (struct SDL_PrivateAudioData *)SDL_malloc(sizeof(*this->hidden));
+    this->hidden = (struct SDL_PrivateAudioData *)
+        SDL_malloc((sizeof *this->hidden));
     if (this->hidden == NULL) {
         return SDL_OutOfMemory();
     }
@@ -352,7 +360,8 @@ static int SUNAUDIO_OpenDevice(_THIS, const char *devname)
 /*      provided "as is" without express or implied warranty.           */
 /************************************************************************/
 
-static Uint8 snd2au(int sample)
+static Uint8
+snd2au(int sample)
 {
 
     int mask;
@@ -386,7 +395,8 @@ static Uint8 snd2au(int sample)
     return (mask & sample);
 }
 
-static SDL_bool SUNAUDIO_Init(SDL_AudioDriverImpl * impl)
+static SDL_bool
+SUNAUDIO_Init(SDL_AudioDriverImpl * impl)
 {
     /* Set the function pointers */
     impl->DetectDevices = SUNAUDIO_DetectDevices;

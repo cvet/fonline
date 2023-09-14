@@ -1,6 +1,6 @@
  /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -231,7 +231,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-                        if (event.buttonMask & SDL_BUTTON(i)) {
+                        if ((event.buttonMask & SDL_BUTTON(i)) != 0) {
                             Uint8 button;
 
                             switch (i) {
@@ -286,7 +286,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-                        if (event.buttonMask & SDL_BUTTON(i)) {
+                        if ((event.buttonMask & SDL_BUTTON(i)) != 0) {
                             Uint8 button;
 
                             switch (i) {
@@ -412,9 +412,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             SDL_SendKeyboardKey(SDL_PRESSED, scancode);
         }
     }
-    if (SDL_IsTextInputActive()) {
-        [super pressesBegan:presses withEvent:event];
-    }
+    [super pressesBegan:presses withEvent:event];
 }
 
 - (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
@@ -425,9 +423,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             SDL_SendKeyboardKey(SDL_RELEASED, scancode);
         }
     }
-    if (SDL_IsTextInputActive()) {
-        [super pressesEnded:presses withEvent:event];
-    }
+    [super pressesEnded:presses withEvent:event];
 }
 
 - (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
@@ -438,17 +434,13 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             SDL_SendKeyboardKey(SDL_RELEASED, scancode);
         }
     }
-    if (SDL_IsTextInputActive()) {
-        [super pressesCancelled:presses withEvent:event];
-    }
+    [super pressesCancelled:presses withEvent:event];
 }
 
 - (void)pressesChanged:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
     /* This is only called when the force of a press changes. */
-    if (SDL_IsTextInputActive()) {
-        [super pressesChanged:presses withEvent:event];
-    }
+    [super pressesChanged:presses withEvent:event];
 }
 
 #endif /* TARGET_OS_TV || defined(__IPHONE_9_1) */

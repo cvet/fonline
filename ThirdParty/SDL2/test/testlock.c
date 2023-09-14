@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,7 +27,7 @@ static SDL_atomic_t doterminate;
 
 /*
  * SDL_Quit() shouldn't be used with atexit() directly because
- * calling conventions may differ...
+ *  calling conventions may differ...
  */
 static void
 SDL_Quit_Wrapper(void)
@@ -35,26 +35,28 @@ SDL_Quit_Wrapper(void)
     SDL_Quit();
 }
 
-void printid(void)
+void
+printid(void)
 {
     SDL_Log("Process %lu:  exiting\n", SDL_ThreadID());
 }
 
-void terminate(int sig)
+void
+terminate(int sig)
 {
-    (void)signal(SIGINT, terminate);
+    signal(SIGINT, terminate);
     SDL_AtomicSet(&doterminate, 1);
 }
 
-void closemutex(int sig)
+void
+closemutex(int sig)
 {
     SDL_threadID id = SDL_ThreadID();
     int i;
     SDL_Log("Process %lu:  Cleaning up...\n", id == mainthread ? 0 : id);
     SDL_AtomicSet(&doterminate, 1);
-    for (i = 0; i < 6; ++i) {
+    for (i = 0; i < 6; ++i)
         SDL_WaitThread(threads[i], NULL);
-    }
     SDL_DestroyMutex(mutex);
     exit(sig);
 }
@@ -62,9 +64,8 @@ void closemutex(int sig)
 int SDLCALL
 Run(void *data)
 {
-    if (SDL_ThreadID() == mainthread) {
-        (void)signal(SIGTERM, closemutex);
-    }
+    if (SDL_ThreadID() == mainthread)
+        signal(SIGTERM, closemutex);
     while (!SDL_AtomicGet(&doterminate)) {
         SDL_Log("Process %lu ready to work\n", SDL_ThreadID());
         if (SDL_LockMutex(mutex) < 0) {
@@ -83,12 +84,13 @@ Run(void *data)
     }
     if (SDL_ThreadID() == mainthread && SDL_AtomicGet(&doterminate)) {
         SDL_Log("Process %lu:  raising SIGTERM\n", SDL_ThreadID());
-        (void)raise(SIGTERM);
+        raise(SIGTERM);
     }
-    return 0;
+    return (0);
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     int i;
     int maxproc = 6;
@@ -101,29 +103,26 @@ int main(int argc, char *argv[])
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s\n", SDL_GetError());
         exit(1);
     }
-    (void)atexit(SDL_Quit_Wrapper);
+    atexit(SDL_Quit_Wrapper);
 
     SDL_AtomicSet(&doterminate, 0);
 
-    mutex = SDL_CreateMutex();
-    if (mutex == NULL) {
+    if ((mutex = SDL_CreateMutex()) == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create mutex: %s\n", SDL_GetError());
         exit(1);
     }
 
     mainthread = SDL_ThreadID();
     SDL_Log("Main thread: %lu\n", mainthread);
-    (void)atexit(printid);
+    atexit(printid);
     for (i = 0; i < maxproc; ++i) {
         char name[64];
-        (void)SDL_snprintf(name, sizeof(name), "Worker%d", i);
-        threads[i] = SDL_CreateThread(Run, name, NULL);
-        if (threads[i] == NULL) {
+        SDL_snprintf(name, sizeof (name), "Worker%d", i);
+        if ((threads[i] = SDL_CreateThread(Run, name, NULL)) == NULL)
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create thread!\n");
-        }
     }
-    (void)signal(SIGINT, terminate);
+    signal(SIGINT, terminate);
     Run(NULL);
 
-    return 0; /* Never reached */
+    return (0);                 /* Never reached */
 }

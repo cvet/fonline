@@ -114,6 +114,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _hexField.resize(static_cast<size_t>(_width * _height));
     _hexLight.resize(static_cast<size_t>(_width * _height * 3));
 
+    ResizeView();
+
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnScreenSizeChanged += [this] { OnScreenSizeChanged(); };
 }
 
@@ -2441,7 +2443,7 @@ void MapView::ResizeView()
 
 void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (field.SpriteChain == nullptr) {
         field.SpriteChain = mspr;
@@ -2459,7 +2461,7 @@ void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
 
 void MapView::InvalidateSpriteChain(Field& field)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     // SpriteChain changed outside loop
     if (field.SpriteChain != nullptr) {

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -60,7 +60,8 @@ struct SDL_GLDriverData
 
 static void DirectFB_GL_UnloadLibrary(_THIS);
 
-int DirectFB_GL_Initialize(_THIS)
+int
+DirectFB_GL_Initialize(_THIS)
 {
     if (_this->gl_data) {
         return 0;
@@ -90,7 +91,8 @@ int DirectFB_GL_Initialize(_THIS)
     return 0;
 }
 
-void DirectFB_GL_Shutdown(_THIS)
+void
+DirectFB_GL_Shutdown(_THIS)
 {
     if (!_this->gl_data || (--_this->gl_data->initialized > 0)) {
         return;
@@ -102,7 +104,8 @@ void DirectFB_GL_Shutdown(_THIS)
     _this->gl_data = NULL;
 }
 
-int DirectFB_GL_LoadLibrary(_THIS, const char *path)
+int
+DirectFB_GL_LoadLibrary(_THIS, const char *path)
 {
     void *handle = NULL;
 
@@ -143,7 +146,8 @@ int DirectFB_GL_LoadLibrary(_THIS, const char *path)
     return 0;
 }
 
-static void DirectFB_GL_UnloadLibrary(_THIS)
+static void
+DirectFB_GL_UnloadLibrary(_THIS)
 {
  #if 0
     int ret = GL_UnloadObject(_this->gl_config.dll_handle);
@@ -156,7 +160,8 @@ static void DirectFB_GL_UnloadLibrary(_THIS)
     _this->gl_data = NULL;
 }
 
-void *DirectFB_GL_GetProcAddress(_THIS, const char *proc)
+void *
+DirectFB_GL_GetProcAddress(_THIS, const char *proc)
 {
     void *handle;
 
@@ -164,7 +169,8 @@ void *DirectFB_GL_GetProcAddress(_THIS, const char *proc)
     return GL_LoadFunction(handle, proc);
 }
 
-SDL_GLContext DirectFB_GL_CreateContext(_THIS, SDL_Window * window)
+SDL_GLContext
+DirectFB_GL_CreateContext(_THIS, SDL_Window * window)
 {
     SDL_DFB_WINDOWDATA(window);
     DirectFB_GLContext *context;
@@ -196,7 +202,8 @@ SDL_GLContext DirectFB_GL_CreateContext(_THIS, SDL_Window * window)
     return NULL;
 }
 
-int DirectFB_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+int
+DirectFB_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
     DirectFB_GLContext *ctx = (DirectFB_GLContext *) context;
     DirectFB_GLContext *p;
@@ -220,17 +227,20 @@ int DirectFB_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
     return -1;
 }
 
-int DirectFB_GL_SetSwapInterval(_THIS, int interval)
+int
+DirectFB_GL_SetSwapInterval(_THIS, int interval)
 {
     return SDL_Unsupported();
 }
 
-int DirectFB_GL_GetSwapInterval(_THIS)
+int
+DirectFB_GL_GetSwapInterval(_THIS)
 {
     return 0;
 }
 
-int DirectFB_GL_SwapWindow(_THIS, SDL_Window * window)
+int
+DirectFB_GL_SwapWindow(_THIS, SDL_Window * window)
 {
     SDL_DFB_WINDOWDATA(window);
     DirectFB_GLContext *p;
@@ -255,7 +265,8 @@ int DirectFB_GL_SwapWindow(_THIS, SDL_Window * window)
     return -1;
 }
 
-void DirectFB_GL_DeleteContext(_THIS, SDL_GLContext context)
+void
+DirectFB_GL_DeleteContext(_THIS, SDL_GLContext context)
 {
     DirectFB_GLContext *ctx = (DirectFB_GLContext *) context;
     DirectFB_GLContext *p;
@@ -274,7 +285,8 @@ void DirectFB_GL_DeleteContext(_THIS, SDL_GLContext context)
     SDL_DFB_FREE(ctx);
 }
 
-void DirectFB_GL_FreeWindowContexts(_THIS, SDL_Window * window)
+void
+DirectFB_GL_FreeWindowContexts(_THIS, SDL_Window * window)
 {
     DirectFB_GLContext *p;
 
@@ -287,7 +299,8 @@ void DirectFB_GL_FreeWindowContexts(_THIS, SDL_Window * window)
         }
 }
 
-void DirectFB_GL_ReAllocWindowContexts(_THIS, SDL_Window * window)
+void
+DirectFB_GL_ReAllocWindowContexts(_THIS, SDL_Window * window)
 {
     DirectFB_GLContext *p;
 
@@ -302,7 +315,8 @@ void DirectFB_GL_ReAllocWindowContexts(_THIS, SDL_Window * window)
             }
 }
 
-void DirectFB_GL_DestroyWindowContexts(_THIS, SDL_Window * window)
+void
+DirectFB_GL_DestroyWindowContexts(_THIS, SDL_Window * window)
 {
     DirectFB_GLContext *p;
 

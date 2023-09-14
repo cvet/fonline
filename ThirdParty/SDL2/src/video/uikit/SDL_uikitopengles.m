@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -52,7 +52,8 @@
 
 @end
 
-void *UIKit_GL_GetProcAddress(_THIS, const char *proc)
+void *
+UIKit_GL_GetProcAddress(_THIS, const char *proc)
 {
     /* Look through all SO's for the proc symbol.  Here's why:
      * -Looking for the path to the OpenGL Library seems not to work in the iOS Simulator.
@@ -63,7 +64,8 @@ void *UIKit_GL_GetProcAddress(_THIS, const char *proc)
 /*
   note that SDL_GL_DeleteContext makes it current without passing the window
 */
-int UIKit_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+int
+UIKit_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
     @autoreleasepool {
         SDLEAGLContext *eaglcontext = (__bridge SDLEAGLContext *) context;
@@ -80,7 +82,8 @@ int UIKit_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
     return 0;
 }
 
-void UIKit_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
+void
+UIKit_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
 {
     @autoreleasepool {
         SDL_WindowData *data = (__bridge SDL_WindowData *)window->driverdata;
@@ -99,7 +102,8 @@ void UIKit_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
     }
 }
 
-int UIKit_GL_LoadLibrary(_THIS, const char *path)
+int
+UIKit_GL_LoadLibrary(_THIS, const char *path)
 {
     /* We shouldn't pass a path to this function, since we've already loaded the
      * library. */
@@ -128,7 +132,8 @@ int UIKit_GL_SwapWindow(_THIS, SDL_Window * window)
     return 0;
 }
 
-SDL_GLContext UIKit_GL_CreateContext(_THIS, SDL_Window * window)
+SDL_GLContext
+UIKit_GL_CreateContext(_THIS, SDL_Window * window)
 {
     @autoreleasepool {
         SDLEAGLContext *context = nil;
@@ -205,7 +210,8 @@ SDL_GLContext UIKit_GL_CreateContext(_THIS, SDL_Window * window)
     }
 }
 
-void UIKit_GL_DeleteContext(_THIS, SDL_GLContext context)
+void
+UIKit_GL_DeleteContext(_THIS, SDL_GLContext context)
 {
     @autoreleasepool {
         /* The context was retained in SDL_GL_CreateContext, so we release it
@@ -215,7 +221,8 @@ void UIKit_GL_DeleteContext(_THIS, SDL_GLContext context)
     }
 }
 
-void UIKit_GL_RestoreCurrentContext(void)
+void
+UIKit_GL_RestoreCurrentContext(void)
 {
     @autoreleasepool {
         /* Some iOS system functionality (such as Dictation on the on-screen

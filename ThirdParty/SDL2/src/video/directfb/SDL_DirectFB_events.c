@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -91,7 +91,8 @@ static void UnicodeToUtf8( Uint16 w , char *utf8buf)
     }
 }
 
-static void FocusAllMice(_THIS, SDL_Window *window)
+static void
+FocusAllMice(_THIS, SDL_Window *window)
 {
 #if USE_MULTI_API
     SDL_DFB_DEVICEDATA(_this);
@@ -105,7 +106,8 @@ static void FocusAllMice(_THIS, SDL_Window *window)
 }
 
 
-static void FocusAllKeyboards(_THIS, SDL_Window *window)
+static void
+FocusAllKeyboards(_THIS, SDL_Window *window)
 {
 #if USE_MULTI_API
     SDL_DFB_DEVICEDATA(_this);
@@ -118,7 +120,8 @@ static void FocusAllKeyboards(_THIS, SDL_Window *window)
 #endif
 }
 
-static void MotionAllMice(_THIS, int x, int y)
+static void
+MotionAllMice(_THIS, int x, int y)
 {
 #if USE_MULTI_API
     SDL_DFB_DEVICEDATA(_this);
@@ -133,7 +136,8 @@ static void MotionAllMice(_THIS, int x, int y)
 #endif
 }
 
-static int KbdIndex(_THIS, int id)
+static int
+KbdIndex(_THIS, int id)
 {
     SDL_DFB_DEVICEDATA(_this);
     int index;
@@ -145,7 +149,8 @@ static int KbdIndex(_THIS, int id)
     return -1;
 }
 
-static int ClientXY(DFB_WindowData * p, int *x, int *y)
+static int
+ClientXY(DFB_WindowData * p, int *x, int *y)
 {
     int cx, cy;
 
@@ -164,7 +169,8 @@ static int ClientXY(DFB_WindowData * p, int *x, int *y)
     return 1;
 }
 
-static void ProcessWindowEvent(_THIS, SDL_Window *sdlwin, DFBWindowEvent * evt)
+static void
+ProcessWindowEvent(_THIS, SDL_Window *sdlwin, DFBWindowEvent * evt)
 {
     SDL_DFB_DEVICEDATA(_this);
     SDL_DFB_WINDOWDATA(sdlwin);
@@ -297,7 +303,8 @@ static void ProcessWindowEvent(_THIS, SDL_Window *sdlwin, DFBWindowEvent * evt)
         printf("Event Clazz %d\n", evt->clazz);
 }
 
-static void ProcessInputEvent(_THIS, DFBInputEvent * ievt)
+static void
+ProcessInputEvent(_THIS, DFBInputEvent * ievt)
 {
     SDL_DFB_DEVICEDATA(_this);
     SDL_Keysym keysym;
@@ -399,7 +406,8 @@ static void ProcessInputEvent(_THIS, DFBInputEvent * ievt)
     }
 }
 
-void DirectFB_PumpEventsWindow(_THIS)
+void
+DirectFB_PumpEventsWindow(_THIS)
 {
     SDL_DFB_DEVICEDATA(_this);
     DFBInputEvent ievt;
@@ -440,7 +448,8 @@ void DirectFB_PumpEventsWindow(_THIS)
     }
 }
 
-void DirectFB_InitOSKeymap(_THIS, SDL_Scancode * keymap, int numkeys)
+void
+DirectFB_InitOSKeymap(_THIS, SDL_Scancode * keymap, int numkeys)
 {
     int i;
 
@@ -567,7 +576,8 @@ void DirectFB_InitOSKeymap(_THIS, SDL_Scancode * keymap, int numkeys)
 
 }
 
-static SDL_Keysym *DirectFB_TranslateKey(_THIS, DFBWindowEvent * evt, SDL_Keysym * keysym, Uint32 *unicode)
+static SDL_Keysym *
+DirectFB_TranslateKey(_THIS, DFBWindowEvent * evt, SDL_Keysym * keysym, Uint32 *unicode)
 {
     SDL_DFB_DEVICEDATA(_this);
     int kbd_idx = 0; /* Window events lag the device source KbdIndex(_this, evt->device_id); */
@@ -596,7 +606,8 @@ static SDL_Keysym *DirectFB_TranslateKey(_THIS, DFBWindowEvent * evt, SDL_Keysym
     return keysym;
 }
 
-static SDL_Keysym *DirectFB_TranslateKeyInputEvent(_THIS, DFBInputEvent * evt,
+static SDL_Keysym *
+DirectFB_TranslateKeyInputEvent(_THIS, DFBInputEvent * evt,
                                 SDL_Keysym * keysym, Uint32 *unicode)
 {
     SDL_DFB_DEVICEDATA(_this);
@@ -625,7 +636,8 @@ static SDL_Keysym *DirectFB_TranslateKeyInputEvent(_THIS, DFBInputEvent * evt,
     return keysym;
 }
 
-static int DirectFB_TranslateButton(DFBInputDeviceButtonIdentifier button)
+static int
+DirectFB_TranslateButton(DFBInputDeviceButtonIdentifier button)
 {
     switch (button) {
     case DIBI_LEFT:
@@ -639,7 +651,9 @@ static int DirectFB_TranslateButton(DFBInputDeviceButtonIdentifier button)
     }
 }
 
-static DFBEnumerationResult EnumKeyboards(DFBInputDeviceID device_id, DFBInputDeviceDescription desc, void *callbackdata)
+static DFBEnumerationResult
+EnumKeyboards(DFBInputDeviceID device_id,
+                DFBInputDeviceDescription desc, void *callbackdata)
 {
     cb_data *cb = callbackdata;
     DFB_DeviceData *devdata = cb->devdata;
@@ -686,7 +700,8 @@ static DFBEnumerationResult EnumKeyboards(DFBInputDeviceID device_id, DFBInputDe
     return DFENUM_OK;
 }
 
-void DirectFB_InitKeyboard(_THIS)
+void
+DirectFB_InitKeyboard(_THIS)
 {
     SDL_DFB_DEVICEDATA(_this);
     cb_data cb;
@@ -715,7 +730,8 @@ void DirectFB_InitKeyboard(_THIS)
     }
 }
 
-void DirectFB_QuitKeyboard(_THIS)
+void
+DirectFB_QuitKeyboard(_THIS)
 {
     /* SDL_DFB_DEVICEDATA(_this); */
 }

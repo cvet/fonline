@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,11 +35,12 @@ struct SDL_cond
 };
 
 /* Create a condition variable */
-SDL_cond *SDL_CreateCond(void)
+SDL_cond *
+SDL_CreateCond(void)
 {
     SDL_cond *cond;
 
-    cond = (SDL_cond *)SDL_malloc(sizeof(SDL_cond));
+    cond = (SDL_cond *) SDL_malloc(sizeof(SDL_cond));
     if (cond) {
         if (pthread_cond_init(&cond->cond, NULL) != 0) {
             SDL_SetError("pthread_cond_init() failed");
@@ -47,11 +48,12 @@ SDL_cond *SDL_CreateCond(void)
             cond = NULL;
         }
     }
-    return cond;
+    return (cond);
 }
 
 /* Destroy a condition variable */
-void SDL_DestroyCond(SDL_cond *cond)
+void
+SDL_DestroyCond(SDL_cond * cond)
 {
     if (cond) {
         pthread_cond_destroy(&cond->cond);
@@ -60,11 +62,12 @@ void SDL_DestroyCond(SDL_cond *cond)
 }
 
 /* Restart one of the threads that are waiting on the condition variable */
-int SDL_CondSignal(SDL_cond *cond)
+int
+SDL_CondSignal(SDL_cond * cond)
 {
     int retval;
 
-    if (cond == NULL) {
+    if (!cond) {
         return SDL_InvalidParamError("cond");
     }
 
@@ -76,11 +79,12 @@ int SDL_CondSignal(SDL_cond *cond)
 }
 
 /* Restart all threads that are waiting on the condition variable */
-int SDL_CondBroadcast(SDL_cond *cond)
+int
+SDL_CondBroadcast(SDL_cond * cond)
 {
     int retval;
 
-    if (cond == NULL) {
+    if (!cond) {
         return SDL_InvalidParamError("cond");
     }
 
@@ -91,7 +95,8 @@ int SDL_CondBroadcast(SDL_cond *cond)
     return retval;
 }
 
-int SDL_CondWaitTimeout(SDL_cond *cond, SDL_mutex *mutex, Uint32 ms)
+int
+SDL_CondWaitTimeout(SDL_cond * cond, SDL_mutex * mutex, Uint32 ms)
 {
     int retval;
 #ifndef HAVE_CLOCK_GETTIME
@@ -99,7 +104,7 @@ int SDL_CondWaitTimeout(SDL_cond *cond, SDL_mutex *mutex, Uint32 ms)
 #endif
     struct timespec abstime;
 
-    if (cond == NULL) {
+    if (!cond) {
         return SDL_InvalidParamError("cond");
     }
 
@@ -112,14 +117,14 @@ int SDL_CondWaitTimeout(SDL_cond *cond, SDL_mutex *mutex, Uint32 ms)
     gettimeofday(&delta, NULL);
 
     abstime.tv_sec = delta.tv_sec + (ms / 1000);
-    abstime.tv_nsec = (long)(delta.tv_usec + (ms % 1000) * 1000) * 1000;
+    abstime.tv_nsec = (delta.tv_usec + (ms % 1000) * 1000) * 1000;
 #endif
     if (abstime.tv_nsec > 1000000000) {
         abstime.tv_sec += 1;
         abstime.tv_nsec -= 1000000000;
     }
 
-tryagain:
+  tryagain:
     retval = pthread_cond_timedwait(&cond->cond, &mutex->id, &abstime);
     switch (retval) {
     case EINTR:
@@ -139,9 +144,10 @@ tryagain:
 /* Wait on the condition variable, unlocking the provided mutex.
    The mutex must be locked before entering this function!
  */
-int SDL_CondWait(SDL_cond *cond, SDL_mutex *mutex)
+int
+SDL_CondWait(SDL_cond * cond, SDL_mutex * mutex)
 {
-    if (cond == NULL) {
+    if (!cond) {
         return SDL_InvalidParamError("cond");
     } else if (pthread_cond_wait(&cond->cond, &mutex->id) != 0) {
         return SDL_SetError("pthread_cond_wait() failed");

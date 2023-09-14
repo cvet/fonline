@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -54,7 +54,8 @@ static void RunThread(void *data)
         pfnEndThread();
 }
 
-int SDL_SYS_CreateThread(SDL_Thread * thread,
+int
+SDL_SYS_CreateThread(SDL_Thread * thread,
                      pfnSDL_CurrentBeginThread pfnBeginThread,
                      pfnSDL_CurrentEndThread pfnEndThread)
 {
@@ -79,12 +80,14 @@ int SDL_SYS_CreateThread(SDL_Thread * thread,
     return 0;
 }
 
-void SDL_SYS_SetupThread(const char *name)
+void
+SDL_SYS_SetupThread(const char *name)
 {
     /* nothing. */
 }
 
-SDL_threadID SDL_ThreadID(void)
+SDL_threadID
+SDL_ThreadID(void)
 {
     PTIB  tib;
     PPIB  pib;
@@ -93,7 +96,8 @@ SDL_threadID SDL_ThreadID(void)
     return tib->tib_ptib2->tib2_ultid;
 }
 
-int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
+int
+SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
     ULONG ulRC;
 
@@ -108,7 +112,8 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
     return 0;
 }
 
-void SDL_SYS_WaitThread(SDL_Thread * thread)
+void
+SDL_SYS_WaitThread(SDL_Thread * thread)
 {
     ULONG ulRC = DosWaitThread((PTID)&thread->handle, DCWW_WAIT);
 
@@ -117,7 +122,8 @@ void SDL_SYS_WaitThread(SDL_Thread * thread)
     }
 }
 
-void SDL_SYS_DetachThread(SDL_Thread * thread)
+void
+SDL_SYS_DetachThread(SDL_Thread * thread)
 {
     /* nothing. */
 }

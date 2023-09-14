@@ -1,5 +1,5 @@
 /*
-    SDL_ps2_main.c, fjtrujy@gmail.com
+    SDL_ps2_main.c, fjtrujy@gmail.com 
 */
 
 #include "SDL_config.h"
@@ -17,18 +17,20 @@
 #include <sifrpc.h>
 #include <iopcontrol.h>
 #include <sbv_patches.h>
-#include <ps2_filesystem_driver.h>
+#include <ps2_fileXio_driver.h>
+#include <ps2_memcard_driver.h>
+#include <ps2_usb_driver.h>
 
 #ifdef main
-#undef main
+    #undef main
 #endif
 
-__attribute__((weak)) void reset_IOP()
-{
+__attribute__((weak))
+void reset_IOP() {
     SifInitRpc(0);
-    while (!SifIopReset(NULL, 0)) {
+    while(!SifIopReset(NULL, 0)) {
     }
-    while (!SifIopSync()) {
+    while(!SifIopSync()){
     }
 }
 
@@ -41,14 +43,29 @@ static void prepare_IOP()
     sbv_patch_fileio();
 }
 
-static void init_drivers()
-{
-	init_ps2_filesystem_driver();
+static void init_drivers() {
+    init_memcard_driver(true);
+    init_usb_driver(true);
 }
 
-static void deinit_drivers()
+static void deinit_drivers() {
+    deinit_usb_driver(true);
+    deinit_memcard_driver(true);
+}
+
+static void waitUntilDeviceIsReady(char *path)
 {
-	deinit_ps2_filesystem_driver();
+    struct stat buffer;
+    int ret = -1;
+    int retries = 50;
+
+    while(ret != 0 && retries > 0) {
+        ret = stat(path, &buffer);
+        /* Wait until the device is ready */
+        nopdelay();
+
+        retries--;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -58,14 +75,14 @@ int main(int argc, char *argv[])
 
     prepare_IOP();
     init_drivers();
-
+    
     getcwd(cwd, sizeof(cwd));
     waitUntilDeviceIsReady(cwd);
 
     res = SDL_main(argc, argv);
 
-    deinit_drivers();
-
+    deinit_drivers();    
+    
     return res;
 }
 

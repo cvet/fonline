@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -40,7 +40,7 @@
  *  an SDLK_* constant for those keys that do not generate characters.
  *
  *  A special exception is the number keys at the top of the keyboard which
- *  map to SDLK_0...SDLK_9 on AZERTY layouts.
+ *  always map to SDLK_0...SDLK_9, regardless of layout.
  */
 typedef Sint32 SDL_Keycode;
 

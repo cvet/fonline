@@ -37,7 +37,7 @@
 
 void MapSprite::Invalidate()
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (!Valid) {
         return;

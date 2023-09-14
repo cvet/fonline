@@ -47,8 +47,7 @@ Andreas Schiffler -- aschiffler at ferzkopp dot net
 /* !
 \brief A 32 bit RGBA pixel.
 */
-typedef struct tColorRGBA
-{
+typedef struct tColorRGBA {
     Uint8 r;
     Uint8 g;
     Uint8 b;
@@ -58,8 +57,7 @@ typedef struct tColorRGBA
 /* !
 \brief A 8bit Y/palette pixel.
 */
-typedef struct tColorY
-{
+typedef struct tColorY {
     Uint8 y;
 } tColorY;
 
@@ -78,7 +76,8 @@ to a situation where the program can segfault.
 /* !
 \brief Returns colorkey info for a surface
 */
-static Uint32 get_colorkey(SDL_Surface *src)
+static Uint32
+get_colorkey(SDL_Surface *src)
 {
     Uint32 key = 0;
     if (SDL_HasColorKey(src)) {
@@ -88,8 +87,8 @@ static Uint32 get_colorkey(SDL_Surface *src)
 }
 
 /* rotate (sx, sy) by (angle, center) into (dx, dy) */
-static void rotate(double sx, double sy, double sinangle, double cosangle, const SDL_FPoint *center, double *dx, double *dy)
-{
+static void
+rotate(double sx, double sy, double sinangle, double cosangle, const SDL_FPoint *center, double *dx, double *dy) {
     sx -= center->x;
     sy -= center->y;
 
@@ -112,8 +111,9 @@ static void rotate(double sx, double sy, double sinangle, double cosangle, const
 \param sangle The cosine of the angle
 
 */
-void SDLgfx_rotozoomSurfaceSizeTrig(int width, int height, double angle, const SDL_FPoint *center,
-                                    SDL_Rect *rect_dest, double *cangle, double *sangle)
+void
+SDLgfx_rotozoomSurfaceSizeTrig(int width, int height, double angle, const SDL_FPoint *center,
+                               SDL_Rect *rect_dest, double *cangle, double *sangle)
 {
     int minx, maxx, miny, maxy;
     double radangle;
@@ -129,16 +129,16 @@ void SDLgfx_rotozoomSurfaceSizeTrig(int width, int height, double angle, const S
     /*
      * Determine destination width and height by rotating a source box, at pixel center
      */
-    rotate(0.5, 0.5, sinangle, cosangle, center, &x0, &y0);
-    rotate(width - 0.5, 0.5, sinangle, cosangle, center, &x1, &y1);
-    rotate(0.5, height - 0.5, sinangle, cosangle, center, &x2, &y2);
+    rotate(0.5,         0.5,          sinangle, cosangle, center, &x0, &y0);
+    rotate(width - 0.5, 0.5,          sinangle, cosangle, center, &x1, &y1);
+    rotate(0.5,         height - 0.5, sinangle, cosangle, center, &x2, &y2);
     rotate(width - 0.5, height - 0.5, sinangle, cosangle, center, &x3, &y3);
 
-    minx = (int)SDL_floor(SDL_min(SDL_min(x0, x1), SDL_min(x2, x3)));
-    maxx = (int)SDL_ceil(SDL_max(SDL_max(x0, x1), SDL_max(x2, x3)));
+    minx = (int)SDL_floor( SDL_min( SDL_min(x0, x1), SDL_min(x2, x3) ) );
+    maxx = (int)SDL_ceil(  SDL_max( SDL_max(x0, x1), SDL_max(x2, x3) ) );
 
-    miny = (int)SDL_floor(SDL_min(SDL_min(y0, y1), SDL_min(y2, y3)));
-    maxy = (int)SDL_ceil(SDL_max(SDL_max(y0, y1), SDL_max(y2, y3)));
+    miny = (int)SDL_floor( SDL_min( SDL_min(y0, y1), SDL_min(y2, y3) ) );
+    maxy = (int)SDL_ceil(  SDL_max( SDL_max(y0, y1), SDL_max(y2, y3) ) );
 
     rect_dest->w = maxx - minx;
     rect_dest->h = maxy - miny;
@@ -151,20 +151,17 @@ void SDLgfx_rotozoomSurfaceSizeTrig(int width, int height, double angle, const S
 
     {
         /* The trig code below gets the wrong size (due to FP inaccuracy?) when angle is a multiple of 90 degrees */
-        int angle90 = (int)(angle / 90);
-        if (angle90 == angle / 90) { /* if the angle is a multiple of 90 degrees */
+        int angle90 = (int)(angle/90);
+        if(angle90 == angle/90) { /* if the angle is a multiple of 90 degrees */
             angle90 %= 4;
-            if (angle90 < 0) {
-                angle90 += 4; /* 0:0 deg, 1:90 deg, 2:180 deg, 3:270 deg */
-            }
-
-            if (angle90 & 1) {
-                rect_dest->w = height;
+            if(angle90 < 0) angle90 += 4; /* 0:0 deg, 1:90 deg, 2:180 deg, 3:270 deg */
+            if(angle90 & 1) {
+                rect_dest->w  = height;
                 rect_dest->h = width;
                 *cangle = 0;
                 *sangle = angle90 == 1 ? -1 : 1; /* reversed because our rotations are clockwise */
             } else {
-                rect_dest->w = width;
+                rect_dest->w  = width;
                 rect_dest->h = height;
                 *cangle = angle90 == 0 ? 1 : -1;
                 *sangle = 0;
@@ -174,37 +171,19 @@ void SDLgfx_rotozoomSurfaceSizeTrig(int width, int height, double angle, const S
 }
 
 /* Computes source pointer X/Y increments for a rotation that's a multiple of 90 degrees. */
-static void computeSourceIncrements90(SDL_Surface *src, int bpp, int angle, int flipx, int flipy,
-                                      int *sincx, int *sincy, int *signx, int *signy)
+static void
+computeSourceIncrements90(SDL_Surface * src, int bpp, int angle, int flipx, int flipy,
+                          int *sincx, int *sincy, int *signx, int *signy)
 {
     int pitch = flipy ? -src->pitch : src->pitch;
     if (flipx) {
         bpp = -bpp;
     }
     switch (angle) { /* 0:0 deg, 1:90 deg, 2:180 deg, 3:270 deg */
-    case 0:
-        *sincx = bpp;
-        *sincy = pitch - src->w * *sincx;
-        *signx = *signy = 1;
-        break;
-    case 1:
-        *sincx = -pitch;
-        *sincy = bpp - *sincx * src->h;
-        *signx = 1;
-        *signy = -1;
-        break;
-    case 2:
-        *sincx = -bpp;
-        *sincy = -src->w * *sincx - pitch;
-        *signx = *signy = -1;
-        break;
-    case 3:
-    default:
-        *sincx = pitch;
-        *sincy = -*sincx * src->h - bpp;
-        *signx = -1;
-        *signy = 1;
-        break;
+    case 0: *sincx = bpp; *sincy = pitch - src->w * *sincx; *signx = *signy = 1; break;
+    case 1: *sincx = -pitch; *sincy = bpp - *sincx * src->h; *signx = 1; *signy = -1; break;
+    case 2: *sincx = -bpp; *sincy = -src->w * *sincx - pitch; *signx = *signy = -1; break;
+    case 3: default: *sincx = pitch; *sincy = -*sincx * src->h - bpp; *signx = -1; *signy = 1; break;
     }
     if (flipx) {
         *signx = -*signx;
@@ -215,34 +194,34 @@ static void computeSourceIncrements90(SDL_Surface *src, int bpp, int angle, int 
 }
 
 /* Performs a relatively fast rotation/flip when the angle is a multiple of 90 degrees. */
-#define TRANSFORM_SURFACE_90(pixelType)                                                                     \
-    int dy, dincy = dst->pitch - dst->w * sizeof(pixelType), sincx, sincy, signx, signy;                    \
-    Uint8 *sp = (Uint8 *)src->pixels, *dp = (Uint8 *)dst->pixels, *de;                                      \
+#define TRANSFORM_SURFACE_90(pixelType) \
+    int dy, dincy = dst->pitch - dst->w*sizeof(pixelType), sincx, sincy, signx, signy;                      \
+    Uint8 *sp = (Uint8*)src->pixels, *dp = (Uint8*)dst->pixels, *de;                                        \
                                                                                                             \
     computeSourceIncrements90(src, sizeof(pixelType), angle, flipx, flipy, &sincx, &sincy, &signx, &signy); \
-    if (signx < 0)                                                                                          \
-        sp += (src->w - 1) * sizeof(pixelType);                                                             \
-    if (signy < 0)                                                                                          \
-        sp += (src->h - 1) * src->pitch;                                                                    \
+    if (signx < 0) sp += (src->w-1)*sizeof(pixelType);                                                      \
+    if (signy < 0) sp += (src->h-1)*src->pitch;                                                             \
                                                                                                             \
     for (dy = 0; dy < dst->h; sp += sincy, dp += dincy, dy++) {                                             \
         if (sincx == sizeof(pixelType)) { /* if advancing src and dest equally, use SDL_memcpy */           \
-            SDL_memcpy(dp, sp, dst->w * sizeof(pixelType));                                                 \
-            sp += dst->w * sizeof(pixelType);                                                               \
-            dp += dst->w * sizeof(pixelType);                                                               \
+            SDL_memcpy(dp, sp, dst->w*sizeof(pixelType));                                                   \
+            sp += dst->w*sizeof(pixelType);                                                                 \
+            dp += dst->w*sizeof(pixelType);                                                                 \
         } else {                                                                                            \
-            for (de = dp + dst->w * sizeof(pixelType); dp != de; sp += sincx, dp += sizeof(pixelType)) {    \
-                *(pixelType *)dp = *(pixelType *)sp;                                                        \
+            for (de = dp + dst->w*sizeof(pixelType); dp != de; sp += sincx, dp += sizeof(pixelType)) {      \
+                *(pixelType*)dp = *(pixelType*)sp;                                                          \
             }                                                                                               \
         }                                                                                                   \
     }
 
-static void transformSurfaceRGBA90(SDL_Surface *src, SDL_Surface *dst, int angle, int flipx, int flipy)
+static void
+transformSurfaceRGBA90(SDL_Surface * src, SDL_Surface * dst, int angle, int flipx, int flipy)
 {
     TRANSFORM_SURFACE_90(tColorRGBA);
 }
 
-static void transformSurfaceY90(SDL_Surface *src, SDL_Surface *dst, int angle, int flipx, int flipy)
+static void
+transformSurfaceY90(SDL_Surface * src, SDL_Surface * dst, int angle, int flipx, int flipy)
 {
     TRANSFORM_SURFACE_90(tColorY);
 }
@@ -268,31 +247,32 @@ Assumes dst surface was allocated with the correct dimensions.
 \param dst_rect destination coordinates
 \param center true center.
 */
-static void transformSurfaceRGBA(SDL_Surface *src, SDL_Surface *dst, int isin, int icos,
-                                 int flipx, int flipy, int smooth,
-                                 const SDL_Rect *rect_dest,
-                                 const SDL_FPoint *center)
+static void
+transformSurfaceRGBA(SDL_Surface * src, SDL_Surface * dst, int isin, int icos,
+        int flipx, int flipy, int smooth,
+        const SDL_Rect *rect_dest,
+        const SDL_FPoint *center)
 {
     int sw, sh;
     int cx, cy;
     tColorRGBA c00, c01, c10, c11, cswap;
     tColorRGBA *pc, *sp;
     int gap;
-    const int fp_half = (1 << 15);
+    const int fp_half = (1<<15);
 
     /*
-     * Variable setup
-     */
+    * Variable setup
+    */
     sw = src->w - 1;
     sh = src->h - 1;
-    pc = (tColorRGBA *)dst->pixels;
+    pc = (tColorRGBA*) dst->pixels;
     gap = dst->pitch - dst->w * 4;
     cx = (int)(center->x * 65536.0);
     cy = (int)(center->y * 65536.0);
 
     /*
-     * Switch between interpolating and non-interpolating code
-     */
+    * Switch between interpolating and non-interpolating code
+    */
     if (smooth) {
         int y;
         for (y = 0; y < dst->h; y++) {
@@ -304,42 +284,30 @@ static void transformSurfaceRGBA(SDL_Surface *src, SDL_Surface *dst, int isin, i
             for (x = 0; x < dst->w; x++) {
                 int dx = (sdx >> 16);
                 int dy = (sdy >> 16);
-                if (flipx) {
-                    dx = sw - dx;
-                }
-                if (flipy) {
-                    dy = sh - dy;
-                }
-                if ((dx > -1) && (dy > -1) && (dx < (src->w - 1)) && (dy < (src->h - 1))) {
+                if (flipx) dx = sw - dx;
+                if (flipy) dy = sh - dy;
+                if ((dx > -1) && (dy > -1) && (dx < (src->w-1)) && (dy < (src->h-1))) {
                     int ex, ey;
                     int t1, t2;
-                    sp = (tColorRGBA *)((Uint8 *)src->pixels + src->pitch * dy) + dx;
+                    sp = (tColorRGBA *) ((Uint8 *) src->pixels + src->pitch * dy) + dx;
                     c00 = *sp;
                     sp += 1;
                     c01 = *sp;
-                    sp += (src->pitch / 4);
+                    sp += (src->pitch/4);
                     c11 = *sp;
                     sp -= 1;
                     c10 = *sp;
                     if (flipx) {
-                        cswap = c00;
-                        c00 = c01;
-                        c01 = cswap;
-                        cswap = c10;
-                        c10 = c11;
-                        c11 = cswap;
+                        cswap = c00; c00=c01; c01=cswap;
+                        cswap = c10; c10=c11; c11=cswap;
                     }
                     if (flipy) {
-                        cswap = c00;
-                        c00 = c10;
-                        c10 = cswap;
-                        cswap = c01;
-                        c01 = c11;
-                        c11 = cswap;
+                        cswap = c00; c00=c10; c10=cswap;
+                        cswap = c01; c01=c11; c11=cswap;
                     }
                     /*
-                     * Interpolate colors
-                     */
+                    * Interpolate colors
+                    */
                     ex = (sdx & 0xffff);
                     ey = (sdy & 0xffff);
                     t1 = ((((c01.r - c00.r) * ex) >> 16) + c00.r) & 0xff;
@@ -359,7 +327,7 @@ static void transformSurfaceRGBA(SDL_Surface *src, SDL_Surface *dst, int isin, i
                 sdy += isin;
                 pc++;
             }
-            pc = (tColorRGBA *)((Uint8 *)pc + gap);
+            pc = (tColorRGBA *) ((Uint8 *) pc + gap);
         }
     } else {
         int y;
@@ -373,19 +341,15 @@ static void transformSurfaceRGBA(SDL_Surface *src, SDL_Surface *dst, int isin, i
                 int dx = (sdx >> 16);
                 int dy = (sdy >> 16);
                 if ((unsigned)dx < (unsigned)src->w && (unsigned)dy < (unsigned)src->h) {
-                    if (flipx) {
-                        dx = sw - dx;
-                    }
-                    if (flipy) {
-                        dy = sh - dy;
-                    }
+                    if(flipx) dx = sw - dx;
+                    if(flipy) dy = sh - dy;
                     *pc = *((tColorRGBA *)((Uint8 *)src->pixels + src->pitch * dy) + dx);
                 }
                 sdx += icos;
                 sdy += isin;
                 pc++;
             }
-            pc = (tColorRGBA *)((Uint8 *)pc + gap);
+            pc = (tColorRGBA *) ((Uint8 *) pc + gap);
         }
     }
 }
@@ -408,34 +372,35 @@ Assumes dst surface was allocated with the correct dimensions.
 \param dst_rect destination coordinates
 \param center true center.
 */
-static void transformSurfaceY(SDL_Surface *src, SDL_Surface *dst, int isin, int icos, int flipx, int flipy,
-                              const SDL_Rect *rect_dest,
-                              const SDL_FPoint *center)
+static void
+transformSurfaceY(SDL_Surface * src, SDL_Surface * dst, int isin, int icos, int flipx, int flipy,
+        const SDL_Rect *rect_dest,
+        const SDL_FPoint *center)
 {
     int sw, sh;
     int cx, cy;
     tColorY *pc;
     int gap;
-    const int fp_half = (1 << 15);
+    const int fp_half = (1<<15);
     int y;
 
     /*
-     * Variable setup
-     */
+    * Variable setup
+    */
     sw = src->w - 1;
     sh = src->h - 1;
-    pc = (tColorY *)dst->pixels;
+    pc = (tColorY*) dst->pixels;
     gap = dst->pitch - dst->w;
     cx = (int)(center->x * 65536.0);
     cy = (int)(center->y * 65536.0);
 
     /*
-     * Clear surface to colorkey
-     */
-    SDL_memset(pc, (int)(get_colorkey(src) & 0xff), (size_t)dst->pitch * dst->h);
+    * Clear surface to colorkey
+    */
+    SDL_memset(pc, (int)(get_colorkey(src) & 0xff), dst->pitch * dst->h);
     /*
-     * Iterate through destination surface
-     */
+    * Iterate through destination surface
+    */
     for (y = 0; y < dst->h; y++) {
         int x;
         double src_x = (rect_dest->x + 0 + 0.5 - center->x);
@@ -446,12 +411,8 @@ static void transformSurfaceY(SDL_Surface *src, SDL_Surface *dst, int isin, int 
             int dx = (sdx >> 16);
             int dy = (sdy >> 16);
             if ((unsigned)dx < (unsigned)src->w && (unsigned)dy < (unsigned)src->h) {
-                if (flipx) {
-                    dx = sw - dx;
-                }
-                if (flipy) {
-                    dy = sh - dy;
-                }
+                if (flipx) dx = sw - dx;
+                if (flipy) dy = sh- dy;
                 *pc = *((tColorY *)src->pixels + src->pitch * dy + dx);
             }
             sdx += icos;
@@ -461,6 +422,7 @@ static void transformSurfaceY(SDL_Surface *src, SDL_Surface *dst, int isin, int 
         pc += gap;
     }
 }
+
 
 /* !
 \brief Rotates and zooms a surface with different horizontal and vertival scaling factors and optional anti-aliasing.
@@ -488,8 +450,9 @@ When using the NONE and MOD modes, color and alpha modulation must be applied be
 
 */
 
-SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, int flipx, int flipy,
-                     const SDL_Rect *rect_dest, double cangle, double sangle, const SDL_FPoint *center)
+SDL_Surface *
+SDLgfx_rotateSurface(SDL_Surface * src, double angle, int smooth, int flipx, int flipy,
+        const SDL_Rect *rect_dest, double cangle, double sangle, const SDL_FPoint *center)
 {
     SDL_Surface *rz_dst;
     int is8bit, angle90;
@@ -500,9 +463,8 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
     double sangleinv, cangleinv;
 
     /* Sanity check */
-    if (src == NULL) {
+    if (src == NULL)
         return NULL;
-    }
 
     if (SDL_HasColorKey(src)) {
         if (SDL_GetColorKey(src, &colorkey) == 0) {
@@ -511,13 +473,12 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
     }
     /* This function requires a 32-bit surface or 8-bit surface with a colorkey */
     is8bit = src->format->BitsPerPixel == 8 && colorKeyAvailable;
-    if (!(is8bit || (src->format->BitsPerPixel == 32 && src->format->Amask))) {
+    if (!(is8bit || (src->format->BitsPerPixel == 32 && src->format->Amask)))
         return NULL;
-    }
 
     /* Calculate target factors from sine/cosine and zoom */
-    sangleinv = sangle * 65536.0;
-    cangleinv = cangle * 65536.0;
+    sangleinv = sangle*65536.0;
+    cangleinv = cangle*65536.0;
 
     /* Alloc space to completely contain the rotated surface */
     rz_dst = NULL;
@@ -540,9 +501,8 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
     }
 
     /* Check target */
-    if (rz_dst == NULL) {
+    if (rz_dst == NULL)
         return NULL;
-    }
 
     /* Adjust for guard rows */
     rz_dst->h = rect_dest->h;
@@ -579,20 +539,17 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
      * the off-by-one problem in transformSurfaceRGBA that expresses itself when the rotation is near
      * multiples of 90 degrees.
      */
-    angle90 = (int)(angle / 90);
-    if (angle90 == angle / 90) {
+    angle90 = (int)(angle/90);
+    if (angle90 == angle/90) {
         angle90 %= 4;
-        if (angle90 < 0) {
-            angle90 += 4; /* 0:0 deg, 1:90 deg, 2:180 deg, 3:270 deg */
-        }
-
+        if (angle90 < 0) angle90 += 4; /* 0:0 deg, 1:90 deg, 2:180 deg, 3:270 deg */
     } else {
         angle90 = -1;
     }
 
     if (is8bit) {
         /* Call the 8-bit transformation routine to do the rotation */
-        if (angle90 >= 0) {
+        if(angle90 >= 0) {
             transformSurfaceY90(src, rz_dst, angle90, flipx, flipy);
         } else {
             transformSurfaceY(src, rz_dst, (int)sangleinv, (int)cangleinv,
@@ -604,7 +561,7 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
             transformSurfaceRGBA90(src, rz_dst, angle90, flipx, flipy);
         } else {
             transformSurfaceRGBA(src, rz_dst, (int)sangleinv, (int)cangleinv,
-                                 flipx, flipy, smooth, rect_dest, center);
+                                  flipx, flipy, smooth, rect_dest, center);
         }
     }
 

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -42,7 +42,8 @@ struct modes_callback_t
     SDL_DisplayMode *modelist;
 };
 
-static DFBEnumerationResult EnumModesCallback(int width, int height, int bpp, void *data)
+static DFBEnumerationResult
+EnumModesCallback(int width, int height, int bpp, void *data)
 {
     struct modes_callback_t *modedata = (struct modes_callback_t *) data;
     SDL_DisplayMode mode;
@@ -60,7 +61,9 @@ static DFBEnumerationResult EnumModesCallback(int width, int height, int bpp, vo
     return DFENUM_OK;
 }
 
-static DFBEnumerationResult EnumScreensCallback(DFBScreenID screen_id, DFBScreenDescription desc, void *callbackdata)
+static DFBEnumerationResult
+EnumScreensCallback(DFBScreenID screen_id, DFBScreenDescription desc,
+          void *callbackdata)
 {
     struct screen_callback_t *devdata = (struct screen_callback_t *) callbackdata;
 
@@ -68,7 +71,9 @@ static DFBEnumerationResult EnumScreensCallback(DFBScreenID screen_id, DFBScreen
     return DFENUM_OK;
 }
 
-static DFBEnumerationResult EnumLayersCallback(DFBDisplayLayerID layer_id, DFBDisplayLayerDescription desc, void *callbackdata)
+static DFBEnumerationResult
+EnumLayersCallback(DFBDisplayLayerID layer_id, DFBDisplayLayerDescription desc,
+         void *callbackdata)
 {
     struct screen_callback_t *devdata = (struct screen_callback_t *) callbackdata;
 
@@ -84,7 +89,8 @@ static DFBEnumerationResult EnumLayersCallback(DFBDisplayLayerID layer_id, DFBDi
     return DFENUM_OK;
 }
 
-static void CheckSetDisplayMode(_THIS, SDL_VideoDisplay * display, DFB_DisplayData * data, SDL_DisplayMode * mode)
+static void
+CheckSetDisplayMode(_THIS, SDL_VideoDisplay * display, DFB_DisplayData * data, SDL_DisplayMode * mode)
 {
     SDL_DFB_DEVICEDATA(_this);
     DFBDisplayLayerConfig config;
@@ -119,7 +125,8 @@ static void CheckSetDisplayMode(_THIS, SDL_VideoDisplay * display, DFB_DisplayDa
 }
 
 
-void DirectFB_SetContext(_THIS, SDL_Window *window)
+void
+DirectFB_SetContext(_THIS, SDL_Window *window)
 {
 #if (DFB_VERSION_ATLEAST(1,0,0))
     /* FIXME: does not work on 1.0/1.2 with radeon driver
@@ -137,7 +144,8 @@ void DirectFB_SetContext(_THIS, SDL_Window *window)
 #endif
 }
 
-void DirectFB_InitModes(_THIS)
+void
+DirectFB_InitModes(_THIS)
 {
     SDL_DFB_DEVICEDATA(_this);
     IDirectFBDisplayLayer *layer = NULL;
@@ -261,7 +269,8 @@ void DirectFB_InitModes(_THIS)
     return;
 }
 
-void DirectFB_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
+void
+DirectFB_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
 {
     SDL_DFB_DEVICEDATA(_this);
     DFB_DisplayData *dispdata = (DFB_DisplayData *) display->driverdata;
@@ -295,7 +304,8 @@ error:
     return;
 }
 
-int DirectFB_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
+int
+DirectFB_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
     /*
      * FIXME: video mode switch is currently broken for 1.2.0
@@ -365,7 +375,8 @@ int DirectFB_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode *
     return -1;
 }
 
-void DirectFB_QuitModes(_THIS)
+void
+DirectFB_QuitModes(_THIS)
 {
     SDL_DisplayMode tmode;
     int i;

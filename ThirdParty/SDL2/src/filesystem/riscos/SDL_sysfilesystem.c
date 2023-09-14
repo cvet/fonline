@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,27 +34,27 @@
 #include "SDL_filesystem.h"
 
 /* Wrapper around __unixify_std that uses SDL's memory allocators */
-static char *SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
+static char *
+SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
 {
     const char *const in_buf = buffer; /* = NULL if we allocate the buffer.  */
 
-    if (buffer == NULL) {
+    if (!buffer) {
         /* This matches the logic in __unixify, with an additional byte for the
          * extra path separator.
          */
         buf_len = SDL_strlen(ro_path) + 14 + 1;
         buffer = SDL_malloc(buf_len);
 
-        if (buffer == NULL) {
+        if (!buffer) {
             SDL_OutOfMemory();
             return NULL;
         }
     }
 
     if (!__unixify_std(ro_path, buffer, buf_len, filetype)) {
-        if (in_buf == NULL) {
+        if (!in_buf)
             SDL_free(buffer);
-        }
 
         SDL_SetError("Could not convert '%s' to a Unix-style path", ro_path);
         return NULL;
@@ -72,7 +72,8 @@ static char *SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, 
     return buffer;
 }
 
-static char *canonicalisePath(const char *path, const char *pathVar)
+static char *
+canonicalisePath(const char *path, const char *pathVar)
 {
     _kernel_oserror *error;
     _kernel_swi_regs regs;
@@ -92,7 +93,7 @@ static char *canonicalisePath(const char *path, const char *pathVar)
 
     regs.r[5] = 1 - regs.r[5];
     buf = SDL_malloc(regs.r[5]);
-    if (buf == NULL) {
+    if (!buf) {
         SDL_OutOfMemory();
         return NULL;
     }
@@ -107,7 +108,8 @@ static char *canonicalisePath(const char *path, const char *pathVar)
     return buf;
 }
 
-static _kernel_oserror *createDirectoryRecursive(char *path)
+static _kernel_oserror *
+createDirectoryRecursive(char *path)
 {
     char *ptr = NULL;
     _kernel_oserror *error;
@@ -116,20 +118,20 @@ static _kernel_oserror *createDirectoryRecursive(char *path)
     regs.r[1] = (int)path;
     regs.r[2] = 0;
 
-    for (ptr = path + 1; *ptr; ptr++) {
+    for (ptr = path+1; *ptr; ptr++) {
         if (*ptr == '.') {
             *ptr = '\0';
             error = _kernel_swi(OS_File, &regs, &regs);
             *ptr = '.';
-            if (error != NULL) {
+            if (error != NULL)
                 return error;
-            }
         }
     }
     return _kernel_swi(OS_File, &regs, &regs);
 }
 
-char *SDL_GetBasePath(void)
+char *
+SDL_GetBasePath(void)
 {
     _kernel_swi_regs regs;
     _kernel_oserror *error;
@@ -141,43 +143,43 @@ char *SDL_GetBasePath(void)
     }
 
     canon = canonicalisePath((const char *)regs.r[0], "Run$Path");
-    if (canon == NULL) {
+    if (!canon) {
         return NULL;
     }
 
     /* chop off filename. */
     ptr = SDL_strrchr(canon, '.');
-    if (ptr != NULL) {
+    if (ptr != NULL)
         *ptr = '\0';
-    }
 
     retval = SDL_unixify_std(canon, NULL, 0, __RISCOSIFY_FILETYPE_NOTSPECIFIED);
     SDL_free(canon);
     return retval;
 }
 
-char *SDL_GetPrefPath(const char *org, const char *app)
+char *
+SDL_GetPrefPath(const char *org, const char *app)
 {
     char *canon, *dir, *retval;
     size_t len;
     _kernel_oserror *error;
 
-    if (app == NULL) {
+    if (!app) {
         SDL_InvalidParamError("app");
         return NULL;
     }
-    if (org == NULL) {
+    if (!org) {
         org = "";
     }
 
     canon = canonicalisePath("<Choices$Write>", "Run$Path");
-    if (canon == NULL) {
+    if (!canon) {
         return NULL;
     }
 
     len = SDL_strlen(canon) + SDL_strlen(org) + SDL_strlen(app) + 4;
-    dir = (char *)SDL_malloc(len);
-    if (dir == NULL) {
+    dir = (char *) SDL_malloc(len);
+    if (!dir) {
         SDL_OutOfMemory();
         SDL_free(canon);
         return NULL;

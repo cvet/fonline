@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,230 +44,231 @@ https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
 https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
 */
 static const SDL_Keycode emscripten_keycode_table[] = {
-    /*  0 */ SDLK_UNKNOWN,
-    /*  1 */ SDLK_UNKNOWN,
-    /*  2 */ SDLK_UNKNOWN,
-    /*  3 */ SDLK_CANCEL,
-    /*  4 */ SDLK_UNKNOWN,
-    /*  5 */ SDLK_UNKNOWN,
-    /*  6 */ SDLK_HELP,
-    /*  7 */ SDLK_UNKNOWN,
-    /*  8 */ SDLK_BACKSPACE,
-    /*  9 */ SDLK_TAB,
-    /*  10 */ SDLK_UNKNOWN,
-    /*  11 */ SDLK_UNKNOWN,
-    /*  12 */ SDLK_KP_5,
-    /*  13 */ SDLK_RETURN,
-    /*  14 */ SDLK_UNKNOWN,
-    /*  15 */ SDLK_UNKNOWN,
-    /*  16 */ SDLK_LSHIFT,
-    /*  17 */ SDLK_LCTRL,
-    /*  18 */ SDLK_LALT,
-    /*  19 */ SDLK_PAUSE,
-    /*  20 */ SDLK_CAPSLOCK,
-    /*  21 */ SDLK_UNKNOWN,
-    /*  22 */ SDLK_UNKNOWN,
-    /*  23 */ SDLK_UNKNOWN,
-    /*  24 */ SDLK_UNKNOWN,
-    /*  25 */ SDLK_UNKNOWN,
-    /*  26 */ SDLK_UNKNOWN,
-    /*  27 */ SDLK_ESCAPE,
-    /*  28 */ SDLK_UNKNOWN,
-    /*  29 */ SDLK_UNKNOWN,
-    /*  30 */ SDLK_UNKNOWN,
-    /*  31 */ SDLK_UNKNOWN,
-    /*  32 */ SDLK_SPACE,
-    /*  33 */ SDLK_PAGEUP,
-    /*  34 */ SDLK_PAGEDOWN,
-    /*  35 */ SDLK_END,
-    /*  36 */ SDLK_HOME,
-    /*  37 */ SDLK_LEFT,
-    /*  38 */ SDLK_UP,
-    /*  39 */ SDLK_RIGHT,
-    /*  40 */ SDLK_DOWN,
-    /*  41 */ SDLK_UNKNOWN,
-    /*  42 */ SDLK_UNKNOWN,
-    /*  43 */ SDLK_UNKNOWN,
-    /*  44 */ SDLK_UNKNOWN,
-    /*  45 */ SDLK_INSERT,
-    /*  46 */ SDLK_DELETE,
-    /*  47 */ SDLK_UNKNOWN,
-    /*  48 */ SDLK_0,
-    /*  49 */ SDLK_1,
-    /*  50 */ SDLK_2,
-    /*  51 */ SDLK_3,
-    /*  52 */ SDLK_4,
-    /*  53 */ SDLK_5,
-    /*  54 */ SDLK_6,
-    /*  55 */ SDLK_7,
-    /*  56 */ SDLK_8,
-    /*  57 */ SDLK_9,
-    /*  58 */ SDLK_UNKNOWN,
-    /*  59 */ SDLK_SEMICOLON,
-    /*  60 */ SDLK_BACKSLASH /*SDL_SCANCODE_NONUSBACKSLASH*/,
-    /*  61 */ SDLK_EQUALS,
-    /*  62 */ SDLK_UNKNOWN,
-    /*  63 */ SDLK_MINUS,
-    /*  64 */ SDLK_UNKNOWN,
-    /*  65 */ SDLK_a,
-    /*  66 */ SDLK_b,
-    /*  67 */ SDLK_c,
-    /*  68 */ SDLK_d,
-    /*  69 */ SDLK_e,
-    /*  70 */ SDLK_f,
-    /*  71 */ SDLK_g,
-    /*  72 */ SDLK_h,
-    /*  73 */ SDLK_i,
-    /*  74 */ SDLK_j,
-    /*  75 */ SDLK_k,
-    /*  76 */ SDLK_l,
-    /*  77 */ SDLK_m,
-    /*  78 */ SDLK_n,
-    /*  79 */ SDLK_o,
-    /*  80 */ SDLK_p,
-    /*  81 */ SDLK_q,
-    /*  82 */ SDLK_r,
-    /*  83 */ SDLK_s,
-    /*  84 */ SDLK_t,
-    /*  85 */ SDLK_u,
-    /*  86 */ SDLK_v,
-    /*  87 */ SDLK_w,
-    /*  88 */ SDLK_x,
-    /*  89 */ SDLK_y,
-    /*  90 */ SDLK_z,
-    /*  91 */ SDLK_LGUI,
-    /*  92 */ SDLK_UNKNOWN,
-    /*  93 */ SDLK_APPLICATION,
-    /*  94 */ SDLK_UNKNOWN,
-    /*  95 */ SDLK_UNKNOWN,
-    /*  96 */ SDLK_KP_0,
-    /*  97 */ SDLK_KP_1,
-    /*  98 */ SDLK_KP_2,
-    /*  99 */ SDLK_KP_3,
-    /* 100 */ SDLK_KP_4,
-    /* 101 */ SDLK_KP_5,
-    /* 102 */ SDLK_KP_6,
-    /* 103 */ SDLK_KP_7,
-    /* 104 */ SDLK_KP_8,
-    /* 105 */ SDLK_KP_9,
-    /* 106 */ SDLK_KP_MULTIPLY,
-    /* 107 */ SDLK_KP_PLUS,
-    /* 108 */ SDLK_UNKNOWN,
-    /* 109 */ SDLK_KP_MINUS,
-    /* 110 */ SDLK_KP_PERIOD,
-    /* 111 */ SDLK_KP_DIVIDE,
-    /* 112 */ SDLK_F1,
-    /* 113 */ SDLK_F2,
-    /* 114 */ SDLK_F3,
-    /* 115 */ SDLK_F4,
-    /* 116 */ SDLK_F5,
-    /* 117 */ SDLK_F6,
-    /* 118 */ SDLK_F7,
-    /* 119 */ SDLK_F8,
-    /* 120 */ SDLK_F9,
-    /* 121 */ SDLK_F10,
-    /* 122 */ SDLK_F11,
-    /* 123 */ SDLK_F12,
-    /* 124 */ SDLK_F13,
-    /* 125 */ SDLK_F14,
-    /* 126 */ SDLK_F15,
-    /* 127 */ SDLK_F16,
-    /* 128 */ SDLK_F17,
-    /* 129 */ SDLK_F18,
-    /* 130 */ SDLK_F19,
-    /* 131 */ SDLK_F20,
-    /* 132 */ SDLK_F21,
-    /* 133 */ SDLK_F22,
-    /* 134 */ SDLK_F23,
-    /* 135 */ SDLK_F24,
-    /* 136 */ SDLK_UNKNOWN,
-    /* 137 */ SDLK_UNKNOWN,
-    /* 138 */ SDLK_UNKNOWN,
-    /* 139 */ SDLK_UNKNOWN,
-    /* 140 */ SDLK_UNKNOWN,
-    /* 141 */ SDLK_UNKNOWN,
-    /* 142 */ SDLK_UNKNOWN,
-    /* 143 */ SDLK_UNKNOWN,
-    /* 144 */ SDLK_NUMLOCKCLEAR,
-    /* 145 */ SDLK_SCROLLLOCK,
-    /* 146 */ SDLK_UNKNOWN,
-    /* 147 */ SDLK_UNKNOWN,
-    /* 148 */ SDLK_UNKNOWN,
-    /* 149 */ SDLK_UNKNOWN,
-    /* 150 */ SDLK_UNKNOWN,
-    /* 151 */ SDLK_UNKNOWN,
-    /* 152 */ SDLK_UNKNOWN,
-    /* 153 */ SDLK_UNKNOWN,
-    /* 154 */ SDLK_UNKNOWN,
-    /* 155 */ SDLK_UNKNOWN,
-    /* 156 */ SDLK_UNKNOWN,
-    /* 157 */ SDLK_UNKNOWN,
-    /* 158 */ SDLK_UNKNOWN,
-    /* 159 */ SDLK_UNKNOWN,
-    /* 160 */ SDLK_BACKQUOTE,
-    /* 161 */ SDLK_UNKNOWN,
-    /* 162 */ SDLK_UNKNOWN,
-    /* 163 */ SDLK_KP_HASH, /*KaiOS phone keypad*/
-    /* 164 */ SDLK_UNKNOWN,
-    /* 165 */ SDLK_UNKNOWN,
-    /* 166 */ SDLK_UNKNOWN,
-    /* 167 */ SDLK_UNKNOWN,
-    /* 168 */ SDLK_UNKNOWN,
-    /* 169 */ SDLK_UNKNOWN,
-    /* 170 */ SDLK_KP_MULTIPLY, /*KaiOS phone keypad*/
-    /* 171 */ SDLK_RIGHTBRACKET,
-    /* 172 */ SDLK_UNKNOWN,
-    /* 173 */ SDLK_MINUS,      /*FX*/
-    /* 174 */ SDLK_VOLUMEDOWN, /*IE, Chrome*/
-    /* 175 */ SDLK_VOLUMEUP,   /*IE, Chrome*/
-    /* 176 */ SDLK_AUDIONEXT,  /*IE, Chrome*/
-    /* 177 */ SDLK_AUDIOPREV,  /*IE, Chrome*/
-    /* 178 */ SDLK_UNKNOWN,
-    /* 179 */ SDLK_AUDIOPLAY, /*IE, Chrome*/
-    /* 180 */ SDLK_UNKNOWN,
-    /* 181 */ SDLK_AUDIOMUTE,  /*FX*/
-    /* 182 */ SDLK_VOLUMEDOWN, /*FX*/
-    /* 183 */ SDLK_VOLUMEUP,   /*FX*/
-    /* 184 */ SDLK_UNKNOWN,
-    /* 185 */ SDLK_UNKNOWN,
-    /* 186 */ SDLK_SEMICOLON, /*IE, Chrome, D3E legacy*/
-    /* 187 */ SDLK_EQUALS,    /*IE, Chrome, D3E legacy*/
-    /* 188 */ SDLK_COMMA,
-    /* 189 */ SDLK_MINUS, /*IE, Chrome, D3E legacy*/
-    /* 190 */ SDLK_PERIOD,
-    /* 191 */ SDLK_SLASH,
-    /* 192 */ SDLK_BACKQUOTE, /*FX, D3E legacy (SDLK_APOSTROPHE in IE/Chrome)*/
-    /* 193 */ SDLK_UNKNOWN,
-    /* 194 */ SDLK_UNKNOWN,
-    /* 195 */ SDLK_UNKNOWN,
-    /* 196 */ SDLK_UNKNOWN,
-    /* 197 */ SDLK_UNKNOWN,
-    /* 198 */ SDLK_UNKNOWN,
-    /* 199 */ SDLK_UNKNOWN,
-    /* 200 */ SDLK_UNKNOWN,
-    /* 201 */ SDLK_UNKNOWN,
-    /* 202 */ SDLK_UNKNOWN,
-    /* 203 */ SDLK_UNKNOWN,
-    /* 204 */ SDLK_UNKNOWN,
-    /* 205 */ SDLK_UNKNOWN,
-    /* 206 */ SDLK_UNKNOWN,
-    /* 207 */ SDLK_UNKNOWN,
-    /* 208 */ SDLK_UNKNOWN,
-    /* 209 */ SDLK_UNKNOWN,
-    /* 210 */ SDLK_UNKNOWN,
-    /* 211 */ SDLK_UNKNOWN,
-    /* 212 */ SDLK_UNKNOWN,
-    /* 213 */ SDLK_UNKNOWN,
-    /* 214 */ SDLK_UNKNOWN,
-    /* 215 */ SDLK_UNKNOWN,
-    /* 216 */ SDLK_UNKNOWN,
-    /* 217 */ SDLK_UNKNOWN,
-    /* 218 */ SDLK_UNKNOWN,
-    /* 219 */ SDLK_LEFTBRACKET,
-    /* 220 */ SDLK_BACKSLASH,
-    /* 221 */ SDLK_RIGHTBRACKET,
-    /* 222 */ SDLK_QUOTE, /*FX, D3E legacy*/
+    /*  0 */    SDLK_UNKNOWN,
+    /*  1 */    SDLK_UNKNOWN,
+    /*  2 */    SDLK_UNKNOWN,
+    /*  3 */    SDLK_CANCEL,
+    /*  4 */    SDLK_UNKNOWN,
+    /*  5 */    SDLK_UNKNOWN,
+    /*  6 */    SDLK_HELP,
+    /*  7 */    SDLK_UNKNOWN,
+    /*  8 */    SDLK_BACKSPACE,
+    /*  9 */    SDLK_TAB,
+    /*  10 */   SDLK_UNKNOWN,
+    /*  11 */   SDLK_UNKNOWN,
+    /*  12 */   SDLK_KP_5,
+    /*  13 */   SDLK_RETURN,
+    /*  14 */   SDLK_UNKNOWN,
+    /*  15 */   SDLK_UNKNOWN,
+    /*  16 */   SDLK_LSHIFT,
+    /*  17 */   SDLK_LCTRL,
+    /*  18 */   SDLK_LALT,
+    /*  19 */   SDLK_PAUSE,
+    /*  20 */   SDLK_CAPSLOCK,
+    /*  21 */   SDLK_UNKNOWN,
+    /*  22 */   SDLK_UNKNOWN,
+    /*  23 */   SDLK_UNKNOWN,
+    /*  24 */   SDLK_UNKNOWN,
+    /*  25 */   SDLK_UNKNOWN,
+    /*  26 */   SDLK_UNKNOWN,
+    /*  27 */   SDLK_ESCAPE,
+    /*  28 */   SDLK_UNKNOWN,
+    /*  29 */   SDLK_UNKNOWN,
+    /*  30 */   SDLK_UNKNOWN,
+    /*  31 */   SDLK_UNKNOWN,
+    /*  32 */   SDLK_SPACE,
+    /*  33 */   SDLK_PAGEUP,
+    /*  34 */   SDLK_PAGEDOWN,
+    /*  35 */   SDLK_END,
+    /*  36 */   SDLK_HOME,
+    /*  37 */   SDLK_LEFT,
+    /*  38 */   SDLK_UP,
+    /*  39 */   SDLK_RIGHT,
+    /*  40 */   SDLK_DOWN,
+    /*  41 */   SDLK_UNKNOWN,
+    /*  42 */   SDLK_UNKNOWN,
+    /*  43 */   SDLK_UNKNOWN,
+    /*  44 */   SDLK_UNKNOWN,
+    /*  45 */   SDLK_INSERT,
+    /*  46 */   SDLK_DELETE,
+    /*  47 */   SDLK_UNKNOWN,
+    /*  48 */   SDLK_0,
+    /*  49 */   SDLK_1,
+    /*  50 */   SDLK_2,
+    /*  51 */   SDLK_3,
+    /*  52 */   SDLK_4,
+    /*  53 */   SDLK_5,
+    /*  54 */   SDLK_6,
+    /*  55 */   SDLK_7,
+    /*  56 */   SDLK_8,
+    /*  57 */   SDLK_9,
+    /*  58 */   SDLK_UNKNOWN,
+    /*  59 */   SDLK_SEMICOLON,
+    /*  60 */   SDLK_BACKSLASH /*SDL_SCANCODE_NONUSBACKSLASH*/,
+    /*  61 */   SDLK_EQUALS,
+    /*  62 */   SDLK_UNKNOWN,
+    /*  63 */   SDLK_MINUS,
+    /*  64 */   SDLK_UNKNOWN,
+    /*  65 */   SDLK_a,
+    /*  66 */   SDLK_b,
+    /*  67 */   SDLK_c,
+    /*  68 */   SDLK_d,
+    /*  69 */   SDLK_e,
+    /*  70 */   SDLK_f,
+    /*  71 */   SDLK_g,
+    /*  72 */   SDLK_h,
+    /*  73 */   SDLK_i,
+    /*  74 */   SDLK_j,
+    /*  75 */   SDLK_k,
+    /*  76 */   SDLK_l,
+    /*  77 */   SDLK_m,
+    /*  78 */   SDLK_n,
+    /*  79 */   SDLK_o,
+    /*  80 */   SDLK_p,
+    /*  81 */   SDLK_q,
+    /*  82 */   SDLK_r,
+    /*  83 */   SDLK_s,
+    /*  84 */   SDLK_t,
+    /*  85 */   SDLK_u,
+    /*  86 */   SDLK_v,
+    /*  87 */   SDLK_w,
+    /*  88 */   SDLK_x,
+    /*  89 */   SDLK_y,
+    /*  90 */   SDLK_z,
+    /*  91 */   SDLK_LGUI,
+    /*  92 */   SDLK_UNKNOWN,
+    /*  93 */   SDLK_APPLICATION,
+    /*  94 */   SDLK_UNKNOWN,
+    /*  95 */   SDLK_UNKNOWN,
+    /*  96 */   SDLK_KP_0,
+    /*  97 */   SDLK_KP_1,
+    /*  98 */   SDLK_KP_2,
+    /*  99 */   SDLK_KP_3,
+    /* 100 */   SDLK_KP_4,
+    /* 101 */   SDLK_KP_5,
+    /* 102 */   SDLK_KP_6,
+    /* 103 */   SDLK_KP_7,
+    /* 104 */   SDLK_KP_8,
+    /* 105 */   SDLK_KP_9,
+    /* 106 */   SDLK_KP_MULTIPLY,
+    /* 107 */   SDLK_KP_PLUS,
+    /* 108 */   SDLK_UNKNOWN,
+    /* 109 */   SDLK_KP_MINUS,
+    /* 110 */   SDLK_KP_PERIOD,
+    /* 111 */   SDLK_KP_DIVIDE,
+    /* 112 */   SDLK_F1,
+    /* 113 */   SDLK_F2,
+    /* 114 */   SDLK_F3,
+    /* 115 */   SDLK_F4,
+    /* 116 */   SDLK_F5,
+    /* 117 */   SDLK_F6,
+    /* 118 */   SDLK_F7,
+    /* 119 */   SDLK_F8,
+    /* 120 */   SDLK_F9,
+    /* 121 */   SDLK_F10,
+    /* 122 */   SDLK_F11,
+    /* 123 */   SDLK_F12,
+    /* 124 */   SDLK_F13,
+    /* 125 */   SDLK_F14,
+    /* 126 */   SDLK_F15,
+    /* 127 */   SDLK_F16,
+    /* 128 */   SDLK_F17,
+    /* 129 */   SDLK_F18,
+    /* 130 */   SDLK_F19,
+    /* 131 */   SDLK_F20,
+    /* 132 */   SDLK_F21,
+    /* 133 */   SDLK_F22,
+    /* 134 */   SDLK_F23,
+    /* 135 */   SDLK_F24,
+    /* 136 */   SDLK_UNKNOWN,
+    /* 137 */   SDLK_UNKNOWN,
+    /* 138 */   SDLK_UNKNOWN,
+    /* 139 */   SDLK_UNKNOWN,
+    /* 140 */   SDLK_UNKNOWN,
+    /* 141 */   SDLK_UNKNOWN,
+    /* 142 */   SDLK_UNKNOWN,
+    /* 143 */   SDLK_UNKNOWN,
+    /* 144 */   SDLK_NUMLOCKCLEAR,
+    /* 145 */   SDLK_SCROLLLOCK,
+    /* 146 */   SDLK_UNKNOWN,
+    /* 147 */   SDLK_UNKNOWN,
+    /* 148 */   SDLK_UNKNOWN,
+    /* 149 */   SDLK_UNKNOWN,
+    /* 150 */   SDLK_UNKNOWN,
+    /* 151 */   SDLK_UNKNOWN,
+    /* 152 */   SDLK_UNKNOWN,
+    /* 153 */   SDLK_UNKNOWN,
+    /* 154 */   SDLK_UNKNOWN,
+    /* 155 */   SDLK_UNKNOWN,
+    /* 156 */   SDLK_UNKNOWN,
+    /* 157 */   SDLK_UNKNOWN,
+    /* 158 */   SDLK_UNKNOWN,
+    /* 159 */   SDLK_UNKNOWN,
+    /* 160 */   SDLK_BACKQUOTE,
+    /* 161 */   SDLK_UNKNOWN,
+    /* 162 */   SDLK_UNKNOWN,
+    /* 163 */   SDLK_KP_HASH, /*KaiOS phone keypad*/
+    /* 164 */   SDLK_UNKNOWN,
+    /* 165 */   SDLK_UNKNOWN,
+    /* 166 */   SDLK_UNKNOWN,
+    /* 167 */   SDLK_UNKNOWN,
+    /* 168 */   SDLK_UNKNOWN,
+    /* 169 */   SDLK_UNKNOWN,
+    /* 170 */   SDLK_KP_MULTIPLY, /*KaiOS phone keypad*/
+    /* 171 */   SDLK_RIGHTBRACKET,
+    /* 172 */   SDLK_UNKNOWN,
+    /* 173 */   SDLK_MINUS, /*FX*/
+    /* 174 */   SDLK_VOLUMEDOWN, /*IE, Chrome*/
+    /* 175 */   SDLK_VOLUMEUP, /*IE, Chrome*/
+    /* 176 */   SDLK_AUDIONEXT, /*IE, Chrome*/
+    /* 177 */   SDLK_AUDIOPREV, /*IE, Chrome*/
+    /* 178 */   SDLK_UNKNOWN,
+    /* 179 */   SDLK_AUDIOPLAY, /*IE, Chrome*/
+    /* 180 */   SDLK_UNKNOWN,
+    /* 181 */   SDLK_AUDIOMUTE, /*FX*/
+    /* 182 */   SDLK_VOLUMEDOWN, /*FX*/
+    /* 183 */   SDLK_VOLUMEUP, /*FX*/
+    /* 184 */   SDLK_UNKNOWN,
+    /* 185 */   SDLK_UNKNOWN,
+    /* 186 */   SDLK_SEMICOLON, /*IE, Chrome, D3E legacy*/
+    /* 187 */   SDLK_EQUALS, /*IE, Chrome, D3E legacy*/
+    /* 188 */   SDLK_COMMA,
+    /* 189 */   SDLK_MINUS, /*IE, Chrome, D3E legacy*/
+    /* 190 */   SDLK_PERIOD,
+    /* 191 */   SDLK_SLASH,
+    /* 192 */   SDLK_BACKQUOTE, /*FX, D3E legacy (SDLK_APOSTROPHE in IE/Chrome)*/
+    /* 193 */   SDLK_UNKNOWN,
+    /* 194 */   SDLK_UNKNOWN,
+    /* 195 */   SDLK_UNKNOWN,
+    /* 196 */   SDLK_UNKNOWN,
+    /* 197 */   SDLK_UNKNOWN,
+    /* 198 */   SDLK_UNKNOWN,
+    /* 199 */   SDLK_UNKNOWN,
+    /* 200 */   SDLK_UNKNOWN,
+    /* 201 */   SDLK_UNKNOWN,
+    /* 202 */   SDLK_UNKNOWN,
+    /* 203 */   SDLK_UNKNOWN,
+    /* 204 */   SDLK_UNKNOWN,
+    /* 205 */   SDLK_UNKNOWN,
+    /* 206 */   SDLK_UNKNOWN,
+    /* 207 */   SDLK_UNKNOWN,
+    /* 208 */   SDLK_UNKNOWN,
+    /* 209 */   SDLK_UNKNOWN,
+    /* 210 */   SDLK_UNKNOWN,
+    /* 211 */   SDLK_UNKNOWN,
+    /* 212 */   SDLK_UNKNOWN,
+    /* 213 */   SDLK_UNKNOWN,
+    /* 214 */   SDLK_UNKNOWN,
+    /* 215 */   SDLK_UNKNOWN,
+    /* 216 */   SDLK_UNKNOWN,
+    /* 217 */   SDLK_UNKNOWN,
+    /* 218 */   SDLK_UNKNOWN,
+    /* 219 */   SDLK_LEFTBRACKET,
+    /* 220 */   SDLK_BACKSLASH,
+    /* 221 */   SDLK_RIGHTBRACKET,
+    /* 222 */   SDLK_QUOTE, /*FX, D3E legacy*/
 };
+
 
 /*
 Emscripten PK code to scancode
@@ -404,104 +405,282 @@ static const SDL_Scancode emscripten_scancode_table[] = {
     /* 0x7E "NumpadComma"    */ SDL_SCANCODE_KP_COMMA
 };
 
-static SDL_Scancode Emscripten_MapScanCode(const char *code)
+// (FOnline Patch)
+static DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code_inlined(const char *keyCodeString)
 {
-    const DOM_PK_CODE_TYPE pk_code = emscripten_compute_dom_pk_code(code);
+  if (!keyCodeString) return 0;
+
+  /* Compute the collision free hash. */
+  unsigned int hash = 0;
+  while(*keyCodeString) hash = ((hash ^ 0x7E057D79U) << 3) ^ (unsigned int)*keyCodeString++;
+
+  /* Don't expose the hash values out to the application, but map to fixed IDs. This is useful for
+     mapping back codes to MDN documentation page at
+
+       https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code */
+  switch(hash)
+  {
+    case 0x98051284U /* Unidentified       */: return DOM_PK_UNKNOWN;              /* 0x0000 */
+    case 0x67243A2DU /* Escape             */: return DOM_PK_ESCAPE;               /* 0x0001 */
+    case 0x67251058U /* Digit0             */: return DOM_PK_0;                    /* 0x0002 */
+    case 0x67251059U /* Digit1             */: return DOM_PK_1;                    /* 0x0003 */
+    case 0x6725105AU /* Digit2             */: return DOM_PK_2;                    /* 0x0004 */
+    case 0x6725105BU /* Digit3             */: return DOM_PK_3;                    /* 0x0005 */
+    case 0x6725105CU /* Digit4             */: return DOM_PK_4;                    /* 0x0006 */
+    case 0x6725105DU /* Digit5             */: return DOM_PK_5;                    /* 0x0007 */
+    case 0x6725105EU /* Digit6             */: return DOM_PK_6;                    /* 0x0008 */
+    case 0x6725105FU /* Digit7             */: return DOM_PK_7;                    /* 0x0009 */
+    case 0x67251050U /* Digit8             */: return DOM_PK_8;                    /* 0x000A */
+    case 0x67251051U /* Digit9             */: return DOM_PK_9;                    /* 0x000B */
+    case 0x92E14DD3U /* Minus              */: return DOM_PK_MINUS;                /* 0x000C */
+    case 0x92E1FBACU /* Equal              */: return DOM_PK_EQUAL;                /* 0x000D */
+    case 0x36BF1CB5U /* Backspace          */: return DOM_PK_BACKSPACE;            /* 0x000E */
+    case 0x7B8E51E2U /* Tab                */: return DOM_PK_TAB;                  /* 0x000F */
+    case 0x2C595B51U /* KeyQ               */: return DOM_PK_Q;                    /* 0x0010 */
+    case 0x2C595B57U /* KeyW               */: return DOM_PK_W;                    /* 0x0011 */
+    case 0x2C595B45U /* KeyE               */: return DOM_PK_E;                    /* 0x0012 */
+    case 0x2C595B52U /* KeyR               */: return DOM_PK_R;                    /* 0x0013 */
+    case 0x2C595B54U /* KeyT               */: return DOM_PK_T;                    /* 0x0014 */
+    case 0x2C595B59U /* KeyY               */: return DOM_PK_Y;                    /* 0x0015 */
+    case 0x2C595B55U /* KeyU               */: return DOM_PK_U;                    /* 0x0016 */
+    case 0x2C595B49U /* KeyI               */: return DOM_PK_I;                    /* 0x0017 */
+    case 0x2C595B4FU /* KeyO               */: return DOM_PK_O;                    /* 0x0018 */
+    case 0x2C595B50U /* KeyP               */: return DOM_PK_P;                    /* 0x0019 */
+    case 0x45D8158CU /* BracketLeft        */: return DOM_PK_BRACKET_LEFT;         /* 0x001A */
+    case 0xDEEABF7CU /* BracketRight       */: return DOM_PK_BRACKET_RIGHT;        /* 0x001B */
+    case 0x92E1C5D2U /* Enter              */: return DOM_PK_ENTER;                /* 0x001C */
+    case 0xE058958CU /* ControlLeft        */: return DOM_PK_CONTROL_LEFT;         /* 0x001D */
+    case 0x2C595B41U /* KeyA               */: return DOM_PK_A;                    /* 0x001E */
+    case 0x2C595B53U /* KeyS               */: return DOM_PK_S;                    /* 0x001F */
+    case 0x2C595B44U /* KeyD               */: return DOM_PK_D;                    /* 0x0020 */
+    case 0x2C595B46U /* KeyF               */: return DOM_PK_F;                    /* 0x0021 */
+    case 0x2C595B47U /* KeyG               */: return DOM_PK_G;                    /* 0x0022 */
+    case 0x2C595B48U /* KeyH               */: return DOM_PK_H;                    /* 0x0023 */
+    case 0x2C595B4AU /* KeyJ               */: return DOM_PK_J;                    /* 0x0024 */
+    case 0x2C595B4BU /* KeyK               */: return DOM_PK_K;                    /* 0x0025 */
+    case 0x2C595B4CU /* KeyL               */: return DOM_PK_L;                    /* 0x0026 */
+    case 0x2707219EU /* Semicolon          */: return DOM_PK_SEMICOLON;            /* 0x0027 */
+    case 0x92E0B58DU /* Quote              */: return DOM_PK_QUOTE;                /* 0x0028 */
+    case 0x36BF358DU /* Backquote          */: return DOM_PK_BACKQUOTE;            /* 0x0029 */
+    case 0x26B1958CU /* ShiftLeft          */: return DOM_PK_SHIFT_LEFT;           /* 0x002A */
+    case 0x36BF2438U /* Backslash          */: return DOM_PK_BACKSLASH;            /* 0x002B */
+    case 0x2C595B5AU /* KeyZ               */: return DOM_PK_Z;                    /* 0x002C */
+    case 0x2C595B58U /* KeyX               */: return DOM_PK_X;                    /* 0x002D */
+    case 0x2C595B43U /* KeyC               */: return DOM_PK_C;                    /* 0x002E */
+    case 0x2C595B56U /* KeyV               */: return DOM_PK_V;                    /* 0x002F */
+    case 0x2C595B42U /* KeyB               */: return DOM_PK_B;                    /* 0x0030 */
+    case 0x2C595B4EU /* KeyN               */: return DOM_PK_N;                    /* 0x0031 */
+    case 0x2C595B4DU /* KeyM               */: return DOM_PK_M;                    /* 0x0032 */
+    case 0x92E1A1C1U /* Comma              */: return DOM_PK_COMMA;                /* 0x0033 */
+    case 0x672FFAD4U /* Period             */: return DOM_PK_PERIOD;               /* 0x0034 */
+    case 0x92E0A438U /* Slash              */: return DOM_PK_SLASH;                /* 0x0035 */
+    case 0xC5A6BF7CU /* ShiftRight         */: return DOM_PK_SHIFT_RIGHT;          /* 0x0036 */
+    case 0x5D64DA91U /* NumpadMultiply     */: return DOM_PK_NUMPAD_MULTIPLY;      /* 0x0037 */
+    case 0xC914958CU /* AltLeft            */: return DOM_PK_ALT_LEFT;             /* 0x0038 */
+    case 0x92E09CB5U /* Space              */: return DOM_PK_SPACE;                /* 0x0039 */
+    case 0xB8FAE73BU /* CapsLock           */: return DOM_PK_CAPS_LOCK;            /* 0x003A */
+    case 0x7174B789U /* F1                 */: return DOM_PK_F1;                   /* 0x003B */
+    case 0x7174B78AU /* F2                 */: return DOM_PK_F2;                   /* 0x003C */
+    case 0x7174B78BU /* F3                 */: return DOM_PK_F3;                   /* 0x003D */
+    case 0x7174B78CU /* F4                 */: return DOM_PK_F4;                   /* 0x003E */
+    case 0x7174B78DU /* F5                 */: return DOM_PK_F5;                   /* 0x003F */
+    case 0x7174B78EU /* F6                 */: return DOM_PK_F6;                   /* 0x0040 */
+    case 0x7174B78FU /* F7                 */: return DOM_PK_F7;                   /* 0x0041 */
+    case 0x7174B780U /* F8                 */: return DOM_PK_F8;                   /* 0x0042 */
+    case 0x7174B781U /* F9                 */: return DOM_PK_F9;                   /* 0x0043 */
+    case 0x7B8E57B0U /* F10                */: return DOM_PK_F10;                  /* 0x0044 */
+    case 0x92E08B35U /* Pause              */: return DOM_PK_PAUSE;                /* 0x0045 */
+    case 0xCDED173BU /* ScrollLock         */: return DOM_PK_SCROLL_LOCK;          /* 0x0046 */
+    case 0xC925FCDFU /* Numpad7            */: return DOM_PK_NUMPAD_7;             /* 0x0047 */
+    case 0xC925FCD0U /* Numpad8            */: return DOM_PK_NUMPAD_8;             /* 0x0048 */
+    case 0xC925FCD1U /* Numpad9            */: return DOM_PK_NUMPAD_9;             /* 0x0049 */
+    case 0x5EA3E8A4U /* NumpadSubtract     */: return DOM_PK_NUMPAD_SUBTRACT;      /* 0x004A */
+    case 0xC925FCDCU /* Numpad4            */: return DOM_PK_NUMPAD_4;             /* 0x004B */
+    case 0xC925FCDDU /* Numpad5            */: return DOM_PK_NUMPAD_5;             /* 0x004C */
+    case 0xC925FCDEU /* Numpad6            */: return DOM_PK_NUMPAD_6;             /* 0x004D */
+    case 0x380B9C8CU /* NumpadAdd          */: return DOM_PK_NUMPAD_ADD;           /* 0x004E */
+    case 0xC925FCD9U /* Numpad1            */: return DOM_PK_NUMPAD_1;             /* 0x004F */
+    case 0xC925FCDAU /* Numpad2            */: return DOM_PK_NUMPAD_2;             /* 0x0050 */
+    case 0xC925FCDBU /* Numpad3            */: return DOM_PK_NUMPAD_3;             /* 0x0051 */
+    case 0xC925FCD8U /* Numpad0            */: return DOM_PK_NUMPAD_0;             /* 0x0052 */
+    case 0x95852DACU /* NumpadDecimal      */: return DOM_PK_NUMPAD_DECIMAL;       /* 0x0053 */
+    case 0xCC1E198EU /* PrintScreen        */: return DOM_PK_PRINT_SCREEN;         /* 0x0054 */
+    case 0x16BF2438U /* IntlBackslash      */: return DOM_PK_INTL_BACKSLASH;       /* 0x0056 */
+    case 0x7B8E57B1U /* F11                */: return DOM_PK_F11;                  /* 0x0057 */
+    case 0x7B8E57B2U /* F12                */: return DOM_PK_F12;                  /* 0x0058 */
+    case 0x7393FBACU /* NumpadEqual        */: return DOM_PK_NUMPAD_EQUAL;         /* 0x0059 */
+    case 0x7B8E57B3U /* F13                */: return DOM_PK_F13;                  /* 0x0064 */
+    case 0x7B8E57B4U /* F14                */: return DOM_PK_F14;                  /* 0x0065 */
+    case 0x7B8E57B5U /* F15                */: return DOM_PK_F15;                  /* 0x0066 */
+    case 0x7B8E57B6U /* F16                */: return DOM_PK_F16;                  /* 0x0067 */
+    case 0x7B8E57B7U /* F17                */: return DOM_PK_F17;                  /* 0x0068 */
+    case 0x7B8E57B8U /* F18                */: return DOM_PK_F18;                  /* 0x0069 */
+    case 0x7B8E57B9U /* F19                */: return DOM_PK_F19;                  /* 0x006A */
+    case 0x7B8E57A8U /* F20                */: return DOM_PK_F20;                  /* 0x006B */
+    case 0x7B8E57A9U /* F21                */: return DOM_PK_F21;                  /* 0x006C */
+    case 0x7B8E57AAU /* F22                */: return DOM_PK_F22;                  /* 0x006D */
+    case 0x7B8E57ABU /* F23                */: return DOM_PK_F23;                  /* 0x006E */
+    case 0xB9F4C50DU /* KanaMode           */: return DOM_PK_KANA_MODE;            /* 0x0070 */
+    case 0x92E14D02U /* Lang2              */: return DOM_PK_LANG_2;               /* 0x0071 */
+    case 0x92E14D01U /* Lang1              */: return DOM_PK_LANG_1;               /* 0x0072 */
+    case 0x6723C677U /* IntlRo             */: return DOM_PK_INTL_RO;              /* 0x0073 */
+    case 0x7B8E57ACU /* F24                */: return DOM_PK_F24;                  /* 0x0076 */
+    case 0xC91CC12CU /* Convert            */: return DOM_PK_CONVERT;              /* 0x0079 */
+    case 0x2ADCC12CU /* NonConvert         */: return DOM_PK_NON_CONVERT;          /* 0x007B */
+    case 0xC935DA8EU /* IntlYen            */: return DOM_PK_INTL_YEN;             /* 0x007D */
+    case 0x7393A1C1U /* NumpadComma        */: return DOM_PK_NUMPAD_COMMA;         /* 0x007E */
+    case 0x92E08A8DU /* Paste              */: return DOM_PK_PASTE;                /* 0xE00A */
+    case 0x01DC7D93U /* MediaTrackPrevious */: return DOM_PK_MEDIA_TRACK_PREVIOUS; /* 0xE010 */
+    case 0x7B8E5494U /* Cut                */: return DOM_PK_CUT;                  /* 0xE017 */
+    case 0x2C5949B1U /* Copy               */: return DOM_PK_COPY;                 /* 0xE018 */
+    case 0x2AD2E17CU /* MediaTrackNext     */: return DOM_PK_MEDIA_TRACK_NEXT;     /* 0xE019 */
+    case 0x7393C5D2U /* NumpadEnter        */: return DOM_PK_NUMPAD_ENTER;         /* 0xE01C */
+    case 0xF2EEBF7CU /* ControlRight       */: return DOM_PK_CONTROL_RIGHT;        /* 0xE01D */
+    case 0x2A45030DU /* AudioVolumeMute    */: return DOM_PK_AUDIO_VOLUME_MUTE;    /* 0xE020 */
+    case 0xEA45030DU /* VolumeMute         */: return DOM_PK_AUDIO_VOLUME_MUTE;    /* 0xE020 */
+    case 0x370ECA3AU /* LaunchApp2         */: return DOM_PK_LAUNCH_APP_2;         /* 0xE021 */
+    case 0x2D1C0B35U /* MediaPlayPause     */: return DOM_PK_MEDIA_PLAY_PAUSE;     /* 0xE022 */
+    case 0x39237F80U /* MediaStop          */: return DOM_PK_MEDIA_STOP;           /* 0xE024 */
+    case 0x92E1C9A4U /* Eject              */: return DOM_PK_EJECT;                /* 0xE02C */
+    case 0x2A45179EU /* AudioVolumeDown    */: return DOM_PK_AUDIO_VOLUME_DOWN;    /* 0xE02E */
+    case 0xEA45179EU /* VolumeDown         */: return DOM_PK_AUDIO_VOLUME_DOWN;    /* 0xE02E */
+    case 0x156CC610U /* AudioVolumeUp      */: return DOM_PK_AUDIO_VOLUME_UP;      /* 0xE030 */
+    case 0xBA6CC610U /* VolumeUp           */: return DOM_PK_AUDIO_VOLUME_UP;      /* 0xE030 */
+    case 0x49387F45U /* BrowserHome        */: return DOM_PK_BROWSER_HOME;         /* 0xE032 */
+    case 0x6CB5328DU /* NumpadDivide       */: return DOM_PK_NUMPAD_DIVIDE;        /* 0xE035 */
+    case 0xB88EBF7CU /* AltRight           */: return DOM_PK_ALT_RIGHT;            /* 0xE038 */
+    case 0x2C595DD8U /* Help               */: return DOM_PK_HELP;                 /* 0xE03B */
+    case 0xC925873BU /* NumLock            */: return DOM_PK_NUM_LOCK;             /* 0xE045 */
+    case 0x2C595F45U /* Home               */: return DOM_PK_HOME;                 /* 0xE047 */
+    case 0xC91BB690U /* ArrowUp            */: return DOM_PK_ARROW_UP;             /* 0xE048 */
+    case 0x672F9210U /* PageUp             */: return DOM_PK_PAGE_UP;              /* 0xE049 */
+    case 0x3799258CU /* ArrowLeft          */: return DOM_PK_ARROW_LEFT;           /* 0xE04B */
+    case 0x4CE33F7CU /* ArrowRight         */: return DOM_PK_ARROW_RIGHT;          /* 0xE04D */
+    case 0x7B8E55DCU /* End                */: return DOM_PK_END;                  /* 0xE04F */
+    case 0x3799379EU /* ArrowDown          */: return DOM_PK_ARROW_DOWN;           /* 0xE050 */
+    case 0xBA90179EU /* PageDown           */: return DOM_PK_PAGE_DOWN;            /* 0xE051 */
+    case 0x6723CB2CU /* Insert             */: return DOM_PK_INSERT;               /* 0xE052 */
+    case 0x6725C50DU /* Delete             */: return DOM_PK_DELETE;               /* 0xE053 */
+    case 0xB929C58CU /* MetaLeft           */: return DOM_PK_META_LEFT;            /* 0xE05B */
+    case 0x6723658CU /* OSLeft             */: return DOM_PK_OS_LEFT;              /* 0xE05B */
+    case 0x39643F7CU /* MetaRight          */: return DOM_PK_META_RIGHT;           /* 0xE05C */
+    case 0xC9313F7CU /* OSRight            */: return DOM_PK_OS_RIGHT;             /* 0xE05C */
+    case 0xE00E97CDU /* ContextMenu        */: return DOM_PK_CONTEXT_MENU;         /* 0xE05D */
+    case 0x92E09712U /* Power              */: return DOM_PK_POWER;                /* 0xE05E */
+    case 0x3F665A78U /* BrowserSearch      */: return DOM_PK_BROWSER_SEARCH;       /* 0xE065 */
+    case 0xA2E93BD3U /* BrowserFavorites   */: return DOM_PK_BROWSER_FAVORITES;    /* 0xE066 */
+    case 0x0B1D4938U /* BrowserRefresh     */: return DOM_PK_BROWSER_REFRESH;      /* 0xE067 */
+    case 0x49384F80U /* BrowserStop        */: return DOM_PK_BROWSER_STOP;         /* 0xE068 */
+    case 0x0B49023CU /* BrowserForward     */: return DOM_PK_BROWSER_FORWARD;      /* 0xE069 */
+    case 0x493868BBU /* BrowserBack        */: return DOM_PK_BROWSER_BACK;         /* 0xE06A */
+    case 0x370ECA39U /* LaunchApp1         */: return DOM_PK_LAUNCH_APP_1;         /* 0xE06B */
+    case 0x370ED6ECU /* LaunchMail         */: return DOM_PK_LAUNCH_MAIL;          /* 0xE06C */
+    case 0x39AB4892U /* LaunchMediaPlayer  */: return DOM_PK_LAUNCH_MEDIA_PLAYER;  /* 0xE06D */
+    case 0x39AA45A4U /* MediaSelect        */: return DOM_PK_MEDIA_SELECT;         /* 0xE06D */
+    default: return DOM_PK_UNKNOWN;
+  }
+}
+
+static SDL_Scancode
+Emscripten_MapScanCode(const char *code)
+{
+    const DOM_PK_CODE_TYPE pk_code = emscripten_compute_dom_pk_code_inlined(code); // (FOnline Patch)
     if (pk_code < SDL_arraysize(emscripten_scancode_table)) {
         return emscripten_scancode_table[pk_code];
     }
 
     switch (pk_code) {
-    case DOM_PK_PASTE:
-        return SDL_SCANCODE_PASTE;
-    case DOM_PK_MEDIA_TRACK_PREVIOUS:
-        return SDL_SCANCODE_AUDIOPREV;
-    case DOM_PK_CUT:
-        return SDL_SCANCODE_CUT;
-    case DOM_PK_COPY:
-        return SDL_SCANCODE_COPY;
-    case DOM_PK_MEDIA_TRACK_NEXT:
-        return SDL_SCANCODE_AUDIONEXT;
-    case DOM_PK_NUMPAD_ENTER:
-        return SDL_SCANCODE_KP_ENTER;
-    case DOM_PK_CONTROL_RIGHT:
-        return SDL_SCANCODE_RCTRL;
-    case DOM_PK_AUDIO_VOLUME_MUTE:
-        return SDL_SCANCODE_AUDIOMUTE;
-    case DOM_PK_LAUNCH_APP_2:
-        return SDL_SCANCODE_CALCULATOR;
-    case DOM_PK_MEDIA_PLAY_PAUSE:
-        return SDL_SCANCODE_AUDIOPLAY;
-    case DOM_PK_MEDIA_STOP:
-        return SDL_SCANCODE_AUDIOSTOP;
-    case DOM_PK_EJECT:
-        return SDL_SCANCODE_EJECT;
-    case DOM_PK_AUDIO_VOLUME_DOWN:
-        return SDL_SCANCODE_VOLUMEDOWN;
-    case DOM_PK_AUDIO_VOLUME_UP:
-        return SDL_SCANCODE_VOLUMEUP;
-    case DOM_PK_BROWSER_HOME:
-        return SDL_SCANCODE_AC_HOME;
-    case DOM_PK_NUMPAD_DIVIDE:
-        return SDL_SCANCODE_KP_DIVIDE;
-    case DOM_PK_ALT_RIGHT:
-        return SDL_SCANCODE_RALT;
-    case DOM_PK_HELP:
-        return SDL_SCANCODE_HELP;
-    case DOM_PK_NUM_LOCK:
-        return SDL_SCANCODE_NUMLOCKCLEAR;
-    case DOM_PK_HOME:
-        return SDL_SCANCODE_HOME;
-    case DOM_PK_ARROW_UP:
-        return SDL_SCANCODE_UP;
-    case DOM_PK_PAGE_UP:
-        return SDL_SCANCODE_PAGEUP;
-    case DOM_PK_ARROW_LEFT:
-        return SDL_SCANCODE_LEFT;
-    case DOM_PK_ARROW_RIGHT:
-        return SDL_SCANCODE_RIGHT;
-    case DOM_PK_END:
-        return SDL_SCANCODE_END;
-    case DOM_PK_ARROW_DOWN:
-        return SDL_SCANCODE_DOWN;
-    case DOM_PK_PAGE_DOWN:
-        return SDL_SCANCODE_PAGEDOWN;
-    case DOM_PK_INSERT:
-        return SDL_SCANCODE_INSERT;
-    case DOM_PK_DELETE:
-        return SDL_SCANCODE_DELETE;
-    case DOM_PK_META_LEFT:
-        return SDL_SCANCODE_LGUI;
-    case DOM_PK_META_RIGHT:
-        return SDL_SCANCODE_RGUI;
-    case DOM_PK_CONTEXT_MENU:
-        return SDL_SCANCODE_APPLICATION;
-    case DOM_PK_POWER:
-        return SDL_SCANCODE_POWER;
-    case DOM_PK_BROWSER_SEARCH:
-        return SDL_SCANCODE_AC_SEARCH;
-    case DOM_PK_BROWSER_FAVORITES:
-        return SDL_SCANCODE_AC_BOOKMARKS;
-    case DOM_PK_BROWSER_REFRESH:
-        return SDL_SCANCODE_AC_REFRESH;
-    case DOM_PK_BROWSER_STOP:
-        return SDL_SCANCODE_AC_STOP;
-    case DOM_PK_BROWSER_FORWARD:
-        return SDL_SCANCODE_AC_FORWARD;
-    case DOM_PK_BROWSER_BACK:
-        return SDL_SCANCODE_AC_BACK;
-    case DOM_PK_LAUNCH_APP_1:
-        return SDL_SCANCODE_COMPUTER;
-    case DOM_PK_LAUNCH_MAIL:
-        return SDL_SCANCODE_MAIL;
-    case DOM_PK_MEDIA_SELECT:
-        return SDL_SCANCODE_MEDIASELECT;
+        case DOM_PK_PASTE:
+            return SDL_SCANCODE_PASTE;
+        case DOM_PK_MEDIA_TRACK_PREVIOUS:
+            return SDL_SCANCODE_AUDIOPREV;
+        case DOM_PK_CUT:
+            return SDL_SCANCODE_CUT;
+        case DOM_PK_COPY:
+            return SDL_SCANCODE_COPY;
+        case DOM_PK_MEDIA_TRACK_NEXT:
+            return SDL_SCANCODE_AUDIONEXT;
+        case DOM_PK_NUMPAD_ENTER:
+            return SDL_SCANCODE_KP_ENTER;
+        case DOM_PK_CONTROL_RIGHT:
+            return SDL_SCANCODE_RCTRL;
+        case DOM_PK_AUDIO_VOLUME_MUTE:
+            return SDL_SCANCODE_AUDIOMUTE;
+        case DOM_PK_LAUNCH_APP_2:
+            return SDL_SCANCODE_CALCULATOR;
+        case DOM_PK_MEDIA_PLAY_PAUSE:
+            return SDL_SCANCODE_AUDIOPLAY;
+        case DOM_PK_MEDIA_STOP:
+            return SDL_SCANCODE_AUDIOSTOP;
+        case DOM_PK_EJECT:
+            return SDL_SCANCODE_EJECT;
+        case DOM_PK_AUDIO_VOLUME_DOWN:
+            return SDL_SCANCODE_VOLUMEDOWN;
+        case DOM_PK_AUDIO_VOLUME_UP:
+            return SDL_SCANCODE_VOLUMEUP;
+        case DOM_PK_BROWSER_HOME:
+            return SDL_SCANCODE_AC_HOME;
+        case DOM_PK_NUMPAD_DIVIDE:
+            return SDL_SCANCODE_KP_DIVIDE;
+        case DOM_PK_ALT_RIGHT:
+            return SDL_SCANCODE_RALT;
+        case DOM_PK_HELP:
+            return SDL_SCANCODE_HELP;
+        case DOM_PK_NUM_LOCK:
+            return SDL_SCANCODE_NUMLOCKCLEAR;
+        case DOM_PK_HOME:
+            return SDL_SCANCODE_HOME;
+        case DOM_PK_ARROW_UP:
+            return SDL_SCANCODE_UP;
+        case DOM_PK_PAGE_UP:
+            return SDL_SCANCODE_PAGEUP;
+        case DOM_PK_ARROW_LEFT:
+            return SDL_SCANCODE_LEFT;
+        case DOM_PK_ARROW_RIGHT:
+            return SDL_SCANCODE_RIGHT;
+        case DOM_PK_END:
+            return SDL_SCANCODE_END;
+        case DOM_PK_ARROW_DOWN:
+            return SDL_SCANCODE_DOWN;
+        case DOM_PK_PAGE_DOWN:
+            return SDL_SCANCODE_PAGEDOWN;
+        case DOM_PK_INSERT:
+            return SDL_SCANCODE_INSERT;
+        case DOM_PK_DELETE:
+            return SDL_SCANCODE_DELETE;
+        case DOM_PK_META_LEFT:
+            return SDL_SCANCODE_LGUI;
+        case DOM_PK_META_RIGHT:
+            return SDL_SCANCODE_RGUI;
+        case DOM_PK_CONTEXT_MENU:
+            return SDL_SCANCODE_APPLICATION;
+        case DOM_PK_POWER:
+            return SDL_SCANCODE_POWER;
+        case DOM_PK_BROWSER_SEARCH:
+            return SDL_SCANCODE_AC_SEARCH;
+        case DOM_PK_BROWSER_FAVORITES:
+            return SDL_SCANCODE_AC_BOOKMARKS;
+        case DOM_PK_BROWSER_REFRESH:
+            return SDL_SCANCODE_AC_REFRESH;
+        case DOM_PK_BROWSER_STOP:
+            return SDL_SCANCODE_AC_STOP;
+        case DOM_PK_BROWSER_FORWARD:
+            return SDL_SCANCODE_AC_FORWARD;
+        case DOM_PK_BROWSER_BACK:
+            return SDL_SCANCODE_AC_BACK;
+        case DOM_PK_LAUNCH_APP_1:
+            return SDL_SCANCODE_COMPUTER;
+        case DOM_PK_LAUNCH_MAIL:
+            return SDL_SCANCODE_MAIL;
+        case DOM_PK_MEDIA_SELECT:
+            return SDL_SCANCODE_MEDIASELECT;
     }
 
     return SDL_SCANCODE_UNKNOWN;
 }
 
-static SDL_Keycode Emscripten_MapKeyCode(const EmscriptenKeyboardEvent *keyEvent)
+static SDL_Keycode
+Emscripten_MapKeyCode(const EmscriptenKeyboardEvent *keyEvent)
 {
     SDL_Keycode keycode = SDLK_UNKNOWN;
     if (keyEvent->keyCode < SDL_arraysize(emscripten_keycode_table)) {
@@ -509,66 +688,66 @@ static SDL_Keycode Emscripten_MapKeyCode(const EmscriptenKeyboardEvent *keyEvent
         if (keycode != SDLK_UNKNOWN) {
             if (keyEvent->location == DOM_KEY_LOCATION_RIGHT) {
                 switch (keycode) {
-                case SDLK_LSHIFT:
-                    keycode = SDLK_RSHIFT;
-                    break;
-                case SDLK_LCTRL:
-                    keycode = SDLK_RCTRL;
-                    break;
-                case SDLK_LALT:
-                    keycode = SDLK_RALT;
-                    break;
-                case SDLK_LGUI:
-                    keycode = SDLK_RGUI;
-                    break;
+                    case SDLK_LSHIFT:
+                        keycode = SDLK_RSHIFT;
+                        break;
+                    case SDLK_LCTRL:
+                        keycode = SDLK_RCTRL;
+                        break;
+                    case SDLK_LALT:
+                        keycode = SDLK_RALT;
+                        break;
+                    case SDLK_LGUI:
+                        keycode = SDLK_RGUI;
+                        break;
                 }
             } else if (keyEvent->location == DOM_KEY_LOCATION_NUMPAD) {
                 switch (keycode) {
-                case SDLK_0:
-                case SDLK_INSERT:
-                    keycode = SDLK_KP_0;
-                    break;
-                case SDLK_1:
-                case SDLK_END:
-                    keycode = SDLK_KP_1;
-                    break;
-                case SDLK_2:
-                case SDLK_DOWN:
-                    keycode = SDLK_KP_2;
-                    break;
-                case SDLK_3:
-                case SDLK_PAGEDOWN:
-                    keycode = SDLK_KP_3;
-                    break;
-                case SDLK_4:
-                case SDLK_LEFT:
-                    keycode = SDLK_KP_4;
-                    break;
-                case SDLK_5:
-                    keycode = SDLK_KP_5;
-                    break;
-                case SDLK_6:
-                case SDLK_RIGHT:
-                    keycode = SDLK_KP_6;
-                    break;
-                case SDLK_7:
-                case SDLK_HOME:
-                    keycode = SDLK_KP_7;
-                    break;
-                case SDLK_8:
-                case SDLK_UP:
-                    keycode = SDLK_KP_8;
-                    break;
-                case SDLK_9:
-                case SDLK_PAGEUP:
-                    keycode = SDLK_KP_9;
-                    break;
-                case SDLK_RETURN:
-                    keycode = SDLK_KP_ENTER;
-                    break;
-                case SDLK_DELETE:
-                    keycode = SDLK_KP_PERIOD;
-                    break;
+                    case SDLK_0:
+                    case SDLK_INSERT:
+                        keycode = SDLK_KP_0;
+                        break;
+                    case SDLK_1:
+                    case SDLK_END:
+                        keycode = SDLK_KP_1;
+                        break;
+                    case SDLK_2:
+                    case SDLK_DOWN:
+                        keycode = SDLK_KP_2;
+                        break;
+                    case SDLK_3:
+                    case SDLK_PAGEDOWN:
+                        keycode = SDLK_KP_3;
+                        break;
+                    case SDLK_4:
+                    case SDLK_LEFT:
+                        keycode = SDLK_KP_4;
+                        break;
+                    case SDLK_5:
+                        keycode = SDLK_KP_5;
+                        break;
+                    case SDLK_6:
+                    case SDLK_RIGHT:
+                        keycode = SDLK_KP_6;
+                        break;
+                    case SDLK_7:
+                    case SDLK_HOME:
+                        keycode = SDLK_KP_7;
+                        break;
+                    case SDLK_8:
+                    case SDLK_UP:
+                        keycode = SDLK_KP_8;
+                        break;
+                    case SDLK_9:
+                    case SDLK_PAGEUP:
+                        keycode = SDLK_KP_9;
+                        break;
+                    case SDLK_RETURN:
+                        keycode = SDLK_KP_ENTER;
+                        break;
+                    case SDLK_DELETE:
+                        keycode = SDLK_KP_PERIOD;
+                        break;
                 }
             }
         }
@@ -578,25 +757,26 @@ static SDL_Keycode Emscripten_MapKeyCode(const EmscriptenKeyboardEvent *keyEvent
 }
 
 /* "borrowed" from SDL_windowsevents.c */
-static int Emscripten_ConvertUTF32toUTF8(Uint32 codepoint, char *text)
+static int
+Emscripten_ConvertUTF32toUTF8(Uint32 codepoint, char * text)
 {
     if (codepoint <= 0x7F) {
-        text[0] = (char)codepoint;
+        text[0] = (char) codepoint;
         text[1] = '\0';
     } else if (codepoint <= 0x7FF) {
-        text[0] = 0xC0 | (char)((codepoint >> 6) & 0x1F);
-        text[1] = 0x80 | (char)(codepoint & 0x3F);
+        text[0] = 0xC0 | (char) ((codepoint >> 6) & 0x1F);
+        text[1] = 0x80 | (char) (codepoint & 0x3F);
         text[2] = '\0';
     } else if (codepoint <= 0xFFFF) {
-        text[0] = 0xE0 | (char)((codepoint >> 12) & 0x0F);
-        text[1] = 0x80 | (char)((codepoint >> 6) & 0x3F);
-        text[2] = 0x80 | (char)(codepoint & 0x3F);
+        text[0] = 0xE0 | (char) ((codepoint >> 12) & 0x0F);
+        text[1] = 0x80 | (char) ((codepoint >> 6) & 0x3F);
+        text[2] = 0x80 | (char) (codepoint & 0x3F);
         text[3] = '\0';
     } else if (codepoint <= 0x10FFFF) {
-        text[0] = 0xF0 | (char)((codepoint >> 18) & 0x0F);
-        text[1] = 0x80 | (char)((codepoint >> 12) & 0x3F);
-        text[2] = 0x80 | (char)((codepoint >> 6) & 0x3F);
-        text[3] = 0x80 | (char)(codepoint & 0x3F);
+        text[0] = 0xF0 | (char) ((codepoint >> 18) & 0x0F);
+        text[1] = 0x80 | (char) ((codepoint >> 12) & 0x3F);
+        text[2] = 0x80 | (char) ((codepoint >> 6) & 0x3F);
+        text[3] = 0x80 | (char) (codepoint & 0x3F);
         text[4] = '\0';
     } else {
         return SDL_FALSE;
@@ -604,15 +784,18 @@ static int Emscripten_ConvertUTF32toUTF8(Uint32 codepoint, char *text)
     return SDL_TRUE;
 }
 
-static EM_BOOL Emscripten_HandlePointerLockChange(int eventType, const EmscriptenPointerlockChangeEvent *changeEvent, void *userData)
+static EM_BOOL
+Emscripten_HandlePointerLockChange(int eventType, const EmscriptenPointerlockChangeEvent *changeEvent, void *userData)
 {
-    SDL_WindowData *window_data = (SDL_WindowData *)userData;
+    SDL_WindowData *window_data = (SDL_WindowData *) userData;
     /* keep track of lock losses, so we can regrab if/when appropriate. */
     window_data->has_pointer_lock = changeEvent->isActive;
     return 0;
 }
 
-static EM_BOOL Emscripten_HandleMouseMove(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
+
+static EM_BOOL
+Emscripten_HandleMouseMove(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
     const int isPointerLocked = window_data->has_pointer_lock;
@@ -642,39 +825,38 @@ static EM_BOOL Emscripten_HandleMouseMove(int eventType, const EmscriptenMouseEv
     return 0;
 }
 
-static EM_BOOL Emscripten_HandleMouseButton(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleMouseButton(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
     Uint8 sdl_button;
     Uint8 sdl_button_state;
     SDL_EventType sdl_event_type;
     double css_w, css_h;
-    SDL_bool prevent_default = SDL_FALSE; /* needed for iframe implementation in Chrome-based browsers. */
 
     switch (mouseEvent->button) {
-    case 0:
-        sdl_button = SDL_BUTTON_LEFT;
-        break;
-    case 1:
-        sdl_button = SDL_BUTTON_MIDDLE;
-        break;
-    case 2:
-        sdl_button = SDL_BUTTON_RIGHT;
-        break;
-    default:
-        return 0;
+        case 0:
+            sdl_button = SDL_BUTTON_LEFT;
+            break;
+        case 1:
+            sdl_button = SDL_BUTTON_MIDDLE;
+            break;
+        case 2:
+            sdl_button = SDL_BUTTON_RIGHT;
+            break;
+        default:
+            return 0;
     }
 
     if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN) {
         if (SDL_GetMouse()->relative_mode && !window_data->has_pointer_lock) {
-            emscripten_request_pointerlock(window_data->canvas_id, 0); /* try to regrab lost pointer lock. */
+            emscripten_request_pointerlock(window_data->canvas_id, 0);  /* try to regrab lost pointer lock. */
         }
         sdl_button_state = SDL_PRESSED;
         sdl_event_type = SDL_MOUSEBUTTONDOWN;
     } else {
         sdl_button_state = SDL_RELEASED;
         sdl_event_type = SDL_MOUSEBUTTONUP;
-        prevent_default = SDL_GetEventState(sdl_event_type) == SDL_ENABLE;
     }
     SDL_SendMouseButton(window_data->window, 0, sdl_button_state, sdl_button);
 
@@ -685,10 +867,11 @@ static EM_BOOL Emscripten_HandleMouseButton(int eventType, const EmscriptenMouse
         return 0;
     }
 
-    return prevent_default;
+    return SDL_GetEventState(sdl_event_type) == SDL_ENABLE;
 }
 
-static EM_BOOL Emscripten_HandleMouseFocus(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleMouseFocus(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
 
@@ -709,29 +892,31 @@ static EM_BOOL Emscripten_HandleMouseFocus(int eventType, const EmscriptenMouseE
     return SDL_GetEventState(SDL_WINDOWEVENT) == SDL_ENABLE;
 }
 
-static EM_BOOL Emscripten_HandleWheel(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleWheel(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
 
     float deltaY = wheelEvent->deltaY;
 
     switch (wheelEvent->deltaMode) {
-    case DOM_DELTA_PIXEL:
-        deltaY /= 100; /* 100 pixels make up a step */
-        break;
-    case DOM_DELTA_LINE:
-        deltaY /= 3; /* 3 lines make up a step */
-        break;
-    case DOM_DELTA_PAGE:
-        deltaY *= 80; /* A page makes up 80 steps */
-        break;
+        case DOM_DELTA_PIXEL:
+            deltaY /= 100; /* 100 pixels make up a step */
+            break;
+        case DOM_DELTA_LINE:
+            deltaY /= 3; /* 3 lines make up a step */
+            break;
+        case DOM_DELTA_PAGE:
+            deltaY *= 80; /* A page makes up 80 steps */
+            break;
     }
 
     SDL_SendMouseWheel(window_data->window, 0, (float)wheelEvent->deltaX, -deltaY, SDL_MOUSEWHEEL_NORMAL);
     return SDL_GetEventState(SDL_MOUSEWHEEL) == SDL_ENABLE;
 }
 
-static EM_BOOL Emscripten_HandleFocus(int eventType, const EmscriptenFocusEvent *wheelEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleFocus(int eventType, const EmscriptenFocusEvent *wheelEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
     /* If the user switches away while keys are pressed (such as
@@ -740,20 +925,22 @@ static EM_BOOL Emscripten_HandleFocus(int eventType, const EmscriptenFocusEvent 
         SDL_ResetKeyboard();
     }
 
+
     SDL_SendWindowEvent(window_data->window, eventType == EMSCRIPTEN_EVENT_FOCUS ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST, 0, 0);
     return SDL_GetEventState(SDL_WINDOWEVENT) == SDL_ENABLE;
 }
 
-static EM_BOOL Emscripten_HandleTouch(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleTouch(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData)
 {
-    SDL_WindowData *window_data = (SDL_WindowData *)userData;
+    SDL_WindowData *window_data = (SDL_WindowData *) userData;
     int i;
     double client_w, client_h;
     int preventDefault = 0;
 
     SDL_TouchID deviceId = 1;
     if (SDL_AddTouch(deviceId, SDL_TOUCH_DEVICE_DIRECT, "") < 0) {
-        return 0;
+         return 0;
     }
 
     emscripten_get_element_css_size(window_data->canvas_id, &client_w, &client_h);
@@ -762,9 +949,8 @@ static EM_BOOL Emscripten_HandleTouch(int eventType, const EmscriptenTouchEvent 
         SDL_FingerID id;
         float x, y;
 
-        if (!touchEvent->touches[i].isChanged) {
+        if (!touchEvent->touches[i].isChanged)
             continue;
-        }
 
         id = touchEvent->touches[i].identifier;
         x = touchEvent->touches[i].targetX / client_w;
@@ -790,7 +976,8 @@ static EM_BOOL Emscripten_HandleTouch(int eventType, const EmscriptenTouchEvent 
     return preventDefault;
 }
 
-static EM_BOOL Emscripten_HandleKey(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleKey(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
 {
     const SDL_Keycode keycode = Emscripten_MapKeyCode(keyEvent);
     SDL_Scancode scancode = Emscripten_MapScanCode(keyEvent->code);
@@ -813,14 +1000,14 @@ static EM_BOOL Emscripten_HandleKey(int eventType, const EmscriptenKeyboardEvent
     /* if TEXTINPUT events are enabled we can't prevent keydown or we won't get keypress
      * we need to ALWAYS prevent backspace and tab otherwise chrome takes action and does bad navigation UX
      */
-    if ((scancode == SDL_SCANCODE_BACKSPACE) ||
-        (scancode == SDL_SCANCODE_TAB) ||
-        (scancode == SDL_SCANCODE_LEFT) ||
-        (scancode == SDL_SCANCODE_UP) ||
-        (scancode == SDL_SCANCODE_RIGHT) ||
-        (scancode == SDL_SCANCODE_DOWN) ||
-        ((scancode >= SDL_SCANCODE_F1) && (scancode <= SDL_SCANCODE_F15)) ||
-        keyEvent->ctrlKey) {
+    if ( (scancode == SDL_SCANCODE_BACKSPACE) ||
+         (scancode == SDL_SCANCODE_TAB) ||
+         (scancode == SDL_SCANCODE_LEFT) ||
+         (scancode == SDL_SCANCODE_UP) ||
+         (scancode == SDL_SCANCODE_RIGHT) ||
+         (scancode == SDL_SCANCODE_DOWN) ||
+         ((scancode >= SDL_SCANCODE_F1) && (scancode <= SDL_SCANCODE_F15)) ||
+         keyEvent->ctrlKey ) {
         is_nav_key = SDL_TRUE;
     }
 
@@ -831,7 +1018,8 @@ static EM_BOOL Emscripten_HandleKey(int eventType, const EmscriptenKeyboardEvent
     return prevent_default;
 }
 
-static EM_BOOL Emscripten_HandleKeyPress(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleKeyPress(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
 {
     char text[5];
     if (Emscripten_ConvertUTF32toUTF8(keyEvent->charCode, text)) {
@@ -840,16 +1028,20 @@ static EM_BOOL Emscripten_HandleKeyPress(int eventType, const EmscriptenKeyboard
     return SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE;
 }
 
-static EM_BOOL Emscripten_HandleFullscreenChange(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleFullscreenChange(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
     SDL_VideoDisplay *display;
 
-    if (fullscreenChangeEvent->isFullscreen) {
+    if(fullscreenChangeEvent->isFullscreen)
+    {
         window_data->window->flags |= window_data->requested_fullscreen_mode;
 
         window_data->requested_fullscreen_mode = 0;
-    } else {
+    }
+    else
+    {
         window_data->window->flags &= ~FULLSCREEN_MASK;
 
         /* reset fullscreen window if the browser left fullscreen */
@@ -863,7 +1055,8 @@ static EM_BOOL Emscripten_HandleFullscreenChange(int eventType, const Emscripten
     return 0;
 }
 
-static EM_BOOL Emscripten_HandleResize(int eventType, const EmscriptenUiEvent *uiEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleResize(int eventType, const EmscriptenUiEvent *uiEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
     SDL_bool force = SDL_FALSE;
@@ -876,13 +1069,15 @@ static EM_BOOL Emscripten_HandleResize(int eventType, const EmscriptenUiEvent *u
         }
     }
 
-    if (!(window_data->window->flags & FULLSCREEN_MASK)) {
+    if(!(window_data->window->flags & FULLSCREEN_MASK))
+    {
         /* this will only work if the canvas size is set through css */
-        if (window_data->window->flags & SDL_WINDOW_RESIZABLE) {
+        if(window_data->window->flags & SDL_WINDOW_RESIZABLE)
+        {
             double w = window_data->window->w;
             double h = window_data->window->h;
 
-            if (window_data->external_size) {
+            if(window_data->external_size) {
                 emscripten_get_element_css_size(window_data->canvas_id, &w, &h);
             }
 
@@ -894,9 +1089,9 @@ static EM_BOOL Emscripten_HandleResize(int eventType, const EmscriptenUiEvent *u
             }
 
             if (force) {
-                /* force the event to trigger, so pixel ratio changes can be handled */
-                window_data->window->w = 0;
-                window_data->window->h = 0;
+               /* force the event to trigger, so pixel ratio changes can be handled */
+               window_data->window->w = 0;
+               window_data->window->h = 0;
             }
 
             SDL_SendWindowEvent(window_data->window, SDL_WINDOWEVENT_RESIZED, w, h);
@@ -912,7 +1107,8 @@ Emscripten_HandleCanvasResize(int eventType, const void *reserved, void *userDat
     /*this is used during fullscreen changes*/
     SDL_WindowData *window_data = userData;
 
-    if (window_data->fullscreen_resize) {
+    if(window_data->fullscreen_resize)
+    {
         double css_w, css_h;
         emscripten_get_element_css_size(window_data->canvas_id, &css_w, &css_h);
         SDL_SendWindowEvent(window_data->window, SDL_WINDOWEVENT_RESIZED, css_w, css_h);
@@ -921,14 +1117,16 @@ Emscripten_HandleCanvasResize(int eventType, const void *reserved, void *userDat
     return 0;
 }
 
-static EM_BOOL Emscripten_HandleVisibilityChange(int eventType, const EmscriptenVisibilityChangeEvent *visEvent, void *userData)
+static EM_BOOL
+Emscripten_HandleVisibilityChange(int eventType, const EmscriptenVisibilityChangeEvent *visEvent, void *userData)
 {
     SDL_WindowData *window_data = userData;
     SDL_SendWindowEvent(window_data->window, visEvent->hidden ? SDL_WINDOWEVENT_HIDDEN : SDL_WINDOWEVENT_SHOWN, 0, 0);
     return 0;
 }
 
-static const char *Emscripten_HandleBeforeUnload(int eventType, const void *reserved, void *userData)
+static const char*
+Emscripten_HandleBeforeUnload(int eventType, const void *reserved, void *userData)
 {
     /* This event will need to be handled synchronously, e.g. using
        SDL_AddEventWatch, as the page is being closed *now*. */
@@ -937,7 +1135,8 @@ static const char *Emscripten_HandleBeforeUnload(int eventType, const void *rese
     return ""; /* don't trigger confirmation dialog */
 }
 
-void Emscripten_RegisterEventHandlers(SDL_WindowData *data)
+void
+Emscripten_RegisterEventHandlers(SDL_WindowData *data)
 {
     const char *keyElement;
 
@@ -964,9 +1163,7 @@ void Emscripten_RegisterEventHandlers(SDL_WindowData *data)
 
     /* Keyboard events are awkward */
     keyElement = SDL_GetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT);
-    if (keyElement == NULL) {
-        keyElement = EMSCRIPTEN_EVENT_TARGET_WINDOW;
-    }
+    if (!keyElement) keyElement = EMSCRIPTEN_EVENT_TARGET_WINDOW;
 
     emscripten_set_keydown_callback(keyElement, data, 0, Emscripten_HandleKey);
     emscripten_set_keyup_callback(keyElement, data, 0, Emscripten_HandleKey);
@@ -981,7 +1178,8 @@ void Emscripten_RegisterEventHandlers(SDL_WindowData *data)
     emscripten_set_beforeunload_callback(data, Emscripten_HandleBeforeUnload);
 }
 
-void Emscripten_UnregisterEventHandlers(SDL_WindowData *data)
+void
+Emscripten_UnregisterEventHandlers(SDL_WindowData *data)
 {
     const char *target;
 
@@ -1007,7 +1205,7 @@ void Emscripten_UnregisterEventHandlers(SDL_WindowData *data)
     emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, NULL, 0, NULL);
 
     target = SDL_GetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT);
-    if (target == NULL) {
+    if (!target) {
         target = EMSCRIPTEN_EVENT_TARGET_WINDOW;
     }
 

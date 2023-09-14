@@ -29,7 +29,7 @@ ENDMACRO()
 
 # Message Output
 macro(MESSAGE_WARN _TEXT)
-  message(WARNING "${_TEXT}")
+  message(STATUS "*** WARNING: ${_TEXT}")
 endmacro()
 
 macro(MESSAGE_ERROR _TEXT)
@@ -64,7 +64,7 @@ macro(MESSAGE_TESTED_OPTION _NAME)
   message(STATUS "  ${_NAME}${_PAD}(Wanted: ${_REQVALUE}): ${HAVE_${_STRIPPEDNAME}}")
 endmacro()
 
-function(LISTTOSTR _LIST _OUTPUT)
+macro(LISTTOSTR _LIST _OUTPUT)
   if(${ARGC} EQUAL 3)
     # prefix for each element
     set(_LPREFIX ${ARGV2})
@@ -73,12 +73,10 @@ function(LISTTOSTR _LIST _OUTPUT)
   endif()
   # Do not use string(REPLACE ";" " ") here to avoid messing up list
   # entries
-  set(res)
   foreach(_ITEM ${${_LIST}})
-    set(res "${res} ${_LPREFIX}${_ITEM}")
+    set(${_OUTPUT} "${${_OUTPUT}} ${_LPREFIX}${_ITEM}")
   endforeach()
-  set(${_OUTPUT} "${res}" PARENT_SCOPE)
-endfunction()
+endmacro()
 
 macro(LISTTOSTRREV _LIST _OUTPUT)
   if(${ARGC} EQUAL 3)

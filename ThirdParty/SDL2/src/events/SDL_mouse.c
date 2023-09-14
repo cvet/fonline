@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,7 +29,7 @@
 #include "../SDL_hints_c.h"
 #include "../video/SDL_sysvideo.h"
 #if defined(__WIN32__) || defined(__GDK__)
-#include "../core/windows/SDL_windows.h" // For GetDoubleClickTime()
+#include "../core/windows/SDL_windows.h"    // For GetDoubleClickTime()
 #endif
 #if defined(__OS2__)
 #define INCL_WIN
@@ -44,9 +44,11 @@ static SDL_Mouse SDL_mouse;
 /* for mapping mouse events to touch */
 static SDL_bool track_mouse_down = SDL_FALSE;
 
-static int SDL_PrivateSendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, int relative, int x, int y);
+static int
+SDL_PrivateSendMouseMotion(SDL_Window * window, SDL_MouseID mouseID, int relative, int x, int y);
 
-static void SDLCALL SDL_MouseDoubleClickTimeChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseDoubleClickTimeChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
@@ -63,18 +65,20 @@ static void SDLCALL SDL_MouseDoubleClickTimeChanged(void *userdata, const char *
     }
 }
 
-static void SDLCALL SDL_MouseDoubleClickRadiusChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseDoubleClickRadiusChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
     if (hint && *hint) {
         mouse->double_click_radius = SDL_atoi(hint);
     } else {
-        mouse->double_click_radius = 32; /* 32 pixels seems about right for touch interfaces */
+        mouse->double_click_radius = 32;    /* 32 pixels seems about right for touch interfaces */
     }
 }
 
-static void SDLCALL SDL_MouseNormalSpeedScaleChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseNormalSpeedScaleChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
@@ -87,7 +91,8 @@ static void SDLCALL SDL_MouseNormalSpeedScaleChanged(void *userdata, const char 
     }
 }
 
-static void SDLCALL SDL_MouseRelativeSpeedScaleChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseRelativeSpeedScaleChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
@@ -100,14 +105,16 @@ static void SDLCALL SDL_MouseRelativeSpeedScaleChanged(void *userdata, const cha
     }
 }
 
-static void SDLCALL SDL_MouseRelativeSystemScaleChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseRelativeSystemScaleChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
     mouse->enable_relative_system_scale = SDL_GetStringBoolean(hint, SDL_FALSE);
 }
 
-static void SDLCALL SDL_TouchMouseEventsChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_TouchMouseEventsChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
@@ -115,11 +122,12 @@ static void SDLCALL SDL_TouchMouseEventsChanged(void *userdata, const char *name
 }
 
 #if defined(__vita__)
-static void SDLCALL SDL_VitaTouchMouseDeviceChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_VitaTouchMouseDeviceChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
     if (hint) {
-        switch (*hint) {
+        switch(*hint) {
         default:
         case '0':
             mouse->vita_touch_mouse_device = 0;
@@ -135,7 +143,8 @@ static void SDLCALL SDL_VitaTouchMouseDeviceChanged(void *userdata, const char *
 }
 #endif
 
-static void SDLCALL SDL_MouseTouchEventsChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseTouchEventsChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
     SDL_bool default_value;
@@ -152,7 +161,8 @@ static void SDLCALL SDL_MouseTouchEventsChanged(void *userdata, const char *name
     }
 }
 
-static void SDLCALL SDL_MouseAutoCaptureChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseAutoCaptureChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
     SDL_bool auto_capture = SDL_GetStringBoolean(hint, SDL_TRUE);
@@ -163,7 +173,8 @@ static void SDLCALL SDL_MouseAutoCaptureChanged(void *userdata, const char *name
     }
 }
 
-static void SDLCALL SDL_MouseRelativeWarpMotionChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
+static void SDLCALL
+SDL_MouseRelativeWarpMotionChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
 
@@ -171,7 +182,8 @@ static void SDLCALL SDL_MouseRelativeWarpMotionChanged(void *userdata, const cha
 }
 
 /* Public functions */
-int SDL_MouseInit(void)
+int
+SDL_MouseInit(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -213,10 +225,11 @@ int SDL_MouseInit(void)
 
     mouse->cursor_shown = SDL_TRUE;
 
-    return 0;
+    return (0);
 }
 
-void SDL_SetDefaultCursor(SDL_Cursor *cursor)
+void
+SDL_SetDefaultCursor(SDL_Cursor * cursor)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -226,7 +239,8 @@ void SDL_SetDefaultCursor(SDL_Cursor *cursor)
     }
 }
 
-SDL_Mouse *SDL_GetMouse(void)
+SDL_Mouse *
+SDL_GetMouse(void)
 {
     return &SDL_mouse;
 }
@@ -244,7 +258,8 @@ static Uint32 GetButtonState(SDL_Mouse *mouse, SDL_bool include_touch)
     return buttonstate;
 }
 
-SDL_Window *SDL_GetMouseFocus(void)
+SDL_Window *
+SDL_GetMouseFocus(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -259,7 +274,8 @@ SDL_Window *SDL_GetMouseFocus(void)
  * -flibit
  */
 #if 0
-void SDL_ResetMouse(void)
+void
+SDL_ResetMouse(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     Uint32 buttonState = GetButtonState(mouse, SDL_FALSE);
@@ -274,7 +290,8 @@ void SDL_ResetMouse(void)
 }
 #endif /* 0 */
 
-void SDL_SetMouseFocus(SDL_Window *window)
+void
+SDL_SetMouseFocus(SDL_Window * window)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -311,12 +328,13 @@ void SDL_SetMouseFocus(SDL_Window *window)
 }
 
 /* Check to see if we need to synthesize focus events */
-static SDL_bool SDL_UpdateMouseFocus(SDL_Window *window, int x, int y, Uint32 buttonstate, SDL_bool send_mouse_motion)
+static SDL_bool
+SDL_UpdateMouseFocus(SDL_Window * window, int x, int y, Uint32 buttonstate, SDL_bool send_mouse_motion)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_bool inWindow = SDL_TRUE;
 
-    if (window && !(window->flags & SDL_WINDOW_MOUSE_CAPTURE)) {
+    if (window && ((window->flags & SDL_WINDOW_MOUSE_CAPTURE) == 0)) {
         int w, h;
         SDL_GetWindowSize(window, &w, &h);
         if (x < 0 || y < 0 || x >= w || y >= h) {
@@ -349,7 +367,8 @@ static SDL_bool SDL_UpdateMouseFocus(SDL_Window *window, int x, int y, Uint32 bu
     return SDL_TRUE;
 }
 
-int SDL_SendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, int relative, int x, int y)
+int
+SDL_SendMouseMotion(SDL_Window * window, SDL_MouseID mouseID, int relative, int x, int y)
 {
     if (window && !relative) {
         SDL_Mouse *mouse = SDL_GetMouse();
@@ -361,7 +380,8 @@ int SDL_SendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, int relative, i
     return SDL_PrivateSendMouseMotion(window, mouseID, relative, x, y);
 }
 
-static int GetScaledMouseDelta(float scale, int value, float *accum)
+static int
+GetScaledMouseDelta(float scale, int value, float *accum)
 {
     if (value && scale != 1.0f) {
         if ((value > 0) != (*accum > 0)) {
@@ -378,7 +398,8 @@ static int GetScaledMouseDelta(float scale, int value, float *accum)
     return value;
 }
 
-static float CalculateSystemScale(SDL_Mouse *mouse, const int *x, const int *y)
+static float
+CalculateSystemScale(SDL_Mouse *mouse, int *x, int *y)
 {
     int i;
     int n = mouse->num_system_scale_values;
@@ -409,7 +430,8 @@ static float CalculateSystemScale(SDL_Mouse *mouse, const int *x, const int *y)
 }
 
 /* You can set either a single scale, or a set of {speed, scale} values in ascending order */
-int SDL_SetMouseSystemScale(int num_values, const float *values)
+int
+SDL_SetMouseSystemScale(int num_values, const float *values)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     float *v;
@@ -440,7 +462,7 @@ int SDL_SetMouseSystemScale(int num_values, const float *values)
     }
 
     v = (float *)SDL_realloc(mouse->system_scale_values, num_values * sizeof(*values));
-    if (v == NULL) {
+    if (!v) {
         return SDL_OutOfMemory();
     }
     SDL_memcpy(v, values, num_values * sizeof(*values));
@@ -450,7 +472,8 @@ int SDL_SetMouseSystemScale(int num_values, const float *values)
     return 0;
 }
 
-static void GetScaledMouseDeltas(SDL_Mouse *mouse, int *x, int *y)
+static void
+GetScaledMouseDeltas(SDL_Mouse *mouse, int *x, int *y)
 {
     if (mouse->relative_mode) {
         if (mouse->enable_relative_speed_scale) {
@@ -469,7 +492,8 @@ static void GetScaledMouseDeltas(SDL_Mouse *mouse, int *x, int *y)
     }
 }
 
-static int SDL_PrivateSendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, int relative, int x, int y)
+static int
+SDL_PrivateSendMouseMotion(SDL_Window * window, SDL_MouseID mouseID, int relative, int x, int y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     int posted;
@@ -506,7 +530,7 @@ static int SDL_PrivateSendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, i
                 return 0;
             }
         } else {
-            if (window && (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
+            if (window && (window->flags & SDL_WINDOW_INPUT_FOCUS) != 0) {
                 if (mouse->WarpMouse) {
                     mouse->WarpMouse(window, center_x, center_y);
                 } else {
@@ -532,7 +556,7 @@ static int SDL_PrivateSendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, i
         mouse->x = x;
         mouse->y = y;
         mouse->has_position = SDL_TRUE;
-    } else if (!xrel && !yrel) { /* Drop events that don't change state */
+    } else if (!xrel && !yrel) {  /* Drop events that don't change state */
 #ifdef DEBUG_MOUSE
         SDL_Log("Mouse event didn't change state - dropped!\n");
 #endif
@@ -556,7 +580,7 @@ static int SDL_PrivateSendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, i
 
     /* make sure that the pointers find themselves inside the windows,
        unless we have the mouse captured. */
-    if (window && !(window->flags & SDL_WINDOW_MOUSE_CAPTURE)) {
+    if (window && ((window->flags & SDL_WINDOW_MOUSE_CAPTURE) == 0)) {
         int x_min = 0, x_max = 0;
         int y_min = 0, y_max = 0;
         const SDL_Rect *confine = SDL_GetWindowMouseRect(window);
@@ -613,7 +637,7 @@ static int SDL_PrivateSendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, i
         event.motion.windowID = mouse->focus ? mouse->focus->id : 0;
         event.motion.which = mouseID;
         /* Set us pending (or clear during a normal mouse movement event) as having triggered */
-        mouse->was_touch_mouse_events = (mouseID == SDL_TOUCH_MOUSEID) ? SDL_TRUE : SDL_FALSE;
+        mouse->was_touch_mouse_events = (mouseID == SDL_TOUCH_MOUSEID)? SDL_TRUE : SDL_FALSE;
         event.motion.state = GetButtonState(mouse, SDL_TRUE);
         event.motion.x = mouse->x;
         event.motion.y = mouse->y;
@@ -644,7 +668,7 @@ static SDL_MouseInputSource *GetMouseInputSource(SDL_Mouse *mouse, SDL_MouseID m
         }
     }
 
-    sources = (SDL_MouseInputSource *)SDL_realloc(mouse->sources, (mouse->num_sources + 1) * sizeof(*mouse->sources));
+    sources = (SDL_MouseInputSource *)SDL_realloc(mouse->sources, (mouse->num_sources + 1)*sizeof(*mouse->sources));
     if (sources) {
         mouse->sources = sources;
         ++mouse->num_sources;
@@ -661,7 +685,7 @@ static SDL_MouseClickState *GetMouseClickState(SDL_Mouse *mouse, Uint8 button)
     if (button >= mouse->num_clickstates) {
         int i, count = button + 1;
         SDL_MouseClickState *clickstate = (SDL_MouseClickState *)SDL_realloc(mouse->clickstate, count * sizeof(*mouse->clickstate));
-        if (clickstate == NULL) {
+        if (!clickstate) {
             return NULL;
         }
         mouse->clickstate = clickstate;
@@ -674,7 +698,8 @@ static SDL_MouseClickState *GetMouseClickState(SDL_Mouse *mouse, Uint8 button)
     return &mouse->clickstate[button];
 }
 
-static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks)
+static int
+SDL_PrivateSendMouseButton(SDL_Window * window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     int posted;
@@ -683,7 +708,7 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
     SDL_MouseInputSource *source;
 
     source = GetMouseInputSource(mouse, mouseID);
-    if (source == NULL) {
+    if (!source) {
         return 0;
     }
     buttonstate = source->buttonstate;
@@ -770,7 +795,7 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
         event.button.which = mouseID;
         event.button.state = state;
         event.button.button = button;
-        event.button.clicks = (Uint8)SDL_min(clicks, 255);
+        event.button.clicks = (Uint8) SDL_min(clicks, 255);
         event.button.x = mouse->x;
         event.button.y = mouse->y;
         posted = (SDL_PushEvent(&event) > 0);
@@ -789,18 +814,21 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
     return posted;
 }
 
-int SDL_SendMouseButtonClicks(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks)
+int
+SDL_SendMouseButtonClicks(SDL_Window * window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks)
 {
     clicks = SDL_max(clicks, 0);
     return SDL_PrivateSendMouseButton(window, mouseID, state, button, clicks);
 }
 
-int SDL_SendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button)
+int
+SDL_SendMouseButton(SDL_Window * window, SDL_MouseID mouseID, Uint8 state, Uint8 button)
 {
     return SDL_PrivateSendMouseButton(window, mouseID, state, button, -1);
 }
 
-int SDL_SendMouseWheel(SDL_Window *window, SDL_MouseID mouseID, float x, float y, SDL_MouseWheelDirection direction)
+int
+SDL_SendMouseWheel(SDL_Window * window, SDL_MouseID mouseID, float x, float y, SDL_MouseWheelDirection direction)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     int posted;
@@ -871,7 +899,8 @@ int SDL_SendMouseWheel(SDL_Window *window, SDL_MouseID mouseID, float x, float y
     return posted;
 }
 
-void SDL_MouseQuit(void)
+void
+SDL_MouseQuit(void)
 {
     SDL_Cursor *cursor, *next;
     SDL_Mouse *mouse = SDL_GetMouse();
@@ -909,12 +938,6 @@ void SDL_MouseQuit(void)
     }
     mouse->num_clickstates = 0;
 
-    if (mouse->system_scale_values) {
-        SDL_free(mouse->system_scale_values);
-        mouse->system_scale_values = NULL;
-    }
-    mouse->num_system_scale_values = 0;
-
     SDL_DelHintCallback(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME,
                         SDL_MouseDoubleClickTimeChanged, mouse);
 
@@ -943,7 +966,8 @@ void SDL_MouseQuit(void)
                         SDL_MouseRelativeWarpMotionChanged, mouse);
 }
 
-Uint32 SDL_GetMouseState(int *x, int *y)
+Uint32
+SDL_GetMouseState(int *x, int *y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -956,7 +980,8 @@ Uint32 SDL_GetMouseState(int *x, int *y)
     return GetButtonState(mouse, SDL_TRUE);
 }
 
-Uint32 SDL_GetRelativeMouseState(int *x, int *y)
+Uint32
+SDL_GetRelativeMouseState(int *x, int *y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -971,7 +996,8 @@ Uint32 SDL_GetRelativeMouseState(int *x, int *y)
     return GetButtonState(mouse, SDL_TRUE);
 }
 
-Uint32 SDL_GetGlobalMouseState(int *x, int *y)
+Uint32
+SDL_GetGlobalMouseState(int *x, int *y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -979,10 +1005,10 @@ Uint32 SDL_GetGlobalMouseState(int *x, int *y)
         int tmpx, tmpy;
 
         /* make sure these are never NULL for the backend implementations... */
-        if (x == NULL) {
+        if (!x) {
             x = &tmpx;
         }
-        if (y == NULL) {
+        if (!y) {
             y = &tmpy;
         }
 
@@ -994,7 +1020,8 @@ Uint32 SDL_GetGlobalMouseState(int *x, int *y)
     }
 }
 
-void SDL_PerformWarpMouseInWindow(SDL_Window *window, int x, int y, SDL_bool ignore_relative_mode)
+void
+SDL_PerformWarpMouseInWindow(SDL_Window *window, int x, int y, SDL_bool ignore_relative_mode)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -1039,12 +1066,14 @@ void SDL_PerformWarpMouseInWindow(SDL_Window *window, int x, int y, SDL_bool ign
     }
 }
 
-void SDL_WarpMouseInWindow(SDL_Window *window, int x, int y)
+void
+SDL_WarpMouseInWindow(SDL_Window * window, int x, int y)
 {
     SDL_PerformWarpMouseInWindow(window, x, y, SDL_FALSE);
 }
 
-int SDL_WarpMouseGlobal(int x, int y)
+int
+SDL_WarpMouseGlobal(int x, int y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -1055,7 +1084,8 @@ int SDL_WarpMouseGlobal(int x, int y)
     return SDL_Unsupported();
 }
 
-static SDL_bool ShouldUseRelativeModeWarp(SDL_Mouse *mouse)
+static SDL_bool
+ShouldUseRelativeModeWarp(SDL_Mouse *mouse)
 {
     if (!mouse->WarpMouse) {
         /* Need this functionality for relative mode warp implementation */
@@ -1065,7 +1095,8 @@ static SDL_bool ShouldUseRelativeModeWarp(SDL_Mouse *mouse)
     return SDL_GetHintBoolean(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, SDL_FALSE);
 }
 
-int SDL_SetRelativeMouseMode(SDL_bool enabled)
+int
+SDL_SetRelativeMouseMode(SDL_bool enabled)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_Window *focusWindow = SDL_GetKeyboardFocus();
@@ -1101,7 +1132,7 @@ int SDL_SetRelativeMouseMode(SDL_bool enabled)
         SDL_SetMouseFocus(focusWindow);
 
         if (mouse->relative_mode_warp) {
-            SDL_PerformWarpMouseInWindow(focusWindow, focusWindow->w / 2, focusWindow->h / 2, SDL_TRUE);
+            SDL_PerformWarpMouseInWindow(focusWindow, focusWindow->w/2, focusWindow->h/2, SDL_TRUE);
         }
     }
 
@@ -1127,14 +1158,16 @@ int SDL_SetRelativeMouseMode(SDL_bool enabled)
     return 0;
 }
 
-SDL_bool SDL_GetRelativeMouseMode()
+SDL_bool
+SDL_GetRelativeMouseMode()
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
     return mouse->relative_mode;
 }
 
-int SDL_UpdateMouseCapture(SDL_bool force_release)
+int
+SDL_UpdateMouseCapture(SDL_bool force_release)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_Window *capture_window = NULL;
@@ -1185,7 +1218,8 @@ int SDL_UpdateMouseCapture(SDL_bool force_release)
     return 0;
 }
 
-int SDL_CaptureMouse(SDL_bool enabled)
+int
+SDL_CaptureMouse(SDL_bool enabled)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
@@ -1212,7 +1246,8 @@ int SDL_CaptureMouse(SDL_bool enabled)
     return SDL_UpdateMouseCapture(SDL_FALSE);
 }
 
-SDL_Cursor *SDL_CreateCursor(const Uint8 *data, const Uint8 *mask,
+SDL_Cursor *
+SDL_CreateCursor(const Uint8 * data, const Uint8 * mask,
                  int w, int h, int hot_x, int hot_y)
 {
     SDL_Surface *surface;
@@ -1233,11 +1268,11 @@ SDL_Cursor *SDL_CreateCursor(const Uint8 *data, const Uint8 *mask,
                                    0x0000FF00,
                                    0x000000FF,
                                    0xFF000000);
-    if (surface == NULL) {
+    if (!surface) {
         return NULL;
     }
     for (y = 0; y < h; ++y) {
-        pixel = (Uint32 *)((Uint8 *)surface->pixels + y * surface->pitch);
+        pixel = (Uint32 *) ((Uint8 *) surface->pixels + y * surface->pitch);
         for (x = 0; x < w; ++x) {
             if ((x % 8) == 0) {
                 datab = *data++;
@@ -1260,13 +1295,14 @@ SDL_Cursor *SDL_CreateCursor(const Uint8 *data, const Uint8 *mask,
     return cursor;
 }
 
-SDL_Cursor *SDL_CreateColorCursor(SDL_Surface *surface, int hot_x, int hot_y)
+SDL_Cursor *
+SDL_CreateColorCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_Surface *temp = NULL;
     SDL_Cursor *cursor;
 
-    if (surface == NULL) {
+    if (!surface) {
         SDL_InvalidParamError("surface");
         return NULL;
     }
@@ -1285,7 +1321,7 @@ SDL_Cursor *SDL_CreateColorCursor(SDL_Surface *surface, int hot_x, int hot_y)
 
     if (surface->format->format != SDL_PIXELFORMAT_ARGB8888) {
         temp = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
-        if (temp == NULL) {
+        if (!temp) {
             return NULL;
         }
         surface = temp;
@@ -1302,7 +1338,8 @@ SDL_Cursor *SDL_CreateColorCursor(SDL_Surface *surface, int hot_x, int hot_y)
     return cursor;
 }
 
-SDL_Cursor *SDL_CreateSystemCursor(SDL_SystemCursor id)
+SDL_Cursor *
+SDL_CreateSystemCursor(SDL_SystemCursor id)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_Cursor *cursor;
@@ -1325,14 +1362,10 @@ SDL_Cursor *SDL_CreateSystemCursor(SDL_SystemCursor id)
    if this is desired for any reason.  This is used when setting
    the video mode and when the SDL window gains the mouse focus.
  */
-void SDL_SetCursor(SDL_Cursor *cursor)
+void
+SDL_SetCursor(SDL_Cursor * cursor)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
-
-    /* Return immediately if setting the cursor to the currently set one (fixes #7151) */
-    if (cursor == mouse->cur_cursor) {
-        return;
-    }
 
     /* Set the new cursor */
     if (cursor) {
@@ -1344,7 +1377,7 @@ void SDL_SetCursor(SDL_Cursor *cursor)
                     break;
                 }
             }
-            if (found == NULL) {
+            if (!found) {
                 SDL_SetError("Cursor not associated with the current mouse");
                 return;
             }
@@ -1369,32 +1402,35 @@ void SDL_SetCursor(SDL_Cursor *cursor)
     }
 }
 
-SDL_Cursor *SDL_GetCursor(void)
+SDL_Cursor *
+SDL_GetCursor(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
-    if (mouse == NULL) {
+    if (!mouse) {
         return NULL;
     }
     return mouse->cur_cursor;
 }
 
-SDL_Cursor *SDL_GetDefaultCursor(void)
+SDL_Cursor *
+SDL_GetDefaultCursor(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 
-    if (mouse == NULL) {
+    if (!mouse) {
         return NULL;
     }
     return mouse->def_cursor;
 }
 
-void SDL_FreeCursor(SDL_Cursor *cursor)
+void
+SDL_FreeCursor(SDL_Cursor * cursor)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_Cursor *curr, *prev;
 
-    if (cursor == NULL) {
+    if (!cursor) {
         return;
     }
 
@@ -1422,12 +1458,13 @@ void SDL_FreeCursor(SDL_Cursor *cursor)
     }
 }
 
-int SDL_ShowCursor(int toggle)
+int
+SDL_ShowCursor(int toggle)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_bool shown;
 
-    if (mouse == NULL) {
+    if (!mouse) {
         return 0;
     }
 

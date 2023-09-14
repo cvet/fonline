@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,12 +27,13 @@
 #include "SDL_sysmutex_c.h"
 
 /* Create a mutex */
-SDL_mutex *SDL_CreateMutex(void)
+SDL_mutex *
+SDL_CreateMutex(void)
 {
     SDL_mutex *mutex;
 
     /* Allocate mutex memory */
-    mutex = (SDL_mutex *)SDL_malloc(sizeof(*mutex));
+    mutex = (SDL_mutex *) SDL_malloc(sizeof(*mutex));
     if (mutex) {
         RecursiveLock_Init(&mutex->lock);
     } else {
@@ -42,7 +43,8 @@ SDL_mutex *SDL_CreateMutex(void)
 }
 
 /* Free the mutex */
-void SDL_DestroyMutex(SDL_mutex *mutex)
+void
+SDL_DestroyMutex(SDL_mutex *mutex)
 {
     if (mutex) {
         SDL_free(mutex);
@@ -50,10 +52,11 @@ void SDL_DestroyMutex(SDL_mutex *mutex)
 }
 
 /* Lock the mutex */
-int SDL_LockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
+int
+SDL_LockMutex(SDL_mutex *mutex)
 {
     if (mutex == NULL) {
-        return 0;
+        return SDL_SetError("Passed a NULL mutex");
     }
 
     RecursiveLock_Lock(&mutex->lock);
@@ -62,20 +65,22 @@ int SDL_LockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn
 }
 
 /* try Lock the mutex */
-int SDL_TryLockMutex(SDL_mutex *mutex)
+int
+SDL_TryLockMutex(SDL_mutex *mutex)
 {
     if (mutex == NULL) {
-        return 0;
+        return SDL_SetError("Passed a NULL mutex");
     }
 
     return RecursiveLock_TryLock(&mutex->lock);
 }
 
 /* Unlock the mutex */
-int SDL_UnlockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
+int
+SDL_mutexV(SDL_mutex *mutex)
 {
     if (mutex == NULL) {
-        return 0;
+        return SDL_SetError("Passed a NULL mutex");
     }
 
     RecursiveLock_Unlock(&mutex->lock);

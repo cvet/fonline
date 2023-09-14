@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -48,7 +48,8 @@ IsDeviceIndexValid(int device_index)
     return device_index >= 0 && device_index < N3DS_SENSOR_COUNT;
 }
 
-static int N3DS_SensorInit(void)
+static int
+N3DS_SensorInit(void)
 {
     if (InitN3DSServices() < 0) {
         return SDL_SetError("Failed to initialise N3DS services");
@@ -78,16 +79,19 @@ InitN3DSServices(void)
     return 0;
 }
 
-static int N3DS_SensorGetCount(void)
+static int
+N3DS_SensorGetCount(void)
 {
     return N3DS_SENSOR_COUNT;
 }
 
-static void N3DS_SensorDetect(void)
+static void
+N3DS_SensorDetect(void)
 {
 }
 
-static const char *N3DS_SensorGetDeviceName(int device_index)
+static const char *
+N3DS_SensorGetDeviceName(int device_index)
 {
     if (IsDeviceIndexValid(device_index)) {
         switch (N3DS_sensors[device_index].type) {
@@ -103,7 +107,8 @@ static const char *N3DS_SensorGetDeviceName(int device_index)
     return NULL;
 }
 
-static SDL_SensorType N3DS_SensorGetDeviceType(int device_index)
+static SDL_SensorType
+N3DS_SensorGetDeviceType(int device_index)
 {
     if (IsDeviceIndexValid(device_index)) {
         return N3DS_sensors[device_index].type;
@@ -111,12 +116,14 @@ static SDL_SensorType N3DS_SensorGetDeviceType(int device_index)
     return SDL_SENSOR_INVALID;
 }
 
-static int N3DS_SensorGetDeviceNonPortableType(int device_index)
+static int
+N3DS_SensorGetDeviceNonPortableType(int device_index)
 {
-    return (int)N3DS_SensorGetDeviceType(device_index);
+    return (int) N3DS_SensorGetDeviceType(device_index);
 }
 
-static SDL_SensorID N3DS_SensorGetDeviceInstanceID(int device_index)
+static SDL_SensorID
+N3DS_SensorGetDeviceInstanceID(int device_index)
 {
     if (IsDeviceIndexValid(device_index)) {
         return N3DS_sensors[device_index].instance_id;
@@ -124,12 +131,14 @@ static SDL_SensorID N3DS_SensorGetDeviceInstanceID(int device_index)
     return -1;
 }
 
-static int N3DS_SensorOpen(SDL_Sensor *sensor, int device_index)
+static int
+N3DS_SensorOpen(SDL_Sensor *sensor, int device_index)
 {
     return 0;
 }
 
-static void N3DS_SensorUpdate(SDL_Sensor *sensor)
+static void
+N3DS_SensorUpdate(SDL_Sensor *sensor)
 {
     switch (sensor->type) {
     case SDL_SENSOR_ACCEL:
@@ -153,10 +162,10 @@ UpdateN3DSAccelerometer(SDL_Sensor *sensor)
     hidAccelRead(&current_state);
     if (SDL_memcmp(&previous_state, &current_state, sizeof(accelVector)) != 0) {
         SDL_memcpy(&previous_state, &current_state, sizeof(accelVector));
-        data[0] = (float)current_state.x * SDL_STANDARD_GRAVITY;
-        data[1] = (float)current_state.y * SDL_STANDARD_GRAVITY;
-        data[2] = (float)current_state.z * SDL_STANDARD_GRAVITY;
-        SDL_PrivateSensorUpdate(sensor, 0, data, sizeof(data));
+        data[0] = (float) current_state.x * SDL_STANDARD_GRAVITY;
+        data[1] = (float) current_state.y * SDL_STANDARD_GRAVITY;
+        data[2] = (float) current_state.z * SDL_STANDARD_GRAVITY;
+        SDL_PrivateSensorUpdate(sensor, 0, data, sizeof data);
     }
 }
 
@@ -170,18 +179,20 @@ UpdateN3DSGyroscope(SDL_Sensor *sensor)
     hidGyroRead(&current_state);
     if (SDL_memcmp(&previous_state, &current_state, sizeof(angularRate)) != 0) {
         SDL_memcpy(&previous_state, &current_state, sizeof(angularRate));
-        data[0] = (float)current_state.x;
-        data[1] = (float)current_state.y;
-        data[2] = (float)current_state.z;
-        SDL_PrivateSensorUpdate(sensor, 0, data, sizeof(data));
+        data[0] = (float) current_state.x;
+        data[1] = (float) current_state.y;
+        data[2] = (float) current_state.z;
+        SDL_PrivateSensorUpdate(sensor, 0, data, sizeof data);
     }
 }
 
-static void N3DS_SensorClose(SDL_Sensor *sensor)
+static void
+N3DS_SensorClose(SDL_Sensor *sensor)
 {
 }
 
-static void N3DS_SensorQuit(void)
+static void
+N3DS_SensorQuit(void)
 {
     HIDUSER_DisableGyroscope();
     HIDUSER_DisableAccelerometer();

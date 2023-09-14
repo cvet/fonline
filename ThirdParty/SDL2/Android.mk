@@ -63,6 +63,7 @@ LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES
 LOCAL_CFLAGS += \
 	-Wall -Wextra \
 	-Wdocumentation \
+	-Wdocumentation-unknown-command \
 	-Wmissing-prototypes \
 	-Wunreachable-code-break \
 	-Wunneeded-internal-declaration \
@@ -76,8 +77,6 @@ LOCAL_CFLAGS += \
 
 # Warnings we haven't fixed (yet)
 LOCAL_CFLAGS += -Wno-unused-parameter -Wno-sign-compare
-
-LOCAL_CXXFLAGS += -std=gnu++11
 
 LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
 

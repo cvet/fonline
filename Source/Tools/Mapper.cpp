@@ -385,27 +385,39 @@ void FOMapper::ProcessMapperInput()
                 switch (dikdw) {
                 case KeyCode::F1:
                     Settings.ShowItem = !Settings.ShowItem;
-                    CurMap->RefreshMap();
+                    if (CurMap != nullptr) {
+                        CurMap->RefreshMap();
+                    }
                     break;
                 case KeyCode::F2:
                     Settings.ShowScen = !Settings.ShowScen;
-                    CurMap->RefreshMap();
+                    if (CurMap != nullptr) {
+                        CurMap->RefreshMap();
+                    }
                     break;
                 case KeyCode::F3:
                     Settings.ShowWall = !Settings.ShowWall;
-                    CurMap->RefreshMap();
+                    if (CurMap != nullptr) {
+                        CurMap->RefreshMap();
+                    }
                     break;
                 case KeyCode::F4:
                     Settings.ShowCrit = !Settings.ShowCrit;
-                    CurMap->RefreshMap();
+                    if (CurMap != nullptr) {
+                        CurMap->RefreshMap();
+                    }
                     break;
                 case KeyCode::F5:
                     Settings.ShowTile = !Settings.ShowTile;
-                    CurMap->RefreshMap();
+                    if (CurMap != nullptr) {
+                        CurMap->RefreshMap();
+                    }
                     break;
                 case KeyCode::F6:
                     Settings.ShowFast = !Settings.ShowFast;
-                    CurMap->RefreshMap();
+                    if (CurMap != nullptr) {
+                        CurMap->RefreshMap();
+                    }
                     break;
                 case KeyCode::F7:
                     IntVisible = !IntVisible;
@@ -422,7 +434,9 @@ void FOMapper::ProcessMapperInput()
                     ObjVisible = !ObjVisible;
                     break;
                 case KeyCode::F10:
-                    CurMap->SwitchShowHex();
+                    if (CurMap != nullptr) {
+                        CurMap->SwitchShowHex();
+                    }
                     break;
 
                 // Fullscreen
@@ -448,7 +462,7 @@ void FOMapper::ProcessMapperInput()
                     SelectDelete();
                     break;
                 case KeyCode::Add:
-                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                    if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = CurMap->GetGlobalDayTime();
                         day_time += 60;
                         SetMinute(day_time % 60);
@@ -456,7 +470,7 @@ void FOMapper::ProcessMapperInput()
                     }
                     break;
                 case KeyCode::Subtract:
-                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                    if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
                         SetMinute(day_time % 60);
@@ -480,13 +494,15 @@ void FOMapper::ProcessMapperInput()
                     ObjFix = !ObjFix;
                     break;
                 case KeyCode::F10:
-                    // CurMap->SwitchShowRain();
+                    if (CurMap != nullptr) {
+                        // CurMap->SwitchShowRain();
+                    }
                     break;
                 case KeyCode::F11:
                     SprMngr.GetAtlasMngr().DumpAtlases();
                     break;
                 case KeyCode::Add:
-                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                    if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = CurMap->GetGlobalDayTime();
                         day_time += 1;
                         SetMinute(day_time % 60);
@@ -494,7 +510,7 @@ void FOMapper::ProcessMapperInput()
                     }
                     break;
                 case KeyCode::Subtract:
-                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                    if (CurMap != nullptr && !ConsoleEdit && SelectedEntities.empty()) {
                         int day_time = CurMap->GetGlobalDayTime();
                         day_time -= 60;
                         SetMinute(day_time % 60);
@@ -549,7 +565,9 @@ void FOMapper::ProcessMapperInput()
                     Settings.ScrollCheck = !Settings.ScrollCheck;
                     break;
                 case KeyCode::B:
-                    CurMap->MarkBlockedHexes();
+                    if (CurMap != nullptr) {
+                        CurMap->MarkBlockedHexes();
+                    }
                     break;
                 case KeyCode::Q:
                     Settings.ShowCorners = !Settings.ShowCorners;
@@ -3001,7 +3019,9 @@ void FOMapper::ParseCommand(string_view command)
             pmap->SetDayColor(arr2);
 
             auto* map = new MapView(this, ident_t {}, pmap);
-            map->FindSetCenter(150, 150);
+
+            map->EnableMapperMode();
+            map->FindSetCenter(MAXHEX_DEFAULT / 2, MAXHEX_DEFAULT / 2);
 
             LoadedMaps.push_back(map);
 

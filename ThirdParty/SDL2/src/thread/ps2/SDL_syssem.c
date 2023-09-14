@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,13 +33,11 @@
 
 #include <kernel.h>
 
-struct SDL_semaphore
-{
-    s32 semid;
+struct SDL_semaphore {
+    s32  semid;
 };
 
-static void usercb(struct timer_alarm_t *alarm, void *arg)
-{
+static void usercb(struct timer_alarm_t *alarm, void *arg) {
     iReleaseWaitThread((int)arg);
 }
 
@@ -49,12 +47,12 @@ SDL_sem *SDL_CreateSemaphore(Uint32 initial_value)
     SDL_sem *sem;
     ee_sema_t sema;
 
-    sem = (SDL_sem *)SDL_malloc(sizeof(*sem));
+    sem = (SDL_sem *) SDL_malloc(sizeof(*sem));
     if (sem != NULL) {
         /* TODO: Figure out the limit on the maximum value. */
         sema.init_count = initial_value;
-        sema.max_count = 255;
-        sema.option = 0;
+        sema.max_count  = 255;
+        sema.option     = 0;
         sem->semid = CreateSema(&sema);
 
         if (sem->semid < 0) {
@@ -87,9 +85,10 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
     int ret;
     struct timer_alarm_t alarm;
     InitializeTimerAlarm(&alarm);
-
+    
     if (sem == NULL) {
-        return SDL_InvalidParamError("sem");
+        SDL_InvalidParamError("sem");
+        return 0;
     }
 
     if (timeout == 0) {
@@ -106,10 +105,9 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
     ret = WaitSema(sem->semid);
     StopTimerAlarm(&alarm);
 
-    if (ret < 0) {
+    if (ret < 0)
         return SDL_MUTEX_TIMEDOUT;
-    }
-    return 0; // Wait condition satisfied.
+    return 0; //Wait condition satisfied.
 }
 
 int SDL_SemTryWait(SDL_sem *sem)

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,12 +30,14 @@
 
 static SDL_bool s_showingMessageBox = SDL_FALSE;
 
-SDL_bool UIKit_ShowingMessageBox(void)
+SDL_bool
+UIKit_ShowingMessageBox(void)
 {
     return s_showingMessageBox;
 }
 
-static void UIKit_WaitUntilMessageBoxClosed(const SDL_MessageBoxData *messageboxdata, int *clickedindex)
+static void
+UIKit_WaitUntilMessageBoxClosed(const SDL_MessageBoxData *messageboxdata, int *clickedindex)
 {
     *clickedindex = messageboxdata->numbuttons;
 
@@ -50,7 +52,8 @@ static void UIKit_WaitUntilMessageBoxClosed(const SDL_MessageBoxData *messagebox
     }
 }
 
-static BOOL UIKit_ShowMessageBoxAlertController(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+static BOOL
+UIKit_ShowMessageBoxAlertController(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 {
     int i;
     int __block clickedindex = messageboxdata->numbuttons;
@@ -121,7 +124,8 @@ static BOOL UIKit_ShowMessageBoxAlertController(const SDL_MessageBoxData *messag
     return YES;
 }
 
-static void UIKit_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid, int *returnValue)
+static void
+UIKit_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid, int *returnValue)
 { @autoreleasepool
 {
     if (UIKit_ShowMessageBoxAlertController(messageboxdata, buttonid)) {
@@ -131,7 +135,8 @@ static void UIKit_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, i
     }
 }}
 
-int UIKit_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+int
+UIKit_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 { @autoreleasepool
 {
     __block int returnValue = 0;

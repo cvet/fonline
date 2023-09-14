@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,7 +41,7 @@ extern "C" {
 #include "SDL_bevents.h"
 
 static SDL_INLINE SDL_BWin *_ToBeWin(SDL_Window *window) {
-    return (SDL_BWin *)(window->driverdata);
+    return ((SDL_BWin*)(window->driverdata));
 }
 
 /* FIXME: Undefined functions */
@@ -54,7 +54,8 @@ static SDL_INLINE SDL_BWin *_ToBeWin(SDL_Window *window) {
 
 /* End undefined functions */
 
-static SDL_VideoDevice * HAIKU_CreateDevice(void)
+static SDL_VideoDevice *
+HAIKU_CreateDevice(void)
 {
     SDL_VideoDevice *device;
     /*SDL_VideoData *data;*/
@@ -140,7 +141,8 @@ void HAIKU_DeleteDevice(SDL_VideoDevice * device)
     SDL_free(device);
 }
 
-static SDL_Cursor * HAIKU_CreateSystemCursor(SDL_SystemCursor id)
+static SDL_Cursor *
+HAIKU_CreateSystemCursor(SDL_SystemCursor id)
 {
     SDL_Cursor *cursor;
     BCursorID cursorId = B_CURSOR_ID_SYSTEM_DEFAULT;
@@ -174,12 +176,14 @@ static SDL_Cursor * HAIKU_CreateSystemCursor(SDL_SystemCursor id)
     return cursor;
 }
 
-static SDL_Cursor * HAIKU_CreateDefaultCursor()
+static SDL_Cursor *
+HAIKU_CreateDefaultCursor()
 {
     return HAIKU_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 }
 
-static void HAIKU_FreeCursor(SDL_Cursor * cursor)
+static void
+HAIKU_FreeCursor(SDL_Cursor * cursor)
 {
     if (cursor->driverdata) {
         delete (BCursor*) cursor->driverdata;
@@ -187,13 +191,14 @@ static void HAIKU_FreeCursor(SDL_Cursor * cursor)
     SDL_free(cursor);
 }
 
-static SDL_Cursor * HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
+static SDL_Cursor *
+HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 {
     SDL_Cursor *cursor;
     SDL_Surface *converted;
 
     converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
-    if (converted == NULL) {
+    if (!converted) {
         return NULL;
     }
 
@@ -215,9 +220,8 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
 
-	if (mouse == NULL) {
+	if (!mouse)
 		return 0;
-	}
 
 	if (cursor) {
 		BCursor *hCursor = (BCursor*)cursor->driverdata;
@@ -231,10 +235,11 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 	return 0;
 }
 
-static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
+static int
+HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 {
     SDL_Window *window = SDL_GetMouseFocus();
-    if (window == NULL) {
+    if (!window) {
       return 0;
     }
 
@@ -254,9 +259,8 @@ static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 static void HAIKU_MouseInit(_THIS)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
-	if (mouse == NULL) {
+	if (!mouse)
 		return;
-	}
 	mouse->CreateCursor = HAIKU_CreateCursor;
 	mouse->CreateSystemCursor = HAIKU_CreateSystemCursor;
 	mouse->ShowCursor = HAIKU_ShowCursor;
@@ -288,7 +292,7 @@ int HAIKU_VideoInit(_THIS)
 #endif
 
     /* We're done! */
-    return 0;
+    return (0);
 }
 
 void HAIKU_VideoQuit(_THIS)
@@ -305,7 +309,7 @@ int HAIKU_OpenURL(const char *url)
 {
     BUrl burl(url);
     const status_t rc = burl.OpenWithPreferredApplication(false);
-    return (rc == B_NO_ERROR) ? 0 : SDL_SetError("URL open failed (err=%d)", (int)rc);
+    return (rc == B_NO_ERROR) ? 0 : SDL_SetError("URL open failed (err=%d)", (int) rc);
 }
 
 #ifdef __cplusplus
