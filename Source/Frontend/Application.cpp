@@ -499,7 +499,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         if (fixed_h) {
             Settings.ScreenHeight = fixed_h;
         }
-        
+
         Settings.Fullscreen = false;
 #endif
 
