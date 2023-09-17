@@ -3490,12 +3490,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             CurMap->SwitchShowHex();
         }
     }
-    else if (cmd == "SwitchFullscreen") {
-        SprMngr.SwitchFullscreen();
-    }
-    else if (cmd == "MinimizeWindow") {
-        SprMngr.MinimizeWindow();
-    }
     else if (cmd == "SwitchLookBorders") {
         // _drawLookBorders = !_drawLookBorders;
         // _rebuildFog = true;

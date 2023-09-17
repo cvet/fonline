@@ -499,6 +499,8 @@ Application::Application(int argc, char** argv, bool client_mode) :
         if (fixed_h) {
             Settings.ScreenHeight = fixed_h;
         }
+        
+        Settings.Fullscreen = false;
 #endif
 
         MainWindow._windowHandle = CreateInternalWindow(Settings.ScreenWidth, Settings.ScreenHeight);
@@ -1118,7 +1120,7 @@ auto AppWindow::IsFocused() const -> bool
     STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0u;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
     return true;
@@ -1140,7 +1142,7 @@ auto AppWindow::IsFullscreen() const -> bool
     STACK_TRACE_ENTRY();
 
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
     }
 
     return false;

@@ -48,6 +48,28 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
+[[maybe_unused]] bool Client_Game_IsFullscreen(FOClient* client)
+{
+    return client->SprMngr.IsFullscreen();
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_ToggleFullscreen(FOClient* client)
+{
+    client->SprMngr.ToggleFullscreen();
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_MinimizeWindow(FOClient* client)
+{
+    client->SprMngr.MinimizeWindow();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsConnecting(FOClient* client)
 {
     return client->IsConnecting();

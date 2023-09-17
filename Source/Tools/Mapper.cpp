@@ -324,7 +324,7 @@ void FOMapper::ProcessMapperInput()
 
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
-    if ((Settings.Fullscreen && Settings.FullscreenMouseScroll) || (!Settings.Fullscreen && Settings.WindowedMouseScroll)) {
+    if (const bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings.FullscreenMouseScroll) || (!is_fullscreen && Settings.WindowedMouseScroll)) {
         Settings.ScrollMouseRight = Settings.MouseX >= Settings.ScreenWidth - 1;
         Settings.ScrollMouseLeft = Settings.MouseX <= 0;
         Settings.ScrollMouseDown = Settings.MouseY >= Settings.ScreenHeight - 1;
@@ -423,7 +423,7 @@ void FOMapper::ProcessMapperInput()
                     IntVisible = !IntVisible;
                     break;
                 case KeyCode::F8:
-                    if (Settings.Fullscreen) {
+                    if (SprMngr.IsFullscreen()) {
                         Settings.FullscreenMouseScroll = !Settings.FullscreenMouseScroll;
                     }
                     else {
@@ -441,17 +441,7 @@ void FOMapper::ProcessMapperInput()
 
                 // Fullscreen
                 case KeyCode::F11:
-                    if (!Settings.Fullscreen) {
-                        if (SprMngr.EnableFullscreen()) {
-                            Settings.Fullscreen = true;
-                        }
-                    }
-                    else {
-                        if (SprMngr.DisableFullscreen()) {
-                            Settings.Fullscreen = false;
-                        }
-                    }
-                    // SprMngr.RefreshViewport();
+                    SprMngr.ToggleFullscreen();
                     continue;
                 // Minimize
                 case KeyCode::F12:

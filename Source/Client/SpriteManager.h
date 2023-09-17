@@ -188,6 +188,7 @@ public:
     [[nodiscard]] auto GetWindow() -> AppWindow* { NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetScreenSize() const -> tuple<int, int>;
+    [[nodiscard]] auto IsFullscreen() const -> bool;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, int spr_x, int spr_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
@@ -197,11 +198,9 @@ public:
 
     void SetWindowSize(int w, int h);
     void SetScreenSize(int w, int h);
-    void SwitchFullscreen();
+    void ToggleFullscreen();
     void SetMousePosition(int x, int y);
     void MinimizeWindow();
-    auto EnableFullscreen() -> bool;
-    auto DisableFullscreen() -> bool;
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
 

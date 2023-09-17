@@ -149,7 +149,7 @@ void SpriteManager::SetScreenSize(int w, int h)
     const auto diff_w = w - App->Settings.ScreenWidth;
     const auto diff_h = h - App->Settings.ScreenHeight;
 
-    if (!App->Settings.Fullscreen) {
+    if (!IsFullscreen()) {
         const auto [x, y] = _window->GetPosition();
         _window->SetPosition(x - diff_w / 2, y - diff_h / 2);
     }
@@ -161,19 +161,15 @@ void SpriteManager::SetScreenSize(int w, int h)
     _window->SetScreenSize(w, h);
 }
 
-void SpriteManager::SwitchFullscreen()
+void SpriteManager::ToggleFullscreen()
 {
     STACK_TRACE_ENTRY();
 
-    if (!App->Settings.Fullscreen) {
-        if (_window->ToggleFullscreen(true)) {
-            App->Settings.Fullscreen = true;
-        }
+    if (!IsFullscreen()) {
+        _window->ToggleFullscreen(true);
     }
     else {
         if (_window->ToggleFullscreen(false)) {
-            App->Settings.Fullscreen = false;
-
             if (_windowSizeDiffX != 0 || _windowSizeDiffY != 0) {
                 const auto [x, y] = _window->GetPosition();
                 _window->SetPosition(x - _windowSizeDiffX, y - _windowSizeDiffY);
@@ -193,6 +189,13 @@ void SpriteManager::SetMousePosition(int x, int y)
     App->Input.SetMousePosition(x, y, _window);
 }
 
+auto SpriteManager::IsFullscreen() const -> bool
+{
+    STACK_TRACE_ENTRY();
+
+    return _window->IsFullscreen();
+}
+
 auto SpriteManager::IsWindowFocused() const -> bool
 {
     STACK_TRACE_ENTRY();
@@ -207,24 +210,6 @@ void SpriteManager::MinimizeWindow()
     NON_CONST_METHOD_HINT();
 
     _window->Minimize();
-}
-
-auto SpriteManager::EnableFullscreen() -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _window->ToggleFullscreen(true);
-}
-
-auto SpriteManager::DisableFullscreen() -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    return _window->ToggleFullscreen(false);
 }
 
 void SpriteManager::BlinkWindow()
