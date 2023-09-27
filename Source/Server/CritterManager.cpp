@@ -155,8 +155,8 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
             return nullptr;
         }
 
-        int16 hx_ = hx;
-        int16 hy_ = hy;
+        int hx_ = hx;
+        int hy_ = hy;
         const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         // Find in 2 hex radius
@@ -173,7 +173,7 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
             if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight()) {
                 continue;
             }
-            if (!map->IsHexesPassed(hx_ + sx[pos], hy_ + sy[pos], multihex)) {
+            if (!map->IsHexesPassed(static_cast<uint16>(hx_ + sx[pos]), static_cast<uint16>(hy_ + sy[pos]), multihex)) {
                 continue;
             }
             break;
@@ -181,8 +181,10 @@ auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Ma
 
         hx_ += sx[pos];
         hy_ += sy[pos];
-        hx = hx_;
-        hy = hy_;
+        hx = static_cast<uint16>(hx_);
+        hy = static_cast<uint16>(hy_);
+        RUNTIME_ASSERT(hx < map->GetWidth());
+        RUNTIME_ASSERT(hy < map->GetHeight());
     }
 
     auto* cr = new Critter(_engine, ident_t {}, nullptr, proto, props);

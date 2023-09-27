@@ -293,8 +293,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint map_id
-// uint cr_id
+// ident_t map_id
+// ident_t cr_id
 // uint16 speed
 // uint16 start_hx
 // uint16 start_hy
@@ -325,7 +325,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint cr_id
+// ident_t cr_id
 // uint whole_time
 // uint offset_time
 // uint16 speed
@@ -344,7 +344,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint cr_id
+// ident_t cr_id
 // uint16 start_hx
 // uint16 start_hy
 // int16 hex_ox
@@ -357,7 +357,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint cr_id
+// ident_t cr_id
 // uint16 hex_x
 // uint16 hex_y
 // int16 hex_ox
@@ -381,7 +381,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint cr_id
+// ident_t cr_id
 // uint16 to_hx
 // uint16 to_hy
 // ////////////////////////////////////////////////////////////////////////
@@ -401,18 +401,18 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint id
-// hash pid
+// ident_t id
+// hstring pid
 // uint8 slot
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REMOVE_ITEM MAKE_NETMSG_HEADER(66)
-#define NETMSG_REMOVE_ITEM_SIZE (sizeof(uint) + sizeof(uint))
+#define NETMSG_REMOVE_ITEM_SIZE (sizeof(uint) + sizeof(ident_t))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint item_id
+// ident_t item_id
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ALL_ITEMS_SEND MAKE_NETMSG_HEADER(69)
@@ -434,17 +434,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // hash item_pid
 // uint16 item_x
 // uint16 item_y
-// uint8 is_added
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ERASE_ITEM_FROM_MAP MAKE_NETMSG_HEADER(74)
-#define NETMSG_ERASE_ITEM_FROM_MAP_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uint8))
+#define NETMSG_ERASE_ITEM_FROM_MAP_SIZE (sizeof(uint) + sizeof(ident_t))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint item_id
-// uint8 is_deleted
+// ident_t item_id
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ANIMATE_ITEM MAKE_NETMSG_HEADER(75)
@@ -470,8 +468,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // int param
 // bool is_null
 // uint count
-//	uint item_id
-//	hash item_pid
+//	ident_t item_id
+//	hstring item_pid
 //	Properties data
 // ////////////////////////////////////////////////////////////////////////
 
@@ -484,8 +482,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // Params:
 // uint msg_len
-// uint item_id
-// hash item_pid
+// ident_t item_id
+// hstring item_pid
 // Properties data
 // ////////////////////////////////////////////////////////////////////////
 
@@ -534,7 +532,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // explode
 // Params:
-// hash eff_pid
+// hstring eff_pid
 // uint16 hex_x
 // uint16 hex_y
 // uint16 radius
@@ -620,8 +618,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint mag_len
-// uint loc_id
-// uint map_id
+// ident_t loc_id
+// ident_t map_id
 // hstring loc_pid
 // hstring map_pid
 // uint8 map_index_in_loc
@@ -667,11 +665,11 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // bool clear_list
 // uint16 locations_count
 //  for locations_count
-//  uint location_id
-//  hash location_pid
+//  ident_t location_id
+//  hstring location_pid
 //  uint16 maps_count
 //   for maps_count
-//   hash map_pid
+//   hstring map_pid
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

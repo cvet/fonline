@@ -900,7 +900,6 @@ auto MapView::RunSpritePattern(string_view name, uint count) -> SpritePattern*
 
     auto&& spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
     if (!spr) {
-        BreakIntoDebugger();
         return nullptr;
     }
 

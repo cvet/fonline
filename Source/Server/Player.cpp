@@ -446,8 +446,6 @@ void Player::Send_AddItemOnMap(const Item* item)
 
     NON_CONST_METHOD_HINT();
 
-    const auto is_added = item->ViewPlaceOnMap;
-
     vector<const uint8*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
     item->StoreData(false, &data, &data_sizes);
@@ -458,7 +456,6 @@ void Player::Send_AddItemOnMap(const Item* item)
     Connection->OutBuf.Write(item->GetProtoId());
     Connection->OutBuf.Write(item->GetHexX());
     Connection->OutBuf.Write(item->GetHexY());
-    Connection->OutBuf.Write(is_added);
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
@@ -473,7 +470,6 @@ void Player::Send_EraseItemFromMap(const Item* item)
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_ERASE_ITEM_FROM_MAP);
     Connection->OutBuf.Write(item->GetId());
-    Connection->OutBuf.Write(item->ViewPlaceOnMap);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }

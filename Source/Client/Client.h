@@ -189,15 +189,15 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/, bool /*fovAppeared*/);
+    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/, bool /*fovDisappeared*/);
+    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/, bool /*fovAppeared*/);
+    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/, bool /*fovDisappeared*/);
+    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInvAllIn);
     ///@ ExportEvent

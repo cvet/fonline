@@ -1128,7 +1128,7 @@ void FOClient::Net_OnAddCritter()
         _chosen->AddRef();
     }
 
-    OnCritterIn.Fire(cr, true);
+    OnCritterIn.Fire(cr);
 
     if (CurMap != nullptr && cr->IsChosen()) {
         CurMap->RebuildFog();
@@ -1152,7 +1152,7 @@ void FOClient::Net_OnRemoveCritter()
 
         cr->Finish();
 
-        OnCritterOut.Fire(cr, true);
+        OnCritterOut.Fire(cr);
     }
     else {
         const auto it = std::find_if(_worldmapCritters.begin(), _worldmapCritters.end(), [cr_id](const auto* cr) { return cr->GetId() == cr_id; });
@@ -1162,7 +1162,7 @@ void FOClient::Net_OnRemoveCritter()
         }
 
         auto* cr = *it;
-        OnCritterOut.Fire(cr, true);
+        OnCritterOut.Fire(cr);
         _worldmapCritters.erase(it);
         cr->MarkAsDestroyed();
         cr->Release();
@@ -2059,7 +2059,6 @@ void FOClient::Net_OnAddItemOnMap()
     const auto pid = _conn.InBuf.Read<hstring>(*this);
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
-    const auto is_added = _conn.InBuf.Read<bool>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -2077,7 +2076,7 @@ void FOClient::Net_OnAddItemOnMap()
             item->FadeUp();
         }
 
-        OnItemMapIn.Fire(item, !is_added);
+        OnItemMapIn.Fire(item);
     }
 }
 
@@ -2086,7 +2085,6 @@ void FOClient::Net_OnEraseItemFromMap()
     STACK_TRACE_ENTRY();
 
     const auto item_id = _conn.InBuf.Read<ident_t>();
-    const auto is_deleted = _conn.InBuf.Read<bool>();
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2097,7 +2095,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
-        OnItemMapOut.Fire(item, !is_deleted);
+        OnItemMapOut.Fire(item);
 
         // Refresh borders
         if (!item->GetIsShootThru()) {
@@ -2461,7 +2459,7 @@ void FOClient::Net_OnLoadMap()
 {
     STACK_TRACE_ENTRY();
 
-    WriteLog("Change map..");
+    WriteLog("Change map");
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto loc_id = _conn.InBuf.Read<ident_t>();
