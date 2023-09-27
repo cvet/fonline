@@ -72,9 +72,9 @@ struct SDictCache
             RUNTIME_ASSERT(cache->StringTypeId > 0);
             cache->HStringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
             RUNTIME_ASSERT(cache->HStringTypeId > 0);
-            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("ident_t");
+            cache->IdentTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(IDENT_T_NAME);
             RUNTIME_ASSERT(cache->IdentTypeId > 0);
-            cache->TickTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("tick_t");
+            cache->TickTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl(TICK_T_NAME);
             RUNTIME_ASSERT(cache->TickTypeId > 0);
         }
         return cache;

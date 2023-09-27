@@ -304,26 +304,29 @@ struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_
 template<typename T>
 constexpr bool is_strong_type_v = is_strong_type<T>::value;
 
+///@ ExportType ident ident_t uint HardStrong
+#define IDENT_T_NAME "ident"
 struct ident_t_traits
 {
-    static constexpr const char* name = "ident_t";
+    static constexpr const char* name = IDENT_T_NAME;
     using type = uint;
 };
 
-///@ ExportType ident_t uint HardStrong
 using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
 
+///@ ExportType tick_t tick_t uint RelaxedStrong
+#define TICK_T_NAME "tick_t"
 struct tick_t_traits
 {
-    static constexpr const char* name = "tick_t";
+    static constexpr const char* name = TICK_T_NAME;
     using type = uint;
 };
 
-///@ ExportType tick_t uint RelaxedStrong
 using tick_t = strong_type<tick_t_traits>;
 static_assert(sizeof(tick_t) == sizeof(uint));
 
+// Custom any as string
 class any_t : public string
 {
 };

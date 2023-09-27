@@ -1294,7 +1294,7 @@ class Panel : Object
         }
 
         curImage = null;
-        if (imageName != hstring()) {
+        if (imageName != EMPTY_HSTRING) {
             Sprite::Sprite spr = Sprite::Sprite();
             if (spr.Load(imageName)) {
                 curImage = spr;

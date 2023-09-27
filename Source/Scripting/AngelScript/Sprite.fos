@@ -37,7 +37,7 @@ class Sprite
 
         Unload();
         LoadedName = name;
-        Id = LoadedName != hstring() ? Game.LoadSprite(LoadedName) : 0;
+        Id = LoadedName != EMPTY_HSTRING ? Game.LoadSprite(LoadedName) : 0;
         RefreshData();
         return Id != 0;
     }
@@ -109,13 +109,19 @@ class Sprite
         Game.SetSpriteTime(Id, 1.0);
     }
 
+    void SetFrame(float normalizedTime)
+    {
+        Game.StopSprite(Id);
+        Game.SetSpriteTime(Id, normalizedTime);
+    }
+
     void PlayAnimation(bool loop = true, bool reverse = false)
     {
         if (Id == 0) {
             return;
         }
 
-        Game.PlaySprite(Id, hstring(), loop, reverse);
+        Game.PlaySprite(Id, EMPTY_HSTRING, loop, reverse);
     }
 
     private

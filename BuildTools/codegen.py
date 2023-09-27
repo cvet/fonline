@@ -137,7 +137,7 @@ genFileList = ['EmbeddedResources-Include.h',
 # Parse meta information
 codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
-        'ExportType': [], # (name, underlying type, representation type, [flags], [comment])
+        'ExportType': [], # (name, native type, underlying type, representation type, [flags], [comment])
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -322,6 +322,7 @@ userObjects = set()
 scriptEnums = set()
 engineEnums = set()
 customTypes = set()
+customTypesNativeMap = {}
 gameEntities = []
 gameEntitiesInfo = {}
 entityRelatives = set()
@@ -420,8 +421,10 @@ def parseTags():
             if not t.startswith('const') and t.endswith('&'):
                 r += '&'
             return r
-        elif t[-1] in ['&', '*'] and t[:-1] in customTypes:
-            return t
+        elif t[-1] in ['&', '*'] and t[:-1] in customTypesNativeMap:
+            return customTypesNativeMap[t[:-1]] + t[-1]
+        elif t in customTypesNativeMap:
+            return customTypesNativeMap[t]
         elif t in validTypes:
             return t
         elif t[-1] == '*' and t not in typeMap:
@@ -500,17 +503,20 @@ def parseTags():
                 tok = tokenize(tagInfo)
                 
                 name = tok[0]
-                utype = tok[1]
-                rtype = tok[2]
+                ntype = tok[1]
+                utype = tok[2]
+                rtype = tok[3]
                 exportFlags = tok[3:]
                 
                 assert rtype in ['RelaxedStrong', 'HardStrong'], 'Wrong type type'
                 
-                codeGenTags['ExportType'].append((name, utype, rtype, exportFlags, comment))
+                codeGenTags['ExportType'].append((name, ntype, utype, rtype, exportFlags, comment))
                 assert name not in validTypes, 'Type already in valid types'
                 validTypes.add(name)
                 assert name not in customTypes, 'Type already in custom types'
                 customTypes.add(name)
+                assert ntype not in customTypesNativeMap, 'Type already in custom types native map'
+                customTypesNativeMap[ntype] = name
                 
             except Exception as ex:
                 showError('Invalid tag ExportType', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
@@ -1346,6 +1352,12 @@ def metaTypeToEngineType(t, target, passIn, refAsPtr=False):
         assert False, 'Enum not found ' + tt[0]
     elif tt[0] in userObjects or tt[0] in entityRelatives:
         r = tt[0] + '*'
+    elif tt[0] in customTypes:
+        for e in codeGenTags['ExportType']:
+            if e[0] == tt[0]:
+                r = e[1]
+                break
+        assert r, 'Invalid native type ' + tt[0]
     else:
         def mapType(mt):
             typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
@@ -1493,7 +1505,7 @@ def genDataRegistration(target, isASCompiler):
             if t in customTypes:
                 for e in codeGenTags['ExportType']:
                     if e[0] == t:
-                        return e[1]
+                        return e[2]
                 assert False, 'Invalid underlying type ' + t
             if t == 'hstring':
                 return 'uint'
@@ -1753,6 +1765,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFunc':
                 return 'asIScriptFunction*'
+            elif tt[0] in customTypes:
+                for e in codeGenTags['ExportType']:
+                    if e[0] == tt[0]:
+                        r = e[1]
+                        break
+                assert r, 'Invalid native type ' + tt[0]
             else:
                 def mapType(t):
                     typeMap = {'int8': 'int8', 'uint8': 'uint8', 'int16': 'int16', 'uint16': 'uint16',
@@ -2006,7 +2024,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', as_' + p[1] + ');')
                 elif p[0] in entityRelatives:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
-                elif p[0] in ['string']:
+                elif p[0] in ['string', 'any']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                 elif p[0] in ['int8', 'uint8', 'bool']:
                     globalLines.append('    ctx->SetArgByte(' + str(setIndex) + ', as_' + p[1] + ');')
@@ -2025,7 +2043,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 elif p[0] in customTypes:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                 else:
-                    globalLines.append('    static_assert(false, "Invalid configuration");')
+                    globalLines.append('    static_assert(false, "Invalid configuration: ' + p[0] + '");')
                 setIndex += 1
         
         globalLines.append('// Marshalling events')
@@ -2306,11 +2324,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         # Register custom types
         registerLines.append('// Exported types')
         for et in codeGenTags['ExportType']:
-            name, utype, rtype, flags, _ = et
+            name, ntype, utype, rtype, flags, _ = et
             if rtype == 'RelaxedStrong':
-                registerLines.append('REGISTER_RELAXED_STRONG_TYPE(' + name + ', ' + utype + ');')
+                registerLines.append('REGISTER_RELAXED_STRONG_TYPE("' + name + '", ' + ntype + ', ' + utype + ');')
             elif rtype == 'HardStrong':
-                registerLines.append('REGISTER_HARD_STRONG_TYPE(' + name + ', ' + utype + ');')
+                registerLines.append('REGISTER_HARD_STRONG_TYPE("' + name + '", ' + ntype + ', ' + utype + ');')
         registerLines.append('')
         
         # Register exported objects
@@ -2650,7 +2668,7 @@ def genApiMarkdown(target):
             writeFile('* `' + metaTypeToUnifiedType(m[1]) + ' ' + m[0] + '()' + '`')
             writeComm(m[2], 0)
     for etTag in codeGenTags['ExportType']:
-        name, utype, rtype, flags, comm = etTag
+        name, ntype, utype, rtype, flags, comm = etTag
         writeFile('### ' + name + ' value object')
         writeComm(comm, 0)
         writeFile('* `Alias to: ' + metaTypeToUnifiedType(utype) + '`')

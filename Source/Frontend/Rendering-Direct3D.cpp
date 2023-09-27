@@ -1062,6 +1062,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size,
         vert_size = sizeof(Vertex2D);
     }
 #else
+    UNUSED_VARIABLE(usage);
     upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? VertCount : custom_vertices_size;
     vert_size = sizeof(Vertex2D);
 #endif
