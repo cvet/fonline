@@ -171,8 +171,14 @@ void ServerDeferredCallManager::LoadDeferredCalls()
 
         const auto func_count = static_cast<int>(!!call.EmptyFunc) + static_cast<int>(!!call.AnyFunc) + static_cast<int>(!!call.AnyArrayFunc);
 
-        if (func_count != 1) {
+        if (func_count == 0) {
             WriteLog("Unable to find function {} for deferred call {}", func_name, call.Id);
+            errors++;
+            continue;
+        }
+
+        if (func_count > 1) {
+            WriteLog("Found multiple functions {} for deferred call {}", func_name, call.Id);
             errors++;
             continue;
         }
