@@ -451,14 +451,14 @@ void SpriteManager::DisableScissor()
     }
 }
 
-auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type) -> shared_ptr<Sprite>
+auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
 {
     STACK_TRACE_ENTRY();
 
-    return LoadSprite(_hashResolver.ToHashedString(path), atlas_type);
+    return LoadSprite(_hashResolver.ToHashedString(path), atlas_type, no_warn_if_not_exists);
 }
 
-auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
+auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
 {
     STACK_TRACE_ENTRY();
 
@@ -492,8 +492,11 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr
 
     auto&& spr = it->second->LoadSprite(path, atlas_type);
     if (!spr) {
-        BreakIntoDebugger();
-        WriteLog("Sprite not loaded by fabric, file '{}'", path);
+        if (!no_warn_if_not_exists) {
+            BreakIntoDebugger();
+            WriteLog("Sprite not found: '{}'", path);
+        }
+
         _nonFoundSprites.emplace(path);
         return nullptr;
     }

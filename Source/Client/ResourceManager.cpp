@@ -159,7 +159,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint 
                 string str;
                 if (_animNameResolver.ResolveCritterAnimation(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
                     if (!str.empty()) {
-                        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(str, AtlasType::MapSprites));
+                        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(str, AtlasType::MapSprites, true));
 
                         // Fix by dirs
                         for (uint d = 0; anim != nullptr && d < anim->DirCount; d++) {
@@ -448,13 +448,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint anim1, u
     // Try load from fofrm
     {
         const string spr_name = _str("{}{}{}.fofrm", model_name, FRM_IND[anim1], FRM_IND[anim2]);
-        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites));
+        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
         const string spr_name = _str("{}{}{}.frm", model_name, FRM_IND[anim1], FRM_IND[anim2]);
-        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites));
+        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     auto* anim_ = _critterFrames.emplace(AnimMapId(model_name, anim1, anim2, true), std::move(anim)).first->second.get();

@@ -193,8 +193,8 @@ public:
     [[nodiscard]] auto SpriteHitTest(const Sprite* spr, int spr_x, int spr_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CheckEggAppearence(uint16 hx, uint16 hy, EggAppearenceType egg_appearence) const -> bool;
-    [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>;
+    [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
+    [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
 
     void SetWindowSize(int w, int h);
     void SetScreenSize(int w, int h);
