@@ -981,6 +981,83 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     }
 }
 
+void Properties::SetValueAsAnyProps(int property_index, const any_t& value)
+{
+    STACK_TRACE_ENTRY();
+
+    const auto* prop = _registrator->GetByIndex(property_index);
+
+    if (prop == nullptr) {
+        throw PropertiesException("Property not found", property_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
+    }
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
+    }
+    if (prop->IsVirtual()) {
+        throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
+    }
+
+    if (prop->_isHashBase) {
+        SetValue<hstring>(prop, _registrator->_hashResolver.ToHashedStringMustExists(value));
+    }
+    else if (prop->_isEnumBase) {
+        if (prop->_baseSize == 1) {
+            SetValue<uint8>(prop, static_cast<uint8>(_str(value).toUInt()));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<uint16>(prop, static_cast<uint16>(_str(value).toUInt()));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<int>(prop, _str(value).toInt());
+        }
+    }
+    else if (prop->_isBool) {
+        SetValue<bool>(prop, _str(value).toBool());
+    }
+    else if (prop->_isFloat) {
+        if (prop->_baseSize == 4) {
+            SetValue<float>(prop, _str(value).toFloat());
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<double>(prop, _str(value).toDouble());
+        }
+    }
+    else if (prop->_isInt && prop->_isSignedInt) {
+        if (prop->_baseSize == 1) {
+            SetValue<char>(prop, static_cast<char>(_str(value).toInt()));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<int16>(prop, static_cast<int16>(_str(value).toInt()));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<int>(prop, _str(value).toInt());
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<int64>(prop, _str(value).toInt64());
+        }
+    }
+    else if (prop->_isInt && !prop->_isSignedInt) {
+        if (prop->_baseSize == 1) {
+            SetValue<uint8>(prop, static_cast<uint8>(_str(value).toUInt()));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<uint16>(prop, static_cast<uint16>(_str(value).toUInt()));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<uint>(prop, _str(value).toUInt());
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<uint64>(prop, _str(value).toUInt64());
+        }
+    }
+    else {
+        throw PropertiesException("Invalid property for set as int props", prop->GetName());
+    }
+}
+
 auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 {
     STACK_TRACE_ENTRY();

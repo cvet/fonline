@@ -146,7 +146,7 @@
 [[maybe_unused]] Item* Server_Map_GetItem(Map* self, ident_t itemId)
 {
     if (!itemId) {
-        throw ScriptException("Item id arg is zero");
+        return nullptr;
     }
 
     return self->GetItem(itemId);
@@ -997,7 +997,7 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
@@ -1024,13 +1024,45 @@
     }
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
-    if (!proto) {
+    if (proto == nullptr) {
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
     Properties props_(proto->GetProperties());
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int>(key), value);
+    }
+
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
+    if (npc == nullptr) {
+        throw ScriptException("Create npc failed");
+    }
+
+    return npc;
+}
+
+///# ...
+///# param protoId ...
+///# param hx ...
+///# param hy ...
+///# param dir ...
+///# param props ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, uint16 hx, uint16 hy, uint8 dir, const map<CritterProperty, any_t>& props)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
+    if (proto == nullptr) {
+        throw ScriptException("Proto '{}' not found.", protoId);
+    }
+
+    Properties props_(proto->GetProperties());
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsAnyProps(static_cast<int>(key), value);
     }
 
     Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);

@@ -309,6 +309,7 @@ public:
     void SetValueAsInt(int property_index, int value);
     void SetValueAsAny(int property_index, const any_t& value);
     void SetValueAsIntProps(int property_index, int value);
+    void SetValueAsAnyProps(int property_index, const any_t& value);
     auto ResolveHash(hstring::hash_t h) const -> hstring;
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
