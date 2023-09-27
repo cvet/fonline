@@ -1358,10 +1358,10 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
     } break;
     case CMD_RUNSCRIPT: {
-        const auto func_name = buf.Read<string>();
-        const auto param0_str = buf.Read<string>();
-        const auto param1_str = buf.Read<string>();
-        const auto param2_str = buf.Read<string>();
+        const auto func_name = any_t {buf.Read<string>()};
+        const auto param0_str = any_t {buf.Read<string>()};
+        const auto param1_str = any_t {buf.Read<string>()};
+        const auto param2_str = any_t {buf.Read<string>()};
 
         CHECK_ALLOW_COMMAND();
 
@@ -1374,8 +1374,27 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         const auto param1 = ResolveGenericValue(param1_str);
         const auto param2 = ResolveGenericValue(param2_str);
 
-        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), player_cr, param0, param1, param2) || //
-            ScriptSys->CallFunc<void, Player*, int, int, int>(ToHashedString(func_name), player, param0, param1, param2)) {
+        if (ScriptSys->CallFunc<void, Player*>(ToHashedString(func_name), player) || //
+            ScriptSys->CallFunc<void, Player*, int>(ToHashedString(func_name), player, param0) || //
+            ScriptSys->CallFunc<void, Player*, any_t>(ToHashedString(func_name), player, param0_str) || //
+            ScriptSys->CallFunc<void, Player*, int, int>(ToHashedString(func_name), player, param0, param1) || //
+            ScriptSys->CallFunc<void, Player*, any_t, any_t>(ToHashedString(func_name), player, param0_str, param1_str) || //
+            ScriptSys->CallFunc<void, Player*, int, int, int>(ToHashedString(func_name), player, param0, param1, param2) || //
+            ScriptSys->CallFunc<void, Player*, any_t, any_t, any_t>(ToHashedString(func_name), player, param0_str, param1_str, param2_str) || //
+            ScriptSys->CallFunc<void, Critter*>(ToHashedString(func_name), player_cr) || //
+            ScriptSys->CallFunc<void, Critter*, int>(ToHashedString(func_name), player_cr, param0) || //
+            ScriptSys->CallFunc<void, Critter*, any_t>(ToHashedString(func_name), player_cr, param0_str) || //
+            ScriptSys->CallFunc<void, Critter*, int, int>(ToHashedString(func_name), player_cr, param0, param1) || //
+            ScriptSys->CallFunc<void, Critter*, any_t, any_t>(ToHashedString(func_name), player_cr, param0_str, param1_str) || //
+            ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), player_cr, param0, param1, param2) || //
+            ScriptSys->CallFunc<void, Critter*, any_t, any_t, any_t>(ToHashedString(func_name), player_cr, param0_str, param1_str, param2_str) || //
+            ScriptSys->CallFunc<void>(ToHashedString(func_name)) || //
+            ScriptSys->CallFunc<void, int>(ToHashedString(func_name), param0) || //
+            ScriptSys->CallFunc<void, any_t>(ToHashedString(func_name), param0_str) || //
+            ScriptSys->CallFunc<void, int, int>(ToHashedString(func_name), param0, param1) || //
+            ScriptSys->CallFunc<void, any_t, any_t>(ToHashedString(func_name), param0_str, param1_str) || //
+            ScriptSys->CallFunc<void, int, int, int>(ToHashedString(func_name), param0, param1, param2) || //
+            ScriptSys->CallFunc<void, any_t, any_t, any_t>(ToHashedString(func_name), param0_str, param1_str, param2_str)) {
             logcb("Run script success");
         }
         else {
