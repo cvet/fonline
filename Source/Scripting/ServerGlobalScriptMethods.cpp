@@ -916,6 +916,42 @@
 }
 
 ///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Map*> Server_Game_GetMaps(FOServer* server)
+{
+    vector<Map*> maps;
+    maps.reserve(server->MapMngr.GetLocationsCount());
+
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+        maps.push_back(map);
+    }
+
+    return maps;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Map*> Server_Game_GetMaps(FOServer* server, hstring pid)
+{
+    vector<Map*> maps;
+
+    if (!pid) {
+        maps.reserve(server->MapMngr.GetLocationsCount());
+    }
+
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
+        if (!pid || pid == map->GetProtoId()) {
+            maps.push_back(map);
+        }
+    }
+
+    return maps;
+}
+
+///# ...
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
@@ -932,7 +968,7 @@
 ///# param locPid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hstring locPid)
+[[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, hstring locPid)
 {
     if (!locPid) {
         throw ScriptException("Invalid zero location proto id arg");
@@ -946,13 +982,49 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hstring locPid, uint skipCount)
+[[maybe_unused]] Location* Server_Game_GetLocation(FOServer* server, hstring locPid, uint skipCount)
 {
     if (!locPid) {
         throw ScriptException("Invalid zero location proto id arg");
     }
 
     return server->MapMngr.GetLocationByPid(locPid, skipCount);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server)
+{
+    vector<Location*> locations;
+    locations.reserve(server->MapMngr.GetLocationsCount());
+
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+        locations.push_back(loc);
+    }
+
+    return locations;
+}
+
+///# ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, hstring pid)
+{
+    vector<Location*> locations;
+
+    if (!pid) {
+        locations.reserve(server->MapMngr.GetLocationsCount());
+    }
+
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
+        if (!pid || pid == loc->GetProtoId()) {
+            locations.push_back(loc);
+        }
+    }
+
+    return locations;
 }
 
 ///# ...
@@ -1236,63 +1308,6 @@
     }
 
     return npcs;
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server)
-{
-    vector<Map*> maps;
-    maps.reserve(server->MapMngr.GetLocationsCount());
-
-    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
-        maps.push_back(map);
-    }
-
-    return maps;
-}
-
-///# ...
-///# param pid ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server, hstring pid)
-{
-    vector<Map*> maps;
-
-    if (!pid) {
-        maps.reserve(server->MapMngr.GetLocationsCount());
-    }
-
-    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
-        if (!pid || pid == map->GetProtoId()) {
-            maps.push_back(map);
-        }
-    }
-
-    return maps;
-}
-
-///# ...
-///# param pid ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetAllLocations(FOServer* server, hstring pid)
-{
-    vector<Location*> locations;
-
-    if (!pid) {
-        locations.reserve(server->MapMngr.GetLocationsCount());
-    }
-
-    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
-        if (!pid || pid == loc->GetProtoId()) {
-            locations.push_back(loc);
-        }
-    }
-
-    return locations;
 }
 
 ///# ...
