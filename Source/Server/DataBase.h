@@ -66,7 +66,7 @@ public:
     void Insert(string_view collection_name, ident_t id, const AnyData::Document& doc);
     void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(string_view collection_name, ident_t id);
-    void CommitChanges();
+    void CommitChanges(bool wait_commit_complete);
 
 private:
     explicit DataBase(DataBaseImpl* impl);

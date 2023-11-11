@@ -868,4 +868,5 @@
 #undef Yield
 #undef YieldProcessor
 #undef ZeroMemory
+#undef AddJob
 #endif

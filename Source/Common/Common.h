@@ -77,6 +77,7 @@
 #include <climits>
 #include <clocale>
 #include <cmath>
+#include <condition_variable>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -506,10 +507,10 @@ struct StackTraceScopeEntry
 // Engine exception handling
 extern auto GetRealStackTrace() -> string;
 extern auto IsRunInDebugger() noexcept -> bool;
-extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
+extern auto BreakIntoDebugger(string_view error_message = "") noexcept -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
-extern void ReportExceptionAndContinue(const std::exception& ex);
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
+extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void ShowExceptionMessageBox(bool enabled);
 
 class ExceptionInfo
@@ -1945,6 +1946,34 @@ private:
     int _fixedFps {};
     time_point _loopStart {};
     double _balance {};
+};
+
+class WorkThread
+{
+public:
+    using Job = std::function<void()>;
+
+    explicit WorkThread(string_view name, bool sync_mode = false);
+    WorkThread(const WorkThread&) = delete;
+    WorkThread(WorkThread&&) noexcept = delete;
+    auto operator=(const WorkThread&) -> WorkThread& = delete;
+    auto operator=(WorkThread&&) noexcept -> WorkThread& = delete;
+    virtual ~WorkThread();
+
+    void AddJob(Job job);
+    void Wait();
+
+private:
+    void Routine() noexcept;
+
+    string _name {};
+    bool _syncMode {};
+    std::thread _thread {};
+    vector<Job> _jobs {};
+    std::mutex _jobsLocker {};
+    std::condition_variable _workSignal {};
+    std::condition_variable _doneSignal {};
+    std::atomic_bool _finish {};
 };
 
 // Interthread communication between server and client

@@ -345,7 +345,7 @@ void FOServer::Start()
     }
 
     // Commit initial data base changes
-    DbStorage.CommitChanges();
+    DbStorage.CommitChanges(true);
 
     GameTime.FrameAdvance();
     _stats.ServerStartTime = GameTime.FrameTime();
@@ -379,7 +379,7 @@ void FOServer::Shutdown()
     OnFinish.Fire();
     EntityMngr.FinalizeEntities();
 
-    DbStorage.CommitChanges();
+    DbStorage.CommitChanges(true);
 
     // Shutdown servers
     for (auto* server : _connectionServers) {
@@ -545,7 +545,7 @@ void FOServer::MainLoop()
     OnLoop.Fire();
 
     // Commit changed to data base
-    DbStorage.CommitChanges();
+    DbStorage.CommitChanges(false);
 
     // Clients log
     DispatchLogToClients();

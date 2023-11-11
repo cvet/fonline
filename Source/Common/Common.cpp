@@ -137,59 +137,69 @@ static auto InsertCatchedMark(const string& st) -> string
     return st.substr(0, pos).append(" <- Catched here").append(pos != string::npos ? st.substr(pos) : "");
 }
 
-void ReportExceptionAndExit(const std::exception& ex)
+void ReportExceptionAndExit(const std::exception& ex) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
-    const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+    try {
+        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
 
-    if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
-    }
-    else {
-        WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
-    }
+        if (ex_info != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}\nShutdown!", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        }
+        else {
+            WriteLog(LogType::Error, "{}\nCatched at: {}\nShutdown!", ex.what(), GetStackTrace());
+        }
 
-    if (BreakIntoDebugger(ex.what())) {
-        ExitApp(false);
-    }
+        if (BreakIntoDebugger(ex.what())) {
+            ExitApp(false);
+        }
 
-    CreateDumpMessage("FatalException", ex.what());
+        CreateDumpMessage("FatalException", ex.what());
 
-    if (ex_info != nullptr) {
-        MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
-    }
-    else {
-        MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
-    }
-
-    ExitApp(false);
-}
-
-void ReportExceptionAndContinue(const std::exception& ex)
-{
-    NO_STACK_TRACE_ENTRY();
-
-    const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
-
-    if (ex_info != nullptr) {
-        WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
-    }
-    else {
-        WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
-    }
-
-    if (BreakIntoDebugger(ex.what())) {
-        return;
-    }
-
-    if (ExceptionMessageBox) {
         if (ex_info != nullptr) {
             MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
         }
         else {
             MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
         }
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+
+    ExitApp(false);
+}
+
+void ReportExceptionAndContinue(const std::exception& ex) noexcept
+{
+    NO_STACK_TRACE_ENTRY();
+
+    try {
+        const auto* ex_info = dynamic_cast<const ExceptionInfo*>(&ex);
+
+        if (ex_info != nullptr) {
+            WriteLog(LogType::Error, "{}\n{}", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+        }
+        else {
+            WriteLog(LogType::Error, "{}\nCatched at: {}", ex.what(), GetStackTrace());
+        }
+
+        if (BreakIntoDebugger(ex.what())) {
+            return;
+        }
+
+        if (ExceptionMessageBox) {
+            if (ex_info != nullptr) {
+                MessageBox::ShowErrorMessage("Error", ex.what(), InsertCatchedMark(ex_info->StackTrace()));
+            }
+            else {
+                MessageBox::ShowErrorMessage("Error", ex.what(), _str("Catched at: {}", GetStackTrace()));
+            }
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
     }
 }
 
@@ -367,7 +377,7 @@ auto IsRunInDebugger() noexcept -> bool
     return RunInDebugger;
 }
 
-auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
+auto BreakIntoDebugger([[maybe_unused]] string_view error_message) noexcept -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -451,6 +461,110 @@ void FrameBalancer::EndLoop()
     }
     else {
         std::this_thread::sleep_for(std::chrono::milliseconds(-_fixedFps));
+    }
+}
+
+WorkThread::WorkThread(string_view name, bool sync_mode)
+{
+    STACK_TRACE_ENTRY();
+
+    _name = name;
+
+    if (sync_mode) {
+        _syncMode = true;
+    }
+    else {
+        _thread = std::thread(&WorkThread::Routine, this);
+    }
+}
+
+WorkThread::~WorkThread()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_syncMode) {
+        _finish = true;
+        _workSignal.notify_one();
+        _thread.join();
+    }
+}
+
+void WorkThread::AddJob(Job job)
+{
+    STACK_TRACE_ENTRY();
+
+    if (_syncMode) {
+        try {
+            job();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+    }
+    else {
+        {
+            std::unique_lock locker(_jobsLocker);
+
+            _jobs.emplace_back(std::move(job));
+        }
+
+        _workSignal.notify_one();
+    }
+}
+
+void WorkThread::Wait()
+{
+    STACK_TRACE_ENTRY();
+
+    if (!_syncMode) {
+        std::unique_lock lock(_jobsLocker);
+
+        while (!_jobs.empty()) {
+            _doneSignal.wait(lock);
+        }
+    }
+}
+
+void WorkThread::Routine() noexcept
+{
+    STACK_TRACE_ENTRY();
+
+    try {
+        while (true) {
+            Job job;
+
+            {
+                std::unique_lock lock(_jobsLocker);
+
+                if (_jobs.empty()) {
+                    _doneSignal.notify_all();
+
+                    if (_finish) {
+                        break;
+                    }
+
+                    _workSignal.wait(lock);
+                }
+
+                // No else!
+                if (!_jobs.empty()) {
+                    job = std::move(_jobs.front());
+                    _jobs.erase(_jobs.begin());
+                }
+            }
+
+            if (job) {
+                try {
+                    job();
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+            }
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
     }
 }
 

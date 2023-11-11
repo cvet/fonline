@@ -142,7 +142,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 #endif
 }
 
-void ExitApp(bool success)
+void ExitApp(bool success) noexcept
 {
     STACK_TRACE_ENTRY();
 

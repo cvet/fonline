@@ -426,4 +426,4 @@ public:
 
 extern Application* App;
 extern void InitApp(int argc, char** argv, bool client_mode = false);
-[[noreturn]] extern void ExitApp(bool success);
+[[noreturn]] extern void ExitApp(bool success) noexcept;

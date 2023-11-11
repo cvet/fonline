@@ -58,7 +58,7 @@ class DataBaseImpl
 public:
     DataBaseImpl() = default;
     DataBaseImpl(const DataBaseImpl&) = delete;
-    DataBaseImpl(DataBaseImpl&&) noexcept = default;
+    DataBaseImpl(DataBaseImpl&&) noexcept = delete;
     auto operator=(const DataBaseImpl&) = delete;
     auto operator=(DataBaseImpl&&) noexcept = delete;
     virtual ~DataBaseImpl() = default;
@@ -71,6 +71,7 @@ public:
     void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(string_view collection_name, ident_t id);
     void CommitChanges();
+    void WaitCommitThread();
 
 protected:
     [[nodiscard]] virtual auto GetRecord(string_view collection_name, ident_t id) -> AnyData::Document = 0;
@@ -84,6 +85,7 @@ private:
     DataBase::Collections _recordChanges {};
     DataBase::RecordsState _newRecords {};
     DataBase::RecordsState _deletedRecords {};
+    WorkThread _commitThread {"DataBaseCommiter"};
 };
 
 DataBase::DataBase() = default;
@@ -161,13 +163,17 @@ void DataBase::Delete(string_view collection_name, ident_t id)
     _impl->Delete(collection_name, id);
 }
 
-void DataBase::CommitChanges()
+void DataBase::CommitChanges(bool wait_commit_complete)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     _impl->CommitChanges();
+
+    if (wait_commit_complete) {
+        _impl->WaitCommitThread();
+    }
 }
 
 static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
@@ -498,17 +504,19 @@ auto DataBaseImpl::Get(string_view collection_name, ident_t id) -> AnyData::Docu
 
     const auto collection_name_str = string(collection_name);
 
-    if (_deletedRecords[collection_name_str].count(id) != 0u) {
+    if (_deletedRecords[collection_name_str].count(id) != 0) {
         return {};
     }
 
-    if (_newRecords[collection_name_str].count(id) != 0u) {
+    if (_newRecords[collection_name_str].count(id) != 0) {
         return _recordChanges[collection_name_str].at(id);
     }
 
+    _commitThread.Wait();
+
     auto doc = GetRecord(collection_name_str, id);
 
-    if (_recordChanges[collection_name_str].count(id) != 0u) {
+    if (_recordChanges[collection_name_str].count(id) != 0) {
         for (auto&& [key, value] : _recordChanges[collection_name_str].at(id)) {
             doc[key] = value;
         }
@@ -566,7 +574,7 @@ void DataBaseImpl::Delete(string_view collection_name, ident_t id)
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
-    if (_newRecords[collection_name_str].count(id) != 0u) {
+    if (_newRecords[collection_name_str].count(id) != 0) {
         _newRecords[collection_name_str].erase(id);
     }
     else {
@@ -584,29 +592,38 @@ void DataBaseImpl::CommitChanges()
 
     _changesStarted = false;
 
-    for (auto&& [key, value] : _recordChanges) {
-        for (auto&& [key2, value2] : value) {
-            auto it = _newRecords.find(key);
-            if (it != _newRecords.end() && it->second.count(key2) != 0u) {
-                InsertRecord(key, key2, value2);
-            }
-            else {
-                UpdateRecord(key, key2, value2);
+    _commitThread.AddJob([this, recordChanges = std::move(_recordChanges), newRecords = std::move(_newRecords), deletedRecords = std::move(_deletedRecords)] {
+        for (auto&& [key, value] : recordChanges) {
+            for (auto&& [key2, value2] : value) {
+                auto it = newRecords.find(key);
+                if (it != newRecords.end() && it->second.count(key2) != 0) {
+                    InsertRecord(key, key2, value2);
+                }
+                else {
+                    UpdateRecord(key, key2, value2);
+                }
             }
         }
-    }
 
-    for (auto&& [key, value] : _deletedRecords) {
-        for (const auto& id : value) {
-            DeleteRecord(key, id);
+        for (auto&& [key, value] : deletedRecords) {
+            for (const auto& id : value) {
+                DeleteRecord(key, id);
+            }
         }
-    }
+
+        CommitRecords();
+    });
 
     _recordChanges.clear();
     _newRecords.clear();
     _deletedRecords.clear();
+}
 
-    CommitRecords();
+void DataBaseImpl::WaitCommitThread()
+{
+    STACK_TRACE_ENTRY();
+
+    _commitThread.Wait();
 }
 
 #if FO_HAVE_JSON
@@ -615,7 +632,7 @@ class DbJson final : public DataBaseImpl
 public:
     DbJson() = delete;
     DbJson(const DbJson&) = delete;
-    DbJson(DbJson&&) noexcept = default;
+    DbJson(DbJson&&) noexcept = delete;
     auto operator=(const DbJson&) = delete;
     auto operator=(DbJson&&) noexcept = delete;
     ~DbJson() override = default;
@@ -642,7 +659,7 @@ public:
                 throw DataBaseException("DbJson Id is zero", path);
             }
 
-            ids.push_back(ident_t {id});
+            ids.emplace_back(id);
         });
 
         return ids;
@@ -802,7 +819,7 @@ class DbUnQLite final : public DataBaseImpl
 public:
     DbUnQLite() = delete;
     DbUnQLite(const DbUnQLite&) = delete;
-    DbUnQLite(DbUnQLite&&) noexcept = default;
+    DbUnQLite(DbUnQLite&&) noexcept = delete;
     auto operator=(const DbUnQLite&) = delete;
     auto operator=(DbUnQLite&&) noexcept = delete;
 
@@ -879,7 +896,7 @@ public:
                 throw DataBaseException("DbUnQLite Id is zero");
             }
 
-            ids.push_back(ident_t {id});
+            ids.emplace_back(id);
 
             const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor);
             if (kv_cursor_next_entry != UNQLITE_OK && kv_cursor_next_entry != UNQLITE_DONE) {
@@ -1058,7 +1075,7 @@ class DbMongo final : public DataBaseImpl
 public:
     DbMongo() = delete;
     DbMongo(const DbMongo&) = delete;
-    DbMongo(DbMongo&&) noexcept = default;
+    DbMongo(DbMongo&&) noexcept = delete;
     auto operator=(const DbMongo&) = delete;
     auto operator=(DbMongo&&) noexcept = delete;
 
@@ -1147,7 +1164,7 @@ public:
             }
 
             const auto id = static_cast<uint>(bson_iter_int32(&iter));
-            ids.push_back(ident_t {id});
+            ids.emplace_back(id);
         }
 
         bson_error_t error;
@@ -1347,7 +1364,7 @@ class DbMemory final : public DataBaseImpl
 public:
     DbMemory() = default;
     DbMemory(const DbMemory&) = delete;
-    DbMemory(DbMemory&&) noexcept = default;
+    DbMemory(DbMemory&&) noexcept = delete;
     auto operator=(const DbMemory&) = delete;
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
@@ -1362,7 +1379,7 @@ public:
         ids.reserve(collection.size());
 
         for (auto&& [key, value] : collection) {
-            ids.emplace_back(ident_t {key});
+            ids.emplace_back(key);
         }
 
         return ids;
