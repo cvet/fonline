@@ -115,13 +115,31 @@ class Sprite
         Game.SetSpriteTime(Id, normalizedTime);
     }
 
-    void PlayAnimation(bool loop = true, bool reverse = false)
+    void Play(bool loop = true, bool reverse = false)
     {
         if (Id == 0) {
             return;
         }
 
         Game.PlaySprite(Id, EMPTY_HSTRING, loop, reverse);
+    }
+
+    void Play(string animName, bool loop = true, bool reverse = false)
+    {
+        if (Id == 0) {
+            return;
+        }
+
+        Game.PlaySprite(Id, hstring(animName), loop, reverse);
+    }
+
+    void Play(hstring animName, bool loop = true, bool reverse = false)
+    {
+        if (Id == 0) {
+            return;
+        }
+
+        Game.PlaySprite(Id, animName, loop, reverse);
     }
 
     private
