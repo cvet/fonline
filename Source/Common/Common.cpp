@@ -402,8 +402,9 @@ void CreateDumpMessage(string_view appendix, string_view message)
     }
 }
 
-FrameBalancer::FrameBalancer(bool enabled, int fixed_fps) :
-    _enabled {enabled},
+FrameBalancer::FrameBalancer(bool vsync, int sleep, int fixed_fps) :
+    _enabled {!vsync && (sleep >= 0 || fixed_fps > 0)},
+    _sleep {sleep},
     _fixedFps {fixed_fps}
 {
     STACK_TRACE_ENTRY();
@@ -417,7 +418,9 @@ void FrameBalancer::StartLoop()
         return;
     }
 
-    _loopStart = Timer::CurTime();
+    if (_sleep < 0 && _fixedFps > 0) {
+        _loopStart = Timer::CurTime();
+    }
 }
 
 void FrameBalancer::EndLoop()
@@ -428,7 +431,10 @@ void FrameBalancer::EndLoop()
         return;
     }
 
-    if (_fixedFps > 0) {
+    if (_sleep >= 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
+    }
+    else if (_fixedFps > 0) {
         const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - _loopStart).count()) / 1000000.0;
         const auto need_elapsed = 1000.0 / static_cast<double>(_fixedFps);
         if (need_elapsed > elapsed_ms) {
@@ -436,9 +442,6 @@ void FrameBalancer::EndLoop()
             _balance = std::fmod(sleep, 1.0);
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
         }
-    }
-    else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(-_fixedFps));
     }
 }
 

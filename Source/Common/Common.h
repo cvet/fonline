@@ -1924,13 +1924,14 @@ public:
 class FrameBalancer
 {
 public:
-    FrameBalancer(bool enabled, int fixed_fps);
+    FrameBalancer(bool vsync, int sleep, int fixed_fps);
 
     void StartLoop();
     void EndLoop();
 
 private:
     bool _enabled {};
+    int _sleep {};
     int _fixedFps {};
     time_point _loopStart {};
     double _balance {};

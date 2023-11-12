@@ -183,7 +183,8 @@ VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 VARIABLE_SETTING(bool, Fullscreen, false);
 VARIABLE_SETTING(int, Brightness, 0);
 VARIABLE_SETTING(uint, FPS, 0);
-VARIABLE_SETTING(int, FixedFPS, 100);
+VARIABLE_SETTING(int, Sleep, -1); // -1 to disable, Sleep has priority over FixedFPS if both enabled
+VARIABLE_SETTING(int, FixedFPS, 100); // 0 to disable, Sleep has priority over FixedFPS if both enabled
 FIXED_SETTING(int, FogExtraLength, 0);
 FIXED_SETTING(float, CritterTurnAngle, 100.0f);
 FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
