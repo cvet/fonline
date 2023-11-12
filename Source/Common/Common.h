@@ -477,8 +477,8 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 #define NO_STACK_TRACE_ENTRY()
 #endif
 
-extern FORCE_INLINE void PushStackTrace(const SourceLocationData& loc) noexcept;
-extern FORCE_INLINE void PopStackTrace() noexcept;
+extern void PushStackTrace(const SourceLocationData& loc) noexcept;
+extern void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
 
 struct StackTraceScopeEntry
