@@ -483,7 +483,12 @@ WorkThread::~WorkThread()
     STACK_TRACE_ENTRY();
 
     if (!_syncMode) {
-        _finish = true;
+        {
+            std::unique_lock locker(_dataLocker);
+
+            _finish = true;
+        }
+
         _workSignal.notify_one();
         _thread.join();
     }
@@ -493,22 +498,22 @@ void WorkThread::AddJob(Job job)
 {
     STACK_TRACE_ENTRY();
 
-    if (_syncMode) {
+    if (!_syncMode) {
+        {
+            std::unique_lock locker(_dataLocker);
+
+            _jobs.emplace_back(std::move(job));
+        }
+
+        _workSignal.notify_one();
+    }
+    else {
         try {
             job();
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
-    }
-    else {
-        {
-            std::unique_lock locker(_jobsLocker);
-
-            _jobs.emplace_back(std::move(job));
-        }
-
-        _workSignal.notify_one();
     }
 }
 
@@ -517,10 +522,10 @@ void WorkThread::Wait()
     STACK_TRACE_ENTRY();
 
     if (!_syncMode) {
-        std::unique_lock lock(_jobsLocker);
+        std::unique_lock locker(_dataLocker);
 
         while (!_jobs.empty()) {
-            _doneSignal.wait(lock);
+            _doneSignal.wait(locker);
         }
     }
 }
@@ -530,11 +535,15 @@ void WorkThread::Routine() noexcept
     STACK_TRACE_ENTRY();
 
     try {
+#if FO_WINDOWS
+        ::SetThreadDescription(::GetCurrentThread(), _str(_name).toWideChar().c_str());
+#endif
+
         while (true) {
             Job job;
 
             {
-                std::unique_lock lock(_jobsLocker);
+                std::unique_lock locker(_dataLocker);
 
                 if (_jobs.empty()) {
                     _doneSignal.notify_all();
@@ -543,7 +552,7 @@ void WorkThread::Routine() noexcept
                         break;
                     }
 
-                    _workSignal.wait(lock);
+                    _workSignal.wait(locker);
                 }
 
                 // No else!
@@ -566,6 +575,8 @@ void WorkThread::Routine() noexcept
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+
+    std::notify_all_at_thread_exit(_doneSignal, std::unique_lock {_dataLocker});
 }
 
 // Dummy symbols for web build to avoid linker errors

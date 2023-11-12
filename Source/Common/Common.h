@@ -1970,10 +1970,10 @@ private:
     bool _syncMode {};
     std::thread _thread {};
     vector<Job> _jobs {};
-    std::mutex _jobsLocker {};
+    std::mutex _dataLocker {};
     std::condition_variable _workSignal {};
     std::condition_variable _doneSignal {};
-    std::atomic_bool _finish {};
+    bool _finish {};
 };
 
 // Interthread communication between server and client
