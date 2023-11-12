@@ -194,7 +194,7 @@ void ShowExceptionMessageBox(bool enabled)
     ExceptionMessageBox = enabled;
 }
 
-void PushStackTrace(const SourceLocationData& loc) noexcept
+FORCE_INLINE void PushStackTrace(const SourceLocationData& loc) noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
@@ -209,7 +209,7 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
 #endif
 }
 
-void PopStackTrace() noexcept
+FORCE_INLINE void PopStackTrace() noexcept
 {
     NO_STACK_TRACE_ENTRY();
 
