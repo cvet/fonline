@@ -145,7 +145,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
 #endif
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     try {
         ShowExceptionMessageBox(true);

@@ -49,7 +49,7 @@
 
 extern "C" int main(int argc, char** argv)
 {
-    STACK_TRACE_FIRST_ENTRY();
+    STACK_TRACE_ENTRY();
 
     InitApp(argc, argv);
     GenericUtils::SetRandomSeed(42);

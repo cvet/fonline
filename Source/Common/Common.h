@@ -450,16 +450,10 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 using tracy::SourceLocationData;
 
 #if !FO_NO_MANUAL_STACK_TRACE
-#define STACK_TRACE_FIRST_ENTRY() \
-    SetMainThread(); \
-    STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     ZoneScoped; \
     auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
 #else
-#define STACK_TRACE_FIRST_ENTRY() \
-    SetMainThread(); \
-    STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() ZoneScoped
 #endif
 #define NO_STACK_TRACE_ENTRY()
@@ -474,23 +468,17 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 };
 
 #if !FO_NO_MANUAL_STACK_TRACE
-#define STACK_TRACE_FIRST_ENTRY() \
-    SetMainThread(); \
-    STACK_TRACE_ENTRY()
 #define STACK_TRACE_ENTRY() \
     static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
     auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
 #else
-#define STACK_TRACE_FIRST_ENTRY() SetMainThread()
 #define STACK_TRACE_ENTRY()
 #endif
 #define NO_STACK_TRACE_ENTRY()
 #endif
 
-extern void SetMainThread() noexcept;
-extern auto IsMainThread() noexcept -> bool;
-extern void PushStackTrace(const SourceLocationData& loc) noexcept;
-extern void PopStackTrace() noexcept;
+extern FORCE_INLINE void PushStackTrace(const SourceLocationData& loc) noexcept;
+extern FORCE_INLINE void PopStackTrace() noexcept;
 extern auto GetStackTrace() -> string;
 
 struct StackTraceScopeEntry

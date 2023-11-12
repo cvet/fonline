@@ -60,8 +60,6 @@
 
 time_point steady_clock_since_program_start::start = std::chrono::steady_clock::now();
 
-static std::thread::id MainThreadId;
-
 static bool ExceptionMessageBox = false;
 
 hstring::entry hstring::_zeroEntry;
@@ -80,21 +78,7 @@ struct StackTraceData
     array<const SourceLocationData*, STACK_TRACE_MAX_SIZE> CallTree = {};
 };
 
-static StackTraceData StackTrace;
-
-void SetMainThread() noexcept
-{
-    NO_STACK_TRACE_ENTRY();
-
-    MainThreadId = std::this_thread::get_id();
-}
-
-auto IsMainThread() noexcept -> bool
-{
-    NO_STACK_TRACE_ENTRY();
-
-    return MainThreadId == std::this_thread::get_id();
-}
+static thread_local StackTraceData StackTrace;
 
 void CreateGlobalData()
 {
@@ -215,15 +199,13 @@ void PushStackTrace(const SourceLocationData& loc) noexcept
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    if (!IsMainThread()) {
-        return;
+    auto& st = StackTrace;
+
+    if (st.CallsCount < STACK_TRACE_MAX_SIZE) {
+        st.CallTree[st.CallsCount] = &loc;
     }
 
-    if (StackTrace.CallsCount < STACK_TRACE_MAX_SIZE) {
-        StackTrace.CallTree[StackTrace.CallsCount] = &loc;
-    }
-
-    StackTrace.CallsCount++;
+    st.CallsCount++;
 #endif
 }
 
@@ -232,12 +214,10 @@ void PopStackTrace() noexcept
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    if (!IsMainThread()) {
-        return;
-    }
+    auto& st = StackTrace;
 
-    if (StackTrace.CallsCount > 0) {
-        StackTrace.CallsCount--;
+    if (st.CallsCount > 0) {
+        st.CallsCount--;
     }
 #endif
 }
@@ -247,23 +227,21 @@ auto GetStackTrace() -> string
     NO_STACK_TRACE_ENTRY();
 
 #if !FO_NO_MANUAL_STACK_TRACE
-    if (!IsMainThread()) {
-        return "Stack trace disabled for non main thread";
-    }
-
     std::stringstream ss;
 
     ss << "Stack trace (most recent call first):\n";
 
-    for (int i = std::min(static_cast<int>(StackTrace.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
-        const auto& entry = StackTrace.CallTree[i];
+    const auto& st = StackTrace;
+
+    for (int i = std::min(static_cast<int>(st.CallsCount), static_cast<int>(STACK_TRACE_MAX_SIZE)) - 1; i >= 0; i--) {
+        const auto& entry = st.CallTree[i];
 
         ss << "- " << entry->function << " (" << _str(entry->file).extractFileName().str() << " line " << entry->line << ")\n";
     }
 
-    if (StackTrace.CallsCount > STACK_TRACE_MAX_SIZE) {
+    if (st.CallsCount > STACK_TRACE_MAX_SIZE) {
         ss << "- ..."
-           << "and " << (StackTrace.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
+           << "and " << (st.CallsCount - STACK_TRACE_MAX_SIZE) << " more entries\n";
     }
 
     auto st_str = ss.str();
