@@ -432,7 +432,12 @@ void FrameBalancer::EndLoop()
     }
 
     if (_sleep >= 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
+        if (_sleep == 0) {
+            std::this_thread::yield();
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
+        }
     }
     else if (_fixedFps > 0) {
         const auto elapsed_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(Timer::CurTime() - _loopStart).count()) / 1000000.0;
