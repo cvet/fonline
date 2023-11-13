@@ -543,7 +543,7 @@ void WorkThread::Wait()
 
     std::unique_lock locker(_dataLocker);
 
-    while (!_jobs.empty()) {
+    while (!_jobs.empty() || _jobActive) {
         _doneSignal.wait(locker);
     }
 }
@@ -563,6 +563,8 @@ void WorkThread::Routine() noexcept
             {
                 std::unique_lock locker(_dataLocker);
 
+                _jobActive = false;
+
                 if (_clearJobs) {
                     _jobs.clear();
                     _clearJobs = false;
@@ -575,6 +577,10 @@ void WorkThread::Routine() noexcept
                 }
 
                 if (_jobs.empty()) {
+                    if (_clearJobs) {
+                        _clearJobs = false;
+                    }
+
                     if (_finish) {
                         break;
                     }
@@ -589,6 +595,7 @@ void WorkThread::Routine() noexcept
                         if (cur_time >= it->first) {
                             job = std::move(it->second);
                             _jobs.erase(it);
+                            _jobActive = true;
                             break;
                         }
                     }

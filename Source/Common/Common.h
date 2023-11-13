@@ -1984,6 +1984,7 @@ private:
     ExceptionHandler _exceptionHandler {};
     std::thread _thread {};
     vector<pair<time_point, Job>> _jobs {};
+    bool _jobActive {};
     std::mutex _dataLocker {};
     std::condition_variable _workSignal {};
     std::condition_variable _doneSignal {};

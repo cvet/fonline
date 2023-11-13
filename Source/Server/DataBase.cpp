@@ -964,7 +964,7 @@ protected:
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
-        auto actual_doc = Get(collection_name, id);
+        auto actual_doc = GetRecord(collection_name, id);
         if (actual_doc.empty()) {
             throw DataBaseException("DbUnQLite Document not found", collection_name, id);
         }
