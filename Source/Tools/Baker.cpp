@@ -1045,7 +1045,7 @@ void Baker::BakeAll()
         errors++;
     }
 
-    WriteLog("Time {:.3f} seconds", time_duration_to_ms<double>(Timer::CurTime() - start_time) / 1000.0);
+    WriteLog("Time {}", Timer::CurTime() - start_time);
 
     // Finalize
     if (errors != 0) {
