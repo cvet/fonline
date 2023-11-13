@@ -66,7 +66,6 @@ public:
     [[nodiscard]] virtual auto GetAllIds(string_view collection_name) -> vector<ident_t> = 0;
     [[nodiscard]] auto Get(string_view collection_name, ident_t id) -> AnyData::Document;
 
-    void StartChanges();
     void Insert(string_view collection_name, ident_t id, const AnyData::Document& doc);
     void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(string_view collection_name, ident_t id);
@@ -81,7 +80,6 @@ protected:
     virtual void CommitRecords() = 0;
 
 private:
-    bool _changesStarted {};
     DataBase::Collections _recordChanges {};
     DataBase::RecordsState _newRecords {};
     DataBase::RecordsState _deletedRecords {};
@@ -125,15 +123,6 @@ auto DataBase::Valid(string_view collection_name, ident_t id) const -> bool
     STACK_TRACE_ENTRY();
 
     return !_impl->Get(collection_name, id).empty();
-}
-
-void DataBase::StartChanges()
-{
-    STACK_TRACE_ENTRY();
-
-    NON_CONST_METHOD_HINT();
-
-    _impl->StartChanges();
 }
 
 void DataBase::Insert(string_view collection_name, ident_t id, const AnyData::Document& doc)
@@ -525,25 +514,12 @@ auto DataBaseImpl::Get(string_view collection_name, ident_t id) -> AnyData::Docu
     return doc;
 }
 
-void DataBaseImpl::StartChanges()
-{
-    STACK_TRACE_ENTRY();
-
-    RUNTIME_ASSERT(!_changesStarted);
-    RUNTIME_ASSERT(_recordChanges.empty());
-    RUNTIME_ASSERT(_newRecords.empty());
-    RUNTIME_ASSERT(_deletedRecords.empty());
-
-    _changesStarted = true;
-}
-
 void DataBaseImpl::Insert(string_view collection_name, ident_t id, const AnyData::Document& doc)
 {
     STACK_TRACE_ENTRY();
 
     const auto collection_name_str = string(collection_name);
 
-    RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_newRecords[collection_name_str].count(id));
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
@@ -559,7 +535,6 @@ void DataBaseImpl::Update(string_view collection_name, ident_t id, string_view k
 
     const auto collection_name_str = string(collection_name);
 
-    RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
     _recordChanges[collection_name_str][id][string(key)] = value;
@@ -571,7 +546,6 @@ void DataBaseImpl::Delete(string_view collection_name, ident_t id)
 
     const auto collection_name_str = string(collection_name);
 
-    RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
     if (_newRecords[collection_name_str].count(id) != 0) {
@@ -588,15 +562,13 @@ void DataBaseImpl::CommitChanges()
 {
     STACK_TRACE_ENTRY();
 
-    RUNTIME_ASSERT(_changesStarted);
+    _commitThread.AddJob([this, record_changes = std::move(_recordChanges), new_records = std::move(_newRecords), deleted_records = std::move(_deletedRecords)] {
+        STACK_TRACE_ENTRY_NAMED("DataBaseImpl::CommitJob");
 
-    _changesStarted = false;
-
-    _commitThread.AddJob([this, recordChanges = std::move(_recordChanges), newRecords = std::move(_newRecords), deletedRecords = std::move(_deletedRecords)] {
-        for (auto&& [key, value] : recordChanges) {
+        for (auto&& [key, value] : record_changes) {
             for (auto&& [key2, value2] : value) {
-                auto it = newRecords.find(key);
-                if (it != newRecords.end() && it->second.count(key2) != 0) {
+                const auto it = new_records.find(key);
+                if (it != new_records.end() && it->second.count(key2) != 0) {
                     InsertRecord(key, key2, value2);
                 }
                 else {
@@ -605,13 +577,15 @@ void DataBaseImpl::CommitChanges()
             }
         }
 
-        for (auto&& [key, value] : deletedRecords) {
+        for (auto&& [key, value] : deleted_records) {
             for (const auto& id : value) {
                 DeleteRecord(key, id);
             }
         }
 
         CommitRecords();
+
+        return std::nullopt;
     });
 
     _recordChanges.clear();

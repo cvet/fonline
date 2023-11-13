@@ -453,8 +453,12 @@ using tracy::SourceLocationData;
 #define STACK_TRACE_ENTRY() \
     ZoneScoped; \
     auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
+#define STACK_TRACE_ENTRY_NAMED(name) \
+    ZoneScopedN(name); \
+    auto ___fo_stack_entry = StackTraceScopeEntry(TracyConcat(__tracy_source_location, __LINE__))
 #else
 #define STACK_TRACE_ENTRY() ZoneScoped
+#define STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)
 #endif
 #define NO_STACK_TRACE_ENTRY()
 
@@ -471,8 +475,12 @@ struct SourceLocationData // Same as tracy::SourceLocationData
 #define STACK_TRACE_ENTRY() \
     static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, __FUNCTION__, __FILE__, (uint32_t)__LINE__}; \
     auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
+#define STACK_TRACE_ENTRY_NAMED(name) \
+    static constexpr SourceLocationData CONCAT(___fo_source_location, __LINE__) {nullptr, name, __FILE__, (uint32_t)__LINE__}; \
+    auto ___fo_stack_entry = StackTraceScopeEntry(CONCAT(___fo_source_location, __LINE__))
 #else
 #define STACK_TRACE_ENTRY()
+#define STACK_TRACE_ENTRY_NAMED(name)
 #endif
 #define NO_STACK_TRACE_ENTRY()
 #endif
@@ -892,50 +900,33 @@ template<typename T>
 class [[nodiscard]] ScopeCallback
 {
 public:
-    static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
-    explicit ScopeCallback(T safe_callback) :
-        _safeCallback {std::move(safe_callback)}
+    explicit ScopeCallback(T callback) :
+        _callback {std::move(callback)}
     {
     }
-    ScopeCallback(ScopeCallback&& other) noexcept = default;
+
     ScopeCallback(const ScopeCallback& other) = delete;
+    ScopeCallback(ScopeCallback&& other) noexcept = default;
     auto operator=(const ScopeCallback& other) = delete;
-    auto operator=(ScopeCallback&& other) = delete;
-    ~ScopeCallback() noexcept { _safeCallback(); }
+    auto operator=(ScopeCallback&& other) noexcept = delete;
 
-private:
-    T _safeCallback;
-};
-
-template<typename T, typename T2>
-class [[nodiscard]] ScopeCallbackExt
-{
-public:
-    static_assert(std::is_invocable_v<T>, "T must be invocable");
-    static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
-    static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
-    ScopeCallbackExt(T unsafe_callback, T2 safe_callback) :
-        _unsafeCallback {std::move(unsafe_callback)},
-        _safeCallback {std::move(safe_callback)}
+    ~ScopeCallback()
     {
-    }
-    ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
-    ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
-    auto operator=(const ScopeCallbackExt& other) = delete;
-    auto operator=(ScopeCallbackExt&& other) = delete;
-    ~ScopeCallbackExt() noexcept(false)
-    {
-        if (std::uncaught_exceptions() == 0) {
-            _unsafeCallback(); // May throw
+        if constexpr (std::is_nothrow_invocable_v<T>) {
+            _callback();
         }
         else {
-            _safeCallback();
+            try {
+                _callback();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
         }
     }
 
 private:
-    T _unsafeCallback;
-    T2 _safeCallback;
+    T _callback;
 };
 
 // Generic helpers
@@ -1940,28 +1931,36 @@ private:
 class WorkThread
 {
 public:
-    using Job = std::function<void()>;
+    using Job = std::function<optional<time_duration>()>;
+    using ExceptionHandler = std::function<bool(const std::exception&)>; // Return true to clear jobs
 
-    explicit WorkThread(string_view name, bool sync_mode = false);
+    explicit WorkThread(string_view name);
     WorkThread(const WorkThread&) = delete;
     WorkThread(WorkThread&&) noexcept = delete;
     auto operator=(const WorkThread&) -> WorkThread& = delete;
     auto operator=(WorkThread&&) noexcept -> WorkThread& = delete;
-    virtual ~WorkThread();
+    ~WorkThread();
 
+    [[nodiscard]] auto GetThreadId() const -> std::thread::id { return _thread.get_id(); }
+
+    void SetExceptionHandler(ExceptionHandler handler);
     void AddJob(Job job);
+    void AddJob(time_duration delay, Job job);
+    void Clear();
     void Wait();
 
 private:
+    void AddJobInternal(time_duration delay, Job job, bool no_notify);
     void Routine() noexcept;
 
     string _name {};
-    bool _syncMode {};
+    ExceptionHandler _exceptionHandler {};
     std::thread _thread {};
-    vector<Job> _jobs {};
+    vector<pair<time_point, Job>> _jobs {};
     std::mutex _dataLocker {};
     std::condition_variable _workSignal {};
     std::condition_variable _doneSignal {};
+    bool _clearJobs {};
     bool _finish {};
 };
 

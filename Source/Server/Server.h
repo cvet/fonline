@@ -76,12 +76,12 @@ public:
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
+    [[nodiscard]] auto IsStartingError() const -> bool { return _startingError; }
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
 
-    void Start();
-    void Shutdown();
-    void MainLoop();
+    void Lock();
+    void Unlock();
     void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
@@ -182,6 +182,7 @@ public:
 private:
     struct ServerStats
     {
+        time_point FrameBegin {};
         time_point ServerStartTime {};
         time_duration Uptime {};
         int64 BytesSend {};
@@ -191,6 +192,8 @@ private:
         float CompressRatio {};
         size_t MaxOnline {};
         size_t CurOnline {};
+        time_point FpsBegin {};
+        size_t FpsCounter {};
         size_t Fps {};
         size_t LoopsCount {};
         time_duration LastLoopTime {};
@@ -206,6 +209,8 @@ private:
         string FirstStr {};
         uint64 Parameter {};
     };
+
+    void SyncPoint();
 
     void OnNewConnection(NetConnection* net_connection);
 
@@ -261,11 +266,19 @@ private:
     void LogToClients(string_view str);
     void DispatchLogToClients();
 
+    WorkThread _starter {"ServerStarter"};
+    WorkThread _mainWorker {"ServerWorker"};
+
+    std::mutex _syncLocker {};
+    std::condition_variable _syncWaitSignal {};
+    std::condition_variable _syncRunSignal {};
+    int _syncRequest {};
+    bool _syncPointReady {};
+
     std::atomic_bool _started {};
+    std::atomic_bool _startingError {};
     ServerStats _stats {};
     map<uint, time_point> _regIp {};
-    time_point _fpsTime {};
-    size_t _fpsCounter {};
     vector<vector<uint8>> _updateFilesData {};
     vector<uint8> _updateFilesDesc {};
     vector<TextListener> _textListeners {};

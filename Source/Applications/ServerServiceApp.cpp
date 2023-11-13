@@ -44,7 +44,7 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 
 struct ServerServiceAppData
 {
-    FOServer* Server {};
+    unique_ptr<FOServer> Server {};
     std::thread ServerThread {};
     uint LastState {};
     uint CheckPoint {};
@@ -65,35 +65,13 @@ static void ServerEntry()
     STACK_TRACE_ENTRY();
 
     try {
-        try {
-            Data->Server = new FOServer(App->Settings);
-            Data->Server->Start();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
+        Data->Server = std::make_unique<FOServer>(App->Settings);
 
         while (!App->Settings.Quit) {
-            try {
-                Data->Server->MainLoop();
-            }
-            catch (const GenericException& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
-            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {100});
         }
 
-        try {
-            auto* server = Data->Server;
-            Data->Server = nullptr;
-            server->Shutdown();
-            delete server;
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
+        Data->Server.reset();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
@@ -231,8 +209,9 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         SetFOServiceStatus(SERVICE_START_PENDING);
 
         Data->ServerThread = std::thread(ServerEntry);
-        while (Data->Server == nullptr || !Data->Server->IsStarted()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+
+        while (!Data->Server && !Data->Server->IsStarted() && !Data->Server->IsStartingError()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
         if (Data->Server->IsStarted()) {

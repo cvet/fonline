@@ -450,56 +450,92 @@ void FrameBalancer::EndLoop()
     }
 }
 
-WorkThread::WorkThread(string_view name, bool sync_mode)
+WorkThread::WorkThread(string_view name)
 {
     STACK_TRACE_ENTRY();
 
     _name = name;
-
-    if (sync_mode) {
-        _syncMode = true;
-    }
-    else {
-        _thread = std::thread(&WorkThread::Routine, this);
-    }
+    _thread = std::thread(&WorkThread::Routine, this);
 }
 
 WorkThread::~WorkThread()
 {
     STACK_TRACE_ENTRY();
 
-    if (!_syncMode) {
-        {
-            std::unique_lock locker(_dataLocker);
+    {
+        std::unique_lock locker(_dataLocker);
 
-            _finish = true;
-        }
-
-        _workSignal.notify_one();
-        _thread.join();
+        _finish = true;
     }
+
+    _workSignal.notify_one();
+    _thread.join();
+}
+
+void WorkThread::SetExceptionHandler(ExceptionHandler handler)
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    _exceptionHandler = std::move(handler);
 }
 
 void WorkThread::AddJob(Job job)
 {
     STACK_TRACE_ENTRY();
 
-    if (!_syncMode) {
-        {
-            std::unique_lock locker(_dataLocker);
+    AddJobInternal(std::chrono::milliseconds {0}, std::move(job), false);
+}
 
-            _jobs.emplace_back(std::move(job));
+void WorkThread::AddJob(time_duration delay, Job job)
+{
+    STACK_TRACE_ENTRY();
+
+    AddJobInternal(delay, std::move(job), false);
+}
+
+void WorkThread::AddJobInternal(time_duration delay, Job job, bool no_notify)
+{
+    STACK_TRACE_ENTRY();
+
+    {
+        std::unique_lock locker(_dataLocker);
+
+        const auto fire_time = Timer::CurTime() + delay;
+
+        if (_jobs.empty() || fire_time >= _jobs.back().first) {
+            _jobs.emplace_back(fire_time, std::move(job));
         }
+        else {
+            for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+                if (fire_time < it->first) {
+                    _jobs.emplace(it, fire_time, std::move(job));
+                    break;
+                }
+            }
+        }
+    }
 
+    if (!no_notify) {
         _workSignal.notify_one();
     }
-    else {
-        try {
-            job();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-        }
+}
+
+void WorkThread::Clear()
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    _clearJobs = true;
+
+    locker.unlock();
+    _workSignal.notify_one();
+    locker.lock();
+
+    while (_clearJobs) {
+        _doneSignal.wait(locker);
     }
 }
 
@@ -507,12 +543,10 @@ void WorkThread::Wait()
 {
     STACK_TRACE_ENTRY();
 
-    if (!_syncMode) {
-        std::unique_lock locker(_dataLocker);
+    std::unique_lock locker(_dataLocker);
 
-        while (!_jobs.empty()) {
-            _doneSignal.wait(locker);
-        }
+    while (!_jobs.empty()) {
+        _doneSignal.wait(locker);
     }
 }
 
@@ -531,9 +565,18 @@ void WorkThread::Routine() noexcept
             {
                 std::unique_lock locker(_dataLocker);
 
-                if (_jobs.empty()) {
-                    _doneSignal.notify_all();
+                if (_clearJobs) {
+                    _jobs.clear();
+                    _clearJobs = false;
+                }
 
+                if (_jobs.empty()) {
+                    locker.unlock();
+                    _doneSignal.notify_all();
+                    locker.lock();
+                }
+
+                if (_jobs.empty()) {
                     if (_finish) {
                         break;
                     }
@@ -541,28 +584,63 @@ void WorkThread::Routine() noexcept
                     _workSignal.wait(locker);
                 }
 
-                // No else!
                 if (!_jobs.empty()) {
-                    job = std::move(_jobs.front());
-                    _jobs.erase(_jobs.begin());
+                    const auto cur_time = Timer::CurTime();
+
+                    for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+                        if (cur_time >= it->first) {
+                            job = std::move(it->second);
+                            _jobs.erase(it);
+                            break;
+                        }
+                    }
                 }
             }
 
             if (job) {
                 try {
-                    job();
+                    const auto next_call_duration = job();
+
+                    // Schedule repeat
+                    if (next_call_duration.has_value()) {
+                        AddJobInternal(next_call_duration.value(), std::move(job), true);
+                    }
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
+
+                    // Exception handling
+                    {
+                        std::unique_lock locker(_dataLocker);
+
+                        if (_exceptionHandler) {
+                            try {
+                                if (_exceptionHandler(ex)) {
+                                    _jobs.clear();
+                                }
+                            }
+                            catch (const std::exception& ex2) {
+                                ReportExceptionAndContinue(ex2);
+                            }
+                        }
+                    }
+
+                    // Todo: schedule job repeat with last duration?
+                    try {
+                        // AddJobInternal(next_call_duration.value(), std::move(job), true);
+                    }
+                    catch (const std::exception& ex2) {
+                        ReportExceptionAndContinue(ex2);
+                    }
                 }
             }
         }
+
+        std::notify_all_at_thread_exit(_doneSignal, std::unique_lock {_dataLocker});
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
-
-    std::notify_all_at_thread_exit(_doneSignal, std::unique_lock {_dataLocker});
 }
 
 // Dummy symbols for web build to avoid linker errors

@@ -62,7 +62,6 @@ public:
     [[nodiscard]] auto Get(string_view collection_name, ident_t id) const -> AnyData::Document;
     [[nodiscard]] auto Valid(string_view collection_name, ident_t id) const -> bool;
 
-    void StartChanges();
     void Insert(string_view collection_name, ident_t id, const AnyData::Document& doc);
     void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
     void Delete(string_view collection_name, ident_t id);

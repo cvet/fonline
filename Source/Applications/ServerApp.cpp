@@ -47,10 +47,10 @@
 
 struct ServerAppData
 {
-    FOServer* Server {};
-    vector<FOClient*> Clients {};
+    unique_ptr<FOServer> Server {};
+    vector<unique_ptr<FOClient>> Clients {};
+    bool AutoStartTriggered {};
     bool HideControls {};
-    size_t ServerStartCycles {100};
 };
 GLOBAL_DATA(ServerAppData, Data);
 
@@ -73,26 +73,11 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         });
 
         const auto start_server = [] {
-            try {
-                Data->Server = new FOServer(App->Settings);
-                Data->Server->Start();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-                Data->Server = nullptr;
-            }
+            // Server actually started in separate thread
+            Data->Server = std::make_unique<FOServer>(App->Settings);
         };
 
-        const auto stop_server = [] {
-            try {
-                Data->Server->Shutdown();
-                Data->Server->Release();
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
-            Data->Server = nullptr;
-        };
+        const auto stop_server = [] { Data->Server.reset(); };
 
         if (!App->Settings.NoStart) {
             WriteLog("Auto start server");
@@ -103,7 +88,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             App->BeginFrame();
 
             // Autostart
-            if (!App->Settings.NoStart && Data->ServerStartCycles > 0 && --Data->ServerStartCycles == 0) {
+            if (!App->Settings.NoStart && !Data->Server && !Data->AutoStartTriggered) {
+                Data->AutoStartTriggered = true;
                 start_server();
             }
 
@@ -129,18 +115,19 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         ImGui::PopStyleColor();
                     };
 
-                    if (ImGui::Button("Start server", control_btn_size)) {
+                    if (!Data->Server && ImGui::Button("Start server", control_btn_size)) {
                         start_server();
                     }
-                    if (ImGui::Button("Stop server", control_btn_size)) {
+
+                    if (Data->Server && ImGui::Button("Stop server", control_btn_size)) {
                         stop_server();
                     }
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
                         ShowExceptionMessageBox(true);
                         try {
-                            auto* client = new FOClient(App->Settings, &App->MainWindow, false);
-                            Data->Clients.emplace_back(client);
+                            auto&& client = std::make_unique<FOClient>(App->Settings, &App->MainWindow, false);
+                            Data->Clients.emplace_back(std::move(client));
                             Data->HideControls = true;
                         }
                         catch (const std::exception& ex) {
@@ -152,6 +139,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     if (ImGui::Button("Create dump", control_btn_size)) {
                         CreateDumpMessage("ManualDump", "Manual");
                     }
+
                     if (ImGui::Button("Save log", control_btn_size)) {
                         string log_lines;
                         for (auto&& lines : log_buffer) {
@@ -178,14 +166,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
 
             // Main loop
-            if (Data->Server != nullptr) {
-                try {
-                    Data->Server->MainLoop();
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-
+            if (Data->Server) {
                 if (!Data->HideControls) {
                     try {
                         ImGui::SetNextWindowPos(ImVec2(10, 0), ImGuiCond_FirstUseEver);
@@ -223,7 +204,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 App->Input.ClearEvents();
             }
 
-            for (auto* client : Data->Clients) {
+            for (auto&& client : Data->Clients) {
                 ShowExceptionMessageBox(true);
                 try {
                     App->Render.ClearRenderTarget(COLOR_RGB(0, 0, 0));
@@ -239,13 +220,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Process quit
             if (App->Settings.Quit) {
-                for (auto* client : Data->Clients) {
+                for (auto&& client : Data->Clients) {
                     client->Shutdown();
-                    client->Release();
                 }
                 Data->Clients.clear();
 
-                if (Data->Server != nullptr) {
+                if (Data->Server) {
                     stop_server();
                 }
 
