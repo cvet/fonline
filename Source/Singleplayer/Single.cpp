@@ -52,6 +52,5 @@ void FOSingle::SingleMainLoop()
 {
     STACK_TRACE_ENTRY();
 
-    FOServer::MainLoop();
     FOClient::MainLoop();
 }
