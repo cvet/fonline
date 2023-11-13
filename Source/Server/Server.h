@@ -182,24 +182,27 @@ public:
 private:
     struct ServerStats
     {
-        time_point FrameBegin {};
         time_point ServerStartTime {};
         time_duration Uptime {};
+
         int64 BytesSend {};
         int64 BytesRecv {};
         int64 DataReal {1};
         int64 DataCompressed {1};
         float CompressRatio {};
+
         size_t MaxOnline {};
         size_t CurOnline {};
-        time_point FpsBegin {};
-        size_t FpsCounter {};
-        size_t Fps {};
+
+        time_point LoopBegin {};
         size_t LoopsCount {};
         time_duration LastLoopTime {};
-        time_duration WholeLoopsTime {};
         time_duration LoopMinTime {};
         time_duration LoopMaxTime {};
+
+        time_point LoopCounterBegin {};
+        size_t LoopCounter {};
+        size_t LoopsPerSecond {};
     };
 
     struct TextListener

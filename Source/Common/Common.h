@@ -367,7 +367,34 @@ struct fmt::formatter<time_duration>
     template<typename FormatContext>
     auto format(const time_duration& t, FormatContext& ctx)
     {
-        return format_to(ctx.out(), "{}", time_duration_to_ms<size_t>(t));
+        if (t < std::chrono::milliseconds {1}) {
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
+            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t).count() % 1000;
+            return format_to(ctx.out(), "{}.{:03} us", us, ns);
+        }
+        else if (t < std::chrono::seconds {1}) {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count() % 1000;
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(t).count() % 1000;
+            return format_to(ctx.out(), "{}.{:03} ms", ms, us);
+        }
+        else if (t < std::chrono::minutes {1}) {
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count();
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count() % 1000;
+            return format_to(ctx.out(), "{}.{:03} sec", sec, ms);
+        }
+        else if (t < std::chrono::hours {24}) {
+            const auto hour = std::chrono::duration_cast<std::chrono::hours>(t).count();
+            const auto min = std::chrono::duration_cast<std::chrono::minutes>(t).count() % 60;
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count() % 60;
+            return format_to(ctx.out(), "{:02}:{:02}:{:02} sec", hour, min, sec);
+        }
+        else {
+            const auto day = std::chrono::duration_cast<std::chrono::hours>(t).count() / 24;
+            const auto hour = std::chrono::duration_cast<std::chrono::hours>(t).count() % 24;
+            const auto min = std::chrono::duration_cast<std::chrono::minutes>(t).count() % 60;
+            const auto sec = std::chrono::duration_cast<std::chrono::seconds>(t).count() % 60;
+            return format_to(ctx.out(), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
+        }
     }
 };
 

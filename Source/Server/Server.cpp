@@ -608,31 +608,30 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Loop stats
-        _stats.FpsBegin = Timer::CurTime();
-        _stats.FrameBegin = Timer::CurTime();
+        _stats.LoopCounterBegin = Timer::CurTime();
+        _stats.LoopBegin = Timer::CurTime();
         _stats.ServerStartTime = Timer::CurTime();
 
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("FOServer::LoopStatsJob");
 
             const auto cur_time = Timer::CurTime();
-            const auto loop_duration = cur_time - _stats.FrameBegin;
+            const auto loop_duration = cur_time - _stats.LoopBegin;
 
-            _stats.FrameBegin = cur_time;
+            _stats.LoopBegin = cur_time;
 
-            // Calculate fps
-            if (cur_time - _stats.FpsBegin >= std::chrono::milliseconds {1000}) {
-                _stats.Fps = _stats.FpsCounter;
-                _stats.FpsCounter = 0;
-                _stats.FpsBegin = cur_time;
+            // Calculate loops per second
+            if (cur_time - _stats.LoopCounterBegin >= std::chrono::milliseconds {1000}) {
+                _stats.LoopsPerSecond = _stats.LoopCounter;
+                _stats.LoopCounter = 0;
+                _stats.LoopCounterBegin = cur_time;
             }
             else {
-                _stats.FpsCounter++;
+                _stats.LoopCounter++;
             }
 
             // Fill statistics
-            _stats.WholeLoopsTime = _stats.WholeLoopsTime + loop_duration;
-            _stats.LoopsCount += 1;
+            _stats.LoopsCount++;
             _stats.LoopMaxTime = std::max(loop_duration, _stats.LoopMaxTime);
             _stats.LoopMinTime = std::min(loop_duration, _stats.LoopMinTime);
             _stats.LastLoopTime = loop_duration;
@@ -825,20 +824,18 @@ void FOServer::DrawGui(string_view server_name)
             if (ImGui::TreeNode("Info")) {
                 buf = "";
                 const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
-                buf += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
+                buf += _str("Uptime: {}\n", _stats.Uptime);
+                buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
                 buf += _str("Connections: {}\n", _stats.CurOnline);
                 buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
                 buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
                 buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
                 buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
                 buf += _str("Loops count: {}\n", _stats.LoopsCount);
-                buf += _str("Loops per second: {}\n", _stats.Fps);
+                buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
                 buf += _str("Last loop time: {}\n", _stats.LastLoopTime);
-                buf += _str("Average loop time: {}\n", _stats.LoopsCount != 0 ? time_duration_to_ms<size_t>(_stats.WholeLoopsTime) / _stats.LoopsCount : 0);
                 buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
                 buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
-                const auto seconds = time_duration_to_ms<uint64>(_stats.Uptime) / 1000;
-                buf += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
                 buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
                 buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
                 buf += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
