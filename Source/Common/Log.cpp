@@ -37,6 +37,7 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if FO_ANDROID
