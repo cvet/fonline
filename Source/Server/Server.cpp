@@ -824,6 +824,7 @@ void FOServer::DrawGui(string_view server_name)
             if (ImGui::TreeNode("Info")) {
                 buf = "";
                 const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
+                buf += _str("Cur time: {}\n", Timer::CurTime());
                 buf += _str("Uptime: {}\n", _stats.Uptime);
                 buf += _str("Game time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "x" /*GetTimeMultiplier()*/);
                 buf += _str("Connections: {}\n", _stats.CurOnline);

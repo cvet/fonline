@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if FO_ANDROID
@@ -123,10 +122,11 @@ void WriteLogMessage(LogType type, string_view message) noexcept
 
         // Make message
         string result;
+
         if (!Data->LogDisableTimestamp) {
-            const auto now = std::time(nullptr);
-            const auto* t = std::localtime(&now);
-            result += _str("[{:02}:{:02}:{:02}] ", t->tm_hour, t->tm_min, t->tm_sec);
+            const auto now = time_point::clock::now();
+            const auto now_desc = time_point_desc(now);
+            result += _str("[{:02}:{:02}:{:02}] ", now_desc.tm_hour, now_desc.tm_min, now_desc.tm_sec);
         }
 
         result.reserve(result.size() + message.length() + 1u);

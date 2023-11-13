@@ -130,6 +130,7 @@
 
 // String formatting lib
 DISABLE_WARNINGS_PUSH()
+#include "fmt/chrono.h"
 #include "fmt/format.h"
 DISABLE_WARNINGS_POP()
 
@@ -332,25 +333,23 @@ class any_t : public string
 {
 };
 
-// Game clock (since program start)
-struct steady_clock_since_program_start
+// Game clock
+using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+using time_duration = time_point::clock::duration;
+static_assert(sizeof(time_point::clock::rep) >= 8);
+static_assert(std::ratio_less_equal_v<time_point::clock::period, std::micro>);
+
+static auto time_point_desc(const time_point& t) -> std::tm
 {
-    using rep = long long;
-    using period = std::nano;
-    using duration = std::chrono::nanoseconds;
-    using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-    static constexpr bool is_steady = true;
-
-    static time_point start;
-
-    [[nodiscard]] static time_point now() noexcept { return time_point {std::chrono::steady_clock::now() - start}; }
-};
-
-using time_point = steady_clock_since_program_start::time_point;
-using time_duration = steady_clock_since_program_start::duration;
+    const auto system_clock_now = std::chrono::system_clock::now();
+    const auto system_clock_time = system_clock_now + std::chrono::duration_cast<std::chrono::system_clock::duration>(t - time_point::clock::now());
+    const auto unix_time = std::chrono::system_clock::to_time_t(system_clock_time);
+    const auto tm_struct = fmt::localtime(unix_time);
+    return tm_struct;
+}
 
 template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-inline static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
+static constexpr auto time_duration_to_ms(const time_duration& duration) -> T
 {
     return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 }
@@ -410,7 +409,8 @@ struct fmt::formatter<time_point>
     template<typename FormatContext>
     auto format(const time_point& t, FormatContext& ctx)
     {
-        return format_to(ctx.out(), "{}", time_duration_to_ms<size_t>(t.time_since_epoch()));
+        const auto td = time_point_desc(t);
+        return format_to(ctx.out(), "{}-{:02}-{:02} {:02}:{:02}:{:02}", 1900 + td.tm_year, td.tm_mon + 1, td.tm_mday, td.tm_hour, td.tm_min, td.tm_sec);
     }
 };
 
