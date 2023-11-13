@@ -562,6 +562,10 @@ void DataBaseImpl::CommitChanges()
 {
     STACK_TRACE_ENTRY();
 
+    if (_recordChanges.empty() && _newRecords.empty() && _deletedRecords.empty()) {
+        return;
+    }
+
     _commitThread.AddJob([this, record_changes = std::move(_recordChanges), new_records = std::move(_newRecords), deleted_records = std::move(_deletedRecords)] {
         STACK_TRACE_ENTRY_NAMED("DataBaseImpl::CommitJob");
 
