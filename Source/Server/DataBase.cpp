@@ -523,9 +523,11 @@ void DataBaseImpl::Insert(string_view collection_name, ident_t id, const AnyData
     RUNTIME_ASSERT(!_newRecords[collection_name_str].count(id));
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
-    _newRecords[collection_name_str].insert(id);
+    _newRecords[collection_name_str].emplace(id);
+
+    auto& record_changes = _recordChanges[collection_name_str][id];
     for (auto&& [key, value] : doc) {
-        _recordChanges[collection_name_str][id][key] = value;
+        record_changes[key] = value;
     }
 }
 
@@ -552,7 +554,7 @@ void DataBaseImpl::Delete(string_view collection_name, ident_t id)
         _newRecords[collection_name_str].erase(id);
     }
     else {
-        _deletedRecords[collection_name_str].insert(id);
+        _deletedRecords[collection_name_str].emplace(id);
     }
 
     _recordChanges[collection_name_str].erase(id);
@@ -562,7 +564,16 @@ void DataBaseImpl::CommitChanges()
 {
     STACK_TRACE_ENTRY();
 
-    if (_recordChanges.empty() && _newRecords.empty() && _deletedRecords.empty()) {
+    const auto is_changes_empty = [](const auto& collection) {
+        for (auto&& [key, value] : collection) {
+            if (!value.empty()) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    if (is_changes_empty(_recordChanges) && is_changes_empty(_newRecords) && is_changes_empty(_deletedRecords)) {
         return;
     }
 
