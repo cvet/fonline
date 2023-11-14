@@ -52,11 +52,11 @@
     }
 
     const auto player_id = server->MakePlayerId(name);
-    if (!server->DbStorage.Get("Players", player_id).empty()) {
+    if (!server->DbStorage.Get(server->PlayersCollectionName, player_id).empty()) {
         throw ScriptException("Player already registered", name);
     }
 
-    server->DbStorage.Insert("Players", player_id, {{"_Name", string(name)}, {"Password", string(password)}});
+    server->DbStorage.Insert(server->PlayersCollectionName, player_id, {{"_Name", string(name)}, {"Password", string(password)}});
 
     return player_id;
 }
@@ -847,7 +847,7 @@
 
     // Check existence
     const auto id = server->MakePlayerId(name);
-    const auto doc = server->DbStorage.Get("Players", id);
+    const auto doc = server->DbStorage.Get(server->PlayersCollectionName, id);
     if (doc.empty()) {
         return nullptr;
     }
@@ -1282,7 +1282,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ident_t> Server_Game_GetRegisteredPlayerIds(FOServer* server)
 {
-    return server->DbStorage.GetAllIds("Players");
+    return server->DbStorage.GetAllIds(server->PlayersCollectionName);
 }
 
 ///# ...

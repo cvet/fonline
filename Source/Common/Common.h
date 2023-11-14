@@ -1363,7 +1363,7 @@ struct hstring
     }
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string_view() const { return _entry->Str; }
-    explicit operator bool() const { return !(_entry->Hash == 0u); }
+    explicit operator bool() const { return _entry->Hash != 0; }
     auto operator==(const hstring& other) const { return _entry->Hash == other._entry->Hash; }
     auto operator!=(const hstring& other) const { return _entry->Hash != other._entry->Hash; }
     auto operator<(const hstring& other) const { return _entry->Hash < other._entry->Hash; }

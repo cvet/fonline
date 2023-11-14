@@ -353,9 +353,9 @@ FOServer::FOServer(GlobalSettings& settings) :
         WriteLog("Start game logic");
 
         // Globals
-        const auto globals_doc = DbStorage.Get("Game", ident_t {1});
+        const auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
         if (globals_doc.empty()) {
-            DbStorage.Insert("Game", ident_t {1}, {});
+            DbStorage.Insert(GameCollectionName, ident_t {1}, {});
         }
         else {
             if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this, *this)) {
@@ -1380,7 +1380,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
 
         const auto player_id = MakePlayerId(name);
-        if (DbStorage.Valid("Players", player_id)) {
+
+        if (DbStorage.Valid(PlayersCollectionName, player_id)) {
             logcb(_str("Player id is {}", player_id));
         }
         else {
@@ -2134,7 +2135,7 @@ void FOServer::Process_Register(Player* unlogined_player)
 
     // Check for exist
     const auto player_id = MakePlayerId(name);
-    if (DbStorage.Valid("Players", player_id)) {
+    if (DbStorage.Valid(PlayersCollectionName, player_id)) {
         unlogined_player->Send_TextMsg(nullptr, STR_NET_PLAYER_ALREADY, SAY_NETMSG, TEXTMSG_GAME);
         unlogined_player->Connection->GracefulDisconnect();
         return;
@@ -2183,7 +2184,7 @@ void FOServer::Process_Register(Player* unlogined_player)
     auto reg_port = AnyData::Array();
     reg_port.emplace_back(static_cast<int>(unlogined_player->Connection->GetPort()));
 
-    DbStorage.Insert("Players", player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
+    DbStorage.Insert(PlayersCollectionName, player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
     WriteLog("Registered player {} with id {}", name, player_id);
 
@@ -2236,7 +2237,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
     // Check password
     const auto player_id = MakePlayerId(name);
-    auto player_doc = DbStorage.Get("Players", player_id);
+    auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
     if (player_doc.count("Password") == 0 || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
         unlogined_player->Send_TextMsg(nullptr, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
         unlogined_player->Connection->GracefulDisconnect();
@@ -2911,12 +2912,16 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
     auto&& value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this, *this);
 
+    hstring collection_name;
+
     if (server_entity != nullptr) {
-        DbStorage.Update(_str("{}s", server_entity->GetClassName()), entry_id, prop->GetName(), value);
+        collection_name = ToHashedString(_str("{}s", server_entity->GetClassName()));
     }
     else {
-        DbStorage.Update(entity->GetClassName(), entry_id, prop->GetName(), value);
+        collection_name = ToHashedString(entity->GetClassName());
     }
+
+    DbStorage.Update(collection_name, entry_id, prop->GetName(), value);
 
     if (prop->IsHistorical()) {
         const auto history_id_num = GetHistoryRecordsId().underlying_value() + 1;
@@ -2933,7 +2938,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
         doc["Property"] = prop->GetName();
         doc["Value"] = value;
 
-        DbStorage.Insert("History", history_id, doc);
+        DbStorage.Insert(HistoryCollectionName, history_id, doc);
     }
 }
 
@@ -3117,7 +3122,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop)
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
+        const auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
             throw NotImplementedException(LINE_STR);
@@ -3635,7 +3640,8 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
     Critter* slave = nullptr;
 
     for (auto it = answer.Demands.begin(), end = answer.Demands.end(); it != end; ++it) {
-        auto& demand = *it;
+        const auto& demand = *it;
+
         if (recheck && demand.NoRecheck) {
             continue;
         }
@@ -3801,7 +3807,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
     Critter* master = nullptr;
     Critter* slave = nullptr;
 
-    for (auto& result : answer.Results) {
+    for (const auto& result : answer.Results) {
         switch (result.Who) {
         case DR_WHO_PLAYER:
             master = cl;

@@ -118,7 +118,7 @@ auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, DeferredCall& c
 
     call_doc["FireFullSecond"] = static_cast<int64>(call.FireFullSecond.underlying_value());
 
-    _serverEngine->DbStorage.Insert("DeferredCalls", call.Id, call_doc);
+    _serverEngine->DbStorage.Insert(_serverEngine->DeferredCallsCollectionName, call.Id, call_doc);
 
     _deferredCalls.emplace_back(std::move(call));
 
@@ -142,7 +142,7 @@ void ServerDeferredCallManager::OnDeferredCallRemoved(const DeferredCall& call)
     STACK_TRACE_ENTRY();
 
     if (const auto it = _savedCalls.find(call.Id); it != _savedCalls.end()) {
-        _serverEngine->DbStorage.Delete("DeferredCalls", call.Id);
+        _serverEngine->DbStorage.Delete(_serverEngine->DeferredCallsCollectionName, call.Id);
         _savedCalls.erase(it);
     }
 }
@@ -155,9 +155,10 @@ void ServerDeferredCallManager::LoadDeferredCalls()
 
     int errors = 0;
 
-    const auto call_ids = _serverEngine->DbStorage.GetAllIds("DeferredCalls");
+    const auto call_ids = _serverEngine->DbStorage.GetAllIds(_serverEngine->DeferredCallsCollectionName);
+
     for (const auto call_id : call_ids) {
-        auto call_doc = _serverEngine->DbStorage.Get("DeferredCalls", call_id);
+        auto call_doc = _serverEngine->DbStorage.Get(_serverEngine->DeferredCallsCollectionName, call_id);
 
         DeferredCall call;
 

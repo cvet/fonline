@@ -63,20 +63,20 @@ public:
     auto operator=(DataBaseImpl&&) noexcept = delete;
     virtual ~DataBaseImpl() = default;
 
-    [[nodiscard]] virtual auto GetAllIds(string_view collection_name) -> vector<ident_t> = 0;
-    [[nodiscard]] auto Get(string_view collection_name, ident_t id) -> AnyData::Document;
+    [[nodiscard]] virtual auto GetAllIds(hstring collection_name) -> vector<ident_t> = 0;
+    [[nodiscard]] auto Get(hstring collection_name, ident_t id) -> AnyData::Document;
 
-    void Insert(string_view collection_name, ident_t id, const AnyData::Document& doc);
-    void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
-    void Delete(string_view collection_name, ident_t id);
+    void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
+    void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
+    void Delete(hstring collection_name, ident_t id);
     void CommitChanges();
     void WaitCommitThread();
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(string_view collection_name, ident_t id) -> AnyData::Document = 0;
-    virtual void InsertRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) = 0;
-    virtual void UpdateRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) = 0;
-    virtual void DeleteRecord(string_view collection_name, ident_t id) = 0;
+    [[nodiscard]] virtual auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document = 0;
+    virtual void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
+    virtual void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
+    virtual void DeleteRecord(hstring collection_name, ident_t id) = 0;
     virtual void CommitRecords() = 0;
 
 private:
@@ -104,28 +104,28 @@ DataBase::operator bool() const
     return _impl != nullptr;
 }
 
-auto DataBase::GetAllIds(string_view collection_name) const -> vector<ident_t>
+auto DataBase::GetAllIds(hstring collection_name) const -> vector<ident_t>
 {
     STACK_TRACE_ENTRY();
 
     return _impl->GetAllIds(collection_name);
 }
 
-auto DataBase::Get(string_view collection_name, ident_t id) const -> AnyData::Document
+auto DataBase::Get(hstring collection_name, ident_t id) const -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
     return _impl->Get(collection_name, id);
 }
 
-auto DataBase::Valid(string_view collection_name, ident_t id) const -> bool
+auto DataBase::Valid(hstring collection_name, ident_t id) const -> bool
 {
     STACK_TRACE_ENTRY();
 
     return !_impl->Get(collection_name, id).empty();
 }
 
-void DataBase::Insert(string_view collection_name, ident_t id, const AnyData::Document& doc)
+void DataBase::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
 {
     STACK_TRACE_ENTRY();
 
@@ -134,7 +134,7 @@ void DataBase::Insert(string_view collection_name, ident_t id, const AnyData::Do
     _impl->Insert(collection_name, id, doc);
 }
 
-void DataBase::Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value)
+void DataBase::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
 {
     STACK_TRACE_ENTRY();
 
@@ -143,7 +143,7 @@ void DataBase::Update(string_view collection_name, ident_t id, string_view key, 
     _impl->Update(collection_name, id, key, value);
 }
 
-void DataBase::Delete(string_view collection_name, ident_t id)
+void DataBase::Delete(hstring collection_name, ident_t id)
 {
     STACK_TRACE_ENTRY();
 
@@ -487,26 +487,24 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
     }
 }
 
-auto DataBaseImpl::Get(string_view collection_name, ident_t id) -> AnyData::Document
+auto DataBaseImpl::Get(hstring collection_name, ident_t id) -> AnyData::Document
 {
     STACK_TRACE_ENTRY();
 
-    const auto collection_name_str = string(collection_name);
-
-    if (_deletedRecords[collection_name_str].count(id) != 0) {
+    if (_deletedRecords[collection_name].count(id) != 0) {
         return {};
     }
 
-    if (_newRecords[collection_name_str].count(id) != 0) {
-        return _recordChanges[collection_name_str].at(id);
+    if (_newRecords[collection_name].count(id) != 0) {
+        return _recordChanges[collection_name].at(id);
     }
 
     _commitThread.Wait();
 
-    auto doc = GetRecord(collection_name_str, id);
+    auto doc = GetRecord(collection_name, id);
 
-    if (_recordChanges[collection_name_str].count(id) != 0) {
-        for (auto&& [key, value] : _recordChanges[collection_name_str].at(id)) {
+    if (_recordChanges[collection_name].count(id) != 0) {
+        for (auto&& [key, value] : _recordChanges[collection_name].at(id)) {
             doc[key] = value;
         }
     }
@@ -514,50 +512,44 @@ auto DataBaseImpl::Get(string_view collection_name, ident_t id) -> AnyData::Docu
     return doc;
 }
 
-void DataBaseImpl::Insert(string_view collection_name, ident_t id, const AnyData::Document& doc)
+void DataBaseImpl::Insert(hstring collection_name, ident_t id, const AnyData::Document& doc)
 {
     STACK_TRACE_ENTRY();
 
-    const auto collection_name_str = string(collection_name);
+    RUNTIME_ASSERT(!_newRecords[collection_name].count(id));
+    RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
-    RUNTIME_ASSERT(!_newRecords[collection_name_str].count(id));
-    RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
+    _newRecords[collection_name].emplace(id);
 
-    _newRecords[collection_name_str].emplace(id);
-
-    auto& record_changes = _recordChanges[collection_name_str][id];
+    auto& record_changes = _recordChanges[collection_name][id];
     for (auto&& [key, value] : doc) {
         record_changes[key] = value;
     }
 }
 
-void DataBaseImpl::Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value)
+void DataBaseImpl::Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value)
 {
     STACK_TRACE_ENTRY();
 
-    const auto collection_name_str = string(collection_name);
+    RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
-    RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
-
-    _recordChanges[collection_name_str][id][string(key)] = value;
+    _recordChanges[collection_name][id][string(key)] = value;
 }
 
-void DataBaseImpl::Delete(string_view collection_name, ident_t id)
+void DataBaseImpl::Delete(hstring collection_name, ident_t id)
 {
     STACK_TRACE_ENTRY();
 
-    const auto collection_name_str = string(collection_name);
+    RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
-    RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
-
-    if (_newRecords[collection_name_str].count(id) != 0) {
-        _newRecords[collection_name_str].erase(id);
+    if (_newRecords[collection_name].count(id) != 0) {
+        _newRecords[collection_name].erase(id);
     }
     else {
-        _deletedRecords[collection_name_str].emplace(id);
+        _deletedRecords[collection_name].emplace(id);
     }
 
-    _recordChanges[collection_name_str].erase(id);
+    _recordChanges[collection_name].erase(id);
 }
 
 void DataBaseImpl::CommitChanges()
@@ -632,7 +624,7 @@ public:
         DiskFileSystem::MakeDirTree(storage_dir);
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
@@ -655,7 +647,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -689,7 +681,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -727,7 +719,7 @@ protected:
         }
     }
 
-    void UpdateRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -780,7 +772,7 @@ protected:
         }
     }
 
-    void DeleteRecord(string_view collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, ident_t id) override
     {
         STACK_TRACE_ENTRY();
 
@@ -845,7 +837,7 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
@@ -897,7 +889,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -929,7 +921,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -964,7 +956,7 @@ protected:
         bson_destroy(&bson);
     }
 
-    void UpdateRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1002,7 +994,7 @@ protected:
         bson_destroy(&bson);
     }
 
-    void DeleteRecord(string_view collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, ident_t id) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1030,13 +1022,13 @@ protected:
     }
 
 private:
-    [[nodiscard]] auto GetCollection(string_view collection_name) const -> unqlite*
+    [[nodiscard]] auto GetCollection(hstring collection_name) const -> unqlite*
     {
         STACK_TRACE_ENTRY();
 
         unqlite* db;
 
-        const auto it = _collections.find(string(collection_name));
+        const auto it = _collections.find(collection_name);
         if (it == _collections.end()) {
             const string db_path = _str("{}/{}.unqlite", _storageDir, collection_name);
             const auto r = unqlite_open(&db, db_path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING);
@@ -1054,7 +1046,7 @@ private:
     }
 
     string _storageDir {};
-    mutable map<string, unqlite*> _collections {};
+    mutable unordered_map<hstring, unqlite*> _collections {};
 };
 #endif
 
@@ -1118,7 +1110,7 @@ public:
         mongoc_cleanup();
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
@@ -1169,7 +1161,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
@@ -1215,7 +1207,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1244,7 +1236,7 @@ protected:
         bson_destroy(&insert);
     }
 
-    void UpdateRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1286,7 +1278,7 @@ protected:
         bson_destroy(&update);
     }
 
-    void DeleteRecord(string_view collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, ident_t id) override
     {
         STACK_TRACE_ENTRY();
 
@@ -1319,15 +1311,15 @@ protected:
     }
 
 private:
-    [[nodiscard]] auto GetCollection(string_view collection_name) const -> mongoc_collection_t*
+    [[nodiscard]] auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
     {
         STACK_TRACE_ENTRY();
 
         mongoc_collection_t* collection;
 
-        const auto it = _collections.find(string(collection_name));
+        const auto it = _collections.find(collection_name);
         if (it == _collections.end()) {
-            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), string(collection_name).c_str());
+            collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.as_str().c_str());
             if (collection == nullptr) {
                 throw DataBaseException("DbMongo Can't get collection", collection_name);
             }
@@ -1344,7 +1336,7 @@ private:
     mongoc_client_t* _client {};
     mongoc_database_t* _database {};
     string _databaseName {};
-    mutable map<string, mongoc_collection_t*> _collections {};
+    mutable unordered_map<hstring, mongoc_collection_t*> _collections {};
 };
 #endif
 
@@ -1358,11 +1350,11 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<ident_t> override
+    [[nodiscard]] auto GetAllIds(hstring collection_name) -> vector<ident_t> override
     {
         STACK_TRACE_ENTRY();
 
-        const auto& collection = _collections[string(collection_name)];
+        const auto& collection = _collections[collection_name];
 
         vector<ident_t> ids;
         ids.reserve(collection.size());
@@ -1375,35 +1367,35 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, ident_t id) -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(hstring collection_name, ident_t id) -> AnyData::Document override
     {
         STACK_TRACE_ENTRY();
 
-        const auto& collection = _collections[string(collection_name)];
+        const auto& collection = _collections[collection_name];
 
         const auto it = collection.find(id);
         return it != collection.end() ? it->second : AnyData::Document();
     }
 
-    void InsertRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void InsertRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
-        auto& collection = _collections[string(collection_name)];
+        auto& collection = _collections[collection_name];
         RUNTIME_ASSERT(!collection.count(id));
 
         collection.emplace(id, doc);
     }
 
-    void UpdateRecord(string_view collection_name, ident_t id, const AnyData::Document& doc) override
+    void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) override
     {
         STACK_TRACE_ENTRY();
 
         RUNTIME_ASSERT(!doc.empty());
 
-        auto& collection = _collections[string(collection_name)];
+        auto& collection = _collections[collection_name];
 
         const auto it = collection.find(id);
         RUNTIME_ASSERT(it != collection.end());
@@ -1413,11 +1405,11 @@ protected:
         }
     }
 
-    void DeleteRecord(string_view collection_name, ident_t id) override
+    void DeleteRecord(hstring collection_name, ident_t id) override
     {
         STACK_TRACE_ENTRY();
 
-        auto& collection = _collections[string(collection_name)];
+        auto& collection = _collections[collection_name];
 
         const auto it = collection.find(id);
         RUNTIME_ASSERT(it != collection.end());

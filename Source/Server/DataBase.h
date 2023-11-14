@@ -47,8 +47,8 @@ class DataBase
 
 public:
     using Collection = unordered_map<ident_t, AnyData::Document>;
-    using Collections = unordered_map<string, Collection>;
-    using RecordsState = unordered_map<string, unordered_set<ident_t>>;
+    using Collections = unordered_map<hstring, Collection>;
+    using RecordsState = unordered_map<hstring, unordered_set<ident_t>>;
 
     DataBase();
     DataBase(const DataBase&) = delete;
@@ -58,13 +58,13 @@ public:
     explicit operator bool() const;
     ~DataBase();
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<ident_t>;
-    [[nodiscard]] auto Get(string_view collection_name, ident_t id) const -> AnyData::Document;
-    [[nodiscard]] auto Valid(string_view collection_name, ident_t id) const -> bool;
+    [[nodiscard]] auto GetAllIds(hstring collection_name) const -> vector<ident_t>;
+    [[nodiscard]] auto Get(hstring collection_name, ident_t id) const -> AnyData::Document;
+    [[nodiscard]] auto Valid(hstring collection_name, ident_t id) const -> bool;
 
-    void Insert(string_view collection_name, ident_t id, const AnyData::Document& doc);
-    void Update(string_view collection_name, ident_t id, string_view key, const AnyData::Value& value);
-    void Delete(string_view collection_name, ident_t id);
+    void Insert(hstring collection_name, ident_t id, const AnyData::Document& doc);
+    void Update(hstring collection_name, ident_t id, string_view key, const AnyData::Value& value);
+    void Delete(hstring collection_name, ident_t id);
     void CommitChanges(bool wait_commit_complete);
 
 private:

@@ -98,7 +98,7 @@ public:
     void DeleteCustomEntity(string_view entity_class_name, ident_t id);
 
 private:
-    auto LoadEntityDoc(string_view collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDoc(hstring collection_name, ident_t id, bool& is_error) const -> tuple<AnyData::Document, hstring>;
 
     void RegisterEntityEx(ServerEntity* entity);
     void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
