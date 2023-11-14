@@ -473,11 +473,12 @@ void AppInput::ClearEvents()
     STACK_TRACE_ENTRY();
 }
 
-void AppInput::PushEvent(const InputEvent& ev)
+void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
 
     UNUSED_VARIABLE(ev);
+    UNUSED_VARIABLE(push_to_this_frame);
 }
 
 void AppInput::SetClipboardText(string_view text)

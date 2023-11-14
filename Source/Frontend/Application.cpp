@@ -1364,11 +1364,16 @@ void AppInput::ClearEvents()
     EventsQueue->clear();
 }
 
-void AppInput::PushEvent(const InputEvent& ev)
+void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     STACK_TRACE_ENTRY();
 
-    NextFrameEventsQueue->push_back(ev);
+    if (push_to_this_frame) {
+        EventsQueue->emplace_back(ev);
+    }
+    else {
+        NextFrameEventsQueue->emplace_back(ev);
+    }
 }
 
 void AppInput::SetClipboardText(string_view text)

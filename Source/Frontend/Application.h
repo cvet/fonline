@@ -321,7 +321,7 @@ public:
 
     void ClearEvents();
     void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
-    void PushEvent(const InputEvent& ev);
+    void PushEvent(const InputEvent& ev, bool push_to_this_frame = false);
     void SetClipboardText(string_view text);
 
 private:

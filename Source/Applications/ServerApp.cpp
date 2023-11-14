@@ -200,19 +200,35 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
 
             // Clients loop
-            if (ImGui::IsAnyItemHovered()) {
-                App->Input.ClearEvents();
+            vector<InputEvent> events;
+
+            {
+                InputEvent ev;
+                while (App->Input.PollEvent(ev)) {
+                    events.emplace_back(ev);
+                }
             }
 
             for (auto&& client : Data->Clients) {
                 ShowExceptionMessageBox(true);
+
                 try {
+                    App->Input.ClearEvents();
+
+                    if (client == Data->Clients.back() && !ImGui::IsAnyItemHovered()) {
+                        for (const auto& ev : events) {
+                            App->Input.PushEvent(ev, true);
+                        }
+                    }
+
                     App->Render.ClearRenderTarget(COLOR_RGB(0, 0, 0));
+
                     client->MainLoop();
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
                 }
+
                 ShowExceptionMessageBox(false);
             }
 
