@@ -566,7 +566,7 @@ struct ExceptionStackTraceData
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
             for (auto& param : _exceptionParams) { \
-                _exceptionMessage.append("\n  - ").append(param); \
+                _exceptionMessage.append("\n- ").append(param); \
             } \
             _stackTrace = GetStackTrace(); \
         } \
@@ -577,7 +577,7 @@ struct ExceptionStackTraceData
             _exceptionMessage = #exception_name ": "; \
             _exceptionMessage.append(message); \
             for (auto& param : _exceptionParams) { \
-                _exceptionMessage.append("\n  - ").append(param); \
+                _exceptionMessage.append("\n- ").append(param); \
             } \
             _stackTrace = std::move(data.StackTrace); \
         } \
@@ -1969,6 +1969,7 @@ public:
     ~WorkThread();
 
     [[nodiscard]] auto GetThreadId() const -> std::thread::id { return _thread.get_id(); }
+    [[nodiscard]] auto GetJobsCount() const -> size_t;
 
     void SetExceptionHandler(ExceptionHandler handler);
     void AddJob(Job job);
@@ -1978,14 +1979,14 @@ public:
 
 private:
     void AddJobInternal(time_duration delay, Job job, bool no_notify);
-    void Routine() noexcept;
+    void ThreadEntry() noexcept;
 
     string _name {};
     ExceptionHandler _exceptionHandler {};
     std::thread _thread {};
     vector<pair<time_point, Job>> _jobs {};
     bool _jobActive {};
-    std::mutex _dataLocker {};
+    mutable std::mutex _dataLocker {};
     std::condition_variable _workSignal {};
     std::condition_variable _doneSignal {};
     bool _clearJobs {};

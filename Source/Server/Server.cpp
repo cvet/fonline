@@ -73,7 +73,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Mount resources
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitResourcesJob");
+        STACK_TRACE_ENTRY_NAMED("InitResourcesJob");
 
         WriteLog("Mount data packs");
 
@@ -96,7 +96,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Script system
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitScriptSystemJob");
+        STACK_TRACE_ENTRY_NAMED("InitScriptSystemJob");
 
 #if !FO_SINGLEPLAYER
         WriteLog("Initialize script system");
@@ -113,7 +113,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Network
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitNetworkingJob");
+        STACK_TRACE_ENTRY_NAMED("InitNetworkingJob");
 
 #if !FO_SINGLEPLAYER
         WriteLog("Start networking");
@@ -136,7 +136,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Data base
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitStorageJob");
+        STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
         DbStorage = ConnectToDataBase(Settings.DbStorage);
         if (!DbStorage) {
@@ -148,7 +148,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Engine data
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitEngineDataJob");
+        STACK_TRACE_ENTRY_NAMED("InitEngineDataJob");
 
         WriteLog("Setup engine data");
 
@@ -255,7 +255,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Dialogs
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitDialogsJob");
+        STACK_TRACE_ENTRY_NAMED("InitDialogsJob");
 
         WriteLog("Load dialogs data");
 
@@ -266,7 +266,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Protos
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitProtosJob");
+        STACK_TRACE_ENTRY_NAMED("InitProtosJob");
 
         WriteLog("Load protos data");
 
@@ -277,7 +277,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Maps
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitMapsJob");
+        STACK_TRACE_ENTRY_NAMED("InitMapsJob");
 
         WriteLog("Load maps data");
 
@@ -288,7 +288,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Resource packs for client
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitClientPacksJob");
+        STACK_TRACE_ENTRY_NAMED("InitClientPacksJob");
 
         if (Settings.DataSynchronization) {
             WriteLog("Load client data packs for synchronization");
@@ -335,7 +335,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Admin manager
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitAdminPanelJob");
+        STACK_TRACE_ENTRY_NAMED("InitAdminPanelJob");
 
         if (Settings.AdminPanelPort != 0) {
             WriteLog("Run admin panel at port {}", Settings.AdminPanelPort);
@@ -348,7 +348,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Game logic
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitGameLogicJob");
+        STACK_TRACE_ENTRY_NAMED("InitGameLogicJob");
 
         WriteLog("Start game logic");
 
@@ -431,7 +431,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Done, fill regular jobs
     _starter.AddJob([this] {
-        STACK_TRACE_ENTRY_NAMED("FOServer::InitDoneJob");
+        STACK_TRACE_ENTRY_NAMED("InitDoneJob");
 
         WriteLog("Start server complete!");
 
@@ -439,7 +439,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Sync point
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::SyncPointJob");
+            STACK_TRACE_ENTRY_NAMED("SyncPointJob");
 
             SyncPoint();
 
@@ -448,7 +448,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Advance time
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::FrameTimeJob");
+            STACK_TRACE_ENTRY_NAMED("FrameTimeJob");
 
             if (GameTime.FrameAdvance()) {
                 const auto st = GameTime.EvaluateGameTime(GameTime.GetFullSecond());
@@ -465,7 +465,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Script subsystems update
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::ScriptSystemJob");
+            STACK_TRACE_ENTRY_NAMED("ScriptSystemJob");
 
             ScriptSys->Process();
 
@@ -474,7 +474,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process unlogined players
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::UnloginedPlayersJob");
+            STACK_TRACE_ENTRY_NAMED("UnloginedPlayersJob");
 
             {
                 std::lock_guard locker(_newConnectionsLocker);
@@ -505,7 +505,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process players
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::PlayersJob");
+            STACK_TRACE_ENTRY_NAMED("PlayersJob");
 
             for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
                 try {
@@ -524,7 +524,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process critters
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::CrittersJob");
+            STACK_TRACE_ENTRY_NAMED("CrittersJob");
 
             for (auto* cr : copy_hold_ref(EntityMngr.GetCritters())) {
                 if (cr->IsDestroyed()) {
@@ -544,7 +544,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Process maps
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::MapsJob");
+            STACK_TRACE_ENTRY_NAMED("MapsJob");
 
             for (auto* map : copy_hold_ref(EntityMngr.GetMaps())) {
                 if (map->IsDestroyed()) {
@@ -564,7 +564,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Location garbager
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::LocationGarbageJob");
+            STACK_TRACE_ENTRY_NAMED("LocationGarbageJob");
 
             MapMngr.LocationGarbager();
 
@@ -573,7 +573,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Deferred calls
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::DeferredCallsJob");
+            STACK_TRACE_ENTRY_NAMED("DeferredCallsJob");
 
             ServerDeferredCalls.Process();
 
@@ -582,7 +582,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Script game loop
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::ScriptLoopJob");
+            STACK_TRACE_ENTRY_NAMED("ScriptLoopJob");
 
             OnLoop.Fire();
 
@@ -591,7 +591,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Commit changed to data base
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::StorageCommitJob");
+            STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
 
             DbStorage.CommitChanges(false);
 
@@ -600,7 +600,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Clients log
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::LogDispatchJob");
+            STACK_TRACE_ENTRY_NAMED("LogDispatchJob");
 
             DispatchLogToClients();
 
@@ -613,7 +613,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         _stats.ServerStartTime = Timer::CurTime();
 
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::LoopStatsJob");
+            STACK_TRACE_ENTRY_NAMED("LoopStatsJob");
 
             const auto cur_time = Timer::CurTime();
             const auto loop_duration = cur_time - _stats.LoopBegin;
@@ -642,7 +642,7 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         // Sleep
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("FOServer::SleepJob");
+            STACK_TRACE_ENTRY_NAMED("SleepJob");
 
             if (Settings.ServerSleep >= 0) {
                 if (Settings.ServerSleep == 0) {

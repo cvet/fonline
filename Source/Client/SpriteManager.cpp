@@ -617,20 +617,20 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, in
 
     if (!stretch) {
         if (k < 1.0f || (k > 1.0f && zoom_up)) {
-            wf = floorf(wf * k + 0.5f);
-            hf = floorf(hf * k + 0.5f);
+            wf = std::floorf(wf * k + 0.5f);
+            hf = std::floorf(hf * k + 0.5f);
         }
         if (center) {
-            xf += floorf((static_cast<float>(w) - wf) / 2.0f + 0.5f);
-            yf += floorf((static_cast<float>(h) - hf) / 2.0f + 0.5f);
+            xf += std::floorf((static_cast<float>(w) - wf) / 2.0f + 0.5f);
+            yf += std::floorf((static_cast<float>(h) - hf) / 2.0f + 0.5f);
         }
     }
     else if (zoom_up) {
-        wf = floorf(wf * k + 0.5f);
-        hf = floorf(hf * k + 0.5f);
+        wf = std::floorf(wf * k + 0.5f);
+        hf = std::floorf(hf * k + 0.5f);
         if (center) {
-            xf += floorf((static_cast<float>(w) - wf) / 2.0f + 0.5f);
-            yf += floorf((static_cast<float>(h) - hf) / 2.0f + 0.5f);
+            xf += std::floorf((static_cast<float>(w) - wf) / 2.0f + 0.5f);
+            yf += std::floorf((static_cast<float>(h) - hf) / 2.0f + 0.5f);
         }
     }
     else {

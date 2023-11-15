@@ -453,7 +453,7 @@ WorkThread::WorkThread(string_view name)
     STACK_TRACE_ENTRY();
 
     _name = name;
-    _thread = std::thread(&WorkThread::Routine, this);
+    _thread = std::thread(&WorkThread::ThreadEntry, this);
 }
 
 WorkThread::~WorkThread()
@@ -468,6 +468,15 @@ WorkThread::~WorkThread()
 
     _workSignal.notify_one();
     _thread.join();
+}
+
+auto WorkThread::GetJobsCount() const -> size_t
+{
+    STACK_TRACE_ENTRY();
+
+    std::unique_lock locker(_dataLocker);
+
+    return _jobs.size() + (_jobActive ? 1 : 0);
 }
 
 void WorkThread::SetExceptionHandler(ExceptionHandler handler)
@@ -548,13 +557,16 @@ void WorkThread::Wait()
     }
 }
 
-void WorkThread::Routine() noexcept
+void WorkThread::ThreadEntry() noexcept
 {
     STACK_TRACE_ENTRY();
 
     try {
 #if FO_WINDOWS
         ::SetThreadDescription(::GetCurrentThread(), _str(_name).toWideChar().c_str());
+#endif
+#ifdef TRACY_ENABLE
+        tracy::SetThreadName(_name.c_str());
 #endif
 
         while (true) {
@@ -604,11 +616,11 @@ void WorkThread::Routine() noexcept
 
             if (job) {
                 try {
-                    const auto next_call_duration = job();
+                    const auto next_call_delay = job();
 
                     // Schedule repeat
-                    if (next_call_duration.has_value()) {
-                        AddJobInternal(next_call_duration.value(), std::move(job), true);
+                    if (next_call_delay.has_value()) {
+                        AddJobInternal(next_call_delay.value(), std::move(job), true);
                     }
                 }
                 catch (const std::exception& ex) {

@@ -892,7 +892,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 }
 
 #if !COMPILER_MODE
-static auto ASScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
+static auto AngelScriptFuncCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, ScriptFuncDesc* func_desc, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -1043,7 +1043,7 @@ template<typename TRet, typename... Args>
     func_desc->ArgsType = {&typeid(Args)...};
     func_desc->Delegate = func->GetDelegateObject() != nullptr;
     func_desc->Call = [script_sys, func_desc, func = RefCountHolder(func)](initializer_list<void*> args, void* ret) { //
-        return ASScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
+        return AngelScriptFuncCall(script_sys, func_desc, func.get(), args, ret);
     };
     return ScriptFunc<TRet, Args...>(func_desc);
 }
@@ -4090,7 +4090,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if !COMPILER_VALIDATION_MODE
             func_desc.Call = [script_sys = AngelScriptData.get(), gen = &func_desc, func](initializer_list<void*> args, void* ret) { //
-                return ASScriptFuncCall(script_sys, gen, func, args, ret);
+                return AngelScriptFuncCall(script_sys, gen, func, args, ret);
             };
 #endif
 
