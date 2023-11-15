@@ -53,6 +53,8 @@ DISABLE_WARNINGS_POP()
 
 #include "WinApi-Include.h"
 
+static constexpr size_t DATA_BASE_MAX_COMMIT_JOBS = 1000;
+
 class DataBaseImpl
 {
 public:
@@ -569,8 +571,16 @@ void DataBaseImpl::CommitChanges()
         return;
     }
 
+    // Too many jobs already in queue, don't place more
+    if constexpr (DATA_BASE_MAX_COMMIT_JOBS != 0) {
+        if (_commitThread.GetJobsCount() > DATA_BASE_MAX_COMMIT_JOBS) {
+            BreakIntoDebugger();
+            return;
+        }
+    }
+
     _commitThread.AddJob([this, record_changes = std::move(_recordChanges), new_records = std::move(_newRecords), deleted_records = std::move(_deletedRecords)] {
-        STACK_TRACE_ENTRY_NAMED("DataBaseImpl::CommitJob");
+        STACK_TRACE_ENTRY_NAMED("CommitJob");
 
         for (auto&& [key, value] : record_changes) {
             for (auto&& [key2, value2] : value) {
