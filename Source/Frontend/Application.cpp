@@ -143,7 +143,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     CreateGlobalData();
 
-#if TRACY_ENABLE
+#ifdef TRACY_ENABLE
     TracySetProgramName(FO_GAME_NAME);
 #endif
 
