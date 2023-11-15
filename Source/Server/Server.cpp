@@ -2378,6 +2378,13 @@ void FOServer::Process_Login(Player* unlogined_player)
             cr = CrMngr.GetCritter(cr_id);
             if (cr != nullptr) {
                 RUNTIME_ASSERT(cr->IsOwnedByPlayer());
+
+                if (cr->GetOwner() != nullptr) {
+                    player->Send_TextMsg(nullptr, STR_NET_PLAYER_IN_GAME, SAY_NETMSG, TEXTMSG_GAME);
+                    player->Connection->GracefulDisconnect();
+                    return;
+                }
+
                 cr->AttachPlayer(player);
                 player->SetOwnedCritter(cr);
                 critter_reconnected = true;
