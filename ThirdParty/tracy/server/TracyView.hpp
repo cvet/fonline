@@ -13,6 +13,7 @@
 
 #include "TracyBadVersion.hpp"
 #include "TracyBuzzAnim.hpp"
+#include "TracyConfig.hpp"
 #include "TracyDecayValue.hpp"
 #include "TracyFileWrite.hpp"
 #include "TracyShortPtr.hpp"
@@ -40,6 +41,16 @@ constexpr const char* GpuContextNames[] = {
 struct MemoryPage;
 class FileRead;
 class SourceView;
+struct TimelineContext;
+struct TimelineDraw;
+struct ContextSwitchDraw;
+struct SamplesDraw;
+struct MessagesDraw;
+struct CpuUsageDraw;
+struct CpuCtxDraw;
+struct LockDraw;
+struct PlotDraw;
+
 
 class View
 {
@@ -91,8 +102,8 @@ public:
     using SetScaleCallback = void(*)( float, ImFont*&, ImFont*&, ImFont*& );
     using AttentionCallback = void(*)();
 
-    View( void(*cbMainThread)(std::function<void()>, bool), const char* addr, uint16_t port, ImFont* fixedWidth, ImFont* smallFont, ImFont* bigFont, SetTitleCallback stcb, SetScaleCallback sscb, AttentionCallback acb );
-    View( void(*cbMainThread)(std::function<void()>, bool), FileRead& f, ImFont* fixedWidth, ImFont* smallFont, ImFont* bigFont, SetTitleCallback stcb, SetScaleCallback sscb, AttentionCallback acb );
+    View( void(*cbMainThread)(const std::function<void()>&, bool), const char* addr, uint16_t port, ImFont* fixedWidth, ImFont* smallFont, ImFont* bigFont, SetTitleCallback stcb, SetScaleCallback sscb, AttentionCallback acb, const Config& config );
+    View( void(*cbMainThread)(const std::function<void()>&, bool), FileRead& f, ImFont* fixedWidth, ImFont* smallFont, ImFont* bigFont, SetTitleCallback stcb, SetScaleCallback sscb, AttentionCallback acb, const Config& config );
     ~View();
 
     bool Draw();
@@ -117,14 +128,24 @@ public:
     ShortenName GetShortenName() const { return m_shortenName; }
     int GetNextGpuIdx() { return m_gpuIdx++; }
 
+    const MessageData* GetMessageHighlight() const { return m_msgHighlight; }
+    uint32_t GetLockInfoWindow() const { return m_lockInfoWindow; }
+
+    tracy_force_inline bool& Vis( const void* ptr )
+    {
+        auto it = m_visMap.find( ptr );
+        if( it == m_visMap.end() ) it = m_visMap.emplace( ptr, true ).first;
+        return it->second;
+    }
+
     void HighlightThread( uint64_t thread );
     void ZoomToRange( int64_t start, int64_t end, bool pause = true );
-    bool DrawPlot( PlotData& plot, double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax );
-    bool DrawThread( const ThreadData& thread, double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax, bool ghostMode );
-    void DrawThreadMessages( const ThreadData& thread, double pxns, int offset, const ImVec2& wpos, bool hover );
+    bool DrawPlot( const TimelineContext& ctx, PlotData& plot, const std::vector<uint32_t>& plotDraw, int& offset );
+    void DrawThread( const TimelineContext& ctx, const ThreadData& thread, const std::vector<TimelineDraw>& draw, const std::vector<ContextSwitchDraw>& ctxDraw, const std::vector<SamplesDraw>& samplesDraw, const std::vector<std::unique_ptr<LockDraw>>& lockDraw, int& offset, int depth, bool hasCtxSwitches, bool hasSamples );
+    void DrawThreadMessagesList( const TimelineContext& ctx, const std::vector<MessagesDraw>& drawList, int offset, uint64_t tid );
     void DrawThreadOverlays( const ThreadData& thread, const ImVec2& ul, const ImVec2& dr );
-    bool DrawGpu( const GpuCtxData& gpu, double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax );
-    bool DrawCpuData( double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax );
+    bool DrawGpu( const TimelineContext& ctx, const GpuCtxData& gpu, int& offset );
+    bool DrawCpuData( const TimelineContext& ctx, const std::vector<CpuUsageDraw>& cpuDraw, const std::vector<std::vector<CpuCtxDraw>>& ctxDraw, int& offset, bool hasCpuData );
 
     bool m_showRanges = false;
     Range m_statRange;
@@ -194,7 +215,7 @@ private:
     };
 
     void InitMemory();
-    void InitTextEditor( ImFont* font );
+    void InitTextEditor();
 
     bool DrawImpl();
     void DrawNotificationArea();
@@ -203,27 +224,18 @@ private:
     void DrawTimelineFramesHeader();
     void DrawTimelineFrames( const FrameData& frames );
     void DrawTimeline();
-    void DrawContextSwitches( const ContextSwitch* ctx, const Vector<SampleData>& sampleData, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int endOffset, bool isFiber );
-    void DrawSamples( const Vector<SampleData>& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset );
-#ifndef TRACY_NO_STATISTICS
-    int DispatchGhostLevel( const Vector<GhostZone>& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, float yMin, float yMax, uint64_t tid );
-    int DrawGhostLevel( const Vector<GhostZone>& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, float yMin, float yMax, uint64_t tid );
-    int SkipGhostLevel( const Vector<GhostZone>& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, float yMin, float yMax, uint64_t tid );
-#endif
-    int DispatchZoneLevel( const Vector<short_ptr<ZoneEvent>>& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, float yMin, float yMax, uint64_t tid );
-    template<typename Adapter, typename V>
-    int DrawZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, float yMin, float yMax, uint64_t tid );
-    template<typename Adapter, typename V>
-    int SkipZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, float yMin, float yMax, uint64_t tid );
+    void DrawSampleList( const TimelineContext& ctx, const std::vector<SamplesDraw>& drawList, const Vector<SampleData>& vec, int offset );
+    void DrawZoneList( const TimelineContext& ctx, const std::vector<TimelineDraw>& drawList, int offset, uint64_t tid );
+    void DrawContextSwitchList( const TimelineContext& ctx, const std::vector<ContextSwitchDraw>& drawList, const Vector<ContextSwitchData>& ctxSwitch, int offset, int endOffset, bool isFiber );
     int DispatchGpuZoneLevel( const Vector<short_ptr<GpuEvent>>& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, uint64_t thread, float yMin, float yMax, int64_t begin, int drift );
     template<typename Adapter, typename V>
     int DrawGpuZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, uint64_t thread, float yMin, float yMax, int64_t begin, int drift );
     template<typename Adapter, typename V>
     int SkipGpuZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int offset, int depth, uint64_t thread, float yMin, float yMax, int64_t begin, int drift );
     void DrawLockHeader( uint32_t id, const LockMap& lockmap, const SourceLocation& srcloc, bool hover, ImDrawList* draw, const ImVec2& wpos, float w, float ty, float offset, uint8_t tid );
-    int DrawLocks( uint64_t tid, bool hover, double pxns, const ImVec2& wpos, int offset, LockHighlight& highlight, float yMin, float yMax );
-    void DrawPlotPoint( const ImVec2& wpos, float x, float y, int offset, uint32_t color, bool hover, bool hasPrev, const PlotItem* item, double prev, bool merged, PlotType type, PlotValueFormatting format, float PlotHeight, uint64_t name );
-    void DrawPlotPoint( const ImVec2& wpos, float x, float y, int offset, uint32_t color, bool hover, bool hasPrev, double val, double prev, bool merged, PlotValueFormatting format, float PlotHeight );
+    int DrawLocks( const TimelineContext& ctx, const std::vector<std::unique_ptr<LockDraw>>& lockDraw, uint64_t tid, int _offset, LockHighlight& highlight );
+    void DrawPlotPoint( const ImVec2& wpos, float x, float y, int offset, uint32_t color, bool hover, bool hasPrev, const PlotItem& item, double prev, PlotType type, PlotValueFormatting format, float PlotHeight, uint64_t name );
+    void DrawPlotPoint( const ImVec2& wpos, float x, float y, int offset, uint32_t color, bool hover, double val, PlotValueFormatting format, float PlotHeight );
     void DrawOptions();
     void DrawMessages();
     void DrawMessageLine( const MessageData& msg, bool hasCallstack, int& idx );
@@ -250,7 +262,7 @@ private:
     void DrawSourceTooltip( const char* filename, uint32_t line, int before = 3, int after = 3, bool separateTooltip = true );
     void DrawWaitStacks();
 
-    void ListMemData( std::vector<const MemEvent*>& vec, std::function<void(const MemEvent*)> DrawAddress, const char* id = nullptr, int64_t startTime = -1, uint64_t pool = 0 );
+    void ListMemData( std::vector<const MemEvent*>& vec, const std::function<void(const MemEvent*)>& DrawAddress, int64_t startTime = -1, uint64_t pool = 0 );
 
     unordered_flat_map<uint32_t, MemPathData> GetCallstackPaths( const MemData& mem, MemRange memRange ) const;
     unordered_flat_map<uint64_t, MemCallstackFrameTree> GetCallstackFrameTreeBottomUp( const MemData& mem ) const;
@@ -276,7 +288,7 @@ private:
     void DrawGpuInfoChildren( const V& children, int64_t ztime );
 
     void HandleRange( Range& range, int64_t timespan, const ImVec2& wpos, float w );
-    void HandleTimelineMouse( int64_t timespan, const ImVec2& wpos, float w, double& pxns );
+    void HandleTimelineMouse( int64_t timespan, const ImVec2& wpos, float w );
     void HandleTimelineKeyboard( int64_t timespan, const ImVec2& wpos, float w );
 
     void AddAnnotation( int64_t start, int64_t end );
@@ -316,8 +328,8 @@ private:
     const GpuCtxData* GetZoneCtx( const GpuEvent& zone ) const;
     bool FindMatchingZone( int prev0, int prev1, int flags );
     const ZoneEvent* FindZoneAtTime( uint64_t thread, int64_t time ) const;
-    uint64_t GetFrameNumber( const FrameData& fd, int i, uint64_t offset ) const;
-    const char* GetFrameText( const FrameData& fd, int i, uint64_t ftime, uint64_t offset ) const;
+    uint64_t GetFrameNumber( const FrameData& fd, int i ) const;
+    const char* GetFrameText( const FrameData& fd, int i, uint64_t ftime ) const;
     const char* GetFrameSetName( const FrameData& fd ) const;
     static const char* GetFrameSetName( const FrameData& fd, const Worker& worker );
 
@@ -343,14 +355,15 @@ private:
     tracy_force_inline void CalcZoneTimeData( unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone );
     tracy_force_inline void CalcZoneTimeData( const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone );
     template<typename Adapter, typename V>
-    void CalcZoneTimeDataImpl( const V& children, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone );
+    void CalcZoneTimeDataImpl( const V& children, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime );
     template<typename Adapter, typename V>
-    void CalcZoneTimeDataImpl( const V& children, const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone );
+    void CalcZoneTimeDataImpl( const V& children, const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime );
 
     void SetPlaybackFrame( uint32_t idx );
     bool Save( const char* fn, FileWrite::Compression comp, int zlevel, bool buildDict );
 
     void Attention( bool& alreadyDone );
+    void UpdateTitle();
 
     unordered_flat_map<uint64_t, bool> m_visibleMsgThread;
     unordered_flat_map<uint64_t, bool> m_waitStackThread;
@@ -395,13 +408,6 @@ private:
     static const char* DecodeContextSwitchStateCode( uint8_t state );
     static const char* DecodeContextSwitchReason( uint8_t reason );
     static const char* DecodeContextSwitchReasonCode( uint8_t reason );
-
-    tracy_force_inline bool& Vis( const void* ptr )
-    {
-        auto it = m_visMap.find( ptr );
-        if( it == m_visMap.end() ) it = m_visMap.emplace( ptr, true ).first;
-        return it->second;
-    }
 
     Worker m_worker;
     std::string m_filename, m_filenameStaging;
@@ -453,6 +459,8 @@ private:
 
     ImGuiTextFilter m_statisticsFilter;
     ImGuiTextFilter m_statisticsImageFilter;
+    ImGuiTextFilter m_userTextFilter;
+    unordered_flat_set<Worker::ZoneThreadData*> m_filteredZones;
 
     Region m_highlight;
     Region m_highlightZoom;
@@ -576,7 +584,7 @@ private:
 
     unordered_flat_map<const void*, bool> m_visMap;
 
-    void(*m_cbMainThread)(std::function<void()>, bool);
+    void(*m_cbMainThread)(const std::function<void()>&, bool);
 
     int m_gpuIdx = 0;
 
@@ -842,8 +850,6 @@ private:
         bool monitor = false;
         int64_t time;
     } m_sendQueueWarning;
-
-    std::vector<std::pair<int, int>> m_cpuUsageBuf;
 
     bool m_attnProtoMismatch = false;
     bool m_attnNotAvailable = false;

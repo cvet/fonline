@@ -1,6 +1,7 @@
 #include "TracyImGui.hpp"
 #include "TracyPopcnt.hpp"
 #include "TracyPrint.hpp"
+#include "TracyTimelineContext.hpp"
 #include "TracyTimelineItemGpu.hpp"
 #include "TracyUtility.hpp"
 #include "TracyView.hpp"
@@ -10,7 +11,7 @@ namespace tracy
 {
 
 TimelineItemGpu::TimelineItemGpu( View& view, Worker& worker, GpuCtxData* gpu )
-    : TimelineItem( view, worker, gpu )
+    : TimelineItem( view, worker, gpu, false )
     , m_gpu( gpu )
     , m_idx( view.GetNextGpuIdx() )
 {
@@ -124,7 +125,7 @@ void TimelineItemGpu::HeaderTooltip( const char* label ) const
     ImGui::EndTooltip();
 }
 
-void TimelineItemGpu::HeaderExtraContents( int offset, const ImVec2& wpos, float labelWidth, double pxns, bool hover )
+void TimelineItemGpu::HeaderExtraContents( const TimelineContext& ctx, int offset, float labelWidth )
 {
     if( m_gpu->name.Active() )
     {
@@ -133,7 +134,7 @@ void TimelineItemGpu::HeaderExtraContents( int offset, const ImVec2& wpos, float
 
         char buf[64];
         sprintf( buf, "%s context %i", GpuContextNames[(int)m_gpu->type], m_idx );
-        draw->AddText( wpos + ImVec2( ty * 1.5f + labelWidth, offset ), HeaderColorInactive(), buf );
+        draw->AddText( ctx.wpos + ImVec2( ty * 1.5f + labelWidth, offset ), HeaderColorInactive(), buf );
     }
 }
 
@@ -188,9 +189,9 @@ int64_t TimelineItemGpu::RangeEnd() const
     return t;
 }
 
-bool TimelineItemGpu::DrawContents( double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax )
+bool TimelineItemGpu::DrawContents( const TimelineContext& ctx, int& offset )
 {
-    return m_view.DrawGpu( *m_gpu, pxns, offset, wpos, hover, yMin, yMax );
+    return m_view.DrawGpu( ctx, *m_gpu, offset );
 }
 
 }

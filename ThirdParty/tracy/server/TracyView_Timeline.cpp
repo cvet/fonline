@@ -15,7 +15,7 @@ namespace tracy
 
 extern double s_time;
 
-void View::HandleTimelineMouse( int64_t timespan, const ImVec2& wpos, float w, double& pxns )
+void View::HandleTimelineMouse( int64_t timespan, const ImVec2& wpos, float w )
 {
     assert( timespan > 0 );
     auto& io = ImGui::GetIO();
@@ -222,12 +222,11 @@ void View::HandleTimelineKeyboard( int64_t timespan, const ImVec2& wpos, float w
         if( nextTimelineRangeStart > nextTimelineRangeEnd ) return;
 
         // We want to cap the zoom at the range of values that the timeline has data for
-        const auto lastKnownTime = m_worker.GetLastTime();
+        const auto firstTime = m_worker.GetFirstTime();
+        const auto lastTime = m_worker.GetLastTime();
 
-        // Bring into the range 0 -> lastKnownTime - 50 (must
-
-        nextTimelineRangeStart = std::max<int64_t>( std::min( nextTimelineRangeStart, lastKnownTime - 50 ), 0 );
-        nextTimelineRangeEnd = std::max<int64_t>( std::min( nextTimelineRangeEnd, lastKnownTime ), 1 );
+        nextTimelineRangeStart = std::max<int64_t>( std::min( nextTimelineRangeStart, lastTime - 50 ), firstTime );
+        nextTimelineRangeEnd = std::max<int64_t>( std::min( nextTimelineRangeEnd, lastTime ), firstTime+1 );
 
         if( nextTimelineRangeEnd - nextTimelineRangeStart <= 50 ) return;
         const auto shouldPause = m_viewMode == ViewMode::Paused || !m_worker.IsConnected();
@@ -284,7 +283,7 @@ void View::DrawTimeline()
             v->range.StartFrame();
             HandleRange( v->range, timespan, ImGui::GetCursorScreenPos(), w );
         }
-        HandleTimelineMouse( timespan, ImGui::GetCursorScreenPos(), w, pxns );
+        HandleTimelineMouse( timespan, ImGui::GetCursorScreenPos(), w );
     }
     if( ImGui::IsWindowFocused( ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem ) )
     {
@@ -292,7 +291,7 @@ void View::DrawTimeline()
     }
 
     {
-        const auto tbegin = 0;
+        const auto tbegin = m_worker.GetFirstTime();
         const auto tend = m_worker.GetLastTime();
         if( tbegin > m_vd.zvStart )
         {
@@ -386,7 +385,7 @@ void View::DrawTimeline()
     }
 
     const auto vcenter = verticallyCenterTimeline && drawMouseLine && m_viewMode == ViewMode::Paused;
-    m_tc.End( pxns, wpos, hover, vcenter, yMin, yMax );
+    m_tc.End( pxns, wpos, hover, vcenter, yMin, yMax, m_smallFont );
     ImGui::EndChild();
 
     m_lockHighlight = m_nextLockHighlight;

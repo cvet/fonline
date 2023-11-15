@@ -32,16 +32,16 @@ void View::CalcZoneTimeData( unordered_flat_map<int16_t, ZoneTimeData>& data, in
     const auto& children = m_worker.GetZoneChildren( zone.Child() );
     if( children.is_magic() )
     {
-        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), data, ztime );
     }
     else
     {
-        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, data, ztime );
     }
 }
 
 template<typename Adapter, typename V>
-void View::CalcZoneTimeDataImpl( const V& children, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone )
+void View::CalcZoneTimeDataImpl( const V& children, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime )
 {
     Adapter a;
     if( m_timeDist.exclusiveTime )
@@ -78,16 +78,16 @@ void View::CalcZoneTimeData( const ContextSwitch* ctx, unordered_flat_map<int16_
     const auto& children = m_worker.GetZoneChildren( zone.Child() );
     if( children.is_magic() )
     {
-        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), ctx, data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterDirect<ZoneEvent>>( *(Vector<ZoneEvent>*)( &children ), ctx, data, ztime );
     }
     else
     {
-        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, ctx, data, ztime, zone );
+        CalcZoneTimeDataImpl<VectorAdapterPointer<ZoneEvent>>( children, ctx, data, ztime );
     }
 }
 
 template<typename Adapter, typename V>
-void View::CalcZoneTimeDataImpl( const V& children, const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime, const ZoneEvent& zone )
+void View::CalcZoneTimeDataImpl( const V& children, const ContextSwitch* ctx, unordered_flat_map<int16_t, ZoneTimeData>& data, int64_t& ztime )
 {
     Adapter a;
     if( m_timeDist.exclusiveTime )
@@ -848,7 +848,7 @@ void View::DrawZoneInfoWindow()
 
                             ListMemData( v, []( auto v ) {
                                 ImGui::Text( "0x%" PRIx64, v->Ptr() );
-                                }, nullptr, m_allocTimeRelativeToZone ? ev.Start() : -1, m_zoneInfoMemPool );
+                                }, m_allocTimeRelativeToZone ? ev.Start() : -1, m_zoneInfoMemPool );
                             ImGui::TreePop();
                         }
                     }
@@ -1506,7 +1506,7 @@ void View::DrawGpuInfoWindow()
             ImGui::TextDisabled( "%i.", fidx++ );
             ImGui::SameLine();
             const auto& srcloc = m_worker.GetSourceLocation( v->SrcLoc() );
-            const auto txt = m_worker.GetZoneName( *v, srcloc );
+            const auto txt = m_worker.GetZoneName( srcloc );
             ImGui::PushID( idx++ );
             auto sel = ImGui::Selectable( txt, false );
             auto hover = ImGui::IsItemHovered();

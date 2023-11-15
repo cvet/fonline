@@ -39,19 +39,19 @@ void InitTexture()
 #endif
 }
 
-void* MakeTexture()
+void* MakeTexture( bool zigzag )
 {
     GLuint tex;
     glGenTextures( 1, &tex );
     glBindTexture( GL_TEXTURE_2D, tex );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, zigzag ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, zigzag ? GL_REPEAT : GL_CLAMP_TO_EDGE );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
     return (void*)(intptr_t)tex;
 }
 
-void FreeTexture( void* _tex, void(*runOnMainThread)(std::function<void()>, bool) )
+void FreeTexture( void* _tex, void(*runOnMainThread)(const std::function<void()>&, bool) )
 {
     auto tex = (GLuint)(intptr_t)_tex;
     runOnMainThread( [tex] { glDeleteTextures( 1, &tex ); }, false );
@@ -172,6 +172,16 @@ void UpdateTextureRGBA( void* _tex, void* data, int w, int h )
     auto tex = (GLuint)(intptr_t)_tex;
     glBindTexture( GL_TEXTURE_2D, tex );
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+}
+
+void UpdateTextureRGBAMips( void* _tex, void** data, int* w, int* h, size_t mips )
+{
+    auto tex = (GLuint)(intptr_t)_tex;
+    glBindTexture( GL_TEXTURE_2D, tex );
+    for( size_t i=0; i<mips; i++ )
+    {
+        glTexImage2D( GL_TEXTURE_2D, i, GL_RGBA, w[i], h[i], 0, GL_RGBA, GL_UNSIGNED_BYTE, data[i] );
+    }
 }
 
 }

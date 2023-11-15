@@ -5,21 +5,27 @@
 #include <optional>
 #include <vector>
 
+#include "TracyImGui.hpp"
+#include "TracyTaskDispatch.hpp"
 #include "../public/common/TracyForceInline.hpp"
 #include "tracy_robin_hood.h"
-#include "TracyTimelineItem.hpp"
 
 namespace tracy
 {
 
+class TimelineItem;
+class View;
+class Worker;
+
 class TimelineController
 {
 public:
-    TimelineController( View& view, Worker& worker );
+    TimelineController( View& view, Worker& worker, bool threading );
+    ~TimelineController();
 
     void FirstFrameExpired();
     void Begin();
-    void End( double pxns, const ImVec2& wpos, bool hover, bool vcenter, float yMin, float yMax );
+    void End( double pxns, const ImVec2& wpos, bool hover, bool vcenter, float yMin, float yMax, ImFont* smallFont );
 
     template<class T, class U>
     void AddItem( U* data )
@@ -56,6 +62,8 @@ private:
 
     View& m_view;
     Worker& m_worker;
+
+    TaskDispatch m_td;
 };
 
 }

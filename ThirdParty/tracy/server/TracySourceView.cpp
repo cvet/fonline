@@ -504,6 +504,7 @@ static constexpr CpuIdMap s_cpuIdMap[] = {
     { PackCpuInfo( 0xA40F41 ), "ZEN3" },
     { PackCpuInfo( 0xA50F00 ), "ZEN3" },
     { PackCpuInfo( 0xA60F12 ), "ZEN4" },
+    { PackCpuInfo( 0xA10F11 ), "ZEN4" },
     { PackCpuInfo( 0x090672 ), "ADL-P" },
     { PackCpuInfo( 0x090675 ), "ADL-P" },
     { PackCpuInfo( 0x0906A2 ), "ADL-P" },
@@ -606,7 +607,7 @@ void SourceView::OpenSource( const char* fileName, int line, const View& view, c
     assert( !m_source.empty() );
 }
 
-void SourceView::OpenSymbol( const char* fileName, int line, uint64_t baseAddr, uint64_t symAddr, Worker& worker, const View& view )
+void SourceView::OpenSymbol( const char* fileName, int line, uint64_t baseAddr, uint64_t symAddr, Worker& worker, const View& view, bool updateHistory )
 {
     m_targetLine = line;
     m_targetAddr = symAddr;
@@ -623,6 +624,19 @@ void SourceView::OpenSymbol( const char* fileName, int line, uint64_t baseAddr, 
     SelectViewMode();
 
     if( !worker.GetInlineSymbolList( baseAddr, m_codeLen ) ) m_calcInlineStats = false;
+
+    if( updateHistory )
+    {
+        m_history.erase( m_history.begin() + m_historyCursor, m_history.end() );
+
+        History entry = { fileName, line, baseAddr, symAddr };
+        if( m_history.empty() || memcmp( &m_history.back(), &entry, sizeof( History ) ) != 0 )
+        {
+            m_history.emplace_back( entry );
+            if( m_history.size() > 100 ) m_history.erase( m_history.begin() );
+            m_historyCursor = m_history.size();
+        }
+    }
 }
 
 void SourceView::SelectViewMode()
@@ -1133,6 +1147,22 @@ void SourceView::RenderSymbolView( Worker& worker, View& view )
     auto sym = worker.GetSymbolData( m_symAddr );
     assert( sym );
     ImGui::PushFont( m_bigFont );
+    ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 0, 0 ) );
+    if( ButtonDisablable( " " ICON_FA_CARET_LEFT " ", m_historyCursor <= 1 ) )
+    {
+        m_historyCursor--;
+        const auto& entry = m_history[m_historyCursor-1];
+        OpenSymbol( entry.fileName, entry.line, entry.baseAddr, entry.symAddr, worker, view, false );
+    }
+    ImGui::SameLine( 0, 0 );
+    if( ButtonDisablable( " " ICON_FA_CARET_RIGHT " ", m_historyCursor == m_history.size() ) )
+    {
+        m_historyCursor++;
+        const auto& entry = m_history[m_historyCursor-1];
+        OpenSymbol( entry.fileName, entry.line, entry.baseAddr, entry.symAddr, worker, view, false );
+    }
+    ImGui::PopStyleVar();
+    ImGui::SameLine();
     if( sym->isInline )
     {
         auto parent = worker.GetSymbolData( m_baseAddr );
@@ -3558,11 +3588,11 @@ void SourceView::RenderAsmLine( AsmLine& line, const AddrStat& ipcnt, const Addr
 
                 if( hw ) PrintHwSampleTooltip( cycles, retired, cacheRef, cacheMiss, branchRetired, branchMiss, false );
 
-                const auto& stats = *worker.GetSymbolStats( symAddrParents );
-                if( !stats.parents.empty() )
+                const auto stats = worker.GetSymbolStats( symAddrParents );
+                if( stats && !stats->parents.empty() )
                 {
                     ImGui::Separator();
-                    TextFocused( "Entry call stacks:", RealToString( stats.parents.size() ) );
+                    TextFocused( "Entry call stacks:", RealToString( stats->parents.size() ) );
                     ImGui::SameLine();
                     TextDisabledUnformatted( "(middle click to view)" );
                 }
@@ -3622,7 +3652,7 @@ void SourceView::RenderAsmLine( AsmLine& line, const AddrStat& ipcnt, const Addr
                     m_asmSampleSelect.clear();
                     m_asmGroupSelect = -1;
                 }
-                else if( !stats.parents.empty() && ImGui::IsMouseClicked( 2 ) )
+                else if( stats && !stats->parents.empty() && ImGui::IsMouseClicked( 2 ) )
                 {
                     view.ShowSampleParents( symAddrParents, false );
                 }

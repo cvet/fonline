@@ -143,6 +143,10 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     CreateGlobalData();
 
+#if TRACY_ENABLE
+    TracySetProgramName(FO_GAME_NAME);
+#endif
+
 #if !FO_WEB
     if (const auto exe_path = DiskFileSystem::GetExePath()) {
         LogToFile(_str("{}.log", _str(exe_path.value()).extractFileName().eraseFileExtension()));

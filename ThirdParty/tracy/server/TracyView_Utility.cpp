@@ -749,10 +749,11 @@ int64_t View::AdjustGpuTime( int64_t time, int64_t begin, int drift )
     return time + t / 1000000000 * drift;
 }
 
-uint64_t View::GetFrameNumber( const FrameData& fd, int i, uint64_t offset ) const
+uint64_t View::GetFrameNumber( const FrameData& fd, int i ) const
 {
     if( fd.name == 0 )
     {
+        const auto offset = m_worker.GetFrameOffset();
         if( offset == 0 )
         {
             return i;
@@ -768,9 +769,9 @@ uint64_t View::GetFrameNumber( const FrameData& fd, int i, uint64_t offset ) con
     }
 }
 
-const char* View::GetFrameText( const FrameData& fd, int i, uint64_t ftime, uint64_t offset ) const
+const char* View::GetFrameText( const FrameData& fd, int i, uint64_t ftime ) const
 {
-    const auto fnum = GetFrameNumber( fd, i, offset );
+    const auto fnum = GetFrameNumber( fd, i );
     static char buf[1024];
     if( fd.name == 0 )
     {
@@ -778,17 +779,13 @@ const char* View::GetFrameText( const FrameData& fd, int i, uint64_t ftime, uint
         {
             sprintf( buf, "Tracy init (%s)", TimeToString( ftime ) );
         }
-        else if( offset == 0 )
+        else if( i != 1 || !m_worker.IsOnDemand() )
         {
             sprintf( buf, "Frame %s (%s)", RealToString( fnum ), TimeToString( ftime ) );
-        }
-        else if( i == 1 )
-        {
-            sprintf( buf, "Missed frames (%s)", TimeToString( ftime ) );
         }
         else
         {
-            sprintf( buf, "Frame %s (%s)", RealToString( fnum ), TimeToString( ftime ) );
+            sprintf( buf, "Missed frames (%s)", TimeToString( ftime ) );
         }
     }
     else
@@ -870,6 +867,32 @@ void View::Attention( bool& alreadyDone )
     {
         alreadyDone = true;
         m_acb();
+    }
+}
+
+void View::UpdateTitle()
+{
+    auto captureName = m_worker.GetCaptureName().c_str();
+    const auto& desc = m_userData.GetDescription();
+    if( !desc.empty() )
+    {
+        char buf[1024];
+        snprintf( buf, 1024, "%s (%s)", captureName, desc.c_str() );
+        m_stcb( buf );
+    }
+    else if( !m_filename.empty() )
+    {
+        auto fptr = m_filename.c_str() + m_filename.size() - 1;
+        while( fptr > m_filename.c_str() && *fptr != '/' && *fptr != '\\' ) fptr--;
+        if( *fptr == '/' || *fptr == '\\' ) fptr++;
+
+        char buf[1024];
+        snprintf( buf, 1024, "%s (%s)", captureName, fptr );
+        m_stcb( buf );
+    }
+    else
+    {
+        m_stcb( captureName );
     }
 }
 

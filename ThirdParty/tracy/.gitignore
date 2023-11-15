@@ -12,6 +12,7 @@ tools/*
 *.o
 *.so
 *.swp
+*.obj
 imgui.ini
 test/tracy_test
 test/tracy_test.exe
@@ -40,3 +41,6 @@ extra/vswhere.exe
 extra/tracy-build
 /.cache
 compile_commands.json
+profiler/build/wasm/Tracy-release.*
+profiler/build/wasm/Tracy-debug.*
+profiler/build/wasm/embed.tracy

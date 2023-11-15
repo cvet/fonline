@@ -496,6 +496,8 @@ The client with on-demand profiling enabled needs to perform additional bookkeep
 
 By default, the Tracy client will announce its presence to the local network\footnote{Additional configuration may be required to achieve full functionality, depending on your network layout. Read about UDP broadcasts for more information.}. If you want to disable this feature, define the \texttt{TRACY\_NO\_BROADCAST} macro.
 
+The program name that is sent out in the broadcast messages can be customized by using the \texttt{TracySetProgramName(name)} macro.
+
 \subsubsection{Client network interface}
 
 By default, the Tracy client will listen on all network interfaces. If you want to restrict it to only listening on the localhost interface, define the \texttt{TRACY\_ONLY\_LOCALHOST} macro at compile-time, or set the \texttt{TRACY\_ONLY\_LOCALHOST} environment variable to $1$ at runtime.
@@ -1523,6 +1525,18 @@ In order to maintain synchronization between CPU and GPU time domains, you will 
 
 To enable calibrated context, replace the macro \texttt{TracyVkContext} with \texttt{TracyVkContextCalibrated} and pass the two functions as additional parameters, in the order specified above.
 
+\subparagraph{Using Vulkan 1.2 features}
+
+Vulkan 1.2 and \texttt{VK\_EXT\_host\_query\_reset} provide mechanics to reset the query pool without the need of a command buffer. By using \texttt{TracyVkContextHostCalibrated} you can make use of this feature. It only requires a function pointer to \texttt{vkResetQueryPool} in addition to the ones required for \texttt{TracyVkContextCalibrated} instead of the VkQueue and VkCommandBuffer handles.
+
+However, using this feature requires the physical device to have calibrated device and host time domains. In addition to \texttt{VK\_TIME\_DOMAIN\_DEVICE\_EXT}, \texttt{vkGetPhysicalDeviceCalibrateableTimeDomainsEXT} will have to additionally return either \texttt{VK\_TIME\_DOMAIN\_CLOCK\_MONOTONIC\_RAW\_EXT} or \texttt{VK\_TIME\_DOMAIN\_QUERY\_PERFORMANCE\_COUNTER\_EXT} for Unix and Windows, respectively. If this is not the case, you will need to use \texttt{TracyVkContextCalibrated} or \texttt{TracyVkContext} macro instead.
+
+\subparagraph{Dynamically loading the Vulkan symbols}
+
+Some applications dynamically link the Vulkan loader, and manage a local symbol table, to remove the trampoline overhead of calling through the Vulkan loader itself.
+
+When \texttt{TRACY\_VK\_USE\_SYMBOL\_TABLE} is defined the signature of \texttt{TracyVkContext}, \texttt{TracyVkContextCalibrated}, and \texttt{TracyVkContextHostCalibrated} are adjusted to take in the \texttt{VkInstance}, \texttt{PFN\_vkGetInstanceProcAddr}, and \texttt{PFN\_vkGetDeviceProcAddr} to enable constructing a local symbol table to be used to call through the Vulkan API when tracing.
+
 \subsubsection{Direct3D 11}
 
 To enable Direct3D 11 support, include the \texttt{public/tracy/TracyD3D11.hpp} header file, and create a \texttt{TracyD3D11Ctx} object with the \texttt{TracyD3D11Context(device, devicecontext)} macro. The object should later be cleaned up with the \texttt{TracyD3D11Destroy} macro. Tracy does not support D3D11 command lists. To set a custom name for the context, use the \texttt{TracyGpuContextName(name, size)} macro.
@@ -1872,7 +1886,7 @@ The following macros mark the beginning of a zone:
 
 Refer to sections~\ref{markingzones} and~\ref{multizone} for description of macro variants and parameters. The \texttt{ctx} parameter specifies the name of a data structure, which the macro will create on the stack to hold the internal zone data.
 
-Unlike C++, there's no automatic destruction mechanism in C, so you will need to mark where the zone ends manually. To do so use the \texttt{TracyCZoneEnd(ctx)} macro.
+Unlike C++, there's no automatic destruction mechanism in C, so you will need to mark where the zone ends manually. To do so use the \texttt{TracyCZoneEnd(ctx)} macro.\footnote{GCC and Clang provide \texttt{\_\_attribute\_\_((cleanup))} which can used to run a function when a variable goes out of scope.}
 
 Zone text and name may be set by using the \texttt{TracyCZoneText(ctx, txt, size)}, \texttt{TracyCZoneValue(ctx, value)} and \texttt{TracyCZoneName(ctx, txt, size)} macros. Make sure you are following the zone stack rules, as described in section~\ref{multizone}!
 
@@ -2830,26 +2844,6 @@ Labels accompanied by the \faCaretDown{}~symbol can be collapsed out of the view
 In an example in figure~\ref{zoneslocks} you can see that there are two threads: \emph{Main thread} and \emph{Streaming thread}\footnote{By clicking on a thread name, you can temporarily disable the display of the zones in this thread.}. We can see that the \emph{Main thread} has two root level zones visible: \emph{Update} and \emph{Render}. The \emph{Update} zone is split into further sub-zones, some of which are too small to be displayed at the current zoom level. This is indicated by drawing a zig-zag pattern over the merged zones box (section~\ref{collapseditems}), with the number of collapsed zones printed in place of the zone name. We can also see that the \emph{Physics} zone acquires the \emph{Physics lock} mutex for most of its run time.
 
 Meanwhile, the \emph{Streaming thread} is performing some \emph{Streaming jobs}. The first \emph{Streaming job} sent a message (section~\ref{messagelog}). In addition to being listed in the message log, it is indicated by a triangle over the thread separator. When multiple messages are in one place, the triangle outline shape changes to a filled triangle.
-
-At high zoom levels, the zones will be displayed with additional markers, as presented in figure~\ref{inaccuracy}. The red regions at the start and end of a zone indicate the cost associated with recording an event (\emph{Queue delay}). The error bars show the timer inaccuracy (\emph{Timer resolution}). Note that these markers are only \emph{approximations}, as many factors can impact the actual cost of capturing a zone, for example, cache effects or CPU frequency scaling, which is unaccounted for (see section~\ref{checkenvironmentcpu}).
-
-\begin{figure}[h]
-\centering\begin{tikzpicture}
-\draw(0, 0) rectangle+(5, 0.5) node [midway] {Zone};
-\draw[pattern=crosshatch dots] (0, 0) rectangle+(1, 0.5);
-\draw[pattern=crosshatch dots] (5, 0) rectangle+(1, 0.5);
-\draw(-0.5, 0.35) -- (-0.5, 0.15);
-\draw(0.5, 0.35) -- (0.5, 0.15);
-\draw(-0.5, 0.25) -- (0.5, 0.25);
-\draw(4.5, 0.35) -- (4.5, 0.15);
-\draw(5.5, 0.35) -- (5.5, 0.15);
-\draw(4.5, 0.25) -- (5.5, 0.25);
-\draw(0, -0.2) -- (0, -0.3) -- (5, -0.3) -- (5, -0.2);
-\draw(2.5, -0.3) node[anchor=north] {Zone extent};
-\end{tikzpicture}
-\caption{Approximation of timer inaccuracies and zone collection cost.}
-\label{inaccuracy}
-\end{figure}
 
 The GPU zones are displayed just like CPU zones, with an OpenGL/Vulkan/Direct3D/OpenCL context in place of a thread name.
 
@@ -3899,6 +3893,7 @@ The following libraries are included with and used by the Tracy Profiler. Entrie
 \item JSON for Modern C++ -- \url{https://github.com/nlohmann/json}
 \item robin-hood-hashing -- \url{https://github.com/martinus/robin-hood-hashing}
 \item SPSCQueue \faStar{} -- \url{https://github.com/rigtorp/SPSCQueue}
+\item ini -- \url{https://github.com/rxi/ini}
 \end{itemize}
 
 \item Apache license 2.0

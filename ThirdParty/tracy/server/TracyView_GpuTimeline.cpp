@@ -2,6 +2,7 @@
 #include "TracyImGui.hpp"
 #include "TracyMouse.hpp"
 #include "TracyPrint.hpp"
+#include "TracyTimelineContext.hpp"
 #include "TracyView.hpp"
 
 namespace tracy
@@ -9,14 +10,20 @@ namespace tracy
 
 constexpr float MinVisSize = 3;
 
-bool View::DrawGpu( const GpuCtxData& gpu, double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax )
+bool View::DrawGpu( const TimelineContext& ctx, const GpuCtxData& gpu, int& offset )
 {
-    const auto w = ImGui::GetContentRegionAvail().x - 1;
-    const auto ty = ImGui::GetTextLineHeight();
+    const auto w = ctx.w;
+    const auto ty = ctx.ty;
     const auto ostep = ty + 1;
-    const auto nspx = 1.0 / pxns;
-    auto draw = ImGui::GetWindowDrawList();
+    const auto pxns = ctx.pxns;
+    const auto nspx = ctx.nspx;
+    const auto& wpos = ctx.wpos;
     const auto dpos = wpos + ImVec2( 0.5f, 0.5f );
+    const auto hover = ctx.hover;
+    const auto yMin = ctx.yMin;
+    const auto yMax = ctx.yMax;
+
+    auto draw = ImGui::GetWindowDrawList();
 
     ImGui::PushFont( m_smallFont );
     const auto sty = ImGui::GetTextLineHeight();
@@ -123,14 +130,15 @@ int View::DispatchGpuZoneLevel( const Vector<short_ptr<GpuEvent>>& vec, bool hov
 template<typename Adapter, typename V>
 int View::DrawGpuZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int _offset, int depth, uint64_t thread, float yMin, float yMax, int64_t begin, int drift )
 {
-    const auto delay = m_worker.GetDelay();
-    const auto resolution = m_worker.GetResolution();
     // cast to uint64_t, so that unended zones (end = -1) are still drawn
-    auto it = std::lower_bound( vec.begin(), vec.end(), std::max<int64_t>( 0, m_vd.zvStart - delay ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuEnd(), begin, drift ) < (uint64_t)r; } );
+    auto it = std::lower_bound( vec.begin(), vec.end(), std::max<int64_t>( 0, m_vd.zvStart ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuEnd(), begin, drift ) < (uint64_t)r; } );
     if( it == vec.end() ) return depth;
 
-    const auto zitend = std::lower_bound( it, vec.end(), std::max<int64_t>( 0, m_vd.zvEnd + resolution ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuStart(), begin, drift ) < (uint64_t)r; } );
+    Adapter a;
+
+    const auto zitend = std::lower_bound( it, vec.end(), std::max<int64_t>( 0, m_vd.zvEnd ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuStart(), begin, drift ) < (uint64_t)r; } );
     if( it == zitend ) return depth;
+    if( AdjustGpuTime( a(*(zitend-1)).GpuEnd(), begin, drift ) < m_vd.zvStart ) return depth;
 
     const auto w = ImGui::GetContentRegionAvail().x - 1;
     const auto ty = ImGui::GetTextLineHeight();
@@ -142,7 +150,6 @@ int View::DrawGpuZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx,
     depth++;
     int maxdepth = depth;
 
-    Adapter a;
     while( it < zitend )
     {
         auto& ev = a(*it);
@@ -306,19 +313,19 @@ int View::DrawGpuZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx,
 template<typename Adapter, typename V>
 int View::SkipGpuZoneLevel( const V& vec, bool hover, double pxns, int64_t nspx, const ImVec2& wpos, int _offset, int depth, uint64_t thread, float yMin, float yMax, int64_t begin, int drift )
 {
-    const auto delay = m_worker.GetDelay();
-    const auto resolution = m_worker.GetResolution();
     // cast to uint64_t, so that unended zones (end = -1) are still drawn
-    auto it = std::lower_bound( vec.begin(), vec.end(), std::max<int64_t>( 0, m_vd.zvStart - delay ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuEnd(), begin, drift ) < (uint64_t)r; } );
+    auto it = std::lower_bound( vec.begin(), vec.end(), std::max<int64_t>( 0, m_vd.zvStart ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuEnd(), begin, drift ) < (uint64_t)r; } );
     if( it == vec.end() ) return depth;
 
-    const auto zitend = std::lower_bound( it, vec.end(), std::max<int64_t>( 0, m_vd.zvEnd + resolution ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuStart(), begin, drift ) < (uint64_t)r; } );
+    Adapter a;
+
+    const auto zitend = std::lower_bound( it, vec.end(), std::max<int64_t>( 0, m_vd.zvEnd ), [begin, drift] ( const auto& l, const auto& r ) { Adapter a; return (uint64_t)AdjustGpuTime( a(l).GpuStart(), begin, drift ) < (uint64_t)r; } );
     if( it == zitend ) return depth;
+    if( AdjustGpuTime( a(*(zitend-1)).GpuEnd(), begin, drift ) < m_vd.zvStart ) return depth;
 
     depth++;
     int maxdepth = depth;
 
-    Adapter a;
     while( it < zitend )
     {
         auto& ev = a(*it);

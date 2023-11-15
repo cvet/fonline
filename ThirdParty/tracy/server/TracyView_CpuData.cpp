@@ -4,125 +4,135 @@
 #include "TracyImGui.hpp"
 #include "TracyMouse.hpp"
 #include "TracyPrint.hpp"
+#include "TracyTimelineDraw.hpp"
+#include "TracyTimelineItem.hpp"
+#include "TracyTimelineContext.hpp"
 #include "TracyView.hpp"
+
+constexpr float MinVisSize = 3;
 
 namespace tracy
 {
 
-constexpr float MinVisSize = 3;
-
-bool View::DrawCpuData( double pxns, int& offset, const ImVec2& wpos, bool hover, float yMin, float yMax )
+bool View::DrawCpuData( const TimelineContext& ctx, const std::vector<CpuUsageDraw>& cpuDraw, const std::vector<std::vector<CpuCtxDraw>>& ctxDraw, int& offset, bool hasCpuData )
 {
     auto cpuData = m_worker.GetCpuData();
     const auto cpuCnt = m_worker.GetCpuDataCpuCount();
     assert( cpuCnt != 0 );
 
-    const auto w = ImGui::GetContentRegionAvail().x - 1;
-    const auto ty = ImGui::GetTextLineHeight();
-    const auto nspxdbl = 1.0 / pxns;
-    const auto nspx = int64_t( nspxdbl );
-    auto draw = ImGui::GetWindowDrawList();
+    const auto& wpos = ctx.wpos;
+    const auto w = ctx.w;
+    const auto ty = ctx.ty;
+    const auto sty = ctx.sty;
+    const auto pxns = ctx.pxns;
+    const auto nspx = ctx.nspx;
     const auto dpos = wpos + ImVec2( 0.5f, 0.5f );
+    const auto yMin = ctx.yMin;
+    const auto yMax = ctx.yMax;
+    const auto hover = ctx.hover;
+    const auto vStart = ctx.vStart;
 
-#ifdef TRACY_NO_STATISTICS
-    if( m_vd.drawCpuUsageGraph )
-#else
-    if( m_vd.drawCpuUsageGraph && m_worker.IsCpuUsageReady() )
-#endif
+    auto draw = ImGui::GetWindowDrawList();
+
+    if( hasCpuData && m_vd.drawCpuUsageGraph )
     {
         const auto cpuUsageHeight = floor( 30.f * GetScale() );
         if( wpos.y + offset + cpuUsageHeight + 3 >= yMin && wpos.y + offset <= yMax )
         {
-            const auto iw = (size_t)w;
-            m_worker.GetCpuUsage( m_vd.zvStart, nspxdbl, iw, m_cpuUsageBuf );
-
             const float cpuCntRev = 1.f / cpuCnt;
-            float pos = 0;
-            auto usage = m_cpuUsageBuf.begin();
-            while( pos < w )
+            int pos = 0;
+            for( auto& v : cpuDraw )
             {
                 float base;
-                if( usage->first != 0 )
+                if( v.own != 0 )
                 {
-                    base = dpos.y + offset + ( 1.f - usage->first * cpuCntRev ) * cpuUsageHeight;
+                    base = dpos.y + offset + ( 1.f - v.own * cpuCntRev ) * cpuUsageHeight;
                     DrawLine( draw, ImVec2( dpos.x + pos, dpos.y + offset + cpuUsageHeight ), ImVec2( dpos.x + pos, base ), 0xFF55BB55 );
                 }
                 else
                 {
                     base = dpos.y + offset + cpuUsageHeight;
                 }
-                if( usage->second != 0 )
+                if( v.other != 0 )
                 {
-                    int usageTotal = usage->first + usage->second;
+                    int usageTotal = v.own + v.other;
                     DrawLine( draw, ImVec2( dpos.x + pos, base ), ImVec2( dpos.x + pos, dpos.y + offset + ( 1.f - usageTotal * cpuCntRev ) * cpuUsageHeight ), 0xFF666666 );
                 }
                 pos++;
-                usage++;
             }
             DrawLine( draw, dpos + ImVec2( 0, offset+cpuUsageHeight+2 ), dpos + ImVec2( w, offset+cpuUsageHeight+2 ), 0x22DD88DD );
 
             if( hover && ImGui::IsMouseHoveringRect( ImVec2( wpos.x, wpos.y + offset ), ImVec2( wpos.x + w, wpos.y + offset + cpuUsageHeight ), true ) )
             {
-                const auto& usage = m_cpuUsageBuf[ImGui::GetIO().MousePos.x - wpos.x];
                 ImGui::BeginTooltip();
-                TextFocused( "Cores used by profiled program:", RealToString( usage.first ) );
-                ImGui::SameLine();
-                char buf[64];
-                PrintStringPercent( buf, usage.first * cpuCntRev * 100 );
-                TextDisabledUnformatted( buf );
-                TextFocused( "Cores used by other programs:", RealToString( usage.second ) );
-                ImGui::SameLine();
-                PrintStringPercent( buf, usage.second * cpuCntRev * 100 );
-                TextDisabledUnformatted( buf );
-                TextFocused( "Number of cores:", RealToString( cpuCnt ) );
-                if( usage.first + usage.second != 0 )
+                if( cpuDraw.size() > ( ImGui::GetIO().MousePos.x - wpos.x ) )
                 {
-                    const auto mt = m_vd.zvStart + ( ImGui::GetIO().MousePos.x - wpos.x ) * nspxdbl;
-                    ImGui::Separator();
-                    for( int i=0; i<cpuCnt; i++ )
+                    const auto& usage = cpuDraw[ImGui::GetIO().MousePos.x - wpos.x];
+                    TextFocused( "Cores used by profiled program:", RealToString( usage.own ) );
+                    ImGui::SameLine();
+                    char buf[64];
+                    PrintStringPercent( buf, usage.own * cpuCntRev * 100 );
+                    TextDisabledUnformatted( buf );
+                    TextFocused( "Cores used by other programs:", RealToString( usage.other ) );
+                    ImGui::SameLine();
+                    PrintStringPercent( buf, usage.other * cpuCntRev * 100 );
+                    TextDisabledUnformatted( buf );
+                    TextFocused( "Number of cores:", RealToString( cpuCnt ) );
+                    if( usage.own + usage.other != 0 )
                     {
-                        if( !cpuData[i].cs.empty() )
+                        const auto mt = m_vd.zvStart + ( ImGui::GetIO().MousePos.x - wpos.x ) * nspx;
+                        ImGui::Separator();
+                        for( int i=0; i<cpuCnt; i++ )
                         {
-                            auto& cs = cpuData[i].cs;
-                            auto it = std::lower_bound( cs.begin(), cs.end(), mt, [] ( const auto& l, const auto& r ) { return (uint64_t)l.End() < (uint64_t)r; } );
-                            if( it != cs.end() && it->Start() <= mt && it->End() >= mt )
+                            if( !cpuData[i].cs.empty() )
                             {
-                                auto tt = m_worker.GetThreadTopology( i );
-                                if( tt )
+                                auto& cs = cpuData[i].cs;
+                                auto it = std::lower_bound( cs.begin(), cs.end(), mt, [] ( const auto& l, const auto& r ) { return (uint64_t)l.End() < (uint64_t)r; } );
+                                if( it != cs.end() && it->Start() <= mt && it->End() >= mt )
                                 {
-                                    ImGui::TextDisabled( "[%i:%i] CPU %i:", tt->package, tt->core, i );
-                                }
-                                else
-                                {
-                                    ImGui::TextDisabled( "CPU %i:", i );
-                                }
-                                ImGui::SameLine();
-                                const auto thread = m_worker.DecompressThreadExternal( it->Thread() );
-                                bool local, untracked;
-                                const char* txt;
-                                auto label = GetThreadContextData( thread, local, untracked, txt );
-                                if( local || untracked )
-                                {
-                                    uint32_t color;
-                                    if( m_vd.dynamicColors != 0 )
+                                    auto tt = m_worker.GetThreadTopology( i );
+                                    if( tt )
                                     {
-                                        color = local ? GetThreadColor( thread, 0 ) : ( untracked ? 0xFF663333 : 0xFF444444 );
+                                        ImGui::TextDisabled( "[%i:%i] CPU %i:", tt->package, tt->core, i );
                                     }
                                     else
                                     {
-                                        color = local ? 0xFF334488 : ( untracked ? 0xFF663333 : 0xFF444444 );
+                                        ImGui::TextDisabled( "CPU %i:", i );
                                     }
-                                    TextColoredUnformatted( HighlightColor<75>( color ), label );
                                     ImGui::SameLine();
-                                    ImGui::TextDisabled( "(%s)", RealToString( thread ) );
-                                }
-                                else
-                                {
-                                    TextDisabledUnformatted( label );
+                                    const auto thread = m_worker.DecompressThreadExternal( it->Thread() );
+                                    bool local, untracked;
+                                    const char* txt;
+                                    auto label = GetThreadContextData( thread, local, untracked, txt );
+                                    if( local || untracked )
+                                    {
+                                        uint32_t color;
+                                        if( m_vd.dynamicColors != 0 )
+                                        {
+                                            color = local ? GetThreadColor( thread, 0 ) : ( untracked ? 0xFF663333 : 0xFF444444 );
+                                        }
+                                        else
+                                        {
+                                            color = local ? 0xFF334488 : ( untracked ? 0xFF663333 : 0xFF444444 );
+                                        }
+                                        TextColoredUnformatted( HighlightColor<75>( color ), label );
+                                        ImGui::SameLine();
+                                        ImGui::TextDisabled( "(%s)", RealToString( thread ) );
+                                    }
+                                    else
+                                    {
+                                        TextDisabledUnformatted( label );
+                                    }
                                 }
                             }
                         }
                     }
+                }
+                else
+                {
+                    TextFocused( "Cores used by profiled program:", "0" );
+                    TextFocused( "Cores used by other programs:", "0" );
+                    TextFocused( "Number of cores:", RealToString( cpuCnt ) );
                 }
                 ImGui::EndTooltip();
             }
@@ -131,249 +141,220 @@ bool View::DrawCpuData( double pxns, int& offset, const ImVec2& wpos, bool hover
     }
 
     ImGui::PushFont( m_smallFont );
-    const auto sty = round( ImGui::GetTextLineHeight() );
     const auto sstep = sty + 1;
 
     const auto origOffset = offset;
     for( int i=0; i<cpuCnt; i++ )
     {
-        if( !cpuData[i].cs.empty() )
+        DrawLine( draw, dpos + ImVec2( 0, offset+sty ), dpos + ImVec2( w, offset+sty ), 0x22DD88DD );
+        auto tt = m_worker.GetThreadTopology( i );
+        if( !ctxDraw[i].empty() && wpos.y + offset + sty >= yMin && wpos.y + offset <= yMax )
         {
-            if( wpos.y + offset + sty >= yMin && wpos.y + offset <= yMax )
+            auto& cs = cpuData[i].cs;
+            for( auto& v : ctxDraw[i] )
             {
-                DrawLine( draw, dpos + ImVec2( 0, offset+sty ), dpos + ImVec2( w, offset+sty ), 0x22DD88DD );
-
-                auto& cs = cpuData[i].cs;
-                auto tt = m_worker.GetThreadTopology( i );
-
-                auto it = std::lower_bound( cs.begin(), cs.end(), std::max<int64_t>( 0, m_vd.zvStart ), [] ( const auto& l, const auto& r ) { return (uint64_t)l.End() < (uint64_t)r; } );
-                if( it != cs.end() )
+                const auto& ev = cs[v.idx];
+                const auto t0 = ev.Start();
+                const auto px0 = ( t0 - vStart ) * pxns;
+                if( v.num > 0 )
                 {
-                    auto eit = std::lower_bound( it, cs.end(), m_vd.zvEnd, [] ( const auto& l, const auto& r ) { return l.Start() < r; } );
-                    while( it < eit )
+                    const auto& eev = cs[v.idx + v.num - 1];
+                    const auto t1 = eev.IsEndValid() ? eev.End() : eev.Start();
+                    const auto px1 = ( t1 - vStart ) * pxns;
+                    DrawZigZag( draw, wpos + ImVec2( 0, offset + sty/2 ), std::max( px0, -10.0 ), std::min( std::max( px1, px0+MinVisSize ), double( w + 10 ) ), sty/4, 0xFF888888 );
+
+                    if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( px0, offset-1 ), wpos + ImVec2( std::max( px1, px0+MinVisSize ), offset + sty ) ) )
                     {
-                        const auto start = it->Start();
-                        const auto end = it->End();
-                        const auto zsz = std::max( ( end - start ) * pxns, pxns * 0.5 );
-                        if( zsz < MinVisSize )
+                        ImGui::PopFont();
+                        ImGui::BeginTooltip();
+                        TextFocused( "CPU:", RealToString( i ) );
+                        if( tt )
                         {
-                            const auto MinVisNs = MinVisSize * nspx;
-                            int num = 0;
-                            const auto px0 = ( start - m_vd.zvStart ) * pxns;
-                            auto px1ns = end - m_vd.zvStart;
-                            auto rend = end;
-                            auto nextTime = end + MinVisNs;
-                            for(;;)
-                            {
-                                const auto prevIt = it;
-                                it = std::lower_bound( it, eit, nextTime, [] ( const auto& l, const auto& r ) { return (uint64_t)l.End() < (uint64_t)r; } );
-                                if( it == prevIt ) ++it;
-                                num += std::distance( prevIt, it );
-                                if( it == eit ) break;
-                                const auto nend = it->IsEndValid() ? it->End() : m_worker.GetLastTime();
-                                const auto nsnext = nend - m_vd.zvStart;
-                                if( nsnext - px1ns >= MinVisNs * 2 ) break;
-                                px1ns = nsnext;
-                                rend = nend;
-                                nextTime = nend + nspx;
-                            }
-                            const auto px1 = px1ns * pxns;
-                            DrawZigZag( draw, wpos + ImVec2( 0, offset + sty/2 ), std::max( px0, -10.0 ), std::min( std::max( px1, px0+MinVisSize ), double( w + 10 ) ), sty/4, 0xFF888888 );
-
-                            if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( px0, offset-1 ), wpos + ImVec2( std::max( px1, px0+MinVisSize ), offset + sty ) ) )
-                            {
-                                ImGui::PopFont();
-                                ImGui::BeginTooltip();
-                                TextFocused( "CPU:", RealToString( i ) );
-                                if( tt )
-                                {
-                                    ImGui::SameLine();
-                                    ImGui::Spacing();
-                                    ImGui::SameLine();
-                                    TextFocused( "Package:", RealToString( tt->package ) );
-                                    ImGui::SameLine();
-                                    TextFocused( "Core:", RealToString( tt->core ) );
-                                }
-                                TextFocused( "Context switch regions:", RealToString( num ) );
-                                ImGui::Separator();
-                                TextFocused( "Start time:", TimeToString( start ) );
-                                TextFocused( "End time:", TimeToString( rend ) );
-                                TextFocused( "Activity time:", TimeToString( rend - start ) );
-                                ImGui::EndTooltip();
-                                ImGui::PushFont( m_smallFont );
-
-                                if( IsMouseClicked( 2 ) )
-                                {
-                                    ZoomToRange( start, rend );
-                                }
-                            }
+                            ImGui::SameLine();
+                            ImGui::Spacing();
+                            ImGui::SameLine();
+                            TextFocused( "Package:", RealToString( tt->package ) );
+                            ImGui::SameLine();
+                            TextFocused( "Core:", RealToString( tt->core ) );
                         }
-                        else
+                        TextFocused( "Context switch regions:", RealToString( v.num ) );
+                        ImGui::Separator();
+                        TextFocused( "Start time:", TimeToString( t0 ) );
+                        TextFocused( "End time:", TimeToString( t1 ) );
+                        TextFocused( "Activity time:", TimeToString( t1 - t0 ) );
+                        ImGui::EndTooltip();
+                        ImGui::PushFont( m_smallFont );
+
+                        if( IsMouseClicked( 2 ) )
                         {
-                            const auto thread = m_worker.DecompressThreadExternal( it->Thread() );
-                            bool local, untracked;
-                            const char* txt;
-                            auto label = GetThreadContextData( thread, local, untracked, txt );
-                            const auto pr0 = ( start - m_vd.zvStart ) * pxns;
-                            const auto pr1 = ( end - m_vd.zvStart ) * pxns;
-                            const auto px0 = std::max( pr0, -10.0 );
-                            const auto px1 = std::max( { std::min( pr1, double( w + 10 ) ), px0 + pxns * 0.5, px0 + MinVisSize } );
-
-                            uint32_t color;
-                            if( m_vd.dynamicColors != 0 )
-                            {
-                                color = local ? GetThreadColor( thread, 0 ) : ( untracked ? 0xFF663333 : 0xFF444444 );
-                            }
-                            else
-                            {
-                                color = local ? 0xFF334488 : ( untracked ? 0xFF663333 : 0xFF444444 );
-                            }
-
-                            draw->AddRectFilled( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + sty ), color );
-                            if( m_drawThreadHighlight == thread )
-                            {
-                                draw->AddRect( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + sty ), 0xFFFFFFFF );
-                            }
-                            else
-                            {
-                                const auto accentColor = HighlightColor( color );
-                                const auto darkColor = DarkenColor( color );
-                                DrawLine( draw, dpos + ImVec2( px0, offset + sty ), dpos + ImVec2( px0, offset ), dpos + ImVec2( px1-1, offset ), accentColor, 1.f );
-                                DrawLine( draw, dpos + ImVec2( px0, offset + sty ), dpos + ImVec2( px1-1, offset + sty ), dpos + ImVec2( px1-1, offset ), darkColor, 1.f );
-                            }
-
-                            auto tsz = ImGui::CalcTextSize( label );
-                            if( tsz.x < zsz )
-                            {
-                                const auto x = ( start - m_vd.zvStart ) * pxns + ( ( end - start ) * pxns - tsz.x ) / 2;
-                                if( x < 0 || x > w - tsz.x )
-                                {
-                                    ImGui::PushClipRect( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + tsz.y * 2 ), true );
-                                    DrawTextContrast( draw, wpos + ImVec2( std::max( std::max( 0., px0 ), std::min( double( w - tsz.x ), x ) ), offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
-                                    ImGui::PopClipRect();
-                                }
-                                else if( start == end )
-                                {
-                                    DrawTextContrast( draw, wpos + ImVec2( px0 + ( px1 - px0 - tsz.x ) * 0.5, offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
-                                }
-                                else
-                                {
-                                    DrawTextContrast( draw, wpos + ImVec2( x, offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
-                                }
-                            }
-                            else
-                            {
-                                ImGui::PushClipRect( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + tsz.y * 2 ), true );
-                                DrawTextContrast( draw, wpos + ImVec2( ( start - m_vd.zvStart ) * pxns, offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
-                                ImGui::PopClipRect();
-                            }
-
-                            if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( px0, offset-1 ), wpos + ImVec2( px1, offset + sty ) ) )
-                            {
-                                m_drawThreadHighlight = thread;
-                                ImGui::PopFont();
-                                ImGui::BeginTooltip();
-                                TextFocused( "CPU:", RealToString( i ) );
-                                if( tt )
-                                {
-                                    ImGui::SameLine();
-                                    ImGui::Spacing();
-                                    ImGui::SameLine();
-                                    TextFocused( "Package:", RealToString( tt->package ) );
-                                    ImGui::SameLine();
-                                    TextFocused( "Core:", RealToString( tt->core ) );
-                                }
-                                if( local )
-                                {
-                                    TextFocused( "Program:", m_worker.GetCaptureProgram().c_str() );
-                                    ImGui::SameLine();
-                                    TextDisabledUnformatted( "(profiled program)" );
-                                    SmallColorBox( GetThreadColor( thread, 0 ) );
-                                    ImGui::SameLine();
-                                    TextFocused( "Thread:", m_worker.GetThreadName( thread ) );
-                                    ImGui::SameLine();
-                                    ImGui::TextDisabled( "(%s)", RealToString( thread ) );
-                                    m_drawThreadMigrations = thread;
-                                    m_cpuDataThread = thread;
-                                }
-                                else
-                                {
-                                    if( untracked )
-                                    {
-                                        TextFocused( "Program:", m_worker.GetCaptureProgram().c_str() );
-                                    }
-                                    else
-                                    {
-                                        TextFocused( "Program:", txt );
-                                    }
-                                    ImGui::SameLine();
-                                    if( untracked )
-                                    {
-                                        TextDisabledUnformatted( "(untracked thread in profiled program)" );
-                                    }
-                                    else
-                                    {
-                                        TextDisabledUnformatted( "(external)" );
-                                    }
-                                    TextFocused( "Thread:", m_worker.GetExternalName( thread ).second );
-                                    ImGui::SameLine();
-                                    ImGui::TextDisabled( "(%s)", RealToString( thread ) );
-                                }
-                                ImGui::Separator();
-                                TextFocused( "Start time:", TimeToStringExact( start ) );
-                                TextFocused( "End time:", TimeToStringExact( end ) );
-                                TextFocused( "Activity time:", TimeToString( end - start ) );
-                                ImGui::EndTooltip();
-                                ImGui::PushFont( m_smallFont );
-
-                                if( local && IsMouseClicked( 0 ) )
-                                {
-                                    auto& item = m_tc.GetItem( m_worker.GetThreadData( thread ) );
-                                    item.SetVisible( true );
-                                    item.SetShowFull( true );
-                                }
-                                if( IsMouseClicked( 2 ) )
-                                {
-                                    ZoomToRange( start, end );
-                                }
-                            }
-                            ++it;
+                            ZoomToRange( t0, t1 );
                         }
                     }
-                }
-
-                char buf[64];
-                if( tt )
-                {
-                    sprintf( buf, "[%i:%i] CPU %i", tt->package, tt->core, i );
                 }
                 else
                 {
-                    sprintf( buf, "CPU %i", i );
-                }
-                const auto txtx = ImGui::CalcTextSize( buf ).x;
-                DrawTextSuperContrast( draw, wpos + ImVec2( ty, offset-1 ), 0xFFDD88DD, buf );
-                if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( 0, offset-1 ), wpos + ImVec2( sty + txtx, offset + sty ) ) )
-                {
-                    ImGui::PopFont();
-                    ImGui::BeginTooltip();
-                    TextFocused( "CPU:", RealToString( i ) );
-                    if( tt )
+                    const auto end = ev.IsEndValid() ? ev.End() : ev.Start();
+                    const auto px1 = ( end - vStart ) * pxns;
+
+                    const auto thread = m_worker.DecompressThreadExternal( ev.Thread() );
+                    bool local, untracked;
+                    const char* txt;
+                    auto label = GetThreadContextData( thread, local, untracked, txt );
+
+                    uint32_t color;
+                    if( m_vd.dynamicColors != 0 )
                     {
-                        ImGui::SameLine();
-                        ImGui::Spacing();
-                        ImGui::SameLine();
-                        TextFocused( "Package:", RealToString( tt->package ) );
-                        ImGui::SameLine();
-                        TextFocused( "Core:", RealToString( tt->core ) );
+                        color = local ? GetThreadColor( thread, 0 ) : ( untracked ? 0xFF663333 : 0xFF444444 );
                     }
-                    TextFocused( "Context switch regions:", RealToString( cs.size() ) );
-                    ImGui::EndTooltip();
-                    ImGui::PushFont( m_smallFont );
+                    else
+                    {
+                        color = local ? 0xFF334488 : ( untracked ? 0xFF663333 : 0xFF444444 );
+                    }
+
+                    draw->AddRectFilled( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + sty ), color );
+                    if( m_drawThreadHighlight == thread )
+                    {
+                        draw->AddRect( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + sty ), 0xFFFFFFFF );
+                    }
+                    else
+                    {
+                        const auto accentColor = HighlightColor( color );
+                        const auto darkColor = DarkenColor( color );
+                        DrawLine( draw, dpos + ImVec2( px0, offset + sty ), dpos + ImVec2( px0, offset ), dpos + ImVec2( px1-1, offset ), accentColor, 1.f );
+                        DrawLine( draw, dpos + ImVec2( px0, offset + sty ), dpos + ImVec2( px1-1, offset + sty ), dpos + ImVec2( px1-1, offset ), darkColor, 1.f );
+                    }
+
+                    const auto zsz = px1 - px0;
+                    auto tsz = ImGui::CalcTextSize( label );
+                    if( tsz.x < zsz )
+                    {
+                        const auto x = ( ev.Start() - m_vd.zvStart ) * pxns + ( ( end - ev.Start() ) * pxns - tsz.x ) / 2;
+                        if( x < 0 || x > w - tsz.x )
+                        {
+                            ImGui::PushClipRect( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + tsz.y * 2 ), true );
+                            DrawTextContrast( draw, wpos + ImVec2( std::max( std::max( 0., px0 ), std::min( double( w - tsz.x ), x ) ), offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
+                            ImGui::PopClipRect();
+                        }
+                        else if( ev.Start() == ev.End() )
+                        {
+                            DrawTextContrast( draw, wpos + ImVec2( px0 + ( px1 - px0 - tsz.x ) * 0.5, offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
+                        }
+                        else
+                        {
+                            DrawTextContrast( draw, wpos + ImVec2( x, offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
+                        }
+                    }
+                    else
+                    {
+                        ImGui::PushClipRect( wpos + ImVec2( px0, offset ), wpos + ImVec2( px1, offset + tsz.y * 2 ), true );
+                        DrawTextContrast( draw, wpos + ImVec2( ( ev.Start() - vStart ) * pxns, offset-1 ), local ? 0xFFFFFFFF : 0xAAFFFFFF, label );
+                        ImGui::PopClipRect();
+                    }
+
+                    if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( px0, offset-1 ), wpos + ImVec2( px1, offset + sty ) ) )
+                    {
+                        m_drawThreadHighlight = thread;
+                        ImGui::PopFont();
+                        ImGui::BeginTooltip();
+                        TextFocused( "CPU:", RealToString( i ) );
+                        if( tt )
+                        {
+                            ImGui::SameLine();
+                            ImGui::Spacing();
+                            ImGui::SameLine();
+                            TextFocused( "Package:", RealToString( tt->package ) );
+                            ImGui::SameLine();
+                            TextFocused( "Core:", RealToString( tt->core ) );
+                        }
+                        if( local )
+                        {
+                            TextFocused( "Program:", m_worker.GetCaptureProgram().c_str() );
+                            ImGui::SameLine();
+                            TextDisabledUnformatted( "(profiled program)" );
+                            SmallColorBox( GetThreadColor( thread, 0 ) );
+                            ImGui::SameLine();
+                            TextFocused( "Thread:", m_worker.GetThreadName( thread ) );
+                            ImGui::SameLine();
+                            ImGui::TextDisabled( "(%s)", RealToString( thread ) );
+                            m_drawThreadMigrations = thread;
+                            m_cpuDataThread = thread;
+                        }
+                        else
+                        {
+                            if( untracked )
+                            {
+                                TextFocused( "Program:", m_worker.GetCaptureProgram().c_str() );
+                            }
+                            else
+                            {
+                                TextFocused( "Program:", txt );
+                            }
+                            ImGui::SameLine();
+                            if( untracked )
+                            {
+                                TextDisabledUnformatted( "(untracked thread in profiled program)" );
+                            }
+                            else
+                            {
+                                TextDisabledUnformatted( "(external)" );
+                            }
+                            TextFocused( "Thread:", m_worker.GetExternalName( thread ).second );
+                            ImGui::SameLine();
+                            ImGui::TextDisabled( "(%s)", RealToString( thread ) );
+                        }
+                        ImGui::Separator();
+                        TextFocused( "Start time:", TimeToStringExact( ev.Start() ) );
+                        TextFocused( "End time:", TimeToStringExact( end ) );
+                        TextFocused( "Activity time:", TimeToString( end - ev.Start() ) );
+                        ImGui::EndTooltip();
+                        ImGui::PushFont( m_smallFont );
+
+                        if( local && IsMouseClicked( 0 ) )
+                        {
+                            auto& item = m_tc.GetItem( m_worker.GetThreadData( thread ) );
+                            item.SetVisible( true );
+                            item.SetShowFull( true );
+                        }
+                        if( IsMouseClicked( 2 ) )
+                        {
+                            ZoomToRange( ev.Start(), end );
+                        }
+                    }
                 }
             }
-            offset += sstep;
         }
+
+        char buf[64];
+        if( tt )
+        {
+            sprintf( buf, "[%i:%i] CPU %i", tt->package, tt->core, i );
+        }
+        else
+        {
+            sprintf( buf, "CPU %i", i );
+        }
+        const auto txtx = ImGui::CalcTextSize( buf ).x;
+        DrawTextSuperContrast( draw, wpos + ImVec2( ty, offset-1 ), 0xFFDD88DD, buf );
+        if( hover && ImGui::IsMouseHoveringRect( wpos + ImVec2( 0, offset-1 ), wpos + ImVec2( sty + txtx, offset + sty ) ) )
+        {
+            ImGui::PopFont();
+            ImGui::BeginTooltip();
+            TextFocused( "CPU:", RealToString( i ) );
+            if( tt )
+            {
+                ImGui::SameLine();
+                ImGui::Spacing();
+                ImGui::SameLine();
+                TextFocused( "Package:", RealToString( tt->package ) );
+                ImGui::SameLine();
+                TextFocused( "Core:", RealToString( tt->core ) );
+            }
+            TextFocused( "Context switch regions:", RealToString( cpuData[i].cs.size() ) );
+            ImGui::EndTooltip();
+            ImGui::PushFont( m_smallFont );
+        }
+
+        offset += sstep;
     }
 
     if( m_drawThreadMigrations != 0 )
@@ -389,6 +370,9 @@ bool View::DrawCpuData( double pxns, int& offset, const ImVec2& wpos, bool hover
             auto end = std::lower_bound( it, v.end(), m_vd.zvEnd, [] ( const auto& l, const auto& r ) { return l.Start() < r; } );
             if( end == v.end() ) --end;
 
+            const auto bgSize = GetScale() * 4.f;
+            const auto lnSize = GetScale() * 2.f;
+
             while( it < end )
             {
                 const auto t0 = it->End();
@@ -402,14 +386,14 @@ bool View::DrawCpuData( double pxns, int& offset, const ImVec2& wpos, bool hover
                 const auto px0 = ( t0 - m_vd.zvStart ) * pxns;
                 const auto px1 = ( t1 - m_vd.zvStart ) * pxns;
 
-                if( t1 - t0 < 2 * nspx )
+                if( px1 - px0 < 2 )
                 {
                     DrawLine( draw, dpos + ImVec2( px0, origOffset + sty * 0.5f + cpu0 * sstep ), dpos + ImVec2( px1, origOffset + sty * 0.5f + cpu1 * sstep ), color );
                 }
                 else
                 {
-                    DrawLine( draw, dpos + ImVec2( px0, origOffset + sty * 0.5f + cpu0 * sstep ), dpos + ImVec2( px1, origOffset + sty * 0.5f + cpu1 * sstep ), 0xFF000000, 4.f );
-                    DrawLine( draw, dpos + ImVec2( px0, origOffset + sty * 0.5f + cpu0 * sstep ), dpos + ImVec2( px1, origOffset + sty * 0.5f + cpu1 * sstep ), color, 2.f );
+                    DrawLine( draw, dpos + ImVec2( px0, origOffset + sty * 0.5f + cpu0 * sstep ), dpos + ImVec2( px1, origOffset + sty * 0.5f + cpu1 * sstep ), 0xFF000000, bgSize );
+                    DrawLine( draw, dpos + ImVec2( px0, origOffset + sty * 0.5f + cpu0 * sstep ), dpos + ImVec2( px1, origOffset + sty * 0.5f + cpu1 * sstep ), color, lnSize );
                 }
             }
         }
@@ -525,7 +509,7 @@ void View::DrawCpuDataWindow()
         }
 
         const auto thisPid = m_worker.GetPid();
-        const auto rtimespan = 1.0 / m_worker.GetLastTime();
+        const auto rtimespan = 1.0 / ( m_worker.GetLastTime() - m_worker.GetFirstTime() );
         const auto ty = ImGui::GetTextLineHeight();
 
         auto& style = ImGui::GetStyle();
