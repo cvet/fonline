@@ -45,6 +45,8 @@
 
 #include "imgui.h"
 
+static constexpr uint SERVER_CHECK_ALIVE_TIME = 10000;
+
 FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
     FOEngineBase(settings, PropertiesRelationType::ServerRelative),
@@ -740,7 +742,7 @@ FOServer::~FOServer()
     }
 }
 
-void FOServer::Lock()
+auto FOServer::Lock(optional<time_duration> max_wait_time) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -754,9 +756,19 @@ void FOServer::Lock()
         _syncRequest++;
 
         while (!_syncPointReady) {
-            _syncWaitSignal.wait(locker);
+            if (max_wait_time.has_value()) {
+                if (_syncWaitSignal.wait_for(locker, max_wait_time.value()) == std::cv_status::timeout) {
+                    _syncRequest--;
+                    return false;
+                }
+            }
+            else {
+                _syncWaitSignal.wait(locker);
+            }
         }
     }
+
+    return true;
 }
 
 void FOServer::Unlock()
@@ -816,7 +828,18 @@ void FOServer::DrawGui(string_view server_name)
             }
         }
         else {
-            Lock();
+            if constexpr (SERVER_CHECK_ALIVE_TIME != 0) {
+                constexpr auto max_wait_time = time_duration {std::chrono::milliseconds {SERVER_CHECK_ALIVE_TIME}};
+                if (!Lock(max_wait_time)) {
+                    ImGui::TextUnformatted(_str("Server hanged (no response more than {})", max_wait_time).c_str());
+                    WriteLog("Server hanged (no response more than {})", max_wait_time);
+                    return;
+                }
+            }
+            else {
+                Lock(std::nullopt);
+            }
+
             auto unlocker = ScopeCallback([this] { Unlock(); });
 
             // Info
@@ -839,7 +862,8 @@ void FOServer::DrawGui(string_view server_name)
                 buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
                 buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
                 buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-                buf += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+                buf += _str("Compress ratio: {}\n", static_cast<double>(_stats.DataReal) / static_cast<double>(_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+                buf += _str("DB commit jobs: {}\n", DbStorage.GetCommitJobsCount());
                 ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
                 ImGui::TreePop();
             }
@@ -2112,6 +2136,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
 
+    WriteLog("Register player");
+
     [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
     const auto name = unlogined_player->Connection->InBuf.Read<string>();
     const auto password = unlogined_player->Connection->InBuf.Read<string>();
@@ -2200,6 +2226,8 @@ void FOServer::Process_Register(Player* unlogined_player)
 void FOServer::Process_Login(Player* unlogined_player)
 {
     STACK_TRACE_ENTRY();
+
+    WriteLog("Login player");
 
     [[maybe_unused]] const auto msg_len = unlogined_player->Connection->InBuf.Read<uint>();
     const auto name = unlogined_player->Connection->InBuf.Read<string>();

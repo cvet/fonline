@@ -80,7 +80,7 @@ public:
     [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> ident_t;
 
-    void Lock();
+    auto Lock(optional<time_duration> max_wait_time) -> bool;
     void Unlock();
     void DrawGui(string_view server_name);
 

@@ -65,6 +65,7 @@ public:
     auto operator=(DataBaseImpl&&) noexcept = delete;
     virtual ~DataBaseImpl() = default;
 
+    [[nodiscard]] auto GetCommitJobsCount() const -> size_t;
     [[nodiscard]] virtual auto GetAllIds(hstring collection_name) -> vector<ident_t> = 0;
     [[nodiscard]] auto Get(hstring collection_name, ident_t id) -> AnyData::Document;
 
@@ -104,6 +105,13 @@ DataBase::operator bool() const
     STACK_TRACE_ENTRY();
 
     return _impl != nullptr;
+}
+
+auto DataBase::GetCommitJobsCount() const -> size_t
+{
+    STACK_TRACE_ENTRY();
+
+    return _impl->GetCommitJobsCount();
 }
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<ident_t>
@@ -487,6 +495,13 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
         auto value = BsonToValue(&iter);
         doc.emplace(string(key), std::move(value));
     }
+}
+
+auto DataBaseImpl::GetCommitJobsCount() const -> size_t
+{
+    STACK_TRACE_ENTRY();
+
+    return _commitThread.GetJobsCount();
 }
 
 auto DataBaseImpl::Get(hstring collection_name, ident_t id) -> AnyData::Document
