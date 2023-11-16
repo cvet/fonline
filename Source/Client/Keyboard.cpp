@@ -61,12 +61,12 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
 
     const auto ctrl_shift = CtrlDwn || ShiftDwn;
-
     const auto dik_text_len_utf8 = _str(dik_text).lengthUtf8();
     const auto str_len = static_cast<uint>(str.length());
 
-    auto position_dummy = str_len;
-    auto& pos = [position, &position_dummy]() -> uint& { return position != nullptr ? *position : position_dummy; }();
+    uint position_dummy = str_len;
+    uint& pos = position != nullptr ? *position : position_dummy;
+
     if (pos > str_len) {
         pos = str_len;
     }
@@ -158,7 +158,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
     }
 }
 
-void Keyboard::EraseInvalidChars(string& str, int flags) const
+void Keyboard::EraseInvalidChars(string& str, uint flags) const
 {
     STACK_TRACE_ENTRY();
 
@@ -186,7 +186,7 @@ auto Keyboard::IsInvalidChar(string_view str, uint flags, uint& length) const ->
         if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str.data() == '\n' || *str.data() == '\r' || *str.data() == '\t')) {
             return true;
         }
-        if ((flags & KIF_ONLY_NUMBERS) != 0u && !(*str.data() >= '0' && *str.data() <= '9')) {
+        if ((flags & KIF_ONLY_NUMBERS) != 0u && (*str.data() < '0' || *str.data() > '9')) {
             return true;
         }
 

@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
             // Start
-            const SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
+            constexpr SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
             ::StartServiceCtrlDispatcherW(dispatch_table);
         }
         else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
@@ -141,6 +141,7 @@ int main(int argc, char** argv)
 
             // Change executable path, if changed
             if (service != nullptr) {
+                // ReSharper disable once CppLocalVariableMayBeConst
                 uint8 service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
@@ -149,7 +150,7 @@ int main(int argc, char** argv)
                     error = true;
                 }
                 else if (path != service_cfg->lpBinaryPathName) {
-                    if (!::ChangeServiceConfigW(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr)) {
+                    if (::ChangeServiceConfigW(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) == FALSE) {
                         error = true;
                     }
                 }
@@ -270,7 +271,7 @@ static void SetFOServiceStatus(uint state)
     if (state == SERVICE_RUNNING) {
         status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
     }
-    if (!(state == SERVICE_RUNNING || state == SERVICE_STOPPED)) {
+    if (state != SERVICE_RUNNING && state != SERVICE_STOPPED) {
         status.dwCheckPoint = ++Data->CheckPoint;
     }
 

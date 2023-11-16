@@ -48,13 +48,13 @@ TEST_CASE("MurmurHash2")
 
 TEST_CASE("StdRandom")
 {
-    std::mt19937 rnd32;
+    std::mt19937 rnd32; // NOLINT(cert-msc51-cpp)
     for (auto i = 1; i < 10000; i++) {
         (void)rnd32();
     }
     REQUIRE(rnd32() == 4123659995);
 
-    std::mt19937_64 rnd64;
+    std::mt19937_64 rnd64; // NOLINT(cert-msc51-cpp)
     for (auto i = 1; i < 10000; i++) {
         (void)rnd64();
     }

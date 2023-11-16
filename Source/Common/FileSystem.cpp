@@ -131,10 +131,10 @@ File::File(string_view name, string_view path, uint64 write_time, DataSource* ds
     if (make_copy) {
         auto* buf_copy = new uint8[buf.size()];
         std::memcpy(buf_copy, buf.data(), buf.size());
-        _fileBuf = {buf_copy, [](auto* p) { delete[] p; }};
+        _fileBuf = {buf_copy, [](const auto* p) { delete[] p; }};
     }
     else {
-        _fileBuf = {buf.data(), [](auto* p) { UNUSED_VARIABLE(p); }};
+        _fileBuf = {buf.data(), [](const auto* p) { UNUSED_VARIABLE(p); }};
     }
 }
 

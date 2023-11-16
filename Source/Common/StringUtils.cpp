@@ -538,15 +538,16 @@ auto _str::normalizeLineEndings() -> _str&
 #if FO_WINDOWS
 auto _str::parseWideChar(const wchar_t* str) -> _str&
 {
-    const auto len = static_cast<int>(wcslen(str));
+    const auto len = static_cast<int>(::wcslen(str));
 
     if (len != 0) {
-        auto* buf = static_cast<char*>(_malloca(len * 4));
-        const auto r = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
+        auto* buf = static_cast<char*>(_malloca(static_cast<size_t>(len) * 4));
+        const auto r = ::WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
-        _s += string(buf, r);
+        _s += buf != nullptr ? string(buf, r) : string();
         _freea(buf);
     }
+
     return *this;
 }
 
@@ -557,9 +558,9 @@ auto _str::toWideChar() const -> std::wstring
     }
 
     auto* buf = static_cast<wchar_t*>(_malloca(_s.length() * sizeof(wchar_t) * 2));
-    const auto len = MultiByteToWideChar(CP_UTF8, 0, _s.c_str(), static_cast<int>(_s.length()), buf, static_cast<int>(_s.length()));
+    const auto len = ::MultiByteToWideChar(CP_UTF8, 0, _s.c_str(), static_cast<int>(_s.length()), buf, static_cast<int>(_s.length()));
 
-    auto result = std::wstring(buf, len);
+    auto result = buf != nullptr ? std::wstring(buf, len) : std::wstring();
     _freea(buf);
     return result;
 }
@@ -613,7 +614,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
         if ((str[2] & 0xc0) != 0x80) {
             DECODE_FAIL();
         }
-        if (length) {
+        if (length != nullptr) {
             *length = 3;
         }
         return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
@@ -623,7 +624,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
         if ((str[2] & 0xc0) != 0x80) {
             DECODE_FAIL();
         }
-        if (length) {
+        if (length != nullptr) {
             *length = 3;
         }
         return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
@@ -636,7 +637,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
             DECODE_FAIL();
         }
-        if (length) {
+        if (length != nullptr) {
             *length = 4;
         }
         return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
@@ -646,7 +647,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
             DECODE_FAIL();
         }
-        if (length) {
+        if (length != nullptr) {
             *length = 4;
         }
         return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
@@ -659,7 +660,7 @@ auto utf8::Decode(string_view str, uint* length) -> uint
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
             DECODE_FAIL();
         }
-        if (length) {
+        if (length != nullptr) {
             *length = 4;
         }
         return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);

@@ -35,13 +35,12 @@
 #include "Client.h"
 #include "GenericUtils.h"
 #include "LineTracer.h"
-#include "Log.h"
 #include "MapLoader.h"
 #include "StringUtils.h"
 
-static constexpr auto MAX_LIGHT_VALUE = 10000;
-static constexpr auto MAX_LIGHT_HEX = 200;
-static constexpr auto MAX_LIGHT_ALPHA = 255;
+static constexpr int MAX_LIGHT_VALUE = 10000;
+static constexpr int MAX_LIGHT_HEX = 200;
+static constexpr int MAX_LIGHT_ALPHA = 255;
 
 static auto EvaluateItemDrawOrder(const ItemHexView* item) -> DrawOrderType
 {
@@ -111,8 +110,8 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _height = GetHeight();
 
     _findPathGrid.resize((MAX_FIND_PATH * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
-    _hexField.resize(static_cast<size_t>(_width * _height));
-    _hexLight.resize(static_cast<size_t>(_width * _height * 3));
+    _hexField.resize(static_cast<size_t>(_width) * _height);
+    _hexLight.resize(static_cast<size_t>(_width) * _height * 3);
 
     ResizeView();
 
@@ -172,7 +171,7 @@ void MapView::EnableMapperMode()
     _mapperMode = true;
     _isShowTrack = true;
 
-    _hexTrack.resize(static_cast<size_t>(_width * _height));
+    _hexTrack.resize(static_cast<size_t>(_width) * _height);
 }
 
 void MapView::LoadFromFile(string_view map_name, const string& str)
@@ -2257,7 +2256,7 @@ void MapView::Resize(uint16 width, uint16 height)
     const auto safe_resize_square_vec = [&](auto& vec) {
         const auto prev_vec = vec;
 
-        vec.resize(static_cast<size_t>(_width * _height));
+        vec.resize(static_cast<size_t>(_width) * _height);
 
         for (size_t hy = 0; hy < std::max(prev_height, _height); hy++) {
             for (size_t hx = 0; hx < std::max(prev_width, _width); hx++) {
@@ -2274,10 +2273,10 @@ void MapView::Resize(uint16 width, uint16 height)
     safe_resize_square_vec(_hexField);
     safe_resize_square_vec(_hexTrack);
 
-    _hexLight.resize(static_cast<size_t>(_width * _height));
+    _hexLight.resize(static_cast<size_t>(_width) * _height);
     std::memset(_hexLight.data(), 0, _hexLight.size());
 
-    for (size_t i = 0; i < static_cast<size_t>(_width * _height); i++) {
+    for (size_t i = 0; i < static_cast<size_t>(_width) * _height; i++) {
         EvaluateFieldFlags(_hexField[i]);
     }
 

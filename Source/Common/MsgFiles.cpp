@@ -210,7 +210,7 @@ auto FOMsg::GetBinary(uint num) const -> vector<uint8>
 
     vector<uint8> result;
 
-    if (Count(num) == 0u) {
+    if (Count(num) == 0) {
         return result;
     }
 
@@ -218,7 +218,7 @@ auto FOMsg::GetBinary(uint num) const -> vector<uint8>
     const auto len = static_cast<uint>(str.length()) / 2;
     result.resize(len);
     for (uint i = 0; i < len; i++) {
-        result[i] = StrToHex(&str[i * 2]);
+        result[i] = StrToHex(&str[static_cast<size_t>(i) * 2]);
     }
 
     return result;
@@ -258,7 +258,7 @@ auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
     STACK_TRACE_ENTRY();
 
     for (auto&& [key, value] : _strData) {
-        if (other._strData.count(key) != 0u) {
+        if (other._strData.count(key) != 0) {
             return true;
         }
     }
@@ -282,7 +282,7 @@ auto FOMsg::GetBinaryData() const -> vector<uint8>
         data.resize(data.size() + sizeof(num) + sizeof(str_len) + str_len);
         std::memcpy(&data[data.size() - (sizeof(num) + sizeof(str_len) + str_len)], &num, sizeof(num));
         std::memcpy(&data[data.size() - (sizeof(str_len) + str_len)], &str_len, sizeof(str_len));
-        if (str_len != 0u) {
+        if (str_len != 0) {
             std::memcpy(&data[data.size() - str_len], str.c_str(), str_len);
         }
     }
@@ -315,7 +315,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uint8>& data) -> bool
         buf += sizeof(str_len);
 
         str.resize(str_len);
-        if (str_len != 0u) {
+        if (str_len != 0) {
             std::memcpy(str.data(), buf, str_len);
         }
         buf += str_len;
@@ -360,13 +360,13 @@ auto FOMsg::LoadFromString(string_view str, HashResolver& hash_resolver) -> bool
 
             auto substr = line.substr(first + 1, last - first - 1);
             offset = last + 1;
-            if (i == 0 && num == 0u) {
+            if (i == 0 && num == 0) {
                 num = _str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int();
             }
-            else if (i == 1 && num != 0u) {
+            else if (i == 1 && num != 0) {
                 num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : hash_resolver.ToHashedString(substr).as_int()) : 0;
             }
-            else if (i == 2 && num != 0u) {
+            else if (i == 2 && num != 0) {
                 AddStr(num, substr);
             }
             else {
@@ -384,7 +384,7 @@ void FOMsg::LoadFromMap(const map<string, string>& kv)
 
     for (auto&& [key, value] : kv) {
         const auto num = _str(key).toUInt();
-        if (num != 0u) {
+        if (num != 0) {
             AddStr(num, value);
         }
     }

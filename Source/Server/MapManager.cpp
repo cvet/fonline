@@ -48,7 +48,7 @@ MapManager::MapManager(FOServer* engine) :
 {
     STACK_TRACE_ENTRY();
 
-    _mapGrid = new int16[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
+    _mapGrid = new int16[static_cast<size_t>(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
 }
 
 MapManager::~MapManager()
@@ -56,6 +56,15 @@ MapManager::~MapManager()
     STACK_TRACE_ENTRY();
 
     delete[] _mapGrid;
+}
+
+auto MapManager::GridAt(int x, int y) -> int16&
+{
+    NO_STACK_TRACE_ENTRY();
+
+    NON_CONST_METHOD_HINT();
+
+    return _mapGrid[static_cast<size_t>((FPATH_MAX_PATH + 1) + y - _mapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + x - _mapGridOffsX)];
 }
 
 void MapManager::LoadFromResources()
@@ -214,7 +223,7 @@ void MapManager::LoadFromResources()
         reader.VerifyEnd();
 
         // Fill hex flags from static items on map
-        static_map.HexFlags.resize(static_cast<size_t>(maxhx * maxhy), 0);
+        static_map.HexFlags.resize(static_cast<size_t>(maxhx) * maxhy, 0);
 
         for (auto&& [item_id, item] : static_map.ItemBillets) {
             if (item->GetOwnership() != ItemOwnership::MapHex || !item->GetIsStatic() || item->GetIsTile()) {
@@ -647,7 +656,7 @@ auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int w
 {
     STACK_TRACE_ENTRY();
 
-    const int zl = _engine->Settings.GlobalMapZoneLength;
+    const int zl = static_cast<int>(_engine->Settings.GlobalMapZoneLength);
     const IRect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones, (wy1 + w1_radius) / zl + zones);
     const IRect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
     return r1.Left <= r2.Right && r2.Left <= r1.Right && r1.Top <= r2.Bottom && r2.Top <= r1.Bottom;
@@ -897,12 +906,14 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Ring check
     if (input.Cut <= 1u && input.Multihex == 0) {
-        auto [rsx, rsy] = _engine->Geometry.GetHexOffsets((input.ToHexX % 2) != 0);
+        auto&& [rsx, rsy] = _engine->Geometry.GetHexOffsets((input.ToHexX % 2) != 0);
 
-        auto i = 0;
+        uint i = 0;
+
         for (; i < GameSettings::MAP_DIR_COUNT; i++, rsx++, rsy++) {
             const auto xx = static_cast<int>(input.ToHexX + *rsx);
             const auto yy = static_cast<int>(input.ToHexY + *rsy);
+
             if (xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy) {
                 const auto flags = map->GetHexFlags(static_cast<uint16>(xx), static_cast<uint16>(yy));
                 if (IsBitSet(flags, static_cast<uint16>(FH_GAG_ITEM << 8))) {
@@ -925,7 +936,7 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
     _mapGridOffsY = input.FromHexY;
 
     int16 numindex = 1;
-    std::memset(_mapGrid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(int16));
+    std::memset(_mapGrid, 0, static_cast<size_t>(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(int16));
     GridAt(input.FromHexX, input.FromHexY) = numindex;
 
     auto to_hx = input.ToHexX;
@@ -962,9 +973,9 @@ auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
                 return output;
             }
 
-            const auto [sx, sy] = _engine->Geometry.GetHexOffsets((cx & 1) != 0);
+            auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((cx & 1) != 0);
 
-            for (auto j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
+            for (uint j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
                 const auto nxi = cx + sx[j];
                 const auto nyi = cy + sy[j];
                 if (nxi < 0 || nyi < 0 || nxi >= maxhx || nyi >= maxhy) {
@@ -1671,7 +1682,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         RUNTIME_ASSERT(view_cr->GlobalMapGroup);
 
         if (view_cr->IsOwnedByPlayer()) {
-            for (auto* cr : *view_cr->GlobalMapGroup) {
+            for (const auto* cr : *view_cr->GlobalMapGroup) {
                 if (view_cr == cr) {
                     view_cr->Send_AddCritter(view_cr);
                     view_cr->Send_AddAllItems();
@@ -1692,7 +1703,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     uint vis;
     const auto look_base_self = view_cr->GetLookDistance();
     const int dir_self = view_cr->GetDir();
-    const auto dirs_count = GameSettings::MAP_DIR_COUNT;
+    constexpr auto dirs_count = GameSettings::MAP_DIR_COUNT;
     const auto show_cr_dist1 = view_cr->GetShowCritterDist1();
     const auto show_cr_dist2 = view_cr->GetShowCritterDist2();
     const auto show_cr_dist3 = view_cr->GetShowCritterDist3();
@@ -1829,7 +1840,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             auto real_dir = GeometryHelper::GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
             auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
             if (i > static_cast<int>(dirs_count / 2u)) {
-                i = dirs_count - i;
+                i = static_cast<int>(dirs_count) - i;
             }
             look_self -= look_self * _engine->Settings.LookDir[i] / 100;
             // Opponent
@@ -1837,7 +1848,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             real_dir = static_cast<uint8>((real_dir + dirs_count / 2u) % dirs_count);
             i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
             if (i > static_cast<int>(dirs_count / 2u)) {
-                i = dirs_count - i;
+                i = static_cast<int>(dirs_count) - i;
             }
             look_opp -= look_opp * _engine->Settings.LookDir[i] / 100;
         }
@@ -1867,7 +1878,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 const auto real_dir = GeometryHelper::GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
                 auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
                 if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = dirs_count - i;
+                    i = static_cast<int>(dirs_count) - i;
                 }
                 sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[i] / 100;
             }
@@ -1940,7 +1951,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 const auto real_dir = GeometryHelper::GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
                 auto i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
                 if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = dirs_count - i;
+                    i = static_cast<int>(dirs_count) - i;
                 }
                 sneak_self -= sneak_self * _engine->Settings.LookSneakDir[i] / 100;
             }
@@ -2027,11 +2038,12 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     auto* map = GetMap(map_id);
     RUNTIME_ASSERT(map);
 
-    const int look = view_cr->GetLookDistance();
+    const int look = static_cast<int>(view_cr->GetLookDistance());
     for (auto* item : copy_hold_ref(map->GetItems())) {
         if (item->GetIsHidden()) {
             continue;
         }
+
         if (item->GetIsAlwaysView()) {
             if (view_cr->AddIdVisItem(item->GetId())) {
                 view_cr->Send_AddItemOnMap(item);
@@ -2040,14 +2052,16 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
         }
         else {
             bool allowed;
+
             if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
                 allowed = _engine->OnMapCheckTrapLook.Fire(map, view_cr, item);
             }
             else {
-                int dist = GeometryHelper::DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                int dist = static_cast<int>(GeometryHelper::DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY()));
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
                 }
+
                 allowed = look >= dist;
             }
 
@@ -2072,7 +2086,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
     STACK_TRACE_ENTRY();
 
     // Critters
-    const auto dirs_count = GameSettings::MAP_DIR_COUNT;
+    constexpr auto dirs_count = GameSettings::MAP_DIR_COUNT;
     for (auto* cr : copy_hold_ref(map->GetCritters())) {
         if (cr == view_cr) {
             continue;
@@ -2093,7 +2107,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
             const auto real_dir = GeometryHelper::GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
             auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
             if (i > static_cast<int>(dirs_count / 2u)) {
-                i = dirs_count - i;
+                i = static_cast<int>(dirs_count) - i;
             }
             look_self -= look_self * _engine->Settings.LookDir[i] / 100;
         }
@@ -2124,7 +2138,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
                 const auto real_dir = GeometryHelper::GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
                 auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
                 if (i > static_cast<int>(dirs_count / 2u)) {
-                    i = dirs_count - i;
+                    i = static_cast<int>(dirs_count) - i;
                 }
                 sneak_opp -= sneak_opp * _engine->Settings.LookSneakDir[i] / 100;
             }
@@ -2205,7 +2219,7 @@ void MapManager::EraseKnownLoc(Critter* cr, ident_t loc_id)
     auto known_locs = cr->GetKnownLocations();
     for (size_t i = 0; i < known_locs.size(); i++) {
         if (known_locs[i] == loc_id) {
-            known_locs.erase(known_locs.begin() + i);
+            known_locs.erase(known_locs.begin() + static_cast<ptrdiff_t>(i));
             cr->SetKnownLocations(known_locs);
             break;
         }

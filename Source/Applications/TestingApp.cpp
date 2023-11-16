@@ -51,7 +51,12 @@ extern "C" int main(int argc, char** argv)
 {
     STACK_TRACE_ENTRY();
 
-    InitApp(argc, argv);
-    GenericUtils::SetRandomSeed(42);
-    return Catch::Session().run(argc, argv);
+    try {
+        InitApp(argc, argv);
+        GenericUtils::SetRandomSeed(42);
+        return Catch::Session().run(argc, argv);
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

@@ -63,6 +63,7 @@ public:
     PropertyRawData(PropertyRawData&&) noexcept = default;
     auto operator=(const PropertyRawData&) = delete;
     auto operator=(PropertyRawData&& other) noexcept -> PropertyRawData& = default;
+    ~PropertyRawData() = default;
 
     [[nodiscard]] auto GetPtr() -> void*;
     [[nodiscard]] auto GetSize() const -> uint;
@@ -481,6 +482,7 @@ public:
         }
         else {
             RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+
             if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
                 if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;

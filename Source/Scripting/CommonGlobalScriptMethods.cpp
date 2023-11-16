@@ -246,8 +246,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
-    const auto str = string(text);
-    return utf8::Decode(str.c_str(), &length);
+    return utf8::Decode(text, &length);
 }
 
 ///# ...
@@ -258,7 +257,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 {
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
-    return string(buf, len);
+    return {buf, len};
 }
 
 ///# ...
@@ -279,7 +278,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
         hex_digest[i] = nums[(i % 2) != 0u ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
     }
 
-    return string(hex_digest, sizeof(hex_digest));
+    return {hex_digest, sizeof(hex_digest)};
 }
 
 ///# ...

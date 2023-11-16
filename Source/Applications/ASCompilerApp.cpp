@@ -39,24 +39,26 @@
 #include "Settings.h"
 
 #if !FO_SINGLEPLAYER
-struct ASCompiler_ServerScriptSystem : public ScriptSystem
+// ReSharper disable CppInconsistentNaming
+struct ASCompiler_ServerScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
-struct ASCompiler_ClientScriptSystem : public ScriptSystem
+struct ASCompiler_ClientScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
 #else
-struct ASCompiler_SingleScriptSystem : public ScriptSystem
+struct ASCompiler_SingleScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
 #endif
-struct ASCompiler_MapperScriptSystem : public ScriptSystem
+struct ASCompiler_MapperScriptSystem final : public ScriptSystem
 {
     void InitAngelScriptScripting(FileSystem& resources);
 };
+// ReSharper restore CppInconsistentNaming
 
 unordered_set<string> CompilerPassedMessages;
 

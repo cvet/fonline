@@ -61,7 +61,7 @@ void GeometryHelper::InitializeHexOffsets() const
 {
     STACK_TRACE_ENTRY();
 
-    const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
+    constexpr auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * GameSettings::MAP_DIR_COUNT;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         _sxEven = new int16[size];

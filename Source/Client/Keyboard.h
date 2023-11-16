@@ -59,7 +59,7 @@ public:
 
     void Lost();
     void FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const;
-    void EraseInvalidChars(string& str, int flags) const;
+    void EraseInvalidChars(string& str, uint flags) const;
 
     bool ShiftDwn {};
     bool CtrlDwn {};

@@ -40,6 +40,7 @@
 // ReSharper disable CppUseAuto
 // ReSharper disable CppMemberFunctionMayBeConst
 // ReSharper disable CppClangTidyClangDiagnosticOldStyleCast
+// ReSharper disable CppJoinDeclarationAndAssignment
 
 ///@ CodeGen Template AngelScript
 
@@ -1085,11 +1086,11 @@ static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
-            (*static_cast<hstring*>(construct_addr)).~hstring();
+            static_cast<hstring*>(construct_addr)->~hstring();
         }
     }
     else if (prop->IsString()) {
-        (*static_cast<string*>(construct_addr)).~string();
+        static_cast<string*>(construct_addr)->~string();
     }
     else if (prop->IsArray()) {
         (*static_cast<CScriptArray**>(construct_addr))->Release();

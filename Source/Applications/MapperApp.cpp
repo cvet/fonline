@@ -51,7 +51,7 @@ struct MapperAppData
 };
 GLOBAL_DATA(MapperAppData, Data);
 
-static void MapperEntry(void*)
+static void MapperEntry([[maybe_unused]] void* data)
 {
     STACK_TRACE_ENTRY();
 

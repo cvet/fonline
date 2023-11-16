@@ -53,7 +53,7 @@ struct ClientAppData
 };
 GLOBAL_DATA(ClientAppData, Data);
 
-static void MainEntry(void*)
+static void MainEntry([[maybe_unused]] void* data)
 {
     STACK_TRACE_ENTRY();
 

@@ -151,25 +151,22 @@ namespace utf8
     auto Upper(uint ucs) -> uint;
 }
 
-namespace fmt
+template<>
+struct fmt::formatter<_str>
 {
     // ReSharper disable CppInconsistentNaming
 
-    template<>
-    struct formatter<_str>
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
     {
-        template<typename ParseContext>
-        constexpr auto parse(ParseContext& ctx)
-        {
-            return ctx.begin();
-        }
+        return ctx.begin();
+    }
 
-        template<typename FormatContext>
-        auto format(const _str& s, FormatContext& ctx)
-        {
-            return format_to(ctx.out(), "{}", s.strv());
-        }
-    };
+    template<typename FormatContext>
+    auto format(const _str& s, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", s.strv());
+    }
 
     // ReSharper restore CppInconsistentNaming
-}
+};

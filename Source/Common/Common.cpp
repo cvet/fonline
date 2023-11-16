@@ -652,8 +652,6 @@ void WorkThread::ThreadEntry() noexcept
                 }
             }
         }
-
-        std::notify_all_at_thread_exit(_doneSignal, std::unique_lock {_dataLocker});
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

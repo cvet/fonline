@@ -357,6 +357,11 @@ protected:
 class Renderer
 {
 public:
+    Renderer() = default;
+    Renderer(const Renderer&) = delete;
+    Renderer(Renderer&&) noexcept = delete;
+    auto operator=(const Renderer&) -> Renderer& = delete;
+    auto operator=(Renderer&&) noexcept -> Renderer& = delete;
     virtual ~Renderer() = default;
 
     [[nodiscard]] virtual auto CreateTexture(int width, int height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;

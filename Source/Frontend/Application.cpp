@@ -347,8 +347,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
             AudioStreamWriter = new AppAudio::AudioStreamCallback();
 
-            SDL_AudioSpec desired;
-            std::memset(&desired, 0, sizeof(desired));
+            SDL_AudioSpec desired = {};
 #if FO_WEB
             desired.format = AUDIO_F32;
             desired.freq = 48000;

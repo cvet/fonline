@@ -148,8 +148,8 @@ auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
     }
 
     constexpr uint seed = 0;
-    const uint m = 0x5BD1E995;
-    const auto r = 24;
+    constexpr uint m = 0x5BD1E995;
+    constexpr auto r = 24;
     const auto* pdata = static_cast<const uint8*>(data);
     auto h = seed ^ static_cast<uint>(len);
 
@@ -200,8 +200,8 @@ auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
     }
 
     constexpr uint seed = 0;
-    const auto m = 0xc6a4a7935bd1e995ULL;
-    const auto r = 47;
+    constexpr auto m = 0xc6a4a7935bd1e995ULL;
+    constexpr auto r = 47;
     const auto* pdata = static_cast<const uint8*>(data);
     const auto* pdata2 = reinterpret_cast<const uint64*>(pdata);
     const auto* end = pdata2 + len / 8;

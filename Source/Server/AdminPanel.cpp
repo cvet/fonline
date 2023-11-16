@@ -62,7 +62,7 @@
 #define SD_BOTH SHUT_RDWR
 #endif
 
-constexpr auto MAX_SESSIONS = 10;
+static constexpr size_t MAX_SESSIONS = 10;
 
 struct Session
 {
@@ -96,9 +96,9 @@ static void AdminManager(FOServer* server, uint16 port)
 #endif
 
 #if FO_LINUX
-    const auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
+    constexpr int sock_type = SOCK_STREAM | SOCK_CLOEXEC;
 #else
-    const auto sock_type = SOCK_STREAM;
+    constexpr int sock_type = SOCK_STREAM;
 #endif
     const auto listen_sock = socket(AF_INET, sock_type, 0);
     if (listen_sock == INVALID_SOCKET) {
@@ -106,7 +106,7 @@ static void AdminManager(FOServer* server, uint16 port)
         return;
     }
 
-    const auto opt = 1;
+    constexpr auto opt = 1;
     setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&opt), sizeof(opt));
     sockaddr_in sin {};
     sin.sin_family = AF_INET;
@@ -144,7 +144,7 @@ static void AdminManager(FOServer* server, uint16 port)
             if (sock != INVALID_SOCKET) {
                 // Find already connected from this IP
                 auto refuse = false;
-                for (auto* s : sessions) {
+                for (const auto* s : sessions) {
                     if (s->From.sin_addr.s_addr == from.sin_addr.s_addr) {
                         refuse = true;
                         break;
@@ -222,7 +222,7 @@ static void AdminWork(FOServer* server, Session* session)
     string admin_name = "Not authorized";
 
     // Welcome string
-    string welcome = "Welcome to FOnline admin panel.\nEnter access key: ";
+    const string welcome = "Welcome to FOnline admin panel.\nEnter access key: ";
     const auto welcome_len = static_cast<int>(welcome.length()) + 1;
     if (::send(session->Sock, welcome.c_str(), welcome_len, 0) != welcome_len) {
         WriteLog("Admin connection first send fail, disconnect");
@@ -232,10 +232,8 @@ static void AdminWork(FOServer* server, Session* session)
     // Commands loop
     while (server != nullptr) {
         // Get command
-        char cmd_raw[1024];
-        std::memset(cmd_raw, 0, sizeof(cmd_raw));
-
-        auto len = recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
+        char cmd_raw[1024] = {};
+        auto len = ::recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
 
         if (len <= 0 || len == 1024) {
             if (len == 0) {
@@ -274,7 +272,7 @@ static void AdminWork(FOServer* server, Session* session)
             }
 
             WriteLog("Wrong access key entered in admin panel from IP '{}', disconnect", inet_ntoa(session->From.sin_addr));
-            string failstr = "Wrong access key!\n";
+            const string failstr = "Wrong access key!\n";
             ::send(session->Sock, failstr.c_str(), static_cast<int>(failstr.length()) + 1, 0);
             goto label_Finish;
         }

@@ -864,7 +864,7 @@
             throw ScriptException("Negative effect subtype");
         }
 
-        client->OffscreenEffects.resize(static_cast<size_t>(effectSubtype + 1));
+        client->OffscreenEffects.resize(static_cast<size_t>(effectSubtype) + 1);
         client->OffscreenEffects[static_cast<size_t>(effectSubtype)] = reload_effect(client->EffectMngr.Effects.GenericDefault);
     }
 }

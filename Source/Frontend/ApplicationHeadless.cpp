@@ -63,9 +63,9 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-static const int MAX_ATLAS_WIDTH_ = 1024;
-static const int MAX_ATLAS_HEIGHT_ = 1024;
-static const int MAX_BONES_ = 32;
+static constexpr int MAX_ATLAS_WIDTH_ = 1024;
+static constexpr int MAX_ATLAS_HEIGHT_ = 1024;
+static constexpr int MAX_BONES_ = 32;
 const int& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
 const int& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
 const int& AppRender::MAX_BONES {MAX_BONES_};
@@ -512,7 +512,7 @@ auto AppAudio::GetStreamSize() -> uint
 
     RUNTIME_ASSERT(IsEnabled());
 
-    return 0u;
+    return 0;
 }
 
 auto AppAudio::GetSilence() -> uint8
@@ -521,14 +521,14 @@ auto AppAudio::GetSilence() -> uint8
 
     RUNTIME_ASSERT(IsEnabled());
 
-    return 0u;
+    return 0;
 }
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     STACK_TRACE_ENTRY();
 
-    UNUSED_VARIABLE(stream_callback);
+    [[maybe_unused]] auto unused = std::move(stream_callback);
 
     RUNTIME_ASSERT(IsEnabled());
 }

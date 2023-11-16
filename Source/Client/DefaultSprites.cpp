@@ -50,7 +50,7 @@ AtlasSprite::~AtlasSprite()
             const auto rnd_color = COLOR_RGB(GenericUtils::Random(0, 255), GenericUtils::Random(0, 255), GenericUtils::Random(0, 255));
 
             vector<uint> color_data;
-            color_data.resize(static_cast<size_t>(AtlasNode->Width * AtlasNode->Height));
+            color_data.resize(static_cast<size_t>(AtlasNode->Width) * AtlasNode->Height);
             for (size_t i = 0; i < color_data.size(); i++) {
                 color_data[i] = rnd_color;
             }
@@ -500,27 +500,27 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         tex->UpdateTextureRegion(IRect(x, y - 1, x + width, y), data);
 
         // Bottom
-        tex->UpdateTextureRegion(IRect(x, y + height, x + width, y + height + 1), data + static_cast<size_t>((height - 1) * width));
+        tex->UpdateTextureRegion(IRect(x, y + height, x + width, y + height + 1), data + static_cast<size_t>(height - 1) * width);
 
         // Left
-        for (auto i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + static_cast<size_t>(i * width));
+        for (size_t i = 0; i < height; i++) {
+            _borderBuf[i + 1] = *(data + i * width);
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[height + 1] = _borderBuf[height];
         tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + height + 1), _borderBuf.data());
 
         // Right
-        for (auto i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + static_cast<size_t>(i * width + (width - 1)));
+        for (size_t i = 0; i < height; i++) {
+            _borderBuf[i + 1] = *(data + i * width + (width - 1));
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[height + 1] = _borderBuf[height];
         tex->UpdateTextureRegion(IRect(x + width, y - 1, x + width + 1, y + height + 1), _borderBuf.data());
 
         // Evaluate hit mask
-        atlas_spr->HitTestData.resize(static_cast<size_t>(width * height));
-        for (size_t i = 0, j = static_cast<size_t>(width * height); i < j; i++) {
+        atlas_spr->HitTestData.resize(static_cast<size_t>(width) * height);
+        for (size_t i = 0, j = static_cast<size_t>(width) * height; i < j; i++) {
             atlas_spr->HitTestData[i] = (data[i] >> 24) > 0;
         }
     }

@@ -61,7 +61,7 @@ auto AnyData::ValueToString(const Value& value) -> string
         const auto& arr = std::get<ARRAY_VALUE>(value);
 
         for (size_t i = 0; i < arr.size(); i++) {
-            if (i > 0u) {
+            if (i > 0) {
                 arr_str.append(" ");
             }
 
@@ -128,7 +128,7 @@ auto AnyData::ValueToString(const Value& value) -> string
                 const auto& dict_arr = std::get<ARRAY_VALUE>(dict_value);
 
                 for (size_t i = 0; i < dict_arr.size(); i++) {
-                    if (i > 0u) {
+                    if (i > 0) {
                         dict_arr_str.append(" ");
                     }
 
@@ -192,19 +192,19 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
                     switch (value_type) {
                     case INT_VALUE:
-                        dict_arr.push_back(_str("{}", arr_entry).toInt());
+                        dict_arr.emplace_back(_str("{}", arr_entry).toInt());
                         break;
                     case INT64_VALUE:
-                        dict_arr.push_back(_str("{}", arr_entry).toInt64());
+                        dict_arr.emplace_back(_str("{}", arr_entry).toInt64());
                         break;
                     case DOUBLE_VALUE:
-                        dict_arr.push_back(_str("{}", arr_entry).toDouble());
+                        dict_arr.emplace_back(_str("{}", arr_entry).toDouble());
                         break;
                     case BOOL_VALUE:
-                        dict_arr.push_back(_str("{}", arr_entry).toBool());
+                        dict_arr.emplace_back(_str("{}", arr_entry).toBool());
                         break;
                     case STRING_VALUE:
-                        dict_arr.push_back(DecodeString(arr_entry));
+                        dict_arr.emplace_back(DecodeString(arr_entry));
                         break;
                     default:
                         throw UnreachablePlaceException(LINE_STR);
@@ -246,19 +246,19 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
             switch (value_type) {
             case INT_VALUE:
-                arr.push_back(_str("{}", arr_entry).toInt());
+                arr.emplace_back(_str("{}", arr_entry).toInt());
                 break;
             case INT64_VALUE:
-                arr.push_back(_str("{}", arr_entry).toInt64());
+                arr.emplace_back(_str("{}", arr_entry).toInt64());
                 break;
             case DOUBLE_VALUE:
-                arr.push_back(_str("{}", arr_entry).toDouble());
+                arr.emplace_back(_str("{}", arr_entry).toDouble());
                 break;
             case BOOL_VALUE:
-                arr.push_back(_str("{}", arr_entry).toBool());
+                arr.emplace_back(_str("{}", arr_entry).toBool());
                 break;
             case STRING_VALUE:
-                arr.push_back(DecodeString(arr_entry));
+                arr.emplace_back(DecodeString(arr_entry));
                 break;
             default:
                 throw UnreachablePlaceException(LINE_STR);
@@ -353,7 +353,7 @@ static auto DecodeString(string_view str) -> string
     STACK_TRACE_ENTRY();
 
     if (str.empty()) {
-        return string();
+        return {};
     }
 
     string result;
