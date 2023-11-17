@@ -92,11 +92,11 @@
         throw ScriptException("No place for item");
     }
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, true);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
 }
 
 ///# ...
@@ -121,7 +121,7 @@
         throw ScriptException("No place for item");
     }
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 
@@ -133,10 +133,10 @@
             props_.SetValueAsIntProps(static_cast<int>(key), value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, true);
+        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, false);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, true);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, false);
 }
 
 ///# ...
@@ -1216,7 +1216,7 @@
 [[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, uint16 hx, uint16 hy, hstring pid)
 {
     const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
-    if (!proto_item) {
+    if (proto_item == nullptr) {
         throw ScriptException("Proto item not found");
     }
 
@@ -1303,7 +1303,7 @@
     if (dir >= GameSettings::MAP_DIR_COUNT) {
         throw ScriptException("Invalid dir arg");
     }
-    if (steps == 0u) {
+    if (steps == 0) {
         throw ScriptException("Steps arg is zero");
     }
 

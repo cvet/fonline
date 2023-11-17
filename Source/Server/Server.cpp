@@ -1550,7 +1550,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        if (CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr, true) == nullptr) {
+        if (CreateItemOnHex(map, hex_x, hex_y, pid, count, nullptr, false) == nullptr) {
             logcb("Item(s) not added");
         }
         else {
@@ -4401,25 +4401,35 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
         return nullptr;
     }
 
-    if (check_blocks && !map->IsPlaceForProtoItem(hx, hy, proto_item)) {
-        return nullptr;
-    }
+    const auto add_item = [&, this]() -> Item* {
+        if (check_blocks && !map->IsPlaceForProtoItem(hx, hy, proto_item)) {
+            return nullptr;
+        }
 
-    auto* item = ItemMngr.CreateItem(pid, count, props);
-    if (item == nullptr) {
-        return nullptr;
-    }
+        auto* item = ItemMngr.CreateItem(pid, count, props);
+        if (item == nullptr) {
+            return nullptr;
+        }
 
-    if (!map->AddItem(item, hx, hy)) {
-        ItemMngr.DeleteItem(item);
-        return nullptr;
-    }
+        if (!map->AddItem(item, hx, hy)) {
+            ItemMngr.DeleteItem(item);
+            return nullptr;
+        }
 
-    // Recursive for non-stacked items
-    if (!proto_item->GetStackable() && count > 1) {
-        // Todo: reowrk non-stacked items creation from recursive to loop
-        RUNTIME_ASSERT(count < 10000);
-        return CreateItemOnHex(map, hx, hy, pid, count - 1, props, true);
+        return item;
+    };
+
+    auto* item = add_item();
+
+    // Non-stacked items
+    if (item != nullptr && !proto_item->GetStackable() && count > 1) {
+        RUNTIME_ASSERT(count < 1000);
+
+        for (uint i = 0; i < count; i++) {
+            if (add_item() == nullptr) {
+                break;
+            }
+        }
     }
 
     return item;
