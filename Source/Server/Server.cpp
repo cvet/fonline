@@ -45,8 +45,6 @@
 
 #include "imgui.h"
 
-static constexpr uint SERVER_CHECK_ALIVE_TIME = 10000;
-
 FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
     FOEngineBase(settings, PropertiesRelationType::ServerRelative),
@@ -140,7 +138,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     _starter.AddJob([this] {
         STACK_TRACE_ENTRY_NAMED("InitStorageJob");
 
-        DbStorage = ConnectToDataBase(Settings.DbStorage);
+        DbStorage = ConnectToDataBase(Settings, Settings.DbStorage);
         if (!DbStorage) {
             throw ServerInitException("Can't init storage data base", Settings.DbStorage);
         }
@@ -439,6 +437,12 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         _started = true;
 
+        _loopBalancer = FrameBalancer {true, Settings.ServerSleep, Settings.LoopsPerSecondCap};
+        _loopBalancer.StartLoop();
+
+        _stats.LoopCounterBegin = Timer::CurTime();
+        _stats.ServerStartTime = Timer::CurTime();
+
         // Sync point
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("SyncPointJob");
@@ -577,7 +581,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("DeferredCallsJob");
 
-            ServerDeferredCalls.Process();
+            ServerDeferredCalls.ProcessDeferredCalls();
 
             return std::chrono::milliseconds {0};
         });
@@ -591,13 +595,13 @@ FOServer::FOServer(GlobalSettings& settings) :
             return std::chrono::milliseconds {0};
         });
 
-        // Commit changed to data base
+        // Commit data to storage
         _mainWorker.AddJob([this] {
             STACK_TRACE_ENTRY_NAMED("StorageCommitJob");
 
             DbStorage.CommitChanges(false);
 
-            return std::chrono::milliseconds {0};
+            return std::chrono::milliseconds {Settings.DataBaseCommitPeriod};
         });
 
         // Clients log
@@ -610,17 +614,14 @@ FOServer::FOServer(GlobalSettings& settings) :
         });
 
         // Loop stats
-        _stats.LoopCounterBegin = Timer::CurTime();
-        _stats.LoopBegin = Timer::CurTime();
-        _stats.ServerStartTime = Timer::CurTime();
-
         _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("LoopStatsJob");
+            STACK_TRACE_ENTRY_NAMED("LoopJob");
+
+            _loopBalancer.EndLoop();
+            _loopBalancer.StartLoop();
 
             const auto cur_time = Timer::CurTime();
-            const auto loop_duration = cur_time - _stats.LoopBegin;
-
-            _stats.LoopBegin = cur_time;
+            const auto loop_duration = _loopBalancer.GetLoopDuration();
 
             // Calculate loops per second
             if (cur_time - _stats.LoopCounterBegin >= std::chrono::milliseconds {1000}) {
@@ -634,26 +635,10 @@ FOServer::FOServer(GlobalSettings& settings) :
 
             // Fill statistics
             _stats.LoopsCount++;
-            _stats.LoopMaxTime = std::max(loop_duration, _stats.LoopMaxTime);
-            _stats.LoopMinTime = std::min(loop_duration, _stats.LoopMinTime);
+            _stats.LoopMaxTime = _stats.LoopMaxTime != time_duration() ? std::max(loop_duration, _stats.LoopMaxTime) : loop_duration;
+            _stats.LoopMinTime = _stats.LoopMinTime != time_duration() ? std::min(loop_duration, _stats.LoopMinTime) : loop_duration;
             _stats.LastLoopTime = loop_duration;
             _stats.Uptime = cur_time - _stats.ServerStartTime;
-
-            return std::chrono::milliseconds {0};
-        });
-
-        // Sleep
-        _mainWorker.AddJob([this] {
-            STACK_TRACE_ENTRY_NAMED("SleepJob");
-
-            if (Settings.ServerSleep >= 0) {
-                if (Settings.ServerSleep == 0) {
-                    std::this_thread::yield();
-                }
-                else {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(Settings.ServerSleep));
-                }
-            }
 
             return std::chrono::milliseconds {0};
         });
@@ -828,8 +813,8 @@ void FOServer::DrawGui(string_view server_name)
             }
         }
         else {
-            if constexpr (SERVER_CHECK_ALIVE_TIME != 0) {
-                constexpr auto max_wait_time = time_duration {std::chrono::milliseconds {SERVER_CHECK_ALIVE_TIME}};
+            if (Settings.LockMaxWaitTime != 0) {
+                const auto max_wait_time = time_duration {std::chrono::milliseconds {Settings.LockMaxWaitTime}};
                 if (!Lock(max_wait_time)) {
                     ImGui::TextUnformatted(_str("Server hanged (no response more than {})", max_wait_time).c_str());
                     WriteLog("Server hanged (no response more than {})", max_wait_time);
@@ -1244,7 +1229,7 @@ void FOServer::Process_Text(Player* player)
     } break;
     case SAY_SOCIAL: {
         return;
-    } break;
+    }
     case SAY_RADIO: {
         if (cr->GetMapId()) {
             cr->SendAndBroadcast_Text(cr->VisCr, str, SAY_WHISP, true);
@@ -3916,7 +3901,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
             continue;
         case DR_ITEM: {
             const auto pid = result.ParamHash;
-            const int cur_count = master->CountInvItemPid(pid);
+            const int cur_count = static_cast<int>(master->CountInvItemPid(pid));
             auto need_count = cur_count;
 
             switch (result.Op) {

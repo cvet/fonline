@@ -102,7 +102,7 @@ private:
 #endif
 };
 
-class Timer final
+class Timer final // Todo: remove Timer class, use directly std::chrono instead
 {
 public:
     Timer() = delete;

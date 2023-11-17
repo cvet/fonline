@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "AnyData.h"
+#include "Settings.h"
 
 DECLARE_EXCEPTION(DataBaseException);
 
@@ -43,7 +44,7 @@ class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
+    friend auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;
 
 public:
     using Collection = unordered_map<ident_t, AnyData::Document>;
@@ -70,8 +71,9 @@ public:
 
 private:
     explicit DataBase(DataBaseImpl* impl);
+
     unique_ptr<DataBaseImpl> _impl {};
     bool _nonConstHelper {};
 };
 
-extern auto ConnectToDataBase(string_view connection_info) -> DataBase;
+extern auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase;

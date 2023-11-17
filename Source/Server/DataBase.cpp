@@ -53,12 +53,10 @@ DISABLE_WARNINGS_POP()
 
 #include "WinApi-Include.h"
 
-static constexpr size_t DATA_BASE_MAX_COMMIT_JOBS = 1000;
-
 class DataBaseImpl
 {
 public:
-    DataBaseImpl() = default;
+    explicit DataBaseImpl(ServerSettings& settings);
     DataBaseImpl(const DataBaseImpl&) = delete;
     DataBaseImpl(DataBaseImpl&&) noexcept = delete;
     auto operator=(const DataBaseImpl&) = delete;
@@ -81,6 +79,8 @@ protected:
     virtual void UpdateRecord(hstring collection_name, ident_t id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(hstring collection_name, ident_t id) = 0;
     virtual void CommitRecords() = 0;
+
+    ServerSettings& _settings;
 
 private:
     DataBase::Collections _recordChanges {};
@@ -387,19 +387,19 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
         while (bson_iter_next(&arr_iter)) {
             const auto* arr_value = bson_iter_value(&arr_iter);
             if (arr_value->value_type == BSON_TYPE_INT32) {
-                arr.push_back(arr_value->value.v_int32);
+                arr.emplace_back(arr_value->value.v_int32);
             }
             else if (arr_value->value_type == BSON_TYPE_INT64) {
-                arr.push_back(arr_value->value.v_int64);
+                arr.emplace_back(arr_value->value.v_int64);
             }
             else if (arr_value->value_type == BSON_TYPE_DOUBLE) {
-                arr.push_back(arr_value->value.v_double);
+                arr.emplace_back(arr_value->value.v_double);
             }
             else if (arr_value->value_type == BSON_TYPE_BOOL) {
-                arr.push_back(arr_value->value.v_bool);
+                arr.emplace_back(arr_value->value.v_bool);
             }
             else if (arr_value->value_type == BSON_TYPE_UTF8) {
-                arr.push_back(string(arr_value->value.v_utf8.str, arr_value->value.v_utf8.len));
+                arr.emplace_back(string(arr_value->value.v_utf8.str, arr_value->value.v_utf8.len));
             }
             else {
                 throw DataBaseException("BsonToValue Invalid type");
@@ -443,19 +443,19 @@ static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
                 while (bson_iter_next(&doc_arr_iter)) {
                     const auto* doc_arr_value = bson_iter_value(&doc_arr_iter);
                     if (doc_arr_value->value_type == BSON_TYPE_INT32) {
-                        dict_array.push_back(doc_arr_value->value.v_int32);
+                        dict_array.emplace_back(doc_arr_value->value.v_int32);
                     }
                     else if (doc_arr_value->value_type == BSON_TYPE_INT64) {
-                        dict_array.push_back(doc_arr_value->value.v_int64);
+                        dict_array.emplace_back(doc_arr_value->value.v_int64);
                     }
                     else if (doc_arr_value->value_type == BSON_TYPE_DOUBLE) {
-                        dict_array.push_back(doc_arr_value->value.v_double);
+                        dict_array.emplace_back(doc_arr_value->value.v_double);
                     }
                     else if (doc_arr_value->value_type == BSON_TYPE_BOOL) {
-                        dict_array.push_back(doc_arr_value->value.v_bool);
+                        dict_array.emplace_back(doc_arr_value->value.v_bool);
                     }
                     else if (doc_arr_value->value_type == BSON_TYPE_UTF8) {
-                        dict_array.push_back(string(doc_arr_value->value.v_utf8.str, doc_arr_value->value.v_utf8.len));
+                        dict_array.emplace_back(string(doc_arr_value->value.v_utf8.str, doc_arr_value->value.v_utf8.len));
                     }
                     else {
                         throw DataBaseException("BsonToValue Invalid type");
@@ -495,6 +495,11 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
         auto value = BsonToValue(&iter);
         doc.emplace(string(key), std::move(value));
     }
+}
+
+DataBaseImpl::DataBaseImpl(ServerSettings& settings) :
+    _settings {settings}
+{
 }
 
 auto DataBaseImpl::GetCommitJobsCount() const -> size_t
@@ -586,11 +591,11 @@ void DataBaseImpl::CommitChanges()
         return;
     }
 
-    // Too many jobs already in queue, don't place more
-    if constexpr (DATA_BASE_MAX_COMMIT_JOBS != 0) {
-        if (_commitThread.GetJobsCount() > DATA_BASE_MAX_COMMIT_JOBS) {
-            BreakIntoDebugger();
-            return;
+    if (_settings.DataBaseMaxCommitJobs != 0) {
+        if (_commitThread.GetJobsCount() > _settings.DataBaseMaxCommitJobs) {
+            WriteLog("Too many commit jobs to data base, wait for it");
+            _commitThread.Wait();
+            WriteLog("Wait complete, continue commits");
         }
     }
 
@@ -643,7 +648,8 @@ public:
     auto operator=(DbJson&&) noexcept = delete;
     ~DbJson() override = default;
 
-    explicit DbJson(string_view storage_dir) :
+    DbJson(ServerSettings& settings, string_view storage_dir) :
+        DataBaseImpl(settings),
         _storageDir {storage_dir}
     {
         DiskFileSystem::MakeDirTree(storage_dir);
@@ -829,7 +835,8 @@ public:
     auto operator=(const DbUnQLite&) = delete;
     auto operator=(DbUnQLite&&) noexcept = delete;
 
-    explicit DbUnQLite(string_view storage_dir)
+    DbUnQLite(ServerSettings& settings, string_view storage_dir) :
+        DataBaseImpl(settings)
     {
         STACK_TRACE_ENTRY();
 
@@ -1085,7 +1092,8 @@ public:
     auto operator=(const DbMongo&) = delete;
     auto operator=(DbMongo&&) noexcept = delete;
 
-    DbMongo(string_view uri, string_view db_name)
+    DbMongo(ServerSettings& settings, string_view uri, string_view db_name) :
+        DataBaseImpl(settings)
     {
         STACK_TRACE_ENTRY();
 
@@ -1220,7 +1228,7 @@ protected:
             mongoc_cursor_destroy(cursor);
             bson_destroy(&filter);
             bson_destroy(&opts);
-            return AnyData::Document();
+            return {};
         }
 
         AnyData::Document doc;
@@ -1368,7 +1376,11 @@ private:
 class DbMemory final : public DataBaseImpl
 {
 public:
-    DbMemory() = default;
+    explicit DbMemory(ServerSettings& settings) :
+        DataBaseImpl(settings)
+    {
+    }
+
     DbMemory(const DbMemory&) = delete;
     DbMemory(DbMemory&&) noexcept = delete;
     auto operator=(const DbMemory&) = delete;
@@ -1453,7 +1465,7 @@ private:
     DataBase::Collections _collections {};
 };
 
-auto ConnectToDataBase(string_view connection_info) -> DataBase
+auto ConnectToDataBase(ServerSettings& settings, string_view connection_info) -> DataBase
 {
     STACK_TRACE_ENTRY();
 
@@ -1462,21 +1474,21 @@ auto ConnectToDataBase(string_view connection_info) -> DataBase
 
 #if FO_HAVE_JSON
         if (options.front() == "JSON" && options.size() == 2) {
-            return DataBase(new DbJson(options[1]));
+            return DataBase(new DbJson(settings, options[1]));
         }
 #endif
 #if FO_HAVE_UNQLITE
         if (options.front() == "DbUnQLite" && options.size() == 2) {
-            return DataBase(new DbUnQLite(options[1]));
+            return DataBase(new DbUnQLite(settings, options[1]));
         }
 #endif
 #if FO_HAVE_MONGO && !FO_SINGLEPLAYER
         if (options.front() == "Mongo" && options.size() == 3) {
-            return DataBase(new DbMongo(options[1], options[2]));
+            return DataBase(new DbMongo(settings, options[1], options[2]));
         }
 #endif
         if (options.front() == "Memory" && options.size() == 1) {
-            return DataBase(new DbMemory());
+            return DataBase(new DbMemory(settings));
         }
     }
 

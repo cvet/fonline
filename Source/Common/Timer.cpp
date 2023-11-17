@@ -230,7 +230,7 @@ auto GameTimer::IsGameplayPaused() const -> bool
 
 auto Timer::CurTime() -> time_point
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return time_point::clock::now();
 }

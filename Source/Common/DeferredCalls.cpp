@@ -124,7 +124,7 @@ auto DeferredCallManager::CancelDeferredCall(ident_t id) -> bool
     return false;
 }
 
-void DeferredCallManager::Process()
+void DeferredCallManager::ProcessDeferredCalls()
 {
     STACK_TRACE_ENTRY();
 

@@ -71,7 +71,7 @@ public:
     auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, any_t> func, any_t value) -> ident_t;
     auto AddDeferredCall(uint delay, bool repeating, ScriptFunc<void, vector<any_t>> func, const vector<any_t>& values) -> ident_t;
     auto CancelDeferredCall(ident_t id) -> bool;
-    void Process();
+    void ProcessDeferredCalls();
 
 protected:
     virtual auto GetNextCallId() -> ident_t;

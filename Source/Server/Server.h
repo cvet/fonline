@@ -202,7 +202,6 @@ private:
         size_t MaxOnline {};
         size_t CurOnline {};
 
-        time_point LoopBegin {};
         size_t LoopsCount {};
         time_duration LastLoopTime {};
         time_duration LoopMinTime {};
@@ -288,6 +287,7 @@ private:
 
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
+    FrameBalancer _loopBalancer {};
     ServerStats _stats {};
     map<uint, time_point> _regIp {};
     vector<vector<uint8>> _updateFilesData {};

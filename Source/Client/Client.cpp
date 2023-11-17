@@ -467,7 +467,7 @@ void FOClient::MainLoop()
     // Script subsystems update
     ScriptSys->Process();
 
-    ClientDeferredCalls.Process();
+    ClientDeferredCalls.ProcessDeferredCalls();
 
 #if !FO_SINGLEPLAYER
     // Script loop

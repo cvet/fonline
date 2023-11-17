@@ -83,7 +83,7 @@ void Map::ProcessLoop(int index, uint time, uint tick)
 {
     STACK_TRACE_ENTRY();
 
-    if (time != 0u && tick - _loopLastTick[index] >= time) {
+    if (time != 0 && tick - _loopLastTick[index] >= time) {
         _loopLastTick[index] = tick;
 
         if (index == 0) {

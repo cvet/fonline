@@ -339,11 +339,17 @@ using time_duration = time_point::clock::duration;
 static_assert(sizeof(time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<time_point::clock::period, std::micro>);
 
-static auto time_point_desc(const time_point& t) -> std::tm
+static inline auto time_point_to_unix_time(const time_point& t) -> time_t
 {
     const auto system_clock_now = std::chrono::system_clock::now();
     const auto system_clock_time = system_clock_now + std::chrono::duration_cast<std::chrono::system_clock::duration>(t - time_point::clock::now());
     const auto unix_time = std::chrono::system_clock::to_time_t(system_clock_time);
+    return unix_time;
+}
+
+static inline auto time_point_desc(const time_point& t) -> std::tm
+{
+    const auto unix_time = time_point_to_unix_time(t);
     const auto tm_struct = fmt::localtime(unix_time);
     return tm_struct;
 }
@@ -1942,7 +1948,10 @@ public:
 class FrameBalancer
 {
 public:
-    FrameBalancer(bool vsync, int sleep, int fixed_fps);
+    FrameBalancer() = default;
+    FrameBalancer(bool enabled, int sleep, int fixed_fps);
+
+    [[nodiscard]] auto GetLoopDuration() const -> time_duration;
 
     void StartLoop();
     void EndLoop();
@@ -1952,7 +1961,8 @@ private:
     int _sleep {};
     int _fixedFps {};
     time_point _loopStart {};
-    double _balance {};
+    time_duration _loopDuration {};
+    time_duration _idleTimeBalance {};
 };
 
 class WorkThread

@@ -113,7 +113,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
 
         while (!App->Settings.Quit) {
             balancer.StartLoop();
