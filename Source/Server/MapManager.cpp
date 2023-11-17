@@ -2051,7 +2051,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
         if (item->GetIsAlwaysView()) {
             if (view_cr->AddIdVisItem(item->GetId())) {
                 view_cr->Send_AddItemOnMap(item);
-                view_cr->OnItemOnMapAppeared.Fire(item, item->ViewByCritter);
+                view_cr->OnItemOnMapAppeared.Fire(item, nullptr);
             }
         }
         else {
@@ -2072,13 +2072,13 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
             if (allowed) {
                 if (view_cr->AddIdVisItem(item->GetId())) {
                     view_cr->Send_AddItemOnMap(item);
-                    view_cr->OnItemOnMapAppeared.Fire(item, item->ViewByCritter);
+                    view_cr->OnItemOnMapAppeared.Fire(item, nullptr);
                 }
             }
             else {
                 if (view_cr->DelIdVisItem(item->GetId())) {
                     view_cr->Send_EraseItemFromMap(item);
-                    view_cr->OnItemOnMapDisappeared.Fire(item, item->ViewByCritter);
+                    view_cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }
             }
         }
