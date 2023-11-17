@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Client.h"
-#include "GenericUtils.h"
 #include "MapSprite.h"
 
 // ReSharper disable CppInconsistentNaming
@@ -738,7 +737,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_ChangeZoom(MapView* self, float targetZoom)
 {
-    if (Math::FloatCompare(targetZoom, self->GetSpritesZoom())) {
+    if (is_float_equal(targetZoom, self->GetSpritesZoom())) {
         return;
     }
 
@@ -753,7 +752,7 @@
 
             self->ChangeZoom(1);
 
-            if (Math::FloatCompare(self->GetSpritesZoom(), old_zoom)) {
+            if (is_float_equal(self->GetSpritesZoom(), old_zoom)) {
                 break;
             }
         }
@@ -764,13 +763,13 @@
 
             self->ChangeZoom(-1);
 
-            if (Math::FloatCompare(self->GetSpritesZoom(), old_zoom)) {
+            if (is_float_equal(self->GetSpritesZoom(), old_zoom)) {
                 break;
             }
         }
     }
 
-    if (!Math::FloatCompare(init_zoom, self->GetSpritesZoom())) {
+    if (!is_float_equal(init_zoom, self->GetSpritesZoom())) {
         self->RebuildFog();
     }
 }

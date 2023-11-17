@@ -129,16 +129,6 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
     throw HashResolveException("Can't resolve hash", h);
 }
 
-auto Math::FloatCompare(float f1, float f2) -> bool
-{
-    STACK_TRACE_ENTRY();
-
-    if (std::abs(f1 - f2) <= 1.0e-5f) {
-        return true;
-    }
-    return std::abs(f1 - f2) <= 1.0e-5f * std::max(std::abs(f1), std::abs(f2));
-}
-
 auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
 {
     STACK_TRACE_ENTRY();

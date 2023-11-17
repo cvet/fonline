@@ -104,8 +104,8 @@ TEST_CASE("lerp")
 
 TEST_CASE("FloatCompare")
 {
-    REQUIRE(Math::FloatCompare(0.111f, 0.111f));
-    REQUIRE(Math::FloatCompare(-110.95667f, -110.95667f));
-    REQUIRE(Math::FloatCompare(0.95667f, 0.95667f));
-    REQUIRE(!Math::FloatCompare(1.0f, -1.0f));
+    REQUIRE(is_float_equal(0.111f, 0.111f));
+    REQUIRE(is_float_equal(-110.95667f, -110.95667f));
+    REQUIRE(is_float_equal(0.95667f, 0.95667f));
+    REQUIRE(!is_float_equal(1.0f, -1.0f));
 }

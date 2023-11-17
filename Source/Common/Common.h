@@ -962,6 +962,22 @@ private:
     T _callback;
 };
 
+// Float safe comparator
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+[[nodiscard]] constexpr auto float_abs(T f) noexcept -> float
+{
+    return f < 0 ? -f : f;
+}
+
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+[[nodiscard]] constexpr auto is_float_equal(T f1, T f2) noexcept -> bool
+{
+    if (float_abs(f1 - f2) <= 1.0e-5f) {
+        return true;
+    }
+    return float_abs(f1 - f2) <= 1.0e-5f * std::max(float_abs(f1), float_abs(f2));
+}
+
 // Generic helpers
 template<typename... T>
 FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
@@ -974,7 +990,7 @@ FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
 #define UNUSED_VARIABLE(...) ignore_unused(__VA_ARGS__)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define COLOR_RGBA(a, r, g, b) (static_cast<uint>((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
+#define COLOR_RGBA(a, r, g, b) (static_cast<uint>((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF))) // Todo: move colors from uint to color4
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
 #define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | (static_cast<uint>(a) & 0xFF) << 24)

@@ -479,7 +479,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         if (_noRotate) {
             _deferredLookDirAngle = _lookDirAngle;
         }
-        else if (!Math::FloatCompare(_deferredLookDirAngle, _lookDirAngle)) {
+        else if (!is_float_equal(_deferredLookDirAngle, _lookDirAngle)) {
             _lookDirAngle = _deferredLookDirAngle;
             RefreshMoveAnimation();
         }
@@ -1238,7 +1238,7 @@ void ModelInstance::SetLookDirAngle(int dir_angle)
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
     if (!_noRotate) {
-        if (!Math::FloatCompare(new_angle, _lookDirAngle)) {
+        if (!is_float_equal(new_angle, _lookDirAngle)) {
             _lookDirAngle = new_angle;
             RefreshMoveAnimation();
         }
@@ -1254,7 +1254,7 @@ void ModelInstance::SetMoveDirAngle(int dir_angle, bool smooth_rotation)
 
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
-    if (!Math::FloatCompare(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !Math::FloatCompare(new_angle, _moveDirAngle))) {
+    if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
         _targetMoveDirAngle = new_angle;
 
         if (!smooth_rotation) {
@@ -1851,7 +1851,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Rotate body
-    if (!Math::FloatCompare(_moveDirAngle, _targetMoveDirAngle)) {
+    if (!is_float_equal(_moveDirAngle, _targetMoveDirAngle)) {
         const auto diff = GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
         _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
     }
@@ -1945,12 +1945,12 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 {
     STACK_TRACE_ENTRY();
 
-    if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
+    if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
         mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
-    else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
+    else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !is_float_equal(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
         mat44::RotationX((GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;

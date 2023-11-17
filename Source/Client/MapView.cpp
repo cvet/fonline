@@ -2475,7 +2475,7 @@ void MapView::ChangeZoom(int zoom)
 {
     STACK_TRACE_ENTRY();
 
-    if (Math::FloatCompare(_engine->Settings.SpritesZoomMin, _engine->Settings.SpritesZoomMax)) {
+    if (is_float_equal(_engine->Settings.SpritesZoomMin, _engine->Settings.SpritesZoomMax)) {
         return;
     }
     if (zoom == 0 && GetSpritesZoom() == 1.0f) {

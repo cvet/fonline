@@ -50,14 +50,6 @@ private:
     unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };
 
-class Math final
-{
-public:
-    Math() = delete;
-
-    [[nodiscard]] static auto FloatCompare(float f1, float f2) -> bool;
-};
-
 class Hashing final
 {
 public:
