@@ -324,7 +324,7 @@ void MapManager::GenerateMapContent(Map* map)
             item->SetIsLightThru(true);
         }
 
-        if (!map->AddItem(item, base_item->GetHexX(), base_item->GetHexY())) {
+        if (!map->AddItem(item, base_item->GetHexX(), base_item->GetHexY(), nullptr)) {
             WriteLog("Add item '{}' to map '{}' failure, continue generate", item->GetName(), map->GetName());
             _engine->ItemMngr.DeleteItem(item);
         }
@@ -2039,7 +2039,11 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     RUNTIME_ASSERT(map);
 
     const int look = static_cast<int>(view_cr->GetLookDistance());
+
     for (auto* item : copy_hold_ref(map->GetItems())) {
+        if (item->IsDestroyed()) {
+            continue;
+        }
         if (item->GetIsHidden()) {
             continue;
         }
@@ -2047,7 +2051,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
         if (item->GetIsAlwaysView()) {
             if (view_cr->AddIdVisItem(item->GetId())) {
                 view_cr->Send_AddItemOnMap(item);
-                view_cr->OnItemOnMapAppeared.Fire(item, item->ViewPlaceOnMap, item->ViewByCritter);
+                view_cr->OnItemOnMapAppeared.Fire(item, item->ViewByCritter);
             }
         }
         else {
@@ -2068,13 +2072,13 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
             if (allowed) {
                 if (view_cr->AddIdVisItem(item->GetId())) {
                     view_cr->Send_AddItemOnMap(item);
-                    view_cr->OnItemOnMapAppeared.Fire(item, item->ViewPlaceOnMap, item->ViewByCritter);
+                    view_cr->OnItemOnMapAppeared.Fire(item, item->ViewByCritter);
                 }
             }
             else {
                 if (view_cr->DelIdVisItem(item->GetId())) {
                     view_cr->Send_EraseItemFromMap(item);
-                    view_cr->OnItemOnMapDisappeared.Fire(item, item->ViewPlaceOnMap, item->ViewByCritter);
+                    view_cr->OnItemOnMapDisappeared.Fire(item, item->ViewByCritter);
                 }
             }
         }
@@ -2088,6 +2092,9 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
     // Critters
     constexpr auto dirs_count = GameSettings::MAP_DIR_COUNT;
     for (auto* cr : copy_hold_ref(map->GetCritters())) {
+        if (cr->IsDestroyed()) {
+            continue;
+        }
         if (cr == view_cr) {
             continue;
         }
@@ -2159,9 +2166,13 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, uint16 hx, uint1
 
     // Items
     for (auto* item : copy_hold_ref(map->GetItems())) {
+        if (item->IsDestroyed()) {
+            continue;
+        }
         if (item->GetIsHidden()) {
             continue;
         }
+
         if (item->GetIsAlwaysView()) {
             view_cr->Send_AddItemOnMap(item);
         }

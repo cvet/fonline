@@ -75,10 +75,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, uint8 /*dir*/);
 
-    bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, uint8> TriggerScriptFunc {};
-    Critter* ViewByCritter {};
 
 private:
     unique_ptr<vector<Item*>> _innerItems {};

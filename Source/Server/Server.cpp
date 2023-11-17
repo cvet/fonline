@@ -3097,6 +3097,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->ChangeViewItem(item);
+
             if (prop == item->GetPropertyIsTrap()) {
                 map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
             }
@@ -4406,12 +4407,12 @@ auto FOServer::CreateItemOnHex(Map* map, uint16 hx, uint16 hy, hstring pid, uint
             return nullptr;
         }
 
-        auto* item = ItemMngr.CreateItem(pid, count, props);
+        auto* item = ItemMngr.CreateItem(pid, proto_item->GetStackable() ? count : 1, props);
         if (item == nullptr) {
             return nullptr;
         }
 
-        if (!map->AddItem(item, hx, hy)) {
+        if (!map->AddItem(item, hx, hy, nullptr)) {
             ItemMngr.DeleteItem(item);
             return nullptr;
         }

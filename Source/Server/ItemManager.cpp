@@ -372,12 +372,12 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         EraseItemHolder(item, holder);
-        to_map->AddItem(item, to_hx, to_hy);
+        to_map->AddItem(item, to_hx, to_hy, dynamic_cast<Critter*>(holder));
     }
     else {
         auto* item_ = SplitItem(item, count);
         if (item_ != nullptr) {
-            to_map->AddItem(item_, to_hx, to_hy);
+            to_map->AddItem(item_, to_hx, to_hy, dynamic_cast<Critter*>(holder));
         }
     }
 }
@@ -620,7 +620,7 @@ void ItemManager::RadioSendTextEx(uint16 channel, uint8 broadcast_type, ident_t 
 
     NON_CONST_METHOD_HINT();
 
-    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {
+    if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && (broadcast_type < 101 || broadcast_type > 200) /*RADIO_BROADCAST_ZONE*/) {
         return;
     }
     if ((broadcast_type == RADIO_BROADCAST_MAP || broadcast_type == RADIO_BROADCAST_LOCATION) && !from_map_id) {

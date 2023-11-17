@@ -230,7 +230,7 @@ void Map::EraseCritter(Critter* cr)
     }
 }
 
-auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
+auto Map::AddItem(Item* item, uint16 hx, uint16 hy, Critter* dropper) -> bool
 {
     STACK_TRACE_ENTRY();
 
@@ -249,22 +249,27 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
     SetItemIds(std::move(item_ids));
 
     // Process critters view
-    item->ViewPlaceOnMap = true;
-    for (auto* cr : GetCritters()) {
+    for (auto* cr : copy_hold_ref(GetCritters())) {
+        if (cr->IsDestroyed()) {
+            continue;
+        }
+
         if (!item->GetIsHidden() || item->GetIsAlwaysView()) {
             if (!item->GetIsAlwaysView()) {
-                // Check distance for non-hide items
                 bool allowed;
+
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
+                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
+
                     allowed = dist <= static_cast<int>(cr->GetLookDistance());
                 }
+
                 if (!allowed) {
                     continue;
                 }
@@ -272,10 +277,9 @@ auto Map::AddItem(Item* item, uint16 hx, uint16 hy) -> bool
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            cr->OnItemOnMapAppeared.Fire(item, false, nullptr);
+            cr->OnItemOnMapAppeared.Fire(item, dropper);
         }
     }
-    item->ViewPlaceOnMap = false;
 
     return true;
 }
@@ -353,14 +357,16 @@ void Map::EraseItem(ident_t item_id)
     }
 
     // Process critters view
-    item->ViewPlaceOnMap = true;
-    for (auto* cr : GetCritters()) {
+    for (auto* cr : copy_hold_ref(GetCritters())) {
+        if (cr->IsDestroyed()) {
+            continue;
+        }
+
         if (cr->DelIdVisItem(item->GetId())) {
             cr->Send_EraseItemFromMap(item);
-            cr->OnItemOnMapDisappeared.Fire(item, item->ViewPlaceOnMap, item->ViewByCritter);
+            cr->OnItemOnMapDisappeared.Fire(item, nullptr);
         }
     }
-    item->ViewPlaceOnMap = false;
 }
 
 void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
@@ -392,30 +398,37 @@ void Map::ChangeViewItem(Item* item)
 {
     STACK_TRACE_ENTRY();
 
-    for (auto* cr : GetCritters()) {
+    for (auto* cr : copy_hold_ref(GetCritters())) {
+        if (cr->IsDestroyed()) {
+            continue;
+        }
+
         if (cr->CountIdVisItem(item->GetId())) {
             if (item->GetIsHidden()) {
                 cr->DelIdVisItem(item->GetId());
                 cr->Send_EraseItemFromMap(item);
-                cr->OnItemOnMapDisappeared.Fire(item, false, nullptr);
+                cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed;
+
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY()));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
+
                     allowed = dist <= static_cast<int>(cr->GetLookDistance());
                 }
+
                 if (!allowed) {
                     cr->DelIdVisItem(item->GetId());
                     cr->Send_EraseItemFromMap(item);
-                    cr->OnItemOnMapDisappeared.Fire(item, false, nullptr);
+                    cr->OnItemOnMapDisappeared.Fire(item, nullptr);
                 }
             }
         }
@@ -423,16 +436,19 @@ void Map::ChangeViewItem(Item* item)
             if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed;
+
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
                     allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = static_cast<int>(GeometryHelper::DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY()));
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
+
                     allowed = dist <= static_cast<int>(cr->GetLookDistance());
                 }
+
                 if (!allowed) {
                     continue;
                 }
@@ -440,7 +456,7 @@ void Map::ChangeViewItem(Item* item)
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            cr->OnItemOnMapAppeared.Fire(item, false, nullptr);
+            cr->OnItemOnMapAppeared.Fire(item, nullptr);
         }
     }
 }

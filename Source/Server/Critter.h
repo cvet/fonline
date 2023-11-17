@@ -192,9 +192,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
+    ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, Critter* /*dropper*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
+    ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, Critter* /*picker*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
