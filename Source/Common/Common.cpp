@@ -717,7 +717,7 @@ void emscripten_sleep(unsigned int ms)
 #endif
 
 // Replace memory allocator
-#if FO_INJECT_RPMALLOC
+#if FO_HAVE_RPMALLOC
 
 #include "rpmalloc.h"
 #include <new>

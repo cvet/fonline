@@ -79,20 +79,24 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
-StatusMessage("+ Rpmalloc")
-set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
-set(FO_RPMALLOC_SOURCE
-    "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.c"
-    "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.h"
-    "${FO_RPMALLOC_DIR}/rpmalloc/rpnew.h")
-include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
-add_library(rpmalloc ${FO_RPMALLOC_SOURCE})
-set(expr_EnableRpmalloc 1) # $<PLATFORM_ID:Windows,Linux,Darwin,Android,iOS>
-add_compile_definitions(FO_INJECT_RPMALLOC=$<BOOL:${expr_EnableRpmalloc}>)
-add_compile_definitions(ENABLE_PRELOAD=$<BOOL:${expr_EnableRpmalloc}>)
-target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-list(APPEND FO_COMMON_LIBS "rpmalloc")
-DisableLibWarnings(rpmalloc)
+if(WIN32 OR LINUX OR APPLE OR ANDROID)
+    StatusMessage("+ Rpmalloc")
+    set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
+    set(FO_RPMALLOC_SOURCE
+        "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.c"
+        "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.h"
+        "${FO_RPMALLOC_DIR}/rpmalloc/rpnew.h")
+    include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
+    add_library(rpmalloc ${FO_RPMALLOC_SOURCE})
+    set(expr_EnableRpmalloc $<PLATFORM_ID:Windows,Linux,Darwin,Android,iOS>)
+    add_compile_definitions(FO_HAVE_RPMALLOC=1)
+    add_compile_definitions(ENABLE_PRELOAD=1)
+    target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
+    list(APPEND FO_COMMON_LIBS "rpmalloc")
+    DisableLibWarnings(rpmalloc)
+else()
+    add_compile_definitions(FO_HAVE_RPMALLOC=0)
+endif()
 
 # SDL2
 StatusMessage("+ SDL2")
@@ -274,11 +278,11 @@ include_directories("${FO_ENGINE_ROOT}/ThirdParty/AssimpMath")
 
 # Fbx SDK
 if(FO_ENABLE_3D)
-    if((FO_BUILD_BAKER OR FO_BUILD_EDITOR) AND NOT((WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux") AND CMAKE_SIZEOF_VOID_P EQUAL 8))
+    if((FO_BUILD_BAKER OR FO_BUILD_EDITOR) AND NOT((WIN32 OR LINUX) AND CMAKE_SIZEOF_VOID_P EQUAL 8))
         AbortMessage("Using of FBX SDK for non 64 bit Linux & Windows builds is not supported")
     endif()
 
-    if((FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux") AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if((FO_BUILD_BAKER OR FO_BUILD_EDITOR OR FO_UNIT_TESTS OR FO_CODE_COVERAGE) AND(WIN32 OR LINUX) AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         StatusMessage("+ Fbx SDK")
 
         set(FO_FBXSDK_DIR "${FO_ENGINE_ROOT}/ThirdParty/fbxsdk")
@@ -453,7 +457,7 @@ set(FO_CATCH2_DIR "${FO_ENGINE_ROOT}/ThirdParty/Catch2")
 include_directories("${FO_CATCH2_DIR}/single_include/catch2")
 
 # Backward-cpp
-if(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" OR APPLE AND NOT PLATFORM)
+if(WIN32 OR LINUX OR(APPLE AND NOT PLATFORM))
     set(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
     include_directories("${FO_BACKWARDCPP_DIR}")
 

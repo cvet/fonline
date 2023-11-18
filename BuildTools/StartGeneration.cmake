@@ -241,6 +241,7 @@ elseif(WIN32 AND WINRT)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	StatusMessage("Operating system: Linux")
 	set(FO_OS "Linux")
+	set(LINUX 1)
 	add_compile_definitions(FO_WINDOWS=0 FO_UWP=0 FO_LINUX=1 FO_MAC=0 FO_ANDROID=0 FO_IOS=0 FO_WEB=0 FO_PS4=0)
 	add_compile_definitions(FO_HAVE_OPENGL=1 FO_OPENGL_ES=0 FO_HAVE_DIRECT_3D=0 FO_HAVE_METAL=0 FO_HAVE_VULKAN=0 FO_HAVE_GNM=0)
 
