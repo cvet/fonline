@@ -55,6 +55,14 @@
 }
 
 ///# ...
+///# param message ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_BreakIntoDebugger([[maybe_unused]] FOEngineBase* engine, string_view message)
+{
+    BreakIntoDebugger(message);
+}
+
+///# ...
 ///# param text ...
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
