@@ -87,7 +87,7 @@ set(FO_RPMALLOC_SOURCE
     "${FO_RPMALLOC_DIR}/rpmalloc/rpnew.h")
 include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
 add_library(rpmalloc ${FO_RPMALLOC_SOURCE})
-set(expr_EnableRpmalloc $<PLATFORM_ID:Windows,Linux,Darwin,Android,iOS>)
+set(expr_EnableRpmalloc 1) # $<PLATFORM_ID:Windows,Linux,Darwin,Android,iOS>
 add_compile_definitions(FO_INJECT_RPMALLOC=$<BOOL:${expr_EnableRpmalloc}>)
 add_compile_definitions(ENABLE_PRELOAD=$<BOOL:${expr_EnableRpmalloc}>)
 target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
