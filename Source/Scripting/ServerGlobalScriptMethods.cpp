@@ -1383,3 +1383,14 @@
 
     return result;
 }
+
+///# ...
+///# param proto ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(FOServer* server, ProtoMap* proto)
+{
+    const auto* static_map = server->MapMngr.GetStaticMap(proto);
+
+    return static_map->StaticItems;
+}
