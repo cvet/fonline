@@ -53,7 +53,7 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
 
-    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
+    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
 
     TextureAtlas* Atlas {};
     TextureAtlas::SpaceNode* AtlasNode {};
@@ -83,7 +83,7 @@ public:
     [[nodiscard]] auto GetDir(uint dir) -> SpriteSheet*;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
 
-    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t override;
+    auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetTime(float normalized_time) override;
     void SetDir(uint8 dir) override;
@@ -128,8 +128,8 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    void FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, const uint* data);
+    void FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, const ucolor* data);
 
     SpriteManager& _sprMngr;
-    vector<uint> _borderBuf {};
+    vector<ucolor> _borderBuf {};
 };

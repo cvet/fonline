@@ -71,20 +71,12 @@ static constexpr auto FT_SKIPLINES_END(uint l) -> uint
 }
 
 // Colors
-static constexpr auto COLOR_SPRITE = COLOR_RGB(128, 128, 128);
-static constexpr auto COLOR_SPRITE_RED = COLOR_SPRITE | 255 << 16;
-static constexpr auto COLOR_TEXT = COLOR_RGB(60, 248, 0);
-static constexpr auto COLOR_TEXT_WHITE = COLOR_RGB(255, 255, 255);
-static constexpr auto COLOR_TEXT_DWHITE = COLOR_RGB(191, 191, 191);
-static constexpr auto COLOR_TEXT_RED = COLOR_RGB(200, 0, 0);
-static constexpr auto COLOR_SCRIPT_SPRITE(uint color) -> uint
-{
-    return color != 0 ? color : COLOR_SPRITE;
-}
-static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> uint
-{
-    return color != 0 ? color : COLOR_TEXT;
-}
+static constexpr auto COLOR_SPRITE = ucolor {128, 128, 128};
+static constexpr auto COLOR_SPRITE_RED = ucolor {255, 128, 128};
+static constexpr auto COLOR_TEXT = ucolor {60, 248, 0};
+static constexpr auto COLOR_TEXT_WHITE = ucolor {255, 255, 255};
+static constexpr auto COLOR_TEXT_DWHITE = ucolor {191, 191, 191};
+static constexpr auto COLOR_TEXT_RED = ucolor {200, 0, 0};
 
 class AtlasSprite;
 
@@ -108,7 +100,7 @@ public:
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
 
-    virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t = 0;
+    virtual auto FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float normalized_time) { UNUSED_VARIABLE(normalized_time); }
     virtual void SetDir(uint8 dir) { UNUSED_VARIABLE(dir); }
@@ -154,7 +146,7 @@ struct PrimitivePoint
 {
     int PointX {};
     int PointY {};
-    uint PointColor {};
+    ucolor PointColor {};
     int* PointOffsX {};
     int* PointOffsY {};
 };
@@ -210,19 +202,19 @@ public:
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
 
-    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color);
-    void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
+    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color);
+    void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, ucolor color);
 
-    void BeginScene(uint clear_color);
+    void BeginScene(ucolor clear_color);
     void EndScene();
 
     void SetSpritesZoom(float zoom) noexcept;
 
-    void DrawSprite(const Sprite* spr, int x, int y, uint color);
-    void DrawSpriteSize(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
-    void DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
-    void DrawSpritePattern(const Sprite* spr, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-    void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color);
+    void DrawSprite(const Sprite* spr, int x, int y, ucolor color);
+    void DrawSpriteSize(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, ucolor color);
+    void DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, ucolor color);
+    void DrawSpritePattern(const Sprite* spr, int x, int y, int w, int h, int spr_width, int spr_height, ucolor color);
+    void DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const FPoint* offset = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawTexture(const RenderTexture* tex, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr, RenderEffect* custom_effect = nullptr);
     void DrawRenderTarget(const RenderTarget* rt, bool alpha_blend, const IRect* region_from = nullptr, const IRect* region_to = nullptr);
@@ -234,11 +226,13 @@ public:
     void EggNotValid() { _eggValid = false; }
 
 private:
+    auto ApplyColorBrightness(ucolor color) const -> ucolor;
+
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
 
-    void CollectContour(int x, int y, const Sprite* spr, uint contour_color);
+    void CollectContour(int x, int y, const Sprite* spr, ucolor contour_color);
 
     RenderSettings& _settings;
     AppWindow* _window;
@@ -278,7 +272,7 @@ private:
     int _eggX {};
     int _eggY {};
     shared_ptr<AtlasSprite> _sprEgg {};
-    vector<uint> _eggData {};
+    vector<ucolor> _eggData {};
 
     float _spritesZoom {1.0f};
 
@@ -299,9 +293,9 @@ public:
 
     auto LoadFontFO(int index, string_view font_name, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded) -> bool;
     auto LoadFontBmf(int index, string_view font_name, AtlasType atlas_type) -> bool;
-    void SetDefaultFont(int index, uint color);
+    void SetDefaultFont(int index);
     void SetFontEffect(int index, RenderEffect* effect);
-    void DrawStr(const IRect& r, string_view str, uint flags, uint color, int num_font);
+    void DrawStr(const IRect& r, string_view str, uint flags, ucolor color, int num_font);
     auto SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>;
     void ClearFonts();
 
@@ -352,11 +346,11 @@ private:
         int CurX {};
         int CurY {};
         int MaxCurX {};
-        uint ColorDots[FONT_BUF_LEN] {};
+        ucolor ColorDots[FONT_BUF_LEN] {};
         int LineWidth[FONT_MAX_LINES] {};
         int LineSpaceWidth[FONT_MAX_LINES] {};
         int OffsColDots {};
-        uint DefColor {COLOR_TEXT};
+        ucolor DefColor {COLOR_TEXT};
         vector<string>* StrLines {};
         bool IsError {};
     };
@@ -367,7 +361,6 @@ private:
     void FormatText(FontFormatInfo& fi, int fmt_type);
 
     vector<unique_ptr<FontData>> _allFonts {};
-    int _defFontIndex {-1};
-    uint _defFontColor {};
+    int _defFontIndex {};
     FontFormatInfo _fontFormatInfoBuf {};
 };

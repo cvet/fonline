@@ -435,11 +435,11 @@ struct SCRIPTING_CLASS::AngelScriptImpl
             });
 
             const auto is_suspended_execution = ctx->GetState() == asEXECUTION_SUSPENDED;
-            const auto execution_start_time = Timer::CurTime();
+            const auto execution_time = TimeMeter();
 
             exec_result = ctx->Execute();
 
-            const auto execution_duration = Timer::CurTime() - execution_start_time;
+            const auto execution_duration = execution_time.GetDuration();
 
             if (execution_duration >= std::chrono::milliseconds {GameEngine->Settings.ScriptOverrunReportTime}) {
 #if !FO_DEBUG

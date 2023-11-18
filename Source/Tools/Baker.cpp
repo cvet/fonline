@@ -140,7 +140,7 @@ void Baker::BakeAll()
 
     WriteLog("Start bakering");
 
-    const auto start_time = Timer::CurTime();
+    const auto bake_time = TimeMeter();
 
     const auto build_hash_deleted = DiskFileSystem::DeleteFile(MakeOutputPath("Resources.build-hash"));
     RUNTIME_ASSERT(build_hash_deleted);
@@ -1045,7 +1045,7 @@ void Baker::BakeAll()
         errors++;
     }
 
-    WriteLog("Time {}", Timer::CurTime() - start_time);
+    WriteLog("Time {}", bake_time.GetDuration());
 
     // Finalize
     if (errors != 0) {

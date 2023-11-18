@@ -61,7 +61,7 @@ struct VideoClip::Impl
     ogg_sync_state SyncState {};
     ogg_packet Packet {};
     StreamStates Streams {};
-    vector<uint> RenderedTextureData {};
+    vector<ucolor> RenderedTextureData {};
     int CurFrame {};
     time_duration AverageRenderTime {};
     time_point StartTime {};
@@ -115,7 +115,7 @@ VideoClip::VideoClip(vector<uint8> video_data) :
 
     _impl->DecoderContext = th_decode_alloc(&_impl->VideoInfo, _impl->SetupInfo);
 
-    _impl->RenderedTextureData.resize(_impl->VideoInfo.pic_width * _impl->VideoInfo.pic_height);
+    _impl->RenderedTextureData.resize(static_cast<size_t>(_impl->VideoInfo.pic_width) * _impl->VideoInfo.pic_height);
 
     _impl->StartTime = Timer::CurTime();
 }
@@ -233,7 +233,7 @@ void VideoClip::SetTime(time_duration time)
     _impl->StartTime = Timer::CurTime() - time;
 }
 
-auto VideoClip::RenderFrame() -> const vector<uint>&
+auto VideoClip::RenderFrame() -> const vector<ucolor>&
 {
     STACK_TRACE_ENTRY();
 

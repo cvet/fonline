@@ -140,8 +140,8 @@ public:
     void Invalidate();
     void SetEggAppearence(EggAppearenceType egg_appearence);
     void SetContour(ContourType contour);
-    void SetContour(ContourType contour, uint color);
-    void SetColor(uint color);
+    void SetContour(ContourType contour, ucolor color);
+    void SetColor(ucolor color);
     void SetAlpha(const uint8* alpha);
     void SetFixedAlpha(uint8 alpha);
     void SetLight(CornerType corner, const uint8* light, uint16 maxhx, uint16 maxhy);
@@ -167,8 +167,8 @@ public:
     const uint8* LightLeft {};
     EggAppearenceType EggAppearence {};
     ContourType Contour {};
-    uint ContourColor {};
-    uint Color {};
+    ucolor ContourColor {};
+    ucolor Color {};
     RenderEffect** DrawEffect {};
     bool* ValidCallback {};
     bool Valid {};

@@ -54,7 +54,7 @@ struct RenderTarget
     SizeType Size {};
     int BaseWidth {};
     int BaseHeight {};
-    vector<tuple<int, int, uint>> LastPixelPicks {};
+    vector<tuple<int, int, ucolor>> LastPixelPicks {};
 };
 
 class RenderTargetManager
@@ -70,12 +70,12 @@ public:
     ~RenderTargetManager() = default;
 
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, int width, int height, bool linear_filtered) -> RenderTarget*;
-    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
+    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() -> const vector<RenderTarget*>&;
 
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
-    void ClearCurrentRenderTarget(uint color, bool with_depth = false);
+    void ClearCurrentRenderTarget(ucolor color, bool with_depth = false);
     void DeleteRenderTarget(RenderTarget* rt);
 
     void DumpTextures() const;

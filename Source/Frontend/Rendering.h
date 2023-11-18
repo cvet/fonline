@@ -123,7 +123,7 @@ struct Vertex2D
     float PosX {};
     float PosY {};
     float PosZ {};
-    uint Color {};
+    ucolor Color {};
     float TexU {};
     float TexV {};
     float EggTexU {};
@@ -143,7 +143,7 @@ struct Vertex3D
     vec3 Bitangent {};
     float BlendWeights[BONES_PER_VERTEX] {};
     float BlendIndices[BONES_PER_VERTEX] {};
-    uint Color {};
+    ucolor Color {};
 };
 static_assert(std::is_standard_layout_v<Vertex3D>);
 static_assert(sizeof(Vertex3D) == 100);
@@ -158,10 +158,10 @@ public:
     auto operator=(RenderTexture&&) noexcept = delete;
     virtual ~RenderTexture() = default;
 
-    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) const -> uint = 0;
-    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> = 0;
+    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) const -> ucolor = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> = 0;
 
-    virtual void UpdateTextureRegion(const IRect& r, const uint* data) = 0;
+    virtual void UpdateTextureRegion(const IRect& r, const ucolor* data) = 0;
 
     const int Width;
     const int Height;
@@ -374,7 +374,7 @@ public:
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
-    virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
+    virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(int x, int y, int width, int height) = 0;
     virtual void DisableScissor() = 0;
     virtual void OnResizeWindow(int width, int height) = 0;
@@ -393,7 +393,7 @@ public:
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
-    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
     void OnResizeWindow(int width, int height) override;
@@ -416,7 +416,7 @@ public:
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
-    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
     void OnResizeWindow(int width, int height) override;
@@ -439,7 +439,7 @@ public:
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
-    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(int x, int y, int width, int height) override;
     void DisableScissor() override;
     void OnResizeWindow(int width, int height) override;

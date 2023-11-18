@@ -115,7 +115,7 @@ void Null_Renderer::SetRenderTarget(RenderTexture* tex)
     UNUSED_VARIABLE(tex);
 }
 
-void Null_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 

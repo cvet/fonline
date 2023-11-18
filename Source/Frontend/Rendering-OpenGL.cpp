@@ -141,9 +141,9 @@ public:
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> override;
-    void UpdateTextureRegion(const IRect& r, const uint* data) override;
+    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> override;
+    void UpdateTextureRegion(const IRect& r, const ucolor* data) override;
 
     GLuint FramebufObj {};
     GLuint TexId {};
@@ -357,7 +357,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
 #endif
 
     // Dummy texture
-    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
+    constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
     DummyTexture = CreateTexture(1, 1, false, false);
     DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 
@@ -651,18 +651,17 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     TargetHeight = screen_height;
 }
 
-void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
-        const auto color_value = color.value();
-        const auto a = static_cast<float>((color_value >> 24) & 0xFF) / 255.0f;
-        const auto r = static_cast<float>((color_value >> 16) & 0xFF) / 255.0f;
-        const auto g = static_cast<float>((color_value >> 8) & 0xFF) / 255.0f;
-        const auto b = static_cast<float>((color_value >> 0) & 0xFF) / 255.0f;
+        const auto r = static_cast<float>(color.value().comp.r) / 255.0f;
+        const auto g = static_cast<float>(color.value().comp.g) / 255.0f;
+        const auto b = static_cast<float>(color.value().comp.b) / 255.0f;
+        const auto a = static_cast<float>(color.value().comp.a) / 255.0f;
         GL(glClearColor(r, g, b, a));
         clear_flags |= GL_COLOR_BUFFER_BIT;
     }
@@ -686,7 +685,10 @@ void OpenGL_Renderer::EnableScissor(int x, int y, int width, int height)
 {
     STACK_TRACE_ENTRY();
 
-    int l, t, r, b;
+    int l;
+    int t;
+    int r;
+    int b;
 
     if (ViewPortRect.Width() != TargetWidth || ViewPortRect.Height() != TargetHeight) {
         const float x_ratio = static_cast<float>(ViewPortRect.Width()) / static_cast<float>(TargetWidth);
@@ -740,7 +742,7 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> uint
+auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
@@ -749,7 +751,7 @@ auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> uint
     RUNTIME_ASSERT(x < Width);
     RUNTIME_ASSERT(y < Height);
 
-    uint result = 0;
+    ucolor result;
 
     auto prev_fbo = 0;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
@@ -762,7 +764,7 @@ auto OpenGL_Texture::GetTexturePixel(int x, int y) const -> uint
     return result;
 }
 
-auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<uint>
+auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor>
 {
     STACK_TRACE_ENTRY();
 
@@ -773,8 +775,8 @@ auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const
     RUNTIME_ASSERT(x + width <= Width);
     RUNTIME_ASSERT(y + height <= Height);
 
-    vector<uint> result;
-    result.resize(width * height);
+    vector<ucolor> result;
+    result.resize(static_cast<size_t>(width) * height);
 
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
@@ -787,7 +789,7 @@ auto OpenGL_Texture::GetTextureRegion(int x, int y, int width, int height) const
     return result;
 }
 
-void OpenGL_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
+void OpenGL_Texture::UpdateTextureRegion(const IRect& r, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 

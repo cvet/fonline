@@ -113,7 +113,7 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
 
     auto* prev_tex = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(rt->MainTex.get());
-    App->Render.ClearRenderTarget(0, with_depth);
+    App->Render.ClearRenderTarget(ucolor::clear, with_depth);
     App->Render.SetRenderTarget(prev_tex);
 }
 
@@ -153,7 +153,7 @@ void RenderTargetManager::PopRenderTarget()
     }
 }
 
-auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
+auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
@@ -182,7 +182,7 @@ auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) c
 #endif
 }
 
-void RenderTargetManager::ClearCurrentRenderTarget(uint color, bool with_depth)
+void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth)
 {
     STACK_TRACE_ENTRY();
 

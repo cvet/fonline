@@ -299,7 +299,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() -> bool;
 
     void SetRenderTarget(RenderTexture* tex);
-    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false);
     void EnableScissor(int x, int y, int width, int height);
     void DisableScissor();
 

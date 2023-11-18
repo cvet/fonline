@@ -75,15 +75,14 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) :
         }
     }
 
-    _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    _sprMngr.BeginScene({0, 0, 0});
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+        _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, COLOR_SPRITE);
     }
     _sprMngr.EndScene();
 
     // Load font
     _sprMngr.LoadFontFO(0, "Default", AtlasType::IfaceSprites, false, true);
-    _sprMngr.SetDefaultFont(0, COLOR_TEXT);
 
     // Network handlers
     _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
@@ -167,10 +166,10 @@ auto Updater::Process() -> bool
         update_text += ".";
     }
 
-    _sprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    _sprMngr.BeginScene({0, 0, 0});
     {
         if (_splashPic) {
-            _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, 0);
+            _sprMngr.DrawSpriteSize(_splashPic.get(), 0, 0, _settings.ScreenWidth, _settings.ScreenHeight, true, true, COLOR_SPRITE);
         }
 
         if (elapsed_time >= _settings.UpdaterInfoDelay) {

@@ -109,7 +109,7 @@ MapView::MapView(FOClient* engine, ident_t id, const ProtoMap* proto, const Prop
     _width = GetWidth();
     _height = GetHeight();
 
-    _findPathGrid.resize((MAX_FIND_PATH * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
+    _findPathGrid.resize((static_cast<size_t>(MAX_FIND_PATH) * 2 + 2) * (MAX_FIND_PATH * 2 + 2));
     _hexField.resize(static_cast<size_t>(_width) * _height);
     _hexLight.resize(static_cast<size_t>(_width) * _height * 3);
 
@@ -427,14 +427,14 @@ void MapView::Process()
     }
 }
 
-void MapView::AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time_duration show_time, bool fade, int ox, int oy)
+void MapView::AddMapText(string_view str, uint16 hx, uint16 hy, ucolor color, time_duration show_time, bool fade, int ox, int oy)
 {
     STACK_TRACE_ENTRY();
 
     MapText map_text;
     map_text.HexX = hx;
     map_text.HexY = hy;
-    map_text.Color = (color != 0 ? color : COLOR_TEXT);
+    map_text.Color = color != ucolor::clear ? color : COLOR_TEXT;
     map_text.Fade = fade;
     map_text.StartTime = _engine->GameTime.GameplayTime();
     map_text.Duration = show_time != time_duration {} ? show_time : std::chrono::milliseconds {_engine->Settings.TextDelay + static_cast<uint>(str.length()) * 100};
@@ -654,7 +654,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     AddItemToField(item);
 
     if (!_mapperMode && item->GetIsStatic() && item->GetIsLight()) {
-        _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+        _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
     }
 
     if (!MeasureMapBorders(item->Spr, item->ScrX, item->ScrY) && !_mapLoading) {
@@ -998,7 +998,7 @@ void MapView::DrawCursor(const Sprite* spr)
         iround(static_cast<float>(_cursorX + _engine->Settings.ScrOx) / GetSpritesZoom()), //
         iround(static_cast<float>(_cursorY + _engine->Settings.ScrOy) / GetSpritesZoom()), //
         iround(static_cast<float>(spr->Width) / GetSpritesZoom()), //
-        iround(static_cast<float>(spr->Height) / GetSpritesZoom()), true, false, 0);
+        iround(static_cast<float>(spr->Height) / GetSpritesZoom()), true, false, COLOR_SPRITE);
 }
 
 void MapView::DrawCursor(string_view text)
@@ -1172,7 +1172,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                 else if (!cr->IsChosen()) {
                     contour = _crittersContour;
                 }
-                mspr->SetContour(contour, cr->GetContourColor());
+                mspr->SetContour(contour, ucolor {cr->GetContourColor(), true});
 
                 AddSpriteToChain(field, mspr);
             }
@@ -1432,7 +1432,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                 else if (!cr->IsChosen()) {
                     contour = _crittersContour;
                 }
-                mspr->SetContour(contour, cr->GetContourColor());
+                mspr->SetContour(contour, ucolor {cr->GetContourColor(), true});
 
                 AddSpriteToChain(field, mspr);
             }
@@ -1535,7 +1535,7 @@ void MapView::PrepareLightToDraw()
     if (_requestRenderLight) {
         _requestRenderLight = false;
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight);
-        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
+        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
         const auto zoom = GetSpritesZoom();
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
         for (size_t i = 0; i < _lightPointsCount; i++) {
@@ -1554,16 +1554,17 @@ void MapView::MarkLight(uint16 hx, uint16 hy, uint inten)
     const auto lr = light * _lightProcentR / 100;
     const auto lg = light * _lightProcentG / 100;
     const auto lb = light * _lightProcentB / 100;
-    auto* p = GetLightHex(hx, hy);
 
-    if (lr > *p) {
-        *p = static_cast<uint8>(lr);
+    auto* l = GetLightHex(hx, hy);
+
+    if (lr > *(l + 0)) {
+        *l = static_cast<uint8>(lr);
     }
-    if (lg > *(p + 1)) {
-        *(p + 1) = static_cast<uint8>(lg);
+    if (lg > *(l + 1)) {
+        *(l + 1) = static_cast<uint8>(lg);
     }
-    if (lb > *(p + 2)) {
-        *(p + 2) = static_cast<uint8>(lb);
+    if (lb > *(l + 2)) {
+        *(l + 2) = static_cast<uint8>(lb);
     }
 }
 
@@ -1577,15 +1578,18 @@ void MapView::MarkLightEndNeighbor(uint16 hx, uint16 hy, bool north_south, uint 
         const auto lt = field.Corner;
 
         if ((north_south && (lt == CornerType::NorthSouth || lt == CornerType::North || lt == CornerType::West)) || (!north_south && (lt == CornerType::EastWest || lt == CornerType::East)) || lt == CornerType::South) {
-            auto* p = GetLightHex(hx, hy);
             const auto light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
-            const auto light_self = static_cast<int>(inten / 2u) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
+            const auto light_self = static_cast<int>(inten / 2) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto lr_full = light_full * _lightProcentR / 100;
             const auto lg_full = light_full * _lightProcentG / 100;
             const auto lb_full = light_full * _lightProcentB / 100;
-            auto lr_self = static_cast<int>(*p) + light_self * _lightProcentR / 100;
-            auto lg_self = static_cast<int>(*(p + 1)) + light_self * _lightProcentG / 100;
-            auto lb_self = static_cast<int>(*(p + 2)) + light_self * _lightProcentB / 100;
+
+            auto* l = GetLightHex(hx, hy);
+
+            auto lr_self = static_cast<int>(*(l + 0)) + light_self * _lightProcentR / 100;
+            auto lg_self = static_cast<int>(*(l + 1)) + light_self * _lightProcentG / 100;
+            auto lb_self = static_cast<int>(*(l + 2)) + light_self * _lightProcentB / 100;
+
             if (lr_self > lr_full) {
                 lr_self = lr_full;
             }
@@ -1595,14 +1599,15 @@ void MapView::MarkLightEndNeighbor(uint16 hx, uint16 hy, bool north_south, uint 
             if (lb_self > lb_full) {
                 lb_self = lb_full;
             }
-            if (lr_self > *p) {
-                *p = static_cast<uint8>(lr_self);
+
+            if (lr_self > *(l + 0)) {
+                *l = static_cast<uint8>(lr_self);
             }
-            if (lg_self > *(p + 1)) {
-                *(p + 1) = static_cast<uint8>(lg_self);
+            if (lg_self > *(l + 1)) {
+                *(l + 1) = static_cast<uint8>(lg_self);
             }
-            if (lb_self > *(p + 2)) {
-                *(p + 2) = static_cast<uint8>(lb_self);
+            if (lb_self > *(l + 2)) {
+                *(l + 2) = static_cast<uint8>(lb_self);
             }
         }
     }
@@ -1829,12 +1834,11 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
     }
 
     // Color
-    auto color = ls.ColorRGB;
-    const auto alpha = MAX_LIGHT_ALPHA * _lightCapacity / 100 * inten / MAX_LIGHT_VALUE;
-    color = COLOR_RGBA(alpha, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    _lightProcentR = static_cast<int>(((color >> 16) & 0xFF) * 100 / 0xFF);
-    _lightProcentG = static_cast<int>(((color >> 8) & 0xFF) * 100 / 0xFF);
-    _lightProcentB = static_cast<int>((color & 0xFF) * 100 / 0xFF);
+    const auto alpha = static_cast<uint8>(MAX_LIGHT_ALPHA * _lightCapacity / 100 * inten / MAX_LIGHT_VALUE);
+    auto color = ucolor {ls.ColorRGB, alpha};
+    _lightProcentR = static_cast<int>(color.comp.r) * 100 / 255;
+    _lightProcentG = static_cast<int>(color.comp.g) * 100 / 255;
+    _lightProcentB = static_cast<int>(color.comp.b) * 100 / 255;
 
     // Begin
     MarkLight(hx, hy, inten);
@@ -1851,7 +1855,7 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
 
     auto& points = _lightPoints[_lightPointsCount - 1];
     points.clear();
-    points.reserve(dist * GameSettings::MAP_DIR_COUNT * 2);
+    points.reserve(static_cast<size_t>(dist) * GameSettings::MAP_DIR_COUNT * 2);
 
     const auto center_point = PrimitivePoint {base_x, base_y, color, ls.OffsX, ls.OffsY};
     size_t added_points = 0;
@@ -1894,15 +1898,15 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
                 int* oy = nullptr;
                 if (static_cast<int>(hx_) != hx_far || static_cast<int>(hy_) != hy_far) {
                     int a = static_cast<int>(alpha - GeometryHelper::DistGame(hx, hy, hx_, hy_) * alpha / dist);
-                    a = std::clamp(a, 0, alpha);
-                    color = COLOR_RGBA(a, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+                    a = std::clamp(a, 0, static_cast<int>(alpha));
+                    color = ucolor {color, static_cast<uint8>(a)};
                     if (hx_ == hx && hy_ == hy) {
                         ox = ls.OffsX;
                         oy = ls.OffsY;
                     }
                 }
                 else {
-                    color = COLOR_RGBA(0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+                    color = ucolor {color, 0};
                     ox = ls.OffsX;
                     oy = ls.OffsY;
                 }
@@ -1983,7 +1987,7 @@ void MapView::CollectLightSources()
     if (_mapperMode) {
         for (const auto* item : _staticItems) {
             if (item->GetIsLight()) {
-                _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+                _lightSources.push_back({item->GetHexX(), item->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
             }
         }
     }
@@ -1994,7 +1998,7 @@ void MapView::CollectLightSources()
     // Items on ground
     for (const auto* item : _dynamicItems) {
         if (item->GetIsLight()) {
-            _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+            _lightSources.push_back({item->GetHexX(), item->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
         }
     }
 
@@ -2003,7 +2007,7 @@ void MapView::CollectLightSources()
         auto added = false;
         for (const auto* item : cr->GetInvItems()) {
             if (item->GetIsLight() && item->GetCritterSlot() != 0) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
+                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
                 added = true;
             }
         }
@@ -2011,7 +2015,7 @@ void MapView::CollectLightSources()
         // Default chosen light
         if (!_mapperMode) {
             if (cr->IsChosen() && !added) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
+                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), ucolor {_engine->Settings.ChosenLightColor, true}, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
             }
         }
     }
@@ -2070,7 +2074,8 @@ auto MapView::IsVisible(const Sprite* spr, int ox, int oy) const -> bool
     const auto right = ox + spr->OffsX + spr->Width / 2 + _engine->Settings.MapHexWidth;
     const auto zoomed_screen_height = iround(std::ceil(static_cast<float>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * GetSpritesZoom()));
     const auto zoomed_screen_width = iround(std::ceil(static_cast<float>(_engine->Settings.ScreenWidth) * GetSpritesZoom()));
-    return !(top > zoomed_screen_height || bottom < 0 || left > zoomed_screen_width || right < 0);
+
+    return top <= zoomed_screen_height && bottom >= 0 && left <= zoomed_screen_width && right >= 0;
 }
 
 auto MapView::MeasureMapBorders(const Sprite* spr, int ox, int oy) -> bool
@@ -2570,7 +2575,7 @@ void MapView::DrawMap()
         _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
 
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtMap);
-        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
+        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
     }
 
     // Tiles
@@ -2647,14 +2652,16 @@ void MapView::DrawMapTexts()
                 const auto y = iround(static_cast<float>(field.ScrY + half_hex_height - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + _engine->Settings.ScrOy) / GetSpritesZoom() - 70.0f);
 
                 auto color = map_text.Color;
+
                 if (map_text.Fade) {
-                    color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
+                    const auto alpha = 255 * (100 - percent) / 100;
+                    color.comp.a = static_cast<uint8>(alpha);
                 }
                 else if (map_text.Duration > std::chrono::milliseconds {500}) {
                     const auto hide = time_duration_to_ms<uint>(map_text.Duration - std::chrono::milliseconds {200});
                     if (dt >= hide) {
-                        const auto alpha = 255u * (100u - GenericUtils::Percent(time_duration_to_ms<uint>(map_text.Duration) - hide, dt - hide)) / 100;
-                        color = (alpha << 24) | (color & 0xFFFFFF);
+                        const auto alpha = 255 * (100 - GenericUtils::Percent(time_duration_to_ms<uint>(map_text.Duration) - hide, dt - hide)) / 100;
+                        color.comp.a = static_cast<uint8>(alpha);
                     }
                 }
 
@@ -2707,8 +2714,8 @@ void MapView::PrepareFogToDraw()
             auto base_x = 0;
             auto base_y = 0;
             GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
-            const auto center_look_point = PrimitivePoint {base_x + half_hw, base_y + half_hh, COLOR_RGBA(0, 0, 0, 0), &chosen->ScrX, &chosen->ScrY};
-            const auto center_shoot_point = PrimitivePoint {base_x + half_hw, base_y + half_hh, COLOR_RGBA(255, 0, 0, 0), &chosen->ScrX, &chosen->ScrY};
+            const auto center_look_point = PrimitivePoint {base_x + half_hw, base_y + half_hh, ucolor {0, 0, 0, 0}, &chosen->ScrX, &chosen->ScrY};
+            const auto center_shoot_point = PrimitivePoint {base_x + half_hw, base_y + half_hh, ucolor {0, 0, 0, 255}, &chosen->ScrX, &chosen->ScrY};
 
             size_t look_points_added = 0;
             size_t shoot_points_added = 0;
@@ -2760,7 +2767,7 @@ void MapView::PrepareFogToDraw()
                         GetHexCurrentPosition(hx_, hy_, x, y);
                         auto* ox = (dist_look == dist ? &chosen->ScrX : nullptr);
                         auto* oy = (dist_look == dist ? &chosen->ScrY : nullptr);
-                        _fogLookPoints.emplace_back(PrimitivePoint {x + half_hw, y + half_hh, COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
+                        _fogLookPoints.emplace_back(PrimitivePoint {x + half_hw, y + half_hh, ucolor {255, static_cast<uint8>(dist_look * 255 / dist), 0, 0}, ox, oy});
                         if (++look_points_added % 2 == 0) {
                             _fogLookPoints.emplace_back(center_look_point);
                         }
@@ -2779,7 +2786,7 @@ void MapView::PrepareFogToDraw()
                         const auto result_shoot_dist = GeometryHelper::DistGame(base_hx, base_hy, hx_2, hy_2);
                         auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->ScrX : nullptr);
                         auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->ScrY : nullptr);
-                        _fogShootPoints.emplace_back(PrimitivePoint {x_ + half_hw, y_ + half_hh, COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
+                        _fogShootPoints.emplace_back(PrimitivePoint {x_ + half_hw, y_ + half_hh, ucolor {255, static_cast<uint8>(result_shoot_dist * 255 / max_shoot_dist), 0, 255}, ox, oy});
                         if (++shoot_points_added % 2 == 0) {
                             _fogShootPoints.emplace_back(center_shoot_point);
                         }
@@ -2805,7 +2812,7 @@ void MapView::PrepareFogToDraw()
 
         const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtFog);
-        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
+        _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
         const float zoom = GetSpritesZoom();
         _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
         _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleStrip, &zoom, &offset, _engine->EffectMngr.Effects.Fog);
@@ -3222,7 +3229,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
         else if (!cr->IsDead() && !cr->IsChosen()) {
             contour = _crittersContour;
         }
-        spr->SetContour(contour, cr->GetContourColor());
+        spr->SetContour(contour, ucolor {cr->GetContourColor(), true});
 
         AddSpriteToChain(field, spr);
     }
@@ -3385,7 +3392,7 @@ auto MapView::GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> ve
     STACK_TRACE_ENTRY();
 
     vector<CritterHexView*> crits;
-    auto& field = FieldAt(hx, hy);
+    const auto& field = FieldAt(hx, hy);
 
     if (!field.Critters.empty()) {
         for (auto* cr : field.Critters) {
@@ -3513,7 +3520,7 @@ auto MapView::GetHexAtScreenPos(int x, int y, uint16& hx, uint16& hy, int* hex_o
                     const auto mask_x = std::clamp(iround((xf - x_) * GetSpritesZoom()), 0, _picHexMask->Width - 1);
                     const auto mask_y = std::clamp(iround((yf - y_) * GetSpritesZoom()), 0, _picHexMask->Height - 1);
                     const auto mask_color = _picHexMaskData[mask_y * _picHexMask->Width + mask_x];
-                    const auto mask_color_r = mask_color & 0x000000FF;
+                    const auto mask_color_r = mask_color.comp.r;
 
                     if (mask_color_r == 50) {
                         GeometryHelper::MoveHexByDirUnsafe(hx_, hy_, GameSettings::HEXAGONAL_GEOMETRY ? 5u : 6u);

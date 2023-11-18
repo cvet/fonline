@@ -57,9 +57,9 @@ public:
     auto operator=(Direct3D_Texture&&) noexcept -> Direct3D_Texture& = delete;
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> uint override;
-    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<uint> override;
-    void UpdateTextureRegion(const IRect& r, const uint* data) override;
+    [[nodiscard]] auto GetTexturePixel(int x, int y) const -> ucolor override;
+    [[nodiscard]] auto GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor> override;
+    void UpdateTextureRegion(const IRect& r, const ucolor* data) override;
 
     ID3D11Texture2D* TexHandle {};
     ID3D11Texture2D* DepthStencil {};
@@ -444,7 +444,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* win
     RUNTIME_ASSERT(SUCCEEDED(d3d_create_one_pix_staging_tex));
 
     // Dummy texture
-    constexpr uint dummy_pixel[1] = {0xFFFF00FF};
+    constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
     DummyTexture = CreateTexture(1, 1, false, false);
     DummyTexture->UpdateTextureRegion({0, 0, 1, 1}, dummy_pixel);
 
@@ -818,16 +818,15 @@ void Direct3D_Renderer::SetRenderTarget(RenderTexture* tex)
     TargetHeight = screen_height;
 }
 
-void Direct3D_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 
     if (color.has_value()) {
-        const auto color_value = color.value();
-        const auto a = static_cast<float>((color_value >> 24) & 0xFF) / 255.0f;
-        const auto r = static_cast<float>((color_value >> 16) & 0xFF) / 255.0f;
-        const auto g = static_cast<float>((color_value >> 8) & 0xFF) / 255.0f;
-        const auto b = static_cast<float>((color_value >> 0) & 0xFF) / 255.0f;
+        const auto r = static_cast<float>(color.value().comp.r) / 255.0f;
+        const auto g = static_cast<float>(color.value().comp.g) / 255.0f;
+        const auto b = static_cast<float>(color.value().comp.b) / 255.0f;
+        const auto a = static_cast<float>(color.value().comp.a) / 255.0f;
         const float color_rgba[] {r, g, b, a};
 
         D3DDeviceContext->ClearRenderTargetView(CurRenderTarget, color_rgba);
@@ -929,7 +928,7 @@ Direct3D_Texture::~Direct3D_Texture()
     }
 }
 
-auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> uint
+auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> ucolor
 {
     STACK_TRACE_ENTRY();
 
@@ -952,14 +951,14 @@ auto Direct3D_Texture::GetTexturePixel(int x, int y) const -> uint
     const auto d3d_map_staging_texture = D3DDeviceContext->Map(OnePixStagingTex, 0, D3D11_MAP_READ, 0, &tex_resource);
     RUNTIME_ASSERT(SUCCEEDED(d3d_map_staging_texture));
 
-    const auto result = *static_cast<uint*>(tex_resource.pData);
+    const auto result = *static_cast<ucolor*>(tex_resource.pData);
 
     D3DDeviceContext->Unmap(OnePixStagingTex, 0);
 
     return result;
 }
 
-auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<uint>
+auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) const -> vector<ucolor>
 {
     STACK_TRACE_ENTRY();
 
@@ -970,7 +969,7 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     RUNTIME_ASSERT(x + width <= Width);
     RUNTIME_ASSERT(y + height <= Height);
 
-    vector<uint> result;
+    vector<ucolor> result;
     result.resize(static_cast<size_t>(width) * height);
 
     D3D11_TEXTURE2D_DESC staging_desc;
@@ -1015,7 +1014,7 @@ auto Direct3D_Texture::GetTextureRegion(int x, int y, int width, int height) con
     return result;
 }
 
-void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const uint* data)
+void Direct3D_Texture::UpdateTextureRegion(const IRect& r, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 

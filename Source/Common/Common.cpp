@@ -60,6 +60,9 @@
 
 static bool ExceptionMessageBox = false;
 
+// ReSharper disable once CppInconsistentNaming
+const ucolor ucolor::clear;
+
 hstring::entry hstring::_zeroEntry;
 
 map<uint16, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
@@ -398,6 +401,11 @@ void CreateDumpMessage(string_view appendix, string_view message)
         file.Write(traceback);
         file.Write(_str("\n"));
     }
+}
+
+RefCounter::~RefCounter()
+{
+    WriteLog("Some of pointers still alive ({})", _ptrCounter.load());
 }
 
 FrameBalancer::FrameBalancer(bool enabled, int sleep, int fixed_fps) :

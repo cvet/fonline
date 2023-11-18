@@ -87,7 +87,7 @@ public:
     void ClearAnim();
     void AddExtraOffs(int ext_ox, int ext_oy);
     void RefreshOffs();
-    void SetText(string_view str, uint color, time_duration text_delay);
+    void SetText(string_view str, ucolor color, time_duration text_delay);
     void DrawTextOnHead();
     void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
@@ -152,7 +152,7 @@ private:
     string _strTextOnHead {};
     time_point _startTextTime {};
     time_duration _textShowDuration {};
-    uint _textOnHeadColor {COLOR_TEXT};
+    ucolor _textOnHeadColor {COLOR_TEXT};
 
     int _oxAnim {};
     int _oyAnim {};

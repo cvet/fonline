@@ -68,7 +68,7 @@ struct LightSource
 {
     uint16 HexX {};
     uint16 HexY {};
-    uint ColorRGB {};
+    ucolor ColorRGB {};
     int Distance {};
     uint8 Flags {};
     int Intensity {};
@@ -180,7 +180,7 @@ public:
     void DrawMap();
     void DrawMapTexts();
 
-    void AddMapText(string_view str, uint16 hx, uint16 hy, uint color, time_duration show_time, bool fade, int ox, int oy);
+    void AddMapText(string_view str, uint16 hx, uint16 hy, ucolor color, time_duration show_time, bool fade, int ox, int oy);
     auto GetRectForText(uint16 hx, uint16 hy) -> IRect;
 
     auto FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint16& end_x, uint16& end_y, int cut) -> optional<FindPathResult>;
@@ -286,7 +286,7 @@ private:
         time_point StartTime {};
         time_duration Duration {};
         string Text {};
-        uint Color {};
+        ucolor Color {};
         bool Fade {};
         IRect Pos {};
         IRect EndPos {};
@@ -355,7 +355,7 @@ private:
     shared_ptr<Sprite> _picTrack1 {};
     shared_ptr<Sprite> _picTrack2 {};
     shared_ptr<Sprite> _picHexMask {};
-    vector<uint> _picHexMaskData {};
+    vector<ucolor> _picHexMaskData {};
     shared_ptr<Sprite> _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
@@ -397,10 +397,10 @@ private:
 
     int _prevMapDayTime {};
     int _prevGlobalDayTime {};
-    uint _prevMapDayColor {};
-    uint _prevGlobalDayColor {};
-    uint _mapDayColor {};
-    uint _globalDayColor {};
+    ucolor _prevMapDayColor {};
+    ucolor _prevGlobalDayColor {};
+    ucolor _mapDayColor {};
+    ucolor _globalDayColor {};
     int _mapDayLightCapacity {};
     int _globalDayLightCapacity {};
 

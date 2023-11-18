@@ -72,7 +72,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Map_Message(MapView* self, string_view text, uint16 hx, uint16 hy, tick_t showTime, uint color, bool fade, int endOx, int endOy)
 {
-    self->AddMapText(text, hx, hy, color, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOx, endOy);
+    self->AddMapText(text, hx, hy, ucolor {color, true}, std::chrono::milliseconds {showTime.underlying_value()}, fade, endOx, endOy);
 }
 
 ///# ...
@@ -96,14 +96,14 @@
         return;
     }
 
-    auto color = mapSpr->Color;
+    auto color = ucolor {mapSpr->Color, true};
     auto is_flat = mapSpr->IsFlat;
     auto no_light = mapSpr->NoLight;
     auto draw_order = mapSpr->DrawOrder;
     auto draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
     auto corner = mapSpr->Corner;
     auto disable_egg = mapSpr->DisableEgg;
-    auto contour_color = mapSpr->ContourColor;
+    auto contour_color = ucolor {mapSpr->ContourColor, true};
 
     if (mapSpr->ProtoId) {
         const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
@@ -111,15 +111,15 @@
             return;
         }
 
-        color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
+        color = ucolor {proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0, true};
         is_flat = proto_item->GetIsFlat();
         const auto is_item = proto_item->GetIsScenery() || proto_item->GetIsWall();
         no_light = (is_flat && !is_item);
         draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
-        draw_order_hy_offset = static_cast<int>(proto_item->GetDrawOrderOffsetHexY());
+        draw_order_hy_offset = static_cast<int>(static_cast<int8>(proto_item->GetDrawOrderOffsetHexY()));
         corner = proto_item->GetCorner();
         disable_egg = proto_item->GetDisableEgg();
-        contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
+        contour_color = (proto_item->GetIsBadItem() ? ucolor {255, 0, 0} : ucolor::clear);
     }
 
     const auto& field = self->GetField(mapSpr->HexX, mapSpr->HexY);
@@ -154,12 +154,12 @@
         spr.SetEggAppearence(egg_appearence);
     }
 
-    if (color != 0u) {
-        spr.SetColor(color & 0xFFFFFF);
-        spr.SetFixedAlpha(color >> 24);
+    if (color != ucolor::clear) {
+        spr.SetColor(ucolor {color, 0});
+        spr.SetFixedAlpha(color.comp.a);
     }
 
-    if (contour_color != 0u) {
+    if (contour_color != ucolor::clear) {
         spr.SetContour(ContourType::Custom, contour_color);
     }
 }
@@ -327,7 +327,7 @@
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [&self, &hx, &hy](const CritterView* cr1, const CritterView* cr2) {
+    std::sort(critters.begin(), critters.end(), [&hx, &hy](const CritterView* cr1, const CritterView* cr2) {
         //
         return GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });

@@ -257,10 +257,8 @@ struct strong_type
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _value != underlying_type {}; }
-
     [[nodiscard]] constexpr auto operator==(const strong_type& other) const noexcept -> bool { return _value == other._value; }
     [[nodiscard]] constexpr auto operator!=(const strong_type& other) const noexcept -> bool { return _value != other._value; }
-
     [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return _value; }
     [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return _value; }
 
@@ -765,22 +763,9 @@ public:
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
     auto operator=(RefCounter&&) -> RefCounter& = delete;
-
-    virtual ~RefCounter()
-    {
-        if (_ptrCounter != 0) {
-            ThrowException();
-        }
-    }
+    virtual ~RefCounter();
 
 private:
-    void ThrowException() const
-    {
-        if (std::uncaught_exceptions() == 0) {
-            throw GenericException("Some of pointer still alive", _ptrCounter.load());
-        }
-    }
-
     std::atomic_int _ptrCounter {};
 };
 
@@ -860,7 +845,7 @@ private:
 };
 
 // C-strings literal helpers
-constexpr uint const_hash(const char* input)
+constexpr auto const_hash(const char* input) -> uint
 {
     return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
 }
@@ -990,10 +975,6 @@ FORCE_INLINE constexpr void ignore_unused(T const&... /*unused*/)
 #define UNUSED_VARIABLE(...) ignore_unused(__VA_ARGS__)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
-#define COLOR_RGBA(a, r, g, b) (static_cast<uint>((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF))) // Todo: move colors from uint to color4
-#define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
-#define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
-#define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | (static_cast<uint>(a) & 0xFF) << 24)
 
 // Bits
 #define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
@@ -1202,6 +1183,7 @@ struct TRect
     {
     }
     template<typename T2>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
     TRect(const TRect<T2>& fr) :
         Left(static_cast<T>(fr.Left)),
         Top(static_cast<T>(fr.Top)),
@@ -1309,6 +1291,7 @@ struct TPoint
     {
     }
     template<typename T2>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
     TPoint(const TPoint<T2>& r) :
         X(static_cast<T>(r.X)),
         Y(static_cast<T>(r.Y))
@@ -1339,9 +1322,9 @@ struct TPoint
         Y = 0;
     }
 
-    auto IsZero() const -> bool { return !X && !Y; }
+    [[nodiscard]] auto IsZero() const -> bool { return !X && !Y; }
 
-    auto operator[](int index) -> T&
+    [[nodiscard]] auto operator[](int index) -> T&
     {
         switch (index) {
         case 0:
@@ -1354,7 +1337,7 @@ struct TPoint
         return X;
     }
 
-    auto operator()(T x, T y) -> TPoint&
+    [[nodiscard]] auto operator()(T x, T y) -> TPoint&
     {
         X = x;
         Y = y;
@@ -1366,6 +1349,82 @@ struct TPoint
 };
 using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
+
+// Color type
+struct ucolor
+{
+    constexpr ucolor() noexcept :
+        rgba {}
+    {
+    }
+    explicit constexpr ucolor(uint rgba_, bool swap_rb = false) noexcept :
+        rgba {rgba_}
+    {
+        if (swap_rb) { // Todo: fix script colors to remove rb colors swapping
+            const auto r = comp.r;
+            comp.r = comp.b;
+            comp.b = r;
+        }
+    }
+    constexpr ucolor(uint8 r_, uint8 g_, uint8 b_) noexcept :
+        comp {r_, g_, b_, 255}
+    {
+    }
+    constexpr ucolor(uint8 r_, uint8 g_, uint8 b_, uint8 a_) noexcept :
+        comp {r_, g_, b_, a_}
+    {
+    }
+    explicit constexpr ucolor(const ucolor& other, uint8 a_) noexcept :
+        rgba {other.rgba}
+    {
+        comp.a = a_;
+    }
+
+    [[nodiscard]] constexpr auto operator==(const ucolor& other) const noexcept { return rgba == other.rgba; }
+    [[nodiscard]] constexpr auto operator!=(const ucolor& other) const noexcept { return rgba != other.rgba; }
+    [[nodiscard]] constexpr auto operator<(const ucolor& other) const noexcept { return rgba < other.rgba; }
+
+    struct components
+    {
+        uint8 r;
+        uint8 g;
+        uint8 b;
+        uint8 a;
+    };
+
+    union
+    {
+        uint rgb : 24;
+        uint rgba;
+        components comp;
+    };
+
+    static const ucolor clear;
+};
+static_assert(sizeof(ucolor) == sizeof(uint));
+static_assert(std::is_standard_layout_v<ucolor>);
+
+template<>
+struct std::hash<ucolor>
+{
+    size_t operator()(const ucolor& s) const noexcept { return std::hash<uint>()(s.rgba); }
+};
+
+template<>
+struct fmt::formatter<ucolor>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const ucolor& c, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{{R:{} G:{} B:{} A:{}}}", c.comp.r, c.comp.g, c.comp.b, c.comp.a);
+    }
+};
 
 // Hashing
 struct hstring
@@ -1379,20 +1438,20 @@ struct hstring
     };
 
     hstring() = default;
-    explicit hstring(const entry* static_storage_entry) :
+    constexpr explicit hstring(const entry* static_storage_entry) :
         _entry {static_storage_entry}
     {
     }
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string_view() const { return _entry->Str; }
-    explicit operator bool() const { return _entry->Hash != 0; }
-    auto operator==(const hstring& other) const { return _entry->Hash == other._entry->Hash; }
-    auto operator!=(const hstring& other) const { return _entry->Hash != other._entry->Hash; }
-    auto operator<(const hstring& other) const { return _entry->Hash < other._entry->Hash; }
-    [[nodiscard]] auto as_hash() const -> hash_t { return _entry->Hash; }
-    [[nodiscard]] auto as_int() const -> int { return static_cast<int>(_entry->Hash); }
-    [[nodiscard]] auto as_uint() const -> uint { return _entry->Hash; }
-    [[nodiscard]] auto as_str() const -> const string& { return _entry->Str; }
+    [[nodiscard]] operator string_view() const noexcept { return _entry->Str; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->Hash != 0; }
+    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept { return _entry->Hash == other._entry->Hash; }
+    [[nodiscard]] constexpr auto operator!=(const hstring& other) const noexcept { return _entry->Hash != other._entry->Hash; }
+    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept { return _entry->Hash < other._entry->Hash; }
+    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_int() const noexcept -> int { return static_cast<int>(_entry->Hash); }
+    [[nodiscard]] constexpr auto as_uint() const noexcept -> uint { return _entry->Hash; }
+    [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
 
 private:
     static entry _zeroEntry;
@@ -1486,7 +1545,7 @@ static constexpr uint8 SAY_FLASH_WINDOW = 41;
 // Global map
 static constexpr int GM_MAXZONEX = 100;
 static constexpr int GM_MAXZONEY = 100;
-static constexpr size_t GM_ZONES_FOG_SIZE = ((GM_MAXZONEX / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
+static constexpr size_t GM_ZONES_FOG_SIZE = ((static_cast<size_t>(GM_MAXZONEX) / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
 static constexpr uint8 GM_FOG_FULL = 0;
 static constexpr uint8 GM_FOG_HALF = 1;
 static constexpr uint8 GM_FOG_NONE = 3;
@@ -1979,6 +2038,20 @@ private:
     time_point _loopStart {};
     time_duration _loopDuration {};
     time_duration _idleTimeBalance {};
+};
+
+class [[nodiscard]] TimeMeter
+{
+public:
+    TimeMeter() noexcept :
+        _startTime {time_point::clock::now()}
+    {
+    }
+
+    [[nodiscard]] auto GetDuration() const noexcept { return time_point::clock::now() - _startTime; }
+
+private:
+    time_point _startTime;
 };
 
 class WorkThread

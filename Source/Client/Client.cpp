@@ -483,7 +483,7 @@ void FOClient::MainLoop()
     // Render
     EffectMngr.UpdateEffects(GameTime);
 
-    SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    SprMngr.BeginScene({0, 0, 0});
     {
         // Quake effect
         ProcessScreenEffectQuake();
@@ -504,7 +504,7 @@ void FOClient::MainLoop()
     SprMngr.EndScene();
 }
 
-void FOClient::ScreenFade(time_duration time, uint from_color, uint to_color, bool push_back)
+void FOClient::ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back)
 {
     STACK_TRACE_ENTRY();
 
@@ -529,7 +529,7 @@ void FOClient::ProcessScreenEffectFading()
     SprMngr.Flush();
 
     vector<PrimitivePoint> full_screen_quad;
-    SprMngr.PrepareSquare(full_screen_quad, IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), 0);
+    SprMngr.PrepareSquare(full_screen_quad, IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), ucolor::clear);
 
     for (auto it = _screenFadingEffects.begin(); it != _screenFadingEffects.end();) {
         auto& screen_effect = *it;
@@ -550,7 +550,7 @@ void FOClient::ProcessScreenEffectFading()
                 res[i] = sc + dc * static_cast<int>(proc) / 100;
             }
 
-            const auto color = COLOR_RGBA(res[3], res[2], res[1], res[0]);
+            const auto color = ucolor {static_cast<uint8>(res[0]), static_cast<uint8>(res[1]), static_cast<uint8>(res[2]), static_cast<uint8>(res[3])};
             for (auto i = 0; i < 6; i++) {
                 full_screen_quad[i].PointColor = color;
             }
@@ -1303,7 +1303,7 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
         break;
     }
 
-    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}"); };
+    const auto get_format = [this](uint str_num) -> string { return _str(_curLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').replace("%s", "{}").replace("%d", "{}").str(); };
 
     auto* cr = (how_say != SAY_RADIO ? (CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr) : nullptr);
 
@@ -1336,14 +1336,15 @@ void FOClient::OnText(string_view str, ident_t cr_id, int how_say)
     FlashGameWindow();
 }
 
-void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, uint color)
+void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
     auto sstr = _str(str).str();
     uint show_time = 0;
 
-    OnMapMessage.Fire(sstr, hx, hy, color, show_time);
+    color = ucolor {color.rgba, true};
+    OnMapMessage.Fire(sstr, hx, hy, color.rgba, show_time);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1384,7 +1385,7 @@ void FOClient::Net_OnMapText()
         Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
-    OnMapText(str, hx, hy, color);
+    OnMapText(str, hx, hy, ucolor {color, true});
 }
 
 void FOClient::Net_OnMapTextMsg()
@@ -1406,7 +1407,7 @@ void FOClient::Net_OnMapTextMsg()
 
     auto str = _curLang.Msg[msg_num].GetStr(str_num);
     FormatTags(str, GetChosen(), nullptr, "");
-    OnMapText(str, hx, hy, color);
+    OnMapText(str, hx, hy, ucolor {color, true});
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -1430,7 +1431,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     auto str = _curLang.Msg[msg_num].GetStr(str_num);
     FormatTags(str, GetChosen(), nullptr, lexems);
-    OnMapText(str, hx, hy, color);
+    OnMapText(str, hx, hy, ucolor {color, true});
 }
 
 void FOClient::Net_OnCritterDir()
@@ -2537,7 +2538,7 @@ void FOClient::Net_OnGlobalInfo()
             loc.LocWx = _conn.InBuf.Read<uint16>();
             loc.LocWy = _conn.InBuf.Read<uint16>();
             loc.Radius = _conn.InBuf.Read<uint16>();
-            loc.Color = _conn.InBuf.Read<uint>();
+            loc.Color = ucolor {_conn.InBuf.Read<uint>(), true};
             loc.Entrances = _conn.InBuf.Read<uint8>();
 
             if (loc.LocId) {
@@ -2555,7 +2556,7 @@ void FOClient::Net_OnGlobalInfo()
         loc.LocWx = _conn.InBuf.Read<uint16>();
         loc.LocWy = _conn.InBuf.Read<uint16>();
         loc.Radius = _conn.InBuf.Read<uint16>();
-        loc.Color = _conn.InBuf.Read<uint>();
+        loc.Color = ucolor {_conn.InBuf.Read<uint>(), true};
         loc.Entrances = _conn.InBuf.Read<uint8>();
 
         const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
@@ -2962,7 +2963,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
-        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
+        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, ucolor {cr->GetContourColor(), true});
     }
 }
 
@@ -3349,10 +3350,10 @@ void FOClient::LmapPrepareMap()
             }
 
             const auto& field = CurMap->GetField(static_cast<uint16>(i1), static_cast<uint16>(i2));
-            uint cur_color;
+            ucolor cur_color;
 
             if (const auto* cr = CurMap->GetActiveCritter(static_cast<uint16>(i1), static_cast<uint16>(i2)); cr != nullptr) {
-                cur_color = (cr == chosen ? 0xFF0000FF : 0xFFFF0000);
+                cur_color = (cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
@@ -3363,14 +3364,14 @@ void FOClient::LmapPrepareMap()
                 if (!_lmapSwitchHi && !field.Flags.IsWall) {
                     continue;
                 }
-                cur_color = (field.Flags.IsWall ? 0xFF00FF00 : 0x7F00FF00);
+                cur_color = ucolor {(field.Flags.IsWall ? ucolor {0, 255, 0, 255} : ucolor {0, 255, 0, 127})};
             }
             else {
                 continue;
             }
 
             if (is_far) {
-                cur_color = COLOR_CHANGE_ALPHA(cur_color, 0x22);
+                cur_color.comp.a = 0x22;
             }
 
             _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y, cur_color});
@@ -3403,7 +3404,7 @@ void FOClient::WaitDraw()
     STACK_TRACE_ENTRY();
 
     if (_waitPic) {
-        SprMngr.DrawSpriteSize(_waitPic.get(), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
+        SprMngr.DrawSpriteSize(_waitPic.get(), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, COLOR_SPRITE);
         SprMngr.Flush();
     }
 }
@@ -3517,10 +3518,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         TryExit();
     }
     else if (cmd == "BytesSend") {
-        return _str("{}", _conn.GetBytesSend());
+        return _str("{}", _conn.GetBytesSend()).str();
     }
     else if (cmd == "BytesReceive") {
-        return _str("{}", _conn.GetBytesReceived());
+        return _str("{}", _conn.GetBytesReceived()).str();
     }
     else if (cmd == "GetLanguage") {
         return _curLang.Name;

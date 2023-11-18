@@ -570,7 +570,7 @@ Application::Application(int argc, char** argv, bool client_mode) :
         RUNTIME_ASSERT(bytes_per_pixel == 4);
 
         auto* font_tex = ActiveRenderer->CreateTexture(width, height, true, false);
-        font_tex->UpdateTextureRegion(IRect(0, 0, width, height), reinterpret_cast<const uint*>(pixels));
+        font_tex->UpdateTextureRegion(IRect(0, 0, width, height), reinterpret_cast<const ucolor*>(pixels));
         io.Fonts->TexID = font_tex;
 
         // Default effect
@@ -715,7 +715,7 @@ void Application::BeginFrame()
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
-    ActiveRenderer->ClearRenderTarget(COLOR_RGB(150, 150, 150));
+    ActiveRenderer->ClearRenderTarget(ucolor {150, 150, 150});
 
     ImGuiIO& io = ImGui::GetIO();
 
@@ -1014,7 +1014,7 @@ void Application::EndFrame()
                 v.PosY = iv.pos.y;
                 v.TexU = iv.uv.x;
                 v.TexV = iv.uv.y;
-                v.Color = iv.col;
+                v.Color = ucolor {iv.col};
             }
 
             _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
@@ -1261,7 +1261,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
     return RenderTargetTex;
 }
 
-void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 

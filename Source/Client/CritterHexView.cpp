@@ -910,7 +910,7 @@ void CritterHexView::RefreshOffs()
     }
 }
 
-void CritterHexView::SetText(string_view str, uint color, time_duration text_delay)
+void CritterHexView::SetText(string_view str, ucolor color, time_duration text_delay)
 {
     STACK_TRACE_ENTRY();
 
@@ -995,7 +995,7 @@ void CritterHexView::DrawTextOnHead()
     }
 
     string str;
-    uint color;
+    ucolor color;
 
     if (_strTextOnHead.empty()) {
         if (!IsNameVisible()) {
@@ -1008,8 +1008,8 @@ void CritterHexView::DrawTextOnHead()
             str += _engine->Settings.PlayerOffAppendix;
         }
 
-        color = GetNameColor();
-        if (color == 0) {
+        color = ucolor {GetNameColor(), true};
+        if (color == ucolor::clear) {
             color = _textOnHeadColor;
         }
     }
@@ -1027,5 +1027,5 @@ void CritterHexView::DrawTextOnHead()
     GetNameTextPos(x, y);
     const auto r = IRect(x - 100, y - 200, x + 100, y);
 
-    _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (Alpha << 24) | (color & 0xFFFFFF), -1);
+    _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, ucolor {color, Alpha}, -1);
 }

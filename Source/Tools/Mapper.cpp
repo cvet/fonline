@@ -84,9 +84,9 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         load_fonts_ok = false;
     }
     RUNTIME_ASSERT(load_fonts_ok);
-    SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
+    SprMngr.SetDefaultFont(FONT_DEFAULT);
 
-    SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
+    SprMngr.BeginScene({100, 100, 100});
     SprMngr.EndScene();
 
     InitIface();
@@ -749,7 +749,7 @@ void FOMapper::MapperMainLoop()
         CurMap->Process();
     }
 
-    SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
+    SprMngr.BeginScene({100, 100, 100});
     {
         DrawIfaceLayer(0);
         if (CurMap != nullptr) {
@@ -778,62 +778,62 @@ void FOMapper::IntDraw()
         return;
     }
 
-    SprMngr.DrawSprite(IntMainPic.get(), IntX, IntY, 0);
+    SprMngr.DrawSprite(IntMainPic.get(), IntX, IntY, COLOR_SPRITE);
 
     switch (IntMode) {
     case INT_MODE_CUSTOM0:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[0][0] + IntX, IntBCust[0][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[0][0] + IntX, IntBCust[0][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM1:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[1][0] + IntX, IntBCust[1][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[1][0] + IntX, IntBCust[1][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM2:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[2][0] + IntX, IntBCust[2][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[2][0] + IntX, IntBCust[2][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM3:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[3][0] + IntX, IntBCust[3][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[3][0] + IntX, IntBCust[3][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM4:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[4][0] + IntX, IntBCust[4][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[4][0] + IntX, IntBCust[4][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM5:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[5][0] + IntX, IntBCust[5][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[5][0] + IntX, IntBCust[5][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM6:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[6][0] + IntX, IntBCust[6][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[6][0] + IntX, IntBCust[6][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM7:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[7][0] + IntX, IntBCust[7][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[7][0] + IntX, IntBCust[7][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM8:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[8][0] + IntX, IntBCust[8][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[8][0] + IntX, IntBCust[8][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CUSTOM9:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCust[9][0] + IntX, IntBCust[9][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCust[9][0] + IntX, IntBCust[9][1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_ITEM:
-        SprMngr.DrawSprite(IntPTab.get(), IntBItem[0] + IntX, IntBItem[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBItem[0] + IntX, IntBItem[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_TILE:
-        SprMngr.DrawSprite(IntPTab.get(), IntBTile[0] + IntX, IntBTile[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBTile[0] + IntX, IntBTile[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_CRIT:
-        SprMngr.DrawSprite(IntPTab.get(), IntBCrit[0] + IntX, IntBCrit[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBCrit[0] + IntX, IntBCrit[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_FAST:
-        SprMngr.DrawSprite(IntPTab.get(), IntBFast[0] + IntX, IntBFast[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBFast[0] + IntX, IntBFast[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_IGNORE:
-        SprMngr.DrawSprite(IntPTab.get(), IntBIgnore[0] + IntX, IntBIgnore[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBIgnore[0] + IntX, IntBIgnore[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_INCONT:
-        SprMngr.DrawSprite(IntPTab.get(), IntBInCont[0] + IntX, IntBInCont[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBInCont[0] + IntX, IntBInCont[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_MESS:
-        SprMngr.DrawSprite(IntPTab.get(), IntBMess[0] + IntX, IntBMess[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBMess[0] + IntX, IntBMess[1] + IntY, COLOR_SPRITE);
         break;
     case INT_MODE_LIST:
-        SprMngr.DrawSprite(IntPTab.get(), IntBList[0] + IntX, IntBList[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab.get(), IntBList[0] + IntX, IntBList[1] + IntY, COLOR_SPRITE);
         break;
     default:
         break;
@@ -852,44 +852,44 @@ void FOMapper::IntDraw()
     SprMngr.DrawStr(IRect(IntBList, IntX, IntY), TabsName[INT_MODE_LIST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
 
     if (Settings.ShowItem) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowItem[0] + IntX, IntBShowItem[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowItem[0] + IntX, IntBShowItem[1] + IntY, COLOR_SPRITE);
     }
     if (Settings.ShowScen) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowScen[0] + IntX, IntBShowScen[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowScen[0] + IntX, IntBShowScen[1] + IntY, COLOR_SPRITE);
     }
     if (Settings.ShowWall) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowWall[0] + IntX, IntBShowWall[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowWall[0] + IntX, IntBShowWall[1] + IntY, COLOR_SPRITE);
     }
     if (Settings.ShowCrit) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY, COLOR_SPRITE);
     }
     if (Settings.ShowTile) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowTile[0] + IntX, IntBShowTile[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowTile[0] + IntX, IntBShowTile[1] + IntY, COLOR_SPRITE);
     }
     if (Settings.ShowRoof) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY, COLOR_SPRITE);
     }
     if (Settings.ShowFast) {
-        SprMngr.DrawSprite(IntPShow.get(), IntBShowFast[0] + IntX, IntBShowFast[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow.get(), IntBShowFast[0] + IntX, IntBShowFast[1] + IntY, COLOR_SPRITE);
     }
 
     if (IsSelectItem) {
-        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectItem[0] + IntX, IntBSelectItem[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectItem[0] + IntX, IntBSelectItem[1] + IntY, COLOR_SPRITE);
     }
     if (IsSelectScen) {
-        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectScen[0] + IntX, IntBSelectScen[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectScen[0] + IntX, IntBSelectScen[1] + IntY, COLOR_SPRITE);
     }
     if (IsSelectWall) {
-        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectWall[0] + IntX, IntBSelectWall[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectWall[0] + IntX, IntBSelectWall[1] + IntY, COLOR_SPRITE);
     }
     if (IsSelectCrit) {
-        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectCrit[0] + IntX, IntBSelectCrit[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectCrit[0] + IntX, IntBSelectCrit[1] + IntY, COLOR_SPRITE);
     }
     if (IsSelectTile) {
-        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectTile[0] + IntX, IntBSelectTile[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectTile[0] + IntX, IntBSelectTile[1] + IntY, COLOR_SPRITE);
     }
     if (IsSelectRoof) {
-        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectRoof[0] + IntX, IntBSelectRoof[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect.get(), IntBSelectRoof[0] + IntX, IntBSelectRoof[1] + IntY, COLOR_SPRITE);
     }
 
     auto x = IntWWork[0] + IntX;
@@ -928,7 +928,7 @@ void FOMapper::IntDraw()
                 auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
                 info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
-                SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), info, 0, FONT_DEFAULT, FONT_DEFAULT);
+                SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), info, 0, COLOR_TEXT, FONT_DEFAULT);
             }
         }
     }
@@ -959,7 +959,7 @@ void FOMapper::IntDraw()
 
         if (GetTabIndex() < CurNpcProtos->size()) {
             const auto* proto = (*CurNpcProtos)[GetTabIndex()];
-            SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), proto->GetName(), 0, FONT_DEFAULT, FONT_DEFAULT);
+            SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), proto->GetName(), 0, COLOR_TEXT, FONT_DEFAULT);
         }
     }
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
@@ -1011,7 +1011,7 @@ void FOMapper::IntDraw()
 
     // Sub tabs
     if (SubTabsActive) {
-        SprMngr.DrawSprite(SubTabsPic.get(), SubTabsX, SubTabsY, 0);
+        SprMngr.DrawSprite(SubTabsPic.get(), SubTabsX, SubTabsY, COLOR_SPRITE);
 
         auto line_height = SprMngr.GetLineHeight(FONT_DEFAULT) + 1;
         auto posy = SubTabsRect.Height() - line_height - 2;
@@ -1063,7 +1063,7 @@ void FOMapper::IntDraw()
                  "Tile layer {}\n"
                  "{}",
                 CurMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
-            FT_NOBREAK_LINE, 0, FONT_DEFAULT);
+            FT_NOBREAK_LINE, COLOR_TEXT, FONT_DEFAULT);
     }
 }
 
@@ -1087,9 +1087,9 @@ void FOMapper::ObjDraw()
     const auto y = r.Top;
     const auto w = r.Width();
 
-    SprMngr.DrawSprite(ObjWMainPic.get(), ObjX, ObjY, 0);
+    SprMngr.DrawSprite(ObjWMainPic.get(), ObjX, ObjY, COLOR_SPRITE);
     if (ObjToAll) {
-        SprMngr.DrawSprite(ObjPbToAllDn.get(), ObjBToAll[0] + ObjX, ObjBToAll[1] + ObjY, 0);
+        SprMngr.DrawSprite(ObjPbToAllDn.get(), ObjBToAll[0] + ObjX, ObjBToAll[1] + ObjY, COLOR_SPRITE);
     }
 
     if (item != nullptr) {
@@ -1098,12 +1098,12 @@ void FOMapper::ObjDraw()
             spr = ResMngr.GetItemDefaultSpr().get();
         }
 
-        SprMngr.DrawSpriteSize(spr, x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true, 0);
+        SprMngr.DrawSpriteSize(spr, x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true, COLOR_SPRITE);
 
         if (item->GetPicInv()) {
             const auto* inv_spr = GetIfaceSpr(item->GetPicInv());
             if (inv_spr != nullptr) {
-                SprMngr.DrawSpriteSize(inv_spr, x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, 0);
+                SprMngr.DrawSpriteSize(inv_spr, x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true, COLOR_SPRITE);
             }
         }
     }
@@ -1211,6 +1211,8 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 {
     STACK_TRACE_ENTRY();
 
+    NON_CONST_METHOD_HINT();
+
     const auto start_line = 3;
     if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size())) {
         const auto* prop = ShowProps[ObjCurLine - start_line];
@@ -1245,7 +1247,7 @@ void FOMapper::SelectEntityProp(int line)
     ObjCurLineInitValue = ObjCurLineValue = "";
     ObjCurLineIsConst = true;
 
-    if (auto* entity = GetInspectorEntity(); entity != nullptr) {
+    if (const auto* entity = GetInspectorEntity(); entity != nullptr) {
         if (ObjCurLine - start_line >= static_cast<int>(ShowProps.size())) {
             ObjCurLine = static_cast<int>(ShowProps.size()) + start_line - 1;
         }
@@ -1607,19 +1609,19 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBScrBackFst, IntX, IntY)) {
         if (IsItemMode() || IsCritMode()) {
-            (*CurProtoScroll) -= ProtosOnScreen;
+            (*CurProtoScroll) -= static_cast<int>(ProtosOnScreen);
             if (*CurProtoScroll < 0) {
                 *CurProtoScroll = 0;
             }
         }
         else if (IntMode == INT_MODE_INCONT) {
-            InContScroll -= ProtosOnScreen;
+            InContScroll -= static_cast<int>(ProtosOnScreen);
             if (InContScroll < 0) {
                 InContScroll = 0;
             }
         }
         else if (IntMode == INT_MODE_LIST) {
-            ListScroll -= ProtosOnScreen;
+            ListScroll -= static_cast<int>(ProtosOnScreen);
             if (ListScroll < 0) {
                 ListScroll = 0;
             }
@@ -1647,22 +1649,22 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBScrFrontFst, IntX, IntY)) {
         if (IsItemMode() && !(*CurItemProtos).empty()) {
-            (*CurProtoScroll) += ProtosOnScreen;
+            (*CurProtoScroll) += static_cast<int>(ProtosOnScreen);
             if (*CurProtoScroll >= static_cast<int>((*CurItemProtos).size())) {
                 *CurProtoScroll = static_cast<int>((*CurItemProtos).size()) - 1;
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
-            (*CurProtoScroll) += ProtosOnScreen;
+            (*CurProtoScroll) += static_cast<int>(ProtosOnScreen);
             if (*CurProtoScroll >= static_cast<int>(CurNpcProtos->size())) {
                 *CurProtoScroll = static_cast<int>(CurNpcProtos->size()) - 1;
             }
         }
         else if (IntMode == INT_MODE_INCONT) {
-            InContScroll += ProtosOnScreen;
+            InContScroll += static_cast<int>(ProtosOnScreen);
         }
         else if (IntMode == INT_MODE_LIST) {
-            ListScroll += ProtosOnScreen;
+            ListScroll += static_cast<int>(ProtosOnScreen);
         }
     }
     else if (IsCurInRect(IntBShowItem, IntX, IntY)) {
@@ -2638,7 +2640,7 @@ void FOMapper::CurDraw()
                 }
 
                 SprMngr.DrawSpriteSize(spr, static_cast<int>(static_cast<float>(x) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(y) / CurMap->GetSpritesZoom()), //
-                    static_cast<int>(static_cast<float>(spr->Width) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(spr->Height) / CurMap->GetSpritesZoom()), true, false, 0);
+                    static_cast<int>(static_cast<float>(spr->Width) / CurMap->GetSpritesZoom()), static_cast<int>(static_cast<float>(spr->Height) / CurMap->GetSpritesZoom()), true, false, COLOR_SPRITE);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -2661,7 +2663,7 @@ void FOMapper::CurDraw()
                 static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / CurMap->GetSpritesZoom()), //
                 static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / CurMap->GetSpritesZoom()), //
                 static_cast<int>(anim->Width / CurMap->GetSpritesZoom()), //
-                static_cast<int>(anim->Height / CurMap->GetSpritesZoom()), true, false, 0);
+                static_cast<int>(anim->Height / CurMap->GetSpritesZoom()), true, false, COLOR_SPRITE);
         }
         else {
             CurMode = CUR_MODE_DEFAULT;
@@ -2775,11 +2777,11 @@ void FOMapper::ConsoleDraw()
     STACK_TRACE_ENTRY();
 
     if (ConsoleEdit) {
-        SprMngr.DrawSprite(ConsolePic.get(), IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
+        SprMngr.DrawSprite(ConsolePic.get(), IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, COLOR_SPRITE);
 
         auto str = ConsoleStr;
         str.insert(ConsoleCur, time_duration_to_ms<uint>(GameTime.FrameTime().time_since_epoch()) % 800 < 400 ? "!" : ".");
-        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, 0, FONT_DEFAULT);
+        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, COLOR_TEXT, FONT_DEFAULT);
     }
 }
 
@@ -3270,7 +3272,7 @@ void FOMapper::MessBoxDraw()
         return;
     }
 
-    SprMngr.DrawStr(IRect(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY), MessBoxCurText, FT_UPPER | FT_BOTTOM, 0, FONT_DEFAULT);
+    SprMngr.DrawStr(IRect(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY), MessBoxCurText, FT_UPPER | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT);
 }
 
 void FOMapper::DrawIfaceLayer(uint layer)

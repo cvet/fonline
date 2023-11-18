@@ -166,7 +166,7 @@ void MapSprite::SetContour(ContourType contour)
     Contour = contour;
 }
 
-void MapSprite::SetContour(ContourType contour, uint color)
+void MapSprite::SetContour(ContourType contour, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -174,7 +174,7 @@ void MapSprite::SetContour(ContourType contour, uint color)
     ContourColor = color;
 }
 
-void MapSprite::SetColor(uint color)
+void MapSprite::SetColor(ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -362,8 +362,8 @@ auto MapSpriteList::PutSprite(MapSprite* child, DrawOrderType draw_order, uint16
     }
     mspr->EggAppearence = EggAppearenceType::None;
     mspr->Contour = ContourType::None;
-    mspr->ContourColor = 0u;
-    mspr->Color = 0u;
+    mspr->ContourColor = ucolor::clear;
+    mspr->Color = ucolor::clear;
     mspr->DrawEffect = effect;
 
     // Draw order

@@ -33,24 +33,8 @@
 
 #include "SpriteManager.h"
 #include "DefaultSprites.h"
-#include "DiskFileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
-
-static auto ApplyColorBrightness(uint color, int brightness) -> uint
-{
-    STACK_TRACE_ENTRY();
-
-    if (brightness != 0) {
-        const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
-        const auto g = std::clamp(((color >> 8) & 0xFF) + brightness, 0u, 255u);
-        const auto b = std::clamp(((color >> 0) & 0xFF) + brightness, 0u, 255u);
-        return COLOR_RGBA((color >> 24) & 0xFF, r, g, b);
-    }
-    else {
-        return color;
-    }
-}
 
 Sprite::Sprite(SpriteManager& spr_mngr) :
     _sprMngr {spr_mngr}
@@ -241,7 +225,7 @@ void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory)
     _spriteFactories.emplace_back(std::move(factory));
 }
 
-void SpriteManager::BeginScene(uint clear_color)
+void SpriteManager::BeginScene(ucolor clear_color)
 {
     STACK_TRACE_ENTRY();
 
@@ -569,18 +553,14 @@ void SpriteManager::Flush()
     _spritesDrawBuf->IndCount = 0;
 }
 
-void SpriteManager::DrawSprite(const Sprite* spr, int x, int y, uint color)
+void SpriteManager::DrawSprite(const Sprite* spr, int x, int y, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
     auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
 
-    if (color == 0) {
-        color = COLOR_SPRITE;
-    }
-    color = ApplyColorBrightness(color, _settings.Brightness);
-    color = COLOR_SWAP_RB(color);
+    color = ApplyColorBrightness(color);
 
     const auto ind_count = spr->FillData(_spritesDrawBuf, IRect {x, y, x + spr->Width, y + spr->Height}, {color, color});
 
@@ -598,14 +578,14 @@ void SpriteManager::DrawSprite(const Sprite* spr, int x, int y, uint color)
     }
 }
 
-void SpriteManager::DrawSpriteSize(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
+void SpriteManager::DrawSpriteSize(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
     DrawSpriteSizeExt(spr, x, y, w, h, zoom_up, center, false, color);
 }
 
-void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color)
+void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -641,11 +621,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, in
     auto* effect = spr->DrawEffect != nullptr ? spr->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
 
-    if (color == 0) {
-        color = COLOR_SPRITE;
-    }
-    color = ApplyColorBrightness(color, _settings.Brightness);
-    color = COLOR_SWAP_RB(color);
+    color = ApplyColorBrightness(color);
 
     const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, xf + wf, yf + hf}, {color, color});
 
@@ -663,7 +639,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, int x, int y, int w, in
     }
 }
 
-void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, int h, int spr_width, int spr_height, uint color)
+void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, int h, int spr_width, int spr_height, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -693,11 +669,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, in
         width *= ratio;
     }
 
-    if (color == 0) {
-        color = COLOR_SPRITE;
-    }
-    color = ApplyColorBrightness(color, _settings.Brightness);
-    color = COLOR_SWAP_RB(color);
+    color = ApplyColorBrightness(color);
 
     auto* effect = atlas_spr->DrawEffect != nullptr ? atlas_spr->DrawEffect : _effectMngr.Effects.Iface;
     RUNTIME_ASSERT(effect);
@@ -776,7 +748,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, int x, int y, int w, in
     }
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color)
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -788,7 +760,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r
     points.push_back({r.Right, r.Bottom, color});
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color)
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -878,7 +850,7 @@ void SpriteManager::SetEgg(uint16 hx, uint16 hy, const MapSprite* mspr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, uint color)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
 {
     STACK_TRACE_ENTRY();
 
@@ -925,10 +897,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         const auto zoom = _spritesZoom;
 
         // Base color
-        uint color_r = 0;
-        uint color_l = 0;
-        if (mspr->Color != 0) {
-            color_r = color_l = mspr->Color | 0xFF000000;
+        ucolor color_r;
+        ucolor color_l;
+        if (mspr->Color != ucolor::clear) {
+            color_r = color_l = ucolor {mspr->Color, 255};
         }
         else {
             color_r = color_l = color;
@@ -936,16 +908,16 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
         // Light
         if (mspr->Light != nullptr) {
-            static auto light_func = [](uint& c, const uint8* l, const uint8* l2) {
-                const int lr = *l;
+            static auto light_func = [](ucolor& c, const uint8* l, const uint8* l2) {
+                const int lr = *(l + 0);
                 const int lg = *(l + 1);
                 const int lb = *(l + 2);
-                const int lr2 = *l2;
+                const int lr2 = *(l2 + 0);
                 const int lg2 = *(l2 + 1);
                 const int lb2 = *(l2 + 2);
-                auto& r = reinterpret_cast<uint8*>(&c)[2];
-                auto& g = reinterpret_cast<uint8*>(&c)[1];
-                auto& b = reinterpret_cast<uint8*>(&c)[0];
+                auto& r = *(reinterpret_cast<uint8*>(&c) + 0);
+                auto& g = *(reinterpret_cast<uint8*>(&c) + 1);
+                auto& b = *(reinterpret_cast<uint8*>(&c) + 2);
                 const auto ir = static_cast<int>(r) + (lr + lr2) / 2;
                 const auto ig = static_cast<int>(g) + (lg + lg2) / 2;
                 const auto ib = static_cast<int>(b) + (lb + lb2) / 2;
@@ -953,6 +925,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                 g = static_cast<uint8>(std::min(ig, 255));
                 b = static_cast<uint8>(std::min(ib, 255));
             };
+
             light_func(color_r, mspr->Light, mspr->LightRight);
             light_func(color_l, mspr->Light, mspr->LightLeft);
         }
@@ -964,10 +937,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
         }
 
         // Fix color
-        color_r = ApplyColorBrightness(color_r, _settings.Brightness);
-        color_l = ApplyColorBrightness(color_l, _settings.Brightness);
-        color_r = COLOR_SWAP_RB(color_r);
-        color_l = COLOR_SWAP_RB(color_l);
+        color_r = ApplyColorBrightness(color_r);
+        color_l = ApplyColorBrightness(color_l);
 
         // Check borders
         if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + spr->Width) / zoom < 0.0f || //
@@ -1044,21 +1015,21 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
             switch (mspr->EggAppearence) {
             case EggAppearenceType::Always:
-                PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), 0x5FFFFF00);
+                PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), ucolor {0x5FFFFF00, true});
                 break;
             case EggAppearenceType::ByX:
-                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 55.0f), FPoint(xf + cx + 5.0f, yf + hf - 45.0f), FPoint(xf + cx - 5.0f, yf + hf - 5.0f), FPoint(xf + cx + 5.0f, yf + hf + 5.0f), 0x5F00AF00);
+                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 55.0f), FPoint(xf + cx + 5.0f, yf + hf - 45.0f), FPoint(xf + cx - 5.0f, yf + hf - 5.0f), FPoint(xf + cx + 5.0f, yf + hf + 5.0f), ucolor {0x5F00AF00, true});
                 break;
             case EggAppearenceType::ByY:
-                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 49.0f), FPoint(xf + cx + 5.0f, yf + hf - 52.0f), FPoint(xf + cx - 5.0f, yf + hf + 1.0f), FPoint(xf + cx + 5.0f, yf + hf - 2.0f), 0x5F00FF00);
+                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 49.0f), FPoint(xf + cx + 5.0f, yf + hf - 52.0f), FPoint(xf + cx - 5.0f, yf + hf + 1.0f), FPoint(xf + cx + 5.0f, yf + hf - 2.0f), ucolor {0x5F00FF00, true});
                 break;
             case EggAppearenceType::ByXAndY:
-                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 49.0f), FPoint(xf + cx, yf + hf - 52.0f), FPoint(xf + cx - 10.0f, yf + hf + 1.0f), FPoint(xf + cx, yf + hf - 2.0f), 0x5FFF0000);
-                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 55.0f), FPoint(xf + cx + 10.0f, yf + hf - 45.0f), FPoint(xf + cx, yf + hf - 5.0f), FPoint(xf + cx + 10.0f, yf + hf + 5.0f), 0x5FFF0000);
+                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 49.0f), FPoint(xf + cx, yf + hf - 52.0f), FPoint(xf + cx - 10.0f, yf + hf + 1.0f), FPoint(xf + cx, yf + hf - 2.0f), ucolor {0x5FFF0000, true});
+                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 55.0f), FPoint(xf + cx + 10.0f, yf + hf - 45.0f), FPoint(xf + cx, yf + hf - 5.0f), FPoint(xf + cx + 10.0f, yf + hf + 5.0f), ucolor {0x5FFF0000, true});
                 break;
             case EggAppearenceType::ByXOrY:
-                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 49.0f), FPoint(xf + cx + 10.0f, yf + hf - 52.0f), FPoint(xf + cx, yf + hf + 1.0f), FPoint(xf + cx + 10.0f, yf + hf - 2.0f), 0x5FAF0000);
-                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 55.0f), FPoint(xf + cx, yf + hf - 45.0f), FPoint(xf + cx - 10.0f, yf + hf - 5.0f), FPoint(xf + cx, yf + hf + 5.0f), 0x5FAF0000);
+                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 49.0f), FPoint(xf + cx + 10.0f, yf + hf - 52.0f), FPoint(xf + cx, yf + hf + 1.0f), FPoint(xf + cx + 10.0f, yf + hf - 2.0f), ucolor {0x5FAF0000, true});
+                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 55.0f), FPoint(xf + cx, yf + hf - 45.0f), FPoint(xf + cx - 10.0f, yf + hf - 5.0f), FPoint(xf + cx, yf + hf + 5.0f), ucolor {0x5FAF0000, true});
                 break;
             default:
                 break;
@@ -1076,19 +1047,19 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                 y1 -= iround(40.0f / zoom);
             }
 
-            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", mspr->TreeIndex), 0, 0, -1);
+            DrawStr(IRect(x1, y1, x1 + 100, y1 + 100), _str("{}", mspr->TreeIndex), 0, COLOR_TEXT, -1);
         }
 
         // Process contour effect
         if (collect_contours && mspr->Contour != ContourType::None) {
-            uint contour_color = 0xFF0000FF;
+            auto contour_color = ucolor {0, 0, 255};
 
             switch (mspr->Contour) {
             case ContourType::Red:
-                contour_color = 0xFFAF0000;
+                contour_color = ucolor {175, 0, 0};
                 break;
             case ContourType::Yellow:
-                contour_color = 0x00AFAF00;
+                contour_color = ucolor {175, 175, 0};
                 break;
             case ContourType::Custom:
                 contour_color = mspr->ContourColor;
@@ -1097,7 +1068,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
                 break;
             }
 
-            CollectContour(x, y, spr, contour_color);
+            if (contour_color != ucolor::clear) {
+                CollectContour(x, y, spr, contour_color);
+            }
         }
 
         if (_settings.ShowSpriteBorders && mspr->DrawOrder > DrawOrderType::Tile4) {
@@ -1108,7 +1081,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
             rect.Top += _settings.ScrOy;
             rect.Bottom += _settings.ScrOy;
 
-            PrepareSquare(borders, rect, COLOR_RGBA(50, 0, 0, 255));
+            PrepareSquare(borders, rect, ucolor {0, 0, 255, 50});
         }
     }
 
@@ -1161,7 +1134,7 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
     oy = iround(static_cast<float>(oy) * _spritesZoom);
 
     const auto egg_color = _eggData.at(oy * _sprEgg->Width + ox);
-    return (egg_color >> 24) < 127;
+    return egg_color.comp.a < 127;
 }
 
 void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, const FPoint* offset, RenderEffect* custom_effect)
@@ -1231,9 +1204,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
             y += offset->Y;
         }
 
-        uint color = point.PointColor;
-        color = ApplyColorBrightness(color, _settings.Brightness);
-        color = COLOR_SWAP_RB(color);
+        const ucolor color = ApplyColorBrightness(point.PointColor);
 
         vbuf[i].PosX = x;
         vbuf[i].PosY = y;
@@ -1261,14 +1232,14 @@ void SpriteManager::DrawContours()
 
         // Clean render targets
         _rtMngr.PushRenderTarget(_rtContours);
-        _rtMngr.ClearCurrentRenderTarget(0);
+        _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
         _rtMngr.PopRenderTarget();
 
         if (_contourClearMid) {
             _contourClearMid = false;
 
             _rtMngr.PushRenderTarget(_rtContoursMid);
-            _rtMngr.ClearCurrentRenderTarget(0);
+            _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
             _rtMngr.PopRenderTarget();
         }
 
@@ -1276,7 +1247,7 @@ void SpriteManager::DrawContours()
     }
 }
 
-void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour_color)
+void SpriteManager::CollectContour(int x, int y, const Sprite* spr, ucolor contour_color)
 {
     STACK_TRACE_ENTRY();
 
@@ -1384,8 +1355,7 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
         sprite_border = textureuv;
     }
 
-    contour_color = ApplyColorBrightness(contour_color, _settings.Brightness);
-    contour_color = COLOR_SWAP_RB(contour_color);
+    contour_color = ApplyColorBrightness(contour_color);
 
     const auto bordersf = FRect(borders);
 
@@ -1436,6 +1406,21 @@ void SpriteManager::CollectContour(int x, int y, const Sprite* spr, uint contour
     _contoursAdded = true;
 }
 
+auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
+{
+    STACK_TRACE_ENTRY();
+
+    if (_settings.Brightness != 0) {
+        const auto r = std::clamp(static_cast<int>(color.comp.r) + _settings.Brightness, 0, 255);
+        const auto g = std::clamp(static_cast<int>(color.comp.g) + _settings.Brightness, 0, 255);
+        const auto b = std::clamp(static_cast<int>(color.comp.b) + _settings.Brightness, 0, 255);
+        return ucolor {static_cast<uint8>(r), static_cast<uint8>(g), static_cast<uint8>(b), color.comp.a};
+    }
+    else {
+        return color;
+    }
+}
+
 auto SpriteManager::GetFont(int num) -> FontData*
 {
     STACK_TRACE_ENTRY();
@@ -1458,12 +1443,11 @@ void SpriteManager::ClearFonts()
     _allFonts.clear();
 }
 
-void SpriteManager::SetDefaultFont(int index, uint color)
+void SpriteManager::SetDefaultFont(int index)
 {
     STACK_TRACE_ENTRY();
 
     _defFontIndex = index;
-    _defFontColor = color;
 }
 
 void SpriteManager::SetFontEffect(int index, RenderEffect* effect)
@@ -1482,7 +1466,7 @@ void SpriteManager::BuildFont(int index)
 
     NON_CONST_METHOD_HINT();
 
-#define PIXEL_AT(tex_data, width, x, y) (*(reinterpret_cast<uint*>(tex_data.data()) + (y) * (width) + (x)))
+#define PIXEL_AT(tex_data, width, x, y) (*(reinterpret_cast<ucolor*>(tex_data.data()) + (y) * (width) + (x)))
 
     auto& font = *_allFonts[index];
 
@@ -1527,7 +1511,7 @@ void SpriteManager::BuildFont(int index)
     // Read texture data
     auto data_normal = atlas_spr->Atlas->MainTex->GetTextureRegion(normal_ox, normal_oy, atlas_spr->Width, atlas_spr->Height);
 
-    vector<uint> data_bordered;
+    vector<ucolor> data_bordered;
     if (si_bordered != nullptr) {
         data_bordered = si_bordered->Atlas->MainTex->GetTextureRegion(bordered_ox, bordered_oy, si_bordered->Width, si_bordered->Height);
     }
@@ -1538,15 +1522,15 @@ void SpriteManager::BuildFont(int index)
             for (auto x = 0; x < atlas_spr->Width; x++) {
                 const auto a = reinterpret_cast<uint8*>(&PIXEL_AT(data_normal, atlas_spr->Width, x, y))[3];
                 if (a != 0) {
-                    PIXEL_AT(data_normal, atlas_spr->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
+                    PIXEL_AT(data_normal, atlas_spr->Width, x, y) = ucolor {128, 128, 128, a};
                     if (si_bordered != nullptr) {
-                        PIXEL_AT(data_bordered, si_bordered->Width, x, y) = COLOR_RGBA(a, 128, 128, 128);
+                        PIXEL_AT(data_bordered, si_bordered->Width, x, y) = ucolor {128, 128, 128, a};
                     }
                 }
                 else {
-                    PIXEL_AT(data_normal, atlas_spr->Width, x, y) = COLOR_RGBA(0, 0, 0, 0);
+                    PIXEL_AT(data_normal, atlas_spr->Width, x, y) = ucolor {0, 0, 0, 0};
                     if (si_bordered != nullptr) {
-                        PIXEL_AT(data_bordered, si_bordered->Width, x, y) = COLOR_RGBA(0, 0, 0, 0);
+                        PIXEL_AT(data_bordered, si_bordered->Width, x, y) = ucolor {0, 0, 0, 0};
                     }
                 }
             }
@@ -1560,13 +1544,13 @@ void SpriteManager::BuildFont(int index)
     if (si_bordered != nullptr) {
         for (auto y = 1; y < si_bordered->Height - 2; y++) {
             for (auto x = 1; x < si_bordered->Width - 2; x++) {
-                if (PIXEL_AT(data_normal, atlas_spr->Width, x, y)) {
+                if (PIXEL_AT(data_normal, atlas_spr->Width, x, y) != ucolor::clear) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
                             const auto oy = y + yy;
-                            if (!PIXEL_AT(data_bordered, si_bordered->Width, ox, oy)) {
-                                PIXEL_AT(data_bordered, si_bordered->Width, ox, oy) = COLOR_RGB(0, 0, 0);
+                            if (PIXEL_AT(data_bordered, si_bordered->Width, ox, oy) == ucolor::clear) {
+                                PIXEL_AT(data_bordered, si_bordered->Width, ox, oy) = ucolor {0, 0, 0, 255};
                             }
                         }
                     }
@@ -1928,7 +1912,7 @@ static void StrEraseInterval(char* str, uint len)
         return;
     }
 
-    auto* str2 = str + len;
+    const auto* str2 = str + len;
     while (*str2 != 0) {
         *str = *str2;
         ++str;
@@ -1998,7 +1982,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 
     // Colorize
-    uint* dots = nullptr;
+    ucolor* dots = nullptr;
     uint d_offs = 0;
     auto* str_ = str;
     string buf;
@@ -2007,7 +1991,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 
     constexpr uint dots_history_len = 10;
-    uint dots_history[dots_history_len] = {fi.DefColor};
+    ucolor dots_history[dots_history_len] = {fi.DefColor};
     uint dots_history_cur = 0;
 
     while (*str_ != 0) {
@@ -2019,7 +2003,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
         if (dots != nullptr) {
             size_t d_len = static_cast<uint>(s2 - s1) + 1;
-            uint d;
+            ucolor d;
 
             if (d_len == 2) {
                 if (dots_history_cur > 0) {
@@ -2031,10 +2015,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             }
             else {
                 if (*(s1 + 1) == 'x') {
-                    d = static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16));
+                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16)), true};
                 }
                 else {
-                    d = static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0));
+                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0)), true};
                 }
 
                 if (dots_history_cur < dots_history_len - 1) {
@@ -2267,9 +2251,9 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
     // Up text
     if (IsBitSet(flags, FT_UPPER) && fi.LinesAll > fi.LinesInRect) {
-        auto j = 0;
-        auto line_cur = 0;
-        auto last_col = 0;
+        int j = 0;
+        int line_cur = 0;
+        ucolor last_color;
         for (; str[j] != 0; ++j) {
             if (str[j] == '\n') {
                 line_cur++;
@@ -2278,15 +2262,15 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 }
             }
 
-            if (fi.ColorDots[j] != 0) {
-                last_col = static_cast<int>(fi.ColorDots[j]);
+            if (fi.ColorDots[j] != ucolor::clear) {
+                last_color = fi.ColorDots[j];
             }
         }
 
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
             offs_col += j + 1;
-            if (last_col != 0 && fi.ColorDots[j + 1] == 0) {
-                fi.ColorDots[j + 1] = last_col;
+            if (last_color != ucolor::clear && fi.ColorDots[j + 1] == ucolor::clear) {
+                fi.ColorDots[j + 1] = last_color;
             }
         }
 
@@ -2388,7 +2372,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 }
 
-void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint color /* = 0 */, int num_font /* = -1 */)
+void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, ucolor color, int num_font)
 {
     STACK_TRACE_ENTRY();
 
@@ -2403,11 +2387,8 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
         return;
     }
 
-    // FormatBuf
-    if (color == 0 && _defFontColor != 0) {
-        color = _defFontColor;
-    }
-    color = ApplyColorBrightness(color, _settings.Brightness);
+    // Format
+    color = ApplyColorBrightness(color);
 
     auto& fi = _fontFormatInfoBuf = {font, flags, r};
     StrCopy(fi.Str, str);
@@ -2416,8 +2397,6 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     if (fi.IsError) {
         return;
     }
-
-    color = COLOR_SWAP_RB(color);
 
     const auto* str_ = fi.PStr;
     const auto offs_col = fi.OffsColDots;
@@ -2428,15 +2407,14 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
 
     if (!IsBitSet(flags, FT_NO_COLORIZE)) {
         for (auto i = offs_col; i >= 0; i--) {
-            if (fi.ColorDots[i] != 0) {
-                if ((fi.ColorDots[i] & 0xFF000000) != 0) {
+            if (fi.ColorDots[i] != ucolor::clear) {
+                if (fi.ColorDots[i].comp.a != 0) {
                     color = fi.ColorDots[i]; // With alpha
                 }
                 else {
-                    color = (color & 0xFF000000) | (fi.ColorDots[i] & 0x00FFFFFF); // Still old alpha
+                    color = ucolor {fi.ColorDots[i].comp.r, fi.ColorDots[i].comp.g, fi.ColorDots[i].comp.b, color.comp.a};
                 }
-                color = ApplyColorBrightness(color, _settings.Brightness);
-                color = COLOR_SWAP_RB(color);
+                color = ApplyColorBrightness(color);
                 break;
             }
         }
@@ -2457,15 +2435,14 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     for (auto i = 0; str_[i] != 0; i += i_advance) {
         if (!IsBitSet(flags, FT_NO_COLORIZE)) {
             const auto new_color = fi.ColorDots[i + offs_col];
-            if (new_color != 0) {
-                if ((new_color & 0xFF000000) != 0) {
+            if (new_color != ucolor::clear) {
+                if (new_color.comp.a != 0) {
                     color = new_color; // With alpha
                 }
                 else {
-                    color = (color & 0xFF000000) | (new_color & 0x00FFFFFF); // Still old alpha
+                    color = ucolor {new_color.comp.r, new_color.comp.g, new_color.comp.b, color.comp.a};
                 }
-                color = ApplyColorBrightness(color, _settings.Brightness);
-                color = COLOR_SWAP_RB(color);
+                color = ApplyColorBrightness(color);
             }
         }
 

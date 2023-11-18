@@ -56,7 +56,7 @@ auto ModelSprite::IsHitTest(int x, int y) const -> bool
         const auto atlas_x = x + iround(Atlas->MainTex->SizeData[0] * AtlasRect.Left);
         const auto atlas_y = y + iround(Atlas->MainTex->SizeData[1] * AtlasRect.Top);
 
-        return (_sprMngr.GetRtMngr().GetRenderTargetPixel(Atlas->RTarg, atlas_x, atlas_y) >> 24) > 0;
+        return _sprMngr.GetRtMngr().GetRenderTargetPixel(Atlas->RTarg, atlas_x, atlas_y).comp.a > 0;
     }
 
     return false;
@@ -236,7 +236,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
     }
 
     _sprMngr.GetRtMngr().PushRenderTarget(rt_model);
-    _sprMngr.GetRtMngr().ClearCurrentRenderTarget(0, true);
+    _sprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
     // Draw model
     model_spr->GetModel()->Draw();

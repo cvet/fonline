@@ -85,7 +85,7 @@ namespace SPK::FO
         v.PosX = pos.x;
         v.PosY = pos.y;
         v.PosZ = pos.z;
-        v.Color = COLOR_RGBA(color.a, color.b, color.g, color.r); // Swapped R&B
+        v.Color = ucolor {color.r, color.g, color.b, color.a};
     }
 
     void SparkRenderBuffer::SetNextTexCoord(float tu, float tv)

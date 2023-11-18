@@ -131,9 +131,9 @@ public:
     void ConsoleMessage(string_view msg);
     void AddMessage(int mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
-    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
-    void ScreenFade(time_duration time, uint from_color, uint to_color, bool push_back);
+    void ScreenFadeIn() { ScreenFade(std::chrono::milliseconds {1000}, ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}, false); }
+    void ScreenFadeOut() { ScreenFade(std::chrono::milliseconds {1000}, ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}, false); }
+    void ScreenFade(time_duration time, ucolor from_color, ucolor to_color, bool push_back);
     void ScreenQuake(int noise, time_duration time);
     void ProcessInputEvent(const InputEvent& ev);
 
@@ -276,8 +276,8 @@ protected:
     {
         time_point BeginTime {};
         time_duration Duration {};
-        uint StartColor {};
-        uint EndColor {};
+        ucolor StartColor {};
+        ucolor EndColor {};
     };
 
     struct GmapLocation
@@ -287,7 +287,7 @@ protected:
         uint16 LocWx {};
         uint16 LocWy {};
         uint16 Radius {};
-        uint Color {};
+        ucolor Color {};
         uint8 Entrances {};
     };
 
@@ -369,7 +369,7 @@ protected:
     void Net_OnRemoteCall();
 
     void OnText(string_view str, ident_t cr_id, int how_say);
-    void OnMapText(string_view str, uint16 hx, uint16 hy, uint color);
+    void OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color);
 
     void OnSendGlobalValue(Entity* entity, const Property* prop);
     void OnSendPlayerValue(Entity* entity, const Property* prop);

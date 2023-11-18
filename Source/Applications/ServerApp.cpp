@@ -221,7 +221,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         }
                     }
 
-                    App->Render.ClearRenderTarget(COLOR_RGB(0, 0, 0));
+                    App->Render.ClearRenderTarget(ucolor::clear);
 
                     client->MainLoop();
                 }

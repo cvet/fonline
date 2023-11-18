@@ -594,8 +594,9 @@ void DataBaseImpl::CommitChanges()
     if (_settings.DataBaseMaxCommitJobs != 0) {
         if (_commitThread.GetJobsCount() > _settings.DataBaseMaxCommitJobs) {
             WriteLog("Too many commit jobs to data base, wait for it");
+            const auto wait_time = TimeMeter();
             _commitThread.Wait();
-            WriteLog("Wait complete, continue commits");
+            WriteLog("Wait complete in {}", wait_time.GetDuration());
         }
     }
 

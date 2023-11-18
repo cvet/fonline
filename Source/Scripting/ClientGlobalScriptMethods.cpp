@@ -45,6 +45,15 @@
 
 // ReSharper disable CppInconsistentNaming
 
+static constexpr auto COLOR_SCRIPT_SPRITE(uint color) -> ucolor
+{
+    return ucolor {color != 0 ? ucolor {color, true} : COLOR_SPRITE};
+}
+static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
+{
+    return ucolor {color != 0 ? ucolor {color, true} : COLOR_TEXT};
+}
+
 ///# ...
 ///# return ...
 ///@ ExportMethod
@@ -92,7 +101,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, value);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, false, func, std::move(value));
 }
 
 ///@ ExportMethod
@@ -110,7 +119,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ident_t Client_Game_RepeatingDeferredCall(FOClient* client, uint delay, ScriptFunc<void, any_t> func, any_t value)
 {
-    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, value);
+    return client->ClientDeferredCalls.AddDeferredCall(delay, true, func, std::move(value));
 }
 
 ///@ ExportMethod
@@ -349,7 +358,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, uint fromColor, uint toColor, tick_t duration)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, true);
+    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, ucolor {fromColor, true}, ucolor {toColor, true}, true);
 }
 
 ///# ...
@@ -752,11 +761,10 @@
 
 ///# ...
 ///# param font ...
-///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetDefaultFont(FOClient* client, int font, uint color)
+[[maybe_unused]] void Client_Game_SetDefaultFont(FOClient* client, int font)
 {
-    client->SprMngr.SetDefaultFont(font, color);
+    client->SprMngr.SetDefaultFont(font);
 }
 
 ///# ...
@@ -1387,7 +1395,7 @@
         auto& pp = points[i];
         pp.PointX = data[i * 3];
         pp.PointY = data[i * 3 + 1];
-        pp.PointColor = data[i * 3 + 2];
+        pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2]), true};
         pp.PointOffsX = nullptr;
         pp.PointOffsY = nullptr;
     }
@@ -1566,7 +1574,7 @@
             client->DirtyOffscreenSurfaces.erase(it);
         }
 
-        client->SprMngr.GetRtMngr().ClearCurrentRenderTarget(0);
+        client->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
     }
 
     if (std::find(client->PreDirtyOffscreenSurfaces.begin(), client->PreDirtyOffscreenSurfaces.end(), rt) == client->PreDirtyOffscreenSurfaces.end()) {

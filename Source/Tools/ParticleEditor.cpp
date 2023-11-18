@@ -146,7 +146,7 @@ ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
         const auto* data = file.GetCurBuf();
 
         auto* tex = App->Render.CreateTexture(w, h, true, false);
-        tex->UpdateTextureRegion({0, 0, w, h}, reinterpret_cast<const uint*>(data));
+        tex->UpdateTextureRegion({0, 0, w, h}, reinterpret_cast<const ucolor*>(data));
 
         _impl->LoadedTextures.emplace_back(tex);
 
@@ -255,7 +255,7 @@ void ParticleEditor::OnDraw()
 
     auto* prev_rt = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(_impl->RenderTarget.get());
-    App->Render.ClearRenderTarget(0, true);
+    App->Render.ClearRenderTarget(ucolor::clear, true);
     _impl->Particle->Draw();
     App->Render.SetRenderTarget(prev_rt);
 

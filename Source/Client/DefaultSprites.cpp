@@ -88,7 +88,7 @@ auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
     return const_cast<AtlasSprite*>(this)->shared_from_this();
 }
 
-auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t
+auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
     STACK_TRACE_ENTRY();
 
@@ -213,7 +213,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
     return copy;
 }
 
-auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<uint, uint>& colors) const -> size_t
+auto SpriteSheet::FillData(RenderDrawBuffer* dbuf, const FRect& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
     STACK_TRACE_ENTRY();
 
@@ -415,7 +415,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     dir_anim->SprOffset[i].X = nx;
                     dir_anim->SprOffset[i].Y = ny;
 
-                    FillAtlas(spr.get(), atlas_type, reinterpret_cast<const uint*>(data));
+                    FillAtlas(spr.get(), atlas_type, reinterpret_cast<const ucolor*>(data));
 
                     if (i == 0) {
                         dir_anim->Width = width;
@@ -424,7 +424,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
                     dir_anim->Spr[i] = spr;
 
-                    file.GoForward(width * height * 4);
+                    file.GoForward(static_cast<size_t>(width) * height * 4);
                 }
                 else {
                     const auto index = file.GetLEUShort();
@@ -463,9 +463,9 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         spr->OffsX = ox;
         spr->OffsY = oy;
 
-        FillAtlas(spr.get(), atlas_type, reinterpret_cast<const uint*>(data));
+        FillAtlas(spr.get(), atlas_type, reinterpret_cast<const ucolor*>(data));
 
-        file.GoForward(width * height * 4);
+        file.GoForward(static_cast<size_t>(width) * height * 4);
 
         const auto check_number2 = file.GetUChar();
         RUNTIME_ASSERT(check_number2 == 42);
@@ -474,7 +474,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     }
 }
 
-void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, const uint* data)
+void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_type, const ucolor* data)
 {
     STACK_TRACE_ENTRY();
 
@@ -503,16 +503,16 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         tex->UpdateTextureRegion(IRect(x, y + height, x + width, y + height + 1), data + static_cast<size_t>(height - 1) * width);
 
         // Left
-        for (size_t i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + i * width);
+        for (int i = 0; i < height; i++) {
+            _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * width);
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[height + 1] = _borderBuf[height];
         tex->UpdateTextureRegion(IRect(x - 1, y - 1, x, y + height + 1), _borderBuf.data());
 
         // Right
-        for (size_t i = 0; i < height; i++) {
-            _borderBuf[i + 1] = *(data + i * width + (width - 1));
+        for (int i = 0; i < height; i++) {
+            _borderBuf[i + 1] = *(data + static_cast<size_t>(i) * width + (width - 1));
         }
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[height + 1] = _borderBuf[height];
@@ -521,7 +521,7 @@ void DefaultSpriteFactory::FillAtlas(AtlasSprite* atlas_spr, AtlasType atlas_typ
         // Evaluate hit mask
         atlas_spr->HitTestData.resize(static_cast<size_t>(width) * height);
         for (size_t i = 0, j = static_cast<size_t>(width) * height; i < j; i++) {
-            atlas_spr->HitTestData[i] = (data[i] >> 24) > 0;
+            atlas_spr->HitTestData[i] = data[i].comp.a > 0;
         }
     }
 

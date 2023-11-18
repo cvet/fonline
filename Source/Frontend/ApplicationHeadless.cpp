@@ -380,7 +380,7 @@ auto AppRender::GetRenderTarget() -> RenderTexture*
     return nullptr;
 }
 
-void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     STACK_TRACE_ENTRY();
 

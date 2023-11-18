@@ -284,7 +284,7 @@ auto Compressor::Uncompress(const_span<uint8> data, size_t mul_approx) -> vector
     return buf;
 }
 
-void GenericUtils::ForkProcess()
+void GenericUtils::ForkProcess() // NOLINT(clang-diagnostic-missing-noreturn)
 {
     STACK_TRACE_ENTRY();
 
@@ -310,7 +310,7 @@ void GenericUtils::ForkProcess()
 #endif
 }
 
-void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vector<uint> data)
+void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vector<ucolor> data)
 {
     STACK_TRACE_ENTRY();
 
@@ -321,10 +321,6 @@ void GenericUtils::WriteSimpleTga(string_view fname, int width, int height, vect
         static_cast<uint8>(width % 256), static_cast<uint8>(width / 256), //
         static_cast<uint8>(height % 256), static_cast<uint8>(height / 256), 4 * 8, 0x20};
     file.Write(header);
-
-    for (auto& c : data) {
-        c = COLOR_SWAP_RB(c);
-    }
 
     file.Write(data.data(), data.size() * sizeof(uint));
 }
@@ -411,7 +407,7 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> uint
+auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>& colors, int game_time, int* light) -> ucolor
 {
     STACK_TRACE_ENTRY();
 
@@ -469,7 +465,7 @@ auto GenericUtils::GetColorDay(const vector<int>& day_time, const vector<uint8>&
         *light = std::clamp(*light, 0, 100);
     }
 
-    return 0xFFu << 24 | static_cast<uint>(result[0]) << 16 | static_cast<uint>(result[1]) << 8 | static_cast<uint>(result[2]);
+    return ucolor {result[0], result[1], result[2], 255};
 }
 
 auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint

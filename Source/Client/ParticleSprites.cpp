@@ -222,7 +222,7 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ParticleSprite* particle_spr)
     }
 
     _sprMngr.GetRtMngr().PushRenderTarget(rt_intermediate);
-    _sprMngr.GetRtMngr().ClearCurrentRenderTarget(0, true);
+    _sprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
     // Draw particles
     particle_spr->GetParticle()->Draw();

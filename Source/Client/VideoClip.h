@@ -55,7 +55,7 @@ public:
     void Resume();
     void SetLooped(bool enabled);
     void SetTime(time_duration time);
-    auto RenderFrame() -> const vector<uint>&;
+    auto RenderFrame() -> const vector<ucolor>&;
 
 private:
     struct Impl;
