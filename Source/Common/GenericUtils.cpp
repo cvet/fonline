@@ -110,7 +110,7 @@ auto HashStorage::ToHashedStringMustExists(string_view s) const -> hstring
 
 auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (h == 0) {
         return {};

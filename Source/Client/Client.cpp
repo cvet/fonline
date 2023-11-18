@@ -437,6 +437,10 @@ void FOClient::MainLoop()
         _fpsCounter++;
     }
 
+#if FO_TRACY
+    TracyPlot("Client FPS", static_cast<int64>(Settings.FPS));
+#endif
+
     // Network
     if (_initNetReason != INIT_NET_REASON_NONE && !_conn.IsConnecting()) {
         _conn.Connect();

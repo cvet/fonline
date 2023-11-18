@@ -49,14 +49,14 @@ Entity::Entity(const PropertyRegistrator* registrator, const Properties* props) 
 
 void Entity::AddRef() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     ++_refCounter;
 }
 
 void Entity::Release() const noexcept
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     if (--_refCounter == 0) {
         delete this;
@@ -65,7 +65,7 @@ void Entity::Release() const noexcept
 
 auto Entity::GetClassName() const -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _props.GetRegistrator()->GetClassName();
 }
@@ -195,14 +195,14 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
 
 auto Entity::IsDestroying() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _isDestroying;
 }
 
 auto Entity::IsDestroyed() const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _isDestroyed;
 }
@@ -315,14 +315,14 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
 
 auto ProtoEntity::GetName() const -> string_view
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _protoId.as_str();
 }
 
 auto ProtoEntity::GetProtoId() const -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _protoId;
 }
@@ -337,14 +337,14 @@ void ProtoEntity::EnableComponent(hstring component)
 
 auto ProtoEntity::HasComponent(hstring name) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _components.count(name) != 0u;
 }
 
 auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _componentHashes.count(hash) != 0u;
 }
@@ -368,14 +368,14 @@ EntityWithProto::~EntityWithProto()
 
 auto EntityWithProto::GetProtoId() const -> hstring
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _proto->GetProtoId();
 }
 
 auto EntityWithProto::GetProto() const -> const ProtoEntity*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return _proto;
 }

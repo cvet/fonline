@@ -117,6 +117,7 @@ if(FO_MULTICONFIG)
 endif()
 
 AddConfiguration(Profiling RelWithDebInfo)
+AddConfiguration(Debug_Profiling Debug)
 AddConfiguration(Release_Ext Release)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")

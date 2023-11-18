@@ -40,11 +40,6 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-#if FO_INJECT_RPMALLOC
-// ReSharper disable once CppUnusedIncludeDirective
-#include "rpnew.h"
-#endif
-
 #if FO_MAC
 #include <sys/sysctl.h>
 #endif
@@ -597,7 +592,7 @@ void WorkThread::ThreadEntry() noexcept
 #if FO_WINDOWS
         ::SetThreadDescription(::GetCurrentThread(), _str(_name).toWideChar().c_str());
 #endif
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         tracy::SetThreadName(_name.c_str());
 #endif
 
@@ -719,4 +714,168 @@ void emscripten_sleep(unsigned int ms)
 
     throw UnreachablePlaceException(LINE_STR);
 }
+#endif
+
+// Replace memory allocator
+#if FO_INJECT_RPMALLOC
+
+#include "rpmalloc.h"
+#include <new>
+
+#ifndef __CRTDECL
+#define __CRTDECL
+#endif
+
+extern void __CRTDECL operator delete(void* p) noexcept
+{
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void __CRTDECL operator delete[](void* p) noexcept
+{
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void* __CRTDECL operator new(std::size_t size) noexcept(false)
+{
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* __CRTDECL operator new[](std::size_t size) noexcept(false)
+{
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* __CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* __CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpmalloc(size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+#if (__cplusplus >= 201402L || _MSC_VER >= 1916)
+extern void __CRTDECL operator delete(void* p, std::size_t size) noexcept
+{
+    UNUSED_VARIABLE(size);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void __CRTDECL operator delete[](void* p, std::size_t size) noexcept
+{
+    UNUSED_VARIABLE(size);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+#endif
+
+#if (__cplusplus > 201402L || defined(__cpp_aligned_new))
+extern void __CRTDECL operator delete(void* p, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void __CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void __CRTDECL operator delete(void* p, std::size_t size, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void __CRTDECL operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept
+{
+    UNUSED_VARIABLE(size);
+    UNUSED_VARIABLE(align);
+#if FO_TRACY
+    TracyFree(p);
+#endif
+    rpfree(p);
+}
+
+extern void* __CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
+{
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* __CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
+{
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* __CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+
+extern void* __CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+{
+    UNUSED_VARIABLE(tag);
+    auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
+#if FO_TRACY
+    TracyAlloc(p, size);
+#endif
+    return p;
+}
+#endif
+
 #endif

@@ -640,6 +640,10 @@ FOServer::FOServer(GlobalSettings& settings) :
             _stats.LastLoopTime = loop_duration;
             _stats.Uptime = cur_time - _stats.ServerStartTime;
 
+#if FO_TRACY
+            TracyPlot("Server loops per second", static_cast<int64>(_stats.LoopsPerSecond));
+#endif
+
             return std::chrono::milliseconds {0};
         });
 

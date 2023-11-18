@@ -156,7 +156,7 @@ void WriteLogMessage(LogType type, string_view message) noexcept
         __android_log_print(ANDROID_LOG_INFO, FO_DEV_NAME, "%s", result.c_str());
 #endif
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         TracyMessage(result.c_str(), result.length());
 #endif
 

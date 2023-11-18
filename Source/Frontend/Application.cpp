@@ -143,7 +143,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     CreateGlobalData();
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
     TracySetProgramName(FO_GAME_NAME);
 #endif
 
@@ -1048,7 +1048,7 @@ void Application::EndFrame()
 
     _onFrameEndDispatcher();
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
     FrameMark;
 #endif
 }

@@ -307,7 +307,7 @@ struct ASContextExtendedData
     asIScriptContext* Parent {};
     time_point SuspendEndTime {};
     Entity* ValidCheck {};
-#ifdef TRACY_ENABLE
+#if FO_TRACY
     vector<TracyCZoneCtx> TracyExecutionCalls {};
 #endif
 };
@@ -334,7 +334,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         static_cast<asCContext*>(ctx)->Ext = new ASContextExtendedData();
         auto&& ctx_ext = GET_CONTEXT_EXT(ctx);
         ctx_ext.ScriptCallCacheEntries = &ScriptCallCacheEntries;
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         ctx_ext.TracyExecutionCalls.reserve(64);
 #endif
 
@@ -422,7 +422,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
         {
             ctx_ext.ExecutionActive = true;
             ctx_ext.ExecutionCalls = 0;
-#ifdef TRACY_ENABLE
+#if FO_TRACY
             ctx_ext.TracyExecutionCalls.clear();
 #endif
 
@@ -449,7 +449,7 @@ struct SCRIPTING_CLASS::AngelScriptImpl
 #endif
             }
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
             while (!ctx_ext.TracyExecutionCalls.empty()) {
                 ___tracy_emit_zone_end(ctx_ext.TracyExecutionCalls.back());
                 ctx_ext.TracyExecutionCalls.pop_back();
@@ -579,7 +579,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         PushStackTrace(storage.SrcLoc);
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
@@ -590,7 +590,7 @@ static void AngelScriptBeginCall(asIScriptContext* ctx, asIScriptFunction* func,
 
         PushStackTrace(storage.SrcLoc);
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         const auto tracy_srcloc = ___tracy_alloc_srcloc(storage.SrcLoc.line, storage.FileBuf.data(), storage.FileBufLen, storage.FuncBuf.data(), storage.FuncBufLen);
         const auto tracy_ctx = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
         ctx_ext.TracyExecutionCalls.emplace_back(tracy_ctx);
@@ -612,7 +612,7 @@ static void AngelScriptEndCall(asIScriptContext* ctx)
 
         ctx_ext.ExecutionCalls--;
 
-#ifdef TRACY_ENABLE
+#if FO_TRACY
         ___tracy_emit_zone_end(ctx_ext.TracyExecutionCalls.back());
         ctx_ext.TracyExecutionCalls.pop_back();
 #endif
@@ -1787,7 +1787,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, HashResolver& hash
 template<typename T>
 static void Entity_AddRef(const T* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->AddRef();
@@ -1800,7 +1800,7 @@ static void Entity_AddRef(const T* self)
 template<typename T>
 static void Entity_Release(const T* self)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     self->Release();
@@ -1813,7 +1813,7 @@ static void Entity_Release(const T* self)
 template<typename T>
 static auto Entity_IsDestroyed(const T* self) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -1827,7 +1827,7 @@ static auto Entity_IsDestroyed(const T* self) -> bool
 template<typename T>
 static auto Entity_IsDestroying(const T* self) -> bool
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -2767,7 +2767,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
 template<typename T>
 static void Global_Get(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     const auto& value = *static_cast<T*>(gen->GetAuxiliary());
@@ -2781,7 +2781,7 @@ static void Global_Get(asIScriptGeneric* gen)
 template<typename T>
 static auto Entity_GetSelfForEvent(T* entity) -> T*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
 #if !COMPILER_MODE
     // Don't verify entity for destroying
@@ -2932,7 +2932,7 @@ static void Property_SetValueAsAny(T* entity, int prop_index, any_t value)
 template<typename T>
 static void Property_GetComponent(asIScriptGeneric* gen)
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
@@ -3024,7 +3024,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
 template<typename T>
 static auto EntityDownCast(T* a) -> Entity*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_base_of_v<Entity, T>);
 
@@ -3038,7 +3038,7 @@ static auto EntityDownCast(T* a) -> Entity*
 template<typename T>
 static auto EntityUpCast(Entity* a) -> T*
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     static_assert(std::is_base_of_v<Entity, T>);
 
@@ -3288,7 +3288,7 @@ static auto StrongType_Equals(const T& self, const T& other) -> bool
 template<typename T>
 static auto StrongType_UnderlyingConv(const T& self) -> typename T::underlying_type
 {
-    STACK_TRACE_ENTRY();
+    NO_STACK_TRACE_ENTRY();
 
     return self.underlying_value();
 }
