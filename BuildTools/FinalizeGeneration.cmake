@@ -89,6 +89,7 @@ include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
 add_library(rpmalloc ${FO_RPMALLOC_SOURCE})
 add_compile_definitions(ENABLE_PRELOAD=1)
 add_compile_definitions(FO_INJECT_RPMALLOC=1)
+target_compile_definitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
 list(APPEND FO_COMMON_LIBS "rpmalloc")
 DisableLibWarnings(rpmalloc)
 
