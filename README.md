@@ -139,6 +139,7 @@ They are located in ThirdParty directory.
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
+* [rpmalloc](https://github.com/mjansson/rpmalloc) - General purpose memory allocator
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library

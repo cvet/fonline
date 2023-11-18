@@ -38,7 +38,7 @@ add_compile_definitions(FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTI
 add_compile_definitions(FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
 add_compile_definitions(FO_GEOMETRY=$<IF:$<STREQUAL:${FO_GEOMETRY},HEXAGONAL>,1,$<IF:$<STREQUAL:${FO_GEOMETRY},SQUARE>,2,0>>)
 add_compile_definitions(FO_NO_MANUAL_STACK_TRACE=$<CONFIG:Release_Ext>)
-add_compile_definitions(FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext>)
+add_compile_definitions(FO_NO_EXTRA_ASSERTS=0) # Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> for first need separate asserts from valid error
 add_compile_definitions(FO_NO_TEXTURE_LOOKUP=$<CONFIG:Release_Ext>)
 add_compile_definitions(FO_DIRECT_SPRITES_DRAW=$<CONFIG:Release_Ext>)
 
@@ -77,6 +77,20 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Third-party libs
 StatusMessage("Third-party libs:")
+
+# Rpmalloc
+StatusMessage("+ Rpmalloc")
+set(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
+set(FO_RPMALLOC_SOURCE
+    "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.c"
+    "${FO_RPMALLOC_DIR}/rpmalloc/rpmalloc.h"
+    "${FO_RPMALLOC_DIR}/rpmalloc/rpnew.h")
+include_directories("${FO_RPMALLOC_DIR}/rpmalloc")
+add_library(rpmalloc ${FO_RPMALLOC_SOURCE})
+add_compile_definitions(ENABLE_PRELOAD=1)
+add_compile_definitions(FO_INJECT_RPMALLOC=1)
+list(APPEND FO_COMMON_LIBS "rpmalloc")
+DisableLibWarnings(rpmalloc)
 
 # SDL2
 StatusMessage("+ SDL2")

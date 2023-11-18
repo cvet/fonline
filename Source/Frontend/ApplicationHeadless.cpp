@@ -109,7 +109,7 @@ void InitApp(int argc, char** argv, bool client_mode)
 
     // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
-    {
+    if (!IsRunInDebugger()) {
         [[maybe_unused]] static backward::SignalHandling sh;
         assert(sh.loaded());
     }

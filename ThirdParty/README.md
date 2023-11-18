@@ -24,6 +24,7 @@
 * mongo-c-driver - [mongo-c-driver-1.24.4](https://github.com/mongodb/mongo-c-driver)
 * mono - [mono-5.16.0.209](https://www.mono-project.com/)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
+* rpmalloc - [rpmalloc-1.4.4](https://github.com/mjansson/rpmalloc)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib128](https://www.zlib.net/)

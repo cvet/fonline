@@ -40,6 +40,11 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
+#if FO_INJECT_RPMALLOC
+// ReSharper disable once CppUnusedIncludeDirective
+#include "rpnew.h"
+#endif
+
 #if FO_MAC
 #include <sys/sysctl.h>
 #endif

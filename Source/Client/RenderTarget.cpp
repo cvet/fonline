@@ -158,10 +158,13 @@ auto RenderTargetManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) c
     STACK_TRACE_ENTRY();
 
 #if FO_NO_TEXTURE_LOOKUP
-    return 0xFFFFFFFF;
+    UNUSED_VARIABLE(rt);
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+
+    return ucolor {255, 255, 255, 255};
 
 #else
-
     // Try find in last picks
     for (auto&& pix : rt->LastPixelPicks) {
         if (std::get<0>(pix) == x && std::get<1>(pix) == y) {
