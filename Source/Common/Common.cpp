@@ -722,7 +722,7 @@ void emscripten_sleep(unsigned int ms)
 #include "rpmalloc.h"
 #include <new>
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 #define CRTDECL __CRTDECL
 #else
 #define CRTDECL
