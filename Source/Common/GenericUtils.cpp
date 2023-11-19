@@ -120,6 +120,8 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
         return hstring(&it->second);
     }
 
+    BreakIntoDebugger("Can't resolve hash");
+
     if (failed != nullptr) {
         WriteLog("Can't resolve hash {}", h);
         *failed = true;

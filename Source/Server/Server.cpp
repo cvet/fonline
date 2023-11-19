@@ -844,7 +844,6 @@ void FOServer::DrawGui(string_view server_name)
                 buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
                 buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
                 buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
-                buf += _str("Loops count: {}\n", _stats.LoopsCount);
                 buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
                 buf += _str("Last loop time: {}\n", _stats.LastLoopTime);
                 buf += _str("Min loop time: {}\n", _stats.LoopMinTime);

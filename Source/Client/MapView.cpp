@@ -4305,7 +4305,7 @@ void MapView::AddFastPid(hstring pid)
 
     RUNTIME_ASSERT(_mapperMode);
 
-    _fastPids.insert(pid);
+    _fastPids.emplace(pid);
 }
 
 auto MapView::IsFastPid(hstring pid) const -> bool
@@ -4331,7 +4331,7 @@ void MapView::AddIgnorePid(hstring pid)
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(_mapperMode);
-    _ignorePids.insert(pid);
+    _ignorePids.emplace(pid);
 }
 
 void MapView::SwitchIgnorePid(hstring pid)
@@ -4344,7 +4344,7 @@ void MapView::SwitchIgnorePid(hstring pid)
         _ignorePids.erase(pid);
     }
     else {
-        _ignorePids.insert(pid);
+        _ignorePids.emplace(pid);
     }
 }
 

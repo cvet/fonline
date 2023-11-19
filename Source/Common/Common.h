@@ -475,6 +475,10 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 // Todo: improve automatic checker of STACK_TRACE_ENTRY/NO_STACK_TRACE_ENTRY in every .cpp function
 #if FO_TRACY
+#ifndef TRACY_ENABLE
+#error TRACY_ENABLE not defined
+#endif
+
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
 

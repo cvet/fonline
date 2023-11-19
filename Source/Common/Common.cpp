@@ -722,11 +722,11 @@ void emscripten_sleep(unsigned int ms)
 #include "rpmalloc.h"
 #include <new>
 
-#ifndef __CRTDECL
-#define __CRTDECL
+#ifdef FO_WINDOWS
+#define CRTDECL __CRTDECL
 #endif
 
-extern void __CRTDECL operator delete(void* p) noexcept
+extern void CRTDECL operator delete(void* p) noexcept
 {
 #if FO_TRACY
     TracyFree(p);
@@ -734,7 +734,7 @@ extern void __CRTDECL operator delete(void* p) noexcept
     rpfree(p);
 }
 
-extern void __CRTDECL operator delete[](void* p) noexcept
+extern void CRTDECL operator delete[](void* p) noexcept
 {
 #if FO_TRACY
     TracyFree(p);
@@ -742,7 +742,7 @@ extern void __CRTDECL operator delete[](void* p) noexcept
     rpfree(p);
 }
 
-extern void* __CRTDECL operator new(std::size_t size) noexcept(false)
+extern void* CRTDECL operator new(std::size_t size) noexcept(false)
 {
     auto* p = rpmalloc(size);
 #if FO_TRACY
@@ -751,7 +751,7 @@ extern void* __CRTDECL operator new(std::size_t size) noexcept(false)
     return p;
 }
 
-extern void* __CRTDECL operator new[](std::size_t size) noexcept(false)
+extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
 {
     auto* p = rpmalloc(size);
 #if FO_TRACY
@@ -760,7 +760,7 @@ extern void* __CRTDECL operator new[](std::size_t size) noexcept(false)
     return p;
 }
 
-extern void* __CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
     auto* p = rpmalloc(size);
@@ -770,7 +770,7 @@ extern void* __CRTDECL operator new(std::size_t size, const std::nothrow_t& tag)
     return p;
 }
 
-extern void* __CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
     auto* p = rpmalloc(size);
@@ -781,7 +781,7 @@ extern void* __CRTDECL operator new[](std::size_t size, const std::nothrow_t& ta
 }
 
 #if (__cplusplus >= 201402L || _MSC_VER >= 1916)
-extern void __CRTDECL operator delete(void* p, std::size_t size) noexcept
+extern void CRTDECL operator delete(void* p, std::size_t size) noexcept
 {
     UNUSED_VARIABLE(size);
 #if FO_TRACY
@@ -790,7 +790,7 @@ extern void __CRTDECL operator delete(void* p, std::size_t size) noexcept
     rpfree(p);
 }
 
-extern void __CRTDECL operator delete[](void* p, std::size_t size) noexcept
+extern void CRTDECL operator delete[](void* p, std::size_t size) noexcept
 {
     UNUSED_VARIABLE(size);
 #if FO_TRACY
@@ -801,7 +801,7 @@ extern void __CRTDECL operator delete[](void* p, std::size_t size) noexcept
 #endif
 
 #if (__cplusplus > 201402L || defined(__cpp_aligned_new))
-extern void __CRTDECL operator delete(void* p, std::align_val_t align) noexcept
+extern void CRTDECL operator delete(void* p, std::align_val_t align) noexcept
 {
     UNUSED_VARIABLE(align);
 #if FO_TRACY
@@ -810,7 +810,7 @@ extern void __CRTDECL operator delete(void* p, std::align_val_t align) noexcept
     rpfree(p);
 }
 
-extern void __CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
+extern void CRTDECL operator delete[](void* p, std::align_val_t align) noexcept
 {
     UNUSED_VARIABLE(align);
 #if FO_TRACY
@@ -819,7 +819,7 @@ extern void __CRTDECL operator delete[](void* p, std::align_val_t align) noexcep
     rpfree(p);
 }
 
-extern void __CRTDECL operator delete(void* p, std::size_t size, std::align_val_t align) noexcept
+extern void CRTDECL operator delete(void* p, std::size_t size, std::align_val_t align) noexcept
 {
     UNUSED_VARIABLE(size);
     UNUSED_VARIABLE(align);
@@ -829,7 +829,7 @@ extern void __CRTDECL operator delete(void* p, std::size_t size, std::align_val_
     rpfree(p);
 }
 
-extern void __CRTDECL operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept
+extern void CRTDECL operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept
 {
     UNUSED_VARIABLE(size);
     UNUSED_VARIABLE(align);
@@ -839,7 +839,7 @@ extern void __CRTDECL operator delete[](void* p, std::size_t size, std::align_va
     rpfree(p);
 }
 
-extern void* __CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
+extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
 {
     auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #if FO_TRACY
@@ -848,7 +848,7 @@ extern void* __CRTDECL operator new(std::size_t size, std::align_val_t align) no
     return p;
 }
 
-extern void* __CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
+extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
 {
     auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
 #if FO_TRACY
@@ -857,7 +857,7 @@ extern void* __CRTDECL operator new[](std::size_t size, std::align_val_t align) 
     return p;
 }
 
-extern void* __CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
     auto* p = rpaligned_alloc(static_cast<size_t>(align), size);
@@ -867,7 +867,7 @@ extern void* __CRTDECL operator new(std::size_t size, std::align_val_t align, co
     return p;
 }
 
-extern void* __CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
+extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& tag) noexcept
 {
     UNUSED_VARIABLE(tag);
     auto* p = rpaligned_alloc(static_cast<size_t>(align), size);

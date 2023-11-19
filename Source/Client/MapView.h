@@ -431,8 +431,8 @@ private:
     uint16 _lastCurHx {};
     uint16 _lastCurHy {};
 
-    set<hstring> _fastPids {};
-    set<hstring> _ignorePids {};
+    unordered_set<hstring> _fastPids {};
+    unordered_set<hstring> _ignorePids {};
     vector<char> _hexTrack {};
 
     vector<unique_release_ptr<SpritePattern>> _spritePatterns {};
