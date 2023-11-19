@@ -115,5 +115,6 @@ private:
     bool _interthreadCommunication {};
     InterthreadDataCallback _interthreadSend {};
     vector<uint8> _interthreadReceived {};
+    bool _interthreadDisconnect {};
     optional<time_point> _artificalLagTime {};
 };

@@ -209,6 +209,11 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
     }
 
     if (_interthreadCommunication) {
+        if (_interthreadDisconnect) {
+            Disconnect();
+            return false;
+        }
+
         return for_write ? true : !_interthreadReceived.empty();
     }
 
@@ -292,7 +297,7 @@ auto ServerConnection::ConnectToHost(string_view host, uint16 port) -> bool
             }
             else {
                 _interthreadSend = nullptr;
-                Disconnect();
+                _interthreadDisconnect = true;
             }
         });
 
@@ -588,6 +593,7 @@ void ServerConnection::Disconnect()
 
     if (_interthreadCommunication) {
         _interthreadCommunication = false;
+        _interthreadDisconnect = false;
 
         if (_interthreadSend) {
             _interthreadSend({});
