@@ -724,6 +724,8 @@ void emscripten_sleep(unsigned int ms)
 
 #ifdef FO_WINDOWS
 #define CRTDECL __CRTDECL
+#else
+#define CRTDECL
 #endif
 
 extern void CRTDECL operator delete(void* p) noexcept
@@ -877,5 +879,7 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
     return p;
 }
 #endif
+
+#undef CRTDECL
 
 #endif
