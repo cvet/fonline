@@ -203,9 +203,13 @@ private:
         size_t CurOnline {};
 
         size_t LoopsCount {};
-        time_duration LastLoopTime {};
+        time_duration LoopLastTime {};
         time_duration LoopMinTime {};
         time_duration LoopMaxTime {};
+
+        deque<pair<time_point, time_duration>> LoopTimeStamps {};
+        time_duration LoopWholeAvgTime {};
+        time_duration LoopAvgTime {};
 
         time_point LoopCounterBegin {};
         size_t LoopCounter {};

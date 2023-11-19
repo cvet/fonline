@@ -623,6 +623,17 @@ FOServer::FOServer(GlobalSettings& settings) :
             const auto cur_time = Timer::CurTime();
             const auto loop_duration = _loopBalancer.GetLoopDuration();
 
+            // Calculate loop average time
+            _stats.LoopTimeStamps.emplace_back(cur_time, loop_duration);
+            _stats.LoopWholeAvgTime += loop_duration;
+
+            while (cur_time - _stats.LoopTimeStamps.front().first > std::chrono::milliseconds {Settings.LoopAverageTimeInterval}) {
+                _stats.LoopWholeAvgTime -= _stats.LoopTimeStamps.front().second;
+                _stats.LoopTimeStamps.pop_front();
+            }
+
+            _stats.LoopAvgTime = _stats.LoopWholeAvgTime / _stats.LoopTimeStamps.size();
+
             // Calculate loops per second
             if (cur_time - _stats.LoopCounterBegin >= std::chrono::milliseconds {1000}) {
                 _stats.LoopsPerSecond = _stats.LoopCounter;
@@ -637,7 +648,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             _stats.LoopsCount++;
             _stats.LoopMaxTime = _stats.LoopMaxTime != time_duration() ? std::max(loop_duration, _stats.LoopMaxTime) : loop_duration;
             _stats.LoopMinTime = _stats.LoopMinTime != time_duration() ? std::min(loop_duration, _stats.LoopMinTime) : loop_duration;
-            _stats.LastLoopTime = loop_duration;
+            _stats.LoopLastTime = loop_duration;
             _stats.Uptime = cur_time - _stats.ServerStartTime;
 
 #if FO_TRACY
@@ -842,10 +853,11 @@ void FOServer::DrawGui(string_view server_name)
                 buf += _str("Connections: {}\n", _stats.CurOnline);
                 buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
                 buf += _str("Critters in game: {}\n", CrMngr.CrittersInGame());
-                buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
+                buf += _str("Locations: {}\n", MapMngr.GetLocationsCount());
+                buf += _str("Maps: {}\n", MapMngr.GetMapsCount());
                 buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
                 buf += _str("Loops per second: {}\n", _stats.LoopsPerSecond);
-                buf += _str("Last loop time: {}\n", _stats.LastLoopTime);
+                buf += _str("Average loop time: {}\n", _stats.LoopAvgTime);
                 buf += _str("Min loop time: {}\n", _stats.LoopMinTime);
                 buf += _str("Max loop time: {}\n", _stats.LoopMaxTime);
                 buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);

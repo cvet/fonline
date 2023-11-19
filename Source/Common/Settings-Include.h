@@ -332,6 +332,7 @@ FIXED_SETTING(int, LoopsPerSecondCap, 1000);
 FIXED_SETTING(uint, LockMaxWaitTime, 100);
 FIXED_SETTING(uint, DataBaseCommitPeriod, 10);
 FIXED_SETTING(uint, DataBaseMaxCommitJobs, 100);
+FIXED_SETTING(uint, LoopAverageTimeInterval, 1000);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING
