@@ -57,10 +57,3 @@
 #define DOCK_TOP    (3)
 #define DOCK_BOTTOM (4)
 #define DOCK_FILL   (5)
-
-// Image layouts
-#define IMAGE_LAYOUT_NONE    (0)
-#define IMAGE_LAYOUT_TILE    (1)
-#define IMAGE_LAYOUT_CENTER  (2)
-#define IMAGE_LAYOUT_STRETCH (3)
-#define IMAGE_LAYOUT_ZOOM    (4)

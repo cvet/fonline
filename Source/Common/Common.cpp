@@ -720,6 +720,7 @@ void emscripten_sleep(unsigned int ms)
 #if FO_HAVE_RPMALLOC
 
 #include "rpmalloc.h"
+
 #include <new>
 
 #if FO_WINDOWS

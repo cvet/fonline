@@ -135,9 +135,9 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   Object GetChild( uint index )
 // Panel : Object
 //   Sprite::Sprite BackgroundImage
-//   int BackgroundImageLayout
-//   void SetBackgroundImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetBackgroundImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+//   SpriteLayout BackgroundImageLayout
+//   void SetBackgroundImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetBackgroundImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
 //   void SetCropContent( bool enabled )
 //   void SetAutoScroll( bool ver, bool hor )
 //   void ModifyScroll( int ver, int hor )
@@ -164,17 +164,17 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetCarriage( bool enable )
 // Button : Panel : Object
 //   Sprite::Sprite PressedImage
-//   int PressedImageLayout
+//   SpriteLayout PressedImageLayout
 //   Sprite::Sprite HoverImage
-//   int HoverImageLayout
+//   SpriteLayout HoverImageLayout
 //   bool IsSwitched
 //   bool IsDisabled
-//   void SetPressedImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetPressedImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetHoverImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetHoverImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetDisabledImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetDisabledImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+//   void SetPressedImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetPressedImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetHoverImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetHoverImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetDisabledImage( string imageName, SpriteLayout imageLayout = SpriteLayout::None )
+//   void SetDisabledImage( hstring imageName, SpriteLayout imageLayout = SpriteLayout::None )
 //   void SetSwitch( bool enabled )
 //   void SetCondition( bool enabled )
 // CheckBox : Button : Panel : Object
@@ -1195,9 +1195,9 @@ class Panel : Object
     {
         return _BackgroundImage;
     }
-    int get_BackgroundImageLayout() final
+    SpriteLayout get_BackgroundImageLayout() final
     {
-        return _BackgroundImage != null ? _BackgroundImage.Layout : IMAGE_LAYOUT_NONE;
+        return _BackgroundImage != null ? _BackgroundImage.Layout : SpriteLayout::None;
     }
     bool get_IsVerticalScroll() final
     {
@@ -1268,26 +1268,26 @@ class Panel : Object
     void _DrawImage(Sprite::Sprite image)
     {
         if (_Width > 0 && _Height > 0) {
-            image.Draw(_AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, -1, _Color);
+            image.Draw(_AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, SpriteLayout::None, _Color);
         }
     }
 
-    void SetBackgroundImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
-    void SetBackgroundImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
-    void _SetImage(Sprite::Sprite& curImage, string imageName, int imageLayout)
+    void _SetImage(Sprite::Sprite& curImage, string imageName, SpriteLayout imageLayout)
     {
         _SetImage(curImage, hstring(imageName), imageLayout);
     }
 
-    void _SetImage(Sprite::Sprite& curImage, hstring imageName, int imageLayout)
+    void _SetImage(Sprite::Sprite& curImage, hstring imageName, SpriteLayout imageLayout)
     {
         if (curImage != null && curImage.LoadedName == imageName) {
             return;
@@ -1305,7 +1305,7 @@ class Panel : Object
             curImage.Layout = imageLayout;
         }
 
-        if (curImage != null && (imageLayout == IMAGE_LAYOUT_NONE || (_BaseWidth == 0 && _BaseHeight == 0))) {
+        if (curImage != null && (imageLayout == SpriteLayout::None || (_BaseWidth == 0 && _BaseHeight == 0))) {
             SetSize(curImage.Width, curImage.Height);
         }
     }
@@ -1766,25 +1766,25 @@ class Button : Panel
     {
         return _PressedImage;
     }
-    int get_PressedImageLayout() final
+    SpriteLayout get_PressedImageLayout() final
     {
-        return _PressedImage != null ? _PressedImage.Layout : IMAGE_LAYOUT_NONE;
+        return _PressedImage != null ? _PressedImage.Layout : SpriteLayout::None;
     }
     Sprite::Sprite get_HoverImage() final
     {
         return _HoverImage;
     }
-    int get_HoverImageLayout() final
+    SpriteLayout get_HoverImageLayout() final
     {
-        return _HoverImage != null ? _HoverImage.Layout : IMAGE_LAYOUT_NONE;
+        return _HoverImage != null ? _HoverImage.Layout : SpriteLayout::None;
     }
     Sprite::Sprite get_DisabledImage() final
     {
         return _DisabledImage;
     }
-    int get_DisabledImageLayout() final
+    SpriteLayout get_DisabledImageLayout() final
     {
-        return _DisabledImage != null ? _DisabledImage.Layout : IMAGE_LAYOUT_NONE;
+        return _DisabledImage != null ? _DisabledImage.Layout : SpriteLayout::None;
     }
 
     bool _IsDisabled;
@@ -1857,32 +1857,32 @@ class Button : Panel
         Panel::_MousePressed(button);
     }
 
-    void SetPressedImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetPressedImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_PressedImage, imageName, imageLayout);
     }
 
-    void SetPressedImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetPressedImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_PressedImage, imageName, imageLayout);
     }
 
-    void SetHoverImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetHoverImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_HoverImage, imageName, imageLayout);
     }
 
-    void SetHoverImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetHoverImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_HoverImage, imageName, imageLayout);
     }
 
-    void SetDisabledImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetDisabledImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_DisabledImage, imageName, imageLayout);
     }
 
-    void SetDisabledImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetDisabledImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
         _SetImage(_DisabledImage, imageName, imageLayout);
     }
