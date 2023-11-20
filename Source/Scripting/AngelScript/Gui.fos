@@ -7,6 +7,21 @@
 ///@ Setting Client CursorType DraggableCursor
 ///@ Setting Client bool MsgboxInvert
 
+// Anchor styles
+///@ Enum AnchorStyle None = 0
+///@ Enum AnchorStyle Left = 1
+///@ Enum AnchorStyle Right = 2
+///@ Enum AnchorStyle Top = 4
+///@ Enum AnchorStyle Bottom = 8
+
+// Dock styles
+///@ Enum DockStyle None = 0
+///@ Enum DockStyle Left = 1
+///@ Enum DockStyle Right = 2
+///@ Enum DockStyle Top = 3
+///@ Enum DockStyle Bottom = 4
+///@ Enum DockStyle Fill = 5
+
 interface IDropMenu
 {
     void Draw();
@@ -89,8 +104,8 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   int AbsolutePosY
 //   int Width
 //   int Height
-//   int Anchor
-//   int Dock
+//   AnchorStyle Anchor
+//   DockStyle Dock
 //   bool IsDraggable
 //   bool IsNotHittable
 //   bool IsNotCatchable
@@ -110,8 +125,8 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetPosition( int x, int y )
 //   void SetPosition( string iniKey )
 //   void SetSize( int w, int h )
-//   void SetAnchor( int anchorStyles )
-//   void SetDock( int dockStyle )
+//   void SetAnchor( AnchorStyle anchorStyles )
+//   void SetDock( DockStyle dockStyle )
 //   void SetColor( uint color )
 //   void SetDraggable( bool enabled )
 //   void SetNotHittable( bool enabled )
@@ -278,11 +293,11 @@ class Object
     {
         return _Height;
     }
-    int get_Anchor() final
+    AnchorStyle get_Anchor() final
     {
         return _Anchor;
     }
-    int get_Dock() final
+    DockStyle get_Dock() final
     {
         return _Dock;
     }
@@ -353,8 +368,8 @@ class Object
     int _AbsolutePosY;
     int _Width;
     int _Height;
-    int _Anchor;
-    int _Dock;
+    AnchorStyle _Anchor;
+    DockStyle _Dock;
     uint _Color;
     bool _IsDragged;
     bool _IsDraggable;
@@ -1027,28 +1042,28 @@ class Object
         // Dock
         int newPosX;
         int newPosY;
-        if (_Dock != 0) {
-            if (_Dock == DOCK_LEFT) {
+        if (_Dock != DockStyle::None) {
+            if (_Dock == DockStyle::Left) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Height = parentHeight;
             }
-            else if (_Dock == DOCK_RIGHT) {
+            else if (_Dock == DockStyle::Right) {
                 newPosX = parentAbsolutePosX + parentWidth - _Width;
                 newPosY = parentAbsolutePosY;
                 _Height = parentHeight;
             }
-            else if (_Dock == DOCK_TOP) {
+            else if (_Dock == DockStyle::Top) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Width = parentWidth;
             }
-            else if (_Dock == DOCK_BOTTOM) {
+            else if (_Dock == DockStyle::Bottom) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY + parentHeight - _Height;
                 _Width = parentWidth;
             }
-            else if (_Dock == DOCK_FILL) {
+            else if (_Dock == DockStyle::Fill) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Width = parentWidth;
@@ -1061,20 +1076,20 @@ class Object
         }
         // Anchor
         else {
-            if ((_Anchor & ANCHOR_LEFT) != 0) {
+            if ((_Anchor & AnchorStyle::Left) != 0) {
                 newPosX = parentAbsolutePosX + _BasePosX;
             }
-            else if ((_Anchor & ANCHOR_RIGHT) != 0) {
+            else if ((_Anchor & AnchorStyle::Right) != 0) {
                 newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth);
             }
             else {
                 newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth) / 2;
             }
 
-            if ((_Anchor & ANCHOR_TOP) != 0) {
+            if ((_Anchor & AnchorStyle::Top) != 0) {
                 newPosY = parentAbsolutePosY + _BasePosY;
             }
-            else if ((_Anchor & ANCHOR_BOTTOM) != 0) {
+            else if ((_Anchor & AnchorStyle::Bottom) != 0) {
                 newPosY = parentAbsolutePosY + _BasePosY + (parentHeight - parentBaseHeight);
             }
             else {
@@ -1138,7 +1153,7 @@ class Object
         _SizeChanged();
     }
 
-    void SetAnchor(int anchorStyles)
+    void SetAnchor(AnchorStyle anchorStyles)
     {
         if (_Anchor == anchorStyles) {
             return;
@@ -1148,7 +1163,7 @@ class Object
         _RefreshPosition();
     }
 
-    void SetDock(int dockStyle)
+    void SetDock(DockStyle dockStyle)
     {
         if (_Dock == dockStyle) {
             return;
