@@ -2006,7 +2006,7 @@ void MapView::CollectLightSources()
     for (auto* cr : _critters) {
         auto added = false;
         for (const auto* item : cr->GetInvItems()) {
-            if (item->GetIsLight() && item->GetCritterSlot() != 0) {
+            if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
                 _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
                 added = true;
             }

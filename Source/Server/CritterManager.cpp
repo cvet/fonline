@@ -78,12 +78,12 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
     if (send) {
         cr->Send_AddItem(item);
-        if (item->GetCritterSlot() != 0) {
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+        if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
+            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, CritterItemSlot::Inventory);
         }
     }
 
-    _engine->OnCritterMoveItem.Fire(cr, item, static_cast<uint8>(-1));
+    _engine->OnCritterMoveItem.Fire(cr, item, CritterItemSlot::Outside);
 
     return item;
 }
@@ -110,14 +110,14 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     if (send) {
         cr->Send_EraseItem(item);
     }
-    if (item->GetCritterSlot() != 0) {
-        cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+    if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
+        cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, CritterItemSlot::Inventory);
     }
 
     const auto prev_slot = item->GetCritterSlot();
 
     item->SetCritterId(ident_t {});
-    item->SetCritterSlot(0);
+    item->SetCritterSlot(CritterItemSlot::Inventory);
 
     auto item_ids = cr->GetItemIds();
     const auto item_id_it = std::find(item_ids.begin(), item_ids.end(), item->GetId());
@@ -373,7 +373,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
         Item* another_slot = nullptr;
         for (auto* item : cr->_invItems) {
             if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == 0) {
+                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                     return item;
                 }
                 another_slot = item;

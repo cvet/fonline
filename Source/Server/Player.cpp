@@ -121,7 +121,7 @@ void Player::Send_AddCritter(const Critter* cr)
     CONNECTION_OUTPUT_END(Connection);
 
     if (!is_chosen) {
-        Send_MoveItem(cr, nullptr, ACTION_REFRESH, 0);
+        Send_MoveItem(cr, nullptr, ACTION_REFRESH, CritterItemSlot::Inventory);
     }
 
     if (cr->IsMoving()) {
@@ -342,7 +342,7 @@ void Player::Send_Action(const Critter* from_cr, int action, int action_ext, con
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot)
+void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -361,8 +361,8 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
         items.reserve(inv_items.size());
         for (const auto* item_ : inv_items) {
             const auto slot = item_->GetCritterSlot();
-            if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && //
-                slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
+            if (static_cast<size_t>(slot) < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[static_cast<size_t>(slot)] && //
+                static_cast<size_t>(slot) < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[static_cast<size_t>(slot)]) {
                 items.push_back(item_);
             }
         }
@@ -382,7 +382,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     Connection->OutBuf.Write(action);
     Connection->OutBuf.Write(prev_slot);
     Connection->OutBuf.Write(item != nullptr);
-    Connection->OutBuf.Write(item != nullptr ? item->GetCritterSlot() : uint8());
+    Connection->OutBuf.Write(item != nullptr ? item->GetCritterSlot() : CritterItemSlot::Inventory);
     Connection->OutBuf.Write(static_cast<uint16>(items.size()));
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];

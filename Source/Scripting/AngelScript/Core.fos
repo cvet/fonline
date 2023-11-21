@@ -63,13 +63,6 @@
 #define ACTION_RESPAWN           (22) // s
 #define ACTION_REFRESH           (23) // s
 
-// Slots
-#define SLOT_INV    (0) // Inventory
-#define SLOT_HAND1  (1) // Weapon slot
-#define SLOT_HAND2  (2) // Extended slot
-#define SLOT_ARMOR  (3) // Armor slot
-#define SLOT_GROUND uint8(-1)
-
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
 #define IS_TIMEOUT      #(to)((to)> Game.GetFullSecond())

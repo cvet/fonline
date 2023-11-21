@@ -124,12 +124,13 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     item->SetContainerId(cont->GetId());
 }
 
-auto ItemManager::AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*
+auto ItemManager::AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
+    RUNTIME_ASSERT(stack_id != ContainerItemStack::Any);
 
     if (!cont->_innerItems) {
         cont->_innerItems = std::make_unique<vector<Item*>>();
@@ -174,7 +175,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId(ident_t {});
-    item->SetContainerStack(0);
+    item->SetContainerStack(ContainerItemStack::Root);
 
     if (cont->_innerItems->empty()) {
         cont->_innerItems.reset();
@@ -225,9 +226,9 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
         item->SetHexX(0);
         item->SetHexY(0);
         item->SetCritterId(ident_t {});
-        item->SetCritterSlot(0);
+        item->SetCritterSlot(CritterItemSlot::Inventory);
         item->SetContainerId(ident_t {});
-        item->SetContainerStack(0);
+        item->SetContainerStack(ContainerItemStack::Root);
         item->SetInnerItemIds({});
     }
 
@@ -382,7 +383,7 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, ui
     }
 }
 
-void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks)
+void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks)
 {
     STACK_TRACE_ENTRY();
 
@@ -411,7 +412,7 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id,
     }
 }
 
-auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*
+auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -477,7 +478,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
     STACK_TRACE_ENTRY();
 
-    if (count == 0u) {
+    if (count == 0) {
         return nullptr;
     }
 

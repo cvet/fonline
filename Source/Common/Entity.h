@@ -71,6 +71,14 @@
     }
 
 ///@ ExportEnum
+enum class CritterItemSlot : uint8
+{
+    Inventory = 0,
+    Main = 1,
+    Outside = 255,
+};
+
+///@ ExportEnum
 enum class CritterCondition : uint8
 {
     Alive = 0,
@@ -125,6 +133,13 @@ enum class ItemOwnership : uint8
     CritterInventory = 1,
     ItemContainer = 2,
     Nowhere = 3,
+};
+
+///@ ExportEnum
+enum class ContainerItemStack : uint
+{
+    Root = 0,
+    Any = 0xFFFFFFFF,
 };
 
 ///@ ExportEnum

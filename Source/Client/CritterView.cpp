@@ -91,7 +91,7 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -109,7 +109,7 @@ auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, con
     return item;
 }
 
-auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*
+auto CritterView::AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*
 {
     STACK_TRACE_ENTRY();
 
@@ -139,7 +139,7 @@ void CritterView::DeleteInvItem(ItemView* item, bool animate)
 
     item->SetOwnership(ItemOwnership::Nowhere);
     item->SetCritterId(ident_t {});
-    item->SetCritterSlot(0);
+    item->SetCritterSlot(CritterItemSlot::Inventory);
 
     item->MarkAsDestroyed();
     item->Release();

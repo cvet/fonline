@@ -265,7 +265,7 @@
         ItemView* another_slot = nullptr;
         for (auto* item : self->GetInvItems()) {
             if (item->GetProtoId() == protoId) {
-                if (item->GetCritterSlot() == 0) {
+                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                     return item;
                 }
                 another_slot = item;

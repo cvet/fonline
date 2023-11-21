@@ -68,8 +68,8 @@ public:
     [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
 
     void MarkAsDestroyed() override;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*;
-    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView*;
+    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView*;
+    virtual auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView*;
     virtual void DeleteInvItem(ItemView* item, bool animate);
     void DeleteAllInvItems();
     void SetName(string_view name);

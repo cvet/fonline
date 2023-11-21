@@ -68,20 +68,24 @@
 ///# param stackId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, uint stackId)
+[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, ContainerItemStack stackId)
 {
     if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
         throw ScriptException("Invalid proto '{}' arg.", pid);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count > 0 ? count : 1, stackId);
+    if (count == 0) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
 }
 
 ///# ...
 ///# param stackId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, uint stackId)
+[[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, ContainerItemStack stackId)
 {
     return self->GetInnerItems(stackId);
 }

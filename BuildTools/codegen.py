@@ -572,7 +572,7 @@ def parseTags():
                 for g in codeGenTags['ExportEnum']:
                     if g[0] == grname:
                         g[2].append((key, value if value is not None else findNextValue(g[2]), []))
-                        # Verify value g[1] = calcUnderlyingMetaType(g[2])
+                        # Todo: Verify value in range of underlying type size
                         break
                 else:
                     for g in codeGenTags['Enum']:

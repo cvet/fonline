@@ -647,7 +647,7 @@ void FOMapper::ProcessMapperInput()
             else if (IntVisible && IsCurInRect(IntWWork, IntX, IntY) && (IsItemMode() || IsCritMode())) {
                 int step = 1;
                 if (Keyb.ShiftDwn) {
-                    step = ProtosOnScreen;
+                    step = static_cast<int>(ProtosOnScreen);
                 }
                 else if (Keyb.CtrlDwn) {
                     step = 100;
@@ -899,7 +899,7 @@ void FOMapper::IntDraw()
 
     if (IsItemMode()) {
         auto i = *CurProtoScroll;
-        int j = i + ProtosOnScreen;
+        int j = static_cast<int>(static_cast<size_t>(i) + ProtosOnScreen);
         if (j > static_cast<int>((*CurItemProtos).size())) {
             j = static_cast<int>((*CurItemProtos).size());
         }
@@ -989,7 +989,7 @@ void FOMapper::IntDraw()
             SprMngr.DrawSpriteSize(spr, x, y, w, h, false, true, col);
 
             SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), _str("x{}", inner_item->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
-            if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && (inner_item->GetCritterSlot() != 0u)) {
+            if (inner_item->GetOwnership() == ItemOwnership::CritterInventory && inner_item->GetCritterSlot() != CritterItemSlot::Inventory) {
                 SprMngr.DrawStr(IRect(x, y, x + w, y + h), _str("Slot {}", inner_item->GetCritterSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             }
         }
@@ -1507,19 +1507,19 @@ void FOMapper::IntLMouseDown()
                 else if (Keyb.ShiftDwn && InContItem != nullptr) {
                     // Change child slot
                     if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
-                        auto to_slot = InContItem->GetCritterSlot() + 1;
+                        auto to_slot = static_cast<int>(InContItem->GetCritterSlot()) + 1;
                         while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
                             to_slot++;
                         }
                         to_slot %= 256;
 
                         for (auto* item : cr->GetInvItems()) {
-                            if (item->GetCritterSlot() == to_slot) {
-                                item->SetCritterSlot(0);
+                            if (item->GetCritterSlot() == static_cast<CritterItemSlot>(to_slot)) {
+                                item->SetCritterSlot(CritterItemSlot::Inventory);
                             }
                         }
 
-                        InContItem->SetCritterSlot(static_cast<uint8>(to_slot));
+                        InContItem->SetCritterSlot(static_cast<CritterItemSlot>(to_slot));
 
                         cr->AnimateStay();
                     }
@@ -2414,10 +2414,10 @@ auto FOMapper::CreateItem(hstring pid, uint16 hx, uint16 hy, Entity* owner) -> I
 
     if (owner != nullptr) {
         if (auto* cr = dynamic_cast<CritterHexView*>(owner); cr != nullptr) {
-            item = cr->AddInvItem(cr->GetMap()->GetTempEntityId(), proto, 0, {});
+            item = cr->AddInvItem(cr->GetMap()->GetTempEntityId(), proto, CritterItemSlot::Inventory, {});
         }
         if (auto* cont = dynamic_cast<ItemHexView*>(owner); cont != nullptr) {
-            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto, 0, nullptr);
+            item = cont->AddInnerItem(cont->GetMap()->GetTempEntityId(), proto, ContainerItemStack::Root, nullptr);
         }
     }
     else if (proto->GetIsTile()) {
@@ -2571,7 +2571,7 @@ void FOMapper::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, this](const EntityBuf* item_entity_buf, ItemView* item) {
             for (const auto* child_buf : item_entity_buf->Children) {
-                auto* inner_item = item->AddInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), 0, child_buf->Props);
+                auto* inner_item = item->AddInnerItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), ContainerItemStack::Root, child_buf->Props);
 
                 add_item_inner_items(child_buf, inner_item);
             }
@@ -2581,7 +2581,7 @@ void FOMapper::BufferPaste()
             auto* cr = CurMap->AddMapperCritter(entity_buf.Proto->GetProtoId(), static_cast<uint16>(hx), static_cast<uint16>(hy), 0, entity_buf.Props);
 
             for (const auto* child_buf : entity_buf.Children) {
-                auto* inv_item = cr->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), 0, child_buf->Props);
+                auto* inv_item = cr->AddInvItem(CurMap->GetTempEntityId(), static_cast<const ProtoItem*>(child_buf->Proto), CritterItemSlot::Inventory, child_buf->Props);
 
                 add_item_inner_items(child_buf, inv_item);
             }
@@ -2662,10 +2662,10 @@ void FOMapper::CurDraw()
             const auto y = CurMap->GetField(hx, hy).ScrY - anim->Height + anim->OffsY;
 
             SprMngr.DrawSpriteSize(anim, //
-                static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / CurMap->GetSpritesZoom()), //
-                static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / CurMap->GetSpritesZoom()), //
-                static_cast<int>(anim->Width / CurMap->GetSpritesZoom()), //
-                static_cast<int>(anim->Height / CurMap->GetSpritesZoom()), true, false, COLOR_SPRITE);
+                static_cast<int>((static_cast<float>(x + Settings.ScrOx) + (static_cast<float>(Settings.MapHexWidth) / 2.0f)) / CurMap->GetSpritesZoom()), //
+                static_cast<int>((static_cast<float>(y + Settings.ScrOy) + (static_cast<float>(Settings.MapHexHeight) / 2.0f)) / CurMap->GetSpritesZoom()), //
+                static_cast<int>(static_cast<float>(anim->Width) / CurMap->GetSpritesZoom()), //
+                static_cast<int>(static_cast<float>(anim->Height) / CurMap->GetSpritesZoom()), true, false, COLOR_SPRITE);
         }
         else {
             CurMode = CUR_MODE_DEFAULT;
@@ -2974,7 +2974,7 @@ void FOMapper::ParseCommand(string_view command)
                 if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                     cr->ClearAnim();
                     for (uint j = 0; j < anims.size() / 2; j++) {
-                        cr->Animate(static_cast<CritterStateAnim>(anims[j * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
+                        cr->Animate(static_cast<CritterStateAnim>(anims[static_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                     }
                 }
             }
@@ -2983,7 +2983,7 @@ void FOMapper::ParseCommand(string_view command)
             for (auto* cr : CurMap->GetCritters()) {
                 cr->ClearAnim();
                 for (uint j = 0; j < anims.size() / 2; j++) {
-                    cr->Animate(static_cast<CritterStateAnim>(anims[j * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
+                    cr->Animate(static_cast<CritterStateAnim>(anims[static_cast<size_t>(j) * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                 }
             }
         }

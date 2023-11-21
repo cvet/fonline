@@ -366,7 +366,7 @@ void Critter::SetItem(Item* item)
     _invItems.push_back(item);
 
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
-        item->SetCritterSlot(0);
+        item->SetCritterSlot(CritterItemSlot::Inventory);
     }
 
     item->SetOwnership(ItemOwnership::CritterInventory);
@@ -408,7 +408,7 @@ auto Critter::GetInvItemByPid(hstring item_pid) -> Item*
     return nullptr;
 }
 
-auto Critter::GetInvItemByPidSlot(hstring item_pid, int slot) -> Item*
+auto Critter::GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -422,7 +422,7 @@ auto Critter::GetInvItemByPidSlot(hstring item_pid, int slot) -> Item*
     return nullptr;
 }
 
-auto Critter::GetInvItemSlot(int slot) -> Item*
+auto Critter::GetInvItemSlot(CritterItemSlot slot) -> Item*
 {
     STACK_TRACE_ENTRY();
 
@@ -436,7 +436,7 @@ auto Critter::GetInvItemSlot(int slot) -> Item*
     return nullptr;
 }
 
-auto Critter::GetInvItemsSlot(int slot) -> vector<Item*>
+auto Critter::GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>
 {
     STACK_TRACE_ENTRY();
 
@@ -446,7 +446,7 @@ auto Critter::GetInvItemsSlot(int slot) -> vector<Item*>
     items.reserve(_invItems.size());
 
     for (auto* item : _invItems) {
-        if (slot < 0 || item->GetCritterSlot() == slot) {
+        if (item->GetCritterSlot() == slot) {
             items.push_back(item);
         }
     }
@@ -594,7 +594,7 @@ void Critter::SendAndBroadcast_Action(int action, int action_ext, const Item* co
     }
 }
 
-void Critter::SendAndBroadcast_MoveItem(const Item* item, uint8 action, uint8 prev_slot)
+void Critter::SendAndBroadcast_MoveItem(const Item* item, uint8 action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -1087,7 +1087,7 @@ void Critter::Send_Action(const Critter* from_cr, int action, int action_ext, co
     }
 }
 
-void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot)
+void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 

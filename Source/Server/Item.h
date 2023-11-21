@@ -63,8 +63,8 @@ public:
     [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
     [[nodiscard]] auto GetInnerItem(ident_t item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto GetAllInnerItems(bool skip_hidden) -> vector<Item*>;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, uint stack_id) -> Item*;
-    [[nodiscard]] auto GetInnerItems(uint stack_id) -> vector<Item*>;
+    [[nodiscard]] auto GetInnerItemByPid(hstring pid, ContainerItemStack stack_id) -> Item*;
+    [[nodiscard]] auto GetInnerItems(ContainerItemStack stack_id) -> vector<Item*>;
     [[nodiscard]] auto IsInnerItems() const -> bool;
     [[nodiscard]] auto GetRawInnerItems() -> vector<Item*>&;
 

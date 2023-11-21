@@ -90,9 +90,9 @@ public:
     [[nodiscard]] auto GetRawInvItems() -> vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetConstRawInvItems() const -> const vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> Item*;
-    [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, int slot) -> Item*;
-    [[nodiscard]] auto GetInvItemSlot(int slot) -> Item*;
-    [[nodiscard]] auto GetInvItemsSlot(int slot) -> vector<Item*>;
+    [[nodiscard]] auto GetInvItemByPidSlot(hstring item_pid, CritterItemSlot slot) -> Item*;
+    [[nodiscard]] auto GetInvItemSlot(CritterItemSlot slot) -> Item*;
+    [[nodiscard]] auto GetInvItemsSlot(CritterItemSlot slot) -> vector<Item*>;
     [[nodiscard]] auto CountInvItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto RealCountInvItems() const -> uint { return static_cast<uint>(_invItems.size()); }
     [[nodiscard]] auto CountInvItems() const -> uint;
@@ -135,7 +135,7 @@ public:
     void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
 
     void SendAndBroadcast_Action(int action, int action_ext, const Item* context_item);
-    void SendAndBroadcast_MoveItem(const Item* item, uint8 action, uint8 prev_slot);
+    void SendAndBroadcast_MoveItem(const Item* item, uint8 action, CritterItemSlot prev_slot);
     void SendAndBroadcast_Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void SendAndBroadcast_SetAnims(CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text);
@@ -168,7 +168,7 @@ public:
     void Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
     void Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
     void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* context_item);
-    void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot);
+    void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, CritterItemSlot prev_slot);
     void Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim2);
     void Send_AutomapsInfo(const void* locs_vec, const Location* loc);

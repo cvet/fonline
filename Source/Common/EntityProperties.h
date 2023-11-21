@@ -116,11 +116,11 @@ public:
     ///@ ExportProperty ReadOnly Alias = CritId
     ENTITY_PROPERTY(PrivateCommon, ident_t, CritterId);
     ///@ ExportProperty ReadOnly Alias = CritSlot Alias = Slot
-    ENTITY_PROPERTY(PrivateCommon, uint8, CritterSlot);
+    ENTITY_PROPERTY(PrivateCommon, CritterItemSlot, CritterSlot);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ident_t, ContainerId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
+    ENTITY_PROPERTY(PrivateCommon, ContainerItemStack, ContainerStack);
     ///@ ExportProperty ReadOnly Alias = SubItemIds
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, InnerItemIds);
     ///@ ExportProperty Resource

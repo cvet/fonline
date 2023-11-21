@@ -1640,18 +1640,17 @@ void FOClient::Net_OnCritterMoveItem()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
     const auto action = _conn.InBuf.Read<uint8>();
-    const auto prev_slot = _conn.InBuf.Read<uint8>();
+    const auto prev_slot = _conn.InBuf.Read<CritterItemSlot>();
     const auto is_item = _conn.InBuf.Read<bool>();
-    const auto cur_slot = _conn.InBuf.Read<uint8>();
-
+    const auto cur_slot = _conn.InBuf.Read<CritterItemSlot>();
     const auto slots_data_count = _conn.InBuf.Read<uint16>();
 
-    vector<uint8> slots_data_slot;
+    vector<CritterItemSlot> slots_data_slot;
     vector<ident_t> slots_data_id;
     vector<hstring> slots_data_pid;
     vector<vector<vector<uint8>>> slots_data_data;
     for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
-        const auto slot = _conn.InBuf.Read<uint8>();
+        const auto slot = _conn.InBuf.Read<CritterItemSlot>();
         const auto item_id = _conn.InBuf.Read<ident_t>();
         const auto pid = _conn.InBuf.Read<hstring>(*this);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
@@ -1701,7 +1700,7 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        hex_cr->Action(action, prev_slot, is_item ? _someItem : nullptr, false);
+        hex_cr->Action(action, static_cast<int>(prev_slot), is_item ? _someItem : nullptr, false);
     }
 
     if (is_item && cur_slot != prev_slot && cr->IsChosen()) {
@@ -1936,7 +1935,7 @@ void FOClient::Net_OnChosenAddItem()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto item_id = _conn.InBuf.Read<ident_t>();
     const auto pid = _conn.InBuf.Read<hstring>(*this);
-    const auto slot = _conn.InBuf.Read<uint8>();
+    const auto slot = _conn.InBuf.Read<CritterItemSlot>();
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -1950,7 +1949,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     auto* prev_item = chosen->GetInvItem(item_id);
-    uint8 prev_slot = 0;
+    auto prev_slot = CritterItemSlot::Inventory;
     uint prev_light_hash = 0;
     if (prev_item != nullptr) {
         prev_slot = prev_item->GetCritterSlot();
@@ -1967,7 +1966,7 @@ void FOClient::Net_OnChosenAddItem()
     if (CurMap != nullptr) {
         CurMap->RebuildFog();
 
-        if (item->EvaluateLightHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
+        if (item->EvaluateLightHash() != prev_light_hash && (slot != CritterItemSlot::Inventory || prev_slot != CritterItemSlot::Inventory)) {
             CurMap->RebuildLight();
         }
     }
@@ -2001,7 +2000,7 @@ void FOClient::Net_OnChosenEraseItem()
 
     auto* item_clone = item->CreateRefClone();
 
-    const auto rebuild_light = (CurMap != nullptr && item->GetIsLight() && item->GetCritterSlot() != 0u);
+    const auto rebuild_light = CurMap != nullptr && item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory;
     chosen->DeleteInvItem(item, true);
     if (rebuild_light) {
         CurMap->RebuildLight();
@@ -3623,17 +3622,17 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             auto item_count = _str(args[1]).toUInt();
             auto item_id = ident_t {_str(args[2]).toUInt()};
             auto item_swap_id = ident_t {_str(args[3]).toUInt()};
-            auto to_slot = _str(args[4]).toInt();
+            auto to_slot = static_cast<CritterItemSlot>(_str(args[4]).toInt());
             auto* item = GetChosen()->GetInvItem(item_id);
             auto* item_swap = (item_swap_id ? GetChosen()->GetInvItem(item_swap_id) : nullptr);
             auto* old_item = item->CreateRefClone();
-            int from_slot = item->GetCritterSlot();
+            auto from_slot = item->GetCritterSlot();
             auto* map_chosen = GetMapChosen();
 
             auto is_light = item->GetIsLight();
-            if (to_slot == -1) {
+            if (to_slot == CritterItemSlot::Outside) {
                 if (map_chosen != nullptr) {
-                    map_chosen->Action(ACTION_DROP_ITEM, from_slot, item, true);
+                    map_chosen->Action(ACTION_DROP_ITEM, static_cast<int>(from_slot), item, true);
                 }
 
                 if (item->GetStackable() && item_count < item->GetCount()) {
@@ -3645,15 +3644,15 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                 }
             }
             else {
-                item->SetCritterSlot(static_cast<uint8>(to_slot));
+                item->SetCritterSlot(to_slot);
                 if (item_swap != nullptr) {
-                    item_swap->SetCritterSlot(static_cast<uint8>(from_slot));
+                    item_swap->SetCritterSlot(from_slot);
                 }
 
                 if (map_chosen != nullptr) {
-                    map_chosen->Action(ACTION_MOVE_ITEM, from_slot, item, true);
+                    map_chosen->Action(ACTION_MOVE_ITEM, static_cast<int>(from_slot), item, true);
                     if (item_swap != nullptr) {
-                        map_chosen->Action(ACTION_MOVE_ITEM_SWAP, to_slot, item_swap, true);
+                        map_chosen->Action(ACTION_MOVE_ITEM_SWAP, static_cast<int>(to_slot), item_swap, true);
                     }
                 }
             }
@@ -3662,7 +3661,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             if (CurMap != nullptr) {
                 CurMap->RebuildFog();
 
-                if (is_light && (to_slot == 0 || (from_slot == 0 && to_slot != -1))) {
+                if (is_light && (to_slot == CritterItemSlot::Inventory || (from_slot == CritterItemSlot::Inventory && to_slot != CritterItemSlot::Outside))) {
                     CurMap->RebuildLight();
                 }
             }

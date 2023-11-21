@@ -146,9 +146,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uint8 /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uint8 /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent

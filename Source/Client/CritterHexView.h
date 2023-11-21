@@ -72,8 +72,8 @@ public:
 
     void Init();
     void MarkAsDestroyed() override;
-    auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView* override;
-    auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const Properties* props) -> ItemView* override;
+    auto AddInvItem(ident_t id, const ProtoItem* proto, CritterItemSlot slot, const vector<vector<uint8>>& props_data) -> ItemView* override;
     void DeleteInvItem(ItemView* item, bool animate) override;
     void ChangeDir(uint8 dir);
     void ChangeDirAngle(int dir_angle);

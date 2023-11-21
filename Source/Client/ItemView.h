@@ -56,8 +56,8 @@ public:
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 
     void MarkAsDestroyed() override;
-    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const Properties* props) -> ItemView*;
-    auto AddInnerItem(ident_t id, const ProtoItem* proto, uint stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
+    auto AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*;
+    auto AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const vector<vector<uint8>>& props_data) -> ItemView*;
     void DeleteInnerItem(ItemView* item);
 
 protected:

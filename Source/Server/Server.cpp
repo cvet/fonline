@@ -3127,7 +3127,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
             else {
                 cr->Send_AddItem(item);
             }
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, CritterItemSlot::Inventory);
         }
     }
 }
@@ -3714,7 +3714,7 @@ auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, const DialogAnswer& 
                 entity = master;
             }
             else if (demand.Type == DR_PROP_ITEM) {
-                entity = master->GetInvItemSlot(1);
+                entity = master->GetInvItemSlot(CritterItemSlot::Main);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
@@ -3876,7 +3876,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, const DialogAnswer& an
                 entity = master;
             }
             else if (result.Type == DR_PROP_ITEM) {
-                entity = master->GetInvItemSlot(1);
+                entity = master->GetInvItemSlot(CritterItemSlot::Main);
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());

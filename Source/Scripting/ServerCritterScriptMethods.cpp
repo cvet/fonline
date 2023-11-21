@@ -552,7 +552,7 @@
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
-    if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
+    if (self->GetEngine()->ProtoMngr.GetProtoItem(pid) == nullptr) {
         throw ScriptException("Invalid proto", pid);
     }
 
@@ -687,7 +687,7 @@
 ///# param itemId ...
 ///# param slot ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, uint8 slot)
+[[maybe_unused]] void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, CritterItemSlot slot)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
@@ -703,7 +703,7 @@
         return;
     }
 
-    if (slot >= self->GetEngine()->Settings.CritterSlotEnabled.size() || !self->GetEngine()->Settings.CritterSlotEnabled[slot]) {
+    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings.CritterSlotEnabled.size() || !self->GetEngine()->Settings.CritterSlotEnabled[static_cast<size_t>(slot)]) {
         throw ScriptException("Slot is not allowed");
     }
 
@@ -711,7 +711,7 @@
         throw ScriptException("Can't move item");
     }
 
-    const auto is_multi_item_allowed = slot == 0 || (slot < self->GetEngine()->Settings.CritterSlotMultiItem.size() && self->GetEngine()->Settings.CritterSlotMultiItem[slot]);
+    const auto is_multi_item_allowed = slot == CritterItemSlot::Inventory || (static_cast<size_t>(slot) < self->GetEngine()->Settings.CritterSlotMultiItem.size() && self->GetEngine()->Settings.CritterSlotMultiItem[static_cast<size_t>(slot)]);
 
     if (is_multi_item_allowed) {
         const auto from_slot = item->GetCritterSlot();

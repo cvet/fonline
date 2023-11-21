@@ -306,7 +306,7 @@
 ///# param toCont ...
 ///# param stackId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, uint stackId)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -333,7 +333,7 @@
 ///# param stackId ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, uint stackId, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItem(FOServer* server, Item* item, uint count, Item* toCont, ContainerItemStack stackId, bool skipChecks)
 {
     if (item == nullptr) {
         throw ScriptException("Item arg is null");
@@ -446,7 +446,7 @@
 ///# param toCont ...
 ///# param stackId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, uint stackId)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId)
 {
     if (toCont == nullptr) {
         throw ScriptException("Container arg is null");
@@ -467,7 +467,7 @@
 ///# param stackId ...
 ///# param skipChecks ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, uint stackId, bool skipChecks)
+[[maybe_unused]] void Server_Game_MoveItems(FOServer* server, const vector<Item*>& items, Item* toCont, ContainerItemStack stackId, bool skipChecks)
 {
     if (toCont == nullptr) {
         throw ScriptException("Container arg is null");

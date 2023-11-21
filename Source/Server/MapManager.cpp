@@ -365,7 +365,7 @@ void MapManager::GenerateMapContent(Map* map)
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             auto* item_cont = map->GetItem(parent_id);
             RUNTIME_ASSERT(item_cont);
-            _engine->ItemMngr.AddItemToContainer(item_cont, item, 0);
+            _engine->ItemMngr.AddItemToContainer(item_cont, item, ContainerItemStack::Root);
         }
         else {
             throw UnreachablePlaceException(LINE_STR);

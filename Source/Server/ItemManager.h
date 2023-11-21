@@ -66,15 +66,15 @@ public:
 
     auto CreateItem(hstring pid, uint count, const Properties* props) -> Item*;
     auto SplitItem(Item* item, uint count) -> Item*;
-    auto AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*;
+    auto AddItemContainer(Item* cont, hstring pid, uint count, ContainerItemStack stack_id) -> Item*;
     auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
     void SubItemCritter(Critter* cr, hstring pid, uint count);
     void SetItemCritter(Critter* cr, hstring pid, uint count);
     void DeleteItem(Item* item);
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
     void MoveItem(Item* item, uint count, Map* to_map, uint16 to_hx, uint16 to_hy, bool skip_checks);
-    void MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks);
-    auto AddItemToContainer(Item* cont, Item* item, uint stack_id) -> Item*;
+    void MoveItem(Item* item, uint count, Item* to_cont, ContainerItemStack stack_id, bool skip_checks);
+    auto AddItemToContainer(Item* cont, Item* item, ContainerItemStack stack_id) -> Item*;
     void EraseItemFromContainer(Item* cont, Item* item);
     void SetItemToContainer(Item* cont, Item* item);
     void RegisterRadio(Item* radio);
