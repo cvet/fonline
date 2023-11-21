@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "Entity.h"
+
 constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;

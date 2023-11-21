@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "ScriptSystem.h"
 #include "Settings.h"

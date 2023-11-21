@@ -35,6 +35,9 @@
 
 #include "Common.h"
 
+// ReSharper disable once CppUnusedIncludeDirective
+#include "Entity.h"
+
 struct DummySettings
 {
 };

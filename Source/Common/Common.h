@@ -1508,20 +1508,6 @@ static constexpr float MAX_ZOOM = 20.0f;
 #define CRPID_MASK (0xFFFFFFF0)
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
-///@ ExportEnum
-enum class CritterFindType : uint8
-{
-    Any = 0,
-    Alive = 0x01,
-    Dead = 0x02,
-    Players = 0x10,
-    Npc = 0x20,
-    AlivePlayers = 0x11,
-    DeadPlayers = 0x12,
-    AliveNpc = 0x21,
-    DeadNpc = 0x22,
-};
-
 // Ping
 static constexpr uint8 PING_SERVER = 0;
 static constexpr uint8 PING_CLIENT = 2;
@@ -1616,33 +1602,6 @@ static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
 
-// Critter animations
-///@ ExportEnum
-enum class CritterStateAnim : uint16
-{
-    None = 0,
-    Unarmed = 1,
-};
-
-///@ ExportEnum
-enum class CritterActionAnim : uint16
-{
-    None = 0,
-    Idle = 1,
-    Walk = 3,
-    WalkBack = 15,
-    Limp = 4,
-    Run = 5,
-    RunBack = 16,
-    TurnRight = 17,
-    TurnLeft = 18,
-    PanicRun = 6,
-    SneakWalk = 7,
-    SneakRun = 8,
-    IdleProneFront = 86,
-    DeadFront = 102,
-};
-
 // Property type in network interaction
 enum class NetProperty : uint8
 {
@@ -1656,76 +1615,6 @@ enum class NetProperty : uint8
     ChosenItem, // One extra arg: item_id
     Map, // No extra args
     Location, // No extra args
-};
-
-///@ ExportEnum
-enum class EffectType : uint
-{
-    None = 0,
-    GenericSprite = 0x00000001,
-    CritterSprite = 0x00000002,
-    TileSprite = 0x00000004,
-    RoofSprite = 0x00000008,
-    RainSprite = 0x00000010,
-    SkinnedMesh = 0x00000400,
-    Interface = 0x00001000,
-    ContourStrict = 0x00002000,
-    ContourDynamic = 0x00004000,
-    Font = 0x00010000,
-    Primitive = 0x00100000,
-    Light = 0x00200000,
-    Fog = 0x00400000,
-    FlushRenderTarget = 0x01000000,
-    FlushPrimitive = 0x04000000,
-    FlushMap = 0x08000000,
-    FlushLight = 0x10000000,
-    FlushFog = 0x20000000,
-    Offscreen = 0x40000000,
-};
-
-///@ ExportEnum
-enum class ItemOwnership : uint8
-{
-    MapHex = 0,
-    CritterInventory = 1,
-    ItemContainer = 2,
-    Nowhere = 3,
-};
-
-///@ ExportEnum
-enum class CornerType : uint8
-{
-    NorthSouth = 0,
-    West = 1,
-    East = 2,
-    South = 3,
-    North = 4,
-    EastWest = 5,
-};
-
-///@ ExportEnum
-enum class CritterCondition : uint8
-{
-    Alive = 0,
-    Knockout = 1,
-    Dead = 2,
-};
-
-///@ ExportEnum
-enum class MovingState : uint8
-{
-    InProgress = 0,
-    Success = 1,
-    TargetNotFound = 2,
-    CantMove = 3,
-    GagCritter = 4,
-    GagItem = 5,
-    InternalError = 6,
-    HexTooFar = 7,
-    HexBusy = 8,
-    HexBusyRing = 9,
-    Deadlock = 10,
-    TraceFailed = 11,
 };
 
 // Generic fixed game settings
@@ -2024,15 +1913,6 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
-};
-
-class AnimationResolver
-{
-public:
-    virtual ~AnimationResolver() = default;
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool = 0;
 };
 
 class FrameBalancer

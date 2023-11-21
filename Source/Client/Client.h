@@ -80,6 +80,31 @@ struct VideoPlayback
     unique_ptr<RenderTexture> Tex {};
 };
 
+///@ ExportEnum
+enum class EffectType : uint
+{
+    None = 0,
+    GenericSprite = 0x00000001,
+    CritterSprite = 0x00000002,
+    TileSprite = 0x00000004,
+    RoofSprite = 0x00000008,
+    RainSprite = 0x00000010,
+    SkinnedMesh = 0x00000400,
+    Interface = 0x00001000,
+    ContourStrict = 0x00002000,
+    ContourDynamic = 0x00004000,
+    Font = 0x00010000,
+    Primitive = 0x00100000,
+    Light = 0x00200000,
+    Fog = 0x00400000,
+    FlushRenderTarget = 0x01000000,
+    FlushPrimitive = 0x04000000,
+    FlushMap = 0x08000000,
+    FlushLight = 0x10000000,
+    FlushFog = 0x20000000,
+    Offscreen = 0x40000000,
+};
+
 // Screens
 constexpr auto SCREEN_NONE = 0;
 constexpr auto SCREEN_LOGIN = 1; // Primary screens

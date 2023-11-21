@@ -70,6 +70,83 @@
         this, #event_name \
     }
 
+///@ ExportEnum
+enum class CritterCondition : uint8
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
+};
+
+///@ ExportEnum
+enum class CritterStateAnim : uint16
+{
+    None = 0,
+    Unarmed = 1,
+};
+
+///@ ExportEnum
+enum class CritterActionAnim : uint16
+{
+    None = 0,
+    Idle = 1,
+    Walk = 3,
+    WalkBack = 15,
+    Limp = 4,
+    Run = 5,
+    RunBack = 16,
+    TurnRight = 17,
+    TurnLeft = 18,
+    PanicRun = 6,
+    SneakWalk = 7,
+    SneakRun = 8,
+    IdleProneFront = 86,
+    DeadFront = 102,
+};
+
+///@ ExportEnum
+enum class CritterFindType : uint8
+{
+    Any = 0,
+    Alive = 0x01,
+    Dead = 0x02,
+    Players = 0x10,
+    Npc = 0x20,
+    AlivePlayers = 0x11,
+    DeadPlayers = 0x12,
+    AliveNpc = 0x21,
+    DeadNpc = 0x22,
+};
+
+///@ ExportEnum
+enum class ItemOwnership : uint8
+{
+    MapHex = 0,
+    CritterInventory = 1,
+    ItemContainer = 2,
+    Nowhere = 3,
+};
+
+///@ ExportEnum
+enum class CornerType : uint8
+{
+    NorthSouth = 0,
+    West = 1,
+    East = 2,
+    South = 3,
+    North = 4,
+    EastWest = 5,
+};
+
+class AnimationResolver
+{
+public:
+    virtual ~AnimationResolver() = default;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool = 0;
+};
+
 class EntityProperties
 {
 protected:

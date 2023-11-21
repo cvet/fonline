@@ -46,6 +46,23 @@ class Item;
 class Map;
 class Location;
 
+///@ ExportEnum
+enum class MovingState : uint8
+{
+    InProgress = 0,
+    Success = 1,
+    TargetNotFound = 2,
+    CantMove = 3,
+    GagCritter = 4,
+    GagItem = 5,
+    InternalError = 6,
+    HexTooFar = 7,
+    HexBusy = 8,
+    HexBusyRing = 9,
+    Deadlock = 10,
+    TraceFailed = 11,
+};
+
 class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
     friend class Player;

@@ -32,6 +32,7 @@
 //
 
 #include "NetBuffer.h"
+#include "Entity.h"
 #include "GenericUtils.h"
 
 static auto GetMsgSize(uint msg) -> uint

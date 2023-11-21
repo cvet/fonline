@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+// ReSharper disable once CppUnusedIncludeDirective
 #include "NetProtocol-Include.h"
 
 class NetBuffer

@@ -35,8 +35,6 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
-
 DECLARE_EXCEPTION(LanguagePackException);
 
 static constexpr auto TEXTMSG_TEXT = 0;
@@ -50,6 +48,8 @@ static constexpr auto TEXTMSG_HOLO = 7;
 static constexpr auto TEXTMSG_INTERNAL = 8;
 static constexpr auto TEXTMSG_LOCATIONS = 9;
 static constexpr auto TEXTMSG_COUNT = 10;
+
+class FileSystem;
 
 class FOMsg final
 {
