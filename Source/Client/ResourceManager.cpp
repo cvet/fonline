@@ -108,20 +108,20 @@ void ResourceManager::CleanupCritterFrames()
     _critterFrames.clear();
 }
 
-static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallout) -> uint
+static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, bool is_fallout) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    const uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
+    const uint dw[4] = {model_name.as_uint(), static_cast<uint>(state_anim), static_cast<uint>(action_anim), is_fallout ? static_cast<uint>(-1) : 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
-auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint anim2, uint8 dir) -> const SpriteSheet*
+auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*
 {
     STACK_TRACE_ENTRY();
 
     // Check already loaded
-    const auto id = AnimMapId(model_name, anim1, anim2, false);
+    const auto id = AnimMapId(model_name, state_anim, action_anim, false);
 
     if (const auto it = _critterFrames.find(id); it != _critterFrames.end()) {
         auto* anim_ = it->second.get();
@@ -138,15 +138,15 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint 
     }
 
     // Process loading
-    const auto anim1_base = anim1;
-    const auto anim2_base = anim2;
+    const auto base_state_anim = state_anim;
+    const auto base_action_anim = action_anim;
     shared_ptr<SpriteSheet> anim;
 
     while (true) {
         // Load
         if (!!model_name && _str(model_name).startsWith("art/critters/")) {
             // Hardcoded
-            anim = LoadFalloutAnimFrames(model_name, anim1, anim2);
+            anim = LoadFalloutAnimFrames(model_name, state_anim, action_anim);
         }
         else {
             // Script specific
@@ -156,17 +156,18 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint 
                 uint flags = 0;
                 auto ox = 0;
                 auto oy = 0;
-                string str;
-                if (_animNameResolver.ResolveCritterAnimation(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
-                    if (!str.empty()) {
-                        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(str, AtlasType::MapSprites, true));
+                string anim_name;
+
+                if (_animNameResolver.ResolveCritterAnimation(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name)) {
+                    if (!anim_name.empty()) {
+                        anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(anim_name, AtlasType::MapSprites, true));
 
                         // Fix by dirs
                         for (uint d = 0; anim != nullptr && d < anim->DirCount; d++) {
                             auto* dir_anim = anim->GetDir(d);
 
                             // Process flags
-                            if (flags != 0u) {
+                            if (flags != 0) {
                                 if (IsBitSet(flags, ANIM_FLAG_FIRST_FRAME) || IsBitSet(flags, ANIM_FLAG_LAST_FRAME)) {
                                     const auto first = IsBitSet(flags, ANIM_FLAG_FIRST_FRAME);
 
@@ -222,10 +223,11 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint 
         // Find substitute animation
         const auto base_model_name = model_name;
         const auto model_name_ = model_name;
-        const auto anim1_ = anim1;
-        const auto anim2_ = anim2;
-        if (anim == nullptr && _animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2)) {
-            if (model_name_ != model_name || anim1 != anim1_ || anim2 != anim2_) {
+        const auto state_anim_ = state_anim;
+        const auto action_anim_ = action_anim;
+
+        if (anim == nullptr && _animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim)) {
+            if (model_name_ != model_name || state_anim != state_anim_ || action_anim != action_anim_) {
                 continue;
             }
         }
@@ -237,8 +239,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint 
     // Store resulted animation indices
     if (anim != nullptr) {
         for (uint d = 0; d < anim->DirCount; d++) {
-            anim->GetDir(d)->Anim1 = anim1;
-            anim->GetDir(d)->Anim2 = anim2;
+            anim->GetDir(d)->StateAnim = state_anim;
+            anim->GetDir(d)->ActionAnim = action_anim;
         }
     }
 
@@ -257,24 +259,25 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, uint anim1, uint 
     return nullptr;
 }
 
-auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, uint anim1, uint anim2) -> shared_ptr<SpriteSheet>
+auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>
 {
     STACK_TRACE_ENTRY();
 
     // Convert from common to fallout specific
-    uint anim1_ex = 0;
-    uint anim2_ex = 0;
+    auto state_anim_ex = CritterStateAnim::None;
+    auto action_anim_ex = CritterActionAnim::None;
     uint flags = 0;
-    if (_animNameResolver.ResolveCritterAnimationFallout(model_name, anim1, anim2, anim1_ex, anim2_ex, flags)) {
+
+    if (_animNameResolver.ResolveCritterAnimationFallout(model_name, state_anim, action_anim, state_anim_ex, action_anim_ex, flags)) {
         // Load
-        const auto* anim = LoadFalloutAnimSubFrames(model_name, anim1, anim2);
+        const auto* anim = LoadFalloutAnimSubFrames(model_name, state_anim, action_anim);
         if (anim == nullptr) {
             return nullptr;
         }
 
         // Merge
-        if (anim1_ex != 0 && anim2_ex != 0) {
-            const auto* animex = LoadFalloutAnimSubFrames(model_name, anim1_ex, anim2_ex);
+        if (state_anim_ex != CritterStateAnim::None && action_anim_ex != CritterActionAnim::None) {
+            const auto* animex = LoadFalloutAnimSubFrames(model_name, state_anim_ex, action_anim_ex);
             if (animex == nullptr) {
                 return nullptr;
             }
@@ -401,7 +404,7 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
     }
 }
 
-auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint anim1, uint anim2) -> const SpriteSheet*
+auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> const SpriteSheet*
 {
     STACK_TRACE_ENTRY();
 
@@ -409,110 +412,110 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint anim1, u
 #define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
 
     // Fallout animations
-    static constexpr auto ANIM1_FALLOUT_UNARMED = 1;
-    static constexpr auto ANIM1_FALLOUT_DEAD = 2;
-    static constexpr auto ANIM1_FALLOUT_KNOCKOUT = 3;
-    static constexpr auto ANIM1_FALLOUT_KNIFE = 4;
-    static constexpr auto ANIM1_FALLOUT_MINIGUN = 12;
-    static constexpr auto ANIM1_FALLOUT_ROCKET_LAUNCHER = 13;
-    static constexpr auto ANIM1_FALLOUT_AIM = 14;
-    static constexpr auto ANIM2_FALLOUT_STAY = 1;
-    static constexpr auto ANIM2_FALLOUT_WALK = 2;
-    static constexpr auto ANIM2_FALLOUT_SHOW = 3;
-    static constexpr auto ANIM2_FALLOUT_PREPARE_WEAPON = 8;
-    static constexpr auto ANIM2_FALLOUT_TURNOFF_WEAPON = 9;
-    static constexpr auto ANIM2_FALLOUT_SHOOT = 10;
-    static constexpr auto ANIM2_FALLOUT_BURST = 11;
-    static constexpr auto ANIM2_FALLOUT_FLAME = 12;
-    static constexpr auto ANIM2_FALLOUT_KNOCK_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
-    static constexpr auto ANIM2_FALLOUT_KNOCK_BACK = 2;
-    static constexpr auto ANIM2_FALLOUT_STANDUP_BACK = 8; // Only with ANIM1_FALLOUT_KNOCKOUT
-    static constexpr auto ANIM2_FALLOUT_RUN = 20;
-    static constexpr auto ANIM2_FALLOUT_DEAD_FRONT = 1; // Only with ANIM1_FALLOUT_DEAD
-    static constexpr auto ANIM2_FALLOUT_DEAD_BACK = 2;
-    static constexpr auto ANIM2_FALLOUT_DEAD_FRONT2 = 15;
-    static constexpr auto ANIM2_FALLOUT_DEAD_BACK2 = 16;
+    static constexpr auto ANIM1_FALLOUT_UNARMED = static_cast<CritterStateAnim>(1);
+    static constexpr auto ANIM1_FALLOUT_DEAD = static_cast<CritterStateAnim>(2);
+    static constexpr auto ANIM1_FALLOUT_KNOCKOUT = static_cast<CritterStateAnim>(3);
+    static constexpr auto ANIM1_FALLOUT_KNIFE = static_cast<CritterStateAnim>(4);
+    static constexpr auto ANIM1_FALLOUT_MINIGUN = static_cast<CritterStateAnim>(12);
+    static constexpr auto ANIM1_FALLOUT_ROCKET_LAUNCHER = static_cast<CritterStateAnim>(13);
+    static constexpr auto ANIM1_FALLOUT_AIM = static_cast<CritterStateAnim>(14);
+    static constexpr auto ANIM2_FALLOUT_STAY = static_cast<CritterActionAnim>(1);
+    static constexpr auto ANIM2_FALLOUT_WALK = static_cast<CritterActionAnim>(2);
+    static constexpr auto ANIM2_FALLOUT_SHOW = static_cast<CritterActionAnim>(3);
+    static constexpr auto ANIM2_FALLOUT_PREPARE_WEAPON = static_cast<CritterActionAnim>(8);
+    static constexpr auto ANIM2_FALLOUT_TURNOFF_WEAPON = static_cast<CritterActionAnim>(9);
+    static constexpr auto ANIM2_FALLOUT_SHOOT = static_cast<CritterActionAnim>(10);
+    static constexpr auto ANIM2_FALLOUT_BURST = static_cast<CritterActionAnim>(11);
+    static constexpr auto ANIM2_FALLOUT_FLAME = static_cast<CritterActionAnim>(12);
+    static constexpr auto ANIM2_FALLOUT_KNOCK_FRONT = static_cast<CritterActionAnim>(1); // Only with ANIM1_FALLOUT_DEAD
+    static constexpr auto ANIM2_FALLOUT_KNOCK_BACK = static_cast<CritterActionAnim>(2);
+    static constexpr auto ANIM2_FALLOUT_STANDUP_BACK = static_cast<CritterActionAnim>(8); // Only with ANIM1_FALLOUT_KNOCKOUT
+    static constexpr auto ANIM2_FALLOUT_RUN = static_cast<CritterActionAnim>(20);
+    static constexpr auto ANIM2_FALLOUT_DEAD_FRONT = static_cast<CritterActionAnim>(1); // Only with ANIM1_FALLOUT_DEAD
+    static constexpr auto ANIM2_FALLOUT_DEAD_BACK = static_cast<CritterActionAnim>(2);
+    static constexpr auto ANIM2_FALLOUT_DEAD_FRONT2 = static_cast<CritterActionAnim>(15);
+    static constexpr auto ANIM2_FALLOUT_DEAD_BACK2 = static_cast<CritterActionAnim>(16);
 
-    const auto it = _critterFrames.find(AnimMapId(model_name, anim1, anim2, true));
+    const auto it = _critterFrames.find(AnimMapId(model_name, state_anim, action_anim, true));
     if (it != _critterFrames.end()) {
         return it->second.get();
     }
 
     // Try load fofrm
     static constexpr char FRM_IND[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    RUNTIME_ASSERT(anim1 < sizeof(FRM_IND));
-    RUNTIME_ASSERT(anim2 < sizeof(FRM_IND));
+    RUNTIME_ASSERT(static_cast<uint>(state_anim) < sizeof(FRM_IND));
+    RUNTIME_ASSERT(static_cast<uint>(action_anim) < sizeof(FRM_IND));
 
     shared_ptr<SpriteSheet> anim;
 
     // Try load from fofrm
     {
-        const string spr_name = _str("{}{}{}.fofrm", model_name, FRM_IND[anim1], FRM_IND[anim2]);
+        const string spr_name = _str("{}{}{}.fofrm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
     // Try load fallout frames
     if (!anim) {
-        const string spr_name = _str("{}{}{}.frm", model_name, FRM_IND[anim1], FRM_IND[anim2]);
+        const string spr_name = _str("{}{}{}.frm", model_name, FRM_IND[static_cast<uint>(state_anim)], FRM_IND[static_cast<uint>(action_anim)]);
         anim = dynamic_pointer_cast<SpriteSheet>(_sprMngr.LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
-    auto* anim_ = _critterFrames.emplace(AnimMapId(model_name, anim1, anim2, true), std::move(anim)).first->second.get();
+    auto* anim_ = _critterFrames.emplace(AnimMapId(model_name, state_anim, action_anim, true), std::move(anim)).first->second.get();
 
     if (anim_ == nullptr) {
         return nullptr;
     }
 
-    if (anim1 == ANIM1_FALLOUT_AIM) {
+    if (state_anim == ANIM1_FALLOUT_AIM) {
         return anim_; // Aim, 'N'
     }
 
     // Empty offsets
-    if (anim1 == ANIM1_FALLOUT_UNARMED) {
-        if (anim2 == ANIM2_FALLOUT_STAY || anim2 == ANIM2_FALLOUT_WALK || anim2 == ANIM2_FALLOUT_RUN) {
+    if (state_anim == ANIM1_FALLOUT_UNARMED) {
+        if (action_anim == ANIM2_FALLOUT_STAY || action_anim == ANIM2_FALLOUT_WALK || action_anim == ANIM2_FALLOUT_RUN) {
             return anim_;
         }
         LOADSPR_ADDOFFS(ANIM1_FALLOUT_UNARMED, ANIM2_FALLOUT_STAY);
     }
 
     // Weapon offsets
-    if (anim1 >= ANIM1_FALLOUT_KNIFE && anim1 <= ANIM1_FALLOUT_ROCKET_LAUNCHER) {
-        if (anim2 == ANIM2_FALLOUT_SHOW) {
+    if (state_anim >= ANIM1_FALLOUT_KNIFE && state_anim <= ANIM1_FALLOUT_ROCKET_LAUNCHER) {
+        if (action_anim == ANIM2_FALLOUT_SHOW) {
             LOADSPR_ADDOFFS(ANIM1_FALLOUT_UNARMED, ANIM2_FALLOUT_STAY);
         }
-        else if (anim2 == ANIM2_FALLOUT_WALK) {
+        else if (action_anim == ANIM2_FALLOUT_WALK) {
             return anim_;
         }
-        else if (anim2 == ANIM2_FALLOUT_STAY) {
+        else if (action_anim == ANIM2_FALLOUT_STAY) {
             LOADSPR_ADDOFFS(ANIM1_FALLOUT_UNARMED, ANIM2_FALLOUT_STAY);
-            LOADSPR_ADDOFFS_NEXT(anim1, ANIM2_FALLOUT_SHOW);
+            LOADSPR_ADDOFFS_NEXT(state_anim, ANIM2_FALLOUT_SHOW);
         }
-        else if (anim2 == ANIM2_FALLOUT_SHOOT || anim2 == ANIM2_FALLOUT_BURST || anim2 == ANIM2_FALLOUT_FLAME) {
-            LOADSPR_ADDOFFS(anim1, ANIM2_FALLOUT_PREPARE_WEAPON);
-            LOADSPR_ADDOFFS_NEXT(anim1, ANIM2_FALLOUT_PREPARE_WEAPON);
+        else if (action_anim == ANIM2_FALLOUT_SHOOT || action_anim == ANIM2_FALLOUT_BURST || action_anim == ANIM2_FALLOUT_FLAME) {
+            LOADSPR_ADDOFFS(state_anim, ANIM2_FALLOUT_PREPARE_WEAPON);
+            LOADSPR_ADDOFFS_NEXT(state_anim, ANIM2_FALLOUT_PREPARE_WEAPON);
         }
-        else if (anim2 == ANIM2_FALLOUT_TURNOFF_WEAPON) {
-            if (anim1 == ANIM1_FALLOUT_MINIGUN) {
-                LOADSPR_ADDOFFS(anim1, ANIM2_FALLOUT_BURST);
-                LOADSPR_ADDOFFS_NEXT(anim1, ANIM2_FALLOUT_BURST);
+        else if (action_anim == ANIM2_FALLOUT_TURNOFF_WEAPON) {
+            if (state_anim == ANIM1_FALLOUT_MINIGUN) {
+                LOADSPR_ADDOFFS(state_anim, ANIM2_FALLOUT_BURST);
+                LOADSPR_ADDOFFS_NEXT(state_anim, ANIM2_FALLOUT_BURST);
             }
             else {
-                LOADSPR_ADDOFFS(anim1, ANIM2_FALLOUT_SHOOT);
-                LOADSPR_ADDOFFS_NEXT(anim1, ANIM2_FALLOUT_SHOOT);
+                LOADSPR_ADDOFFS(state_anim, ANIM2_FALLOUT_SHOOT);
+                LOADSPR_ADDOFFS_NEXT(state_anim, ANIM2_FALLOUT_SHOOT);
             }
         }
         else {
-            LOADSPR_ADDOFFS(anim1, ANIM2_FALLOUT_STAY);
+            LOADSPR_ADDOFFS(state_anim, ANIM2_FALLOUT_STAY);
         }
     }
 
     // Dead & Ko offsets
-    if (anim1 == ANIM1_FALLOUT_DEAD) {
-        if (anim2 == ANIM2_FALLOUT_DEAD_FRONT2) {
+    if (state_anim == ANIM1_FALLOUT_DEAD) {
+        if (action_anim == ANIM2_FALLOUT_DEAD_FRONT2) {
             LOADSPR_ADDOFFS(ANIM1_FALLOUT_DEAD, ANIM2_FALLOUT_DEAD_FRONT);
             LOADSPR_ADDOFFS_NEXT(ANIM1_FALLOUT_DEAD, ANIM2_FALLOUT_DEAD_FRONT);
         }
-        else if (anim2 == ANIM2_FALLOUT_DEAD_BACK2) {
+        else if (action_anim == ANIM2_FALLOUT_DEAD_BACK2) {
             LOADSPR_ADDOFFS(ANIM1_FALLOUT_DEAD, ANIM2_FALLOUT_DEAD_BACK);
             LOADSPR_ADDOFFS_NEXT(ANIM1_FALLOUT_DEAD, ANIM2_FALLOUT_DEAD_BACK);
         }
@@ -522,9 +525,9 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint anim1, u
     }
 
     // Ko rise offsets
-    if (anim1 == ANIM1_FALLOUT_KNOCKOUT) {
-        uint8 anim2_ = ANIM2_FALLOUT_KNOCK_FRONT;
-        if (anim2 == ANIM2_FALLOUT_STANDUP_BACK) {
+    if (state_anim == ANIM1_FALLOUT_KNOCKOUT) {
+        auto anim2_ = ANIM2_FALLOUT_KNOCK_FRONT;
+        if (action_anim == ANIM2_FALLOUT_STANDUP_BACK) {
             anim2_ = ANIM2_FALLOUT_KNOCK_BACK;
         }
         LOADSPR_ADDOFFS(ANIM1_FALLOUT_DEAD, anim2_);
@@ -537,18 +540,18 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint anim1, u
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCritterPreviewSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, const int* layers3d) -> const Sprite*
+auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*
 {
     STACK_TRACE_ENTRY();
 
     const string ext = _str(model_name).getFileExtension();
     if (ext != "fo3d") {
-        const auto* frames = GetCritterAnimFrames(model_name, anim1, anim2, dir);
+        const auto* frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
         return frames != nullptr ? frames : _critterDummyAnimFrames.get();
     }
     else {
 #if FO_ENABLE_3D
-        const auto* model_spr = GetCritterPreviewModelSpr(model_name, anim1, anim2, dir, layers3d);
+        const auto* model_spr = GetCritterPreviewModelSpr(model_name, state_anim, action_anim, dir, layers3d);
         return model_spr != nullptr ? static_cast<const Sprite*>(model_spr) : static_cast<const Sprite*>(_critterDummyAnimFrames.get());
 #else
         UNUSED_VARIABLE(layers3d);
@@ -558,7 +561,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, uint anim1, uint 
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, const int* layers3d) -> const ModelSprite*
+auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*
 {
     STACK_TRACE_ENTRY();
 
@@ -566,7 +569,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, uint anim1, 
         auto&& model_spr = it->second;
 
         model_spr->GetModel()->SetDir(dir, false);
-        model_spr->GetModel()->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+        model_spr->GetModel()->SetAnimation(state_anim, action_anim, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
 
         model_spr->DrawToAtlas();
 
@@ -580,7 +583,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, uint anim1, 
 
     auto* model = model_spr->GetModel();
 
-    model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+    model->SetAnimation(state_anim, action_anim, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
     model->SetDir(dir, false);
     model->PrewarmParticles();
     model->StartMeshGeneration();

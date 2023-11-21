@@ -943,7 +943,7 @@ void FOMapper::IntDraw()
             const auto* proto = (*CurNpcProtos)[i];
 
             auto model_name = proto->GetModelName();
-            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, 1, 1, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if (anim == nullptr) {
                 continue;
             }
@@ -1213,7 +1213,8 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 
     NON_CONST_METHOD_HINT();
 
-    const auto start_line = 3;
+    constexpr auto start_line = 3;
+
     if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size())) {
         const auto* prop = ShowProps[ObjCurLine - start_line];
         if (prop != nullptr) {
@@ -1239,7 +1240,8 @@ void FOMapper::SelectEntityProp(int line)
 {
     STACK_TRACE_ENTRY();
 
-    const auto start_line = 3;
+    constexpr auto start_line = 3;
+
     ObjCurLine = line;
     if (ObjCurLine < 0) {
         ObjCurLine = 0;
@@ -2645,7 +2647,7 @@ void FOMapper::CurDraw()
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
             const auto model_name = (*CurNpcProtos)[GetTabIndex()]->GetModelName();
-            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, 1, 1, NpcDir, nullptr);
+            const auto* anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, NpcDir, nullptr);
             if (anim == nullptr) {
                 anim = ResMngr.GetItemDefaultSpr().get();
             }
@@ -2972,7 +2974,7 @@ void FOMapper::ParseCommand(string_view command)
                 if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                     cr->ClearAnim();
                     for (uint j = 0; j < anims.size() / 2; j++) {
-                        cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);
+                        cr->Animate(static_cast<CritterStateAnim>(anims[j * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                     }
                 }
             }
@@ -2981,7 +2983,7 @@ void FOMapper::ParseCommand(string_view command)
             for (auto* cr : CurMap->GetCritters()) {
                 cr->ClearAnim();
                 for (uint j = 0; j < anims.size() / 2; j++) {
-                    cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);
+                    cr->Animate(static_cast<CritterStateAnim>(anims[j * 2]), static_cast<CritterActionAnim>(anims[j * 2 + 1]), nullptr);
                 }
             }
         }

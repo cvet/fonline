@@ -142,18 +142,18 @@
 }
 
 ///# ...
-///# param anim1 ...
-///# param anim2 ...
+///# param stateAnim ...
+///# param actionAnim ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsAnimAvailable(CritterView* self, uint anim1, uint anim2)
+[[maybe_unused]] bool Client_Critter_IsAnimAvailable(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
     const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    return hex_cr->IsAnimAvailable(anim1, anim2);
+    return hex_cr->IsAnimAvailable(stateAnim, actionAnim);
 }
 
 ///# ...
@@ -172,38 +172,38 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Critter_GetAnim1(CritterView* self)
+[[maybe_unused]] CritterStateAnim Client_Critter_GetStateAnim(CritterView* self)
 {
-    return self->GetAnim1();
+    return self->GetStateAnim();
 }
 
 ///# ...
-///# param anim1 ...
-///# param anim2 ...
+///# param stateAnim ...
+///# param actionAnim ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2)
+[[maybe_unused]] void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->Animate(anim1, anim2, nullptr);
+    hex_cr->Animate(stateAnim, actionAnim, nullptr);
 }
 
 ///# ...
-///# param anim1 ...
-///# param anim2 ...
-///# param actionItem ...
+///# param stateAnim ...
+///# param actionAnim ...
+///# param contextItem ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2, AbstractItem* actionItem)
+[[maybe_unused]] void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, AbstractItem* contextItem)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
-    hex_cr->Animate(anim1, anim2, actionItem);
+    hex_cr->Animate(stateAnim, actionAnim, contextItem);
 }
 
 ///# ...
@@ -447,12 +447,12 @@
 }
 
 ///# ...
-///# param anim1 ...
-///# param anim2 ...
+///# param stateAnim ...
+///# param actionAnim ...
 ///# param normalizedTime ...
 ///# param animCallback ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, CallbackFunc<CritterView*> animCallback)
+[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float normalizedTime, CallbackFunc<CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -461,7 +461,7 @@
 
 #if FO_ENABLE_3D
     if (hex_cr->IsModel()) {
-        hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, std::clamp(normalizedTime, 0.0f, 1.0f), [self, animCallback] {
+        hex_cr->GetModel()->AnimationCallbacks.push_back({stateAnim, actionAnim, std::clamp(normalizedTime, 0.0f, 1.0f), [self, animCallback] {
                                                               if (!self->IsDestroyed()) {
                                                                   const auto func_name = static_cast<hstring>(animCallback);
                                                                   const auto result = self->GetEngine()->ScriptSys->CallFunc<void, CritterView*>(func_name, self);
@@ -473,8 +473,8 @@
 #endif
     {
         // Todo: improve animation callbacks for 2D animations
-        UNUSED_VARIABLE(anim1);
-        UNUSED_VARIABLE(anim2);
+        UNUSED_VARIABLE(stateAnim);
+        UNUSED_VARIABLE(actionAnim);
         UNUSED_VARIABLE(normalizedTime);
         UNUSED_VARIABLE(animCallback);
     }

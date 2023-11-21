@@ -117,10 +117,10 @@ public:
     void Broadcast_Dir();
     void Broadcast_Teleport(uint16 to_hx, uint16 to_hy);
 
-    void SendAndBroadcast_Action(int action, int action_ext, const Item* item);
+    void SendAndBroadcast_Action(int action, int action_ext, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, uint8 action, uint8 prev_slot);
-    void SendAndBroadcast_Animate(uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
-    void SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2);
+    void SendAndBroadcast_Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
+    void SendAndBroadcast_SetAnims(CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uint8 how_say, bool unsafe_text);
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
@@ -150,10 +150,10 @@ public:
     void Send_TextMsg(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num);
     void Send_TextMsgLex(const Critter* from_cr, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
     void Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint16 msg_num, string_view lexems);
-    void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item);
+    void Send_Action(const Critter* from_cr, int action, int action_ext, const Item* context_item);
     void Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, uint8 prev_slot);
-    void Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
+    void Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play);
+    void Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim2);
     void Send_AutomapsInfo(const void* locs_vec, const Location* loc);
     void Send_Effect(hstring eff_pid, uint16 hx, uint16 hy, uint16 radius);
     void Send_FlyEffect(hstring eff_pid, ident_t from_cr_id, ident_t to_cr_id, uint16 from_hx, uint16 from_hy, uint16 to_hx, uint16 to_hy);

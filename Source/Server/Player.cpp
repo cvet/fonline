@@ -108,22 +108,13 @@ void Player::Send_AddCritter(const Critter* cr)
 
     Connection->OutBuf.StartMsg(NETMSG_ADD_CRITTER);
     Connection->OutBuf.Write(cr->GetId());
+    Connection->OutBuf.Write(cr->GetProtoId());
     Connection->OutBuf.Write(cr->GetHexX());
     Connection->OutBuf.Write(cr->GetHexY());
-    Connection->OutBuf.Write(cr->GetHexOffsX());
-    Connection->OutBuf.Write(cr->GetHexOffsY());
     Connection->OutBuf.Write(cr->GetDirAngle());
-    Connection->OutBuf.Write(cr->GetCond());
-    Connection->OutBuf.Write(cr->GetAnim1Alive());
-    Connection->OutBuf.Write(cr->GetAnim1Knockout());
-    Connection->OutBuf.Write(cr->GetAnim1Dead());
-    Connection->OutBuf.Write(cr->GetAnim2Alive());
-    Connection->OutBuf.Write(cr->GetAnim2Knockout());
-    Connection->OutBuf.Write(cr->GetAnim2Dead());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
     Connection->OutBuf.Write(is_chosen);
-    Connection->OutBuf.Write(cr->GetProtoId());
     NET_WRITE_PROPERTIES(Connection->OutBuf, data, data_sizes);
     Connection->OutBuf.EndMsg();
 
@@ -333,12 +324,12 @@ void Player::Send_Dir(const Critter* from_cr)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item)
+void Player::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
-    if (item != nullptr) {
-        Send_SomeItem(item);
+    if (context_item != nullptr) {
+        Send_SomeItem(context_item);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -346,7 +337,7 @@ void Player::Send_Action(const Critter* from_cr, int action, int action_ext, con
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(action);
     Connection->OutBuf.Write(action_ext);
-    Connection->OutBuf.Write(item != nullptr);
+    Connection->OutBuf.Write(context_item != nullptr);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
@@ -404,27 +395,27 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 actio
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
+void Player::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
-    if (item != nullptr) {
-        Send_SomeItem(item);
+    if (context_item != nullptr) {
+        Send_SomeItem(context_item);
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ANIMATE);
     Connection->OutBuf.Write(from_cr->GetId());
-    Connection->OutBuf.Write(anim1);
-    Connection->OutBuf.Write(anim2);
-    Connection->OutBuf.Write(item != nullptr);
+    Connection->OutBuf.Write(state_anim);
+    Connection->OutBuf.Write(action_anim);
+    Connection->OutBuf.Write(context_item != nullptr);
     Connection->OutBuf.Write(clear_sequence);
     Connection->OutBuf.Write(delay_play);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
+void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
 {
     STACK_TRACE_ENTRY();
 
@@ -434,8 +425,8 @@ void Player::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint a
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_SET_ANIMS);
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(cond);
-    Connection->OutBuf.Write(anim1);
-    Connection->OutBuf.Write(anim2);
+    Connection->OutBuf.Write(state_anim);
+    Connection->OutBuf.Write(action_anim);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }

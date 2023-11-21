@@ -579,18 +579,18 @@ void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
     }
 }
 
-void Critter::SendAndBroadcast_Action(int action, int action_ext, const Item* item)
+void Critter::SendAndBroadcast_Action(int action, int action_ext, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
-    Send_Action(this, action, action_ext, item);
+    Send_Action(this, action, action_ext, context_item);
 
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Action(this, action, action_ext, item);
+        cr->Send_Action(this, action, action_ext, context_item);
     }
 }
 
@@ -609,33 +609,33 @@ void Critter::SendAndBroadcast_MoveItem(const Item* item, uint8 action, uint8 pr
     }
 }
 
-void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
+void Critter::SendAndBroadcast_Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
-    Send_Animate(this, anim1, anim2, item, clear_sequence, delay_play);
+    Send_Animate(this, state_anim, action_anim, context_item, clear_sequence, delay_play);
 
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Animate(this, anim1, anim2, item, clear_sequence, delay_play);
+        cr->Send_Animate(this, state_anim, action_anim, context_item, clear_sequence, delay_play);
     }
 }
 
-void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2)
+void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
 {
     STACK_TRACE_ENTRY();
 
-    Send_SetAnims(this, cond, anim1, anim2);
+    Send_SetAnims(this, cond, state_anim, action_anim);
 
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_SetAnims(this, cond, anim1, anim2);
+        cr->Send_SetAnims(this, cond, state_anim, action_anim);
     }
 }
 
@@ -1076,14 +1076,14 @@ void Critter::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint
     }
 }
 
-void Critter::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* item)
+void Critter::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Action(from_cr, action, action_ext, item);
+        _player->Send_Action(from_cr, action, action_ext, context_item);
     }
 }
 
@@ -1098,25 +1098,25 @@ void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 acti
     }
 }
 
-void Critter::Send_Animate(const Critter* from_cr, uint anim1, uint anim2, const Item* item, bool clear_sequence, bool delay_play)
+void Critter::Send_Animate(const Critter* from_cr, CritterStateAnim state_anim, CritterActionAnim action_anim, const Item* context_item, bool clear_sequence, bool delay_play)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Animate(from_cr, anim1, anim2, item, clear_sequence, delay_play);
+        _player->Send_Animate(from_cr, state_anim, action_anim, context_item, clear_sequence, delay_play);
     }
 }
 
-void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
+void Critter::Send_SetAnims(const Critter* from_cr, CritterCondition cond, CritterStateAnim state_anim, CritterActionAnim action_anim)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_SetAnims(from_cr, cond, anim1, anim2);
+        _player->Send_SetAnims(from_cr, cond, state_anim, action_anim);
     }
 }
 

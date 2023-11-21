@@ -220,17 +220,18 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
     return true;
 }
 
-auto CritterView::GetAnim1() const -> uint
+auto CritterView::GetStateAnim() const -> CritterStateAnim
 {
     STACK_TRACE_ENTRY();
 
     switch (GetCond()) {
     case CritterCondition::Alive:
-        return GetAnim1Alive() != 0u ? GetAnim1Alive() : ANIM1_UNARMED;
+        return GetAliveStateAnim() != CritterStateAnim::None ? GetAliveStateAnim() : CritterStateAnim::Unarmed;
     case CritterCondition::Knockout:
-        return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
+        return GetKnockoutStateAnim() != CritterStateAnim::None ? GetKnockoutStateAnim() : CritterStateAnim::Unarmed;
     case CritterCondition::Dead:
-        return GetAnim1Dead() != 0u ? GetAnim1Dead() : ANIM1_UNARMED;
+        return GetDeadStateAnim() != CritterStateAnim::None ? GetDeadStateAnim() : CritterStateAnim::Unarmed;
     }
-    return ANIM1_UNARMED;
+
+    return CritterStateAnim::Unarmed;
 }

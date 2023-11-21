@@ -299,18 +299,18 @@ public:
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
-    ///@ ExportProperty ReadOnly Alias = Anim1Life
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Alive);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead);
-    ///@ ExportProperty ReadOnly Alias = Anim2Life
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Alive);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead);
+    ///@ ExportProperty ReadOnly Alias = Anim1Life Alias = Anim1Alive
+    ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, AliveStateAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim1Knockout
+    ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, KnockoutStateAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim1Dead
+    ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, DeadStateAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim2Life Alias = Anim2Alive
+    ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, AliveActionAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim2Knockout
+    ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, KnockoutActionAnim);
+    ///@ ExportProperty ReadOnly Alias = Anim2Dead
+    ENTITY_PROPERTY(PrivateCommon, CritterActionAnim, DeadActionAnim);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, int16, NameOffset);
     ///@ ExportProperty ReadOnly

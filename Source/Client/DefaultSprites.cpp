@@ -200,8 +200,8 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
     for (size_t i = 0; i < Spr.size(); i++) {
         copy->Spr[i] = Spr[i]->MakeCopy();
         copy->SprOffset[i] = SprOffset[i];
-        copy->Anim1 = Anim1;
-        copy->Anim2 = Anim2;
+        copy->StateAnim = StateAnim;
+        copy->ActionAnim = ActionAnim;
     }
 
     for (uint i = 0; i < DirCount - 1; i++) {

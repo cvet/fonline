@@ -495,7 +495,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ident_t cr_id
 // int action
 // int action_ext
-// bool is_item
+// bool is_context_item
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_MOVE_ITEM MAKE_NETMSG_HEADER(93)
@@ -504,27 +504,27 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ANIMATE MAKE_NETMSG_HEADER(95)
-#define NETMSG_CRITTER_ANIMATE_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint) * 2 + sizeof(bool) + sizeof(bool) * 2)
+#define NETMSG_CRITTER_ANIMATE_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(CritterStateAnim) + sizeof(CritterActionAnim) + sizeof(bool) + sizeof(bool) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
-// uint ind1
-// uint ind2
-// bool is_item
+// CritterStateAnim state_anim
+// CritterActionAnim action_anim
+// bool is_context_item
 // bool clear_sequence
 // bool delay_play
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_SET_ANIMS MAKE_NETMSG_HEADER(96)
-#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint8) + sizeof(uint) * 2)
+#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(uint8) + sizeof(CritterStateAnim) + sizeof(CritterActionAnim))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // ident_t cr_id
 // CritterCondition cond
-// uint ind1
-// uint ind2
+// CritterStateAnim state_anim
+// CritterActionAnim action_anim
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)

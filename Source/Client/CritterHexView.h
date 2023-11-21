@@ -59,8 +59,8 @@ public:
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
-    [[nodiscard]] auto GetAnim2() const -> uint;
-    [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
+    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
+    [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
     [[nodiscard]] auto GetViewRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
@@ -79,7 +79,7 @@ public:
     void ChangeDirAngle(int dir_angle);
     void ChangeLookDirAngle(int dir_angle);
     void ChangeMoveDirAngle(int dir_angle);
-    void Animate(uint anim1, uint anim2, Entity* context_item);
+    void Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item);
     void AnimateStay();
     void Action(int action, int action_ext, Entity* context_item, bool local_call);
     void Process();
@@ -124,8 +124,8 @@ private:
         time_duration AnimDuration {};
         uint BeginFrm {};
         uint EndFrm {};
-        uint IndAnim1 {};
-        uint IndAnim2 {};
+        CritterStateAnim StateAnim {};
+        CritterActionAnim ActionAnim {};
         Entity* ContextItem {};
     };
 

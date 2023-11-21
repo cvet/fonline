@@ -98,6 +98,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     CombinedTransformationMatrix = mat44();
 }
 
+// ReSharper disable once CppMemberFunctionMayBeConst
 void ModelBone::FixAfterLoad(ModelBone* root_bone)
 {
     STACK_TRACE_ENTRY();
@@ -303,7 +304,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
     }
 
     // Set default data
-    model->SetAnimation(0, 0, nullptr, ANIMATION_INIT);
+    model->SetAnimation(CritterStateAnim::None, CritterActionAnim::None, nullptr, ANIMATION_INIT);
 
     return unique_ptr<ModelInstance>(model);
 }
@@ -465,12 +466,12 @@ void ModelInstance::PrewarmParticles()
     }
 }
 
-auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool
+auto ModelInstance::SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool
 {
     STACK_TRACE_ENTRY();
 
-    _curAnim1 = anim1;
-    _curAnim2 = anim2;
+    _curStateAnim = state_anim;
+    _curActionAnim = action_anim;
 
     // Restore rotation
     if (const auto no_rotate = IsBitSet(flags, ANIMATION_NO_ROTATE); no_rotate != _noRotate) {
@@ -486,23 +487,25 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     }
 
     // Get animation index
-    const auto anim_pair = static_cast<int>((anim1 << 16) | anim2);
-    auto speed = 1.0f;
-    auto index = 0;
-    auto period_proc = 0.0f;
+    const uint anim_pair = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
+    float speed = 1.0f;
+    int index = 0;
+    float period_proc = 0.0f;
+
     if (!IsBitSet(flags, ANIMATION_INIT)) {
-        if (anim1 == 0) {
-            index = _modelInfo->_renderAnim;
-            period_proc = static_cast<float>(anim2) / 10.0f;
+        if (state_anim == CritterStateAnim::None) {
+            index = static_cast<int>(_modelInfo->_renderAnim);
+            period_proc = static_cast<float>(action_anim) / 10.0f;
         }
         else {
-            index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
+            index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
         }
     }
 
     if (IsBitSet(flags, ANIMATION_PERIOD(0))) {
         period_proc = static_cast<float>(flags >> 16);
     }
+
     period_proc = std::clamp(period_proc, 0.0f, 99.9f);
 
     // Check animation changes
@@ -515,7 +518,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     }
 
     // Animation layers
-    if (auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
+    if (const auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
         for (auto&& [layer_index, value] : it->second) {
             new_layers[layer_index] = value;
         }
@@ -533,19 +536,19 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
     }
 
     // Is not one time play and same anim
-    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && _currentLayers[MODEL_LAYERS_COUNT] == anim_pair && !layer_changed) {
+    if (!IsBitSet(flags, ANIMATION_INIT | ANIMATION_ONE_TIME) && _currentLayers[MODEL_LAYERS_COUNT] == static_cast<int>(anim_pair) && !layer_changed) {
         return false;
     }
 
     std::memcpy(_currentLayers, new_layers, sizeof(int) * MODEL_LAYERS_COUNT);
-    _currentLayers[MODEL_LAYERS_COUNT] = anim_pair;
+    _currentLayers[MODEL_LAYERS_COUNT] = static_cast<int>(anim_pair);
 
     auto mesh_changed = false;
     vector<hstring> fast_transition_bones;
 
     if (layer_changed) {
         // Store previous cuts
-        auto old_cuts = _allCuts;
+        const auto old_cuts = _allCuts;
 
         // Store disabled meshes
         for (size_t i = 0; i < _allMeshes.size(); i++) {
@@ -574,7 +577,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
             for (const auto& link : _modelInfo->_animData) {
                 if (link.Layer == i && link.LayerValue == new_layers[i] && link.ChildName.empty()) {
-                    for (auto j : link.DisabledLayer) {
+                    for (const auto j : link.DisabledLayer) {
                         unused_layers[j] = true;
                     }
                     for (const auto disabled_mesh_name : link.DisabledMesh) {
@@ -589,7 +592,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         }
 
         if (_parentBone != nullptr) {
-            for (auto j : _animLink.DisabledLayer) {
+            for (const auto j : _animLink.DisabledLayer) {
                 unused_layers[j] = true;
             }
             for (auto disabled_mesh_name : _animLink.DisabledMesh) {
@@ -739,7 +742,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
         // Affect cut
         if (!mesh_changed) {
-            mesh_changed = (_allCuts != old_cuts);
+            mesh_changed = _allCuts != old_cuts;
         }
     }
 
@@ -750,7 +753,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
         const auto* set = _bodyAnimController->GetAnimationSet(index);
 
         // Alternate tracks
-        uint new_track = (_currentTrack == 0 ? 1 : 0);
+        const uint new_track = (_currentTrack == 0 ? 1 : 0);
         auto period = set->GetDuration();
         _animPosPeriod = period;
         if (IsBitSet(flags, ANIMATION_INIT)) {
@@ -815,7 +818,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint
 
     // Set animation for children
     for (auto&& child : _children) {
-        if (child->SetAnimation(anim1, anim2, layers, flags)) {
+        if (child->SetAnimation(state_anim, action_anim, layers, flags)) {
             mesh_changed = true;
         }
     }
@@ -888,18 +891,18 @@ void ModelInstance::RefreshMoveAnimation()
         return;
     }
 
-    uint anim1 = ANIM1_UNARMED;
-    uint anim2 = ANIM2_IDLE;
+    auto state_anim = CritterStateAnim::Unarmed;
+    auto action_anim = CritterActionAnim::Idle;
 
     if (_isMoving) {
         const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
         if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
-            anim2 = _isRunning ? ANIM2_RUN : ANIM2_WALK;
+            action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
         }
         else {
             _isMovingBack = true;
-            anim2 = _isRunning ? ANIM2_RUN_BACK : ANIM2_WALK_BACK;
+            action_anim = _isRunning ? CritterActionAnim::RunBack : CritterActionAnim::WalkBack;
         }
 
         _playTurnAnimation = false;
@@ -909,7 +912,7 @@ void ModelInstance::RefreshMoveAnimation()
             _moveDirAngle = _targetMoveDirAngle = _lookDirAngle;
         }
 
-        anim1 = _curAnim1;
+        state_anim = _curStateAnim;
         _isMovingBack = false;
 
         const auto angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
@@ -920,7 +923,7 @@ void ModelInstance::RefreshMoveAnimation()
                 return;
             }
 
-            anim2 = angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT;
+            action_anim = angle_diff < 0.0f ? CritterActionAnim::TurnRight : CritterActionAnim::TurnLeft;
             _playTurnAnimation = true;
         }
         else if (_playTurnAnimation) {
@@ -929,13 +932,13 @@ void ModelInstance::RefreshMoveAnimation()
     }
 
     float speed = 1.0f;
-    const auto index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
+    const auto index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed, _isCombatMode);
     if (index == _curMovingAnimIndex) {
         return;
     }
 
     _curMovingAnimIndex = index;
-    _curMovingAnim2 = anim2;
+    _curMovingAnim = action_anim;
 
     if (_isMoving) {
         speed *= _movingSpeedFactor;
@@ -975,45 +978,46 @@ void ModelInstance::RefreshMoveAnimation()
     }
 }
 
-auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
+auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    const auto index = static_cast<int>((anim1 << 16) | anim2);
+    const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
     const auto it = _modelInfo->_animIndexes.find(index);
+
     return it != _modelInfo->_animIndexes.end();
 }
 
-auto ModelInstance::ResolveAnimation(uint& anim1, uint& anim2) const -> bool
+auto ModelInstance::ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return _modelInfo->GetAnimationIndex(anim1, anim2, nullptr, _isCombatMode) != -1;
+    return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr, _isCombatMode) != -1;
 }
 
-auto ModelInstance::GetAnim1() const -> uint
+auto ModelInstance::GetStateAnim() const -> CritterStateAnim
 {
     STACK_TRACE_ENTRY();
 
-    return _currentLayers[MODEL_LAYERS_COUNT] >> 16;
+    return static_cast<CritterStateAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) >> 16);
 }
 
-auto ModelInstance::GetAnim2() const -> uint
+auto ModelInstance::GetActionAnim() const -> CritterActionAnim
 {
     STACK_TRACE_ENTRY();
 
-    return _currentLayers[MODEL_LAYERS_COUNT] & 0xFFFF;
+    return static_cast<CritterActionAnim>(static_cast<uint>(_currentLayers[MODEL_LAYERS_COUNT]) & 0xFFFF);
 }
 
-auto ModelInstance::GetMovingAnim2() const -> uint
+auto ModelInstance::GetMovingAnim2() const -> CritterActionAnim
 {
     STACK_TRACE_ENTRY();
 
     if (_curMovingAnimIndex != -1) {
-        return _curMovingAnim2;
+        return _curMovingAnim;
     }
     else {
-        return _isRunning ? ANIM2_RUN : ANIM2_WALK;
+        return _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
     }
 }
 
@@ -1893,7 +1897,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     // Update linked matrices
     if ((_parentBone != nullptr) && !_linkBones.empty()) {
         for (uint i = 0, j = static_cast<uint>(_linkBones.size()) / 2; i < j; i++) {
-            _linkBones[i * 2 + 1]->CombinedTransformationMatrix = _linkBones[i * 2]->CombinedTransformationMatrix;
+            _linkBones[static_cast<size_t>(i) * 2 + 1]->CombinedTransformationMatrix = _linkBones[static_cast<size_t>(i) * 2]->CombinedTransformationMatrix;
         }
     }
 
@@ -1930,7 +1934,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     // Animation callbacks
     if (_bodyAnimController != nullptr && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
         for (auto& callback : AnimationCallbacks) {
-            if (((callback.Anim1 == 0) || callback.Anim1 == _curAnim1) && ((callback.Anim2 == 0) || callback.Anim2 == _curAnim2)) {
+            if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
                 const auto fire_track_pos1 = floorf(prev_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
                 const auto fire_track_pos2 = floorf(new_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
                 if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
@@ -2144,7 +2148,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         struct AnimEntry
         {
-            int Index;
+            uint Index;
             string FileName;
             string Name;
         };
@@ -2321,7 +2325,7 @@ auto ModelInformation::Load(string_view name) -> bool
                             cut->Layers.push_back(cut_layer);
                         }
                         else {
-                            for (auto i = 0; i < MODEL_LAYERS_COUNT; i++) {
+                            for (int i = 0; i < static_cast<int>(MODEL_LAYERS_COUNT); i++) {
                                 if (i != layer) {
                                     cut->Layers.push_back(i);
                                 }
@@ -2508,7 +2512,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 for (const auto& disabled_layer_name : disabled_layers) {
                     const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
-                    if (disabled_layer >= 0 && disabled_layer < MODEL_LAYERS_COUNT) {
+                    if (disabled_layer >= 0 && disabled_layer < static_cast<int>(MODEL_LAYERS_COUNT)) {
                         link->DisabledLayer.push_back(disabled_layer);
                     }
                 }
@@ -2536,7 +2540,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
-                if (index >= 0 && index < MODEL_MAX_TEXTURES) {
+                if (index >= 0 && index < static_cast<int>(MODEL_MAX_TEXTURES)) {
                     link->TextureInfo.emplace_back(buf, mesh, index);
                 }
             }
@@ -2558,11 +2562,11 @@ auto ModelInformation::Load(string_view name) -> bool
                     string a1;
                     string a2;
                     (*istr) >> a1 >> a2;
-                    anims.push_back({(ind1 << 16) | ind2, a1, a2});
+                    anims.push_back({(static_cast<uint>(ind1) << 16) | static_cast<uint>(ind2), a1, a2});
 
                     if (token == "AnimExt") {
                         (*istr) >> a1 >> a2;
-                        anims.push_back({(ind1 << 16) | (ind2 | 0x8000), a1, a2});
+                        anims.push_back({(static_cast<uint>(ind1) << 16) | (static_cast<uint>(ind2) | 0x8000), a1, a2});
                     }
                 }
                 else {
@@ -2607,10 +2611,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (valuei == 1) {
-                    _anim1Equals.emplace(ind1, ind2);
+                    _stateAnimEquals.emplace(static_cast<CritterStateAnim>(ind1), static_cast<CritterStateAnim>(ind2));
                 }
                 else if (valuei == 2) {
-                    _anim2Equals.emplace(ind1, ind2);
+                    _actionAnimEquals.emplace(static_cast<CritterActionAnim>(ind1), static_cast<CritterActionAnim>(ind2));
                 }
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
@@ -2687,7 +2691,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Single frame render
         if (!render_fname.empty() && !render_anim.empty()) {
-            anims.push_back({-1, render_fname, render_anim});
+            anims.push_back({static_cast<uint>(-1), render_fname, render_anim});
         }
 
         // Create animation controller
@@ -2711,7 +2715,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     _animController->RegisterAnimationSet(set);
                     auto set_index = _animController->GetNumAnimationSets() - 1;
 
-                    if (anim.Index == -1) {
+                    if (anim.Index == static_cast<uint>(-1)) {
                         _renderAnim = static_cast<int>(set_index);
                     }
                     else if (anim.Index != 0) {
@@ -2766,20 +2770,20 @@ auto ModelInformation::Load(string_view name) -> bool
     return true;
 }
 
-auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int
+auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float* speed, bool combat_first) const -> int
 {
     STACK_TRACE_ENTRY();
 
     // Find index
     auto index = -1;
     if (combat_first) {
-        index = GetAnimationIndexEx(anim1, anim2 | 0x8000, speed);
+        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
     }
     if (index == -1) {
-        index = GetAnimationIndexEx(anim1, anim2, speed);
+        index = GetAnimationIndexEx(state_anim, action_anim, speed);
     }
     if (!combat_first && index == -1) {
-        index = GetAnimationIndexEx(anim1, anim2 | 0x8000, speed);
+        index = GetAnimationIndexEx(state_anim, static_cast<CritterActionAnim>(static_cast<uint>(action_anim) | 0x8000), speed);
     }
     if (index != -1) {
         return index;
@@ -2787,14 +2791,15 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
 
     // Find substitute animation
     const auto base_model_name = _modelMngr._hashResolver.ToHashedString(_fileName);
-    const auto anim1_base = anim1;
-    const auto anim2_base = anim2;
+    const auto base_state_anim = state_anim;
+    const auto base_action_anim = action_anim;
+
     while (index == -1) {
         auto model_name = base_model_name;
-        const auto anim1_ = anim1;
-        const auto anim2_ = anim2;
-        if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
-            index = GetAnimationIndexEx(anim1, anim2, speed);
+        const auto state_anim_ = state_anim;
+        const auto action_anim_ = action_anim;
+        if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) && (state_anim != state_anim_ || action_anim != action_anim_)) {
+            index = GetAnimationIndexEx(state_anim, action_anim, speed);
         }
         else {
             break;
@@ -2804,22 +2809,23 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
     return index;
 }
 
-auto ModelInformation::GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int
+auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float* speed) const -> int
 {
     STACK_TRACE_ENTRY();
 
     // Check equals
-    const auto it1 = _anim1Equals.find(anim1);
-    if (it1 != _anim1Equals.end()) {
-        anim1 = (*it1).second;
+    const auto it1 = _stateAnimEquals.find(state_anim);
+    if (it1 != _stateAnimEquals.end()) {
+        state_anim = it1->second;
     }
-    const auto it2 = _anim2Equals.find(anim2 & 0x7FFF);
-    if (it2 != _anim2Equals.end()) {
-        anim2 = ((*it2).second | (anim2 & 0x8000));
+
+    const auto it2 = _actionAnimEquals.find(static_cast<CritterActionAnim>(static_cast<uint>(action_anim) & 0x7FFF));
+    if (it2 != _actionAnimEquals.end()) {
+        action_anim = static_cast<CritterActionAnim>(static_cast<uint>(it2->second) | (static_cast<uint>(action_anim) & 0x8000));
     }
 
     // Make index
-    const auto index = static_cast<int>((anim1 << 16) | anim2);
+    const auto index = (static_cast<uint>(state_anim) << 16) | static_cast<uint>(action_anim);
 
     // Speed
     if (speed != nullptr) {

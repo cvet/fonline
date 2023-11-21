@@ -58,44 +58,44 @@ class Sprite
     }
 
     // alignX/Y = -1 left / top, 0 center, 1 right / bottom
-    void Draw(int x, int y, int w = 0, int h = 0, int alignX = -1, int alignY = -1, SpriteLayout layout = SpriteLayout::None, uint color = 0)
+    void Draw(int x, int y, int width = 0, int height = 0, int alignX = -1, int alignY = -1, SpriteLayout layout = SpriteLayout::None, uint color = 0)
     {
         if (Id == 0 || Hidden) {
             return;
         }
 
-        if (w == 0) {
-            w = Width;
+        if (width == 0) {
+            width = Width;
         }
-        if (h == 0) {
-            h = Height;
+        if (height == 0) {
+            height = Height;
         }
 
         if (alignX == 0) {
-            x -= w / 2;
+            x -= width / 2;
         }
         else if (alignX == 1) {
-            x -= w;
+            x -= width;
         }
         if (alignY == 0) {
-            y -= h / 2;
+            y -= height / 2;
         }
         else if (alignY == 1) {
-            y -= h;
+            y -= height;
         }
 
         switch (layout != SpriteLayout::None ? layout : Layout) {
         case SpriteLayout::Tile:
-            Game.DrawSpritePattern(Id, x, y, w, h, Width, Height, color);
+            Game.DrawSpritePattern(Id, x, y, width, height, Width, Height, color);
             break;
         case SpriteLayout::Center:
-            Game.DrawSprite(Id, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color, false);
+            Game.DrawSprite(Id, x + width / 2 - Width / 2, y + height / 2 - Height / 2, color, false);
             break;
         case SpriteLayout::Stretch:
-            Game.DrawSprite(Id, x, y, w, h, color, false, false);
+            Game.DrawSprite(Id, x, y, width, height, color, false, false);
             break;
         case SpriteLayout::Zoom:
-            Game.DrawSprite(Id, x, y, w, h, color, true, false);
+            Game.DrawSprite(Id, x, y, width, height, color, true, false);
             break;
         default:
             Game.DrawSprite(Id, x, y, color, false);

@@ -52,9 +52,9 @@ public:
     ~ResourceManager() = default;
 
     [[nodiscard]] auto GetItemDefaultSpr() -> const shared_ptr<Sprite>&;
-    [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, uint anim1, uint anim2, uint8 dir) -> const SpriteSheet*;
+    [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir) -> const SpriteSheet*;
     [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
-    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, const int* layers3d) -> const Sprite*;
+    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const Sprite*;
     [[nodiscard]] auto GetRandomSplash() -> shared_ptr<Sprite>;
     [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
@@ -62,10 +62,10 @@ public:
     void CleanupCritterFrames();
 
 private:
-    [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, uint anim1, uint anim2) -> shared_ptr<SpriteSheet>;
-    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint anim1, uint anim2) -> const SpriteSheet*;
+    [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>;
+    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> const SpriteSheet*;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, uint anim1, uint anim2, uint8 dir, const int* layers3d) -> const ModelSprite*;
+    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint8 dir, const int* layers3d) -> const ModelSprite*;
 #endif
 
     void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);

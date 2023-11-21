@@ -97,8 +97,8 @@ public:
     vector<IPoint> SprOffset {};
     uint CntFrm {}; // Todo: Spr.size()
     uint WholeTicks {};
-    uint Anim1 {};
-    uint Anim2 {};
+    CritterStateAnim StateAnim {};
+    CritterActionAnim ActionAnim {};
     uint DirCount {};
     shared_ptr<SpriteSheet> Dirs[GameSettings::MAP_DIR_COUNT - 1] {};
 

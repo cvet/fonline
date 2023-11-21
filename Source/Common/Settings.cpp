@@ -114,6 +114,17 @@ static void SetEntry(float& entry, string_view value, bool append)
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::DOUBLE_VALUE);
     entry += static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
 }
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+static void SetEntry(T& entry, string_view value, bool append)
+{
+    STACK_TRACE_ENTRY();
+
+    if (!append) {
+        entry = {};
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry = static_cast<T>(std::get<AnyData::INT_VALUE>(any_value));
+}
 static void SetEntry(vector<string>& entry, string_view value, bool append)
 {
     STACK_TRACE_ENTRY();
@@ -179,6 +190,20 @@ static void SetEntry(vector<bool>& entry, string_view value, bool append)
         entry.emplace_back(std::get<AnyData::BOOL_VALUE>(str));
     }
 }
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+static void SetEntry(vector<T>& entry, string_view value, bool append)
+{
+    STACK_TRACE_ENTRY();
+
+    if (!append) {
+        entry.clear();
+    }
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+    }
+}
 
 static void DrawEntry(string_view name, string_view entry)
 {
@@ -217,6 +242,13 @@ static void DrawEntry(string_view name, const bool& entry)
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 static void DrawEntry(string_view name, const float& entry)
+{
+    STACK_TRACE_ENTRY();
+
+    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
+}
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+static void DrawEntry(string_view name, const T& entry)
 {
     STACK_TRACE_ENTRY();
 
@@ -272,6 +304,17 @@ static void DrawEntry(string_view name, const vector<bool>& entry)
     }
     ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+static void DrawEntry(string_view name, const vector<T>& entry)
+{
+    STACK_TRACE_ENTRY();
+
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
+}
 
 static void DrawEditableEntry(string_view name, string& entry)
 {
@@ -315,6 +358,13 @@ static void DrawEditableEntry(string_view name, float& entry)
 
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+static void DrawEditableEntry(string_view name, T& entry)
+{
+    STACK_TRACE_ENTRY();
+
+    ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
+}
 static void DrawEditableEntry(string_view name, vector<string>& entry)
 {
     STACK_TRACE_ENTRY();
@@ -345,6 +395,14 @@ static void DrawEditableEntry(string_view name, vector<float>& entry)
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<bool>& entry)
+{
+    STACK_TRACE_ENTRY();
+
+    UNUSED_VARIABLE(entry);
+    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+}
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+static void DrawEditableEntry(string_view name, vector<T>& entry)
 {
     STACK_TRACE_ENTRY();
 

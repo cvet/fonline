@@ -110,9 +110,9 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool override;
 
     [[nodiscard]] auto IsConnecting() const -> bool;
     [[nodiscard]] auto IsConnected() const -> bool;
@@ -225,13 +225,13 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, uint /*anim1*/, uint /*anim2*/, AbstractItem* /*item*/);
+    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
+    ENTITY_EVENT(OnCritterAnimation, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint& /*pass*/, uint& /*flags*/, int& /*ox*/, int& /*oy*/, string& /*animName*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, CritterStateAnim& /*stateAnimEx*/, CritterActionAnim& /*actionAnimEx*/, uint& /*flags*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uint8 /*toSlot*/);
     ///@ ExportEvent

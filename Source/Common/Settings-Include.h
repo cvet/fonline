@@ -226,9 +226,9 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
 FIXED_SETTING(uint, CritterFidgetTime, 50000);
-FIXED_SETTING(uint, Anim2CombatBegin, 0);
-FIXED_SETTING(uint, Anim2CombatIdle, 0);
-FIXED_SETTING(uint, Anim2CombatEnd, 0);
+FIXED_SETTING(CritterActionAnim, CombatAnimBegin, CritterActionAnim::None);
+FIXED_SETTING(CritterActionAnim, CombatAnimIdle, CritterActionAnim::None);
+FIXED_SETTING(CritterActionAnim, CombatAnimEnd, CritterActionAnim::None);
 FIXED_SETTING(string, PlayerOffAppendix, "_off");
 VARIABLE_SETTING(bool, ShowCritterName, true);
 VARIABLE_SETTING(bool, ShowCritterHeadText, true);

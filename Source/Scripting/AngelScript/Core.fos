@@ -54,10 +54,10 @@
 #define ACTION_DODGE             (13) // 0 - front, 1 - back
 #define ACTION_DAMAGE            (14) // 0 - front, 1 - back
 #define ACTION_DAMAGE_FORCE      (15) // 0 - front, 1 - back
-#define ACTION_KNOCKOUT          (16) // s 0 - knockout anim2begin
-#define ACTION_STANDUP           (17) // s 0 - knockout anim2end
+#define ACTION_KNOCKOUT          (16) // s 0 - knockout koAnimBegin
+#define ACTION_STANDUP           (17) // s 0 - knockout koAnimEnd
 #define ACTION_FIDGET            (18) // l
-#define ACTION_DEAD              (19) // s dead type anim2 (see Anim2 in _animation.fos)
+#define ACTION_DEAD              (19) // s dead type CritterActionAnim
 #define ACTION_CONNECT           (20) //
 #define ACTION_DISCONNECT        (21) //
 #define ACTION_RESPAWN           (22) // s

@@ -65,7 +65,7 @@ public:
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> ItemView*;
     [[nodiscard]] auto GetInvItems() -> const vector<ItemView*>&;
     [[nodiscard]] auto GetConstInvItems() const -> vector<const ItemView*>;
-    [[nodiscard]] auto GetAnim1() const -> uint;
+    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
 
     void MarkAsDestroyed() override;
     virtual auto AddInvItem(ident_t id, const ProtoItem* proto, uint8 slot, const Properties* props) -> ItemView*;

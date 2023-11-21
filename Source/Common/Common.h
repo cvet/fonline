@@ -1602,7 +1602,7 @@ static constexpr int ACTION_DROP_ITEM = 5; // l s from slot +
 static constexpr int ACTION_KNOCKOUT = 16; // s 0 - knockout anim2begin
 static constexpr int ACTION_STANDUP = 17; // s 0 - knockout anim2end
 static constexpr int ACTION_FIDGET = 18; // l
-static constexpr int ACTION_DEAD = 19; // s dead type anim2 (see Anim2 in _animation.fos)
+static constexpr int ACTION_DEAD = 19; // s dead type anim2 (see ActionAnim in _animation.fos)
 static constexpr int ACTION_CONNECT = 20;
 static constexpr int ACTION_DISCONNECT = 21;
 static constexpr int ACTION_RESPAWN = 22; // s
@@ -1616,21 +1616,32 @@ static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
 
-// Anims
-static constexpr uint ANIM1_UNARMED = 1;
-static constexpr uint ANIM2_IDLE = 1;
-static constexpr uint ANIM2_WALK = 3;
-static constexpr uint ANIM2_WALK_BACK = 15;
-static constexpr uint ANIM2_LIMP = 4;
-static constexpr uint ANIM2_RUN = 5;
-static constexpr uint ANIM2_RUN_BACK = 16;
-static constexpr uint ANIM2_TURN_RIGHT = 17;
-static constexpr uint ANIM2_TURN_LEFT = 18;
-static constexpr uint ANIM2_PANIC_RUN = 6;
-static constexpr uint ANIM2_SNEAK_WALK = 7;
-static constexpr uint ANIM2_SNEAK_RUN = 8;
-static constexpr uint ANIM2_IDLE_PRONE_FRONT = 86;
-static constexpr uint ANIM2_DEAD_FRONT = 102;
+// Critter animations
+///@ ExportEnum
+enum class CritterStateAnim : uint16
+{
+    None = 0,
+    Unarmed = 1,
+};
+
+///@ ExportEnum
+enum class CritterActionAnim : uint16
+{
+    None = 0,
+    Idle = 1,
+    Walk = 3,
+    WalkBack = 15,
+    Limp = 4,
+    Run = 5,
+    RunBack = 16,
+    TurnRight = 17,
+    TurnLeft = 18,
+    PanicRun = 6,
+    SneakWalk = 7,
+    SneakRun = 8,
+    IdleProneFront = 86,
+    DeadFront = 102,
+};
 
 // Property type in network interaction
 enum class NetProperty : uint8
@@ -2019,9 +2030,9 @@ class AnimationResolver
 {
 public:
     virtual ~AnimationResolver() = default;
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, uint& pass, uint& flags, int& ox, int& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterStateAnim& state_anim_ex, CritterActionAnim& action_anim_ex, uint& flags) -> bool = 0;
 };
 
 class FrameBalancer

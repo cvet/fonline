@@ -167,8 +167,8 @@ struct ModelParticleSystem
 
 struct ModelAnimationCallback
 {
-    uint Anim1 {};
-    uint Anim2 {};
+    CritterStateAnim StateAnim {};
+    CritterActionAnim ActionAnim {};
     float NormalizedTime {};
     std::function<void()> Callback {};
 };
@@ -245,11 +245,11 @@ public:
 
     [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
-    [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
-    [[nodiscard]] auto GetAnim1() const -> uint;
-    [[nodiscard]] auto GetAnim2() const -> uint;
-    [[nodiscard]] auto GetMovingAnim2() const -> uint;
-    [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
+    [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool;
+    [[nodiscard]] auto GetStateAnim() const -> CritterStateAnim;
+    [[nodiscard]] auto GetActionAnim() const -> CritterActionAnim;
+    [[nodiscard]] auto GetMovingAnim2() const -> CritterActionAnim;
+    [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) const -> bool;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
@@ -264,7 +264,7 @@ public:
     void SetupFrame();
     void StartMeshGeneration();
     void PrewarmParticles();
-    auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
+    auto SetAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim, const int* layers, uint flags) -> bool;
     void SetDir(uint8 dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
     void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
@@ -320,8 +320,8 @@ private:
     int _frameHeight {};
     mat44 _frameProj {};
     mat44 _frameProjColMaj {};
-    uint _curAnim1 {};
-    uint _curAnim2 {};
+    CritterStateAnim _curStateAnim {};
+    CritterActionAnim _curActionAnim {};
     vector<CombinedMesh*> _combinedMeshes {};
     size_t _combinedMeshesSize {};
     bool _disableCulling {};
@@ -356,7 +356,7 @@ private:
     bool _isMoving {};
     bool _isMovingBack {};
     int _curMovingAnimIndex {-1};
-    uint _curMovingAnim2 {};
+    CritterActionAnim _curMovingAnim {};
     bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};
@@ -397,8 +397,8 @@ public:
     ~ModelInformation() = default;
 
 private:
-    [[nodiscard]] auto GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int;
-    [[nodiscard]] auto GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int;
+    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float* speed, bool combat_first) const -> int;
+    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float* speed) const -> int;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
     [[nodiscard]] auto Load(string_view name) -> bool;
@@ -410,15 +410,15 @@ private:
     ModelHierarchy* _hierarchy {};
     unique_ptr<ModelAnimationController> _animController {};
     uint _numAnimationSets {};
-    map<int, int> _anim1Equals {};
-    map<int, int> _anim2Equals {};
-    map<int, int> _animIndexes {};
-    map<int, float> _animSpeed {};
-    map<uint, vector<pair<int, int>>> _animLayerValues {};
-    set<hstring> _fastTransitionBones {};
+    unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
+    unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
+    unordered_map<uint, int> _animIndexes {};
+    unordered_map<uint, float> _animSpeed {};
+    unordered_map<uint, vector<pair<int, int>>> _animLayerValues {};
+    unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
-    int _renderAnim {};
+    uint _renderAnim {};
     int _renderAnimProcFrom {};
     int _renderAnimProcTo {100};
     int _renderAnimDir {};

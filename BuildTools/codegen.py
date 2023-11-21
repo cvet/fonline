@@ -425,7 +425,11 @@ def parseTags():
             return customTypesNativeMap[t[:-1]] + t[-1]
         elif t in customTypesNativeMap:
             return customTypesNativeMap[t]
+        elif t in typeMap:
+            return typeMap[t]
         elif t in validTypes:
+            return t
+        elif t[-1] == '&' and t[:-1] in validTypes:
             return t
         elif t[-1] == '*' and t not in typeMap:
             tt = t[:-1]
@@ -438,8 +442,7 @@ def parseTags():
                 return 'Entity'
             assert False, tt
         else:
-            assert t in typeMap, 'Invalid engine type ' + t
-            return typeMap[t]
+            assert False, 'Invalid engine type ' + t
 
     def engineTypeToMetaType(t):
         ut = engineTypeToUnifiedType(t)
@@ -496,6 +499,9 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag ExportEnum', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
 
+    def parseTypeTags2():
+        global codeGenTags
+        
         for tagMeta in tagsMetas['ExportType']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
@@ -555,20 +561,34 @@ def parseTags():
                     else:
                         return 'uint8'
                 
-                for g in codeGenTags['Enum']:
+                def findNextValue(kv):
+                    result = 0
+                    for _, value, _ in kv:
+                        ivalue = int(value, 0)
+                        if ivalue >= result:
+                            result = ivalue + 1
+                    return str(result)
+                
+                for g in codeGenTags['ExportEnum']:
                     if g[0] == grname:
-                        g[2].append((key, value if value is not None else str(int(g[2][-1][1], 0) + 1), []))
-                        g[1] = calcUnderlyingMetaType(g[2])
+                        g[2].append((key, value if value is not None else findNextValue(g[2]), []))
+                        # Verify value g[1] = calcUnderlyingMetaType(g[2])
                         break
                 else:
-                    keyValues = [(key, value if value is not None else '0', [])]
-                    codeGenTags['Enum'].append([grname, calcUnderlyingMetaType(keyValues), keyValues, flags, comment])
-                
-                    assert grname not in validTypes, 'Enum already in valid types'
-                    validTypes.add(grname)
-                    assert grname not in scriptEnums, 'Enum already added'
-                    scriptEnums.add(grname)
-                
+                    for g in codeGenTags['Enum']:
+                        if g[0] == grname:
+                            g[2].append((key, value if value is not None else findNextValue(g[2]), []))
+                            g[1] = calcUnderlyingMetaType(g[2])
+                            break
+                    else:
+                        keyValues = [(key, value if value is not None else '0', [])]
+                        codeGenTags['Enum'].append([grname, calcUnderlyingMetaType(keyValues), keyValues, flags, comment])
+                        
+                        assert grname not in validTypes, 'Enum already in valid types'
+                        validTypes.add(grname)
+                        assert grname not in scriptEnums, 'Enum already added'
+                        scriptEnums.add(grname)
+                    
             except Exception as ex:
                 showError('Invalid tag Enum', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
         
@@ -681,7 +701,7 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag Entity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
                 
-    def parseTypeTags2():
+    def parseTypeTags3():
         global codeGenTags
         
         for tagMeta in tagsMetas['ExportObject']:
@@ -738,7 +758,7 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag ExportObject', absPath + ' (' + str(lineIndex + 1) + ')', tagContext[0] if tagContext else '(empty)', ex)
     
-    def parseTypeTags3():
+    def parseTypeTags4():
         global codeGenTags
         
         for tagMeta in tagsMetas['ExportProperty']:
@@ -1105,6 +1125,7 @@ def parseTags():
     parseTypeTags1()
     parseTypeTags2()
     parseTypeTags3()
+    parseTypeTags4()
     postprocessTags()
 
 parseTags()

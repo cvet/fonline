@@ -171,26 +171,28 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
     switch (action) {
     case ACTION_KNOCKOUT:
         SetCond(CritterCondition::Knockout);
-        SetAnim2Knockout(action_ext);
+        SetKnockoutStateAnim(static_cast<CritterStateAnim>(action_ext));
         break;
     case ACTION_STANDUP:
         SetCond(CritterCondition::Alive);
         break;
     case ACTION_DEAD: {
         SetCond(CritterCondition::Dead);
-        SetAnim2Dead(action_ext);
-        auto* anim = GetCurAnim();
-        _needReset = true;
+        SetDeadStateAnim(static_cast<CritterStateAnim>(action_ext));
+
 #if FO_ENABLE_3D
         if (_model != nullptr) {
             _resetTime = _engine->GameTime.GameplayTime() + _model->GetAnimDuration();
         }
         else {
+            auto* anim = GetCurAnim();
             _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr ? anim->AnimFrames->WholeTicks : 1000};
         }
 #else
+        auto* anim = GetCurAnim();
         _resetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {anim != nullptr && anim->AnimFrames != nullptr ? anim->AnimFrames->WholeTicks : 1000};
 #endif
+        _needReset = true;
     } break;
     case ACTION_CONNECT:
         SetPlayerOffline(false);
@@ -245,11 +247,11 @@ void CritterHexView::NextAnim(bool erase_front)
 
     const auto& cr_anim = _animSequence.front();
 
-    _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ContextItem);
+    _engine->OnCritterAnimationProcess.Fire(false, this, cr_anim.StateAnim, cr_anim.ActionAnim, cr_anim.ContextItem);
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetModelLayersData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
+        _model->SetAnimation(cr_anim.StateAnim, cr_anim.ActionAnim, GetModelLayersData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
     }
     else
 #endif
@@ -258,13 +260,13 @@ void CritterHexView::NextAnim(bool erase_front)
     }
 }
 
-void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
+void CritterHexView::Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item)
 {
     STACK_TRACE_ENTRY();
 
     const auto dir = GetDir();
-    if (anim1 == 0) {
-        anim1 = GetAnim1();
+    if (state_anim == CritterStateAnim::None) {
+        state_anim = GetStateAnim();
     }
 
     Entity* fixed_context_item = nullptr;
@@ -284,8 +286,8 @@ void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        if (_model->ResolveAnimation(anim1, anim2)) {
-            _animSequence.push_back(CritterAnim {nullptr, time_duration {}, 0, 0, anim1, anim2, fixed_context_item});
+        if (_model->ResolveAnimation(state_anim, action_anim)) {
+            _animSequence.push_back(CritterAnim {nullptr, time_duration {}, 0, 0, state_anim, action_anim, fixed_context_item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -299,10 +301,10 @@ void CritterHexView::Animate(uint anim1, uint anim2, Entity* context_item)
     else
 #endif
     {
-        const auto* frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), anim1, anim2, dir);
+        const auto* frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, dir);
 
         if (frames != nullptr) {
-            _animSequence.push_back(CritterAnim {frames, std::chrono::milliseconds {frames->WholeTicks}, 0, frames->CntFrm - 1, frames->Anim1, frames->Anim2, fixed_context_item});
+            _animSequence.push_back(CritterAnim {frames, std::chrono::milliseconds {frames->WholeTicks}, 0, frames->CntFrm - 1, frames->StateAnim, frames->ActionAnim, fixed_context_item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -323,8 +325,8 @@ void CritterHexView::AnimateStay()
 
     _animStartTime = _engine->GameTime.GameplayTime();
 
-    auto anim1 = GetAnim1();
-    auto anim2 = GetAnim2();
+    auto state_anim = GetStateAnim();
+    auto action_anim = GetActionAnim();
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
@@ -336,24 +338,24 @@ void CritterHexView::AnimateStay()
         if (IsMoving()) {
             _model->SetMoving(true, static_cast<uint>(static_cast<float>(Moving.Speed) / scale));
 
-            anim2 = _model->GetMovingAnim2();
+            action_anim = _model->GetMovingAnim2();
         }
         else {
             _model->SetMoving(false);
         }
 
-        if (!_model->ResolveAnimation(anim1, anim2)) {
-            anim1 = ANIM1_UNARMED;
-            anim2 = ANIM2_IDLE;
+        if (!_model->ResolveAnimation(state_anim, action_anim)) {
+            state_anim = CritterStateAnim::Unarmed;
+            action_anim = CritterActionAnim::Idle;
         }
 
-        _engine->OnCritterAnimationProcess.Fire(true, this, anim1, anim2, nullptr);
+        _engine->OnCritterAnimationProcess.Fire(true, this, state_anim, action_anim, nullptr);
 
         if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
-            _model->SetAnimation(anim1, anim2, GetModelLayersData(), 0);
+            _model->SetAnimation(state_anim, action_anim, GetModelLayersData(), 0);
         }
         else {
-            _model->SetAnimation(anim1, anim2, GetModelLayersData(), ANIMATION_STAY | ANIMATION_PERIOD(100));
+            _model->SetAnimation(state_anim, action_anim, GetModelLayersData(), ANIMATION_STAY | ANIMATION_PERIOD(100));
         }
     }
     else
@@ -365,20 +367,20 @@ void CritterHexView::AnimateStay()
             RUNTIME_ASSERT(run_speed >= walk_speed);
 
             if (Moving.Speed < walk_speed + (run_speed - walk_speed) / 2) {
-                anim2 = ANIM2_WALK;
+                action_anim = CritterActionAnim::Walk;
             }
             else {
-                anim2 = ANIM2_RUN;
+                action_anim = CritterActionAnim::Run;
             }
         }
 
-        const auto* frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), anim1, anim2, GetDir());
+        const auto* frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
         if (frames == nullptr) {
             frames = _engine->ResMngr.GetCritterDummyFrames();
         }
 
         if (_stayAnim.AnimFrames != frames) {
-            _engine->OnCritterAnimationProcess.Fire(true, this, anim1, anim2, nullptr);
+            _engine->OnCritterAnimationProcess.Fire(true, this, state_anim, action_anim, nullptr);
 
             _stayAnim.AnimFrames = frames;
             _stayAnim.AnimDuration = std::chrono::milliseconds {frames->WholeTicks};
@@ -432,40 +434,41 @@ void CritterHexView::ResetOk()
     _needReset = false;
 }
 
-auto CritterHexView::GetAnim2() const -> uint
+auto CritterHexView::GetActionAnim() const -> CritterActionAnim
 {
     STACK_TRACE_ENTRY();
 
     switch (GetCond()) {
     case CritterCondition::Alive:
 #if FO_ENABLE_3D
-        return GetAnim2Alive() != 0 ? GetAnim2Alive() : (_model != nullptr && _model->IsCombatMode() && _engine->Settings.Anim2CombatIdle != 0 ? _engine->Settings.Anim2CombatIdle : ANIM2_IDLE);
+        return GetAliveActionAnim() != CritterActionAnim::None ? GetAliveActionAnim() : (_model != nullptr && _model->IsCombatMode() && _engine->Settings.CombatAnimIdle != CritterActionAnim::None ? _engine->Settings.CombatAnimIdle : CritterActionAnim::Idle);
 #else
-        return GetAnim2Alive() != 0 ? GetAnim2Alive() : ANIM2_IDLE;
+        return GetAliveActionAnim() != CritterActionAnim::None ? GetAliveActionAnim() : CritterActionAnim::Idle;
 #endif
     case CritterCondition::Knockout:
-        return GetAnim2Knockout() != 0 ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
+        return GetKnockoutActionAnim() != CritterActionAnim::None ? GetKnockoutActionAnim() : CritterActionAnim::IdleProneFront;
     case CritterCondition::Dead:
-        return GetAnim2Dead() != 0 ? GetAnim2Dead() : ANIM2_DEAD_FRONT;
+        return GetDeadActionAnim() != CritterActionAnim::None ? GetDeadActionAnim() : CritterActionAnim::DeadFront;
     }
-    return ANIM2_IDLE;
+
+    return CritterActionAnim::Idle;
 }
 
-auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
+auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    if (anim1 == 0) {
-        anim1 = GetAnim1();
+    if (state_anim == CritterStateAnim::None) {
+        state_anim = GetStateAnim();
     }
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        return _model->HasAnimation(anim1, anim2);
+        return _model->HasAnimation(state_anim, action_anim);
     }
 #endif
 
-    return _engine->ResMngr.GetCritterAnimFrames(GetModelName(), anim1, anim2, GetDir()) != nullptr;
+    return _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir()) != nullptr;
 }
 
 #if FO_ENABLE_3D
@@ -505,7 +508,7 @@ void CritterHexView::RefreshModel()
             _model->SetLookDirAngle(GetDirAngle());
             _model->SetMoveDirAngle(GetDirAngle(), false);
 
-            _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetModelLayersData(), 0);
+            _model->SetAnimation(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0);
             _model->PrewarmParticles();
 
             if (_map->IsMapperMode()) {
@@ -667,12 +670,12 @@ void CritterHexView::Process()
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (const auto is_combat = GetIsModelInCombatMode(); is_combat != _model->IsCombatMode()) {
-            if (_engine->Settings.Anim2CombatIdle != 0 && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0 && !IsMoving()) {
-                if (_engine->Settings.Anim2CombatBegin != 0 && is_combat && _model->GetAnim2() != _engine->Settings.Anim2CombatIdle) {
-                    Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
+            if (_engine->Settings.CombatAnimIdle != CritterActionAnim::None && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAliveActionAnim() == CritterActionAnim::None && !IsMoving()) {
+                if (_engine->Settings.CombatAnimBegin != CritterActionAnim::None && is_combat && _model->GetActionAnim() != _engine->Settings.CombatAnimIdle) {
+                    Animate(CritterStateAnim::None, _engine->Settings.CombatAnimBegin, nullptr);
                 }
-                else if (_engine->Settings.Anim2CombatEnd != 0 && !is_combat && _model->GetAnim2() == _engine->Settings.Anim2CombatIdle) {
-                    Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
+                else if (_engine->Settings.CombatAnimEnd != CritterActionAnim::None && !is_combat && _model->GetActionAnim() == _engine->Settings.CombatAnimIdle) {
+                    Animate(CritterStateAnim::None, _engine->Settings.CombatAnimEnd, nullptr);
                 }
             }
 
@@ -867,7 +870,7 @@ void CritterHexView::SetAnimSpr(const SpriteSheet* anim, uint frm_index)
     _oxAnim = 0;
     _oyAnim = 0;
 
-    if (anim->Anim2 == ANIM2_WALK || anim->Anim2 == ANIM2_RUN) {
+    if (anim->ActionAnim == CritterActionAnim::Walk || anim->ActionAnim == CritterActionAnim::Run) {
         // ...
     }
     else {
