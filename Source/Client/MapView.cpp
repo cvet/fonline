@@ -475,14 +475,14 @@ void MapView::AddItemToField(ItemHexView* item)
 
     if (item->GetIsTile()) {
         if (item->GetIsRoofTile()) {
-            field.RoofTiles.push_back(item);
+            field.RoofTiles.emplace_back(item);
         }
         else {
-            field.GroundTiles.push_back(item);
+            field.GroundTiles.emplace_back(item);
         }
     }
     else {
-        field.Items.push_back(item);
+        field.Items.emplace_back(item);
 
         std::sort(field.Items.begin(), field.Items.end(), [](const auto* i1, const auto* i2) { return i1->GetIsScenery() && !i2->GetIsScenery(); });
         std::sort(field.Items.begin(), field.Items.end(), [](const auto* i1, const auto* i2) { return i1->GetIsWall() && !i2->GetIsWall(); });
@@ -492,7 +492,7 @@ void MapView::AddItemToField(ItemHexView* item)
         if (item->IsNonEmptyBlockLines()) {
             GeometryHelper::ForEachBlockLines(item->GetBlockLines(), hx, hy, _width, _height, [this, item](auto hx2, auto hy2) {
                 auto& field2 = FieldAt(hx2, hy2);
-                field2.BlockLineItems.push_back(item);
+                field2.BlockLineItems.emplace_back(item);
                 EvaluateFieldFlags(field2);
             });
         }
@@ -654,7 +654,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     AddItemToField(item);
 
     if (!_mapperMode && item->GetIsStatic() && item->GetIsLight()) {
-        _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+        _staticLightSources.emplace_back(LightSource {item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
     }
 
     if (!MeasureMapBorders(item->Spr, item->ScrX, item->ScrY) && !_mapLoading) {
@@ -1933,8 +1933,8 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
         const auto& next = points[next_i >= points.size() ? 0 : next_i];
 
         if (GenericUtils::DistSqrt(cur.PointX, cur.PointY, next.PointX, next.PointY) > static_cast<uint>(_engine->Settings.MapHexWidth)) {
-            _lightSoftPoints.push_back({next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY});
-            _lightSoftPoints.push_back({cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY});
+            _lightSoftPoints.emplace_back(PrimitivePoint {next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY});
+            _lightSoftPoints.emplace_back(PrimitivePoint {cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY});
 
             const auto dist_comp = GenericUtils::DistSqrt(base_x, base_y, cur.PointX, cur.PointY) > GenericUtils::DistSqrt(base_x, base_y, next.PointX, next.PointY);
             auto x = static_cast<float>(dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX);
@@ -1942,10 +1942,10 @@ void MapView::ParseLightTriangleFan(const LightSource& ls)
             std::tie(x, y) = GenericUtils::ChangeStepsCoords(x, y, dist_comp ? -2.5f : 2.5f);
 
             if (dist_comp) {
-                _lightSoftPoints.push_back({cur.PointX + iround(x), cur.PointY + iround(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
+                _lightSoftPoints.emplace_back(PrimitivePoint {cur.PointX + iround(x), cur.PointY + iround(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
             }
             else {
-                _lightSoftPoints.push_back({next.PointX + iround(x), next.PointY + iround(y), next.PointColor, next.PointOffsX, next.PointOffsY});
+                _lightSoftPoints.emplace_back(PrimitivePoint {next.PointX + iround(x), next.PointY + iround(y), next.PointColor, next.PointOffsX, next.PointOffsY});
             }
         }
     }
@@ -1987,7 +1987,7 @@ void MapView::CollectLightSources()
     if (_mapperMode) {
         for (const auto* item : _staticItems) {
             if (item->GetIsLight()) {
-                _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+                _lightSources.emplace_back(LightSource {item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
             }
         }
     }
@@ -1998,7 +1998,7 @@ void MapView::CollectLightSources()
     // Items on ground
     for (const auto* item : _dynamicItems) {
         if (item->GetIsLight()) {
-            _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+            _lightSources.emplace_back(LightSource {item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
         }
     }
 
@@ -2007,7 +2007,7 @@ void MapView::CollectLightSources()
         auto added = false;
         for (const auto* item : cr->GetInvItems()) {
             if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
+                _lightSources.emplace_back(LightSource {cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
                 added = true;
             }
         }
@@ -2015,7 +2015,7 @@ void MapView::CollectLightSources()
         // Default chosen light
         if (!_mapperMode) {
             if (cr->IsChosen() && !added) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
+                _lightSources.emplace_back(LightSource {cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
             }
         }
     }
@@ -2132,7 +2132,7 @@ void MapView::EvaluateFieldFlags(Field& field)
     field.Flags.IsWall = false;
     field.Flags.IsWallTransp = false;
     field.Flags.IsScen = false;
-    field.Flags.IsMoveBlocked = field.Flags.IsMultihex;
+    field.Flags.IsMoveBlocked = false;
     field.Flags.IsShootBlocked = false;
     field.Flags.IsLightBlocked = false;
     field.Flags.ScrollBlock = false;
@@ -2140,6 +2140,14 @@ void MapView::EvaluateFieldFlags(Field& field)
 
     if (!field.Critters.empty()) {
         for (const auto* cr : field.Critters) {
+            if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
+                field.Flags.IsMoveBlocked = true;
+            }
+        }
+    }
+
+    if (!field.MultihexCritters.empty()) {
+        for (const auto* cr : field.MultihexCritters) {
             if (!field.Flags.IsMoveBlocked && !cr->IsDead()) {
                 field.Flags.IsMoveBlocked = true;
             }
@@ -2441,7 +2449,7 @@ void MapView::ResizeView()
     _hVisible = GetViewHeight() + _hTop + _hBottom;
     _wVisible = GetViewWidth() + _wLeft + _wRight;
 
-    _viewField.resize(_hVisible * _wVisible);
+    _viewField.resize(static_cast<size_t>(_hVisible) * _wVisible);
 }
 
 void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
@@ -2506,8 +2514,8 @@ void MapView::ChangeZoom(int zoom)
 
     if (zoom != 0 || GetSpritesZoom() < 1.0f) {
         const auto old_zoom = GetSpritesZoom();
-        const auto w = static_cast<float>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0));
-        SetSpritesZoom((w * GetSpritesZoom() + (zoom >= 0 ? 2.0f : -2.0f)) / w);
+        const auto width = static_cast<float>(_engine->Settings.ScreenWidth / _engine->Settings.MapHexWidth + ((_engine->Settings.ScreenWidth % _engine->Settings.MapHexWidth) != 0 ? 1 : 0));
+        SetSpritesZoom((width * GetSpritesZoom() + (zoom >= 0 ? 2.0f : -2.0f)) / width);
 
         if (GetSpritesZoom() < std::max(_engine->Settings.SpritesZoomMin, MIN_ZOOM) || GetSpritesZoom() > std::min(_engine->Settings.SpritesZoomMax, MAX_ZOOM)) {
             SetSpritesZoom(old_zoom);
@@ -3208,13 +3216,11 @@ void MapView::AddCritterToField(CritterHexView* cr)
     auto& field = FieldAt(hx, hy);
 
     RUNTIME_ASSERT(std::find(field.Critters.begin(), field.Critters.end(), cr) == field.Critters.end());
-    field.Critters.push_back(cr);
+    field.Critters.emplace_back(cr);
 
     EvaluateFieldFlags(field);
 
-    if (!cr->IsDead()) {
-        SetMultihex(cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), true);
-    }
+    SetMultihexCritter(cr, true);
 
     if (!_mapLoading && IsHexToDraw(hx, hy) && cr->IsVisible()) {
         auto* spr = cr->InsertSprite(_mapSprites, EvaluateCritterDrawOrder(cr), hx, hy, &field.ScrX, &field.ScrY);
@@ -3250,9 +3256,7 @@ void MapView::RemoveCritterFromField(CritterHexView* cr)
 
     EvaluateFieldFlags(field);
 
-    if (!cr->IsDead()) {
-        SetMultihex(cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), false);
-    }
+    SetMultihexCritter(cr, false);
 
     if (cr->IsChosen() || cr->IsHaveLightSources()) {
         RebuildLight();
@@ -3391,18 +3395,18 @@ auto MapView::GetCritters(uint16 hx, uint16 hy, CritterFindType find_type) -> ve
 {
     STACK_TRACE_ENTRY();
 
-    vector<CritterHexView*> crits;
+    vector<CritterHexView*> critters;
     const auto& field = FieldAt(hx, hy);
 
     if (!field.Critters.empty()) {
         for (auto* cr : field.Critters) {
             if (cr->CheckFind(find_type)) {
-                crits.push_back(cr);
+                critters.emplace_back(cr);
             }
         }
     }
 
-    return crits;
+    return critters;
 }
 
 void MapView::SetCritterContour(ident_t cr_id, ContourType contour)
@@ -3476,20 +3480,35 @@ void MapView::MoveCritter(CritterHexView* cr, uint16 hx, uint16 hy, bool smoothl
     AddCritterToField(cr);
 }
 
-void MapView::SetMultihex(uint16 hx, uint16 hy, uint multihex, bool set)
+void MapView::SetMultihexCritter(CritterHexView* cr, bool set)
 {
     STACK_TRACE_ENTRY();
 
+    const uint multihex = cr->GetMultihex();
+
     if (multihex != 0) {
+        const uint16 hx = cr->GetHexX();
+        const uint16 hy = cr->GetHexY();
         auto&& [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * GameSettings::MAP_DIR_COUNT; i < j; i++) {
-            const auto cx = static_cast<int16>(hx) + sx[i];
-            const auto cy = static_cast<int16>(hy) + sy[i];
+            const auto cx = static_cast<int>(hx) + sx[i];
+            const auto cy = static_cast<int>(hy) + sy[i];
+
             if (cx >= 0 && cy >= 0 && cx < _width && cy < _height) {
-                auto& neighbor = FieldAt(static_cast<uint16>(cx), static_cast<uint16>(cy));
-                neighbor.Flags.IsMultihex = set;
-                EvaluateFieldFlags(neighbor);
+                auto& field = FieldAt(static_cast<uint16>(cx), static_cast<uint16>(cy));
+
+                if (set) {
+                    RUNTIME_ASSERT(std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr) == field.MultihexCritters.end());
+                    field.MultihexCritters.emplace_back(cr);
+                }
+                else {
+                    const auto it = std::find(field.MultihexCritters.begin(), field.MultihexCritters.end(), cr);
+                    RUNTIME_ASSERT(it != field.MultihexCritters.end());
+                    field.MultihexCritters.erase(it);
+                }
+
+                EvaluateFieldFlags(field);
             }
         }
     }
@@ -3617,10 +3636,10 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg, int extra_range, 
 
         if (item->GetSprite()->CheckHit(x - l + extra_range, y - t + extra_range, check_transparent)) {
             if (is_egg && _engine->SprMngr.CheckEggAppearence(hx, hy, item->GetEggType())) {
-                pix_item_egg.push_back(item);
+                pix_item_egg.emplace_back(item);
             }
             else {
-                pix_item.push_back(item);
+                pix_item.emplace_back(item);
             }
         }
     }
@@ -3687,11 +3706,11 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, i
                 const auto t_draw = iround(static_cast<float>(rect_draw.Top + _engine->Settings.ScrOy) / GetSpritesZoom());
 
                 if (_engine->SprMngr.SpriteHitTest(cr->Spr, x - l_draw, y - t_draw, true)) {
-                    crits.push_back(cr);
+                    crits.emplace_back(cr);
                 }
             }
             else {
-                crits.push_back(cr);
+                crits.emplace_back(cr);
             }
         }
     }
@@ -3987,7 +4006,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
 
                 while (true) {
                     uint8 dir = tracer.GetNextHex(next_hx, next_hy);
-                    direct_steps.push_back(dir);
+                    direct_steps.emplace_back(dir);
 
                     if (next_hx == trace_tx && next_hy == trace_ty) {
                         break;
@@ -4006,7 +4025,7 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
                 }
 
                 for (const auto& ds : direct_steps) {
-                    result.Steps.push_back(ds);
+                    result.Steps.emplace_back(ds);
                 }
 
                 result.ControlSteps.emplace_back(static_cast<uint16>(result.Steps.size()));
@@ -4024,11 +4043,11 @@ auto MapView::FindPath(CritterHexView* cr, uint16 start_x, uint16 start_y, uint1
     else {
         for (size_t i = 0; i < raw_steps.size(); i++) {
             const auto cur_dir = raw_steps[i];
-            result.Steps.push_back(cur_dir);
+            result.Steps.emplace_back(cur_dir);
 
             for (size_t j = i + 1; j < raw_steps.size(); j++) {
                 if (raw_steps[j] == cur_dir) {
-                    result.Steps.push_back(cur_dir);
+                    result.Steps.emplace_back(cur_dir);
                     i++;
                 }
                 else {
@@ -4077,7 +4096,7 @@ bool MapView::TraceMoveWay(uint16& hx, uint16& hy, int& ox, int& oy, vector<uint
 
         hx = check_hx;
         hy = check_hy;
-        steps.push_back(dir);
+        steps.emplace_back(dir);
         return true;
     };
 
@@ -4150,7 +4169,7 @@ auto MapView::TraceBullet(uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint dist,
         }
 
         if (steps != nullptr) {
-            steps->push_back(std::make_pair(cx, cy));
+            steps->emplace_back(std::make_pair(cx, cy));
             continue;
         }
 

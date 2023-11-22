@@ -93,7 +93,6 @@ struct FieldFlags
     bool IsMoveBlocked {};
     bool IsShootBlocked {};
     bool IsLightBlocked {};
-    bool IsMultihex {};
 };
 
 struct Field
@@ -103,6 +102,7 @@ struct Field
     int ScrY {};
     MapSprite* SpriteChain {};
     vector<CritterHexView*> Critters {};
+    vector<CritterHexView*> MultihexCritters {};
     vector<ItemHexView*> Items {};
     vector<ItemHexView*> BlockLineItems {};
     vector<ItemHexView*> GroundTiles {};
@@ -226,7 +226,6 @@ public:
 
     void SetCritterContour(ident_t cr_id, ContourType contour);
     void SetCrittersContour(ContourType contour);
-    void SetMultihex(uint16 hx, uint16 hy, uint multihex, bool set);
 
     // Items
     auto AddReceivedItem(ident_t id, hstring pid, uint16 hx, uint16 hy, const vector<vector<uint8>>& data) -> ItemHexView*;
@@ -302,6 +301,7 @@ private:
     auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
+    void SetMultihexCritter(CritterHexView* cr, bool set);
 
     auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
     void AddItemToField(ItemHexView* item);

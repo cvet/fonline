@@ -380,7 +380,7 @@ auto GenericUtils::NumericalNumber(uint num) -> uint
 {
     STACK_TRACE_ENTRY();
 
-    if ((num & 1) != 0) {
+    if (num % 2 != 0) {
         return num * (num / 2 + 1);
     }
 
