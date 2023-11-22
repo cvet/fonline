@@ -747,12 +747,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetCondition(Critter* self, CritterCondition cond)
 {
-    const auto prev_cond = self->GetCond();
+    const auto prev_cond = self->GetCondition();
     if (prev_cond == cond) {
         return;
     }
 
-    self->SetCond(cond);
+    self->SetCondition(cond);
 
     if (self->GetMapId()) {
         auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());

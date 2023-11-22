@@ -79,21 +79,21 @@ auto Critter::IsAlive() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return GetCond() == CritterCondition::Alive;
+    return GetCondition() == CritterCondition::Alive;
 }
 
 auto Critter::IsDead() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return GetCond() == CritterCondition::Dead;
+    return GetCondition() == CritterCondition::Dead;
 }
 
 auto Critter::IsKnockout() const -> bool
 {
     STACK_TRACE_ENTRY();
 
-    return GetCond() == CritterCondition::Knockout;
+    return GetCondition() == CritterCondition::Knockout;
 }
 
 auto Critter::CheckFind(CritterFindType find_type) const -> bool

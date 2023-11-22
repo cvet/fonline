@@ -57,9 +57,9 @@ public:
     [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _ownedByPlayer; }
     [[nodiscard]] auto IsChosen() const -> bool { return _isChosen; }
     [[nodiscard]] auto IsPlayerOffline() const -> bool { return _isPlayerOffline; }
-    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == CritterCondition::Alive; }
-    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
-    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
+    [[nodiscard]] auto IsAlive() const -> bool { return GetCondition() == CritterCondition::Alive; }
+    [[nodiscard]] auto IsKnockout() const -> bool { return GetCondition() == CritterCondition::Knockout; }
+    [[nodiscard]] auto IsDead() const -> bool { return GetCondition() == CritterCondition::Dead; }
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto GetInvItem(ident_t item_id) -> ItemView*;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) -> ItemView*;

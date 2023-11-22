@@ -293,8 +293,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, int16, DirAngle);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<ident_t>, ItemIds);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
+    ///@ ExportProperty ReadOnly Alias = Cond
+    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Condition);
     ///@ ExportProperty ReadOnly Alias = Anim1Life Alias = Anim1Alive
     ENTITY_PROPERTY(PrivateCommon, CritterStateAnim, AliveStateAnim);
     ///@ ExportProperty ReadOnly Alias = Anim1Knockout

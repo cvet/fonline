@@ -224,7 +224,7 @@ auto CritterView::GetStateAnim() const -> CritterStateAnim
 {
     STACK_TRACE_ENTRY();
 
-    switch (GetCond()) {
+    switch (GetCondition()) {
     case CritterCondition::Alive:
         return GetAliveStateAnim() != CritterStateAnim::None ? GetAliveStateAnim() : CritterStateAnim::Unarmed;
     case CritterCondition::Knockout:

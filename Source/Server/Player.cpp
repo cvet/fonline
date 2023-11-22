@@ -111,7 +111,16 @@ void Player::Send_AddCritter(const Critter* cr)
     Connection->OutBuf.Write(cr->GetProtoId());
     Connection->OutBuf.Write(cr->GetHexX());
     Connection->OutBuf.Write(cr->GetHexY());
+    Connection->OutBuf.Write(cr->GetHexOffsX());
+    Connection->OutBuf.Write(cr->GetHexOffsY());
     Connection->OutBuf.Write(cr->GetDirAngle());
+    Connection->OutBuf.Write(cr->GetCondition());
+    Connection->OutBuf.Write(cr->GetAliveStateAnim());
+    Connection->OutBuf.Write(cr->GetKnockoutStateAnim());
+    Connection->OutBuf.Write(cr->GetDeadStateAnim());
+    Connection->OutBuf.Write(cr->GetAliveActionAnim());
+    Connection->OutBuf.Write(cr->GetKnockoutActionAnim());
+    Connection->OutBuf.Write(cr->GetDeadActionAnim());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer());
     Connection->OutBuf.Write(cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr);
     Connection->OutBuf.Write(is_chosen);

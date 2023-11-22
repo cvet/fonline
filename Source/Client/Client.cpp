@@ -1072,7 +1072,16 @@ void FOClient::Net_OnAddCritter()
     const auto pid = _conn.InBuf.Read<hstring>(*this);
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
+    const auto hex_ox = _conn.InBuf.Read<int16>();
+    const auto hex_oy = _conn.InBuf.Read<int16>();
     const auto dir_angle = _conn.InBuf.Read<int16>();
+    const auto cond = _conn.InBuf.Read<CritterCondition>();
+    const auto alive_state_anim = _conn.InBuf.Read<CritterStateAnim>();
+    const auto knockout_state_anim = _conn.InBuf.Read<CritterStateAnim>();
+    const auto dead_state_anim = _conn.InBuf.Read<CritterStateAnim>();
+    const auto alive_action_anim = _conn.InBuf.Read<CritterActionAnim>();
+    const auto knockout_action_anim = _conn.InBuf.Read<CritterActionAnim>();
+    const auto dead_action_anim = _conn.InBuf.Read<CritterActionAnim>();
     const auto is_owned_by_player = _conn.InBuf.Read<bool>();
     const auto is_player_offline = _conn.InBuf.Read<bool>();
     const auto is_chosen = _conn.InBuf.Read<bool>();
@@ -1100,6 +1109,16 @@ void FOClient::Net_OnAddCritter()
         cr->RestoreData(_tempPropertiesData);
         _worldmapCritters.emplace_back(cr);
     }
+
+    cr->SetHexOffsX(hex_ox);
+    cr->SetHexOffsY(hex_oy);
+    cr->SetCondition(cond);
+    cr->SetAliveStateAnim(alive_state_anim);
+    cr->SetKnockoutStateAnim(knockout_state_anim);
+    cr->SetDeadStateAnim(dead_state_anim);
+    cr->SetAliveActionAnim(alive_action_anim);
+    cr->SetKnockoutActionAnim(knockout_action_anim);
+    cr->SetDeadActionAnim(dead_action_anim);
 
     cr->SetPlayer(is_owned_by_player, is_chosen);
     if (is_owned_by_player) {

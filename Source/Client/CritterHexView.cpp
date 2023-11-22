@@ -170,14 +170,14 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
 
     switch (action) {
     case CritterAction::Knockout:
-        SetCond(CritterCondition::Knockout);
+        SetCondition(CritterCondition::Knockout);
         SetKnockoutStateAnim(static_cast<CritterStateAnim>(action_data));
         break;
     case CritterAction::StandUp:
-        SetCond(CritterCondition::Alive);
+        SetCondition(CritterCondition::Alive);
         break;
     case CritterAction::Dead: {
-        SetCond(CritterCondition::Dead);
+        SetCondition(CritterCondition::Dead);
         SetDeadStateAnim(static_cast<CritterStateAnim>(action_data));
 
 #if FO_ENABLE_3D
@@ -201,7 +201,7 @@ void CritterHexView::Action(CritterAction action, int action_data, Entity* conte
         SetPlayerOffline(true);
         break;
     case CritterAction::Respawn:
-        SetCond(CritterCondition::Alive);
+        SetCondition(CritterCondition::Alive);
         FadeUp();
         AnimateStay();
         _needReset = true;
@@ -351,7 +351,7 @@ void CritterHexView::AnimateStay()
 
         _engine->OnCritterAnimationProcess.Fire(true, this, state_anim, action_anim, nullptr);
 
-        if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
+        if (GetCondition() == CritterCondition::Alive || GetCondition() == CritterCondition::Knockout) {
             _model->SetAnimation(state_anim, action_anim, GetModelLayersData(), 0);
         }
         else {
@@ -387,7 +387,7 @@ void CritterHexView::AnimateStay()
             _stayAnim.BeginFrm = 0;
             _stayAnim.EndFrm = frames->CntFrm - 1;
 
-            if (GetCond() == CritterCondition::Dead) {
+            if (GetCondition() == CritterCondition::Dead) {
                 _stayAnim.BeginFrm = _stayAnim.EndFrm;
             }
         }
@@ -438,7 +438,7 @@ auto CritterHexView::GetActionAnim() const -> CritterActionAnim
 {
     STACK_TRACE_ENTRY();
 
-    switch (GetCond()) {
+    switch (GetCondition()) {
     case CritterCondition::Alive:
 #if FO_ENABLE_3D
         return GetAliveActionAnim() != CritterActionAnim::None ? GetAliveActionAnim() : (_model != nullptr && _model->IsCombatMode() && _engine->Settings.CombatAnimIdle != CritterActionAnim::None ? _engine->Settings.CombatAnimIdle : CritterActionAnim::Idle);
@@ -659,7 +659,7 @@ void CritterHexView::Process()
         constexpr auto is_combat_mode = false;
 #endif
 
-        if (_animSequence.empty() && GetCond() == CritterCondition::Alive && !IsMoving() && !is_combat_mode) {
+        if (_animSequence.empty() && GetCondition() == CritterCondition::Alive && !IsMoving() && !is_combat_mode) {
             Action(CritterAction::Fidget, 0, nullptr, false);
         }
 
@@ -670,7 +670,7 @@ void CritterHexView::Process()
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (const auto is_combat = GetIsModelInCombatMode(); is_combat != _model->IsCombatMode()) {
-            if (_engine->Settings.CombatAnimIdle != CritterActionAnim::None && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAliveActionAnim() == CritterActionAnim::None && !IsMoving()) {
+            if (_engine->Settings.CombatAnimIdle != CritterActionAnim::None && _animSequence.empty() && GetCondition() == CritterCondition::Alive && GetAliveActionAnim() == CritterActionAnim::None && !IsMoving()) {
                 if (_engine->Settings.CombatAnimBegin != CritterActionAnim::None && is_combat && _model->GetActionAnim() != _engine->Settings.CombatAnimIdle) {
                     Animate(CritterStateAnim::None, _engine->Settings.CombatAnimBegin, nullptr);
                 }
