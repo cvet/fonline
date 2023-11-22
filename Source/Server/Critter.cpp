@@ -534,7 +534,7 @@ void Critter::Broadcast_Position()
     }
 }
 
-void Critter::Broadcast_Action(int action, int action_ext, const Item* item)
+void Critter::Broadcast_Action(CritterAction action, int action_data, const Item* item)
 {
     STACK_TRACE_ENTRY();
 
@@ -545,7 +545,7 @@ void Critter::Broadcast_Action(int action, int action_ext, const Item* item)
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Action(this, action, action_ext, item);
+        cr->Send_Action(this, action, action_data, item);
     }
 }
 
@@ -579,22 +579,22 @@ void Critter::Broadcast_Teleport(uint16 to_hx, uint16 to_hy)
     }
 }
 
-void Critter::SendAndBroadcast_Action(int action, int action_ext, const Item* context_item)
+void Critter::SendAndBroadcast_Action(CritterAction action, int action_data, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
-    Send_Action(this, action, action_ext, context_item);
+    Send_Action(this, action, action_data, context_item);
 
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Action(this, action, action_ext, context_item);
+        cr->Send_Action(this, action, action_data, context_item);
     }
 }
 
-void Critter::SendAndBroadcast_MoveItem(const Item* item, uint8 action, CritterItemSlot prev_slot)
+void Critter::SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 
@@ -1076,18 +1076,18 @@ void Critter::Send_TextMsgLex(ident_t from_id, uint str_num, uint8 how_say, uint
     }
 }
 
-void Critter::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* context_item)
+void Critter::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Action(from_cr, action, action_ext, context_item);
+        _player->Send_Action(from_cr, action, action_data, context_item);
     }
 }
 
-void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, CritterItemSlot prev_slot)
+void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 

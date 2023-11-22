@@ -121,7 +121,7 @@ void Player::Send_AddCritter(const Critter* cr)
     CONNECTION_OUTPUT_END(Connection);
 
     if (!is_chosen) {
-        Send_MoveItem(cr, nullptr, ACTION_REFRESH, CritterItemSlot::Inventory);
+        Send_MoveItem(cr, nullptr, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 
     if (cr->IsMoving()) {
@@ -324,7 +324,7 @@ void Player::Send_Dir(const Critter* from_cr)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_Action(const Critter* from_cr, int action, int action_ext, const Item* context_item)
+void Player::Send_Action(const Critter* from_cr, CritterAction action, int action_data, const Item* context_item)
 {
     STACK_TRACE_ENTRY();
 
@@ -336,13 +336,13 @@ void Player::Send_Action(const Critter* from_cr, int action, int action_ext, con
     Connection->OutBuf.StartMsg(NETMSG_CRITTER_ACTION);
     Connection->OutBuf.Write(from_cr->GetId());
     Connection->OutBuf.Write(action);
-    Connection->OutBuf.Write(action_ext);
+    Connection->OutBuf.Write(action_data);
     Connection->OutBuf.Write(context_item != nullptr);
     Connection->OutBuf.EndMsg();
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MoveItem(const Critter* from_cr, const Item* item, uint8 action, CritterItemSlot prev_slot)
+void Player::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAction action, CritterItemSlot prev_slot)
 {
     STACK_TRACE_ENTRY();
 

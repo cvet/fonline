@@ -162,23 +162,23 @@ void CritterHexView::ClearMove()
     Moving.EndOy = {};
 }
 
-void CritterHexView::Action(int action, int action_ext, Entity* context_item, bool local_call /* = true */)
+void CritterHexView::Action(CritterAction action, int action_data, Entity* context_item, bool local_call /* = true */)
 {
     STACK_TRACE_ENTRY();
 
-    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, context_item);
+    _engine->OnCritterAction.Fire(local_call, this, action, action_data, context_item);
 
     switch (action) {
-    case ACTION_KNOCKOUT:
+    case CritterAction::Knockout:
         SetCond(CritterCondition::Knockout);
-        SetKnockoutStateAnim(static_cast<CritterStateAnim>(action_ext));
+        SetKnockoutStateAnim(static_cast<CritterStateAnim>(action_data));
         break;
-    case ACTION_STANDUP:
+    case CritterAction::StandUp:
         SetCond(CritterCondition::Alive);
         break;
-    case ACTION_DEAD: {
+    case CritterAction::Dead: {
         SetCond(CritterCondition::Dead);
-        SetDeadStateAnim(static_cast<CritterStateAnim>(action_ext));
+        SetDeadStateAnim(static_cast<CritterStateAnim>(action_data));
 
 #if FO_ENABLE_3D
         if (_model != nullptr) {
@@ -194,20 +194,20 @@ void CritterHexView::Action(int action, int action_ext, Entity* context_item, bo
 #endif
         _needReset = true;
     } break;
-    case ACTION_CONNECT:
+    case CritterAction::Connect:
         SetPlayerOffline(false);
         break;
-    case ACTION_DISCONNECT:
+    case CritterAction::Disconnect:
         SetPlayerOffline(true);
         break;
-    case ACTION_RESPAWN:
+    case CritterAction::Respawn:
         SetCond(CritterCondition::Alive);
         FadeUp();
         AnimateStay();
         _needReset = true;
         _resetTime = _engine->GameTime.GameplayTime(); // Fast
         break;
-    case ACTION_REFRESH:
+    case CritterAction::Refresh:
 #if FO_ENABLE_3D
         if (_model != nullptr) {
             _model->PrewarmParticles();
@@ -660,7 +660,7 @@ void CritterHexView::Process()
 #endif
 
         if (_animSequence.empty() && GetCond() == CritterCondition::Alive && !IsMoving() && !is_combat_mode) {
-            Action(ACTION_FIDGET, 0, nullptr, false);
+            Action(CritterAction::Fidget, 0, nullptr, false);
         }
 
         _fidgetTime = _engine->GameTime.GameplayTime() + std::chrono::milliseconds {GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2)};

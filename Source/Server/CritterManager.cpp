@@ -79,7 +79,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     if (send) {
         cr->Send_AddItem(item);
         if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, CritterItemSlot::Inventory);
+            cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
     }
 
@@ -111,7 +111,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
         cr->Send_EraseItem(item);
     }
     if (item->GetCritterSlot() != CritterItemSlot::Inventory) {
-        cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, CritterItemSlot::Inventory);
+        cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 
     const auto prev_slot = item->GetCritterSlot();

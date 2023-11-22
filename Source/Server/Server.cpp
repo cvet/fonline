@@ -1887,7 +1887,7 @@ void FOServer::LogoutCritter(Critter* cr)
 
     WriteLog("Logout critter {}", cr->GetName());
 
-    cr->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
+    cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     auto* map = MapMngr.GetMap(cr->GetMapId());
     MapMngr.EraseCrFromMap(cr, map);
@@ -2495,7 +2495,7 @@ void FOServer::Process_Login(Player* unlogined_player)
 
         auto* map = MapMngr.GetMap(cr->GetMapId());
         cr->Send_LoadMap(map);
-        cr->Broadcast_Action(ACTION_CONNECT, 0, nullptr);
+        cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
 
         if (!cr->GetMapId()) {
             RUNTIME_ASSERT(cr->GlobalMapGroup);
@@ -3127,7 +3127,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop)
             else {
                 cr->Send_AddItem(item);
             }
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, CritterItemSlot::Inventory);
+            cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
         }
     }
 }

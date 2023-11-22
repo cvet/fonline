@@ -1855,3 +1855,67 @@
 {
     return client->GetCurLang().Name;
 }
+
+///# ...
+///# param itemCount ...
+///# param itemId ...
+///# param swapItemId ...
+///# param toSlot ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_MoveItemLocally(FOClient* client, uint itemCount, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
+{
+    auto* chosen = client->GetChosen();
+    if (chosen == nullptr) {
+        return;
+    }
+
+    auto* item = chosen->GetInvItem(itemId);
+    auto* swap_item = swapItemId ? chosen->GetInvItem(swapItemId) : nullptr;
+
+    auto* old_item = item->CreateRefClone();
+    const auto from_slot = item->GetCritterSlot();
+    auto* map_chosen = client->GetMapChosen();
+    const auto is_light = item->GetIsLight();
+
+    if (toSlot == CritterItemSlot::Outside) {
+        if (map_chosen != nullptr) {
+            map_chosen->Action(CritterAction::DropItem, static_cast<int>(from_slot), item, true);
+        }
+
+        if (item->GetStackable() && itemCount < item->GetCount()) {
+            item->SetCount(item->GetCount() - itemCount);
+        }
+        else {
+            chosen->DeleteInvItem(item, true);
+            item = nullptr;
+        }
+    }
+    else {
+        item->SetCritterSlot(toSlot);
+        if (swap_item != nullptr) {
+            swap_item->SetCritterSlot(from_slot);
+        }
+
+        if (map_chosen != nullptr) {
+            map_chosen->Action(CritterAction::MoveItem, static_cast<int>(from_slot), item, true);
+            if (swap_item != nullptr) {
+                map_chosen->Action(CritterAction::SwapItems, static_cast<int>(toSlot), swap_item, true);
+            }
+        }
+    }
+
+    // Light
+    if (client->CurMap != nullptr) {
+        client->CurMap->RebuildFog();
+
+        if (is_light && (toSlot == CritterItemSlot::Inventory || (from_slot == CritterItemSlot::Inventory && toSlot != CritterItemSlot::Outside))) {
+            client->CurMap->RebuildLight();
+        }
+    }
+
+    // Notify scripts about item changing
+    client->OnItemInvChanged.Fire(item, old_item);
+
+    old_item->Release();
+}

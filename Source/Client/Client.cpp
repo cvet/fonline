@@ -1613,7 +1613,7 @@ void FOClient::Net_OnCritterAction()
     STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto action = _conn.InBuf.Read<int>();
+    const auto action = _conn.InBuf.Read<CritterAction>();
     const auto action_ext = _conn.InBuf.Read<int>();
     const auto is_context_item = _conn.InBuf.Read<bool>();
 
@@ -1638,7 +1638,7 @@ void FOClient::Net_OnCritterMoveItem()
 
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto cr_id = _conn.InBuf.Read<ident_t>();
-    const auto action = _conn.InBuf.Read<uint8>();
+    const auto action = _conn.InBuf.Read<CritterAction>();
     const auto prev_slot = _conn.InBuf.Read<CritterItemSlot>();
     const auto is_item = _conn.InBuf.Read<bool>();
     const auto cur_slot = _conn.InBuf.Read<CritterItemSlot>();
@@ -2933,7 +2933,7 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop)
 #if FO_ENABLE_3D
         cr->RefreshModel();
 #endif
-        cr->Action(ACTION_REFRESH, 0, nullptr, false);
+        cr->Action(CritterAction::Refresh, 0, nullptr, false);
     }
 }
 
@@ -3614,61 +3614,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "DrawWait") {
         WaitDraw();
-    }
-    else if (cmd == "MoveItem" && args.size() == 5) {
-        auto* chosen = GetChosen();
-        if (chosen != nullptr) {
-            auto item_count = _str(args[1]).toUInt();
-            auto item_id = ident_t {_str(args[2]).toUInt()};
-            auto item_swap_id = ident_t {_str(args[3]).toUInt()};
-            auto to_slot = static_cast<CritterItemSlot>(_str(args[4]).toInt());
-            auto* item = GetChosen()->GetInvItem(item_id);
-            auto* item_swap = (item_swap_id ? GetChosen()->GetInvItem(item_swap_id) : nullptr);
-            auto* old_item = item->CreateRefClone();
-            auto from_slot = item->GetCritterSlot();
-            auto* map_chosen = GetMapChosen();
-
-            auto is_light = item->GetIsLight();
-            if (to_slot == CritterItemSlot::Outside) {
-                if (map_chosen != nullptr) {
-                    map_chosen->Action(ACTION_DROP_ITEM, static_cast<int>(from_slot), item, true);
-                }
-
-                if (item->GetStackable() && item_count < item->GetCount()) {
-                    item->SetCount(item->GetCount() - item_count);
-                }
-                else {
-                    chosen->DeleteInvItem(item, true);
-                    item = nullptr;
-                }
-            }
-            else {
-                item->SetCritterSlot(to_slot);
-                if (item_swap != nullptr) {
-                    item_swap->SetCritterSlot(from_slot);
-                }
-
-                if (map_chosen != nullptr) {
-                    map_chosen->Action(ACTION_MOVE_ITEM, static_cast<int>(from_slot), item, true);
-                    if (item_swap != nullptr) {
-                        map_chosen->Action(ACTION_MOVE_ITEM_SWAP, static_cast<int>(to_slot), item_swap, true);
-                    }
-                }
-            }
-
-            // Light
-            if (CurMap != nullptr) {
-                CurMap->RebuildFog();
-
-                if (is_light && (to_slot == CritterItemSlot::Inventory || (from_slot == CritterItemSlot::Inventory && to_slot != CritterItemSlot::Outside))) {
-                    CurMap->RebuildLight();
-                }
-            }
-
-            // Notify scripts about item changing
-            OnItemInvChanged.Fire(item, old_item);
-            old_item->Release();
-        }
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         if (CurMap != nullptr) {

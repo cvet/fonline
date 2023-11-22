@@ -488,7 +488,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ACTION MAKE_NETMSG_HEADER(91)
-#define NETMSG_CRITTER_ACTION_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(int) * 2 + sizeof(bool))
+#define NETMSG_CRITTER_ACTION_SIZE (sizeof(uint) + sizeof(ident_t) + sizeof(CritterAction) + sizeof(int) + sizeof(bool))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:

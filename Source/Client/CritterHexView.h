@@ -81,7 +81,7 @@ public:
     void ChangeMoveDirAngle(int dir_angle);
     void Animate(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item);
     void AnimateStay();
-    void Action(int action, int action_ext, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int action_data, Entity* context_item, bool local_call);
     void Process();
     void ResetOk();
     void ClearAnim();

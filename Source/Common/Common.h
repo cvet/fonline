@@ -1521,24 +1521,6 @@ static constexpr uint8 ANSWER_BEGIN = 0xF0;
 static constexpr uint8 ANSWER_END = 0xF1;
 static constexpr uint8 ANSWER_BARTER = 0xF2;
 
-// Critter actions
-// Flags for chosen:
-// l - hardcoded local call
-// s - hardcoded server call
-// for all others critters actions call only server
-//  flags actionExt item
-static constexpr int ACTION_MOVE_ITEM = 2; // l s from slot +
-static constexpr int ACTION_MOVE_ITEM_SWAP = 3; // l s from slot +
-static constexpr int ACTION_DROP_ITEM = 5; // l s from slot +
-static constexpr int ACTION_KNOCKOUT = 16; // s 0 - knockout anim2begin
-static constexpr int ACTION_STANDUP = 17; // s 0 - knockout anim2end
-static constexpr int ACTION_FIDGET = 18; // l
-static constexpr int ACTION_DEAD = 19; // s dead type anim2 (see ActionAnim in _animation.fos)
-static constexpr int ACTION_CONNECT = 20;
-static constexpr int ACTION_DISCONNECT = 21;
-static constexpr int ACTION_RESPAWN = 22; // s
-static constexpr int ACTION_REFRESH = 23; // s
-
 // Look checks
 static constexpr uint LOOK_CHECK_DIR = 0x01;
 static constexpr uint LOOK_CHECK_SNEAK_DIR = 0x02;

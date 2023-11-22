@@ -39,6 +39,7 @@
 #include "TwoBitMask.h"
 
 // ReSharper disable CppInconsistentNaming
+// ReSharper disable CppClangTidyPerformanceUnnecessaryValueParam
 
 ///# ...
 ///# param initFunc ...
@@ -413,7 +414,7 @@
 
     int hx = self->GetHexX();
     int hy = self->GetHexY();
-    std::sort(critters.begin(), critters.end(), [self, hx, hy](Critter* cr1, Critter* cr2) {
+    std::sort(critters.begin(), critters.end(), [hx, hy](Critter* cr1, Critter* cr2) {
         const auto dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
         const auto dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
@@ -441,7 +442,7 @@
 
     int hx = self->GetHexX();
     int hy = self->GetHexY();
-    std::sort(result.begin(), result.end(), [self, hx, hy](Critter* cr1, Critter* cr2) {
+    std::sort(result.begin(), result.end(), [hx, hy](Critter* cr1, Critter* cr2) {
         const auto dist1 = GeometryHelper::DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
         const auto dist2 = GeometryHelper::DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
@@ -718,7 +719,7 @@
 
         item->SetCritterSlot(slot);
 
-        self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
+        self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
         self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
     }
@@ -731,7 +732,7 @@
             item_swap->SetCritterSlot(from_slot);
         }
 
-        self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
+        self->SendAndBroadcast_MoveItem(item, CritterAction::MoveItem, from_slot);
 
         if (item_swap != nullptr) {
             self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
@@ -778,12 +779,12 @@
 
 ///# ...
 ///# param action ...
-///# param actionExt ...
+///# param actionData ...
 ///# param contextItem ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_Action(Critter* self, int action, int actionExt, AbstractItem* contextItem)
+[[maybe_unused]] void Server_Critter_Action(Critter* self, CritterAction action, int actionData, AbstractItem* contextItem)
 {
-    self->SendAndBroadcast_Action(action, actionExt, dynamic_cast<Item*>(contextItem));
+    self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
 }
 
 ///# ...
@@ -864,7 +865,7 @@
         return;
     }
 
-    auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
+    const auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
     if (loc == nullptr) {
         throw ScriptException("Location not found");
     }
@@ -917,7 +918,7 @@
     self->GetEngine()->MapMngr.EraseKnownLoc(self, locId);
 
     if (!self->GetMapId()) {
-        if (auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
+        if (const auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
             self->Send_GlobalLocation(loc, false);
         }
     }
@@ -1002,7 +1003,7 @@
         throw ScriptException("Critter is not player");
     }
 
-    if (auto* owner = self->GetOwner(); owner != nullptr) {
+    if (const auto* owner = self->GetOwner(); owner != nullptr) {
         owner->Connection->GracefulDisconnect();
     }
 }
@@ -1125,7 +1126,7 @@
 
     uint count = 0;
 
-    for (const auto te_identifier : te_identifiers) {
+    for (const auto& te_identifier : te_identifiers) {
         if (te_identifier == identifier) {
             count++;
         }

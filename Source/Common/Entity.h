@@ -86,6 +86,29 @@ enum class CritterCondition : uint8
     Dead = 2,
 };
 
+// Critter actions
+// Flags for chosen:
+// l - hardcoded local call
+// s - hardcoded server call
+// for all others critters actions call only server
+//  flags actionExt item
+///@ ExportEnum
+enum class CritterAction : uint16
+{
+    None = 0,
+    MoveItem = 2,
+    SwapItems = 3,
+    DropItem = 5,
+    Knockout = 16,
+    StandUp = 17,
+    Fidget = 18,
+    Dead = 19,
+    Connect = 20,
+    Disconnect = 21,
+    Respawn = 22,
+    Refresh = 23,
+};
+
 ///@ ExportEnum
 enum class CritterStateAnim : uint16
 {
