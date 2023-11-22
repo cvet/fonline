@@ -247,7 +247,7 @@ FIXED_SETTING(int, ScrollStep, 12);
 FIXED_SETTING(uint, RainTick, 60);
 FIXED_SETTING(int16, RainSpeedX, 0);
 FIXED_SETTING(int16, RainSpeedY, 15);
-FIXED_SETTING(uint, ChosenLightColor, 0);
+FIXED_SETTING(ucolor, ChosenLightColor, ucolor::clear);
 FIXED_SETTING(uint8, ChosenLightDistance, 4);
 FIXED_SETTING(int, ChosenLightIntensity, 2500);
 FIXED_SETTING(uint8, ChosenLightFlags, 0);

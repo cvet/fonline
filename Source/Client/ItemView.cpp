@@ -70,7 +70,7 @@ auto ItemView::EvaluateLightHash() const -> uint
 {
     STACK_TRACE_ENTRY();
 
-    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
+    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor().underlying_value() : 0;
 }
 
 auto ItemView::AddInnerItem(ident_t id, const ProtoItem* proto, ContainerItemStack stack_id, const Properties* props) -> ItemView*

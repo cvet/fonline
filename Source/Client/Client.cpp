@@ -1326,8 +1326,7 @@ void FOClient::OnMapText(string_view str, uint16 hx, uint16 hy, ucolor color)
     auto sstr = _str(str).str();
     uint show_time = 0;
 
-    color = ucolor {color.rgba, true};
-    OnMapMessage.Fire(sstr, hx, hy, color.rgba, show_time);
+    OnMapMessage.Fire(sstr, hx, hy, color, show_time);
 
     if (CurMap == nullptr) {
         BreakIntoDebugger();
@@ -1346,7 +1345,7 @@ void FOClient::Net_OnMapText()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
-    const auto color = _conn.InBuf.Read<uint>();
+    const auto color = _conn.InBuf.Read<ucolor>();
     const auto text = _conn.InBuf.Read<string>();
     const auto unsafe_text = _conn.InBuf.Read<bool>();
 
@@ -1368,7 +1367,7 @@ void FOClient::Net_OnMapText()
         Keyb.EraseInvalidChars(str, KIF_NO_SPEC_SYMBOLS);
     }
 
-    OnMapText(str, hx, hy, ucolor {color, true});
+    OnMapText(str, hx, hy, color);
 }
 
 void FOClient::Net_OnMapTextMsg()
@@ -1377,7 +1376,7 @@ void FOClient::Net_OnMapTextMsg()
 
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
-    const auto color = _conn.InBuf.Read<uint>();
+    const auto color = _conn.InBuf.Read<ucolor>();
     const auto msg_num = _conn.InBuf.Read<uint16>();
     const auto str_num = _conn.InBuf.Read<uint>();
 
@@ -1390,7 +1389,7 @@ void FOClient::Net_OnMapTextMsg()
 
     auto str = _curLang.Msg[msg_num].GetStr(str_num);
     FormatTags(str, GetChosen(), nullptr, "");
-    OnMapText(str, hx, hy, ucolor {color, true});
+    OnMapText(str, hx, hy, color);
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -1400,7 +1399,7 @@ void FOClient::Net_OnMapTextMsgLex()
     [[maybe_unused]] const auto msg_len = _conn.InBuf.Read<uint>();
     const auto hx = _conn.InBuf.Read<uint16>();
     const auto hy = _conn.InBuf.Read<uint16>();
-    const auto color = _conn.InBuf.Read<uint>();
+    const auto color = _conn.InBuf.Read<ucolor>();
     const auto msg_num = _conn.InBuf.Read<uint16>();
     const auto str_num = _conn.InBuf.Read<uint>();
     const auto lexems = _conn.InBuf.Read<string>();
@@ -1414,7 +1413,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     auto str = _curLang.Msg[msg_num].GetStr(str_num);
     FormatTags(str, GetChosen(), nullptr, lexems);
-    OnMapText(str, hx, hy, ucolor {color, true});
+    OnMapText(str, hx, hy, color);
 }
 
 void FOClient::Net_OnCritterDir()
@@ -2520,7 +2519,7 @@ void FOClient::Net_OnGlobalInfo()
             loc.LocWx = _conn.InBuf.Read<uint16>();
             loc.LocWy = _conn.InBuf.Read<uint16>();
             loc.Radius = _conn.InBuf.Read<uint16>();
-            loc.Color = ucolor {_conn.InBuf.Read<uint>(), true};
+            loc.Color = _conn.InBuf.Read<ucolor>();
             loc.Entrances = _conn.InBuf.Read<uint8>();
 
             if (loc.LocId) {
@@ -2538,7 +2537,7 @@ void FOClient::Net_OnGlobalInfo()
         loc.LocWx = _conn.InBuf.Read<uint16>();
         loc.LocWy = _conn.InBuf.Read<uint16>();
         loc.Radius = _conn.InBuf.Read<uint16>();
-        loc.Color = ucolor {_conn.InBuf.Read<uint>(), true};
+        loc.Color = _conn.InBuf.Read<ucolor>();
         loc.Entrances = _conn.InBuf.Read<uint8>();
 
         const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
@@ -2945,7 +2944,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->IsSpriteValid()) {
-        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, ucolor {cr->GetContourColor(), true});
+        cr->GetSprite()->SetContour(cr->GetSprite()->Contour, cr->GetContourColor());
     }
 }
 

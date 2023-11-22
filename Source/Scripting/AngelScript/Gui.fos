@@ -127,7 +127,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   void SetSize( int w, int h )
 //   void SetAnchor( AnchorStyle anchorStyles )
 //   void SetDock( DockStyle dockStyle )
-//   void SetColor( uint color )
+//   void SetColor( ucolor color )
 //   void SetDraggable( bool enabled )
 //   void SetNotHittable( bool enabled )
 //   void SetNotCatchable( bool enabled )
@@ -160,16 +160,16 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 // Text : Object
 //   string Text (overridable)
 //   int TextFont
-//   uint TextColor
-//   uint TextColorFocused
+//   ucolor TextColor
+//   ucolor TextColorFocused
 //   int TextFlags
 //   void SetText( string text, int font, int flags )
 //   void SetText( string text )
 //   void SetTextWithResize( string text )
 //   void SetTextFont( int font )
 //   void SetTextFlags( int flags )
-//   void SetTextColor( uint color )
-//   void SetTextFocusedColor( uint color )
+//   void SetTextColor( ucolor color )
+//   void SetTextFocusedColor( ucolor color )
 // TextInput : Text : Object
 //   uint InputLength
 //   bool IsTextPassword
@@ -301,7 +301,7 @@ class Object
     {
         return _Dock;
     }
-    int get_Color() final
+    ucolor get_Color() final
     {
         return _Color;
     }
@@ -370,7 +370,7 @@ class Object
     int _Height;
     AnchorStyle _Anchor;
     DockStyle _Dock;
-    uint _Color;
+    ucolor _Color;
     bool _IsDragged;
     bool _IsDraggable;
     bool _IsNotHittable;
@@ -1173,7 +1173,7 @@ class Object
         _RefreshPosition();
     }
 
-    void SetColor(uint color)
+    void SetColor(ucolor color)
     {
         _Color = color;
     }
@@ -1472,11 +1472,11 @@ class Text : Object
     {
         return _TextFont;
     }
-    uint get_TextColor() final
+    ucolor get_TextColor() final
     {
         return _TextColor;
     }
-    uint get_TextColorFocused() final
+    ucolor get_TextColorFocused() final
     {
         return _TextColorFocused;
     }
@@ -1487,8 +1487,8 @@ class Text : Object
 
     string _Text;
     int _TextFont;
-    uint _TextColor;
-    uint _TextColorFocused;
+    ucolor _TextColor;
+    ucolor _TextColorFocused;
     int _TextFlags;
 
     void _Construct() override
@@ -1508,7 +1508,7 @@ class Text : Object
         // Text
         string text = Text;
         if (text.length() > 0) {
-            uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
+            ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
             Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
@@ -1560,12 +1560,12 @@ class Text : Object
         _TextFlags = flags;
     }
 
-    void SetTextColor(uint color)
+    void SetTextColor(ucolor color)
     {
         _TextColor = color;
     }
 
-    void SetTextFocusedColor(uint color)
+    void SetTextFocusedColor(ucolor color)
     {
         _TextColorFocused = color;
     }
@@ -1645,7 +1645,7 @@ class TextInput : Text
             text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
         }
         if (text.length() > 0) {
-            uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
+            ucolor color = (_IsFocused && _TextColorFocused != ZERO_UCOLOR ? _TextColorFocused : _TextColor);
             Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
@@ -2598,7 +2598,7 @@ class MessageBox : Text
         // Set text
         string messageText;
         if (type >= FOMB_GAME && type <= FOMB_VIEW) {
-            uint[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
+            ucolor[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
             messageText = "|" + sayColors[type] + " " + Game.EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
         }
         else {

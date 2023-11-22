@@ -654,7 +654,7 @@ auto MapView::AddItemInternal(ItemHexView* item) -> ItemHexView*
     AddItemToField(item);
 
     if (!_mapperMode && item->GetIsStatic() && item->GetIsLight()) {
-        _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+        _staticLightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
     }
 
     if (!MeasureMapBorders(item->Spr, item->ScrX, item->ScrY) && !_mapLoading) {
@@ -1172,7 +1172,7 @@ void MapView::RebuildMap(int screen_hx, int screen_hy)
                 else if (!cr->IsChosen()) {
                     contour = _crittersContour;
                 }
-                mspr->SetContour(contour, ucolor {cr->GetContourColor(), true});
+                mspr->SetContour(contour, cr->GetContourColor());
 
                 AddSpriteToChain(field, mspr);
             }
@@ -1432,7 +1432,7 @@ void MapView::RebuildMapOffset(int ox, int oy)
                 else if (!cr->IsChosen()) {
                     contour = _crittersContour;
                 }
-                mspr->SetContour(contour, ucolor {cr->GetContourColor(), true});
+                mspr->SetContour(contour, cr->GetContourColor());
 
                 AddSpriteToChain(field, mspr);
             }
@@ -1987,7 +1987,7 @@ void MapView::CollectLightSources()
     if (_mapperMode) {
         for (const auto* item : _staticItems) {
             if (item->GetIsLight()) {
-                _lightSources.push_back({item->GetHexX(), item->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+                _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
             }
         }
     }
@@ -1998,7 +1998,7 @@ void MapView::CollectLightSources()
     // Items on ground
     for (const auto* item : _dynamicItems) {
         if (item->GetIsLight()) {
-            _lightSources.push_back({item->GetHexX(), item->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+            _lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
         }
     }
 
@@ -2007,7 +2007,7 @@ void MapView::CollectLightSources()
         auto added = false;
         for (const auto* item : cr->GetInvItems()) {
             if (item->GetIsLight() && item->GetCritterSlot() != CritterItemSlot::Inventory) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), ucolor {item->GetLightColor(), true}, item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
+                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->ScrX, &cr->ScrY});
                 added = true;
             }
         }
@@ -2015,7 +2015,7 @@ void MapView::CollectLightSources()
         // Default chosen light
         if (!_mapperMode) {
             if (cr->IsChosen() && !added) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), ucolor {_engine->Settings.ChosenLightColor, true}, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
+                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), _engine->Settings.ChosenLightColor, _engine->Settings.ChosenLightDistance, _engine->Settings.ChosenLightFlags, _engine->Settings.ChosenLightIntensity, &cr->ScrX, &cr->ScrY});
             }
         }
     }
@@ -3229,7 +3229,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
         else if (!cr->IsDead() && !cr->IsChosen()) {
             contour = _crittersContour;
         }
-        spr->SetContour(contour, ucolor {cr->GetContourColor(), true});
+        spr->SetContour(contour, cr->GetContourColor());
 
         AddSpriteToChain(field, spr);
     }

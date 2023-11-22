@@ -58,7 +58,8 @@ class Sprite
     }
 
     // alignX/Y = -1 left / top, 0 center, 1 right / bottom
-    void Draw(int x, int y, int width = 0, int height = 0, int alignX = -1, int alignY = -1, SpriteLayout layout = SpriteLayout::None, uint color = 0)
+    void Draw(int x, int y, int width = 0, int height = 0, int alignX = -1, int alignY = -1, SpriteLayout layout = SpriteLayout::None,
+              ucolor color = ZERO_UCOLOR)
     {
         if (Id == 0 || Hidden) {
             return;

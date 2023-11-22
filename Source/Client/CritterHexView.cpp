@@ -1011,7 +1011,8 @@ void CritterHexView::DrawTextOnHead()
             str += _engine->Settings.PlayerOffAppendix;
         }
 
-        color = ucolor {GetNameColor(), true};
+        color = GetNameColor();
+
         if (color == ucolor::clear) {
             color = _textOnHeadColor;
         }

@@ -66,8 +66,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         InitApp(argc, argv);
 
         list<vector<string>> log_buffer;
-        SetLogCallback("ServerApp", [&log_buffer](string_view str) {
+        std::mutex log_buffer_locker;
+        SetLogCallback("ServerApp", [&log_buffer, &log_buffer_locker](string_view str) {
             if (auto&& lines = _str(str).split('\n'); !lines.empty()) {
+                auto locker = std::unique_lock {log_buffer_locker};
                 log_buffer.emplace_back(std::move(lines));
             }
         });
@@ -142,9 +144,13 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
                     if (ImGui::Button("Save log", control_btn_size)) {
                         string log_lines;
-                        for (auto&& lines : log_buffer) {
-                            for (auto&& line : lines) {
-                                log_lines += line + '\n';
+
+                        {
+                            auto locker = std::unique_lock {log_buffer_locker};
+                            for (auto&& lines : log_buffer) {
+                                for (auto&& line : lines) {
+                                    log_lines += line + '\n';
+                                }
                             }
                         }
 
@@ -184,6 +190,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
                 if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
+                    auto locker = std::unique_lock {log_buffer_locker};
                     for (auto&& lines : log_buffer) {
                         if (ImGui::TreeNodeEx(lines.front().c_str(), (lines.size() < 2 ? ImGuiTreeNodeFlags_Leaf : 0) | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                             for (size_t i = 1; i < lines.size(); i++) {

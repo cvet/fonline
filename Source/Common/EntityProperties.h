@@ -216,17 +216,13 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PublicModifiable, int16, SortValue);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint8, Info);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PublicModifiable, uint8, Mode);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, int8, LightIntensity);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint8, LightDistance);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint8, LightFlags);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, LightColor);
+    ENTITY_PROPERTY(Public, ucolor, LightColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, Count);
     ///@ ExportProperty
@@ -370,9 +366,9 @@ public:
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, uint, NameColor);
+    ENTITY_PROPERTY(PrivateClient, ucolor, NameColor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, uint, ContourColor);
+    ENTITY_PROPERTY(PrivateClient, ucolor, ContourColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<any_t>, TE_Identifier);
     ///@ ExportProperty
@@ -483,7 +479,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, ToGarbage);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, Color);
+    ENTITY_PROPERTY(PrivateServer, ucolor, Color);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, IsEncounter);
 };

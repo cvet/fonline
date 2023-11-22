@@ -38,21 +38,9 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
-#include "Log.h"
-#include "NetCommand.h"
-#include "ProtoManager.h"
 #include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming
-
-static constexpr auto COLOR_SCRIPT_SPRITE(uint color) -> ucolor
-{
-    return ucolor {color != 0 ? ucolor {color, true} : COLOR_SPRITE};
-}
-static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
-{
-    return ucolor {color != 0 ? ucolor {color, true} : COLOR_TEXT};
-}
 
 ///# ...
 ///# return ...
@@ -356,9 +344,9 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param toColor ...
 ///# param duration ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, uint fromColor, uint toColor, tick_t duration)
+[[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, ucolor fromColor, ucolor toColor, tick_t duration)
 {
-    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, ucolor {fromColor, true}, ucolor {toColor, true}, true);
+    client->ScreenFade(std::chrono::milliseconds {duration.underlying_value()}, fromColor, toColor, true);
 }
 
 ///# ...
@@ -1141,7 +1129,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, x, y, COLOR_SCRIPT_SPRITE(0));
+    client->SprMngr.DrawSprite(spr, x, y, COLOR_SPRITE);
 }
 
 ///# ...
@@ -1150,7 +1138,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param y ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, uint color)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1165,7 +1153,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         return;
     }
 
-    client->SprMngr.DrawSprite(spr, x, y, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSprite(spr, x, y, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
@@ -1175,7 +1163,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, uint color, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, ucolor color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1198,7 +1186,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         yy += -spr->Height + spr->OffsY;
     }
 
-    client->SprMngr.DrawSprite(spr, xx, yy, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSprite(spr, xx, yy, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
@@ -1223,7 +1211,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(0));
+    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SPRITE);
 }
 
 ///# ...
@@ -1234,7 +1222,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param h ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, uint color)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1249,7 +1237,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         return;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSpriteSizeExt(spr, x, y, w, h, true, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
@@ -1262,7 +1250,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param zoom ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, uint color, bool zoom, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int x, int y, int w, int h, ucolor color, bool zoom, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1285,7 +1273,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         yy += spr->OffsY;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr, xx, yy, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSpriteSizeExt(spr, xx, yy, w, h, zoom, true, true, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
@@ -1298,7 +1286,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param sprHeight ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
+[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, int x, int y, int w, int h, int sprWidth, int sprHeight, ucolor color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1313,7 +1301,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         return;
     }
 
-    client->SprMngr.DrawSpritePattern(spr, x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSpritePattern(spr, x, y, w, h, sprWidth, sprHeight, color != ucolor::clear ? color : COLOR_SPRITE);
 }
 
 ///# ...
@@ -1326,7 +1314,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param font ...
 ///# param flags ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, uint color, int font, int flags)
+[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, ucolor color, int font, int flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1350,7 +1338,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
     }
 
     const auto r = IRect(xx, yy, xx + ww, yy + hh);
-    client->SprMngr.DrawStr(r, text, flags, COLOR_SCRIPT_TEXT(color), font);
+    client->SprMngr.DrawStr(r, text, flags, color != ucolor::clear ? color : COLOR_TEXT, font);
 }
 
 ///# ...
@@ -1395,7 +1383,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
         auto& pp = points[i];
         pp.PointX = data[i * 3];
         pp.PointY = data[i * 3 + 1];
-        pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2]), true};
+        pp.PointColor = ucolor {static_cast<uint>(data[i * 3 + 2])};
         pp.PointOffsX = nullptr;
         pp.PointOffsY = nullptr;
     }
@@ -1416,11 +1404,11 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param center ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, ucolor color)
 {
     const auto* frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
     if (frames != nullptr) {
-        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
+        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), l, t, r - l, b - t, scratch, center, color != ucolor::clear ? color : COLOR_SPRITE);
     }
 }
 
@@ -1433,7 +1421,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 ///# param position ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, const vector<int>& layers, const vector<float>& position, ucolor color)
 {
 #if FO_ENABLE_3D
     // x y
@@ -1506,7 +1494,7 @@ static constexpr auto COLOR_SCRIPT_TEXT(uint color) -> ucolor
 
     model_spr->DrawToAtlas();
 
-    client->SprMngr.DrawSprite(model_spr.get(), static_cast<int>(x) - model_spr->Width / 2 + model_spr->OffsX, static_cast<int>(y) - model_spr->Height + model_spr->OffsY, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSprite(model_spr.get(), static_cast<int>(x) - model_spr->Width / 2 + model_spr->OffsX, static_cast<int>(y) - model_spr->Height + model_spr->OffsY, color != ucolor::clear ? color : COLOR_SPRITE);
 
     if (count > 13) {
         client->SprMngr.PopScissor();

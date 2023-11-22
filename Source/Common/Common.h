@@ -100,6 +100,7 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
@@ -232,7 +233,7 @@ std::unique_ptr<T> dynamic_pointer_cast(std::unique_ptr<U>&& p) noexcept
 
 struct pair_hash
 {
-    template<class T, class U>
+    template<typename T, typename U>
     std::size_t operator()(const std::pair<T, U>& p) const
     {
         return std::hash<T> {}(p.first) ^ std::hash<U> {}(p.second);
@@ -244,6 +245,7 @@ template<typename T>
 struct strong_type
 {
     using underlying_type = typename T::type;
+    static constexpr bool is_strong_type = true;
     static constexpr const char* type_name = T::name;
 
     constexpr strong_type() noexcept :
@@ -288,21 +290,16 @@ struct fmt::formatter<strong_type<T>>
     }
 };
 
-template<typename T>
-constexpr bool is_strong_type_func(const strong_type<T>* /*unused*/)
-{
-    return true;
-}
-constexpr bool is_strong_type_func(...)
-{
-    return false;
-}
-template<typename T>
-struct is_strong_type : std::integral_constant<bool, is_strong_type_func(static_cast<T*>(nullptr))>
+template<typename T, typename = int>
+struct has_is_strong_type : std::false_type
 {
 };
 template<typename T>
-constexpr bool is_strong_type_v = is_strong_type<T>::value;
+struct has_is_strong_type<T, decltype((void)T::is_strong_type, 0)> : std::true_type
+{
+};
+template<typename T>
+constexpr bool is_strong_type_v = has_is_strong_type<T>::value;
 
 ///@ ExportType ident ident_t uint HardStrong
 #define IDENT_T_NAME "ident"
@@ -311,9 +308,9 @@ struct ident_t_traits
     static constexpr const char* name = IDENT_T_NAME;
     using type = uint;
 };
-
 using ident_t = strong_type<ident_t_traits>;
 static_assert(sizeof(ident_t) == sizeof(uint));
+static_assert(std::is_standard_layout_v<ident_t>);
 
 ///@ ExportType tick_t tick_t uint RelaxedStrong
 #define TICK_T_NAME "tick_t"
@@ -322,9 +319,9 @@ struct tick_t_traits
     static constexpr const char* name = TICK_T_NAME;
     using type = uint;
 };
-
 using tick_t = strong_type<tick_t_traits>;
 static_assert(sizeof(tick_t) == sizeof(uint));
+static_assert(std::is_standard_layout_v<tick_t>);
 
 // Custom any as string
 class any_t : public string
@@ -1011,66 +1008,6 @@ constexpr bool IsEnumSet(T value, T check) noexcept
     return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
 
-// Float constants
-constexpr auto PI_FLOAT = 3.14159265f;
-constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
-constexpr auto SQRT3_FLOAT = 1.732050807f;
-constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
-constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
-
-// Memory pool
-template<typename T, int ChunkSize>
-class MemoryPool final
-{
-public:
-    MemoryPool(const MemoryPool&) = delete;
-    MemoryPool(MemoryPool&&) noexcept = default;
-    auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool&&) noexcept -> MemoryPool& = delete;
-
-    MemoryPool()
-    {
-        _freePtrs.reserve(ChunkSize);
-        Grow();
-    }
-
-    ~MemoryPool()
-    {
-        for (const auto* chunk : _chunks) {
-            delete[] chunk;
-        }
-    }
-
-    auto Get() -> T*
-    {
-        if (_freePtrs.empty()) {
-            Grow();
-        }
-
-        T* result = _freePtrs.back();
-        _freePtrs.pop_back();
-        return result;
-    }
-
-    void Put(T* ptr) //
-    {
-        _freePtrs.emplace_back(ptr);
-    }
-
-private:
-    void Grow()
-    {
-        auto* new_chunk = new T[ChunkSize]();
-        _chunks.emplace_back(new_chunk);
-        for (auto i = 0; i < ChunkSize; i++) {
-            _freePtrs.emplace_back(&new_chunk[i]);
-        }
-    }
-
-    vector<T*> _chunks {};
-    vector<T*> _freePtrs {};
-};
-
 // Data serialization helpers
 DECLARE_EXCEPTION(DataReadingException);
 
@@ -1355,20 +1292,19 @@ using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
 
 // Color type
+///@ ExportType ucolor ucolor uint HardStrong
 struct ucolor
 {
+    using underlying_type = uint;
+    static constexpr bool is_strong_type = true;
+
     constexpr ucolor() noexcept :
         rgba {}
     {
     }
-    explicit constexpr ucolor(uint rgba_, bool swap_rb = false) noexcept :
+    explicit constexpr ucolor(uint rgba_) noexcept :
         rgba {rgba_}
     {
-        if (swap_rb) { // Todo: fix script colors to remove rb colors swapping
-            const auto r = comp.r;
-            comp.r = comp.b;
-            comp.b = r;
-        }
     }
     constexpr ucolor(uint8 r_, uint8 g_, uint8 b_) noexcept :
         comp {r_, g_, b_, 255}
@@ -1387,6 +1323,8 @@ struct ucolor
     [[nodiscard]] constexpr auto operator==(const ucolor& other) const noexcept { return rgba == other.rgba; }
     [[nodiscard]] constexpr auto operator!=(const ucolor& other) const noexcept { return rgba != other.rgba; }
     [[nodiscard]] constexpr auto operator<(const ucolor& other) const noexcept { return rgba < other.rgba; }
+    [[nodiscard]] constexpr auto underlying_value() noexcept -> underlying_type& { return rgba; }
+    [[nodiscard]] constexpr auto underlying_value() const noexcept -> const underlying_type& { return rgba; }
 
     struct components
     {
@@ -1426,7 +1364,7 @@ struct fmt::formatter<ucolor>
     template<typename FormatContext>
     auto format(const ucolor& c, FormatContext& ctx)
     {
-        return format_to(ctx.out(), "{{R:{} G:{} B:{} A:{}}}", c.comp.r, c.comp.g, c.comp.b, c.comp.a);
+        return format_to(ctx.out(), "0x{:x}", c.rgba);
     }
 };
 
@@ -1496,6 +1434,13 @@ static constexpr auto PROCESS_TALK_TIME = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
+
+// Float constants
+constexpr auto PI_FLOAT = 3.14159265f;
+constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
+constexpr auto SQRT3_FLOAT = 1.732050807f;
+constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
+constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes

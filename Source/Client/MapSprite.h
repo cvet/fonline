@@ -114,8 +114,8 @@ struct MapSpriteData
     int DrawOrderHyOffset {};
     CornerType Corner {};
     bool DisableEgg {};
-    uint Color {};
-    uint ContourColor {};
+    ucolor Color {};
+    ucolor ContourColor {};
     bool IsTweakOffs {};
     int TweakOffsX {};
     int TweakOffsY {};

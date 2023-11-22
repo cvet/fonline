@@ -1015,21 +1015,21 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, bool collect_contours,
 
             switch (mspr->EggAppearence) {
             case EggAppearenceType::Always:
-                PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), ucolor {0x5FFFFF00, true});
+                PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), ucolor {0x5F00FFFF});
                 break;
             case EggAppearenceType::ByX:
-                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 55.0f), FPoint(xf + cx + 5.0f, yf + hf - 45.0f), FPoint(xf + cx - 5.0f, yf + hf - 5.0f), FPoint(xf + cx + 5.0f, yf + hf + 5.0f), ucolor {0x5F00AF00, true});
+                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 55.0f), FPoint(xf + cx + 5.0f, yf + hf - 45.0f), FPoint(xf + cx - 5.0f, yf + hf - 5.0f), FPoint(xf + cx + 5.0f, yf + hf + 5.0f), ucolor {0x5F00AF00});
                 break;
             case EggAppearenceType::ByY:
-                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 49.0f), FPoint(xf + cx + 5.0f, yf + hf - 52.0f), FPoint(xf + cx - 5.0f, yf + hf + 1.0f), FPoint(xf + cx + 5.0f, yf + hf - 2.0f), ucolor {0x5F00FF00, true});
+                PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 49.0f), FPoint(xf + cx + 5.0f, yf + hf - 52.0f), FPoint(xf + cx - 5.0f, yf + hf + 1.0f), FPoint(xf + cx + 5.0f, yf + hf - 2.0f), ucolor {0x5F00FF00});
                 break;
             case EggAppearenceType::ByXAndY:
-                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 49.0f), FPoint(xf + cx, yf + hf - 52.0f), FPoint(xf + cx - 10.0f, yf + hf + 1.0f), FPoint(xf + cx, yf + hf - 2.0f), ucolor {0x5FFF0000, true});
-                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 55.0f), FPoint(xf + cx + 10.0f, yf + hf - 45.0f), FPoint(xf + cx, yf + hf - 5.0f), FPoint(xf + cx + 10.0f, yf + hf + 5.0f), ucolor {0x5FFF0000, true});
+                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 49.0f), FPoint(xf + cx, yf + hf - 52.0f), FPoint(xf + cx - 10.0f, yf + hf + 1.0f), FPoint(xf + cx, yf + hf - 2.0f), ucolor {0x5F0000FF});
+                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 55.0f), FPoint(xf + cx + 10.0f, yf + hf - 45.0f), FPoint(xf + cx, yf + hf - 5.0f), FPoint(xf + cx + 10.0f, yf + hf + 5.0f), ucolor {0x5F0000FF});
                 break;
             case EggAppearenceType::ByXOrY:
-                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 49.0f), FPoint(xf + cx + 10.0f, yf + hf - 52.0f), FPoint(xf + cx, yf + hf + 1.0f), FPoint(xf + cx + 10.0f, yf + hf - 2.0f), ucolor {0x5FAF0000, true});
-                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 55.0f), FPoint(xf + cx, yf + hf - 45.0f), FPoint(xf + cx - 10.0f, yf + hf - 5.0f), FPoint(xf + cx, yf + hf + 5.0f), ucolor {0x5FAF0000, true});
+                PrepareSquare(corner, FPoint(xf + cx, yf + hf - 49.0f), FPoint(xf + cx + 10.0f, yf + hf - 52.0f), FPoint(xf + cx, yf + hf + 1.0f), FPoint(xf + cx + 10.0f, yf + hf - 2.0f), ucolor {0x5F0000AF});
+                PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 55.0f), FPoint(xf + cx, yf + hf - 45.0f), FPoint(xf + cx - 10.0f, yf + hf - 5.0f), FPoint(xf + cx, yf + hf + 5.0f), ucolor {0x5F0000AF});
                 break;
             default:
                 break;
@@ -2015,10 +2015,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             }
             else {
                 if (*(s1 + 1) == 'x') {
-                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16)), true};
+                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16))};
                 }
                 else {
-                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0)), true};
+                    d = ucolor {static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0))};
                 }
 
                 if (dots_history_cur < dots_history_len - 1) {
@@ -2412,7 +2412,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, ucolor 
                     color = fi.ColorDots[i]; // With alpha
                 }
                 else {
-                    color = ucolor {fi.ColorDots[i].comp.r, fi.ColorDots[i].comp.g, fi.ColorDots[i].comp.b, color.comp.a};
+                    color = ucolor {fi.ColorDots[i], color.comp.a};
                 }
                 color = ApplyColorBrightness(color);
                 break;
@@ -2440,7 +2440,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, ucolor 
                     color = new_color; // With alpha
                 }
                 else {
-                    color = ucolor {new_color.comp.r, new_color.comp.g, new_color.comp.b, color.comp.a};
+                    color = ucolor {new_color, color.comp.a};
                 }
                 color = ApplyColorBrightness(color);
             }
