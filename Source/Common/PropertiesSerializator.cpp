@@ -561,17 +561,25 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             props->SetRawData(prop, reinterpret_cast<const uint8*>(&h), prop->_baseSize);
         }
         else if (prop->_isEnumBase) {
-            if (value.index() != AnyData::STRING_VALUE) {
+            int enum_value;
+
+            if (value.index() == AnyData::STRING_VALUE) {
+                auto is_error = false;
+                enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value), &is_error);
+                if (is_error) {
+                    return false;
+                }
+            }
+            else if (value.index() == AnyData::INT_VALUE || value.index() == AnyData::INT64_VALUE) {
+                // Todo: validate integer value to fit in enum range
+                enum_value = static_cast<int>(value.index() == AnyData::INT_VALUE ? std::get<int>(value) : std::get<int64>(value));
+            }
+            else {
                 WriteLog("Wrong enum value type, property {}", prop->GetName());
                 return false;
             }
 
-            auto is_error = false;
-            const auto e = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value), &is_error);
-            props->SetRawData(prop, reinterpret_cast<const uint8*>(&e), prop->_baseSize);
-            if (is_error) {
-                return false;
-            }
+            props->SetRawData(prop, reinterpret_cast<const uint8*>(&enum_value), prop->_baseSize);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
             if (value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
@@ -694,7 +702,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             props->SetRawData(prop, data.get(), data_size);
         }
         else if (prop->_isEnumBase) {
-            if (arr[0].index() != AnyData::STRING_VALUE) {
+            if (arr[0].index() != AnyData::STRING_VALUE && arr[0].index() != AnyData::INT_VALUE && arr[0].index() != AnyData::INT64_VALUE) {
                 WriteLog("Wrong array enum element value type, property {}", prop->GetName());
                 return false;
             }
@@ -703,15 +711,22 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             auto data = unique_ptr<uint8>(new uint8[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
-                RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
+                RUNTIME_ASSERT(arr[i].index() == arr[0].index());
 
-                auto is_error = false;
-                int e = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(arr[i]), &is_error);
-                std::memcpy(data.get() + i * prop->_baseSize, &e, prop->_baseSize);
+                int enum_value;
 
-                if (is_error) {
-                    return false;
+                if (arr[i].index() == AnyData::STRING_VALUE) {
+                    auto is_error = false;
+                    enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(arr[i]), &is_error);
+                    if (is_error) {
+                        return false;
+                    }
                 }
+                else {
+                    enum_value = static_cast<int>(arr[i].index() == AnyData::INT_VALUE ? std::get<int>(arr[i]) : std::get<int64>(arr[i]));
+                }
+
+                std::memcpy(data.get() + i * prop->_baseSize, &enum_value, prop->_baseSize);
             }
 
             props->SetRawData(prop, data.get(), data_size);
@@ -935,7 +950,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 data_size += sizeof(hstring::hash_t);
             }
             else if (prop->_isEnumBase) {
-                if (value2.index() != AnyData::STRING_VALUE) {
+                if (value2.index() != AnyData::STRING_VALUE && value2.index() != AnyData::INT_VALUE && value2.index() != AnyData::INT64_VALUE) {
                     WriteLog("Wrong dict enum element value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
@@ -1013,14 +1028,21 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
                 if (prop->_isEnumBase) {
                     for (const auto& e : arr) {
-                        auto is_error = false;
-                        const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(e), &is_error);
+                        int enum_value;
+
+                        if (e.index() == AnyData::STRING_VALUE) {
+                            auto is_error = false;
+                            enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(e), &is_error);
+                            if (is_error) {
+                                return false;
+                            }
+                        }
+                        else {
+                            enum_value = static_cast<int>(e.index() == AnyData::INT_VALUE ? std::get<int>(e) : std::get<int64>(e));
+                        }
+
                         std::memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
                         data_pos += prop->_baseSize;
-
-                        if (is_error) {
-                            return false;
-                        }
                     }
                 }
                 else if (prop->_isHashBase) {
@@ -1124,13 +1146,20 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                     *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = hash_resolver.ToHashedString(std::get<string>(value2)).as_hash();
                 }
                 else if (prop->_isEnumBase) {
-                    auto is_error = false;
-                    const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value2), &is_error);
-                    std::memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
+                    int enum_value;
 
-                    if (is_error) {
-                        return false;
+                    if (value2.index() == AnyData::STRING_VALUE) {
+                        auto is_error = false;
+                        enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value2), &is_error);
+                        if (is_error) {
+                            return false;
+                        }
                     }
+                    else {
+                        enum_value = static_cast<int>(value2.index() == AnyData::INT_VALUE ? std::get<int>(value2) : std::get<int64>(value2));
+                    }
+
+                    std::memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
                 }
                 else {
 #define PARSE_VALUE(t) \
